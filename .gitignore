@@ -1,0 +1,15 @@
+# Node/Next caches
+web-next/.next/
+web-next/node_modules/
+
+# Env & local config (never commit secrets)
+web-next/.env
+web-next/.env.local
+web-next/.env.*
+
+# Local outputs / scratch (add or remove as you prefer)
+out/
+_backup*/
+_backups/
+.DS_Store
+

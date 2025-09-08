@@ -1,0 +1,14 @@
+name: Daily Clan Snapshot
+on:
+  schedule:
+    - cron: '0 3 * * *'  # 3 AM UTC daily
+  workflow_dispatch:  # Allow manual triggers
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Daily Snapshot
+        run: |
+          curl -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+               ${{ secrets.APP_URL }}/api/cron/daily-snapshot

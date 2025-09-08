@@ -1,0 +1,47 @@
+// web-next/src/app/api/tenure/map/route.ts
+export const dynamic = "force-dynamic";
+export const runtime = "nodejs";
+
+import { NextResponse } from "next/server";
+import path from "path";
+import { promises as fsp } from "fs";
+import { cfg } from "../../../../lib/config";
+
+const TAG_RE = /^#[0289PYLQGRJCUV]{5,}$/;
+
+function daysSince(ymd: string): number {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || ""); if (!m) return 0;
+  const a = Date.UTC(+m[1], +m[2]-1, +m[3], 0,0,0);
+  const now = new Date();
+  const b = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0,0,0);
+  const d = Math.floor((b - a)/86400000);
+  return d > 0 ? d : 0;
+}
+
+export async function GET() {
+  try {
+    const ledger = path.join(process.cwd(), cfg.dataRoot, "tenure_ledger.jsonl");
+    try { await fsp.stat(ledger); } catch { return NextResponse.json({}); }
+    const lines = (await fsp.readFile(ledger, "utf-8")).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+
+    const latest: Record<string,string> = {};
+    const base: Record<string,number> = {};
+    const asof: Record<string,string> = {};
+
+    for (const line of lines) {
+      let row: any = null; try { row = JSON.parse(line); } catch { continue; }
+      const tag = String(row?.tag || "").toUpperCase().trim();
+      const ts  = String(row?.ts || "");
+      if (!TAG_RE.test(tag) || !ts) continue;
+      if (latest[tag] && latest[tag] >= ts) continue;
+      latest[tag] = ts; base[tag] = Number(row?.base ?? row?.tenure_days ?? 0) || 0; asof[tag] = String(row?.as_of || "");
+    }
+
+    const map: Record<string,number> = {};
+    for (const [tag, b] of Object.entries(base)) map[tag] = Math.max(0, Math.round(b + daysSince(asof[tag] || "")));
+    return NextResponse.json(map);
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || "map failed" }, { status: 500 });
+  }
+}
+
