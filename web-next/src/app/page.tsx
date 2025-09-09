@@ -168,18 +168,18 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
 
   // 4. Hero Activity (0-15 points)
   const heroes = [
-    member.barbarianKing ?? 0,
-    member.archerQueen ?? 0,
-    member.grandWarden ?? 0,
-    member.royalChampion ?? 0,
-    member.masterBuilder ?? 0
+    member.bk ?? 0,
+    member.aq ?? 0,
+    member.gw ?? 0,
+    member.rc ?? 0,
+    member.mp ?? 0
   ];
   const previousHeroes = [
-    previousMember?.barbarianKing ?? 0,
-    previousMember?.archerQueen ?? 0,
-    previousMember?.grandWarden ?? 0,
-    previousMember?.royalChampion ?? 0,
-    previousMember?.masterBuilder ?? 0
+    previousMember?.bk ?? 0,
+    previousMember?.aq ?? 0,
+    previousMember?.gw ?? 0,
+    previousMember?.rc ?? 0,
+    previousMember?.mp ?? 0
   ];
   
   const heroUpgrades = heroes.reduce((count, current, index) => {
@@ -326,11 +326,11 @@ const evaluateApplicant = (applicant: Member, currentRoster: Member[]): {
 
   // 2. Hero Development (0-30 points)
   const heroes = [
-    applicant.barbarianKing ?? 0,
-    applicant.archerQueen ?? 0,
-    applicant.grandWarden ?? 0,
-    applicant.royalChampion ?? 0,
-    applicant.masterBuilder ?? 0
+    applicant.bk ?? 0,
+    applicant.aq ?? 0,
+    applicant.gw ?? 0,
+    applicant.rc ?? 0,
+    applicant.mp ?? 0
   ];
   const maxHeroes = HERO_MAX_LEVELS[th] || { bk: 0, aq: 0, gw: 0, rc: 0, mp: 0 };
   const heroValues = [maxHeroes.bk, maxHeroes.aq, maxHeroes.gw, maxHeroes.rc, maxHeroes.mp];
@@ -1081,7 +1081,7 @@ ${member.name} (${member.tag})
       return `${activity.lastActivityDate} (${activity.level})${estimationNote}`;
     })()}
 - Rush %: ${member.rushPercent}%
-- Heroes: BK:${member.heroes.barbarianKing || 'N/A'} AQ:${member.heroes.archerQueen || 'N/A'} GW:${member.heroes.grandWarden || 'N/A'} RC:${member.heroes.royalChampion || 'N/A'} MP:${member.heroes.minionPrince || 'N/A'}
+- Heroes: BK:${member.bk || 'N/A'} AQ:${member.aq || 'N/A'} GW:${member.gw || 'N/A'} RC:${member.rc || 'N/A'} MP:${member.mp || 'N/A'}
 - Recent Clans: ${member.recentClans?.join(', ') || 'None'}
 `).join('')}
 

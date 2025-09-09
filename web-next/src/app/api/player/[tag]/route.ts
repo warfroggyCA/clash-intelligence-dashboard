@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getPlayer } from "@/lib/coc";
+import { getPlayer, extractHeroLevels } from "@/lib/coc";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,7 +78,20 @@ export async function GET(
     try {
       const playerData = await getPlayer(cleanTag);
       console.log('Player data fetched successfully:', playerData);
-      return NextResponse.json(playerData);
+      
+      // Extract hero levels the same way the roster API does
+      const heroes = extractHeroLevels(playerData);
+      const processedPlayerData = {
+        ...playerData,
+        bk: typeof heroes.bk === "number" ? heroes.bk : null,
+        aq: typeof heroes.aq === "number" ? heroes.aq : null,
+        gw: typeof heroes.gw === "number" ? heroes.gw : null,
+        rc: typeof heroes.rc === "number" ? heroes.rc : null,
+        mp: typeof heroes.mp === "number" ? heroes.mp : null,
+      };
+      
+      console.log('Processed player data with heroes:', processedPlayerData);
+      return NextResponse.json(processedPlayerData);
     } finally {
       rateLimiter.release(); // Release the slot
     }
