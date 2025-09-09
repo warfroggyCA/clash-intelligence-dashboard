@@ -5,6 +5,10 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import { getAllChangeSummaries, loadChangeSummary } from "@/lib/snapshots";
 
+// Simple in-memory cache for change summaries (resets on server restart)
+const changeCache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 30000; // 30 seconds cache
+
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
@@ -23,11 +27,26 @@ export async function GET(req: Request) {
         changes: changeSummary,
       });
     } else {
-      // Get all changes for the clan
+      // Get all changes for the clan with caching
+      const cacheKey = `changes_${clanTag}`;
+      const cached = changeCache.get(cacheKey);
+      const now = Date.now();
+      
+      if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        return NextResponse.json({
+          success: true,
+          changes: cached.data,
+          cached: true,
+        });
+      }
+      
       const allChanges = await getAllChangeSummaries(clanTag);
+      changeCache.set(cacheKey, { data: allChanges, timestamp: now });
+      
       return NextResponse.json({
         success: true,
         changes: allChanges,
+        cached: false,
       });
     }
   } catch (error: any) {
@@ -83,6 +102,10 @@ export async function POST(req: Request) {
     // Save the updated summary
     const { saveChangeSummary } = await import('@/lib/snapshots');
     await saveChangeSummary(changeSummary);
+
+    // Invalidate cache for this clan
+    const cacheKey = `changes_${clanTag}`;
+    changeCache.delete(cacheKey);
 
     return NextResponse.json({
       success: true,

@@ -214,3 +214,136 @@ function generateDetailedFallbackSummary(changes: MemberChange[]): string {
 
   return summary.trim();
 }
+
+// Max hero levels for each Town Hall (updated 2024)
+const HERO_MAX_LEVELS: Record<number, Record<"bk"|"aq"|"gw"|"rc"|"mp", number>> = {
+  7: { bk: 10, aq: 0, gw: 0, rc: 0, mp: 0 },
+  8: { bk: 20, aq: 0, gw: 0, rc: 0, mp: 0 },
+  9: { bk: 30, aq: 30, gw: 0, rc: 0, mp: 30 },
+  10: { bk: 40, aq: 40, gw: 0, rc: 0, mp: 40 },
+  11: { bk: 50, aq: 50, gw: 20, rc: 0, mp: 50 },
+  12: { bk: 65, aq: 65, gw: 40, rc: 0, mp: 65 },
+  13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 75 },
+  14: { bk: 80, aq: 80, gw: 65, rc: 40, mp: 80 },
+  15: { bk: 90, aq: 90, gw: 75, rc: 50, mp: 90 },
+  16: { bk: 95, aq: 95, gw: 80, rc: 65, mp: 95 },
+  17: { bk: 100, aq: 100, gw: 90, rc: 75, mp: 100 }
+};
+
+// Helper function to get hero key from description
+function getHeroKeyFromDescription(description: string): "bk" | "aq" | "gw" | "rc" | "mp" | null {
+  if (description.includes('BK') || description.includes('Barbarian King')) return 'bk';
+  if (description.includes('AQ') || description.includes('Archer Queen')) return 'aq';
+  if (description.includes('GW') || description.includes('Grand Warden')) return 'gw';
+  if (description.includes('RC') || description.includes('Royal Champion')) return 'rc';
+  if (description.includes('MP') || description.includes('Minion Prince')) return 'mp';
+  return null;
+}
+
+// Helper function to calculate remaining levels to max
+function getRemainingLevels(townHallLevel: number, heroKey: string, currentLevel: number): number | null {
+  const maxLevel = HERO_MAX_LEVELS[townHallLevel]?.[heroKey as keyof typeof HERO_MAX_LEVELS[number]];
+  if (!maxLevel || maxLevel === 0) return null;
+  return Math.max(0, maxLevel - currentLevel);
+}
+
+// Generate copyable game chat messages for significant achievements
+export function generateGameChatMessages(changes: MemberChange[]): string[] {
+  const messages: string[] = [];
+  
+  // Hero upgrades (any level for now, can adjust thresholds later)
+  const heroUpgrades = changes.filter(change => change.type === 'hero_upgrade');
+  
+  for (const change of heroUpgrades) {
+    const heroName = getHeroDisplayName(change.description);
+    const heroKey = getHeroKeyFromDescription(change.description);
+    const townHallLevel = change.member.townHallLevel;
+    
+    // Calculate remaining levels if we have the data
+    let remainingText = '';
+    if (heroKey && townHallLevel) {
+      const remaining = getRemainingLevels(townHallLevel, heroKey, change.newValue);
+      if (remaining !== null && remaining > 0) {
+        remainingText = ` Only ${remaining} to go!`;
+      }
+    }
+    
+    if (change.newValue >= 90) {
+      messages.push(`🎉 ${change.member.name} just MAXED their ${heroName}! Incredible dedication! 🏆`);
+    } else if (change.newValue >= 75) {
+      messages.push(`🔥 ${change.member.name} upgraded their ${heroName} to level ${change.newValue}!${remainingText} Getting close to max! 💪`);
+    } else if (change.newValue >= 50) {
+      messages.push(`⚡ ${change.member.name} upgraded their ${heroName} to level ${change.newValue}!${remainingText} Great progress! 🎯`);
+    } else {
+      messages.push(`💪 ${change.member.name} upgraded their ${heroName} to level ${change.newValue}!${remainingText} Keep it up! 🚀`);
+    }
+  }
+  
+  // Town Hall upgrades
+  const thUpgrades = changes.filter(change => change.type === 'town_hall_upgrade');
+  for (const change of thUpgrades) {
+    messages.push(`🏰 ${change.member.name} upgraded to Town Hall ${change.newValue}! Welcome to the next level! 🎊`);
+  }
+  
+  // Trophy pushes (100+ trophies)
+  const trophyPushes = changes.filter(change => 
+    change.type === 'trophy_change' && 
+    change.newValue && change.previousValue &&
+    (change.newValue - change.previousValue) >= 100
+  );
+  
+  for (const change of trophyPushes) {
+    const gain = change.newValue - change.previousValue;
+    messages.push(`📈 ${change.member.name} just pushed ${gain} trophies! From ${change.previousValue} to ${change.newValue}! 🚀`);
+  }
+  
+  // New members
+  const newMembers = changes.filter(change => change.type === 'new_member');
+  if (newMembers.length > 0) {
+    if (newMembers.length === 1) {
+      messages.push(`👋 Welcome ${newMembers[0].member.name} to the clan! Great to have you! 🎉`);
+    } else {
+      const names = newMembers.map(m => m.member.name).join(', ');
+      messages.push(`👋 Welcome our new members: ${names}! Great to have you all! 🎉`);
+    }
+  }
+  
+  // Role promotions
+  const roleChanges = changes.filter(change => 
+    change.type === 'role_change' && 
+    change.newValue && 
+    (change.newValue === 'co-leader' || change.newValue === 'coLeader' || change.newValue === 'elder' || change.newValue === 'admin')
+  );
+  
+  for (const change of roleChanges) {
+    const roleName = change.newValue === 'coLeader' ? 'Co-Leader' : 
+                    change.newValue === 'co-leader' ? 'Co-Leader' :
+                    change.newValue === 'admin' ? 'Elder' : change.newValue;
+    const roleEmoji = (change.newValue === 'co-leader' || change.newValue === 'coLeader') ? '💎' : '⭐';
+    messages.push(`${roleEmoji} Congratulations ${change.member.name} on becoming ${roleName}! Well deserved! 🎊`);
+  }
+  
+  // High donation activity (500+ donations)
+  const donationActivity = changes.filter(change => 
+    change.type === 'donation_change' && 
+    change.newValue && change.previousValue &&
+    (change.newValue - change.previousValue) >= 500
+  );
+  
+  for (const change of donationActivity) {
+    const donations = change.newValue - change.previousValue;
+    messages.push(`💝 ${change.member.name} donated ${donations} troops today! You're a donation machine! 🏆`);
+  }
+  
+  return messages;
+}
+
+// Helper function to extract hero name from description
+function getHeroDisplayName(description: string): string {
+  if (description.includes('BK') || description.includes('Barbarian King')) return 'Barbarian King';
+  if (description.includes('AQ') || description.includes('Archer Queen')) return 'Archer Queen';
+  if (description.includes('GW') || description.includes('Grand Warden')) return 'Grand Warden';
+  if (description.includes('RC') || description.includes('Royal Champion')) return 'Royal Champion';
+  if (description.includes('MP') || description.includes('Minion Prince')) return 'Minion Prince';
+  return 'Hero';
+}

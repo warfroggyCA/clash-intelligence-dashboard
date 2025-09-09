@@ -36,10 +36,16 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
       setLoading(true);
       const playerRecords: PlayerRecord[] = [];
       
-      // Scan localStorage for all player notes
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && key.startsWith('player_notes_')) {
+      // Get all localStorage keys at once to avoid repeated key() calls
+      const allKeys = Object.keys(localStorage);
+      const noteKeys = allKeys.filter(key => key.startsWith('player_notes_'));
+      
+      // Process in batches to avoid blocking the UI
+      const processBatch = (keys: string[], startIndex: number = 0) => {
+        const batchSize = 10; // Process 10 at a time
+        const batch = keys.slice(startIndex, startIndex + batchSize);
+        
+        batch.forEach(key => {
           const playerTag = key.replace('player_notes_', '');
           const notes = JSON.parse(localStorage.getItem(key) || '[]');
           
@@ -63,15 +69,26 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
               });
             }
           }
+        });
+        
+        // Continue with next batch if there are more keys
+        if (startIndex + batchSize < keys.length) {
+          setTimeout(() => processBatch(keys, startIndex + batchSize), 0);
+        } else {
+          // All batches processed, sort and update state
+          playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
+          setPlayers(playerRecords);
+          setLoading(false);
         }
-      }
+      };
       
-      // Sort by last updated (most recent first)
-      playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
-      setPlayers(playerRecords);
+      if (noteKeys.length === 0) {
+        setLoading(false);
+      } else {
+        processBatch(noteKeys);
+      }
     } catch (error) {
       console.error('Failed to load player database:', error);
-    } finally {
       setLoading(false);
     }
   };

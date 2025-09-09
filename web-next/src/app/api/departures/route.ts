@@ -43,6 +43,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true });
     }
     
+    if (action === 'clear_all') {
+      // Clear all departures for this clan
+      const { writeDepartures } = await import('../../../lib/departures');
+      await writeDepartures(clanTag, []);
+      return NextResponse.json({ success: true });
+    }
+    
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
     console.error('Error managing departures:', error);

@@ -45,7 +45,13 @@ export type ChangeType =
 
 export type MemberChange = {
   type: ChangeType;
-  member: Member;
+  member: {
+    name: string;
+    tag: string;
+    townHallLevel?: number;
+    role?: string;
+    // Only include essential data to reduce payload size
+  };
   previousValue?: any;
   newValue?: any;
   description: string;
@@ -56,6 +62,7 @@ export type ChangeSummary = {
   clanTag: string;
   changes: MemberChange[];
   summary: string; // AI-generated summary
+  gameChatMessages: string[]; // Copyable messages for game chat
   unread: boolean;
   actioned: boolean;
   createdAt: string;
@@ -203,7 +210,12 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
     if (!prevMembers.has(tag)) {
       changes.push({
         type: 'new_member',
-        member,
+        member: {
+          name: member.name,
+          tag: member.tag,
+          townHallLevel: member.townHallLevel,
+          role: member.role
+        },
         description: `${member.name} joined the clan`
       });
     }
@@ -214,7 +226,12 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
     if (!currMembers.has(tag)) {
       changes.push({
         type: 'left_member',
-        member,
+        member: {
+          name: member.name,
+          tag: member.tag,
+          townHallLevel: member.townHallLevel,
+          role: member.role
+        },
         description: `${member.name} left the clan`
       });
     }
@@ -229,7 +246,12 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
     if (currentMember.townHallLevel !== prevMember.townHallLevel) {
       changes.push({
         type: 'town_hall_upgrade',
-        member: currentMember,
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
         previousValue: prevMember.townHallLevel,
         newValue: currentMember.townHallLevel,
         description: `${currentMember.name} upgraded to Town Hall ${currentMember.townHallLevel}`
@@ -245,7 +267,12 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       if (prevLevel !== currLevel && currLevel !== null && currLevel > (prevLevel || 0)) {
         changes.push({
           type: 'hero_upgrade',
-          member: currentMember,
+          member: {
+            name: currentMember.name,
+            tag: currentMember.tag,
+            townHallLevel: currentMember.townHallLevel,
+            role: currentMember.role
+          },
           previousValue: prevLevel,
           newValue: currLevel,
           description: `${currentMember.name} upgraded ${hero.toUpperCase()} to level ${currLevel}`
@@ -258,7 +285,12 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
     if (Math.abs(trophyDiff) >= 50) {
       changes.push({
         type: 'trophy_change',
-        member: currentMember,
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
         previousValue: prevMember.trophies,
         newValue: currentMember.trophies,
         description: `${currentMember.name} ${trophyDiff > 0 ? 'gained' : 'lost'} ${Math.abs(trophyDiff)} trophies`
@@ -270,7 +302,12 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
     if (donationDiff >= 100) {
       changes.push({
         type: 'donation_change',
-        member: currentMember,
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
         previousValue: prevMember.donations,
         newValue: currentMember.donations,
         description: `${currentMember.name} donated ${donationDiff} troops`
@@ -281,7 +318,12 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
     if (currentMember.role !== prevMember.role) {
       changes.push({
         type: 'role_change',
-        member: currentMember,
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
         previousValue: prevMember.role,
         newValue: currentMember.role,
         description: `${currentMember.name} role changed to ${currentMember.role}`
@@ -323,15 +365,20 @@ export async function getAllChangeSummaries(clanTag: string): Promise<ChangeSumm
       .sort()
       .reverse();
     
+    // Read all files in parallel for much better performance
     const summaries: ChangeSummary[] = [];
-    for (const file of changeFiles) {
+    const readPromises = changeFiles.map(async (file) => {
       try {
         const data = await fsp.readFile(path.join(changesDir, file), 'utf-8');
-        summaries.push(JSON.parse(data) as ChangeSummary);
+        return JSON.parse(data) as ChangeSummary;
       } catch (error) {
         console.error(`Failed to load change summary ${file}:`, error);
+        return null;
       }
-    }
+    });
+    
+    const results = await Promise.all(readPromises);
+    summaries.push(...results.filter((summary): summary is ChangeSummary => summary !== null));
     
     return summaries;
   } catch (error) {

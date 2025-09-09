@@ -14,15 +14,25 @@ type ChangeSummary = {
     newValue?: any;
   }>;
   summary: string;
+  gameChatMessages?: string[];
   unread: boolean;
   actioned: boolean;
   createdAt: string;
 };
 
-export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
+export default function ChangeDashboard({ 
+  clanTag, 
+  onNotificationChange
+}: { 
+  clanTag: string;
+  onNotificationChange?: () => void;
+}) {
   const [changes, setChanges] = useState<ChangeSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showAllChanges, setShowAllChanges] = useState(false);
+  const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set());
+  const [clearedMessages, setClearedMessages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadChanges();
@@ -31,7 +41,22 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
   const loadChanges = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/snapshots/changes?clanTag=${encodeURIComponent(clanTag)}`);
+      setError(null);
+      
+      // Add timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      const response = await fetch(`/api/snapshots/changes?clanTag=${encodeURIComponent(clanTag)}`, {
+        signal: controller.signal
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
       if (data.success) {
@@ -40,7 +65,11 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
         setError(data.error || "Failed to load changes");
       }
     } catch (err: any) {
-      setError(err.message);
+      if (err.name === 'AbortError') {
+        setError("Request timed out. Please try again.");
+      } else {
+        setError(err.message || "Failed to load changes");
+      }
     } finally {
       setLoading(false);
     }
@@ -58,6 +87,7 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
         setChanges(prev => prev.map(c => 
           c.date === date ? { ...c, unread: false } : c
         ));
+        onNotificationChange?.(); // Refresh notification count
       }
     } catch (err) {
       console.error('Failed to mark as read:', err);
@@ -76,6 +106,7 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
         setChanges(prev => prev.map(c => 
           c.date === date ? { ...c, actioned: true, unread: false } : c
         ));
+        onNotificationChange?.(); // Refresh notification count
       }
     } catch (err) {
       console.error('Failed to mark as actioned:', err);
@@ -103,6 +134,37 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
       case 'donation_change': return 'Donation Activity';
       case 'role_change': return 'Role Change';
       default: return 'Change';
+    }
+  };
+
+  // Limit changes shown initially for better performance
+  const getDisplayedChanges = () => {
+    if (showAllChanges) return changes;
+    return changes.slice(0, 3); // Show only first 3 change summaries initially
+  };
+
+  const toggleChangeExpansion = (date: string) => {
+    const newExpanded = new Set(expandedChanges);
+    if (newExpanded.has(date)) {
+      newExpanded.delete(date);
+    } else {
+      newExpanded.add(date);
+    }
+    setExpandedChanges(newExpanded);
+  };
+
+  const clearMessage = (messageId: string) => {
+    const newCleared = new Set(clearedMessages);
+    newCleared.add(messageId);
+    setClearedMessages(newCleared);
+  };
+
+  const copyMessage = async (message: string) => {
+    try {
+      await navigator.clipboard.writeText(message);
+      // You could add a toast notification here
+    } catch (error) {
+      console.error('Failed to copy message:', error);
     }
   };
 
@@ -153,7 +215,7 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
       </div>
 
       <div className="space-y-4">
-        {changes.map((changeSummary) => (
+        {getDisplayedChanges().map((changeSummary) => (
           <div
             key={changeSummary.date}
             className={`border rounded-lg p-4 ${
@@ -206,13 +268,68 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
               <p className="text-gray-700">{changeSummary.summary}</p>
             </div>
 
-            {changeSummary.changes.length > 0 && (
-              <div className="border-t pt-3">
-                <h4 className="text-sm font-medium text-gray-900 mb-2">
-                  Detailed Changes ({changeSummary.changes.length})
+            {changeSummary.gameChatMessages && changeSummary.gameChatMessages.length > 0 && (
+              <div className="mb-3 border-t border-gray-200 pt-3">
+                <h4 className="text-sm font-medium text-gray-900 mb-2 flex items-center">
+                  <span className="mr-2">💬</span>
+                  Game Chat Messages
                 </h4>
                 <div className="space-y-2">
-                  {changeSummary.changes.map((change, index) => (
+                  {changeSummary.gameChatMessages
+                    .map((message, index) => {
+                      const messageId = `${changeSummary.date}-${index}`;
+                      return { message, index, messageId };
+                    })
+                    .filter(({ messageId }) => !clearedMessages.has(messageId))
+                    .map(({ message, index, messageId }) => (
+                    <div key={messageId} className="bg-gray-50 border border-gray-200 rounded-lg p-2">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm text-gray-800 flex-1 min-w-0 break-words max-w-md">
+                          {message}
+                        </p>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => copyMessage(message)}
+                            className="text-xs text-blue-600 hover:text-blue-800 font-medium bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                            title="Copy to clipboard"
+                          >
+                            Copy
+                          </button>
+                          <button
+                            onClick={() => clearMessage(messageId)}
+                            className="text-xs text-red-600 hover:text-red-800 font-medium bg-red-50 hover:bg-red-100 px-2 py-1 rounded transition-colors"
+                            title="Remove this message"
+                          >
+                            Clear
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {changeSummary.changes.length > 0 && (
+              <div className="border-t border-gray-200 pt-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium text-gray-900">
+                    Detailed Changes ({changeSummary.changes.length})
+                  </h4>
+                  {changeSummary.changes.length > 5 && (
+                    <button
+                      onClick={() => toggleChangeExpansion(changeSummary.date)}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      {expandedChanges.has(changeSummary.date) ? 'Show Less' : 'Show All'}
+                    </button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {(expandedChanges.has(changeSummary.date) || changeSummary.changes.length <= 5 
+                    ? changeSummary.changes 
+                    : changeSummary.changes.slice(0, 5)
+                  ).map((change, index) => (
                     <div key={index} className="flex items-center space-x-2 text-sm">
                       {getChangeIcon(change.type)}
                       <span className="text-gray-600">{change.description}</span>
@@ -223,12 +340,39 @@ export default function ChangeDashboard({ clanTag }: { clanTag: string }) {
                       )}
                     </div>
                   ))}
+                  {!expandedChanges.has(changeSummary.date) && changeSummary.changes.length > 5 && (
+                    <div className="text-xs text-gray-500 italic">
+                      ... and {changeSummary.changes.length - 5} more changes
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
         ))}
       </div>
+
+      {changes.length > 3 && !showAllChanges && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => setShowAllChanges(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Show All Changes ({changes.length - 3} more)
+          </button>
+        </div>
+      )}
+
+      {showAllChanges && changes.length > 3 && (
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => setShowAllChanges(false)}
+            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Show Less
+          </button>
+        </div>
+      )}
     </div>
   );
 }
