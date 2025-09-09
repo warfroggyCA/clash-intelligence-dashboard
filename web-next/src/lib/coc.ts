@@ -8,6 +8,9 @@ type CoCPlayer = {
   tag: string;
   name: string;
   townHallLevel?: number;
+  trophies?: number;
+  donations?: number;
+  donationsReceived?: number;
   heroes?: Array<{ name: string; level?: number; currentLevel?: number }>;
 };
 
@@ -30,7 +33,7 @@ const BASE = process.env.COC_API_BASE || "https://api.clashofclans.com/v1";
 const agent4 = new Agent({ connect: { family: 4, ipv6Only: false } });
 
 function encTag(tag: string) {
-  const t = String(tag || "").trim().toUpperCase();
+  const t = String(tag || "").trim();
   return t.startsWith("#") ? `%23${t.slice(1)}` : `%23${t}`;
 }
 

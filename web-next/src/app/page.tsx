@@ -1,5 +1,5 @@
 /**
- * New Clash Intelligence - Main Dashboard
+ * Clash Intelligence Dashboard - Main Dashboard
  * 
  * A comprehensive Clash of Clans clan management dashboard featuring:
  * - Live roster data from CoC API with rate limiting
@@ -33,9 +33,27 @@ type Member = {
   trophies?: number; donations?: number; donationsReceived?: number; warStars?: number;
   tenure_days?: number; tenure?: number; lastSeen?: string | number; role?: string; recentClans?: string[];
 };
+
+// Event tracking types
+type PlayerEvent = {
+  id: string;
+  playerTag: string;
+  playerName: string;
+  eventType: 'th_upgrade' | 'role_change' | 'trophy_milestone' | 'hero_upgrade' | 'donation_milestone' | 'name_change' | 'joined_clan' | 'left_clan';
+  eventData: {
+    from?: any;
+    to?: any;
+    milestone?: string;
+    details?: string;
+  };
+  timestamp: string;
+  clanTag: string;
+};
+
+type EventHistory = Record<string, PlayerEvent[]>; // playerTag -> events[]
 type Roster = { source: "live" | "fallback" | "snapshot"; date?: string; clanName?: string; members: Member[]; meta?: any };
 
-type SortKey = "name"|"tag"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"tenure"|"lastSeen"|"role";
+type SortKey = "name"|"tag"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"tenure"|"activity"|"role";
 const DEFAULT_PAGE_SIZE = 100;
 
 const HEAD_TIPS: Record<string,string> = {
@@ -46,7 +64,7 @@ const HEAD_TIPS: Record<string,string> = {
   Don:"Donations given (red number below shows deficit if receiving more than giving)", 
   Recv:"Donations received",
   "Tenure (d)":"Days in clan (append-only ledger)",
-  "Last Seen":"Days since last seen", Role:"Clan role"
+  "Last Activity":"Time since last significant gameplay activity (* = estimated from donations, will improve with snapshot history)", Role:"Clan role"
 };
 
 const HERO_MIN_TH: Record<"bk"|"aq"|"gw"|"rc"|"mp", number> = { bk:7, aq:9, gw:11, rc:13, mp:9 };
@@ -82,6 +100,360 @@ const getDonationBalance = (member: Member) => {
   const received = member.donationsReceived ?? 0;
   const balance = received - given;
   return { given, received, balance, isNegative: balance > 0 };
+};
+
+// Activity inference system based on gameplay metrics
+const calculateActivityScore = (member: Member, previousMember?: Member): {
+  score: number;
+  level: 'Very Active' | 'Active' | 'Moderate' | 'Low' | 'Inactive';
+  indicators: string[];
+  lastActivity: string;
+  lastActivityDate: string;
+} => {
+  const indicators: string[] = [];
+  let score = 0;
+
+  // 1. Donation Activity (0-30 points)
+  const donations = member.donations ?? 0;
+  const donationsReceived = member.donationsReceived ?? 0;
+  const totalDonationActivity = donations + donationsReceived;
+  
+  if (totalDonationActivity >= 1000) {
+    score += 30;
+    indicators.push("High donation activity");
+  } else if (totalDonationActivity >= 500) {
+    score += 20;
+    indicators.push("Good donation activity");
+  } else if (totalDonationActivity >= 100) {
+    score += 10;
+    indicators.push("Moderate donation activity");
+  } else if (totalDonationActivity > 0) {
+    score += 5;
+    indicators.push("Low donation activity");
+  }
+
+  // 2. Trophy Activity (0-25 points)
+  const trophies = member.trophies ?? 0;
+  const previousTrophies = previousMember?.trophies ?? trophies;
+  const trophyChange = trophies - previousTrophies;
+  
+  if (trophyChange > 100) {
+    score += 25;
+    indicators.push("Significant trophy gain");
+  } else if (trophyChange > 50) {
+    score += 15;
+    indicators.push("Good trophy progress");
+  } else if (trophyChange > 0) {
+    score += 10;
+    indicators.push("Trophy gain");
+  } else if (trophyChange >= -50) {
+    score += 5;
+    indicators.push("Stable trophy count");
+  }
+
+  // 3. Town Hall Progress (0-20 points)
+  const th = member.townHallLevel ?? 0;
+  const previousTh = previousMember?.townHallLevel ?? th;
+  
+  if (th > previousTh) {
+    score += 20;
+    indicators.push("Town Hall upgrade");
+  } else if (th >= 12) {
+    score += 10;
+    indicators.push("High TH level");
+  } else if (th >= 8) {
+    score += 5;
+    indicators.push("Mid TH level");
+  }
+
+  // 4. Hero Activity (0-15 points)
+  const heroes = [
+    member.barbarianKing ?? 0,
+    member.archerQueen ?? 0,
+    member.grandWarden ?? 0,
+    member.royalChampion ?? 0,
+    member.masterBuilder ?? 0
+  ];
+  const previousHeroes = [
+    previousMember?.barbarianKing ?? 0,
+    previousMember?.archerQueen ?? 0,
+    previousMember?.grandWarden ?? 0,
+    previousMember?.royalChampion ?? 0,
+    previousMember?.masterBuilder ?? 0
+  ];
+  
+  const heroUpgrades = heroes.reduce((count, current, index) => {
+    return count + (current > previousHeroes[index] ? 1 : 0);
+  }, 0);
+  
+  if (heroUpgrades > 0) {
+    score += 15;
+    indicators.push(`${heroUpgrades} hero upgrade${heroUpgrades > 1 ? 's' : ''}`);
+  } else if (heroes.some(level => level > 0)) {
+    score += 5;
+    indicators.push("Heroes present");
+  }
+
+  // 5. Clan Role Activity (0-10 points)
+  const role = member.role?.toLowerCase() ?? '';
+  if (role === 'leader' || role === 'co-leader') {
+    score += 10;
+    indicators.push("Leadership role");
+  } else if (role === 'elder') {
+    score += 5;
+    indicators.push("Elder role");
+  }
+
+  // 6. Recent Activity Bonus (0-10 points)
+  // If we have previous data, check for any changes
+  if (previousMember) {
+    const hasChanges = 
+      member.trophies !== previousMember.trophies ||
+      member.donations !== previousMember.donations ||
+      member.donationsReceived !== previousMember.donationsReceived ||
+      member.townHallLevel !== previousMember.townHallLevel ||
+      JSON.stringify(heroes) !== JSON.stringify(previousHeroes);
+    
+    if (hasChanges) {
+      score += 10;
+      indicators.push("Recent activity detected");
+    }
+  } else {
+    // No previous data - use current activity levels to infer recency
+    // High donation activity suggests very recent activity
+    if (totalDonationActivity >= 100) {
+      score += 10;
+      indicators.push("High recent donation activity");
+    } else if (totalDonationActivity >= 50) {
+      score += 8;
+      indicators.push("Good recent donation activity");
+    } else if (totalDonationActivity > 0) {
+      score += 5;
+      indicators.push("Some recent donation activity");
+    } else {
+      // No donation activity - could be inactive or very new
+      score += 2;
+      indicators.push("Limited recent activity");
+    }
+  }
+
+  // Determine activity level
+  let level: 'Very Active' | 'Active' | 'Moderate' | 'Low' | 'Inactive';
+  if (score >= 70) level = 'Very Active';
+  else if (score >= 50) level = 'Active';
+  else if (score >= 30) level = 'Moderate';
+  else if (score >= 15) level = 'Low';
+  else level = 'Inactive';
+
+  // Generate last activity description and date
+  let lastActivity = "Unknown";
+  let lastActivityDate = "Unknown";
+  
+  if (indicators.length > 0) {
+    const recentIndicators = indicators.filter(ind => 
+      ind.includes("upgrade") || 
+      ind.includes("gain") || 
+      ind.includes("Recent activity")
+    );
+    if (recentIndicators.length > 0) {
+      lastActivity = recentIndicators[0];
+    } else {
+      lastActivity = indicators[0];
+    }
+    
+    // For last activity date, use donation activity as a proxy for recency
+    // High donation activity suggests very recent activity (donations reset monthly)
+    if (totalDonationActivity >= 1000) {
+      lastActivityDate = "Today";
+    } else if (totalDonationActivity >= 500) {
+      lastActivityDate = "1-2 days";
+    } else if (totalDonationActivity >= 200) {
+      lastActivityDate = "3-5 days";
+    } else if (totalDonationActivity >= 100) {
+      lastActivityDate = "1 week";
+    } else if (totalDonationActivity >= 50) {
+      lastActivityDate = "1-2 weeks";
+    } else if (totalDonationActivity > 0) {
+      lastActivityDate = "2-3 weeks";
+    } else {
+      // No donation activity - use overall score
+      if (score >= 50) {
+        lastActivityDate = "1-2 weeks";
+      } else if (score >= 30) {
+        lastActivityDate = "2-4 weeks";
+      } else {
+        lastActivityDate = "1+ months";
+      }
+    }
+  }
+
+  return { score, level, indicators, lastActivity, lastActivityDate };
+};
+
+// Applicant evaluation system
+const evaluateApplicant = (applicant: Member, currentRoster: Member[]): {
+  score: number;
+  breakdown: Array<{category: string, points: number, maxPoints: number, details: string}>;
+  recommendation: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+} => {
+  const breakdown: Array<{category: string, points: number, maxPoints: number, details: string}> = [];
+  let totalScore = 0;
+  let maxTotalScore = 0;
+
+  // 1. Town Hall Level (0-25 points)
+  const th = applicant.townHallLevel ?? 0;
+  let thScore = 0;
+  let thDetails = "";
+  if (th >= 15) {
+    thScore = 25;
+    thDetails = "TH15+ - High level player";
+  } else if (th >= 13) {
+    thScore = 20;
+    thDetails = "TH13-14 - Strong player";
+  } else if (th >= 11) {
+    thScore = 15;
+    thDetails = "TH11-12 - Good level";
+  } else if (th >= 9) {
+    thScore = 10;
+    thDetails = "TH9-10 - Decent level";
+  } else {
+    thScore = 5;
+    thDetails = "TH8 or below - Lower level";
+  }
+  breakdown.push({ category: "Town Hall Level", points: thScore, maxPoints: 25, details: thDetails });
+  totalScore += thScore;
+  maxTotalScore += 25;
+
+  // 2. Hero Development (0-30 points)
+  const heroes = [
+    applicant.barbarianKing ?? 0,
+    applicant.archerQueen ?? 0,
+    applicant.grandWarden ?? 0,
+    applicant.royalChampion ?? 0,
+    applicant.masterBuilder ?? 0
+  ];
+  const maxHeroes = HERO_MAX_LEVELS[th] || { bk: 0, aq: 0, gw: 0, rc: 0, mp: 0 };
+  const heroValues = [maxHeroes.bk, maxHeroes.aq, maxHeroes.gw, maxHeroes.rc, maxHeroes.mp];
+  
+  let heroScore = 0;
+  let heroDetails = "";
+  const heroProgress = heroes.map((level, idx) => {
+    const max = heroValues[idx];
+    return max > 0 ? (level / max) * 100 : 0;
+  });
+  
+  const avgHeroProgress = heroProgress.reduce((sum, p) => sum + p, 0) / heroProgress.filter(p => p > 0).length || 0;
+  
+  if (avgHeroProgress >= 80) {
+    heroScore = 30;
+    heroDetails = "Excellent hero development (80%+)";
+  } else if (avgHeroProgress >= 60) {
+    heroScore = 25;
+    heroDetails = "Good hero development (60-79%)";
+  } else if (avgHeroProgress >= 40) {
+    heroScore = 15;
+    heroDetails = "Moderate hero development (40-59%)";
+  } else if (avgHeroProgress > 0) {
+    heroScore = 10;
+    heroDetails = "Poor hero development (<40%)";
+  } else {
+    heroScore = 0;
+    heroDetails = "No heroes developed";
+  }
+  breakdown.push({ category: "Hero Development", points: heroScore, maxPoints: 30, details: heroDetails });
+  totalScore += heroScore;
+  maxTotalScore += 30;
+
+  // 3. Trophy Count (0-20 points)
+  const trophies = applicant.trophies ?? 0;
+  let trophyScore = 0;
+  let trophyDetails = "";
+  if (trophies >= 5000) {
+    trophyScore = 20;
+    trophyDetails = "5000+ trophies - Elite player";
+  } else if (trophies >= 4000) {
+    trophyScore = 15;
+    trophyDetails = "4000+ trophies - Strong player";
+  } else if (trophies >= 3000) {
+    trophyScore = 10;
+    trophyDetails = "3000+ trophies - Good player";
+  } else if (trophies >= 2000) {
+    trophyScore = 5;
+    trophyDetails = "2000+ trophies - Average player";
+  } else {
+    trophyScore = 0;
+    trophyDetails = "Under 2000 trophies - Low activity";
+  }
+  breakdown.push({ category: "Trophy Count", points: trophyScore, maxPoints: 20, details: trophyDetails });
+  totalScore += trophyScore;
+  maxTotalScore += 20;
+
+  // 4. Clan Fit (0-15 points) - Compare with current roster
+  const currentThs = currentRoster.map(m => m.townHallLevel ?? 0).filter(th => th > 0);
+  const avgTh = currentThs.length > 0 ? currentThs.reduce((sum, t) => sum + t, 0) / currentThs.length : 0;
+  const thDiff = Math.abs(th - avgTh);
+  
+  let fitScore = 0;
+  let fitDetails = "";
+  if (thDiff <= 1) {
+    fitScore = 15;
+    fitDetails = `Perfect fit - TH${th} matches clan average (TH${avgTh.toFixed(1)})`;
+  } else if (thDiff <= 2) {
+    fitScore = 10;
+    fitDetails = `Good fit - TH${th} close to clan average (TH${avgTh.toFixed(1)})`;
+  } else if (thDiff <= 3) {
+    fitScore = 5;
+    fitDetails = `Fair fit - TH${th} differs from clan average (TH${avgTh.toFixed(1)})`;
+  } else {
+    fitScore = 0;
+    fitDetails = `Poor fit - TH${th} very different from clan average (TH${avgTh.toFixed(1)})`;
+  }
+  breakdown.push({ category: "Clan Fit", points: fitScore, maxPoints: 15, details: fitDetails });
+  totalScore += fitScore;
+  maxTotalScore += 15;
+
+  // 5. Activity Indicators (0-10 points)
+  const donations = applicant.donations ?? 0;
+  const donationsReceived = applicant.donationsReceived ?? 0;
+  const totalDonations = donations + donationsReceived;
+  
+  let activityScore = 0;
+  let activityDetails = "";
+  if (totalDonations >= 500) {
+    activityScore = 10;
+    activityDetails = "Very active - High donation activity";
+  } else if (totalDonations >= 200) {
+    activityScore = 7;
+    activityDetails = "Active - Good donation activity";
+  } else if (totalDonations >= 50) {
+    activityScore = 4;
+    activityDetails = "Moderate - Some donation activity";
+  } else {
+    activityScore = 0;
+    activityDetails = "Low activity - Minimal donations";
+  }
+  breakdown.push({ category: "Activity Level", points: activityScore, maxPoints: 10, details: activityDetails });
+  totalScore += activityScore;
+  maxTotalScore += 10;
+
+  // Calculate recommendation
+  const percentage = (totalScore / maxTotalScore) * 100;
+  let recommendation: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  if (percentage >= 80) {
+    recommendation = 'Excellent';
+  } else if (percentage >= 60) {
+    recommendation = 'Good';
+  } else if (percentage >= 40) {
+    recommendation = 'Fair';
+  } else {
+    recommendation = 'Poor';
+  }
+
+  return {
+    score: Math.round(percentage),
+    breakdown,
+    recommendation
+  };
 };
 
 // Convert API role names to proper Clash of Clans role names
@@ -200,8 +572,8 @@ const rushPercent = (m: Member, thCaps?: Map<number, Caps>): number => {
 };
 
 function getHeroProgressColor(percentage: number): string {
-  if (percentage >= 80) return "text-green-600 font-semibold"; // 80%+ = excellent
-  if (percentage >= 60) return "text-green-500"; // 60-79% = good
+  if (percentage >= 80) return "text-green-700 font-semibold"; // 80%+ = excellent
+  if (percentage >= 60) return "text-green-700"; // 60-79% = good
   if (percentage >= 40) return "text-yellow-600"; // 40-59% = moderate
   if (percentage >= 20) return "text-orange-600"; // 20-39% = needs work
   return "text-red-600 font-semibold"; // <20% = poor
@@ -220,7 +592,7 @@ function renderHeroCell(m: Member, key: "bk"|"aq"|"gw"|"rc"|"mp"){
   if (v == null || v <= 0) {
     const maxLevel = HERO_MAX_LEVELS[th]?.[key] || 0;
     const title = maxLevel > 0 ? `Eligible but not started\nMax level for TH${th}: ${maxLevel}` : "Eligible but not started";
-    return <span className="inline-flex items-center justify-center cursor-help hover:font-medium text-red-500" title={title}><AlertCircle className="w-4 h-4" /></span>;
+    return <span className="inline-flex items-center justify-center cursor-help hover:font-medium text-red-500 font-semibold" title={title}><AlertCircle className="w-4 h-4" /></span>;
   }
   
   // Hero has a level - show tooltip with max level and completion percentage
@@ -251,7 +623,7 @@ export default function HomePage(){
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [page, setPage] = useState(1);
   const [recentClanFilter, setRecentClanFilter] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching">("roster");
+  const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants">("roster");
   const [showDepartureManager, setShowDepartureManager] = useState(false);
   const [departureNotifications, setDepartureNotifications] = useState(0);
   const [showDepartureModal, setShowDepartureModal] = useState(false);
@@ -262,6 +634,19 @@ export default function HomePage(){
   const [selectedSnapshot, setSelectedSnapshot] = useState<string>("latest");
   const [showCreatePlayerNote, setShowCreatePlayerNote] = useState(false);
   const [playerNameHistory, setPlayerNameHistory] = useState<Record<string, Array<{name: string, timestamp: string}>>>({});
+  const [eventHistory, setEventHistory] = useState<EventHistory>({});
+  const [eventFilterPlayer, setEventFilterPlayer] = useState<string>("all");
+  
+  // Applicant evaluation state
+  const [applicantTag, setApplicantTag] = useState<string>("");
+  const [applicantData, setApplicantData] = useState<Member | null>(null);
+  const [applicantLoading, setApplicantLoading] = useState(false);
+  const [applicantError, setApplicantError] = useState<string>("");
+  const [applicantFitScore, setApplicantFitScore] = useState<{
+    score: number;
+    breakdown: Array<{category: string, points: number, maxPoints: number, details: string}>;
+    recommendation: 'Excellent' | 'Good' | 'Fair' | 'Poor';
+  } | null>(null);
 
   // On first load: prefer saved home tag; else cfg; then empty.
   useEffect(() => {
@@ -312,6 +697,64 @@ export default function HomePage(){
     checkDepartureNotifications();
   }, [clanTag, homeClan]);
 
+  // Fetch applicant data from CoC API
+  const fetchApplicantData = async () => {
+    console.log("fetchApplicantData called with tag:", applicantTag);
+    
+    if (!applicantTag.trim()) {
+      setApplicantError("Please enter a player tag");
+      return;
+    }
+
+    setApplicantLoading(true);
+    setApplicantError("");
+    setApplicantData(null);
+    setApplicantFitScore(null);
+
+    try {
+      let tag = applicantTag.trim();
+      if (!tag.startsWith('#')) {
+        tag = '#' + tag;
+      }
+
+      console.log(`Fetching player data for tag: ${tag}`);
+      const encodedTag = encodeURIComponent(tag);
+      console.log(`Encoded tag: ${encodedTag}`);
+      const response = await fetch(`/api/player/${encodedTag}`);
+      console.log(`Response status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`API Error: ${response.status} - ${errorText}`);
+        throw new Error(`Failed to fetch player data: ${response.status} ${response.statusText}`);
+      }
+
+      const playerData = await response.json();
+      setApplicantData(playerData);
+
+      // Calculate fit score
+      if (roster?.members) {
+        const fitScore = evaluateApplicant(playerData, roster.members);
+        setApplicantFitScore(fitScore);
+      }
+
+      // Add to player database as applicant
+      const existingNotes = JSON.parse(localStorage.getItem('playerNotes') || '{}');
+      const applicantNotes = existingNotes[tag] || [];
+      const newNote = {
+        note: `Applicant evaluation - ${new Date().toLocaleDateString()}`,
+        timestamp: new Date().toISOString()
+      };
+      existingNotes[tag] = [...applicantNotes, newNote];
+      localStorage.setItem('playerNotes', JSON.stringify(existingNotes));
+
+    } catch (error: any) {
+      setApplicantError(error.message || "Failed to fetch player data");
+    } finally {
+      setApplicantLoading(false);
+    }
+  };
+
   // Track player name changes
   const trackNameChanges = (members: Member[]) => {
     const currentTime = new Date().toISOString();
@@ -347,12 +790,166 @@ export default function HomePage(){
     }
   }, []);
 
+  // Load event history from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('playerEventHistory');
+    if (saved) {
+      setEventHistory(JSON.parse(saved));
+    }
+  }, []);
+
   // Track name changes when roster loads
   useEffect(() => {
     if (roster?.members) {
       trackNameChanges(roster.members);
+      trackPlayerEvents(roster.members);
     }
   }, [roster]);
+
+  // Event tracking functions
+  const trackPlayerEvents = (currentMembers: Member[]) => {
+    const currentTime = new Date().toISOString();
+    const currentClanTag = clanTag || homeClan || "";
+    const newEvents: PlayerEvent[] = [];
+    const updatedEventHistory = { ...eventHistory };
+
+    currentMembers.forEach(member => {
+      const tag = member.tag.toUpperCase();
+      const currentTH = getTH(member);
+      const currentRole = formatRole(member.role);
+      const currentTrophies = member.trophies || 0;
+      const currentDonations = member.donations || 0;
+
+      // Get previous member data from last roster
+      const previousMember = roster?.members?.find(m => m.tag.toUpperCase() === tag);
+      
+      if (previousMember) {
+        const previousTH = getTH(previousMember);
+        const previousRole = formatRole(previousMember.role);
+        const previousTrophies = previousMember.trophies || 0;
+        const previousDonations = previousMember.donations || 0;
+
+        // Track TH upgrades
+        if (currentTH && previousTH && currentTH > previousTH) {
+          newEvents.push({
+            id: `${tag}_th_${currentTime}`,
+            playerTag: tag,
+            playerName: member.name,
+            eventType: 'th_upgrade',
+            eventData: {
+              from: previousTH,
+              to: currentTH,
+              details: `Upgraded from TH${previousTH} to TH${currentTH}`
+            },
+            timestamp: currentTime,
+            clanTag: currentClanTag
+          });
+        }
+
+        // Track role changes
+        if (currentRole !== previousRole) {
+          newEvents.push({
+            id: `${tag}_role_${currentTime}`,
+            playerTag: tag,
+            playerName: member.name,
+            eventType: 'role_change',
+            eventData: {
+              from: previousRole,
+              to: currentRole,
+              details: `Role changed from ${previousRole} to ${currentRole}`
+            },
+            timestamp: currentTime,
+            clanTag: currentClanTag
+          });
+        }
+
+        // Track trophy milestones (500+ trophy gains)
+        if (currentTrophies - previousTrophies >= 500) {
+          newEvents.push({
+            id: `${tag}_trophy_${currentTime}`,
+            playerTag: tag,
+            playerName: member.name,
+            eventType: 'trophy_milestone',
+            eventData: {
+              from: previousTrophies,
+              to: currentTrophies,
+              milestone: `${currentTrophies} trophies`,
+              details: `Gained ${currentTrophies - previousTrophies} trophies (${previousTrophies} → ${currentTrophies})`
+            },
+            timestamp: currentTime,
+            clanTag: currentClanTag
+          });
+        }
+
+        // Track donation milestones (1000+ donation gains)
+        if (currentDonations - previousDonations >= 1000) {
+          newEvents.push({
+            id: `${tag}_donation_${currentTime}`,
+            playerTag: tag,
+            playerName: member.name,
+            eventType: 'donation_milestone',
+            eventData: {
+              from: previousDonations,
+              to: currentDonations,
+              milestone: `${currentDonations} donations`,
+              details: `Gained ${currentDonations - previousDonations} donations (${previousDonations} → ${currentDonations})`
+            },
+            timestamp: currentTime,
+            clanTag: currentClanTag
+          });
+        }
+
+        // Track hero upgrades (5+ level gains)
+        const heroKeys: Array<keyof Member> = ['bk', 'aq', 'gw', 'rc', 'mp'];
+        heroKeys.forEach(hero => {
+          const currentLevel = member[hero] || 0;
+          const previousLevel = previousMember[hero] || 0;
+          if (currentLevel - previousLevel >= 5) {
+            newEvents.push({
+              id: `${tag}_${hero}_${currentTime}`,
+              playerTag: tag,
+              playerName: member.name,
+              eventType: 'hero_upgrade',
+              eventData: {
+                from: previousLevel,
+                to: currentLevel,
+                details: `${hero.toUpperCase()} upgraded from level ${previousLevel} to ${currentLevel} (+${currentLevel - previousLevel})`
+              },
+              timestamp: currentTime,
+              clanTag: currentClanTag
+            });
+          }
+        });
+      }
+    });
+
+    // Add new events to history
+    newEvents.forEach(event => {
+      if (!updatedEventHistory[event.playerTag]) {
+        updatedEventHistory[event.playerTag] = [];
+      }
+      updatedEventHistory[event.playerTag].push(event);
+    });
+
+    setEventHistory(updatedEventHistory);
+    
+    // Save to localStorage
+    localStorage.setItem('playerEventHistory', JSON.stringify(updatedEventHistory));
+
+    // Show notifications for significant events
+    if (newEvents.length > 0) {
+      const significantEvents = newEvents.filter(e => 
+        e.eventType === 'th_upgrade' || 
+        e.eventType === 'role_change' || 
+        e.eventType === 'trophy_milestone'
+      );
+      
+      if (significantEvents.length > 0) {
+        setMessage(`🎉 ${significantEvents.length} significant event(s) detected! Check player profiles for details.`);
+        setStatus("success");
+      }
+    }
+  };
 
   // Load available snapshots for a clan
   const loadAvailableSnapshots = async (clanTag: string) => {
@@ -439,7 +1036,8 @@ export default function HomePage(){
             minionPrince: member.mp
           },
           rushPercent: rushPercent(member, thCaps),
-          recentClans: member.recentClans
+          recentClans: member.recentClans,
+          events: eventHistory[member.tag.toUpperCase()] || []
         })) || [],
         summary: {
           totalMembers: roster?.members?.length || 0,
@@ -476,7 +1074,12 @@ ${member.name} (${member.tag})
 - Trophies: ${member.trophies}
 - Donations: ${member.donations} given, ${member.donationsReceived} received
 - Tenure: ${member.tenure} days
-- Last Seen: ${member.lastSeen} days ago
+- Last Activity: ${(() => {
+      const previousMember = roster?.members?.find(prev => prev.tag === member.tag);
+      const activity = calculateActivityScore(member, previousMember);
+      const estimationNote = !previousMember ? ' *estimated' : '';
+      return `${activity.lastActivityDate} (${activity.level})${estimationNote}`;
+    })()}
 - Rush %: ${member.rushPercent}%
 - Heroes: BK:${member.heroes.barbarianKing || 'N/A'} AQ:${member.heroes.archerQueen || 'N/A'} GW:${member.heroes.grandWarden || 'N/A'} RC:${member.heroes.royalChampion || 'N/A'} MP:${member.heroes.minionPrince || 'N/A'}
 - Recent Clans: ${member.recentClans?.join(', ') || 'None'}
@@ -688,12 +1291,18 @@ Please analyze this clan data and provide insights on:
   };
   const rushClass = (p: number) => p>=70 ? "text-red-700 font-semibold" : p>=40 ? "text-amber-600" : "text-green-700";
 
-  const valFor = (m: Member, key: SortKey) =>
-    key==="th" ? getTH(m) :
-    key==="tenure" ? getTenure(m) :
-    key==="lastSeen" ? (typeof m.lastSeen === "number" ? m.lastSeen : (m.lastSeen as any) ?? "") :
-    key==="rush" ? rushPercent(m, thCaps) :
-    (m as any)[key];
+  const valFor = (m: Member, key: SortKey) => {
+    if (key === "th") return getTH(m);
+    if (key === "tenure") return getTenure(m);
+    if (key === "activity") {
+      // Find previous member data for comparison
+      const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
+      const activity = calculateActivityScore(m, previousMember);
+      return activity.score;
+    }
+    if (key === "rush") return rushPercent(m, thCaps);
+    return (m as any)[key];
+  };
 
   const membersFilteredSorted = useMemo(() => {
     if (!roster?.members) return [];
@@ -731,82 +1340,164 @@ Please analyze this clan data and provide insights on:
       {/* Modern gradient header */}
       <header className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white shadow-lg">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-              <span className="text-lg">⚔️</span>
+          {/* Left side - Logo */}
+          <div className="flex items-center">
+            <img 
+              src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoic3VwZXJjZWxsXC9maWxlXC91OGFIS25ZUkpQaXlvVHh5a1Q0OC5wbmcifQ:supercell:8_pSWOLovwldaAWJu_t2Q6C91k6oc7p_mY0m9yar7G0?width=1218&format=webp&quality=100"
+              alt="Clash of Clans Logo"
+              className="h-16 w-auto object-contain"
+              onError={(e) => {
+                // Fallback to emoji if image fails to load
+                e.currentTarget.style.display = 'none';
+                const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                if (fallback) fallback.style.display = 'block';
+              }}
+            />
+            <span className="text-4xl hidden">⚔️</span>
+          </div>
+          
+          {/* Center - Clan Name (Prominent) */}
+          <div className="text-center">
+            <div className="font-bold text-4xl text-white drop-shadow-lg">
+              {clanName || "No Clan Loaded"}
             </div>
-            <div>
-              <div className="font-bold text-xl">Clash Intelligence</div>
-              <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
+            <div className="text-lg text-blue-100 mt-1">
+              {clanTag || homeClan || "Enter clan tag to load"}
             </div>
           </div>
-          <div className="flex items-center space-x-4">
-            {departureNotifications > 0 && (
-              <button
-                onClick={() => setShowDepartureManager(true)}
-                className="relative p-2 hover:bg-indigo-600 rounded-lg transition-colors"
-                title="Member departure notifications"
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {departureNotifications}
-                </span>
-              </button>
-            )}
-            <div className="text-sm">
-              {clanName || "(Clan name unknown)"} {homeClan && <span className="opacity-80 ml-2">{homeClan}</span>}
+          
+          {/* Right side - App Title & Notifications */}
+          <div className="flex flex-col items-end space-y-2">
+            <div className="text-right">
+              <div className="font-bold text-xl">Clash Intelligence Dashboard</div>
+              <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
+            </div>
+            <div className="flex items-center space-x-4">
+              {departureNotifications > 0 && (
+                <button
+                  onClick={() => setShowDepartureManager(true)}
+                  className="relative p-2 hover:bg-indigo-600 rounded-lg transition-colors"
+                  title="Member departure notifications"
+                >
+                  <Bell className="w-5 h-5" />
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {departureNotifications}
+                  </span>
+                </button>
+              )}
             </div>
           </div>
         </div>
       </header>
 
-      {/* Enhanced Tab Navigation */}
+      {/* Tab Navigation */}
       <div className="max-w-7xl mx-auto px-6 pt-6">
-        <div className="flex space-x-2 bg-white/80 backdrop-blur-sm p-2 rounded-xl shadow-lg border border-white/20">
-          <button
-            onClick={() => setActiveTab("roster")}
-            className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-              activeTab === "roster" 
-                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg transform scale-105" 
-                : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-            }`}
-          >
-            📊 Roster
-          </button>
-          <button
-            onClick={() => setActiveTab("changes")}
-            className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-              activeTab === "changes" 
-                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg transform scale-105" 
-                : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-            }`}
-          >
-            📈 Activity
-          </button>
-          <button
-            onClick={() => setActiveTab("database")}
-            className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-              activeTab === "database" 
-                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg transform scale-105" 
-                : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-            }`}
-          >
-            🗄️ Database
-          </button>
-          <button
-            onClick={() => setActiveTab("coaching")}
-            className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-200 ${
-              activeTab === "coaching" 
-                ? "bg-gradient-to-r from-blue-500 to-purple-500 text-white shadow-lg transform scale-105" 
-                : "text-gray-600 hover:text-gray-900 hover:bg-white/50"
-            }`}
-          >
-            🤖 AI Coaching
-          </button>
+        <div className="relative">
+          {/* Tab Container with Background */}
+          <div className="bg-white/80 backdrop-blur-sm rounded-t-xl border border-b-0 border-gray-200 shadow-lg">
+            <nav className="flex">
+              <button
+                onClick={() => setActiveTab("roster")}
+                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                  activeTab === "roster"
+                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <span>🛡️</span>
+                  <span>Roster</span>
+                </span>
+                {activeTab === "roster" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("changes")}
+                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                  activeTab === "changes"
+                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <span>📈</span>
+                  <span>Activity</span>
+                </span>
+                {activeTab === "changes" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("database")}
+                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                  activeTab === "database"
+                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <span>🗄️</span>
+                  <span>Player DB</span>
+                </span>
+                {activeTab === "database" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("coaching")}
+                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                  activeTab === "coaching"
+                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <span>🤖</span>
+                  <span>AI Coaching</span>
+                </span>
+                {activeTab === "coaching" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("events")}
+                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                  activeTab === "events"
+                    ? "bg-gradient-to-b from-green-50 to-white text-green-700 border-b-2 border-green-500 shadow-inner"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <span>📊</span>
+                  <span>Events</span>
+                </span>
+                {activeTab === "events" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500"></div>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("applicants")}
+                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                  activeTab === "applicants"
+                    ? "bg-gradient-to-b from-orange-50 to-white text-orange-700 border-b-2 border-orange-500 shadow-inner"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                }`}
+              >
+                <span className="flex items-center space-x-2">
+                  <span>🎯</span>
+                  <span>Applicants</span>
+                </span>
+                {activeTab === "applicants" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500"></div>
+                )}
+              </button>
+            </nav>
+          </div>
         </div>
       </div>
 
-      <main className="min-h-screen p-6 flex flex-col gap-6 max-w-7xl mx-auto bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-2xl shadow-xl border border-white/20">
+      <main className="min-h-screen p-6 flex flex-col gap-6 max-w-7xl mx-auto bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
         {activeTab === "roster" ? (
           <>
             {/* Controls */}
@@ -817,14 +1508,25 @@ Please analyze this clan data and provide insights on:
               <div className="flex gap-2">
                 <input
                   value={clanTag}
-                  onChange={(e)=>setClanTag(e.target.value.toUpperCase())}
+                  onChange={(e) => {
+                    let value = e.target.value.toUpperCase();
+                    // Auto-add # if not present
+                    if (value && !value.startsWith('#')) {
+                      value = '#' + value;
+                    }
+                    setClanTag(value);
+                  }}
                   onKeyDown={(e)=>{ if (e.key === "Enter") onLoad().catch(()=>{}); }}
                   className="border rounded-xl px-3 py-2 w-32 focus:outline-none focus:ring"
-                  placeholder="#2PR8R8V8P"
-                  title="Enter a clan tag and press Load"
+                  placeholder="2PR8R8V8P"
+                  title="Enter a clan tag (with or without #) and press Load"
                 />
-                <button onClick={()=>onLoad().catch(()=>{})} className="rounded-xl px-3 py-2 border shadow-sm hover:shadow">
-                  {status==="loading" ? "Loading…" : "Load"}
+                <button 
+                  onClick={()=>onLoad().catch(()=>{})} 
+                  className="rounded-xl px-3 py-2 bg-purple-100 text-purple-700 border border-purple-200 shadow-sm hover:shadow hover:bg-purple-200 transition-colors"
+                  title="Load fresh clan data from Clash of Clans API"
+                >
+                  {status==="loading" ? "⏳ Loading…" : "🔄 Load"}
                 </button>
               </div>
             </div>
@@ -832,11 +1534,19 @@ Please analyze this clan data and provide insights on:
             <div className="grid gap-1">
               <label className="text-sm font-medium">Home</label>
               <div className="flex gap-2">
-                <button onClick={onSetHome} className="rounded-xl px-3 py-2 border shadow-sm hover:shadow text-sm">
-                  Set Home
+                <button 
+                  onClick={onSetHome} 
+                  className="rounded-xl px-3 py-2 bg-blue-100 text-blue-700 border border-blue-200 shadow-sm hover:shadow hover:bg-blue-200 transition-colors text-sm"
+                  title="Set the current clan as your home clan for quick access"
+                >
+                  🏠 Set Home
                 </button>
-                <button onClick={()=>{ setClanTag(homeClan || ""); if (homeClan) onLoad(homeClan).catch(()=>{}); }} className="rounded-xl px-3 py-2 border shadow-sm hover:shadow text-sm">
-                  Load Home
+                <button 
+                  onClick={()=>{ setClanTag(homeClan || ""); if (homeClan) onLoad(homeClan).catch(()=>{}); }} 
+                  className="rounded-xl px-3 py-2 bg-green-100 text-green-700 border border-green-200 shadow-sm hover:shadow hover:bg-green-200 transition-colors text-sm"
+                  title="Load your saved home clan data"
+                >
+                  🏡 Load Home
                 </button>
               </div>
             </div>
@@ -844,10 +1554,18 @@ Please analyze this clan data and provide insights on:
             <div className="grid gap-1">
               <label className="text-sm font-medium">Quick Actions</label>
               <div className="flex gap-2">
-                <button onClick={() => setShowCreatePlayerNote(true)} className="rounded-xl px-3 py-2 bg-blue-100 text-blue-700 border border-blue-200 shadow-sm hover:shadow text-sm">
+                <button 
+                  onClick={() => setShowCreatePlayerNote(true)} 
+                  className="rounded-xl px-3 py-2 bg-blue-100 text-blue-700 border border-blue-200 shadow-sm hover:shadow hover:bg-blue-200 transition-colors text-sm"
+                  title="Create a note for a player not currently in the clan"
+                >
                   📝 Note
                 </button>
-                <button onClick={copyToClipboard} className="rounded-xl px-3 py-2 bg-green-100 text-green-700 border border-green-200 shadow-sm hover:shadow text-sm">
+                <button 
+                  onClick={copyToClipboard} 
+                  className="rounded-xl px-3 py-2 bg-green-100 text-green-700 border border-green-200 shadow-sm hover:shadow hover:bg-green-200 transition-colors text-sm"
+                  title="Copy all clan data to clipboard for LLM analysis"
+                >
                   📋 Copy
                 </button>
               </div>
@@ -855,10 +1573,11 @@ Please analyze this clan data and provide insights on:
 
             <div className="grid gap-1">
               <label className="text-sm font-medium">AI Summary</label>
-              <button 
-                onClick={generateAISummary} 
+              <button
+                onClick={generateAISummary}
                 disabled={status === "loading"}
-                className="rounded-xl px-3 py-2 bg-purple-100 text-purple-700 border border-purple-200 shadow-sm hover:shadow text-sm disabled:opacity-50"
+                className="rounded-xl px-3 py-2 bg-purple-100 text-purple-700 border border-purple-200 shadow-sm hover:shadow hover:bg-purple-200 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Generate an AI-powered summary of current clan state and changes"
               >
                 {status === "loading" ? "⏳ Generating..." : "🤖 AI Summary"}
               </button>
@@ -866,55 +1585,57 @@ Please analyze this clan data and provide insights on:
           </div>
 
           <div className="grid gap-1">
-            <label className="text-sm font-medium">Snapshot Version</label>
-            <div className="flex gap-2">
-              <select 
-                value={selectedSnapshot} 
-                onChange={(e) => {
-                  setSelectedSnapshot(e.target.value);
-                  if (e.target.value === "latest") {
-                    loadStoredData(clanTag || homeClan || "").catch(()=>{});
-                  } else {
-                    loadStoredData(clanTag || homeClan || "", e.target.value).catch(()=>{});
-                  }
-                }}
-                className="border rounded-xl px-3 py-2 w-64"
-              >
-                <option value="latest">Latest Snapshot</option>
-                {availableSnapshots.map((snapshot) => (
-                  <option key={snapshot.date} value={snapshot.date}>
-                    {new Date(snapshot.date).toLocaleDateString()} ({snapshot.memberCount} members)
-                  </option>
-                ))}
-              </select>
-              <button
-                onClick={() => loadAvailableSnapshots(clanTag || homeClan || "")}
-                className="rounded-xl px-3 py-2 border shadow-sm hover:shadow"
-                title="Refresh snapshot list"
-              >
-                🔄
-              </button>
+            <label className="text-sm font-medium">Data & Sorting</label>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex gap-2">
+                <select 
+                  value={selectedSnapshot} 
+                  onChange={(e) => {
+                    setSelectedSnapshot(e.target.value);
+                    if (e.target.value === "latest") {
+                      loadStoredData(clanTag || homeClan || "").catch(()=>{});
+                    } else {
+                      loadStoredData(clanTag || homeClan || "", e.target.value).catch(()=>{});
+                    }
+                  }}
+                  className="border rounded-xl px-3 py-2 w-64"
+                >
+                  <option value="latest">Latest Snapshot</option>
+                  {availableSnapshots.map((snapshot) => (
+                    <option key={snapshot.date} value={snapshot.date}>
+                      {new Date(snapshot.date).toLocaleDateString()} ({snapshot.memberCount} members)
+                    </option>
+                  ))}
+                </select>
+                <button
+                  onClick={() => loadAvailableSnapshots(clanTag || homeClan || "")}
+                  className="rounded-xl px-3 py-2 bg-gray-100 text-gray-700 border border-gray-200 shadow-sm hover:shadow hover:bg-gray-200 transition-colors"
+                  title="Refresh the list of available snapshots"
+                >
+                  🔄 Refresh
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm opacity-70">Sort by</label>
+                <select value={sortKey} onChange={(e)=>setSortKey(e.target.value as SortKey)} className="border rounded-xl px-3 py-2">
+                  <option value="trophies">trophies</option><option value="name">name</option><option value="th">TH</option>
+                  <option value="bk">BK</option><option value="aq">AQ</option><option value="gw">GW</option><option value="rc">RC</option><option value="mp">MP</option>
+                  <option value="rush">rush %</option><option value="donations">don</option><option value="donationsReceived">recv</option>
+                  <option value="tenure">tenure</option><option value="activity">last activity</option><option value="role">role</option>
+                </select>
+                <select value={sortDir} onChange={(e)=>setSortDir(e.target.value as "asc"|"desc")} className="border rounded-xl px-3 py-2">
+                  <option value="desc">Desc</option><option value="asc">Asc</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <label className="text-sm opacity-70">Page size</label>
+                <select value={String(pageSize)} onChange={(e)=>{ setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-xl px-3 py-2">
+                  <option value="10">10/page</option><option value="25">25/page</option><option value="50">50/page</option><option value="100">100/page</option>
+                </select>
+              </div>
             </div>
-          </div>
-
-
-          <div className="flex flex-wrap items-center gap-3">
-            <label className="text-sm opacity-70">Sort</label>
-            <select value={sortKey} onChange={(e)=>setSortKey(e.target.value as SortKey)} className="border rounded-xl px-3 py-2">
-              <option value="trophies">trophies</option><option value="name">name</option><option value="th">TH</option>
-              <option value="bk">BK</option><option value="aq">AQ</option><option value="gw">GW</option><option value="rc">RC</option><option value="mp">MP</option>
-              <option value="rush">rush %</option><option value="donations">don</option><option value="donationsReceived">recv</option>
-              <option value="tenure">tenure</option><option value="lastSeen">last seen</option><option value="role">role</option>
-            </select>
-            <select value={sortDir} onChange={(e)=>setSortDir(e.target.value as "asc"|"desc")} className="border rounded-xl px-3 py-2">
-              <option value="desc">Desc</option><option value="asc">Asc</option>
-            </select>
-
-            <label className="text-sm opacity-70 ml-2">Page size</label>
-            <select value={String(pageSize)} onChange={(e)=>{ setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-xl px-3 py-2">
-              <option value="10">10/page</option><option value="25">25/page</option><option value="50">50/page</option><option value="100">100/page</option>
-            </select>
-
           </div>
 
           {message && <p className="text-sm pt-1"><strong>Status:</strong> {message}</p>}
@@ -953,17 +1674,17 @@ Please analyze this clan data and provide insights on:
                     <Th onClick={()=>toggleSort("name")}> {headerEl("name","Name")} </Th>
                     <Th onClick={()=>toggleSort("tag")}>  {headerEl("tag","Tag")}  </Th>
                     <Th onClick={()=>toggleSort("th")}>   {headerEl("th","TH")}   </Th>
-                    <Th onClick={()=>toggleSort("bk")}>   {headerEl("bk","BK")}   </Th>
-                    <Th onClick={()=>toggleSort("aq")}>   {headerEl("aq","AQ")}   </Th>
-                    <Th onClick={()=>toggleSort("gw")}>   {headerEl("gw","GW")}   </Th>
-                    <Th onClick={()=>toggleSort("rc")}>   {headerEl("rc","RC")}   </Th>
-                    <Th onClick={()=>toggleSort("mp")}>   {headerEl("mp","MP")}   </Th>
+                    <Th onClick={()=>toggleSort("bk")} className="bg-slate-100">   {headerEl("bk","BK")}   </Th>
+                    <Th onClick={()=>toggleSort("aq")} className="bg-slate-100">   {headerEl("aq","AQ")}   </Th>
+                    <Th onClick={()=>toggleSort("gw")} className="bg-slate-100">   {headerEl("gw","GW")}   </Th>
+                    <Th onClick={()=>toggleSort("rc")} className="bg-slate-100">   {headerEl("rc","RC")}   </Th>
+                    <Th onClick={()=>toggleSort("mp")} className="bg-slate-100">   {headerEl("mp","MP")}   </Th>
                     <Th onClick={()=>toggleSort("rush")}> {headerEl("rush","Rush %")} </Th>
                     <Th onClick={()=>toggleSort("trophies")}> {headerEl("trophies","Trophies")} </Th>
                     <Th onClick={()=>toggleSort("donations")}> {headerEl("donations","Don")} </Th>
                     <Th onClick={()=>toggleSort("donationsReceived")}> {headerEl("donationsReceived","Recv")} </Th>
                     <Th onClick={()=>toggleSort("tenure")}> {headerEl("tenure","Tenure (d)")} </Th>
-                    <Th onClick={()=>toggleSort("lastSeen")}> {headerEl("lastSeen","Last Seen")} </Th>
+                    <Th onClick={()=>toggleSort("activity")}> {headerEl("activity","Last Activity")} </Th>
                     <Th onClick={()=>toggleSort("role")}> {headerEl("role","Role")} </Th>
                   </tr>
                 </thead>
@@ -994,11 +1715,11 @@ Please analyze this clan data and provide insights on:
                         </Td>
                         <Td>{m.tag}</Td>
                         <Td>{th}</Td>
-                        <Td className="text-center">{renderHeroCell(m,"bk")}</Td>
-                        <Td className="text-center">{renderHeroCell(m,"aq")}</Td>
-                        <Td className="text-center">{renderHeroCell(m,"gw")}</Td>
-                        <Td className="text-center">{renderHeroCell(m,"rc")}</Td>
-                        <Td className="text-center">{renderHeroCell(m,"mp")}</Td>
+                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"bk")}</Td>
+                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"aq")}</Td>
+                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"gw")}</Td>
+                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"rc")}</Td>
+                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"mp")}</Td>
                         <Td className={`text-center ${rushClass(rp)}`}>
                           <span
                             className="cursor-help hover:underline hover:decoration-dotted hover:underline-offset-2 inline-block"
@@ -1015,7 +1736,7 @@ Please analyze this clan data and provide insights on:
                               const balance = getDonationBalance(m);
                               if (balance.isNegative && balance.balance > 0) {
                                 return (
-                                  <span className="text-xs text-red-600 font-medium" title={`Receives ${balance.balance} more than gives`}>
+                                  <span className="text-xs text-red-600 font-semibold" title={`Receives ${balance.balance} more than gives`}>
                                     -{balance.balance}
                                   </span>
                                 );
@@ -1026,7 +1747,23 @@ Please analyze this clan data and provide insights on:
                         </Td>
                         <Td>{m.donationsReceived ?? ""}</Td>
                         <Td>{getTenure(m)}</Td>
-                        <Td>{typeof m.lastSeen === "number" ? `${m.lastSeen}d` : m.lastSeen ?? ""}</Td>
+                        <Td>
+                          {(() => {
+                            // Find previous member data for comparison
+                            const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
+                            const activity = calculateActivityScore(m, previousMember);
+                            
+                            return (
+                              <span 
+                                className="text-sm font-medium"
+                                title={`Activity Level: ${activity.level} (${activity.score}/100)\nRecent: ${activity.lastActivity}\nAll indicators: ${activity.indicators.join(', ')}\n\nData Source: ${previousMember ? 'Compared with previous snapshot data' : 'Estimated from current donation activity (donations reset monthly)'}\nNote: ${previousMember ? 'Based on actual changes detected' : '*Estimated - will improve with more snapshot data'}`}
+                              >
+                                {activity.lastActivityDate}
+                                {!previousMember && <span className="ml-1" title="Estimated data - will improve with more snapshot history">*</span>}
+                              </span>
+                            );
+                          })()}
+                        </Td>
                         <Td>{renderRole(m.role)}</Td>
                       </tr>
                     );
@@ -1047,6 +1784,180 @@ Please analyze this clan data and provide insights on:
           <ChangeDashboard clanTag={clanTag || homeClan || ""} />
         ) : activeTab === "database" ? (
           <PlayerDatabase currentClanMembers={roster?.members?.map(m => m.tag.toUpperCase()) || []} />
+        ) : activeTab === "events" ? (
+          <EventDashboard 
+            eventHistory={eventHistory} 
+            roster={roster}
+            initialFilterPlayer={eventFilterPlayer}
+            onPlayerClick={(member) => {
+              setSelectedPlayer(member);
+              setShowPlayerProfile(true);
+            }}
+            onFilterChange={(playerTag) => setEventFilterPlayer(playerTag)}
+          />
+        ) : activeTab === "applicants" ? (
+          <div className="space-y-6">
+            {/* Applicant Evaluation Section */}
+            <section className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                🎯 Applicant Evaluation
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Enter a player tag to evaluate their fit for your clan. The system will analyze their Town Hall level, 
+                hero development, trophy count, and how well they match your current roster.
+              </p>
+              
+              <div className="flex gap-4 items-end">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium mb-2">Player Tag</label>
+                  <input
+                    type="text"
+                    value={applicantTag}
+                    onChange={(e) => {
+                      let value = e.target.value;
+                      if (value && !value.startsWith('#')) {
+                        value = '#' + value;
+                      }
+                      setApplicantTag(value);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        fetchApplicantData();
+                      }
+                    }}
+                    className="w-full border rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="#2PR8R8V8P"
+                    title="Enter a player tag (with or without #)"
+                  />
+                </div>
+                <button
+                  onClick={fetchApplicantData}
+                  disabled={applicantLoading}
+                  className="px-6 py-3 bg-orange-500 text-white rounded-xl font-medium hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {applicantLoading ? "⏳ Evaluating..." : "🔍 Evaluate"}
+                </button>
+              </div>
+
+              {applicantError && (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+                  <p className="text-red-700 font-medium">Error: {applicantError}</p>
+                </div>
+              )}
+
+              {applicantData && applicantFitScore && (
+                <div className="mt-6 space-y-6">
+                  {/* Player Summary */}
+                  <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-xl p-6 border border-orange-200">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <h3 className="text-xl font-bold text-gray-900">{applicantData.name}</h3>
+                        <p className="text-gray-600">{applicantData.tag}</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-3xl font-bold text-orange-600">{applicantFitScore.score}%</div>
+                        <div className={`text-sm font-medium ${
+                          applicantFitScore.recommendation === 'Excellent' ? 'text-green-600' :
+                          applicantFitScore.recommendation === 'Good' ? 'text-blue-600' :
+                          applicantFitScore.recommendation === 'Fair' ? 'text-yellow-600' :
+                          'text-red-600'
+                        }`}>
+                          {applicantFitScore.recommendation} Fit
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span className="text-gray-500">Town Hall:</span>
+                        <div className="font-medium">TH{applicantData.townHallLevel || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Trophies:</span>
+                        <div className="font-medium">{applicantData.trophies?.toLocaleString() || 'N/A'}</div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Donations:</span>
+                        <div className="font-medium">{applicantData.donations || 0}</div>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">Received:</span>
+                        <div className="font-medium">{applicantData.donationsReceived || 0}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Breakdown */}
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h4 className="text-lg font-semibold mb-4">Evaluation Breakdown</h4>
+                    <div className="space-y-4">
+                      {applicantFitScore.breakdown.map((item, index) => (
+                        <div key={index} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{item.category}</div>
+                            <div className="text-sm text-gray-600">{item.details}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-lg font-bold text-gray-900">
+                              {item.points}/{item.maxPoints}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {Math.round((item.points / item.maxPoints) * 100)}%
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Recommendation */}
+                  <div className={`p-6 rounded-xl border-2 ${
+                    applicantFitScore.recommendation === 'Excellent' ? 'bg-green-50 border-green-200' :
+                    applicantFitScore.recommendation === 'Good' ? 'bg-blue-50 border-blue-200' :
+                    applicantFitScore.recommendation === 'Fair' ? 'bg-yellow-50 border-yellow-200' :
+                    'bg-red-50 border-red-200'
+                  }`}>
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold mb-2">Recommendation</h4>
+                        <p className="text-gray-700">
+                          {applicantFitScore.recommendation === 'Excellent' && 
+                            "🎉 This player would be an excellent addition to your clan! They have strong development and would fit well with your current roster."}
+                          {applicantFitScore.recommendation === 'Good' && 
+                            "👍 This player shows good potential and would likely be a solid clan member with room for growth."}
+                          {applicantFitScore.recommendation === 'Fair' && 
+                            "⚠️ This player has some potential but may need development. Consider if you have the resources to help them grow."}
+                          {applicantFitScore.recommendation === 'Poor' && 
+                            "❌ This player may not be a good fit for your clan at this time. Consider waiting for better candidates."}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          // Remove from Player Database
+                          const existingNotes = JSON.parse(localStorage.getItem('playerNotes') || '{}');
+                          delete existingNotes[applicantData.tag];
+                          localStorage.setItem('playerNotes', JSON.stringify(existingNotes));
+                          
+                          // Clear the evaluation
+                          setApplicantData(null);
+                          setApplicantFitScore(null);
+                          setApplicantTag("");
+                          setApplicantError("");
+                          
+                          // Show confirmation
+                          setMessage(`Removed ${applicantData.name} from Player Database`);
+                        }}
+                        className="ml-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm font-medium"
+                        title="Remove this player from the Player Database"
+                      >
+                        🗑️ Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          </div>
         ) : (
           <AICoaching clanData={roster} clanTag={clanTag || homeClan || ""} />
         )}
@@ -1082,7 +1993,14 @@ Please analyze this clan data and provide insights on:
           clanTag={clanTag || homeClan || ""}
           roster={roster}
           playerNameHistory={playerNameHistory}
+          eventHistory={eventHistory}
           onClose={() => {
+            setShowPlayerProfile(false);
+            setSelectedPlayer(null);
+          }}
+          onViewAllEvents={(playerTag) => {
+            setEventFilterPlayer(playerTag);
+            setActiveTab("events");
             setShowPlayerProfile(false);
             setSelectedPlayer(null);
           }}
@@ -1101,9 +2019,11 @@ Please analyze this clan data and provide insights on:
         <div className="max-w-7xl mx-auto px-6 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
-              <span>New Clash Intelligence</span>
+              <span>Clash Intelligence Dashboard</span>
               <span className="text-gray-400">•</span>
               <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.6</span>
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-500">A warfroggy project</span>
             </div>
             <div className="text-xs text-gray-500">
               Built with Next.js • Clash of Clans API
@@ -1119,19 +2039,238 @@ function Th({ children, onClick }:{ children: React.ReactNode; onClick?: ()=>voi
 function Td({ children, className }:{ children: React.ReactNode; className?: string }){ return <td className={`py-3 px-4 ${className || ""}`}>{children}</td>; }
 function rushClass(p:number){ return p>=70 ? "text-red-700 font-semibold" : p>=40 ? "text-amber-600" : "text-green-700"; }
 
+// Event Dashboard Component
+function EventDashboard({ 
+  eventHistory, 
+  roster, 
+  initialFilterPlayer,
+  onPlayerClick,
+  onFilterChange
+}: { 
+  eventHistory: EventHistory; 
+  roster: Roster | null;
+  initialFilterPlayer: string;
+  onPlayerClick: (member: Member) => void;
+  onFilterChange: (playerTag: string) => void;
+}) {
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterPlayer, setFilterPlayer] = useState<string>(initialFilterPlayer);
+  const [sortBy, setSortBy] = useState<"date" | "player" | "type">("date");
+
+  // Update filter when initialFilterPlayer changes
+  useEffect(() => {
+    setFilterPlayer(initialFilterPlayer);
+  }, [initialFilterPlayer]);
+
+  // Get all events flattened
+  const allEvents = Object.entries(eventHistory)
+    .flatMap(([playerTag, events]) => 
+      events.map(event => ({ ...event, playerTag }))
+    );
+
+  // Filter events
+  const filteredEvents = allEvents.filter(event => {
+    const typeMatch = filterType === "all" || event.eventType === filterType;
+    const playerMatch = filterPlayer === "all" || event.playerTag === filterPlayer;
+    return typeMatch && playerMatch;
+  });
+
+  // Sort events
+  const sortedEvents = filteredEvents.sort((a, b) => {
+    switch (sortBy) {
+      case "date":
+        return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+      case "player":
+        return a.playerName.localeCompare(b.playerName);
+      case "type":
+        return a.eventType.localeCompare(b.eventType);
+      default:
+        return 0;
+    }
+  });
+
+  // Get unique event types for filter
+  const eventTypes = Array.from(new Set(allEvents.map(e => e.eventType)));
+
+  // Get unique players for filter
+  const players = Array.from(new Set(allEvents.map(e => e.playerTag)));
+
+  const getEventIcon = (eventType: string) => {
+    switch (eventType) {
+      case 'th_upgrade': return '🏗️';
+      case 'role_change': return '👑';
+      case 'trophy_milestone': return '🏆';
+      case 'hero_upgrade': return '⚔️';
+      case 'donation_milestone': return '💝';
+      case 'name_change': return '📝';
+      default: return '📊';
+    }
+  };
+
+  const getEventColor = (eventType: string) => {
+    switch (eventType) {
+      case 'th_upgrade': return 'border-green-200 bg-green-50';
+      case 'role_change': return 'border-purple-200 bg-purple-50';
+      case 'trophy_milestone': return 'border-yellow-200 bg-yellow-50';
+      case 'hero_upgrade': return 'border-blue-200 bg-blue-50';
+      case 'donation_milestone': return 'border-orange-200 bg-orange-50';
+      case 'name_change': return 'border-gray-200 bg-gray-50';
+      default: return 'border-gray-200 bg-gray-50';
+    }
+  };
+
+  const getPlayerName = (playerTag: string) => {
+    const member = roster?.members?.find(m => m.tag.toUpperCase() === playerTag);
+    return member?.name || "Unknown Player";
+  };
+
+  const getPlayerMember = (playerTag: string) => {
+    return roster?.members?.find(m => m.tag.toUpperCase() === playerTag);
+  };
+
+  if (allEvents.length === 0) {
+    return (
+      <div className="text-center py-12">
+        <div className="text-6xl mb-4">📊</div>
+        <h2 className="text-2xl font-bold text-gray-700 mb-2">No Events Yet</h2>
+        <p className="text-gray-500">Significant events will appear here as they happen.</p>
+        <p className="text-sm text-gray-400 mt-2">Load fresh data to start tracking events!</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold">Event Dashboard</h2>
+          <p className="text-sm text-gray-600 mt-1">Track all significant player milestones and achievements</p>
+          <p className="text-xs text-gray-500 mt-1">
+            {allEvents.length} total events • {filteredEvents.length} filtered
+          </p>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white/80 backdrop-blur-sm rounded-xl shadow-lg p-4 border border-white/20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Event Type</label>
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="all">All Events</option>
+              {eventTypes.map(type => (
+                <option key={type} value={type}>
+                  {getEventIcon(type)} {type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                </option>
+              ))}
+            </select>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Player</label>
+            <select
+              value={filterPlayer}
+              onChange={(e) => {
+                setFilterPlayer(e.target.value);
+                onFilterChange(e.target.value);
+              }}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="all">All Players</option>
+              {players.map(tag => (
+                <option key={tag} value={tag}>
+                  {getPlayerName(tag)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Sort By</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "date" | "player" | "type")}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            >
+              <option value="date">Date (Newest First)</option>
+              <option value="player">Player Name</option>
+              <option value="type">Event Type</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Events List */}
+      <div className="space-y-3">
+        {sortedEvents.map((event) => {
+          const member = getPlayerMember(event.playerTag);
+          return (
+            <div
+              key={event.id}
+              className={`border rounded-lg p-4 ${getEventColor(event.eventType)} hover:shadow-md transition-shadow cursor-pointer`}
+              onClick={() => member && onPlayerClick(member)}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <span className="text-2xl">{getEventIcon(event.eventType)}</span>
+                  <div>
+                    <div className="flex items-center space-x-2">
+                      <h3 className="font-semibold text-gray-900">{event.playerName}</h3>
+                      <span className="text-xs text-gray-500">({event.playerTag})</span>
+                    </div>
+                    <p className="text-sm text-gray-700">{event.eventData.details}</p>
+                    {event.eventData.milestone && (
+                      <p className="text-xs text-gray-600">Milestone: {event.eventData.milestone}</p>
+                    )}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm font-medium text-gray-900">
+                    {new Date(event.timestamp).toLocaleDateString()}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {new Date(event.timestamp).toLocaleTimeString()}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">Click to view profile →</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {filteredEvents.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <p>No events match your current filters.</p>
+          <p className="text-sm">Try adjusting the filters above.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Player Profile Modal Component
 function PlayerProfileModal({ 
   member, 
   clanTag,
   roster,
   playerNameHistory,
-  onClose 
+  eventHistory,
+  onClose,
+  onViewAllEvents
 }: { 
   member: Member; 
   clanTag: string;
   roster: Roster | null;
   playerNameHistory: Record<string, Array<{name: string, timestamp: string}>>;
+  eventHistory: EventHistory;
   onClose: () => void;
+  onViewAllEvents: (playerTag: string) => void;
 }) {
   const [playerNotes, setPlayerNotes] = useState<Array<{timestamp: string, note: string, customFields: Record<string, string>}>>([]);
   const [newNote, setNewNote] = useState("");
@@ -1334,10 +2473,60 @@ function PlayerProfileModal({
                   <p className="text-gray-600">{member.warStars || 0}</p>
                 </div>
                 <div>
-                  <span className="font-medium">Last Seen:</span>
-                  <p className="text-gray-600">
-                    {typeof member.lastSeen === "number" ? `${member.lastSeen} days ago` : member.lastSeen || "Unknown"}
-                  </p>
+                  <span className="font-medium">Activity Level:</span>
+                  <div className="text-gray-600">
+                    {(() => {
+                      // Find previous member data for comparison
+                      const previousMember = roster?.members?.find(prev => prev.tag === member.tag);
+                      const activity = calculateActivityScore(member, previousMember);
+                      
+                      const getActivityColor = (level: string) => {
+                        switch (level) {
+                          case 'Very Active': return 'text-green-700 bg-green-50';
+                          case 'Active': return 'text-blue-700 bg-blue-50';
+                          case 'Moderate': return 'text-yellow-700 bg-yellow-50';
+                          case 'Low': return 'text-orange-700 bg-orange-50';
+                          case 'Inactive': return 'text-red-700 bg-red-50 font-semibold';
+                          default: return 'text-gray-700 bg-gray-50';
+                        }
+                      };
+                      
+                      return (
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getActivityColor(activity.level)}`}>
+                              {activity.level} (Score: {activity.score}/100)
+                            </span>
+                            {!previousMember && (
+                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded" title="Estimated from current data - will improve with snapshot history">
+                                *Estimated
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm">
+                            <p className="font-medium mb-1">Recent Activity:</p>
+                            <p className="text-gray-600">{activity.lastActivity}</p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              <strong>Data Source:</strong> {previousMember 
+                                ? 'Compared with previous snapshot data' 
+                                : 'Estimated from current donation activity (donations reset monthly)'
+                              }
+                            </p>
+                            {activity.indicators.length > 1 && (
+                              <div className="mt-2">
+                                <p className="font-medium mb-1">All Indicators:</p>
+                                <ul className="text-xs text-gray-600 list-disc list-inside">
+                                  {activity.indicators.map((indicator, idx) => (
+                                    <li key={idx}>{indicator}</li>
+                                  ))}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1409,6 +2598,76 @@ function PlayerProfileModal({
                         </div>
                       </div>
                     )}
+
+                    {/* Event History */}
+                    <div className="bg-blue-50 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-lg font-semibold">Significant Events</h3>
+                        <button
+                          onClick={() => onViewAllEvents(member.tag.toUpperCase())}
+                          disabled={!eventHistory[member.tag.toUpperCase()] || eventHistory[member.tag.toUpperCase()].length === 0}
+                          className={`px-3 py-1 rounded-lg transition-colors text-sm ${
+                            eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0
+                              ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                          }`}
+                          title={
+                            eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0
+                              ? "View all events for this player"
+                              : "No events tracked yet - events are detected when data changes between loads"
+                          }
+                        >
+                          📊 View All Events {eventHistory[member.tag.toUpperCase()] ? `(${eventHistory[member.tag.toUpperCase()].length})` : "(0)"}
+                        </button>
+                      </div>
+                      
+                      {/* Debug Info */}
+                      <div className="text-xs text-gray-500 mb-3 p-2 bg-gray-100 rounded">
+                        <strong>Event Tracking Status:</strong> {eventHistory[member.tag.toUpperCase()] ? 
+                          `${eventHistory[member.tag.toUpperCase()].length} events tracked` : 
+                          "No events tracked yet"
+                        } • Events are detected when you load fresh data and changes are found
+                      </div>
+                      {eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0 ? (
+                        <div className="space-y-3">
+                          {eventHistory[member.tag.toUpperCase()]
+                            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                            .map((event) => (
+                            <div key={event.id} className="text-sm border-l-4 border-blue-300 pl-3">
+                              <div className="flex items-center space-x-2 mb-1">
+                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  event.eventType === 'th_upgrade' ? 'bg-green-100 text-green-800' :
+                                  event.eventType === 'role_change' ? 'bg-purple-100 text-purple-800' :
+                                  event.eventType === 'trophy_milestone' ? 'bg-yellow-100 text-yellow-800' :
+                                  event.eventType === 'hero_upgrade' ? 'bg-blue-100 text-blue-800' :
+                                  event.eventType === 'donation_milestone' ? 'bg-orange-100 text-orange-800' :
+                                  'bg-gray-100 text-gray-800'
+                                }`}>
+                                  {event.eventType === 'th_upgrade' ? '🏗️ TH Upgrade' :
+                                   event.eventType === 'role_change' ? '👑 Role Change' :
+                                   event.eventType === 'trophy_milestone' ? '🏆 Trophy Milestone' :
+                                   event.eventType === 'hero_upgrade' ? '⚔️ Hero Upgrade' :
+                                   event.eventType === 'donation_milestone' ? '💝 Donation Milestone' :
+                                   '📝 Event'}
+                                </span>
+                                <span className="text-gray-500 text-xs">
+                                  {new Date(event.timestamp).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <p className="text-gray-700 font-medium">{event.eventData.details}</p>
+                              {event.eventData.milestone && (
+                                <p className="text-gray-600 text-xs">Milestone: {event.eventData.milestone}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-4 text-gray-500">
+                          <p className="text-sm">No events tracked yet</p>
+                          <p className="text-xs mt-1">Events will appear here when changes are detected between data loads</p>
+                        </div>
+                      )}
+                    </div>
           </div>
 
           {/* Right Column - Notes & Custom Fields */}
@@ -1472,7 +2731,7 @@ function PlayerProfileModal({
                                   />
                                   <button
                                     onClick={() => removeCustomField(fieldName)}
-                                    className="text-red-600 hover:text-red-800"
+                                    className="text-red-600 hover:text-red-800 font-semibold"
                                   >
                                     <X className="w-3 h-3" />
                                   </button>

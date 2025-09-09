@@ -101,8 +101,15 @@ export default function CreatePlayerNoteModal({ onClose }: CreatePlayerNoteModal
             <input
               type="text"
               value={playerTag}
-              onChange={(e) => setPlayerTag(e.target.value.toUpperCase())}
-              placeholder="#2PR8R8V8P"
+              onChange={(e) => {
+                let value = e.target.value.toUpperCase();
+                // Auto-add # if not present
+                if (value && !value.startsWith('#')) {
+                  value = '#' + value;
+                }
+                setPlayerTag(value);
+              }}
+              placeholder="2PR8R8V8P"
               className="w-full border rounded-lg px-3 py-2"
             />
           </div>
