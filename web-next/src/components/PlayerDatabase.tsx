@@ -29,7 +29,41 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
   useEffect(() => {
     loadPlayerDatabase();
+    applyPlayerNameResolutions();
   }, [currentClanMembers]);
+
+  // Function to apply player name resolutions from the cron job
+  const applyPlayerNameResolutions = async () => {
+    try {
+      const response = await fetch('/api/player-resolver');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.playerNames) {
+          let resolved = 0;
+          
+          // Update localStorage with resolved names
+          Object.entries(data.playerNames).forEach(([playerTag, playerName]) => {
+            const nameKey = `player_name_${playerTag}`;
+            const currentName = localStorage.getItem(nameKey);
+            
+            // Only update if we don't have a name or if it's "Unknown Player"
+            if (!currentName || currentName === 'Unknown Player') {
+              localStorage.setItem(nameKey, playerName as string);
+              resolved++;
+            }
+          });
+          
+          if (resolved > 0) {
+            console.log(`[PlayerDatabase] Resolved ${resolved} unknown player names`);
+            // Reload data to show updated names
+            loadPlayerDatabase();
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[PlayerDatabase] Error applying player name resolutions:', error);
+    }
+  };
 
   const loadPlayerDatabase = () => {
     try {

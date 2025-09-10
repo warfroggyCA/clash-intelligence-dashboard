@@ -71,7 +71,10 @@
     "departureDate": "2025-09-10",
     "lastSeen": "2025-09-10T13:05:03.602Z",
     "lastRole": "member",
-    "lastTownHall": 12
+    "lastTownHall": 12,
+    "notes": "",
+    "departureReason": "Inactive",
+    "addedBy": "User"
   },
   {
     "memberTag": "#QYC29RU90",

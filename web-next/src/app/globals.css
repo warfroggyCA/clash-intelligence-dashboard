@@ -7,3 +7,30 @@ body { @apply bg-white text-gray-900; }
 table { @apply w-full; }
 th { @apply text-left font-semibold; }
 
+/* Make tooltips appear immediately - override browser default delay */
+[title] {
+  transition-delay: 0s !important;
+  -webkit-transition-delay: 0s !important;
+  -moz-transition-delay: 0s !important;
+  -ms-transition-delay: 0s !important;
+  -o-transition-delay: 0s !important;
+}
+
+/* Force immediate tooltip display on hover */
+*[title]:hover {
+  transition-delay: 0s !important;
+  -webkit-transition-delay: 0s !important;
+  -moz-transition-delay: 0s !important;
+  -ms-transition-delay: 0s !important;
+  -o-transition-delay: 0s !important;
+}
+
+/* Override browser tooltip timing */
+*[title] {
+  animation-delay: 0s !important;
+  -webkit-animation-delay: 0s !important;
+  -moz-animation-delay: 0s !important;
+  -ms-animation-delay: 0s !important;
+  -o-animation-delay: 0s !important;
+}
+

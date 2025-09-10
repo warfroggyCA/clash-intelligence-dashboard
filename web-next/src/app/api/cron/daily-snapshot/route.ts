@@ -7,6 +7,7 @@ import { createDailySnapshot, detectChanges, saveChangeSummary, getLatestSnapsho
 import { generateChangeSummary, generateGameChatMessages } from "@/lib/ai-summarizer";
 import { cfg } from "@/lib/config";
 import { addDeparture } from "@/lib/departures";
+import { resolveUnknownPlayers } from "@/lib/player-resolver";
 import { promises as fsp } from 'fs';
 import path from 'path';
 
@@ -102,6 +103,11 @@ export async function GET(req: Request) {
         }
       }
 
+      // Resolve unknown players
+      console.log(`[CRON] Resolving unknown players for ${clanTag}...`);
+      const resolutionResult = await resolveUnknownPlayers();
+      console.log(`[CRON] Resolved ${resolutionResult.resolved} unknown players`);
+
       results.push({
         clanTag,
         success: true,
@@ -109,6 +115,8 @@ export async function GET(req: Request) {
         changesDetected: changeSummary?.changes.length || 0,
         summary: changeSummary?.summary,
         gameChatMessages: changeSummary?.gameChatMessages || [],
+        playersResolved: resolutionResult.resolved,
+        resolutionErrors: resolutionResult.errors,
       });
 
     } catch (error: any) {

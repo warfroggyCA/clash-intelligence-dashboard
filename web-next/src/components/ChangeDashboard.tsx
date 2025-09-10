@@ -41,6 +41,25 @@ export default function ChangeDashboard({
     loadChanges();
   }, [clanTag]);
 
+  // Load cleared messages from localStorage
+  useEffect(() => {
+    const loadClearedMessages = () => {
+      try {
+        const clearedKey = `cleared_messages_${clanTag.replace('#', '').toUpperCase()}`;
+        const saved = localStorage.getItem(clearedKey);
+        if (saved) {
+          setClearedMessages(new Set(JSON.parse(saved)));
+        }
+      } catch (error) {
+        console.error('Failed to load cleared messages:', error);
+      }
+    };
+    
+    if (clanTag) {
+      loadClearedMessages();
+    }
+  }, [clanTag]);
+
   const handleGenerateAISummary = async () => {
     if (!onGenerateAISummary) return;
     
@@ -172,6 +191,14 @@ export default function ChangeDashboard({
     const newCleared = new Set(clearedMessages);
     newCleared.add(messageId);
     setClearedMessages(newCleared);
+    
+    // Save to localStorage
+    try {
+      const clearedKey = `cleared_messages_${clanTag.replace('#', '').toUpperCase()}`;
+      localStorage.setItem(clearedKey, JSON.stringify([...newCleared]));
+    } catch (error) {
+      console.error('Failed to save cleared messages:', error);
+    }
   };
 
   const copyMessage = async (message: string) => {

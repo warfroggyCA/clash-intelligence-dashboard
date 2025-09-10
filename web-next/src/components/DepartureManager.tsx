@@ -33,23 +33,33 @@ interface DepartureNotifications {
 interface DepartureManagerProps {
   clanTag: string;
   onClose: () => void;
-  onNotificationChange?: () => void;
+  onNotificationChange?: (updatedData: DepartureNotifications) => void;
+  onDismissAll?: () => void;
+  cachedNotifications?: DepartureNotifications | null;
 }
 
-export default function DepartureManager({ clanTag, onClose, onNotificationChange }: DepartureManagerProps) {
+export default function DepartureManager({ clanTag, onClose, onNotificationChange, onDismissAll, cachedNotifications }: DepartureManagerProps) {
   const [notifications, setNotifications] = useState<DepartureNotifications | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [editingDeparture, setEditingDeparture] = useState<DepartureRecord | null>(null);
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
 
   useEffect(() => {
-    loadNotifications();
-  }, [clanTag]);
+    // Use cached data immediately for instant loading
+    if (cachedNotifications) {
+      setNotifications(cachedNotifications);
+      setLoading(false);
+    } else {
+      // Only load if no cached data is available
+      loadNotifications();
+    }
+  }, [clanTag, cachedNotifications]);
 
   const loadNotifications = async () => {
     try {
-      setLoading(true);
+      setRefreshing(true);
       const response = await fetch(`/api/departures/notifications?clanTag=${encodeURIComponent(clanTag)}`);
       const data = await response.json();
       
@@ -60,6 +70,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
       console.error('Failed to load departure notifications:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -89,19 +100,21 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
               : d
           );
           
-          setNotifications({
+          const updatedNotifications = {
             ...notifications,
             activeDepartures: updatedDepartures
-          });
+          };
+          
+          setNotifications(updatedNotifications);
+          
+          // Notify parent component that notifications have changed
+          onNotificationChange?.(updatedNotifications);
         }
         
         // Close the edit form
         setEditingDeparture(null);
         setNotes("");
         setReason("");
-        
-        // Notify parent component that notifications have changed
-        onNotificationChange?.();
         
         // No need to reload - we've updated the state optimistically
       }
@@ -129,14 +142,16 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
         if (notifications) {
           const updatedRejoins = notifications.rejoins.filter(r => r.memberTag !== memberTag);
           
-          setNotifications({
+          const updatedNotifications = {
             ...notifications,
             rejoins: updatedRejoins,
             hasNotifications: updatedRejoins.length > 0 || notifications.activeDepartures.length > 0
-          });
+          };
+          
+          setNotifications(updatedNotifications);
           
           // Notify parent component that notifications have changed
-          onNotificationChange?.();
+          onNotificationChange?.(updatedNotifications);
         }
       }
     } catch (error) {
@@ -186,21 +201,34 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold">Member Departures & Rejoins</h2>
+          <h2 className="text-2xl font-bold flex items-center">
+            Member Departures & Rejoins
+            {refreshing && (
+              <span className="ml-2 text-sm text-gray-500 animate-pulse">🔄 Refreshing...</span>
+            )}
+          </h2>
           <div className="flex items-center space-x-3">
             {/* Debug info */}
             <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-              Rejoins: {notifications?.rejoins.length || 0}, Departures: {notifications?.activeDepartures.length || 0} ({notifications?.activeDepartures.filter(d => d.notes && d.departureReason).length || 0} processed)
+              Rejoins: {notifications?.rejoins.length || 0} | Departures: {notifications?.activeDepartures.length || 0} total ({notifications?.activeDepartures.filter(d => d.notes || d.departureReason).length || 0} processed, {notifications?.activeDepartures.filter(d => !d.notes && !d.departureReason).length || 0} pending)
             </div>
-            {notifications && notifications.rejoins.length === 0 && notifications.activeDepartures.every(d => d.notes && d.departureReason) && (
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
-              >
-                ✅ Done - All Processed
-              </button>
-            )}
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <button
+              onClick={loadNotifications}
+              disabled={refreshing}
+              className="px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium hover:scale-105 transition-all duration-200"
+            >
+              {refreshing ? '🔄' : '🔄'} Refresh
+            </button>
+            <button
+              onClick={() => {
+                onDismissAll?.();
+                onClose();
+              }}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium hover:scale-105 transition-all duration-200"
+            >
+              ✅ Done
+            </button>
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 hover:scale-110 transition-all duration-200 p-1 rounded">
               <X className="w-6 h-6" />
             </button>
           </div>
@@ -215,7 +243,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
             </h3>
             <div className="space-y-4">
               {notifications.rejoins.map((rejoin) => (
-                <div key={rejoin.memberTag} className="border border-green-200 bg-green-50 rounded-lg p-4">
+                <div key={rejoin.memberTag} className="border border-green-200 bg-green-50 rounded-lg p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg hover:border-green-300 cursor-pointer">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h4 className="font-semibold text-green-800">{rejoin.memberName}</h4>
@@ -240,7 +268,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                     </div>
                     <button
                       onClick={() => markRejoinResolved(rejoin.memberTag)}
-                      className="ml-4 px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                      className="ml-4 px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 hover:scale-105 transition-all duration-200 font-medium"
                     >
                       Mark Resolved
                     </button>
@@ -259,12 +287,21 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
               Recent Departures ({notifications.activeDepartures.length})
             </h3>
             <div className="space-y-4">
-              {notifications.activeDepartures.map((departure) => (
-                <div key={departure.memberTag} className="border border-red-200 bg-red-50 rounded-lg p-4">
+              {notifications.activeDepartures.map((departure) => {
+                const isProcessed = departure.notes || departure.departureReason;
+                return (
+                <div key={departure.memberTag} className={`border rounded-lg p-4 transition-all duration-200 hover:scale-[1.02] hover:shadow-lg cursor-pointer ${
+                  isProcessed 
+                    ? 'border-green-200 bg-green-50 hover:border-green-300' 
+                    : 'border-red-200 bg-red-50 hover:border-red-300'
+                }`}>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <h4 className="font-semibold text-red-800">{departure.memberName}</h4>
-                      <p className="text-sm text-red-600">
+                      <h4 className={`font-semibold ${isProcessed ? 'text-green-800' : 'text-red-800'}`}>
+                        {departure.memberName}
+                        {isProcessed && <span className="ml-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full">✓ Processed</span>}
+                      </h4>
+                      <p className={`text-sm ${isProcessed ? 'text-green-600' : 'text-red-600'}`}>
                         Left on {new Date(departure.departureDate).toLocaleDateString()}
                       </p>
                       <div className="mt-2 text-sm text-gray-600">
@@ -281,13 +318,14 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                         setNotes(departure.notes || "");
                         setReason(departure.departureReason || "");
                       }}
-                      className="ml-4 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                      className="ml-4 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
                     >
-                      Add Notes
+                      {isProcessed ? 'Edit Notes' : 'Add Notes'}
                     </button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
@@ -338,13 +376,13 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                     setNotes("");
                     setReason("");
                   }}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 hover:scale-105 transition-all duration-200 font-medium"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={() => updateDeparture(editingDeparture)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
                 >
                   Save Notes
                 </button>

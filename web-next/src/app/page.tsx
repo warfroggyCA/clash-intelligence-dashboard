@@ -122,7 +122,11 @@ const getDonationBalance = (member: Member) => {
 const saveManualActivityOverride = (memberTag: string, activity: ActivityOption) => {
   try {
     const overrides = JSON.parse(localStorage.getItem('manualActivityOverrides') || '{}');
-    overrides[memberTag] = activity;
+    overrides[memberTag] = {
+      activity,
+      timestamp: new Date().toISOString(),
+      originalActivity: activity
+    };
     localStorage.setItem('manualActivityOverrides', JSON.stringify(overrides));
   } catch (error) {
     console.error('Failed to save manual activity override:', error);
@@ -132,7 +136,21 @@ const saveManualActivityOverride = (memberTag: string, activity: ActivityOption)
 const getManualActivityOverride = (memberTag: string): ActivityOption | null => {
   try {
     const overrides = JSON.parse(localStorage.getItem('manualActivityOverrides') || '{}');
-    return overrides[memberTag] || null;
+    const override = overrides[memberTag];
+    
+    if (!override) return null;
+    
+    // Handle legacy format (just a string)
+    if (typeof override === 'string') {
+      return override as ActivityOption;
+    }
+    
+    // Handle new format with timestamp
+    if (override.activity && override.timestamp) {
+      return calculateAgedActivity(override.originalActivity, override.timestamp);
+    }
+    
+    return null;
   } catch (error) {
     console.error('Failed to load manual activity override:', error);
     return null;
@@ -147,6 +165,78 @@ const clearManualActivityOverride = (memberTag: string) => {
   } catch (error) {
     console.error('Failed to clear manual activity override:', error);
   }
+};
+
+// Calculate how an activity should age over time
+const calculateAgedActivity = (originalActivity: ActivityOption, timestamp: string): ActivityOption => {
+  const now = new Date();
+  const overrideDate = new Date(timestamp);
+  const daysDiff = Math.floor((now.getTime() - overrideDate.getTime()) / (1000 * 60 * 60 * 24));
+  
+  // Define aging progression
+  const agingMap: Record<ActivityOption, ActivityOption[]> = {
+    "Today": ["Today", "1-2 days", "3-5 days", "1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
+    "1-2 days": ["1-2 days", "3-5 days", "1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
+    "3-5 days": ["3-5 days", "1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
+    "1 week": ["1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
+    "1-2 weeks": ["1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
+    "2-3 weeks": ["2-3 weeks", "1 month", "1+ months", "Inactive"],
+    "1 month": ["1 month", "1+ months", "Inactive"],
+    "1+ months": ["1+ months", "Inactive"],
+    "Inactive": ["Inactive"]
+  };
+  
+  const progression = agingMap[originalActivity] || ["Inactive"];
+  
+  // Age based on days passed
+  let ageIndex = 0;
+  if (originalActivity === "Today") {
+    if (daysDiff >= 1) ageIndex = 1; // 1-2 days
+    if (daysDiff >= 3) ageIndex = 2; // 3-5 days
+    if (daysDiff >= 7) ageIndex = 3; // 1 week
+    if (daysDiff >= 14) ageIndex = 4; // 1-2 weeks
+    if (daysDiff >= 21) ageIndex = 5; // 2-3 weeks
+    if (daysDiff >= 30) ageIndex = 6; // 1 month
+    if (daysDiff >= 60) ageIndex = 7; // 1+ months
+    if (daysDiff >= 90) ageIndex = 8; // Inactive
+  } else if (originalActivity === "1-2 days") {
+    if (daysDiff >= 2) ageIndex = 1; // 3-5 days
+    if (daysDiff >= 5) ageIndex = 2; // 1 week
+    if (daysDiff >= 12) ageIndex = 3; // 1-2 weeks
+    if (daysDiff >= 19) ageIndex = 4; // 2-3 weeks
+    if (daysDiff >= 28) ageIndex = 5; // 1 month
+    if (daysDiff >= 58) ageIndex = 6; // 1+ months
+    if (daysDiff >= 88) ageIndex = 7; // Inactive
+  } else if (originalActivity === "3-5 days") {
+    if (daysDiff >= 3) ageIndex = 1; // 1 week
+    if (daysDiff >= 10) ageIndex = 2; // 1-2 weeks
+    if (daysDiff >= 17) ageIndex = 3; // 2-3 weeks
+    if (daysDiff >= 26) ageIndex = 4; // 1 month
+    if (daysDiff >= 56) ageIndex = 5; // 1+ months
+    if (daysDiff >= 86) ageIndex = 6; // Inactive
+  } else if (originalActivity === "1 week") {
+    if (daysDiff >= 7) ageIndex = 1; // 1-2 weeks
+    if (daysDiff >= 14) ageIndex = 2; // 2-3 weeks
+    if (daysDiff >= 23) ageIndex = 3; // 1 month
+    if (daysDiff >= 53) ageIndex = 4; // 1+ months
+    if (daysDiff >= 83) ageIndex = 5; // Inactive
+  } else if (originalActivity === "1-2 weeks") {
+    if (daysDiff >= 7) ageIndex = 1; // 2-3 weeks
+    if (daysDiff >= 16) ageIndex = 2; // 1 month
+    if (daysDiff >= 46) ageIndex = 3; // 1+ months
+    if (daysDiff >= 76) ageIndex = 4; // Inactive
+  } else if (originalActivity === "2-3 weeks") {
+    if (daysDiff >= 7) ageIndex = 1; // 1 month
+    if (daysDiff >= 37) ageIndex = 2; // 1+ months
+    if (daysDiff >= 67) ageIndex = 3; // Inactive
+  } else if (originalActivity === "1 month") {
+    if (daysDiff >= 30) ageIndex = 1; // 1+ months
+    if (daysDiff >= 60) ageIndex = 2; // Inactive
+  } else if (originalActivity === "1+ months") {
+    if (daysDiff >= 30) ageIndex = 1; // Inactive
+  }
+  
+  return progression[Math.min(ageIndex, progression.length - 1)];
 };
 
 // Get activity weighting for manual overrides
@@ -571,6 +661,8 @@ const formatRole = (role?: string): string => {
   // CoC API actually sends these exact values:
   const roleMap: Record<string, string> = {
     "leader": "Leader",
+    "coleader": "Co-Leader", 
+    "co-leader": "Co-Leader",
     "coLeader": "Co-Leader", 
     "elder": "Elder",
     "member": "Member",
@@ -694,13 +786,13 @@ function renderHeroCell(m: Member, key: "bk"|"aq"|"gw"|"rc"|"mp"){
   
   if (th < req) {
     const title = key==="bk"?"BK unlocks at TH7":key==="aq"?"AQ unlocks at TH9":key==="gw"?"GW unlocks at TH11":key==="rc"?"RC unlocks at TH13":"MP unlocks at TH9 (Hero Hall)";
-    return <span className="cursor-help hover:underline hover:decoration-dotted hover:underline-offset-2 text-gray-400" title={title}>—</span>;
+    return <span className="text-gray-400 hover:text-gray-600 hover:scale-110 hover:font-bold transition-all duration-200 cursor-pointer transform-gpu inline-block" title={title}>—</span>;
   }
   
   if (v == null || v <= 0) {
     const maxLevel = HERO_MAX_LEVELS[th]?.[key] || 0;
     const title = maxLevel > 0 ? `Eligible but not started\nMax level for TH${th}: ${maxLevel}` : "Eligible but not started";
-    return <span className="inline-flex items-center justify-center cursor-help hover:font-medium text-red-500 font-semibold" title={title}><AlertCircle className="w-4 h-4" /></span>;
+    return <span className="inline-flex items-center justify-center text-red-500 font-semibold hover:text-red-700 hover:scale-110 hover:font-bold transition-all duration-200 cursor-pointer transform-gpu" title={title}><AlertCircle className="w-4 h-4" /></span>;
   }
   
   // Hero has a level - show tooltip with max level and completion percentage
@@ -709,7 +801,7 @@ function renderHeroCell(m: Member, key: "bk"|"aq"|"gw"|"rc"|"mp"){
     const percentage = Math.round((v / maxLevel) * 100);
     const title = `Level ${v} / ${maxLevel} (${percentage}%)\nMax level for TH${th}`;
     const colorClass = getHeroProgressColor(percentage);
-    return <span className={`cursor-help hover:underline hover:decoration-dotted hover:underline-offset-2 ${colorClass}`} title={title}>{v}</span>;
+    return <span className={`${colorClass} hover:scale-110 hover:font-bold transition-all duration-200 cursor-pointer transform-gpu inline-block`} title={title}>{v}</span>;
   }
   
   return v;
@@ -734,6 +826,8 @@ export default function HomePage(){
   const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants">("roster");
   const [showDepartureManager, setShowDepartureManager] = useState(false);
   const [departureNotifications, setDepartureNotifications] = useState(0);
+  const [departureNotificationsData, setDepartureNotificationsData] = useState<any>(null);
+  const [dismissedNotifications, setDismissedNotifications] = useState<Set<string>>(new Set());
   const [showDepartureModal, setShowDepartureModal] = useState(false);
   const [selectedMember, setSelectedMember] = useState<Member | null>(null);
   const [showPlayerProfile, setShowPlayerProfile] = useState(false);
@@ -795,6 +889,34 @@ export default function HomePage(){
     }
   };
 
+  // Load dismissed notifications from localStorage
+  const loadDismissedNotifications = () => {
+    const currentTag = clanTag || homeClan;
+    if (!currentTag) return new Set();
+    
+    try {
+      const dismissedKey = `dismissed_notifications_${currentTag.replace('#', '').toUpperCase()}`;
+      const dismissed = localStorage.getItem(dismissedKey);
+      return dismissed ? new Set(JSON.parse(dismissed)) : new Set();
+    } catch (error) {
+      console.error('Failed to load dismissed notifications:', error);
+      return new Set();
+    }
+  };
+
+  // Save dismissed notifications to localStorage
+  const saveDismissedNotifications = (dismissed: Set<string>) => {
+    const currentTag = clanTag || homeClan;
+    if (!currentTag) return;
+    
+    try {
+      const dismissedKey = `dismissed_notifications_${currentTag.replace('#', '').toUpperCase()}`;
+      localStorage.setItem(dismissedKey, JSON.stringify([...dismissed]));
+    } catch (error) {
+      console.error('Failed to save dismissed notifications:', error);
+    }
+  };
+
   // Check for departure notifications
   const checkDepartureNotifications = async () => {
     const currentTag = clanTag || homeClan;
@@ -805,17 +927,54 @@ export default function HomePage(){
       const data = await response.json();
       
       if (data.success) {
-        const totalNotifications = (data.rejoins?.length || 0) + (data.activeDepartures?.length || 0);
+        const dismissed = loadDismissedNotifications();
+        setDismissedNotifications(dismissed);
+        
+        // Filter out dismissed notifications
+        const activeRejoins = data.rejoins?.filter((rejoin: any) => !dismissed.has(`rejoin_${rejoin.memberTag}`)) || [];
+        const activeDepartures = data.activeDepartures?.filter((departure: any) => !dismissed.has(`departure_${departure.memberTag}`)) || [];
+        
+        const totalNotifications = activeRejoins.length + activeDepartures.length;
         setDepartureNotifications(totalNotifications);
+        setDepartureNotificationsData({
+          ...data,
+          rejoins: activeRejoins,
+          activeDepartures: activeDepartures
+        });
       }
     } catch (error) {
       console.error('Failed to check departure notifications:', error);
     }
   };
 
-  // Check notifications when clan tag changes
+  // Dismiss all current notifications
+  const dismissAllNotifications = () => {
+    if (!departureNotificationsData) return;
+    
+    const newDismissed = new Set(dismissedNotifications);
+    
+    // Add all current rejoins to dismissed set
+    departureNotificationsData.rejoins?.forEach((rejoin: any) => {
+      newDismissed.add(`rejoin_${rejoin.memberTag}`);
+    });
+    
+    // Add all current departures to dismissed set
+    departureNotificationsData.activeDepartures?.forEach((departure: any) => {
+      newDismissed.add(`departure_${departure.memberTag}`);
+    });
+    
+    setDismissedNotifications(newDismissed);
+    saveDismissedNotifications(newDismissed);
+    
+    // Update notification count to 0
+    setDepartureNotifications(0);
+  };
+
+  // Check notifications when clan tag changes (different clan = new data needed)
   useEffect(() => {
-    checkDepartureNotifications();
+    if (clanTag || homeClan) {
+      checkDepartureNotifications();
+    }
   }, [clanTag, homeClan]);
 
   // Fetch applicant data from CoC API
@@ -1367,7 +1526,7 @@ Please analyze this clan data and provide insights on:
         setShowDepartureModal(false);
         setSelectedMember(null);
         setMessage(`Recorded departure for ${selectedMember.name}`);
-        await checkDepartureNotifications(); // Refresh notifications
+        // Note: No automatic refresh - notifications will be updated when user explicitly requests fresh data
       } else {
         setMessage(`Failed to record departure for ${selectedMember.name}`);
       }
@@ -1465,7 +1624,10 @@ Please analyze this clan data and provide insights on:
 
 
   const headerEl = (k: SortKey, label: string) =>
-    <span className="cursor-help hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>;
+    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>;
+  
+  const headerElCentered = (k: SortKey, label: string) =>
+    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block text-center w-full" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>;
 
   const clanName = roster?.clanName ?? roster?.meta?.clanName ?? "";
 
@@ -1507,6 +1669,13 @@ Please analyze this clan data and provide insights on:
               <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
             </div>
             <div className="flex items-center space-x-4">
+              <button
+                onClick={checkDepartureNotifications}
+                className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
+                title="Check for new departure notifications"
+              >
+                🔄
+              </button>
               {departureNotifications > 0 && (
               <button
                   onClick={() => setShowDepartureManager(true)}
@@ -1528,102 +1697,102 @@ Please analyze this clan data and provide insights on:
       <div className="w-full px-6 pt-6">
         <div className="relative">
           {/* Tab Container with Background */}
-          <div className="bg-white/80 backdrop-blur-sm rounded-t-xl border border-b-0 border-gray-200 shadow-lg">
-            <nav className="flex">
+          <div className="bg-white/90 backdrop-blur-sm rounded-t-xl border border-b-0 border-gray-200 shadow-xl">
+            <nav className="flex gap-1 p-2">
               <button
                 onClick={() => setActiveTab("roster")}
-                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
                   activeTab === "roster"
-                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                    ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform scale-105 border-2 border-blue-400"
+                    : "text-gray-700 hover:text-blue-600 hover:bg-blue-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-blue-200"
                 }`}
               >
-                <span className="flex items-center space-x-2">
-                  <span>🛡️</span>
+                <span className="flex items-center space-x-3">
+                  <span className="text-lg">🛡️</span>
                   <span>Roster</span>
                 </span>
                 {activeTab === "roster" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab("changes")}
-                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
                   activeTab === "changes"
-                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                    ? "bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg transform scale-105 border-2 border-green-400"
+                    : "text-gray-700 hover:text-green-600 hover:bg-green-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-green-200"
                 }`}
               >
-                <span className="flex items-center space-x-2">
-                  <span>📈</span>
+                <span className="flex items-center space-x-3">
+                  <span className="text-lg">📈</span>
                   <span>Activity</span>
                 </span>
                 {activeTab === "changes" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab("database")}
-                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
                   activeTab === "database"
-                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                    ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg transform scale-105 border-2 border-purple-400"
+                    : "text-gray-700 hover:text-purple-600 hover:bg-purple-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-purple-200"
                 }`}
               >
-                <span className="flex items-center space-x-2">
-                  <span>🗄️</span>
+                <span className="flex items-center space-x-3">
+                  <span className="text-lg">🗄️</span>
                   <span>Player DB</span>
                 </span>
                 {activeTab === "database" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab("coaching")}
-                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
                   activeTab === "coaching"
-                    ? "bg-gradient-to-b from-blue-50 to-white text-blue-700 border-b-2 border-blue-500 shadow-inner"
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                    ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg transform scale-105 border-2 border-indigo-400"
+                    : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-indigo-200"
                 }`}
               >
-                <span className="flex items-center space-x-2">
-                  <span>🤖</span>
+                <span className="flex items-center space-x-3">
+                  <span className="text-lg">🤖</span>
                   <span>AI Coaching</span>
                 </span>
                 {activeTab === "coaching" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-500"></div>
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab("events")}
-                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
                   activeTab === "events"
-                    ? "bg-gradient-to-b from-green-50 to-white text-green-700 border-b-2 border-green-500 shadow-inner"
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                    ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg transform scale-105 border-2 border-emerald-400"
+                    : "text-gray-700 hover:text-emerald-600 hover:bg-emerald-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-emerald-200"
                 }`}
               >
-                <span className="flex items-center space-x-2">
-                  <span>📊</span>
+                <span className="flex items-center space-x-3">
+                  <span className="text-lg">📊</span>
                   <span>Events</span>
                 </span>
                 {activeTab === "events" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-green-500"></div>
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
               <button
                 onClick={() => setActiveTab("applicants")}
-                className={`relative px-6 py-4 font-medium text-sm transition-all duration-200 ${
+                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
                   activeTab === "applicants"
-                    ? "bg-gradient-to-b from-orange-50 to-white text-orange-700 border-b-2 border-orange-500 shadow-inner"
-                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-50/50"
+                    ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg transform scale-105 border-2 border-orange-400"
+                    : "text-gray-700 hover:text-orange-600 hover:bg-orange-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-orange-200"
                 }`}
               >
-                <span className="flex items-center space-x-2">
-                  <span>🎯</span>
+                <span className="flex items-center space-x-3">
+                  <span className="text-lg">🎯</span>
                   <span>Applicants</span>
                 </span>
                 {activeTab === "applicants" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-orange-500"></div>
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
             </nav>
@@ -1798,13 +1967,13 @@ Please analyze this clan data and provide insights on:
                     <Th onClick={()=>toggleSort("name")}> {headerEl("name","Name")} </Th>
                     <Th onClick={()=>toggleSort("tag")}>  {headerEl("tag","Tag")}  </Th>
                     <Th onClick={()=>toggleSort("th")}>   {headerEl("th","TH")}   </Th>
-                    <Th onClick={()=>toggleSort("bk")} className="bg-slate-100">   {headerEl("bk","BK")}   </Th>
-                    <Th onClick={()=>toggleSort("aq")} className="bg-slate-100">   {headerEl("aq","AQ")}   </Th>
-                    <Th onClick={()=>toggleSort("gw")} className="bg-slate-100">   {headerEl("gw","GW")}   </Th>
-                    <Th onClick={()=>toggleSort("rc")} className="bg-slate-100">   {headerEl("rc","RC")}   </Th>
-                    <Th onClick={()=>toggleSort("mp")} className="bg-slate-100">   {headerEl("mp","MP")}   </Th>
-                    <Th onClick={()=>toggleSort("rush")}> {headerEl("rush","Rush %")} </Th>
-                    <Th onClick={()=>toggleSort("trophies")}> {headerEl("trophies","Trophies")} </Th>
+                    <Th onClick={()=>toggleSort("bk")} className="bg-slate-100 text-center">   {headerElCentered("bk","BK")}   </Th>
+                    <Th onClick={()=>toggleSort("aq")} className="bg-slate-100 text-center">   {headerElCentered("aq","AQ")}   </Th>
+                    <Th onClick={()=>toggleSort("gw")} className="bg-slate-100 text-center">   {headerElCentered("gw","GW")}   </Th>
+                    <Th onClick={()=>toggleSort("rc")} className="bg-slate-100 text-center">   {headerElCentered("rc","RC")}   </Th>
+                    <Th onClick={()=>toggleSort("mp")} className="bg-slate-100 text-center">   {headerElCentered("mp","MP")}   </Th>
+                    <Th onClick={()=>toggleSort("rush")} className="text-center"> {headerElCentered("rush","Rush %")} </Th>
+                    <Th onClick={()=>toggleSort("trophies")} className="text-center"> {headerElCentered("trophies","Trophies")} </Th>
                     <Th onClick={()=>toggleSort("donations")}> {headerEl("donations","Don")} </Th>
                     <Th onClick={()=>toggleSort("donationsReceived")}> {headerEl("donationsReceived","Recv")} </Th>
                     <Th onClick={()=>toggleSort("tenure")}> {headerEl("tenure","Tenure (d)")} </Th>
@@ -1817,12 +1986,12 @@ Please analyze this clan data and provide insights on:
                     const th = getTH(m) ?? "";
                     const rp = rushPercent(m, thCaps);
                     return (
-                      <tr key={`${m.tag}-${i}`} className={`border-b border-slate-100 last:border-0 transition-colors hover:bg-blue-50/50 ${i%2===1 ? "bg-slate-50/50" : "bg-white/50"}`}>
+                      <tr key={`${m.tag}-${i}`} className={`border-b border-slate-100 last:border-0 transition-all duration-200 hover:bg-blue-50/50 hover:scale-[1.01] hover:shadow-md cursor-pointer ${i%2===1 ? "bg-slate-50/50" : "bg-white/50"}`}>
                         <Td>
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleOpenPlayerProfile(m)}
-                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium hover:scale-105 transition-all duration-200"
                               title="View player profile"
                             >
                               {m.name}
@@ -1846,13 +2015,13 @@ Please analyze this clan data and provide insights on:
                         <Td className="text-center bg-slate-100">{renderHeroCell(m,"mp")}</Td>
                         <Td className={`text-center ${rushClass(rp)}`}>
                           <span
-                            className="cursor-help hover:underline hover:decoration-dotted hover:underline-offset-2 inline-block"
+                            className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:scale-110 hover:font-bold transition-all duration-200 cursor-pointer inline-block transform-gpu"
                             title={`${HEAD_TIPS["Rush %"]}\n${rushDetail(m)}`}
                           >
                             {rp}%
                           </span>
                         </Td>
-                        <Td>{m.trophies ?? ""}</Td>
+                        <Td className="text-center">{m.trophies ?? ""}</Td>
                         <Td>
                           <div className="flex flex-col">
                             <span>{m.donations ?? ""}</span>
@@ -1889,14 +2058,6 @@ Please analyze this clan data and provide insights on:
                               >
                                 {activity.lastActivityDate}
                               </button>
-                                {activity.isManualOverride && activity.manualOverride && (
-                                  <span 
-                                    className={`px-2 py-1 rounded-full text-xs font-medium border ${getManualBadgeColor(activity.manualOverride)}`}
-                                    title={`Manual override: ${activity.manualOverride}`}
-                                  >
-                                    Manual
-                                  </span>
-                                )}
                                 {!previousMember && !activity.isManualOverride && (
                                   <span className="ml-1 text-gray-400" title="Estimated data - will improve with more snapshot history">*</span>
                                 )}
@@ -2113,9 +2274,17 @@ Please analyze this clan data and provide insights on:
           clanTag={clanTag || homeClan || ""}
           onClose={() => {
             setShowDepartureManager(false);
-            checkDepartureNotifications(); // Refresh notifications after closing
           }}
-          onNotificationChange={checkDepartureNotifications}
+          onNotificationChange={(updatedData) => {
+            // Update cached data directly instead of making new API call
+            if (updatedData) {
+              setDepartureNotificationsData(updatedData);
+              const totalNotifications = (updatedData.rejoins?.length || 0) + (updatedData.activeDepartures?.length || 0);
+              setDepartureNotifications(totalNotifications);
+            }
+          }}
+          onDismissAll={dismissAllNotifications}
+          cachedNotifications={departureNotificationsData}
         />
       )}
 
@@ -2605,6 +2774,7 @@ function PlayerProfileModal({
           </div>
         </div>
 
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Left Column - Game Stats */}
           <div className="space-y-6">
@@ -2725,14 +2895,6 @@ function PlayerProfileModal({
                               <div>
                                 <div className="flex items-center gap-2 mb-2">
                                   <span className="text-gray-600">{activity.lastActivityDate}</span>
-                                  {activity.isManualOverride && activity.manualOverride && (
-                                    <span 
-                                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getManualBadgeColor(activity.manualOverride)}`}
-                                      title={`Manual override: ${activity.manualOverride}`}
-                                    >
-                                      Manual
-                                    </span>
-                                  )}
                                 </div>
                                 <p className="text-gray-600 text-xs mb-1">{activity.lastActivity}</p>
                                 <p className="text-xs text-gray-500">
@@ -2793,6 +2955,7 @@ function PlayerProfileModal({
                 </div>
               </div>
             </div>
+
 
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h3 className="text-lg font-semibold mb-4">Clan History</h3>

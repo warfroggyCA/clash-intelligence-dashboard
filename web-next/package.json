@@ -1,7 +1,7 @@
 {
   "name": "clash-intelligence",
   "private": true,
-  "version": "0.8.1",
+  "version": "0.8.3",
   "scripts": {
     "dev": "next dev -p 5050",
     "build": "next build",
@@ -15,6 +15,7 @@
     "openai": "^5.19.1",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "recharts": "^3.2.0",
     "undici": "^7.15.0"
   },
   "devDependencies": {
