@@ -12,7 +12,7 @@
  * - Snapshot versioning for historical data
  * - Modern UI with gradients and responsive design
  * 
- * Version: 0.6
+ * Version: 0.8.4
  * Last Updated: January 2025
  */
 
@@ -1698,18 +1698,18 @@ Please analyze this clan data and provide insights on:
         <div className="relative">
           {/* Tab Container with Background */}
           <div className="bg-white/90 backdrop-blur-sm rounded-t-xl border border-b-0 border-gray-200 shadow-xl">
-            <nav className="flex gap-1 p-2">
+            <nav className="flex flex-wrap gap-1 p-2 sm:flex-nowrap">
               <button
                 onClick={() => setActiveTab("roster")}
-                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
+                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "roster"
                     ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform scale-105 border-2 border-blue-400"
                     : "text-gray-700 hover:text-blue-600 hover:bg-blue-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-blue-200"
                 }`}
               >
-                <span className="flex items-center space-x-3">
-                  <span className="text-lg">🛡️</span>
-                  <span>Roster</span>
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">🛡️</span>
+                  <span className="hidden sm:inline">Roster</span>
                 </span>
                 {activeTab === "roster" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -1717,15 +1717,15 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("changes")}
-                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
+                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "changes"
                     ? "bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg transform scale-105 border-2 border-green-400"
                     : "text-gray-700 hover:text-green-600 hover:bg-green-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-green-200"
                 }`}
               >
-                <span className="flex items-center space-x-3">
-                  <span className="text-lg">📈</span>
-                  <span>Activity</span>
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">📈</span>
+                  <span className="hidden sm:inline">Activity</span>
                 </span>
                 {activeTab === "changes" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -1733,15 +1733,15 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("database")}
-                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
+                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "database"
                     ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg transform scale-105 border-2 border-purple-400"
                     : "text-gray-700 hover:text-purple-600 hover:bg-purple-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-purple-200"
                 }`}
               >
-                <span className="flex items-center space-x-3">
-                  <span className="text-lg">🗄️</span>
-                  <span>Player DB</span>
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">🗄️</span>
+                  <span className="hidden sm:inline">Player DB</span>
                 </span>
                 {activeTab === "database" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -1749,15 +1749,15 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("coaching")}
-                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
+                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "coaching"
                     ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg transform scale-105 border-2 border-indigo-400"
                     : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-indigo-200"
                 }`}
               >
-                <span className="flex items-center space-x-3">
-                  <span className="text-lg">🤖</span>
-                  <span>AI Coaching</span>
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">🤖</span>
+                  <span className="hidden sm:inline">AI Coaching</span>
                 </span>
                 {activeTab === "coaching" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -1765,15 +1765,15 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("events")}
-                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
+                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "events"
                     ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg transform scale-105 border-2 border-emerald-400"
                     : "text-gray-700 hover:text-emerald-600 hover:bg-emerald-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-emerald-200"
                 }`}
               >
-                <span className="flex items-center space-x-3">
-                  <span className="text-lg">📊</span>
-                  <span>Events</span>
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">📊</span>
+                  <span className="hidden sm:inline">Events</span>
                 </span>
                 {activeTab === "events" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -1781,15 +1781,15 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("applicants")}
-                className={`relative px-8 py-5 font-semibold text-base transition-all duration-300 rounded-lg ${
+                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "applicants"
                     ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg transform scale-105 border-2 border-orange-400"
                     : "text-gray-700 hover:text-orange-600 hover:bg-orange-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-orange-200"
                 }`}
               >
-                <span className="flex items-center space-x-3">
-                  <span className="text-lg">🎯</span>
-                  <span>Applicants</span>
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">🎯</span>
+                  <span className="hidden sm:inline">Applicants</span>
                 </span>
                 {activeTab === "applicants" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -1804,11 +1804,11 @@ Please analyze this clan data and provide insights on:
         {activeTab === "roster" ? (
           <>
             {/* Controls */}
-        <section className="grid gap-4 p-6 rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg border border-white/20">
-          <div className="grid gap-4 sm:grid-cols-4">
+        <section className="grid gap-4 p-4 sm:p-6 rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg border border-white/20">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
             <div className="grid gap-1">
               <label className="text-sm font-medium">Clan Tag</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <input
                   value={clanTag}
                   onChange={(e) => {
@@ -1820,13 +1820,13 @@ Please analyze this clan data and provide insights on:
                     setClanTag(value);
                   }}
                   onKeyDown={(e)=>{ if (e.key === "Enter") onLoad().catch(()=>{}); }}
-                  className="border rounded-xl px-3 py-2 w-32 focus:outline-none focus:ring"
+                  className="border rounded-xl px-3 py-2 w-full sm:w-32 focus:outline-none focus:ring"
                   placeholder="2PR8R8V8P"
                   title="Enter a clan tag (with or without #) and press Load"
                 />
                 <button 
                   onClick={()=>onLoad().catch(()=>{})} 
-                  className="rounded-xl px-3 py-2 bg-purple-100 text-purple-700 border border-purple-200 shadow-sm hover:shadow hover:bg-purple-200 transition-colors"
+                  className="rounded-xl px-3 py-2 bg-purple-100 text-purple-700 border border-purple-200 shadow-sm hover:shadow hover:bg-purple-200 transition-colors text-sm sm:text-base"
                   title="Load fresh clan data from Clash of Clans API"
                 >
                   {status==="loading" ? "⏳ Loading…" : "🔄 Load"}
@@ -1836,7 +1836,7 @@ Please analyze this clan data and provide insights on:
 
             <div className="grid gap-1">
               <label className="text-sm font-medium">Home</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button 
                   onClick={onSetHome} 
                   className="rounded-xl px-3 py-2 bg-blue-100 text-blue-700 border border-blue-200 shadow-sm hover:shadow hover:bg-blue-200 transition-colors text-sm"
@@ -1856,7 +1856,7 @@ Please analyze this clan data and provide insights on:
 
             <div className="grid gap-1">
               <label className="text-sm font-medium">Quick Actions</label>
-              <div className="flex gap-2">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <button 
                   onClick={() => setShowCreatePlayerNote(true)} 
                   className="rounded-xl px-3 py-2 bg-blue-100 text-blue-700 border border-blue-200 shadow-sm hover:shadow hover:bg-blue-200 transition-colors text-sm"
@@ -1878,8 +1878,8 @@ Please analyze this clan data and provide insights on:
 
           <div className="grid gap-1">
             <label className="text-sm font-medium">Data & Sorting</label>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                 <select 
                   value={selectedSnapshot} 
                   onChange={(e) => {
@@ -1890,7 +1890,7 @@ Please analyze this clan data and provide insights on:
                       loadStoredData(clanTag || homeClan || "", e.target.value).catch(()=>{});
                     }
                   }}
-                  className="border rounded-xl px-3 py-2 w-64"
+                  className="border rounded-xl px-3 py-2 w-full sm:w-64"
                 >
                   <option value="latest">Latest Snapshot</option>
                   {availableSnapshots.map((snapshot) => (
@@ -1901,29 +1901,31 @@ Please analyze this clan data and provide insights on:
                 </select>
                 <button
                   onClick={() => loadAvailableSnapshots(clanTag || homeClan || "")}
-                  className="rounded-xl px-3 py-2 bg-gray-100 text-gray-700 border border-gray-200 shadow-sm hover:shadow hover:bg-gray-200 transition-colors"
+                  className="rounded-xl px-3 py-2 bg-gray-100 text-gray-700 border border-gray-200 shadow-sm hover:shadow hover:bg-gray-200 transition-colors text-sm"
                   title="Refresh the list of available snapshots"
                 >
                   🔄 Refresh
                 </button>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                 <label className="text-sm opacity-70">Sort by</label>
-                <select value={sortKey} onChange={(e)=>setSortKey(e.target.value as SortKey)} className="border rounded-xl px-3 py-2">
-                  <option value="trophies">trophies</option><option value="name">name</option><option value="th">TH</option>
-                  <option value="bk">BK</option><option value="aq">AQ</option><option value="gw">GW</option><option value="rc">RC</option><option value="mp">MP</option>
-                  <option value="rush">rush %</option><option value="donations">don</option><option value="donationsReceived">recv</option>
-                  <option value="tenure">tenure</option><option value="activity">last activity</option><option value="role">role</option>
-                </select>
-                <select value={sortDir} onChange={(e)=>setSortDir(e.target.value as "asc"|"desc")} className="border rounded-xl px-3 py-2">
-                  <option value="desc">Desc</option><option value="asc">Asc</option>
-                </select>
+                <div className="flex gap-2">
+                  <select value={sortKey} onChange={(e)=>setSortKey(e.target.value as SortKey)} className="border rounded-xl px-3 py-2 text-sm">
+                    <option value="trophies">trophies</option><option value="name">name</option><option value="th">TH</option>
+                    <option value="bk">BK</option><option value="aq">AQ</option><option value="gw">GW</option><option value="rc">RC</option><option value="mp">MP</option>
+                    <option value="rush">rush %</option><option value="donations">don</option><option value="donationsReceived">recv</option>
+                    <option value="tenure">tenure</option><option value="activity">last activity</option><option value="role">role</option>
+                  </select>
+                  <select value={sortDir} onChange={(e)=>setSortDir(e.target.value as "asc"|"desc")} className="border rounded-xl px-3 py-2 text-sm">
+                    <option value="desc">Desc</option><option value="asc">Asc</option>
+                  </select>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
                 <label className="text-sm opacity-70">Page size</label>
-                <select value={String(pageSize)} onChange={(e)=>{ setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-xl px-3 py-2">
+                <select value={String(pageSize)} onChange={(e)=>{ setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-xl px-3 py-2 text-sm">
                   <option value="10">10/page</option><option value="25">25/page</option><option value="50">50/page</option><option value="100">100/page</option>
                 </select>
               </div>
@@ -1960,7 +1962,115 @@ Please analyze this clan data and provide insights on:
 
           {roster && total > 0 && (
             <>
-              <div className="overflow-x-auto">
+              {/* Mobile Card Layout */}
+              <div className="block md:hidden space-y-3">
+                {pageRows.map((m,i)=> {
+                  const th = getTH(m) ?? "";
+                  const rp = rushPercent(m, thCaps);
+                  const balance = getDonationBalance(m);
+                  const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
+                  const activity = calculateActivityScore(m, previousMember);
+                  
+                  return (
+                    <div key={`${m.tag}-${i}`} className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-4 border border-white/20">
+                      {/* Header with Name and Role */}
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center space-x-2">
+                          <button
+                            onClick={() => handleOpenPlayerProfile(m)}
+                            className="text-blue-600 hover:text-blue-800 hover:underline font-medium text-lg"
+                            title="View player profile"
+                          >
+                            {m.name}
+                          </button>
+                          {hasNameChanged(m, playerNameHistory) && (
+                            <span 
+                              className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full"
+                              title={`Name changed from "${getPreviousName(m, playerNameHistory)}"`}
+                            >
+                              📝
+                            </span>
+                          )}
+                        </div>
+                        <span className="text-sm font-medium text-gray-600">{renderRole(m.role)}</span>
+                      </div>
+                      
+                      {/* Tag */}
+                      <div className="text-sm text-gray-500 mb-3">{m.tag}</div>
+                      
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div>
+                          <span className="text-gray-500">TH:</span>
+                          <span className="ml-1 font-medium">{th}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Trophies:</span>
+                          <span className="ml-1 font-medium">{m.trophies ?? ""}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">BK:</span>
+                          <span className="ml-1 font-medium">{renderHeroCell(m,"bk")}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">AQ:</span>
+                          <span className="ml-1 font-medium">{renderHeroCell(m,"aq")}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">GW:</span>
+                          <span className="ml-1 font-medium">{renderHeroCell(m,"gw")}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">RC:</span>
+                          <span className="ml-1 font-medium">{renderHeroCell(m,"rc")}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">MP:</span>
+                          <span className="ml-1 font-medium">{renderHeroCell(m,"mp")}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Rush:</span>
+                          <span className={`ml-1 font-medium ${rushClass(rp)}`}>{rp}%</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Donations:</span>
+                          <span className="ml-1 font-medium">{m.donations ?? ""}</span>
+                          {balance.isNegative && balance.balance > 0 && (
+                            <div className="text-xs text-red-600 font-semibold">-{balance.balance}</div>
+                          )}
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Received:</span>
+                          <span className="ml-1 font-medium">{m.donationsReceived ?? ""}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Tenure:</span>
+                          <span className="ml-1 font-medium">{getTenure(m)}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Activity:</span>
+                          <button
+                            onClick={() => {
+                              setSelectedPlayer(m);
+                              setShowPlayerProfile(true);
+                            }}
+                            className="ml-1 text-sm font-medium hover:underline hover:text-blue-600 transition-colors"
+                            title={`Click to edit activity for ${m.name}`}
+                          >
+                            {activity.lastActivityDate}
+                          </button>
+                          {!previousMember && !activity.isManualOverride && (
+                            <span className="ml-1 text-gray-400" title="Estimated data">*</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop Table Layout */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm bg-white/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden">
                 <thead className="text-left">
                   <tr className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
