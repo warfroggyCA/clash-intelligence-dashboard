@@ -30,7 +30,7 @@ type CoCClan = { tag: string; name?: string };
 const BASE = process.env.COC_API_BASE || "https://api.clashofclans.com/v1";
 
 // Force IPv4 for all requests (some keys/IP-allowlists are v4-only)
-const agent4 = new Agent({ connect: { family: 4, ipv6Only: false } });
+const agent4 = new Agent({ connect: { family: 4 } });
 
 function encTag(tag: string) {
   const t = String(tag || "").trim();
@@ -44,6 +44,7 @@ async function api<T>(path: string): Promise<T> {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     cache: "no-store",
     // critical line: use IPv4-only agent
+    // @ts-ignore - undici agent for IPv4
     dispatcher: agent4,
   });
   if (!res.ok) {

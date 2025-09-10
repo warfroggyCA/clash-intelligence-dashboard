@@ -175,12 +175,12 @@ const calculateAgedActivity = (originalActivity: ActivityOption, timestamp: stri
   
   // Define aging progression
   const agingMap: Record<ActivityOption, ActivityOption[]> = {
-    "Today": ["Today", "1-2 days", "3-5 days", "1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
-    "1-2 days": ["1-2 days", "3-5 days", "1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
-    "3-5 days": ["3-5 days", "1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
-    "1 week": ["1 week", "1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
-    "1-2 weeks": ["1-2 weeks", "2-3 weeks", "1 month", "1+ months", "Inactive"],
-    "2-3 weeks": ["2-3 weeks", "1 month", "1+ months", "Inactive"],
+    "Today": ["Today", "1-2 days", "3-5 days", "1 week", "2 weeks", "3 weeks", "1 month", "1+ months", "Inactive"],
+    "1-2 days": ["1-2 days", "3-5 days", "1 week", "2 weeks", "3 weeks", "1 month", "1+ months", "Inactive"],
+    "3-5 days": ["3-5 days", "1 week", "2 weeks", "3 weeks", "1 month", "1+ months", "Inactive"],
+    "1 week": ["1 week", "2 weeks", "3 weeks", "1 month", "1+ months", "Inactive"],
+    "2 weeks": ["2 weeks", "3 weeks", "1 month", "1+ months", "Inactive"],
+    "3 weeks": ["3 weeks", "1 month", "1+ months", "Inactive"],
     "1 month": ["1 month", "1+ months", "Inactive"],
     "1+ months": ["1+ months", "Inactive"],
     "Inactive": ["Inactive"]
@@ -215,17 +215,17 @@ const calculateAgedActivity = (originalActivity: ActivityOption, timestamp: stri
     if (daysDiff >= 56) ageIndex = 5; // 1+ months
     if (daysDiff >= 86) ageIndex = 6; // Inactive
   } else if (originalActivity === "1 week") {
-    if (daysDiff >= 7) ageIndex = 1; // 1-2 weeks
-    if (daysDiff >= 14) ageIndex = 2; // 2-3 weeks
+    if (daysDiff >= 7) ageIndex = 1; // 2 weeks
+    if (daysDiff >= 14) ageIndex = 2; // 3 weeks
     if (daysDiff >= 23) ageIndex = 3; // 1 month
     if (daysDiff >= 53) ageIndex = 4; // 1+ months
     if (daysDiff >= 83) ageIndex = 5; // Inactive
-  } else if (originalActivity === "1-2 weeks") {
-    if (daysDiff >= 7) ageIndex = 1; // 2-3 weeks
+  } else if (originalActivity === "2 weeks") {
+    if (daysDiff >= 7) ageIndex = 1; // 3 weeks
     if (daysDiff >= 16) ageIndex = 2; // 1 month
     if (daysDiff >= 46) ageIndex = 3; // 1+ months
     if (daysDiff >= 76) ageIndex = 4; // Inactive
-  } else if (originalActivity === "2-3 weeks") {
+  } else if (originalActivity === "3 weeks") {
     if (daysDiff >= 7) ageIndex = 1; // 1 month
     if (daysDiff >= 37) ageIndex = 2; // 1+ months
     if (daysDiff >= 67) ageIndex = 3; // Inactive
@@ -700,7 +700,7 @@ const renderRole = (role?: string) => {
     }
   };
   
-  const config = roleConfig[formattedRole] || roleConfig["Member"];
+  const config = roleConfig[formattedRole as keyof typeof roleConfig] || roleConfig["Member"];
   
   return (
     <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-semibold ${config.color} shadow-sm`}>
@@ -867,7 +867,7 @@ export default function HomePage(){
         } catch (error) {
           console.error("Auto-loading failed:", error);
           setStatus("error");
-          setMessage(`Auto-loading failed: ${error.message || "Unknown error"}`);
+          setMessage(`Auto-loading failed: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
       };
       
@@ -889,17 +889,17 @@ export default function HomePage(){
   };
 
   // Load dismissed notifications from localStorage
-  const loadDismissedNotifications = () => {
+  const loadDismissedNotifications = (): Set<string> => {
     const currentTag = clanTag || homeClan;
-    if (!currentTag) return new Set();
+    if (!currentTag) return new Set<string>();
     
     try {
       const dismissedKey = `dismissed_notifications_${currentTag.replace('#', '').toUpperCase()}`;
       const dismissed = localStorage.getItem(dismissedKey);
-      return dismissed ? new Set(JSON.parse(dismissed)) : new Set();
+      return dismissed ? new Set<string>(JSON.parse(dismissed)) : new Set<string>();
     } catch (error) {
       console.error('Failed to load dismissed notifications:', error);
-      return new Set();
+      return new Set<string>();
     }
   };
 
@@ -1181,8 +1181,8 @@ export default function HomePage(){
         // Track hero upgrades (5+ level gains)
         const heroKeys: Array<keyof Member> = ['bk', 'aq', 'gw', 'rc', 'mp'];
         heroKeys.forEach(hero => {
-          const currentLevel = member[hero] || 0;
-          const previousLevel = previousMember[hero] || 0;
+          const currentLevel = Number(member[hero]) || 0;
+          const previousLevel = Number(previousMember[hero]) || 0;
           if (currentLevel - previousLevel >= 5) {
             newEvents.push({
               id: `${tag}_${hero}_${currentTime}`,
@@ -1376,7 +1376,7 @@ ${member.name} (${member.tag})
       return `${activity.lastActivityDate} (${activity.level})${estimationNote}`;
     })()}
 - Rush %: ${member.rushPercent}%
-- Heroes: BK:${member.bk || 'N/A'} AQ:${member.aq || 'N/A'} GW:${member.gw || 'N/A'} RC:${member.rc || 'N/A'} MP:${member.mp || 'N/A'}
+- Heroes: BK:${(member as any).bk || 'N/A'} AQ:${(member as any).aq || 'N/A'} GW:${(member as any).gw || 'N/A'} RC:${(member as any).rc || 'N/A'} MP:${(member as any).mp || 'N/A'}
 - Recent Clans: ${member.recentClans?.join(', ') || 'None'}
 `).join('')}
 
@@ -2461,7 +2461,7 @@ Please analyze this clan data and provide insights on:
   );
 }
 
-function Th({ children, onClick }:{ children: React.ReactNode; onClick?: ()=>void }){ return <th className="py-3 px-4 cursor-pointer font-semibold text-slate-700 hover:bg-slate-100/50 transition-colors" onClick={onClick}>{children}</th>; }
+function Th({ children, onClick, className }:{ children: React.ReactNode; onClick?: ()=>void; className?: string }){ return <th className={`py-3 px-4 cursor-pointer font-semibold text-slate-700 hover:bg-slate-100/50 transition-colors ${className || ""}`} onClick={onClick}>{children}</th>; }
 function Td({ children, className }:{ children: React.ReactNode; className?: string }){ return <td className={`py-3 px-4 ${className || ""}`}>{children}</td>; }
 function rushClass(p:number){ return p>=70 ? "text-red-700 font-semibold" : p>=40 ? "text-amber-600" : "text-green-700"; }
 

@@ -264,7 +264,7 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       const prevLevel = prevMember[hero];
       const currLevel = currentMember[hero];
       
-      if (prevLevel !== currLevel && currLevel !== null && currLevel > (prevLevel || 0)) {
+      if (prevLevel !== currLevel && currLevel !== null && currLevel !== undefined && currLevel > (prevLevel || 0)) {
         changes.push({
           type: 'hero_upgrade',
           member: {

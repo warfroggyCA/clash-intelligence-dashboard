@@ -77,7 +77,7 @@ export async function GET(req: Request) {
               lastSeen: new Date().toISOString(),
               lastRole: departure.member.role,
               lastTownHall: departure.member.townHallLevel,
-              lastTrophies: departure.member.trophies,
+              lastTrophies: (departure.member as any).trophies,
             });
             console.log(`[CRON] Recorded departure for ${departure.member.name}`);
           }

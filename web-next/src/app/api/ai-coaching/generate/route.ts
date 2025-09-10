@@ -19,22 +19,22 @@ export async function POST(request: NextRequest) {
 
     // Calculate additional metrics for more specific analysis
     const members = clanData.members;
-    const totalDonations = members.reduce((sum, m) => sum + (m.donations || 0), 0);
+    const totalDonations = members.reduce((sum: number, m: any) => sum + (m.donations || 0), 0);
     const avgDonations = totalDonations / members.length;
-    const topDonators = members.sort((a, b) => (b.donations || 0) - (a.donations || 0)).slice(0, 3);
-    const lowDonators = members.filter(m => (m.donations || 0) < avgDonations * 0.5);
-    const inactiveMembers = members.filter(m => typeof m.lastSeen === "number" && m.lastSeen > 3);
-    const newMembers = members.filter(m => (m.tenure || 0) < 7);
-    const highTrophyMembers = members.filter(m => (m.trophies || 0) > 2000);
-    const lowTrophyMembers = members.filter(m => (m.trophies || 0) < 1000);
-    const topTrophyGainers = members.sort((a, b) => (b.trophies || 0) - (a.trophies || 0)).slice(0, 3);
+    const topDonators = members.sort((a: any, b: any) => (b.donations || 0) - (a.donations || 0)).slice(0, 3);
+    const lowDonators = members.filter((m: any) => (m.donations || 0) < avgDonations * 0.5);
+    const inactiveMembers = members.filter((m: any) => typeof m.lastSeen === "number" && m.lastSeen > 3);
+    const newMembers = members.filter((m: any) => (m.tenure || 0) < 7);
+    const highTrophyMembers = members.filter((m: any) => (m.trophies || 0) > 2000);
+    const lowTrophyMembers = members.filter((m: any) => (m.trophies || 0) < 1000);
+    const topTrophyGainers = members.sort((a: any, b: any) => (b.trophies || 0) - (a.trophies || 0)).slice(0, 3);
 
     const prompt = `You are an expert Clash of Clans clan leader. Analyze this SPECIFIC clan data and provide personalized coaching advice based on what's actually happening RIGHT NOW.
 
 CLAN: ${clanData.clanName} (${clanData.clanTag}) - ${clanData.memberCount} members
 
 SPECIFIC MEMBER DATA:
-${members.map(member => `
+${members.map((member: any) => `
 ${member.name} (${member.tag})
 - Role: ${member.role} | TH: ${member.townHall} | Trophies: ${member.trophies}
 - Donations: ${member.donations} given, ${member.donationsReceived} received
@@ -44,12 +44,12 @@ ${member.name} (${member.tag})
 
 CLAN METRICS:
 - Average donations per member: ${Math.round(avgDonations)}
-- Top donators: ${topDonators.map(m => m.name).join(', ')}
-- Members with low donations: ${lowDonators.map(m => m.name).join(', ')}
-- Inactive members (>3 days): ${inactiveMembers.map(m => `${m.name} (${m.lastSeen}d)`).join(', ')}
-- New members (<7 days): ${newMembers.map(m => m.name).join(', ')}
-- High trophy members (>2000): ${highTrophyMembers.map(m => m.name).join(', ')}
-- Low trophy members (<1000): ${lowTrophyMembers.map(m => m.name).join(', ')}
+- Top donators: ${topDonators.map((m: any) => m.name).join(', ')}
+- Members with low donations: ${lowDonators.map((m: any) => m.name).join(', ')}
+- Inactive members (>3 days): ${inactiveMembers.map((m: any) => `${m.name} (${m.lastSeen}d)`).join(', ')}
+- New members (<7 days): ${newMembers.map((m: any) => m.name).join(', ')}
+- High trophy members (>2000): ${highTrophyMembers.map((m: any) => m.name).join(', ')}
+- Low trophy members (<1000): ${lowTrophyMembers.map((m: any) => m.name).join(', ')}
 
 Provide 3-5 SPECIFIC, PERSONALIZED recommendations based on what's actually happening in this clan. Use REAL NAMES and SPECIFIC SITUATIONS.
 

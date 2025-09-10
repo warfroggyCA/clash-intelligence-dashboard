@@ -38,6 +38,7 @@ export async function POST(req: Request) {
           unread: true,
           actioned: false,
           createdAt: new Date().toISOString(),
+          gameChatMessages: [],
         };
         
         // Save change summary
