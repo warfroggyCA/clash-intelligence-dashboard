@@ -854,7 +854,6 @@ export default function HomePage(){
   useEffect(() => {
     const saved = (typeof window !== "undefined" && window.localStorage.getItem("homeClanTag")) || "";
     const initial = (saved || fromCfg || "").toUpperCase();
-    console.log("Auto-loading: saved=", saved, "fromCfg=", fromCfg, "initial=", initial);
     setClanTag(initial);
     if (initial) {
       // Set home clan and auto-load stored snapshot data
@@ -863,11 +862,8 @@ export default function HomePage(){
       // Load snapshots first, then load stored data
       const initializeData = async () => {
         try {
-          console.log("Starting auto-loading for clan:", initial);
           await loadAvailableSnapshots(initial);
-          console.log("Snapshots loaded, now loading stored data...");
           await loadStoredData(initial);
-          console.log("Auto-loading completed successfully");
         } catch (error) {
           console.error("Auto-loading failed:", error);
           setStatus("error");
@@ -876,8 +872,6 @@ export default function HomePage(){
       };
       
       initializeData();
-    } else {
-      console.log("No initial clan tag found, showing empty state");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1288,7 +1282,6 @@ export default function HomePage(){
       setStatus("success");
       setMessage(`Loaded ${j.members?.length ?? 0} members from stored data (${j.clanName || raw}).`);
       setPage(1);
-      console.log("Successfully loaded roster with", j.members?.length, "members");
     } catch (e:any) {
       console.error("loadStoredData error:", e);
       setStatus("error");
