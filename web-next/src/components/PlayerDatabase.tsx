@@ -184,12 +184,12 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
       {/* Player Detail Modal */}
       {showPlayerModal && selectedPlayer && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">Player: {selectedPlayer.name}</h2>
-              <button onClick={closePlayerModal} className="text-gray-500 hover:text-gray-700">
-                <X className="w-6 h-6" />
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-4 sm:mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold truncate pr-2">Player: {selectedPlayer.name}</h2>
+              <button onClick={closePlayerModal} className="text-gray-500 hover:text-gray-700 flex-shrink-0">
+                <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 

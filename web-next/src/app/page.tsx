@@ -760,12 +760,25 @@ export default function HomePage(){
   useEffect(() => {
     const saved = (typeof window !== "undefined" && window.localStorage.getItem("homeClanTag")) || "";
     const initial = (saved || fromCfg || "").toUpperCase();
+    console.log("Auto-loading: saved=", saved, "fromCfg=", fromCfg, "initial=", initial);
     setClanTag(initial);
     if (initial) {
       // Set home clan and auto-load stored snapshot data
       setHomeClan(initial);
-      loadAvailableSnapshots(initial);
-      loadStoredData(initial).catch(()=>{});
+      
+      // Load snapshots first, then load stored data
+      const initializeData = async () => {
+        try {
+          await loadAvailableSnapshots(initial);
+          await loadStoredData(initial);
+        } catch (error) {
+          console.error("Auto-loading failed:", error);
+          setStatus("error");
+          setMessage(`Auto-loading failed: ${error.message || "Unknown error"}`);
+        }
+      };
+      
+      initializeData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1060,23 +1073,30 @@ export default function HomePage(){
   };
 
   // Load available snapshots for a clan
-  const loadAvailableSnapshots = async (clanTag: string) => {
+  const loadAvailableSnapshots = async (clanTag: string): Promise<void> => {
     try {
       const response = await fetch(`/api/snapshots/list?clanTag=${encodeURIComponent(clanTag)}`);
       const data = await response.json();
       
       if (data.success) {
         setAvailableSnapshots(data.snapshots || []);
+        console.log("Loaded snapshots:", data.snapshots?.length || 0);
       }
     } catch (error) {
       console.error('Failed to load snapshots:', error);
+      throw error;
     }
   };
 
   // Load stored snapshot data (not live data)
   async function loadStoredData(tagParam?: string, snapshotDate?: string) {
     const raw = (tagParam ?? clanTag ?? "").trim().toUpperCase();
-    if (!raw) { setMessage("Enter a clan tag (e.g., #2PR8R8V8P) and press Load."); return; }
+    console.log("loadStoredData called with:", { tagParam, clanTag, raw, snapshotDate });
+    if (!raw) { 
+      console.log("No clan tag provided, showing message");
+      setMessage("Enter a clan tag (e.g., #2PR8R8V8P) and press Load."); 
+      return; 
+    }
     
     setStatus("loading"); 
     setMessage(`Loading stored data for ${raw}…`);
@@ -1087,8 +1107,12 @@ export default function HomePage(){
         params.set("date", snapshotDate);
       }
       
-      const r = await fetch(`/api/roster?${params.toString()}`, { cache: "no-store" });
+      const url = `/api/roster?${params.toString()}`;
+      console.log("Fetching from URL:", url);
+      const r = await fetch(url, { cache: "no-store" });
       const j = await r.json();
+      
+      console.log("API response:", { ok: r.ok, status: r.status, data: j });
       
       if (!r.ok) throw new Error(j?.error || "Failed to load stored data.");
       
@@ -1096,7 +1120,9 @@ export default function HomePage(){
       setStatus("success");
       setMessage(`Loaded ${j.members?.length ?? 0} members from stored data (${j.clanName || raw}).`);
       setPage(1);
+      console.log("Successfully loaded roster with", j.members?.length, "members");
     } catch (e:any) {
+      console.error("loadStoredData error:", e);
       setStatus("error");
       setMessage(e?.message || "Failed to load stored data.");
     }
@@ -1679,17 +1705,6 @@ Please analyze this clan data and provide insights on:
               </div>
             </div>
 
-            <div className="grid gap-1">
-              <label className="text-sm font-medium">AI Summary</label>
-              <button
-                onClick={generateAISummary}
-                disabled={status === "loading"}
-                className="rounded-xl px-3 py-2 bg-purple-100 text-purple-700 border border-purple-200 shadow-sm hover:shadow hover:bg-purple-200 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                title="Generate an AI-powered summary of current clan state and changes"
-              >
-                {status === "loading" ? "⏳ Generating..." : "🤖 AI Summary"}
-              </button>
-            </div>
           </div>
 
           <div className="grid gap-1">
@@ -1776,7 +1791,8 @@ Please analyze this clan data and provide insights on:
 
           {roster && total > 0 && (
             <>
-              <table className="min-w-full text-sm bg-white/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-sm bg-white/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden">
                 <thead className="text-left">
                   <tr className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
                     <Th onClick={()=>toggleSort("name")}> {headerEl("name","Name")} </Th>
@@ -1894,18 +1910,22 @@ Please analyze this clan data and provide insights on:
                   })}
                 </tbody>
               </table>
+              </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3">
-                <button onClick={()=>setPage(p=>Math.max(1,p-1))} className="rounded-xl px-3 py-2 border" disabled={pageSafe<=1}>Prev</button>
-                <span className="text-sm">Page {pageSafe} / {totalPages}</span>
-                <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="rounded-xl px-3 py-2 border" disabled={pageSafe>=totalPages}>Next</button>
+              <div className="flex items-center justify-center sm:justify-end gap-2 sm:gap-3 pt-3">
+                <button onClick={()=>setPage(p=>Math.max(1,p-1))} className="rounded-xl px-2 sm:px-3 py-1 sm:py-2 border text-sm" disabled={pageSafe<=1}>Prev</button>
+                <span className="text-xs sm:text-sm">Page {pageSafe} / {totalPages}</span>
+                <button onClick={()=>setPage(p=>Math.min(totalPages,p+1))} className="rounded-xl px-2 sm:px-3 py-1 sm:py-2 border text-sm" disabled={pageSafe>=totalPages}>Next</button>
               </div>
             </>
           )}
         </section>
           </>
         ) : activeTab === "changes" ? (
-          <ChangeDashboard clanTag={clanTag || homeClan || ""} />
+          <ChangeDashboard 
+            clanTag={clanTag || homeClan || ""} 
+            onGenerateAISummary={generateAISummary}
+          />
         ) : activeTab === "database" ? (
           <PlayerDatabase currentClanMembers={roster?.members?.map(m => m.tag.toUpperCase()) || []} />
         ) : activeTab === "events" ? (
@@ -2095,6 +2115,7 @@ Please analyze this clan data and provide insights on:
             setShowDepartureManager(false);
             checkDepartureNotifications(); // Refresh notifications after closing
           }}
+          onNotificationChange={checkDepartureNotifications}
         />
       )}
 
@@ -2542,30 +2563,30 @@ function PlayerProfileModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto border border-white/20">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-2xl">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white/95 backdrop-blur-md rounded-2xl shadow-2xl p-4 sm:p-6 max-w-6xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto border border-white/20">
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-lg sm:text-2xl flex-shrink-0">
               {member.name.charAt(0).toUpperCase()}
             </div>
-            <div>
-              <h2 className="text-3xl font-bold text-gray-900">{member.name}</h2>
-              <p className="text-gray-600">{member.tag}</p>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-xl sm:text-3xl font-bold text-gray-900 truncate">{member.name}</h2>
+              <p className="text-sm sm:text-base text-gray-600 truncate">{member.tag}</p>
             </div>
           </div>
-          <div className="flex space-x-2">
+          <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
             {isEditing ? (
               <>
                 <button
                   onClick={savePlayerData}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                  className="px-2 sm:px-4 py-1 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm sm:text-base"
                 >
                   Save
                 </button>
                 <button
                   onClick={() => setIsEditing(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-2 sm:px-4 py-1 sm:py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-sm sm:text-base"
                 >
                   Cancel
                 </button>
@@ -2573,18 +2594,18 @@ function PlayerProfileModal({
             ) : (
               <button
                 onClick={() => setIsEditing(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-2 sm:px-4 py-1 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm sm:text-base"
               >
                 Edit
               </button>
             )}
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-              <X className="w-6 h-6" />
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700 p-1">
+              <X className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
           {/* Left Column - Game Stats */}
           <div className="space-y-6">
             <div className="bg-gray-50 rounded-lg p-4">
@@ -2917,7 +2938,8 @@ function PlayerProfileModal({
                             value={newNote}
                             onChange={(e) => setNewNote(e.target.value)}
                             placeholder="Add a new note about this player..."
-                            className="w-full h-24 border rounded-lg px-3 py-2"
+                            className="w-full h-24 border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            autoFocus
                           />
                           
                           {/* Custom fields for new note */}
@@ -3003,8 +3025,8 @@ function QuickDepartureModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+      <div className="bg-white rounded-lg p-4 sm:p-6 max-w-md w-full">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-semibold">Mark {member.name} as Departed</h3>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">

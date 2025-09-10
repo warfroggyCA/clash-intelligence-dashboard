@@ -33,9 +33,10 @@ interface DepartureNotifications {
 interface DepartureManagerProps {
   clanTag: string;
   onClose: () => void;
+  onNotificationChange?: () => void;
 }
 
-export default function DepartureManager({ clanTag, onClose }: DepartureManagerProps) {
+export default function DepartureManager({ clanTag, onClose, onNotificationChange }: DepartureManagerProps) {
   const [notifications, setNotifications] = useState<DepartureNotifications | null>(null);
   const [loading, setLoading] = useState(true);
   const [editingDeparture, setEditingDeparture] = useState<DepartureRecord | null>(null);
@@ -80,13 +81,34 @@ export default function DepartureManager({ clanTag, onClose }: DepartureManagerP
       });
 
       if (response.ok) {
+        // Optimistic update - update local state immediately
+        if (notifications) {
+          const updatedDepartures = notifications.activeDepartures.map(d => 
+            d.memberTag === departure.memberTag 
+              ? { ...d, notes, departureReason: reason }
+              : d
+          );
+          
+          setNotifications({
+            ...notifications,
+            activeDepartures: updatedDepartures
+          });
+        }
+        
+        // Close the edit form
         setEditingDeparture(null);
         setNotes("");
         setReason("");
-        await loadNotifications();
+        
+        // Notify parent component that notifications have changed
+        onNotificationChange?.();
+        
+        // No need to reload - we've updated the state optimistically
       }
     } catch (error) {
       console.error('Failed to update departure:', error);
+      // If there's an error, we could reload to get the correct state
+      await loadNotifications();
     }
   };
 
@@ -103,10 +125,24 @@ export default function DepartureManager({ clanTag, onClose }: DepartureManagerP
       });
 
       if (response.ok) {
-        await loadNotifications();
+        // Optimistic update - remove the resolved rejoin from local state
+        if (notifications) {
+          const updatedRejoins = notifications.rejoins.filter(r => r.memberTag !== memberTag);
+          
+          setNotifications({
+            ...notifications,
+            rejoins: updatedRejoins,
+            hasNotifications: updatedRejoins.length > 0 || notifications.activeDepartures.length > 0
+          });
+          
+          // Notify parent component that notifications have changed
+          onNotificationChange?.();
+        }
       }
     } catch (error) {
       console.error('Failed to mark rejoin as resolved:', error);
+      // If there's an error, reload to get the correct state
+      await loadNotifications();
     }
   };
 
@@ -151,9 +187,23 @@ export default function DepartureManager({ clanTag, onClose }: DepartureManagerP
       <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold">Member Departures & Rejoins</h2>
-          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-            <X className="w-6 h-6" />
-          </button>
+          <div className="flex items-center space-x-3">
+            {/* Debug info */}
+            <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+              Rejoins: {notifications?.rejoins.length || 0}, Departures: {notifications?.activeDepartures.length || 0} ({notifications?.activeDepartures.filter(d => d.notes && d.departureReason).length || 0} processed)
+            </div>
+            {notifications && notifications.rejoins.length === 0 && notifications.activeDepartures.every(d => d.notes && d.departureReason) && (
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium"
+              >
+                ✅ Done - All Processed
+              </button>
+            )}
+            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
         </div>
 
         {/* Rejoins Section */}

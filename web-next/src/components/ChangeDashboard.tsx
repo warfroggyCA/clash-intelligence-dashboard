@@ -22,10 +22,12 @@ type ChangeSummary = {
 
 export default function ChangeDashboard({ 
   clanTag, 
-  onNotificationChange
+  onNotificationChange,
+  onGenerateAISummary
 }: { 
   clanTag: string;
   onNotificationChange?: () => void;
+  onGenerateAISummary?: () => void;
 }) {
   const [changes, setChanges] = useState<ChangeSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,10 +35,23 @@ export default function ChangeDashboard({
   const [showAllChanges, setShowAllChanges] = useState(false);
   const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set());
   const [clearedMessages, setClearedMessages] = useState<Set<string>>(new Set());
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
 
   useEffect(() => {
     loadChanges();
   }, [clanTag]);
+
+  const handleGenerateAISummary = async () => {
+    if (!onGenerateAISummary) return;
+    
+    setAiSummaryLoading(true);
+    try {
+      await onGenerateAISummary();
+    } finally {
+      // Keep loading state for a bit to show completion
+      setTimeout(() => setAiSummaryLoading(false), 1000);
+    }
+  };
 
   const loadChanges = async () => {
     try {
@@ -210,9 +225,42 @@ export default function ChangeDashboard({
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">Clan Activity Dashboard</h2>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-2xl font-bold text-gray-900">Clan Activity Dashboard</h2>
+          {onGenerateAISummary && (
+            <button
+              onClick={handleGenerateAISummary}
+              disabled={aiSummaryLoading}
+              className={`rounded-xl px-3 py-2 border shadow-sm transition-colors text-sm ${
+                aiSummaryLoading 
+                  ? 'bg-purple-200 text-purple-500 border-purple-300 cursor-not-allowed' 
+                  : 'bg-purple-100 text-purple-700 border-purple-200 hover:shadow hover:bg-purple-200'
+              }`}
+              title={aiSummaryLoading ? "Generating AI summary..." : "Generate an AI-powered summary of current clan state and changes"}
+            >
+              {aiSummaryLoading ? (
+                <span className="flex items-center space-x-2">
+                  <span className="animate-spin">⏳</span>
+                  <span>Generating...</span>
+                </span>
+              ) : (
+                "🤖 AI Summary"
+              )}
+            </button>
+          )}
+        </div>
         <p className="text-gray-600">Daily summaries of clan changes and activity</p>
       </div>
+
+      {/* AI Summary Status Message */}
+      {aiSummaryLoading && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <span className="animate-spin">⏳</span>
+            <span className="text-blue-700 text-sm">Generating AI summary... This may take a few moments.</span>
+          </div>
+        </div>
+      )}
 
       <div className="space-y-4">
         {getDisplayedChanges().map((changeSummary) => (
