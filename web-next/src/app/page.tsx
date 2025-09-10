@@ -863,8 +863,11 @@ export default function HomePage(){
       // Load snapshots first, then load stored data
       const initializeData = async () => {
         try {
+          console.log("Starting auto-loading for clan:", initial);
           await loadAvailableSnapshots(initial);
+          console.log("Snapshots loaded, now loading stored data...");
           await loadStoredData(initial);
+          console.log("Auto-loading completed successfully");
         } catch (error) {
           console.error("Auto-loading failed:", error);
           setStatus("error");
@@ -873,6 +876,8 @@ export default function HomePage(){
       };
       
       initializeData();
+    } else {
+      console.log("No initial clan tag found, showing empty state");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1234,7 +1239,9 @@ export default function HomePage(){
   // Load available snapshots for a clan
   const loadAvailableSnapshots = async (clanTag: string): Promise<void> => {
     try {
-      const response = await fetch(`/api/snapshots/list?clanTag=${encodeURIComponent(clanTag)}`);
+      // Ensure the clan tag has # prefix for API compatibility
+      const apiTag = clanTag.startsWith('#') ? clanTag : `#${clanTag}`;
+      const response = await fetch(`/api/snapshots/list?clanTag=${encodeURIComponent(apiTag)}`);
       const data = await response.json();
       
       if (data.success) {
@@ -1250,7 +1257,9 @@ export default function HomePage(){
   // Load stored snapshot data (not live data)
   async function loadStoredData(tagParam?: string, snapshotDate?: string) {
     const raw = (tagParam ?? clanTag ?? "").trim().toUpperCase();
-    console.log("loadStoredData called with:", { tagParam, clanTag, raw, snapshotDate });
+    // Ensure the clan tag has # prefix for API compatibility
+    const apiTag = raw.startsWith('#') ? raw : `#${raw}`;
+    console.log("loadStoredData called with:", { tagParam, clanTag, raw, apiTag, snapshotDate });
     if (!raw) { 
       console.log("No clan tag provided, showing message");
       setMessage("Enter a clan tag (e.g., #2PR8R8V8P) and press Load."); 
@@ -1261,7 +1270,7 @@ export default function HomePage(){
     setMessage(`Loading stored data for ${raw}…`);
     
     try {
-      const params = new URLSearchParams({ mode: "snapshot", clanTag: raw });
+      const params = new URLSearchParams({ mode: "snapshot", clanTag: apiTag });
       if (snapshotDate && snapshotDate !== "latest") {
         params.set("date", snapshotDate);
       }
@@ -2445,7 +2454,7 @@ Please analyze this clan data and provide insights on:
             <div className="flex items-center space-x-4">
               <span>Clash Intelligence Dashboard</span>
               <span className="text-gray-400">•</span>
-              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.6</span>
+              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.8.4</span>
               <span className="text-gray-400">•</span>
               <span className="text-gray-500">A warfroggy project</span>
             </div>
