@@ -1,5 +1,14 @@
 Ok # Clash Intelligence Dashboard - Development Ideas
 
+## Version 0.8.5 - Released ✅
+- [x] **Critical Bug Fixes Complete**
+  - Fixed auto-loading issue: API calls now include # prefix for compatibility
+  - Resolved excessive re-rendering: Removed console.logs from render function
+  - Updated version footer to show current app version
+  - Dashboard now auto-loads clan data on startup
+  - Component renders efficiently without performance issues
+  - All critical bugs resolved, dashboard is stable and humming
+
 ## Version 0.8.4 - Released ✅
 - [x] **Mobile Responsiveness Implementation**
   - Made navigation tabs fully responsive with mobile-friendly layout

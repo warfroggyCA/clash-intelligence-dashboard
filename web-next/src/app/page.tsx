@@ -12,7 +12,7 @@
  * - Snapshot versioning for historical data
  * - Modern UI with gradients and responsive design
  * 
- * Version: 0.8.4
+ * Version: 0.8.5
  * Last Updated: January 2025
  */
 
@@ -2447,7 +2447,7 @@ Please analyze this clan data and provide insights on:
             <div className="flex items-center space-x-4">
               <span>Clash Intelligence Dashboard</span>
               <span className="text-gray-400">•</span>
-              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.8.4</span>
+              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.8.5</span>
               <span className="text-gray-400">•</span>
               <span className="text-gray-500">A warfroggy project</span>
             </div>
