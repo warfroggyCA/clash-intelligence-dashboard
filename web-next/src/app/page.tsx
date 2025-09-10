@@ -32,6 +32,7 @@ type Member = {
   bk?: number; aq?: number; gw?: number; rc?: number; mp?: number;
   trophies?: number; donations?: number; donationsReceived?: number; warStars?: number;
   tenure_days?: number; tenure?: number; lastSeen?: string | number; role?: string; recentClans?: string[];
+  manualActivityOverride?: string; // Manual activity override: "Today", "1-2 days", etc.
 };
 
 // Event tracking types
@@ -69,6 +70,21 @@ const HEAD_TIPS: Record<string,string> = {
 
 const HERO_MIN_TH: Record<"bk"|"aq"|"gw"|"rc"|"mp", number> = { bk:7, aq:9, gw:11, rc:13, mp:9 };
 
+// Activity options for manual override
+const ACTIVITY_OPTIONS = [
+  "Today",
+  "1-2 days", 
+  "3-5 days",
+  "1 week",
+  "2 weeks",
+  "3 weeks",
+  "1 month",
+  "1+ months",
+  "Inactive"
+] as const;
+
+type ActivityOption = typeof ACTIVITY_OPTIONS[number];
+
 // Max hero levels for each Town Hall (updated 2024)
 const HERO_MAX_LEVELS: Record<number, Record<"bk"|"aq"|"gw"|"rc"|"mp", number>> = {
   7: { bk: 10, aq: 0, gw: 0, rc: 0, mp: 0 },
@@ -102,6 +118,62 @@ const getDonationBalance = (member: Member) => {
   return { given, received, balance, isNegative: balance > 0 };
 };
 
+// Helper functions for manual activity overrides
+const saveManualActivityOverride = (memberTag: string, activity: ActivityOption) => {
+  try {
+    const overrides = JSON.parse(localStorage.getItem('manualActivityOverrides') || '{}');
+    overrides[memberTag] = activity;
+    localStorage.setItem('manualActivityOverrides', JSON.stringify(overrides));
+  } catch (error) {
+    console.error('Failed to save manual activity override:', error);
+  }
+};
+
+const getManualActivityOverride = (memberTag: string): ActivityOption | null => {
+  try {
+    const overrides = JSON.parse(localStorage.getItem('manualActivityOverrides') || '{}');
+    return overrides[memberTag] || null;
+  } catch (error) {
+    console.error('Failed to load manual activity override:', error);
+    return null;
+  }
+};
+
+const clearManualActivityOverride = (memberTag: string) => {
+  try {
+    const overrides = JSON.parse(localStorage.getItem('manualActivityOverrides') || '{}');
+    delete overrides[memberTag];
+    localStorage.setItem('manualActivityOverrides', JSON.stringify(overrides));
+  } catch (error) {
+    console.error('Failed to clear manual activity override:', error);
+  }
+};
+
+// Get activity weighting for manual overrides
+const getActivityWeighting = (activity: ActivityOption): number => {
+  switch (activity) {
+    case "Today": return 50;
+    case "1-2 days": return 40;
+    case "3-5 days": return 30;
+    case "1 week": return 25;
+    case "2 weeks": return 20;
+    case "3 weeks": return 15;
+    case "1 month": return 10;
+    case "1+ months": return 5;
+    case "Inactive": return 0;
+    default: return 0;
+  }
+};
+
+// Get color for manual badge based on weighting
+const getManualBadgeColor = (activity: ActivityOption): string => {
+  const weight = getActivityWeighting(activity);
+  if (weight >= 40) return "bg-green-100 text-green-800 border-green-200";
+  if (weight >= 25) return "bg-yellow-100 text-yellow-800 border-yellow-200";
+  if (weight >= 10) return "bg-orange-100 text-orange-800 border-orange-200";
+  return "bg-red-100 text-red-800 border-red-200";
+};
+
 // Activity inference system based on gameplay metrics
 const calculateActivityScore = (member: Member, previousMember?: Member): {
   score: number;
@@ -109,9 +181,37 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
   indicators: string[];
   lastActivity: string;
   lastActivityDate: string;
+  isManualOverride: boolean;
+  manualOverride?: ActivityOption;
 } => {
   const indicators: string[] = [];
   let score = 0;
+
+  // Check for manual override first
+  const manualOverride = getManualActivityOverride(member.tag);
+  if (manualOverride) {
+    const manualWeight = getActivityWeighting(manualOverride);
+    score = Math.max(score, manualWeight); // Manual override takes precedence
+    indicators.push(`Manual override: ${manualOverride}`);
+    
+    // Determine level based on manual override
+    let level: 'Very Active' | 'Active' | 'Moderate' | 'Low' | 'Inactive';
+    if (manualWeight >= 40) level = 'Very Active';
+    else if (manualWeight >= 25) level = 'Active';
+    else if (manualWeight >= 15) level = 'Moderate';
+    else if (manualWeight >= 5) level = 'Low';
+    else level = 'Inactive';
+
+    return {
+      score: manualWeight,
+      level,
+      indicators,
+      lastActivity: `Manual: ${manualOverride}`,
+      lastActivityDate: manualOverride,
+      isManualOverride: true,
+      manualOverride
+    };
+  }
 
   // 1. Donation Activity (0-30 points)
   const donations = member.donations ?? 0;
@@ -287,7 +387,15 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
     }
   }
 
-  return { score, level, indicators, lastActivity, lastActivityDate };
+  return { 
+    score, 
+    level, 
+    indicators, 
+    lastActivity, 
+    lastActivityDate, 
+    isManualOverride: false,
+    manualOverride: undefined
+  };
 };
 
 // Applicant evaluation system
@@ -1336,10 +1444,10 @@ Please analyze this clan data and provide insights on:
   const clanName = roster?.clanName ?? roster?.meta?.clanName ?? "";
 
   return (
-    <>
+    <div className="min-h-screen w-full">
       {/* Modern gradient header */}
       <header className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white shadow-lg">
-        <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+        <div className="w-full px-6 py-4 flex items-center justify-between">
           {/* Left side - Logo */}
           <div className="flex items-center">
             <img 
@@ -1374,7 +1482,7 @@ Please analyze this clan data and provide insights on:
             </div>
             <div className="flex items-center space-x-4">
               {departureNotifications > 0 && (
-                <button
+              <button
                   onClick={() => setShowDepartureManager(true)}
                   className="relative p-2 hover:bg-indigo-600 rounded-lg transition-colors"
                   title="Member departure notifications"
@@ -1391,7 +1499,7 @@ Please analyze this clan data and provide insights on:
       </header>
 
       {/* Tab Navigation */}
-      <div className="max-w-7xl mx-auto px-6 pt-6">
+      <div className="w-full px-6 pt-6">
         <div className="relative">
           {/* Tab Container with Background */}
           <div className="bg-white/80 backdrop-blur-sm rounded-t-xl border border-b-0 border-gray-200 shadow-lg">
@@ -1497,7 +1605,7 @@ Please analyze this clan data and provide insights on:
         </div>
       </div>
 
-      <main className="min-h-screen p-6 flex flex-col gap-6 max-w-7xl mx-auto bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
+      <main className="min-h-screen p-6 flex flex-col gap-6 w-full bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
         {activeTab === "roster" ? (
           <>
             {/* Controls */}
@@ -1642,7 +1750,7 @@ Please analyze this clan data and provide insights on:
         </section>
 
         {/* Table */}
-        <section className="grid gap-2 p-4 rounded-2xl border overflow-x-auto">
+        <section className="grid gap-2 p-4 rounded-2xl border overflow-x-auto w-full">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Members</h2>
@@ -1754,13 +1862,29 @@ Please analyze this clan data and provide insights on:
                             const activity = calculateActivityScore(m, previousMember);
                             
                             return (
-                              <span 
-                                className="text-sm font-medium"
-                                title={`Activity Level: ${activity.level} (${activity.score}/100)\nRecent: ${activity.lastActivity}\nAll indicators: ${activity.indicators.join(', ')}\n\nData Source: ${previousMember ? 'Compared with previous snapshot data' : 'Estimated from current donation activity (donations reset monthly)'}\nNote: ${previousMember ? 'Based on actual changes detected' : '*Estimated - will improve with more snapshot data'}`}
+                              <div className="flex items-center gap-2">
+                              <button
+                                  onClick={() => {
+                                    setSelectedPlayer(m);
+                                    setShowPlayerProfile(true);
+                                  }}
+                                  className="text-sm font-medium hover:underline hover:text-blue-600 transition-colors"
+                                  title={`Click to edit activity for ${m.name}`}
                               >
                                 {activity.lastActivityDate}
-                                {!previousMember && <span className="ml-1" title="Estimated data - will improve with more snapshot history">*</span>}
-                              </span>
+                              </button>
+                                {activity.isManualOverride && activity.manualOverride && (
+                                  <span 
+                                    className={`px-2 py-1 rounded-full text-xs font-medium border ${getManualBadgeColor(activity.manualOverride)}`}
+                                    title={`Manual override: ${activity.manualOverride}`}
+                                  >
+                                    Manual
+                                  </span>
+                                )}
+                                {!previousMember && !activity.isManualOverride && (
+                                  <span className="ml-1 text-gray-400" title="Estimated data - will improve with more snapshot history">*</span>
+                                )}
+                              </div>
                             );
                           })()}
                         </Td>
@@ -2016,7 +2140,7 @@ Please analyze this clan data and provide insights on:
 
       {/* Version Footer */}
       <footer className="w-full bg-gradient-to-r from-gray-100 to-gray-200 border-t border-gray-300 mt-8">
-        <div className="max-w-7xl mx-auto px-6 py-3">
+        <div className="w-full px-6 py-3">
           <div className="flex items-center justify-between text-sm text-gray-600">
             <div className="flex items-center space-x-4">
               <span>Clash Intelligence Dashboard</span>
@@ -2031,7 +2155,7 @@ Please analyze this clan data and provide insights on:
           </div>
         </div>
       </footer>
-    </>
+    </div>
   );
 }
 
@@ -2278,6 +2402,8 @@ function PlayerProfileModal({
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [departureHistory, setDepartureHistory] = useState<any[]>([]);
+  const [isEditingActivity, setIsEditingActivity] = useState(false);
+  const [selectedActivity, setSelectedActivity] = useState<ActivityOption>("Today");
 
   useEffect(() => {
     loadPlayerData();
@@ -2318,6 +2444,12 @@ function PlayerProfileModal({
       
       setPlayerNotes(savedNotes);
 
+      // Load current manual activity override
+      const currentOverride = getManualActivityOverride(member.tag);
+      if (currentOverride) {
+        setSelectedActivity(currentOverride);
+      }
+
       // Load departure history
       const departureResponse = await fetch(`/api/departures?clanTag=${encodeURIComponent(clanTag)}`);
       if (departureResponse.ok) {
@@ -2330,6 +2462,20 @@ function PlayerProfileModal({
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleActivitySave = () => {
+    saveManualActivityOverride(member.tag, selectedActivity);
+    setIsEditingActivity(false);
+    // Reload the page to show the updated activity
+    window.location.reload();
+  };
+
+  const handleActivityClear = () => {
+    clearManualActivityOverride(member.tag);
+    setIsEditingActivity(false);
+    // Reload the page to show the updated activity
+    window.location.reload();
   };
 
   const savePlayerData = async () => {
@@ -2504,23 +2650,89 @@ function PlayerProfileModal({
                             )}
                           </div>
                           <div className="text-sm">
-                            <p className="font-medium mb-1">Recent Activity:</p>
-                            <p className="text-gray-600">{activity.lastActivity}</p>
-                            <p className="text-xs text-gray-500 mt-1">
-                              <strong>Data Source:</strong> {previousMember 
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="font-medium">Last Activity:</p>
+                              <button
+                                onClick={() => setIsEditingActivity(!isEditingActivity)}
+                                className="flex items-center gap-1 px-2 py-1 text-xs bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                                title="Edit activity status"
+                              >
+                                ✏️ Edit
+                              </button>
+                            </div>
+                            
+                            {isEditingActivity ? (
+                              <div className="space-y-3">
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                                    Select Activity Status:
+                                  </label>
+                                  <select
+                                    value={selectedActivity}
+                                    onChange={(e) => setSelectedActivity(e.target.value as ActivityOption)}
+                                    className="w-full border rounded-lg px-3 py-2 text-sm"
+                                  >
+                                    {ACTIVITY_OPTIONS.map(option => (
+                                      <option key={option} value={option}>
+                                        {option}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button
+                                    onClick={handleActivitySave}
+                                    className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                                  >
+                                    Save
+                                  </button>
+                                  <button
+                                    onClick={handleActivityClear}
+                                    className="px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                                  >
+                                    Clear Override
+                                  </button>
+                                  <button
+                                    onClick={() => setIsEditingActivity(false)}
+                                    className="px-3 py-1 bg-gray-600 text-white text-xs rounded hover:bg-gray-700 transition-colors"
+                                  >
+                                    Cancel
+                                  </button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className="text-gray-600">{activity.lastActivityDate}</span>
+                                  {activity.isManualOverride && activity.manualOverride && (
+                                    <span 
+                                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getManualBadgeColor(activity.manualOverride)}`}
+                                      title={`Manual override: ${activity.manualOverride}`}
+                                    >
+                                      Manual
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-gray-600 text-xs mb-1">{activity.lastActivity}</p>
+                                <p className="text-xs text-gray-500">
+                                  <strong>Data Source:</strong> {activity.isManualOverride 
+                                    ? 'Manual override' 
+                                    : previousMember 
                                 ? 'Compared with previous snapshot data' 
                                 : 'Estimated from current donation activity (donations reset monthly)'
                               }
                             </p>
-                            {activity.indicators.length > 1 && (
+                                {activity.indicators.length > 1 && !activity.isManualOverride && (
                               <div className="mt-2">
-                                <p className="font-medium mb-1">All Indicators:</p>
+                                    <p className="font-medium mb-1 text-xs">All Indicators:</p>
                                 <ul className="text-xs text-gray-600 list-disc list-inside">
                                   {activity.indicators.map((indicator, idx) => (
                                     <li key={idx}>{indicator}</li>
                                   ))}
                                 </ul>
                               </div>
+                            )}
+                          </div>
                             )}
                           </div>
                         </div>
