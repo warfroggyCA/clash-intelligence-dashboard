@@ -34,12 +34,107 @@ const BASE = process.env.COC_API_BASE || "https://api.clashofclans.com/v1";
 // Force IPv4 for all requests (some keys/IP-allowlists are v4-only)
 const agent4 = new Agent({ connect: { family: 4 } });
 
+// Development mode - skip API calls to save Fixie quota
+const DEV_MODE = process.env.NODE_ENV === 'development' && process.env.SKIP_API_CALLS === 'true';
+
+// Simple in-memory cache to reduce API calls
+const cache = new Map<string, { data: any; timestamp: number }>();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCached<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+    return cached.data;
+  }
+  cache.delete(key);
+  return null;
+}
+
+function setCache(key: string, data: any): void {
+  cache.set(key, { data, timestamp: Date.now() });
+}
+
+// Mock data for development mode
+const MOCK_DATA = {
+  '/clans/%232PR8R8V8P': {
+    tag: '#2PR8R8V8P',
+    name: 'HeCk YeAh',
+    memberCount: 20,
+    clanLevel: 18,
+    clanPoints: 45000,
+    warWinStreak: 5,
+    warWins: 150,
+    warTies: 10,
+    warLosses: 20,
+    isWarLogPublic: true,
+    warLeague: { id: 48000007, name: 'Master League II' },
+    members: [
+      { tag: '#VGQVRLRL', name: 'DoubleD', role: 'leader', townHallLevel: 15, trophies: 5200, donations: 1500, donationsReceived: 200, attackWins: 2500, versusBattleWins: 150, versusTrophies: 3200, clanCapitalContributions: 15000 },
+      { tag: '#QULRCQ02G', name: 'Sirojiddin', role: 'coLeader', townHallLevel: 14, trophies: 4800, donations: 1200, donationsReceived: 150, attackWins: 2200, versusBattleWins: 120, versusTrophies: 3000, clanCapitalContributions: 12000 },
+      { tag: '#LP920YJC', name: 'Mate 238', role: 'elder', townHallLevel: 13, trophies: 4200, donations: 800, donationsReceived: 100, attackWins: 1800, versusBattleWins: 80, versusTrophies: 2800, clanCapitalContributions: 8000 },
+      { tag: '#QYLYG8J9G', name: '_RSENIC', role: 'member', townHallLevel: 12, trophies: 3800, donations: 600, donationsReceived: 80, attackWins: 1500, versusBattleWins: 60, versusTrophies: 2600, clanCapitalContributions: 6000 },
+      { tag: '#8CRRR2RQ2', name: 'ShakiB', role: 'member', townHallLevel: 11, trophies: 3400, donations: 400, donationsReceived: 60, attackWins: 1200, versusBattleWins: 40, versusTrophies: 2400, clanCapitalContributions: 4000 }
+    ]
+  }
+};
+
+// Generate mock player data
+function generateMockPlayer(tag: string, name: string) {
+  return {
+    tag,
+    name,
+    townHallLevel: Math.floor(Math.random() * 5) + 10, // 10-14
+    trophies: Math.floor(Math.random() * 2000) + 3000, // 3000-5000
+    donations: Math.floor(Math.random() * 1000) + 200, // 200-1200
+    donationsReceived: Math.floor(Math.random() * 200) + 50, // 50-250
+    attackWins: Math.floor(Math.random() * 1500) + 1000, // 1000-2500
+    versusBattleWins: Math.floor(Math.random() * 100) + 50, // 50-150
+    versusTrophies: Math.floor(Math.random() * 1000) + 2500, // 2500-3500
+    clanCapitalContributions: Math.floor(Math.random() * 10000) + 5000, // 5000-15000
+    bk: Math.floor(Math.random() * 20) + 40, // 40-60
+    aq: Math.floor(Math.random() * 20) + 40, // 40-60
+    gw: Math.floor(Math.random() * 15) + 20, // 20-35
+    rc: Math.floor(Math.random() * 15) + 15, // 15-30
+    mp: Math.floor(Math.random() * 10) + 10, // 10-20
+    role: 'member',
+    clanTag: '#2PR8R8V8P'
+  };
+}
+
 function encTag(tag: string) {
   const t = String(tag || "").trim();
   return t.startsWith("#") ? `%23${t.slice(1)}` : `%23${t}`;
 }
 
 async function api<T>(path: string): Promise<T> {
+  // Development mode - use mock data to save Fixie quota
+  if (DEV_MODE) {
+    console.log(`[DEV MODE] Using mock data for: ${path}`);
+    
+    // Return mock clan data
+    if (path.includes('/clans/')) {
+      const mockClanData = MOCK_DATA['/clans/%232PR8R8V8P'];
+      return mockClanData as T;
+    }
+    
+    // Return mock player data
+    if (path.includes('/players/')) {
+      const playerTag = path.split('/players/')[1];
+      const mockPlayer = generateMockPlayer(playerTag, `Player${Math.floor(Math.random() * 1000)}`);
+      return mockPlayer as T;
+    }
+    
+    // Default mock response
+    return {} as T;
+  }
+
+  // Check cache first
+  const cached = getCached<T>(path);
+  if (cached) {
+    console.log(`[Cache Hit] Using cached data for ${path}`);
+    return cached;
+  }
+
   const token = process.env.COC_API_TOKEN;
   if (!token) throw new Error("COC_API_TOKEN not set");
   
@@ -62,7 +157,12 @@ async function api<T>(path: string): Promise<T> {
   }
 
   try {
+    console.log(`[API Call] Fetching ${path}`);
     const response = await axios.get(`${BASE}${path}`, axiosConfig);
+    
+    // Cache the response
+    setCache(path, response.data);
+    
     return response.data as T;
   } catch (error: any) {
     if (error.response) {

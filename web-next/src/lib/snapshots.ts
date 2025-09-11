@@ -40,8 +40,14 @@ export type ChangeType =
   | 'hero_upgrade'
   | 'trophy_change'
   | 'donation_change'
+  | 'donation_received_change'
   | 'role_change'
-  | 'town_hall_upgrade';
+  | 'town_hall_upgrade'
+  | 'war_activity'
+  | 'attack_wins_change'
+  | 'versus_battle_wins_change'
+  | 'versus_trophies_change'
+  | 'capital_contributions_change';
 
 export type MemberChange = {
   type: ChangeType;
@@ -328,7 +334,7 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       });
     }
     
-    // Donation changes (significant changes only)
+    // Donation changes (significant changes only) - ROCK-SOLID SIGNAL
     const donationDiff = (currentMember.donations || 0) - (prevMember.donations || 0);
     if (donationDiff >= 100) {
       changes.push({
@@ -342,6 +348,91 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
         previousValue: prevMember.donations,
         newValue: currentMember.donations,
         description: `${currentMember.name} donated ${donationDiff} troops`
+      });
+    }
+    
+    // Donations received changes - HIGH-CONFIDENCE SIGNAL
+    const donationsReceivedDiff = (currentMember.donationsReceived || 0) - (prevMember.donationsReceived || 0);
+    if (donationsReceivedDiff >= 50) {
+      changes.push({
+        type: 'donation_received_change',
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
+        previousValue: prevMember.donationsReceived,
+        newValue: currentMember.donationsReceived,
+        description: `${currentMember.name} received ${donationsReceivedDiff} troops`
+      });
+    }
+    
+    // Attack wins changes - ROCK-SOLID SIGNAL
+    const attackWinsDiff = (currentMember.attackWins || 0) - (prevMember.attackWins || 0);
+    if (attackWinsDiff > 0) {
+      changes.push({
+        type: 'attack_wins_change',
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
+        previousValue: prevMember.attackWins,
+        newValue: currentMember.attackWins,
+        description: `${currentMember.name} gained ${attackWinsDiff} attack wins`
+      });
+    }
+    
+    // Versus battle wins changes - ROCK-SOLID SIGNAL
+    const versusWinsDiff = (currentMember.versusBattleWins || 0) - (prevMember.versusBattleWins || 0);
+    if (versusWinsDiff > 0) {
+      changes.push({
+        type: 'versus_battle_wins_change',
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
+        previousValue: prevMember.versusBattleWins,
+        newValue: currentMember.versusBattleWins,
+        description: `${currentMember.name} gained ${versusWinsDiff} versus battle wins`
+      });
+    }
+    
+    // Versus trophies changes - ROCK-SOLID SIGNAL
+    const versusTrophiesDiff = (currentMember.versusTrophies || 0) - (prevMember.versusTrophies || 0);
+    if (Math.abs(versusTrophiesDiff) >= 20) {
+      changes.push({
+        type: 'versus_trophies_change',
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
+        previousValue: prevMember.versusTrophies,
+        newValue: currentMember.versusTrophies,
+        description: `${currentMember.name} ${versusTrophiesDiff > 0 ? 'gained' : 'lost'} ${Math.abs(versusTrophiesDiff)} versus trophies`
+      });
+    }
+    
+    // Clan Capital contributions changes - ROCK-SOLID SIGNAL
+    const capitalContributionsDiff = (currentMember.clanCapitalContributions || 0) - (prevMember.clanCapitalContributions || 0);
+    if (capitalContributionsDiff > 0) {
+      changes.push({
+        type: 'capital_contributions_change',
+        member: {
+          name: currentMember.name,
+          tag: currentMember.tag,
+          townHallLevel: currentMember.townHallLevel,
+          role: currentMember.role
+        },
+        previousValue: prevMember.clanCapitalContributions,
+        newValue: currentMember.clanCapitalContributions,
+        description: `${currentMember.name} contributed ${capitalContributionsDiff} capital gold`
       });
     }
     
@@ -363,6 +454,125 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
   }
   
   return changes;
+}
+
+// Enhanced activity tracking with rock-solid signals and confidence levels
+export type ActivityEvidence = {
+  last_active_at: string; // timestamp of the snapshot where change was observed
+  confidence: 'definitive' | 'high' | 'weak';
+  evidence: string[]; // list of fields that changed
+  priority: number; // 1-5, higher = more recent activity
+};
+
+export function calculateLastActive(
+  memberTag: string, 
+  changes: MemberChange[], 
+  snapshotTimestamp: string
+): ActivityEvidence | null {
+  // Filter changes for this specific member
+  const memberChanges = changes.filter(c => c.member.tag === memberTag);
+  
+  if (memberChanges.length === 0) return null;
+  
+  // Rock-solid signals (definitive confidence) - in order of precedence
+  const rockSolidSignals = [
+    { type: 'war_activity', priority: 5 },
+    { type: 'attack_wins_change', priority: 4 },
+    { type: 'versus_battle_wins_change', priority: 4 },
+    { type: 'versus_trophies_change', priority: 4 },
+    { type: 'capital_contributions_change', priority: 4 },
+    { type: 'donation_change', priority: 3 },
+    { type: 'hero_upgrade', priority: 3 },
+    { type: 'town_hall_upgrade', priority: 3 }
+  ];
+  
+  // High-confidence signals
+  const highConfidenceSignals = [
+    { type: 'donation_received_change', priority: 2 },
+    { type: 'trophy_change', priority: 2 },
+    { type: 'role_change', priority: 1 }
+  ];
+  
+  // Find the highest priority change
+  let bestEvidence: ActivityEvidence | null = null;
+  
+  // Check rock-solid signals first
+  for (const signal of rockSolidSignals) {
+    const change = memberChanges.find(c => c.type === signal.type);
+    if (change) {
+      const evidence = generateEvidenceString(change);
+      bestEvidence = {
+        last_active_at: snapshotTimestamp,
+        confidence: 'definitive',
+        evidence: [evidence],
+        priority: signal.priority
+      };
+      break; // Take the first (highest priority) rock-solid signal
+    }
+  }
+  
+  // If no rock-solid signal, check high-confidence signals
+  if (!bestEvidence) {
+    for (const signal of highConfidenceSignals) {
+      const change = memberChanges.find(c => c.type === signal.type);
+      if (change) {
+        const evidence = generateEvidenceString(change);
+        bestEvidence = {
+          last_active_at: snapshotTimestamp,
+          confidence: 'high',
+          evidence: [evidence],
+          priority: signal.priority
+        };
+        break;
+      }
+    }
+  }
+  
+  // If still no evidence, collect all changes as weak signals
+  if (!bestEvidence && memberChanges.length > 0) {
+    const evidence = memberChanges.map(change => generateEvidenceString(change));
+    bestEvidence = {
+      last_active_at: snapshotTimestamp,
+      confidence: 'weak',
+      evidence,
+      priority: 0
+    };
+  }
+  
+  return bestEvidence;
+}
+
+function generateEvidenceString(change: MemberChange): string {
+  const type = change.type;
+  const prev = change.previousValue;
+  const curr = change.newValue;
+  
+  switch (type) {
+    case 'attack_wins_change':
+      return `attackWins: +${curr - prev}`;
+    case 'donation_change':
+      return `donations: +${curr - prev}`;
+    case 'donation_received_change':
+      return `donationsReceived: +${curr - prev}`;
+    case 'versus_battle_wins_change':
+      return `versusBattleWins: +${curr - prev}`;
+    case 'versus_trophies_change':
+      const diff = curr - prev;
+      return `versusTrophies: ${diff > 0 ? '+' : ''}${diff}`;
+    case 'capital_contributions_change':
+      return `clanCapitalContributions: +${curr - prev}`;
+    case 'trophy_change':
+      const trophyDiff = curr - prev;
+      return `trophies: ${trophyDiff > 0 ? '+' : ''}${trophyDiff}`;
+    case 'hero_upgrade':
+      return `hero: ${change.description.split(' upgraded ')[1]}`;
+    case 'town_hall_upgrade':
+      return `townHall: ${prev} → ${curr}`;
+    case 'role_change':
+      return `role: ${prev} → ${curr}`;
+    default:
+      return `${type}: ${change.description}`;
+  }
 }
 
 // Save change summary

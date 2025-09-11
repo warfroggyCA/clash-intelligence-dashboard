@@ -850,11 +850,21 @@ export default function HomePage(){
     recommendation: 'Excellent' | 'Good' | 'Fair' | 'Poor';
   } | null>(null);
 
+  // Prevent double initialization in React Strict Mode
+  const [isInitialized, setIsInitialized] = useState(false);
+  
+  // Info popup state
+  const [showActivityInfo, setShowActivityInfo] = useState(false);
+
   // On first load: prefer saved home tag; else cfg; then empty.
   useEffect(() => {
+    if (isInitialized) return; // Prevent double initialization
+    
     const saved = (typeof window !== "undefined" && window.localStorage.getItem("homeClanTag")) || "";
     const initial = (saved || fromCfg || "").toUpperCase();
     setClanTag(initial);
+    setIsInitialized(true);
+    
     if (initial) {
       // Set home clan and auto-load stored snapshot data
       setHomeClan(initial);
@@ -862,6 +872,7 @@ export default function HomePage(){
       // Load snapshots first, then load stored data
       const initializeData = async () => {
         try {
+          console.log("Initializing data for:", initial);
           await loadAvailableSnapshots(initial);
           await loadStoredData(initial);
         } catch (error) {
@@ -874,7 +885,7 @@ export default function HomePage(){
       initializeData();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isInitialized]); // Only run once on mount
 
   const onSetHome = () => {
     const v = (clanTag || "").trim().toUpperCase();
@@ -1538,6 +1549,48 @@ Please analyze this clan data and provide insights on:
     }
   };
 
+  // Manual daily summary generation
+  const generateDailySummary = async () => {
+    const currentClanTag = clanTag || homeClan;
+    if (!currentClanTag) {
+      setMessage("Please enter a clan tag first");
+      return;
+    }
+
+    setStatus("loading");
+    setMessage("Generating daily summary...");
+
+    try {
+      // First create a snapshot
+      const snapshotResponse = await fetch('/api/snapshots/create', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clanTag: currentClanTag })
+      });
+
+      if (!snapshotResponse.ok) {
+        throw new Error('Failed to create snapshot');
+      }
+
+      const snapshotData = await snapshotResponse.json();
+      
+      if (snapshotData.changes && snapshotData.changes.summary) {
+        setMessage(`Daily summary generated successfully! ${snapshotData.changes.changes.length} changes detected.`);
+        setStatus("success");
+        
+        // Switch to changes tab to show the new summary
+        setActiveTab("changes");
+      } else {
+        setMessage("No changes detected since last snapshot");
+        setStatus("success");
+      }
+    } catch (error: any) {
+      console.error('Failed to generate daily summary:', error);
+      setStatus("error");
+      setMessage(error?.message || "Failed to generate daily summary");
+    }
+  };
+
   // LIVE fetch from server using the typed tag; never hardcoded.
   async function onLoad(tagParam?: string) {
     const raw = (tagParam ?? clanTag ?? "").trim().toUpperCase();
@@ -1828,10 +1881,25 @@ Please analyze this clan data and provide insights on:
                 />
                 <button 
                   onClick={()=>onLoad().catch(()=>{})} 
-                  className="rounded-xl px-3 py-2 bg-purple-100 text-purple-700 border border-purple-200 shadow-sm hover:shadow hover:bg-purple-200 transition-colors text-sm sm:text-base"
-                  title="Load fresh clan data from Clash of Clans API"
+                  className="group relative inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-purple-500/20 backdrop-blur-sm"
+                  title="Load fresh clan data from Clash of Clans API (uses 22+ API calls)"
                 >
-                  {status==="loading" ? "⏳ Loading…" : "🔄 Load"}
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                  <span className="relative flex items-center gap-2">
+                    {status==="loading" ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Loading…
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        Load Live Data
+                      </>
+                    )}
+                  </span>
                 </button>
               </div>
             </div>
@@ -1841,17 +1909,29 @@ Please analyze this clan data and provide insights on:
               <div className="flex flex-col sm:flex-row gap-2">
                 <button 
                   onClick={onSetHome} 
-                  className="rounded-xl px-3 py-2 bg-blue-100 text-blue-700 border border-blue-200 shadow-sm hover:shadow hover:bg-blue-200 transition-colors text-sm"
+                  className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-blue-400/20"
                   title="Set the current clan as your home clan for quick access"
                 >
-                  🏠 Set Home
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                  <span className="relative flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                    </svg>
+                    Set Home
+                  </span>
                 </button>
                 <button 
                   onClick={()=>{ setClanTag(homeClan || ""); if (homeClan) onLoad(homeClan).catch(()=>{}); }} 
-                  className="rounded-xl px-3 py-2 bg-green-100 text-green-700 border border-green-200 shadow-sm hover:shadow hover:bg-green-200 transition-colors text-sm"
+                  className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-emerald-400/20"
                   title="Load your saved home clan data"
                 >
-                  🏡 Load Home
+                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                  <span className="relative flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                    </svg>
+                    Load Home
+                  </span>
                 </button>
               </div>
             </div>
@@ -1861,17 +1941,52 @@ Please analyze this clan data and provide insights on:
               <div className="flex flex-col sm:flex-row gap-2">
                 <button 
                   onClick={() => setShowCreatePlayerNote(true)} 
-                  className="rounded-xl px-3 py-2 bg-blue-100 text-blue-700 border border-blue-200 shadow-sm hover:shadow hover:bg-blue-200 transition-colors text-sm"
+                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-sky-500 to-sky-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-sky-400/20"
                   title="Create a note for a player not currently in the clan"
                 >
-                  📝 Note
+                  <div className="absolute inset-0 bg-gradient-to-r from-sky-400 to-sky-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                  <span className="relative flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    Note
+                  </span>
                 </button>
                 <button 
                   onClick={copyToClipboard} 
-                  className="rounded-xl px-3 py-2 bg-green-100 text-green-700 border border-green-200 shadow-sm hover:shadow hover:bg-green-200 transition-colors text-sm"
+                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20"
                   title="Copy all clan data to clipboard for LLM analysis"
                 >
-                  📋 Copy
+                  <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-teal-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                  <span className="relative flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy
+                  </span>
+                </button>
+                <button 
+                  onClick={generateDailySummary}
+                  disabled={status === "loading"}
+                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                  title="Generate daily summary with AI analysis of changes since last snapshot"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
+                  <span className="relative flex items-center gap-2">
+                    {status === "loading" ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                        Generating...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        Daily Summary
+                      </>
+                    )}
+                  </span>
                 </button>
               </div>
             </div>
@@ -1897,16 +2012,22 @@ Please analyze this clan data and provide insights on:
                   <option value="latest">Latest Snapshot</option>
                   {availableSnapshots.map((snapshot) => (
                     <option key={snapshot.date} value={snapshot.date}>
-                      {new Date(snapshot.date).toLocaleDateString()} ({snapshot.memberCount} members)
+                      {new Date(snapshot.date + 'T00:00:00').toLocaleDateString()} ({snapshot.memberCount} members)
                     </option>
                   ))}
                 </select>
                 <button
                   onClick={() => loadAvailableSnapshots(clanTag || homeClan || "")}
-                  className="rounded-xl px-3 py-2 bg-gray-100 text-gray-700 border border-gray-200 shadow-sm hover:shadow hover:bg-gray-200 transition-colors text-sm"
+                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-slate-500 to-slate-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-slate-400/20"
                   title="Refresh the list of available snapshots"
                 >
-                  🔄 Refresh
+                  <div className="absolute inset-0 bg-gradient-to-r from-slate-400 to-slate-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                  <span className="relative flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Refresh
+                  </span>
                 </button>
               </div>
 
@@ -1946,7 +2067,7 @@ Please analyze this clan data and provide insights on:
                 <div className="text-sm text-gray-600">
                   {roster.source === "snapshot" ? (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      📸 Snapshot: {new Date(roster.date || "").toLocaleDateString()}
+                      📸 Snapshot: {new Date((roster.date || "") + 'T00:00:00').toLocaleDateString()}
                     </span>
                   ) : (
                     <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -2089,7 +2210,23 @@ Please analyze this clan data and provide insights on:
                     <Th onClick={()=>toggleSort("donations")}> {headerEl("donations","Don")} </Th>
                     <Th onClick={()=>toggleSort("donationsReceived")}> {headerEl("donationsReceived","Recv")} </Th>
                     <Th onClick={()=>toggleSort("tenure")}> {headerEl("tenure","Tenure (d)")} </Th>
-                    <Th onClick={()=>toggleSort("activity")}> {headerEl("activity","Last Activity")} </Th>
+                    <Th onClick={()=>toggleSort("activity")}> 
+                      <div className="flex items-center gap-1">
+                        {headerEl("activity","Last Activity")}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowActivityInfo(true);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Learn about our rock-solid activity tracking system"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    </Th>
                     <Th onClick={()=>toggleSort("role")}> {headerEl("role","Role")} </Th>
                   </tr>
                 </thead>
@@ -2440,6 +2577,119 @@ Please analyze this clan data and provide insights on:
         />
       )}
 
+      {/* Activity Info Popup */}
+      <InfoPopup 
+        isOpen={showActivityInfo} 
+        onClose={() => setShowActivityInfo(false)}
+        title="🎯 Rock-Solid Activity Tracking System"
+      >
+        <div className="space-y-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="font-semibold text-blue-900 mb-2">📊 How Activity Tracking Works</h3>
+            <p className="text-blue-800 text-sm">
+              Our system uses <strong>rock-solid signals</strong> that only change when players are actually online and performing actions. 
+              This gives you definitive confidence about player activity levels.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-green-700 mb-2">🟢 DEFINITIVE Confidence (Rock-Solid Signals)</h3>
+              <p className="text-sm text-gray-600 mb-3">These signals only change when players are actively playing:</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <strong>🎯 Attack Wins</strong><br/>
+                  <span className="text-gray-600">Only increases with actual multiplayer attacks</span>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <strong>⚔️ Versus Battles</strong><br/>
+                  <span className="text-gray-600">Opt-in battles require active participation</span>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <strong>🏰 Capital Contributions</strong><br/>
+                  <span className="text-gray-600">Requires capital attacks or donations</span>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <strong>💝 Donations</strong><br/>
+                  <span className="text-gray-600">Can't donate while offline</span>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <strong>🦸 Hero Upgrades</strong><br/>
+                  <span className="text-gray-600">Only happen with active play</span>
+                </div>
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <strong>🏠 Town Hall Upgrades</strong><br/>
+                  <span className="text-gray-600">Require active participation</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-yellow-700 mb-2">🟡 HIGH Confidence</h3>
+              <p className="text-sm text-gray-600 mb-3">Strong indicators with minor edge cases:</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                  <strong>📥 Donations Received</strong><br/>
+                  <span className="text-gray-600">Requires posting requests (strong indicator)</span>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                  <strong>🏆 Trophy Changes</strong><br/>
+                  <span className="text-gray-600">Usually from active play</span>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-red-700 mb-2">🔴 WEAK Signals (Not Used)</h3>
+              <p className="text-sm text-gray-600 mb-3">These can change while players are offline:</p>
+              <div className="bg-red-50 border border-red-200 rounded p-3 text-sm">
+                <ul className="space-y-1 text-gray-600">
+                  <li>• Defense wins/losses (happen while offline)</li>
+                  <li>• Hero/troop upgrades finishing (timers complete offline)</li>
+                  <li>• League changes (can come from defense outcomes)</li>
+                  <li>• Clan rank position (relative to others)</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-2">📈 Priority System</h3>
+            <p className="text-sm text-gray-600">
+              The system uses a priority order to determine the most reliable activity signal. 
+              Higher priority signals take precedence when multiple indicators are present.
+            </p>
+            <div className="mt-3 text-sm">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">1</span>
+                <span>War Activity (when detected)</span>
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">2</span>
+                <span>Attack Wins, Versus Battles, Capital Contributions</span>
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">3</span>
+                <span>Donations, Hero Upgrades, Town Hall Upgrades</span>
+              </div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="bg-yellow-500 text-white px-2 py-1 rounded text-xs font-bold">4</span>
+                <span>Donations Received, Trophy Changes</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="font-semibold text-blue-900 mb-2">💡 Why This Matters</h3>
+            <p className="text-sm text-blue-800">
+              Traditional activity tracking relies on trophy changes or defense logs, which can be misleading. 
+              Our rock-solid system ensures you know exactly when players were <strong>actively playing</strong>, 
+              not just when their base was attacked or upgrades completed.
+            </p>
+          </div>
+        </div>
+      </InfoPopup>
+
       {/* Version Footer */}
       <footer className="w-full bg-gradient-to-r from-gray-100 to-gray-200 border-t border-gray-300 mt-8">
         <div className="w-full px-6 py-3">
@@ -2464,6 +2714,37 @@ Please analyze this clan data and provide insights on:
 function Th({ children, onClick, className }:{ children: React.ReactNode; onClick?: ()=>void; className?: string }){ return <th className={`py-3 px-4 cursor-pointer font-semibold text-slate-700 hover:bg-slate-100/50 transition-colors ${className || ""}`} onClick={onClick}>{children}</th>; }
 function Td({ children, className }:{ children: React.ReactNode; className?: string }){ return <td className={`py-3 px-4 ${className || ""}`}>{children}</td>; }
 function rushClass(p:number){ return p>=70 ? "text-red-700 font-semibold" : p>=40 ? "text-amber-600" : "text-green-700"; }
+
+// Info Popup Component
+function InfoPopup({ isOpen, onClose, title, children }: {
+  isOpen: boolean;
+  onClose: () => void;
+  title: string;
+  children: React.ReactNode;
+}) {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div className="p-6">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Event Dashboard Component
 function EventDashboard({ 
