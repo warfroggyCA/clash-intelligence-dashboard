@@ -312,5 +312,57 @@ This comprehensive roadmap outlines advanced metrics and features that could tra
 
 This roadmap transforms the dashboard from a stats page into a strategic command center, enabling data-driven clan management and proactive leadership decisions.
 
+## Future Vision & Wish List
+
+### 1. Multi-Tenant SaaS Version
+**Goal**: Offer the dashboard to other clan leaders as a service
+- **Setup Wizard**: New users enter their own API keys and configuration
+- **Isolated Instances**: Each clan gets their own data environment
+- **Custom Branding**: Allow customization of colors, logos, clan-specific settings
+- **Subscription Model**: Tiered pricing based on features and clan size
+- **Technical Considerations**:
+  - Database per tenant or shared with tenant isolation
+  - API key management and rotation
+  - Rate limiting per tenant
+  - Data backup and recovery per tenant
+  - User authentication and authorization
+
+### 2. Leadership Team Shared Version
+**Goal**: Allow co-leaders to collaborate on clan management
+- **Read-Only Access**: Co-leaders can view data but not modify core settings
+- **Shared Notes System**: 
+  - Notes are collaborative with author attribution
+  - Real-time updates when data refreshes
+  - Note history and version tracking
+  - Author tags (e.g., "Note by Tigress #ABC123")
+- **Role-Based Permissions**:
+  - Leaders: Full access
+  - Co-Leaders: View + Notes + Limited settings
+  - Elders: View + Notes only
+- **Technical Implementation**:
+  - User authentication (simple password or invite codes)
+  - Real-time data sync when you refresh
+  - Collaborative note editing
+  - Activity logging for accountability
+
+### 3. Implementation Phases
+**Phase 1**: Leadership Team Version
+- Add user authentication system
+- Implement collaborative notes with author attribution
+- Create role-based access controls
+- Add real-time data sync
+
+**Phase 2**: Multi-Tenant Foundation
+- Design tenant isolation architecture
+- Create setup wizard for new instances
+- Implement API key management
+- Build subscription and billing system
+
+**Phase 3**: Full SaaS Platform
+- Multi-tenant database design
+- Custom branding and theming
+- Advanced analytics and reporting
+- Mobile app integration
+
 ## Development Guidelines
 - **CRITICAL: JSX Structure Safety** - When working on JSX structure, be extra careful and think, re-think code so that syntax doesn't break the site. Always verify function braces, component structure, and return statements are properly nested before testing.
