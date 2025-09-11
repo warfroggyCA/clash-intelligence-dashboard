@@ -346,11 +346,26 @@ This roadmap transforms the dashboard from a stats page into a strategic command
   - Activity logging for accountability
 
 ### 3. Implementation Phases
-**Phase 1**: Leadership Team Version
-- Add user authentication system
-- Implement collaborative notes with author attribution
-- Create role-based access controls
-- Add real-time data sync
+**Phase 1**: Leadership Team Version (Priority: HIGH)
+- **Access Control System**:
+  - Invite code authentication (e.g., "TIGRESS-2024", "WARFROG-2024")
+  - Simple config-based leader management
+  - Instant access revocation (set `active: false`)
+  - No IP restrictions needed
+- **Collaborative Features**:
+  - Shared player notes with author attribution
+  - Real-time updates when you refresh data
+  - Note history and version tracking
+  - Author tags (e.g., "Note by Tigress #ABC123")
+- **Role-Based Permissions**:
+  - Leaders: Full access + access management
+  - Co-Leaders: View + Notes + Limited settings
+  - Elders: View + Notes only
+- **Technical Implementation**:
+  - Use existing Vercel free tier
+  - Supabase free tier for notes storage
+  - Simple environment variable config
+  - Minimal additional cost (~$0/month)
 
 **Phase 2**: Multi-Tenant Foundation
 - Design tenant isolation architecture
