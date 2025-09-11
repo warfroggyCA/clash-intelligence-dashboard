@@ -40,13 +40,25 @@ function encTag(tag: string) {
 async function api<T>(path: string): Promise<T> {
   const token = process.env.COC_API_TOKEN;
   if (!token) throw new Error("COC_API_TOKEN not set");
-  const res = await fetch(`${BASE}${path}`, {
+  
+  const fetchOptions: RequestInit = {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     cache: "no-store",
-    // critical line: use IPv4-only agent
-    // @ts-ignore - undici agent for IPv4
-    dispatcher: agent4,
-  });
+  };
+
+  // Use Fixie proxy if available (for production), otherwise use IPv4 agent
+  if (process.env.FIXIE_URL) {
+    // Set proxy environment variables for Node.js to use
+    process.env.HTTP_PROXY = process.env.FIXIE_URL;
+    process.env.HTTPS_PROXY = process.env.FIXIE_URL;
+    console.log('Set proxy environment variables');
+  }
+  
+  // Always use IPv4 agent (proxy handled by environment variables)
+  // @ts-ignore - undici agent for IPv4
+  fetchOptions.dispatcher = agent4;
+
+  const res = await fetch(`${BASE}${path}`, fetchOptions);
   if (!res.ok) {
     const text = await res.text().catch(() => "");
     throw new Error(`CoC API ${res.status} ${res.statusText}: ${text}`);

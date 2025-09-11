@@ -4,10 +4,6 @@
 import OpenAI from 'openai';
 import { MemberChange, ChangeSummary } from './snapshots';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 export async function generateChangeSummary(
   changes: MemberChange[],
   clanTag: string,
@@ -17,6 +13,10 @@ export async function generateChangeSummary(
   if (!process.env.OPENAI_API_KEY) {
     return generateFallbackSummary(changes);
   }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   if (changes.length === 0) {
     return "No significant changes detected in the clan today.";
@@ -110,6 +110,10 @@ export async function generateDetailedSummary(changes: MemberChange[]): Promise<
   if (!process.env.OPENAI_API_KEY) {
     return generateDetailedFallbackSummary(changes);
   }
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   if (changes.length === 0) {
     return "No changes to report.";
