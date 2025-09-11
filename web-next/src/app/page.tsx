@@ -1860,6 +1860,20 @@ Please analyze this clan data and provide insights on:
     return (m as any)[key];
   };
 
+  // Role priority mapping for custom sorting (using API role values)
+  const getRolePriority = (role: string | undefined): number => {
+    const roleMap: Record<string, number> = {
+      'leader': 4,
+      'coleader': 3,
+      'co-leader': 3,
+      'coLeader': 3,
+      'elder': 2,
+      'admin': 2, // CoC API uses "admin" for Elder role
+      'member': 1
+    };
+    return roleMap[role?.toLowerCase() || 'member'] || 1;
+  };
+
   const membersFilteredSorted = useMemo(() => {
     if (!roster?.members) return [];
     let arr = roster.members;
@@ -1869,7 +1883,17 @@ Please analyze this clan data and provide insights on:
     }
     const sorted = [...arr].sort((a,b) => {
       const va = valFor(a, sortKey), vb = valFor(b, sortKey);
-      const sign = sortDir==="asc"?1:-1; return sign * cmp(va, vb);
+      
+      // Custom role sorting
+      if (sortKey === 'role') {
+        const roleA = getRolePriority(va);
+        const roleB = getRolePriority(vb);
+        const sign = sortDir==="asc"?1:-1;
+        return sign * (roleA - roleB);
+      }
+      
+      const sign = sortDir==="asc"?1:-1; 
+      return sign * cmp(va, vb);
     });
     return sorted;
   }, [roster, sortKey, sortDir, recentClanFilter]);
@@ -2414,23 +2438,59 @@ Please analyze this clan data and provide insights on:
               <div className="hidden md:block overflow-x-auto">
                 <table className="min-w-full text-sm bg-white/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden">
                 <thead className="text-left">
+                  {/* Grouping Headers Row */}
+                  <tr className="bg-gradient-to-r from-slate-100 to-slate-200 border-b border-slate-300">
+                    <th colSpan={4} className="py-2 px-4 font-bold text-slate-800 text-center border-r border-slate-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm">👤</span>
+                        <span className="text-xs uppercase tracking-wide">Basic Info</span>
+                      </div>
+                    </th>
+                    <th colSpan={5} className="py-2 px-4 font-bold text-slate-800 text-center border-r border-slate-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm">⚔️</span>
+                        <span className="text-xs uppercase tracking-wide">Heroes</span>
+                      </div>
+                    </th>
+                    <th colSpan={5} className="py-2 px-4 font-bold text-slate-800 text-center border-r border-slate-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm">📊</span>
+                        <span className="text-xs uppercase tracking-wide">Performance</span>
+                      </div>
+                    </th>
+                    <th colSpan={3} className="py-2 px-4 font-bold text-slate-800 text-center border-r border-slate-400">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm">📈</span>
+                        <span className="text-xs uppercase tracking-wide">Activity</span>
+                      </div>
+                    </th>
+                    <th colSpan={2} className="py-2 px-4 font-bold text-slate-800 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-sm">⚔️</span>
+                        <span className="text-xs uppercase tracking-wide">War Analytics</span>
+                      </div>
+                    </th>
+                  </tr>
+                  
+                  {/* Column Headers Row */}
                   <tr className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
-                    <Th onClick={()=>toggleSort("name")}> {headerEl("name","Name")} </Th>
-                    <Th onClick={()=>toggleSort("tag")}>  {headerEl("tag","Tag")}  </Th>
-                    <Th onClick={()=>toggleSort("th")}>   {headerEl("th","TH")}   </Th>
-                    <Th onClick={()=>toggleSort("bk")} className="bg-slate-100 text-center">   {headerElCentered("bk","BK")}   </Th>
-                    <Th onClick={()=>toggleSort("aq")} className="bg-slate-100 text-center">   {headerElCentered("aq","AQ")}   </Th>
-                    <Th onClick={()=>toggleSort("gw")} className="bg-slate-100 text-center">   {headerElCentered("gw","GW")}   </Th>
-                    <Th onClick={()=>toggleSort("rc")} className="bg-slate-100 text-center">   {headerElCentered("rc","RC")}   </Th>
-                    <Th onClick={()=>toggleSort("mp")} className="bg-slate-100 text-center">   {headerElCentered("mp","MP")}   </Th>
-                    <Th onClick={()=>toggleSort("rush")} className="text-center"> {headerElCentered("rush","Rush %")} </Th>
-                    <Th onClick={()=>toggleSort("trophies")} className="text-center"> {headerElCentered("trophies","Trophies")} </Th>
-                    <Th onClick={()=>toggleSort("donations")}> {headerEl("donations","Don")} </Th>
-                    <Th onClick={()=>toggleSort("donationsReceived")}> {headerEl("donationsReceived","Recv")} </Th>
-                    <Th onClick={()=>toggleSort("donationBalance")}> {headerEl("donationBalance","Balance")} </Th>
-                    <Th onClick={()=>toggleSort("participation")}> {headerEl("participation","Activity")} </Th>
-                    <Th onClick={()=>toggleSort("tenure")}> {headerEl("tenure","Tenure (d)")} </Th>
-                    <Th onClick={()=>toggleSort("activity")}> 
+                    <Th onClick={()=>toggleSort("name")} className="border-r border-slate-300"> {headerEl("name","Name")} </Th>
+                    <Th onClick={()=>toggleSort("role")} className="text-center border-r border-slate-300"> {headerEl("role","Role")} </Th>
+                    <Th onClick={()=>toggleSort("tag")} className="border-r border-slate-300">  {headerEl("tag","Tag")}  </Th>
+                    <Th onClick={()=>toggleSort("th")} className="border-r border-slate-400">   {headerEl("th","TH")}   </Th>
+                    <Th onClick={()=>toggleSort("bk")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("bk","BK")}   </Th>
+                    <Th onClick={()=>toggleSort("aq")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("aq","AQ")}   </Th>
+                    <Th onClick={()=>toggleSort("gw")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("gw","GW")}   </Th>
+                    <Th onClick={()=>toggleSort("rc")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("rc","RC")}   </Th>
+                    <Th onClick={()=>toggleSort("mp")} className="bg-slate-100 text-center border-r border-slate-400">   {headerElCentered("mp","MP")}   </Th>
+                    <Th onClick={()=>toggleSort("rush")} className="text-center border-r border-slate-300"> {headerElCentered("rush","Rush %")} </Th>
+                    <Th onClick={()=>toggleSort("trophies")} className="text-center border-r border-slate-300"> {headerElCentered("trophies","Trophies")} </Th>
+                    <Th onClick={()=>toggleSort("donations")} className="border-r border-slate-300"> {headerEl("donations","Don")} </Th>
+                    <Th onClick={()=>toggleSort("donationsReceived")} className="border-r border-slate-300"> {headerEl("donationsReceived","Recv")} </Th>
+                    <Th onClick={()=>toggleSort("donationBalance")} className="border-r border-slate-400"> {headerEl("donationBalance","Balance")} </Th>
+                    <Th onClick={()=>toggleSort("participation")} className="border-r border-slate-300"> {headerEl("participation","Activity")} </Th>
+                    <Th onClick={()=>toggleSort("tenure")} className="border-r border-slate-300"> {headerEl("tenure","Tenure (d)")} </Th>
+                    <Th onClick={()=>toggleSort("activity")} className="border-r border-slate-400"> 
                       <div className="flex items-center gap-1">
                         {headerEl("activity","Last Activity")}
                         <button
@@ -2447,7 +2507,7 @@ Please analyze this clan data and provide insights on:
                         </button>
                       </div>
                     </Th>
-                    <Th onClick={()=>toggleSort("warEfficiency")} className="text-center bg-red-50"> 
+                    <Th onClick={()=>toggleSort("warEfficiency")} className="text-center bg-red-50 border-r border-slate-300"> 
                       <div className="flex items-center justify-center gap-1">
                         {headerElCentered("warEfficiency","War Eff")}
                         <button
@@ -2481,7 +2541,6 @@ Please analyze this clan data and provide insights on:
                         </button>
                       </div>
                     </Th>
-                    <Th onClick={()=>toggleSort("role")} className="text-center"> {headerEl("role","Role")} </Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2490,7 +2549,7 @@ Please analyze this clan data and provide insights on:
                     const rp = rushPercent(m, thCaps);
                     return (
                       <tr key={`${m.tag}-${i}`} className={`border-b border-slate-100 last:border-0 transition-all duration-200 hover:bg-blue-50/50 hover:scale-[1.01] hover:shadow-md cursor-pointer ${i%2===1 ? "bg-slate-50/50" : "bg-white/50"}`}>
-                        <Td>
+                        <Td className="border-r border-slate-300">
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleOpenPlayerProfile(m)}
@@ -2509,14 +2568,15 @@ Please analyze this clan data and provide insights on:
                             )}
                           </div>
                         </Td>
-                        <Td>{m.tag}</Td>
-                        <Td>{th}</Td>
-                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"bk")}</Td>
-                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"aq")}</Td>
-                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"gw")}</Td>
-                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"rc")}</Td>
-                        <Td className="text-center bg-slate-100">{renderHeroCell(m,"mp")}</Td>
-                        <Td className={`text-center ${rushClass(rp)}`}>
+                        <Td className="text-center border-r border-slate-300">{renderRole(m.role)}</Td>
+                        <Td className="border-r border-slate-300">{m.tag}</Td>
+                        <Td className="border-r border-slate-400">{th}</Td>
+                        <Td className="text-center bg-slate-100 border-r border-slate-300">{renderHeroCell(m,"bk")}</Td>
+                        <Td className="text-center bg-slate-100 border-r border-slate-300">{renderHeroCell(m,"aq")}</Td>
+                        <Td className="text-center bg-slate-100 border-r border-slate-300">{renderHeroCell(m,"gw")}</Td>
+                        <Td className="text-center bg-slate-100 border-r border-slate-300">{renderHeroCell(m,"rc")}</Td>
+                        <Td className="text-center bg-slate-100 border-r border-slate-400">{renderHeroCell(m,"mp")}</Td>
+                        <Td className={`text-center border-r border-slate-300 ${rushClass(rp)}`}>
                           <span
                             className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:scale-110 hover:font-bold transition-all duration-200 cursor-pointer inline-block transform-gpu"
                             title={`${HEAD_TIPS["Rush %"]}\n${rushDetail(m)}`}
@@ -2524,10 +2584,10 @@ Please analyze this clan data and provide insights on:
                             {rp}%
                           </span>
                         </Td>
-                        <Td className="text-center">{m.trophies ?? ""}</Td>
-                        <Td>{m.donations ?? ""}</Td>
-                        <Td>{m.donationsReceived ?? ""}</Td>
-                        <Td>
+                        <Td className="text-center border-r border-slate-300">{m.trophies ?? ""}</Td>
+                        <Td className="border-r border-slate-300">{m.donations ?? ""}</Td>
+                        <Td className="border-r border-slate-300">{m.donationsReceived ?? ""}</Td>
+                        <Td className="border-r border-slate-400">
                           {(() => {
                             const balance = getDonationBalance(m);
                             const ratio = balance.given > 0 ? (balance.received / balance.given).toFixed(2) : "∞";
@@ -2541,7 +2601,7 @@ Please analyze this clan data and provide insights on:
                             );
                           })()}
                         </Td>
-                        <Td>
+                        <Td className="border-r border-slate-300">
                           {(() => {
                             const balance = getDonationBalance(m);
                             const totalDonations = balance.given + balance.received;
@@ -2569,8 +2629,8 @@ Please analyze this clan data and provide insights on:
                             );
                           })()}
                         </Td>
-                        <Td>{getTenure(m)}</Td>
-                        <Td>
+                        <Td className="border-r border-slate-300">{getTenure(m)}</Td>
+                        <Td className="border-r border-slate-400">
                           {(() => {
                             // Find previous member data for comparison
                             const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
@@ -2595,7 +2655,7 @@ Please analyze this clan data and provide insights on:
                             );
                           })()}
                         </Td>
-                        <Td className="text-center bg-red-50">
+                        <Td className="text-center bg-red-50 border-r border-slate-300">
                           {(() => {
                             const mockWarData = generateMockWarData(m);
                             const analytics = calculateWarAnalytics(m, mockWarData);
@@ -2630,7 +2690,6 @@ Please analyze this clan data and provide insights on:
                             );
                           })()}
                         </Td>
-                        <Td className="text-center">{renderRole(m.role)}</Td>
                       </tr>
                     );
                   })}
