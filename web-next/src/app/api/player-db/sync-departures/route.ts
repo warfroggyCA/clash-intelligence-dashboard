@@ -58,7 +58,8 @@ export async function POST(request: NextRequest) {
         // We'll return the data and let the client create the localStorage entries
         syncedCount++;
       } catch (error) {
-        errors.push(`Failed to sync ${departure.memberName}: ${error.message}`);
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        errors.push(`Failed to sync ${departure.memberName}: ${errorMessage}`);
       }
     }
     
