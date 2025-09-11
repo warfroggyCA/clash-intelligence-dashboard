@@ -215,7 +215,12 @@ export async function GET(req: Request) {
       members: (enriched || []).filter(Boolean),
     }, { status: 200 });
   } catch (e: any) {
-    return NextResponse.json({ ok:false, error: e?.message || "failed" }, { status: 500 });
+    console.error('Roster API error:', e);
+    return NextResponse.json({ 
+      ok: false, 
+      error: e?.message || "Internal server error",
+      details: process.env.NODE_ENV === 'development' ? e?.stack : undefined
+    }, { status: 500 });
   }
 }
 

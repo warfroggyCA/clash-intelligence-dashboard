@@ -6,7 +6,6 @@ export const metadata = {
   description: "Advanced clan analytics and management for Clash of Clans. Track member activity, war performance, donations, and strategic insights.",
   keywords: "Clash of Clans, clan management, analytics, dashboard, war tracking, member activity",
   authors: [{ name: "Clash Intelligence" }],
-  viewport: "width=device-width, initial-scale=1",
   robots: "index, follow",
   openGraph: {
     title: "Clash Intelligence Dashboard",
@@ -28,6 +27,13 @@ export const metadata = {
     ]
   }
 };
+
+export function generateViewport() {
+  return {
+    width: "device-width",
+    initialScale: 1,
+  };
+}
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (

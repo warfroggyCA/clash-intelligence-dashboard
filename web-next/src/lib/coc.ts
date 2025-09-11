@@ -155,7 +155,33 @@ async function api<T>(path: string): Promise<T> {
   }
 
   const token = process.env.COC_API_TOKEN;
-  if (!token) throw new Error("COC_API_TOKEN not set");
+  if (!token) {
+    // In development, fall back to mock data if no token
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[DEV MODE] No COC_API_TOKEN, using mock data for: ${path}`);
+      
+      // Return mock clan data
+      if (path.includes('/clans/')) {
+        const mockClanData = MOCK_DATA['/clans/%232PR8R8V8P'];
+        if (mockClanData) {
+          setCached(path, mockClanData);
+          return mockClanData as T;
+        }
+      }
+      
+      // Return mock player data
+      if (path.includes('/players/')) {
+        const playerTag = path.split('/players/')[1];
+        const mockPlayer = generateMockPlayer(playerTag, `Player${Math.floor(Math.random() * 1000)}`);
+        setCached(path, mockPlayer);
+        return mockPlayer as T;
+      }
+      
+      // Default mock response
+      return {} as T;
+    }
+    throw new Error("COC_API_TOKEN not set");
+  }
   
   const axiosConfig: any = {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
