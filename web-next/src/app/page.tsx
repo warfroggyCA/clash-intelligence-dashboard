@@ -1287,7 +1287,11 @@ export default function HomePage(){
       
       console.log("API response:", { ok: r.ok, status: r.status, data: j });
       
-      if (!r.ok) throw new Error(j?.error || "Failed to load stored data.");
+      if (!r.ok) {
+        const errorMsg = j?.error || `Failed to load stored data (${r.status})`;
+        console.error("API Error:", { status: r.status, error: j });
+        throw new Error(errorMsg);
+      }
       
       setRoster(j as Roster);
       setStatus("success");
@@ -1600,12 +1604,19 @@ Please analyze this clan data and provide insights on:
       const qs = new URLSearchParams({ mode: "live", clanTag: raw }).toString();
       const r = await fetch(`/api/roster?${qs}`, { cache: "no-store" });
       const j = await r.json();
-      if (!r.ok) throw new Error(j?.error || "Failed to load roster.");
+      
+      if (!r.ok) {
+        const errorMsg = j?.error || `Failed to load roster (${r.status})`;
+        console.error("Live data API Error:", { status: r.status, error: j });
+        throw new Error(errorMsg);
+      }
+      
       setRoster(j as Roster);
       setStatus("success");
       setMessage(`Loaded ${j.members?.length ?? 0} members from CoC (${j.clanName || raw}).`);
       setPage(1);
     } catch (e:any) {
+      console.error("onLoad error:", e);
       setStatus("error");
       setMessage(e?.message || "Load failed.");
     }

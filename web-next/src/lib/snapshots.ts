@@ -20,6 +20,11 @@ export type Member = {
   donationsReceived?: number;
   role?: string;
   tenure_days?: number;
+  // Additional properties for change detection
+  attackWins?: number;
+  versusBattleWins?: number;
+  versusTrophies?: number;
+  clanCapitalContributions?: number;
 };
 
 export type DailySnapshot = {
@@ -137,6 +142,11 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
         donationsReceived: member.donationsReceived,
         role: member.role,
         tenure_days: 0, // Will be populated from ledger if needed
+        // Additional properties for change detection
+        attackWins: player.attackWins || 0,
+        versusBattleWins: player.versusBattleWins || 0,
+        versusTrophies: player.versusTrophies || 0,
+        clanCapitalContributions: player.clanCapitalContributions || 0,
       });
     } catch (error) {
       console.error(`Failed to fetch player data for ${member.tag}:`, error);
@@ -148,6 +158,11 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
         donations: member.donations,
         donationsReceived: member.donationsReceived,
         role: member.role,
+        // Set default values for change detection properties
+        attackWins: 0,
+        versusBattleWins: 0,
+        versusTrophies: 0,
+        clanCapitalContributions: 0,
       });
     }
   }

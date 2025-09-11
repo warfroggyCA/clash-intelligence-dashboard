@@ -13,7 +13,17 @@ type CoCPlayer = {
   trophies?: number;
   donations?: number;
   donationsReceived?: number;
-  heroes?: Array<{ name: string; level?: number; currentLevel?: number }>;
+  attackWins?: number;
+  versusBattleWins?: number;
+  versusTrophies?: number;
+  clanCapitalContributions?: number;
+  heroes?: Array<{ 
+    name: string; 
+    level?: number; 
+    currentLevel?: number;
+    maxLevel?: number;
+    village?: string;
+  }>;
 };
 
 type CoCClanMembersResp = {
@@ -80,10 +90,17 @@ const MOCK_DATA = {
 
 // Generate mock player data
 function generateMockPlayer(tag: string, name: string) {
+  const th = Math.floor(Math.random() * 5) + 10; // 10-14
+  const bk = Math.floor(Math.random() * 20) + 40; // 40-60
+  const aq = Math.floor(Math.random() * 20) + 40; // 40-60
+  const gw = Math.floor(Math.random() * 15) + 20; // 20-35
+  const rc = Math.floor(Math.random() * 15) + 15; // 15-30
+  const mp = Math.floor(Math.random() * 10) + 10; // 10-20
+  
   return {
     tag,
     name,
-    townHallLevel: Math.floor(Math.random() * 5) + 10, // 10-14
+    townHallLevel: th,
     trophies: Math.floor(Math.random() * 2000) + 3000, // 3000-5000
     donations: Math.floor(Math.random() * 1000) + 200, // 200-1200
     donationsReceived: Math.floor(Math.random() * 200) + 50, // 50-250
@@ -91,13 +108,15 @@ function generateMockPlayer(tag: string, name: string) {
     versusBattleWins: Math.floor(Math.random() * 100) + 50, // 50-150
     versusTrophies: Math.floor(Math.random() * 1000) + 2500, // 2500-3500
     clanCapitalContributions: Math.floor(Math.random() * 10000) + 5000, // 5000-15000
-    bk: Math.floor(Math.random() * 20) + 40, // 40-60
-    aq: Math.floor(Math.random() * 20) + 40, // 40-60
-    gw: Math.floor(Math.random() * 15) + 20, // 20-35
-    rc: Math.floor(Math.random() * 15) + 15, // 15-30
-    mp: Math.floor(Math.random() * 10) + 10, // 10-20
     role: 'member',
-    clanTag: '#2PR8R8V8P'
+    clanTag: '#2PR8R8V8P',
+    heroes: [
+      { name: 'Barbarian King', level: bk, village: 'home' },
+      { name: 'Archer Queen', level: aq, village: 'home' },
+      { name: 'Grand Warden', level: gw, village: 'home' },
+      { name: 'Royal Champion', level: rc, village: 'home' },
+      { name: 'Minion Prince', level: mp, village: 'builder' }
+    ]
   };
 }
 
@@ -212,13 +231,25 @@ export function extractHeroLevels(p: CoCPlayer) {
   const out: Partial<Record<"bk" | "aq" | "gw" | "rc" | "mp", number | null>> = {
     bk: null, aq: null, gw: null, rc: null, mp: null,
   };
+  
   for (const h of p.heroes || []) {
     const k = heroKeyFromName(h.name || "");
     if (!k) continue;
-    const lvl = typeof h.currentLevel === "number" ? h.currentLevel
-              : typeof h.level === "number" ? h.level : 0;
-    out[k] = lvl || 0;
+    
+    // Try different level properties in order of preference
+    let lvl = 0;
+    if (typeof h.level === "number" && h.level > 0) {
+      lvl = h.level;
+    } else if (typeof h.currentLevel === "number" && h.currentLevel > 0) {
+      lvl = h.currentLevel;
+    } else if (typeof h.maxLevel === "number" && h.maxLevel > 0) {
+      lvl = h.maxLevel;
+    }
+    
+    // Only set the level if it's a valid positive number
+    out[k] = lvl > 0 ? lvl : null;
   }
+  
   return out;
 }
 

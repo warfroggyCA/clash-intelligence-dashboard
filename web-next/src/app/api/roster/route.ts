@@ -140,28 +140,27 @@ export async function GET(req: Request) {
       }
       
       if (!snapshot) {
-        return NextResponse.json({ 
-          ok: false, 
-          error: "No stored snapshot found for this clan. Use 'live' mode to fetch fresh data." 
-        }, { status: 404 });
+        // Fallback to live data if no snapshot available
+        console.log(`No snapshot found for ${raw}, falling back to live data`);
+        // Continue to live data fetching below instead of returning error
+      } else {
+        // Read effective tenure map (append-only)
+        const tenureMap = await readLedgerEffective();
+
+        // Enrich snapshot members with current tenure data
+        const enrichedMembers = snapshot.members.map(member => ({
+          ...member,
+          tenure_days: tenureMap[member.tag.toUpperCase()] || member.tenure_days || 0,
+        }));
+
+        return NextResponse.json({
+          source: "snapshot",
+          date: snapshot.date,
+          clanName: snapshot.clanName,
+          meta: { clanTag: raw, clanName: snapshot.clanName },
+          members: enrichedMembers,
+        }, { status: 200 });
       }
-
-      // Read effective tenure map (append-only)
-      const tenureMap = await readLedgerEffective();
-
-      // Enrich snapshot members with current tenure data
-      const enrichedMembers = snapshot.members.map(member => ({
-        ...member,
-        tenure_days: tenureMap[member.tag.toUpperCase()] || member.tenure_days || 0,
-      }));
-
-      return NextResponse.json({
-        source: "snapshot",
-        date: snapshot.date,
-        clanName: snapshot.clanName,
-        meta: { clanTag: raw, clanName: snapshot.clanName },
-        members: enrichedMembers,
-      }, { status: 200 });
     }
 
     // 1) clan info + members (live, rate-limited)
