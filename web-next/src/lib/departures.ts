@@ -75,6 +75,61 @@ export async function addDeparture(clanTag: string, departure: DepartureRecord):
   }
   
   await writeDepartures(clanTag, departures);
+  
+  // Store departure data for Player DB integration
+  await storeDepartureForPlayerDB(departure);
+}
+
+// Store departure data in a format that can be picked up by the Player DB
+async function storeDepartureForPlayerDB(departure: DepartureRecord): Promise<void> {
+  try {
+    const departureData = {
+      memberTag: departure.memberTag,
+      memberName: departure.memberName,
+      departureDate: departure.departureDate,
+      lastRole: departure.lastRole,
+      lastTownHall: departure.lastTownHall,
+      lastTrophies: departure.lastTrophies,
+      departureReason: departure.departureReason,
+      notes: departure.notes,
+      addedBy: 'System (Auto-detected)',
+      timestamp: new Date().toISOString()
+    };
+
+    // Store in a special file that the Player DB can read
+    const playerDBDir = path.join(process.cwd(), 'data', 'player-db');
+    await fs.mkdir(playerDBDir, { recursive: true });
+    
+    const filePath = path.join(playerDBDir, 'departures.json');
+    let departures = [];
+    
+    try {
+      const data = await fs.readFile(filePath, 'utf-8');
+      departures = JSON.parse(data);
+    } catch (error) {
+      // File doesn't exist yet, start with empty array
+    }
+    
+    // Check if we already have this departure to avoid duplicates
+    const existingIndex = departures.findIndex(d => 
+      d.memberTag === departure.memberTag && 
+      d.departureDate === departure.departureDate
+    );
+    
+    if (existingIndex >= 0) {
+      // Update existing record
+      departures[existingIndex] = departureData;
+    } else {
+      // Add new record
+      departures.push(departureData);
+    }
+    
+    await fs.writeFile(filePath, JSON.stringify(departures, null, 2));
+    
+    console.log(`[Departure] Stored departure data for Player DB: ${departure.memberName} (${departure.memberTag})`);
+  } catch (error) {
+    console.error('Failed to store departure for Player DB:', error);
+  }
 }
 
 // Check for rejoins (members who left and are now back)

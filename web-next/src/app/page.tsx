@@ -23,7 +23,6 @@ import { AlertCircle, Bell, X } from "lucide-react";
 import { cfg } from "../lib/config";
 import ChangeDashboard from "../components/ChangeDashboard";
 import DepartureManager from "../components/DepartureManager";
-import CreatePlayerNoteModal from "../components/CreatePlayerNoteModal";
 import PlayerDatabase from "../components/PlayerDatabase";
 import AICoaching from "../components/AICoaching";
 
@@ -874,7 +873,6 @@ export default function HomePage(){
   const [selectedPlayer, setSelectedPlayer] = useState<Member | null>(null);
   const [availableSnapshots, setAvailableSnapshots] = useState<Array<{date: string, memberCount: number}>>([]);
   const [selectedSnapshot, setSelectedSnapshot] = useState<string>("latest");
-  const [showCreatePlayerNote, setShowCreatePlayerNote] = useState(false);
   const [playerNameHistory, setPlayerNameHistory] = useState<Record<string, Array<{name: string, timestamp: string}>>>({});
   const [eventHistory, setEventHistory] = useState<EventHistory>({});
   const [eventFilterPlayer, setEventFilterPlayer] = useState<string>("all");
@@ -2155,19 +2153,6 @@ Please analyze this clan data and provide insights on:
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">Quick Actions</h3>
             <div className="flex flex-col sm:flex-row gap-2">
-              <button 
-                onClick={() => setShowCreatePlayerNote(true)} 
-                className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-sky-500 to-sky-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-sky-400/20"
-                title="Create a note for a player not currently in the clan"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-sky-400 to-sky-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                <span className="relative flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                  Note
-                </span>
-              </button>
               <button 
                 onClick={copyToClipboard} 
                 className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20"
@@ -3450,12 +3435,6 @@ Please analyze this clan data and provide insights on:
         />
       )}
 
-      {/* Create Player Note Modal */}
-      {showCreatePlayerNote && (
-        <CreatePlayerNoteModal
-          onClose={() => setShowCreatePlayerNote(false)}
-        />
-      )}
 
       {/* Activity Info Popup */}
       <InfoPopup 

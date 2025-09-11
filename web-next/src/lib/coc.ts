@@ -85,7 +85,12 @@ const MOCK_DATA = {
       { tag: '#QULRCQ02G', name: 'Sirojiddin', role: 'coLeader', trophies: 4800, donations: 1200, donationsReceived: 150 },
       { tag: '#LP920YJC', name: 'Mate 238', role: 'elder', trophies: 4200, donations: 800, donationsReceived: 100 },
       { tag: '#QYLYG8J9G', name: '_RSENIC', role: 'member', trophies: 3800, donations: 600, donationsReceived: 80 },
-      { tag: '#8CRRR2RQ2', name: 'ShakiB', role: 'member', trophies: 3400, donations: 400, donationsReceived: 60 }
+      { tag: '#8CRRR2RQ2', name: 'ShakiB', role: 'member', trophies: 3400, donations: 400, donationsReceived: 60 },
+      { tag: '#QRC2C2PVQ', name: 'A_Ar1an', role: 'member', trophies: 3600, donations: 500, donationsReceived: 70 },
+      { tag: '#UU9GJ9QQ', name: 'andrew', role: 'member', trophies: 3200, donations: 350, donationsReceived: 45 },
+      { tag: '#G8JYPVVUQ', name: 'Binh_en24', role: 'member', trophies: 3100, donations: 300, donationsReceived: 40 },
+      { tag: '#QCRVR2CPU', name: 'bob', role: 'member', trophies: 3000, donations: 250, donationsReceived: 35 },
+      { tag: '#YYVUCPQ90', name: 'CosmicThomas', role: 'member', trophies: 2900, donations: 200, donationsReceived: 30 }
     ]
   }
 };
@@ -237,7 +242,7 @@ export async function getClanMembers(clanTag: string) {
 }
 
 export async function getClanInfo(clanTag: string) {
-  return api<CoCClan>(`/clans/${encTag(clanTag)}`);
+  return api<any>(`/clans/${encTag(clanTag)}`);
 }
 
 export async function getPlayer(tag: string) {

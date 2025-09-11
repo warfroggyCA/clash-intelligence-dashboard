@@ -49,16 +49,10 @@ export async function GET(request: NextRequest) {
       const uniqueSnapshots = Array.from(dateMap.values());
       
       
-      return NextResponse.json({
-        success: true,
-        snapshots: uniqueSnapshots
-      });
+      return NextResponse.json(uniqueSnapshots);
     } catch (error) {
       console.error('Error querying snapshots:', error);
-      return NextResponse.json({
-        success: true,
-        snapshots: []
-      });
+      return NextResponse.json([]);
     }
   } catch (error: any) {
     console.error('Error listing snapshots:', error);
