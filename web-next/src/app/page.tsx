@@ -1035,13 +1035,17 @@ export default function HomePage(){
     if (initial) {
       // Set home clan and auto-load stored snapshot data
       setHomeClan(initial);
+      console.log("Setting home clan to:", initial);
       
       // Load snapshots first, then load stored data
       const initializeData = async () => {
         try {
           console.log("Initializing data for:", initial);
+          setStatus("loading");
+          setMessage("Loading home clan data...");
           await loadAvailableSnapshots(initial);
           await loadStoredData(initial);
+          console.log("Home clan data loaded successfully");
         } catch (error) {
           console.error("Auto-loading failed:", error);
           setStatus("error");
@@ -1050,6 +1054,8 @@ export default function HomePage(){
       };
       
       initializeData();
+    } else {
+      console.log("No initial clan tag found");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isInitialized]); // Only run once on mount
@@ -1437,6 +1443,8 @@ export default function HomePage(){
       setMessage("Enter a clan tag (e.g., #2PR8R8V8P) and press Load."); 
       return; 
     }
+    
+    console.log("Proceeding with data load for:", apiTag);
     
     setStatus("loading"); 
     setMessage(`Loading stored data for ${raw}…`);
