@@ -3,6 +3,8 @@
 // Reads process.env.COC_API_TOKEN. Forces IPv4 egress to avoid invalidIp on IPv6.
 
 import { Agent } from "undici";
+import axios from "axios";
+import { HttpsProxyAgent } from "https-proxy-agent";
 
 type CoCPlayer = {
   tag: string;
@@ -41,29 +43,37 @@ async function api<T>(path: string): Promise<T> {
   const token = process.env.COC_API_TOKEN;
   if (!token) throw new Error("COC_API_TOKEN not set");
   
-  const fetchOptions: RequestInit = {
+  const axiosConfig: any = {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    cache: "no-store",
+    timeout: 10000,
   };
 
   // Use Fixie proxy if available (for production), otherwise use IPv4 agent
   if (process.env.FIXIE_URL) {
-    // Set proxy environment variables for Node.js to use
-    process.env.HTTP_PROXY = process.env.FIXIE_URL;
-    process.env.HTTPS_PROXY = process.env.FIXIE_URL;
-    console.log('Set proxy environment variables');
+    console.log('Using Fixie proxy with axios:', process.env.FIXIE_URL);
+    // Use HttpsProxyAgent for axios
+    const proxyAgent = new HttpsProxyAgent(process.env.FIXIE_URL);
+    axiosConfig.httpsAgent = proxyAgent;
+    axiosConfig.httpAgent = proxyAgent;
+  } else {
+    // Always use IPv4 agent when no proxy
+    axiosConfig.httpsAgent = agent4;
+    axiosConfig.httpAgent = agent4;
   }
-  
-  // Always use IPv4 agent (proxy handled by environment variables)
-  // @ts-ignore - undici agent for IPv4
-  fetchOptions.dispatcher = agent4;
 
-  const res = await fetch(`${BASE}${path}`, fetchOptions);
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`CoC API ${res.status} ${res.statusText}: ${text}`);
+  try {
+    const response = await axios.get(`${BASE}${path}`, axiosConfig);
+    return response.data as T;
+  } catch (error: any) {
+    if (error.response) {
+      const status = error.response.status;
+      const statusText = error.response.statusText;
+      const data = error.response.data;
+      throw new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
+    } else {
+      throw new Error(`CoC API request failed: ${error.message}`);
+    }
   }
-  return (await res.json()) as T;
 }
 
 export async function getClanMembers(clanTag: string) {

@@ -1,35 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
   try {
     const { snapshots, tenureLedger } = await request.json();
     
-    // Ensure directories exist
-    await mkdir('/tmp/data', { recursive: true });
-    await mkdir('/tmp/data/snapshots', { recursive: true });
+    const uploadedSnapshots = [];
     
-    // Upload snapshots
+    // Upload snapshots to Supabase Storage and Database
     if (snapshots) {
       for (const [filename, data] of Object.entries(snapshots)) {
-        const filePath = join('/tmp/data/snapshots', filename);
-        await writeFile(filePath, JSON.stringify(data, null, 2));
+        // Upload file to Supabase Storage
+        const { data: fileData, error: fileError } = await supabase.storage
+          .from('snapshots')
+          .upload(filename, JSON.stringify(data, null, 2), {
+            contentType: 'application/json'
+          });
+        
+        if (fileError) {
+          console.error('File upload error:', fileError);
+          continue;
+        }
+        
+        // Get public URL
+        const { data: urlData } = supabase.storage
+          .from('snapshots')
+          .getPublicUrl(filename);
+        
+        // Extract metadata from snapshot data
+        const snapshotData = data as any;
+        const clanTag = filename.split('_')[0] || 'unknown';
+        
+        // Insert metadata into database
+        const { error: dbError } = await supabase
+          .from('snapshots')
+          .insert({
+            clan_tag: clanTag,
+            filename: filename,
+            date: snapshotData.date || new Date().toISOString().split('T')[0],
+            member_count: snapshotData.memberCount || snapshotData.members?.length || 0,
+            clan_name: snapshotData.clanName || 'Unknown Clan',
+            timestamp: snapshotData.timestamp || new Date().toISOString(),
+            file_url: urlData.publicUrl
+          });
+        
+        if (dbError) {
+          console.error('Database insert error:', dbError);
+        } else {
+          uploadedSnapshots.push(filename);
+        }
       }
     }
     
-    // Upload tenure ledger
+    // Upload tenure ledger to Supabase Storage and Database
+    let tenureUploaded = false;
     if (tenureLedger) {
-      const ledgerPath = '/tmp/data/tenure_ledger.jsonl';
-      await writeFile(ledgerPath, tenureLedger);
+      const { data: fileData, error: fileError } = await supabase.storage
+        .from('tenure')
+        .upload('tenure_ledger.jsonl', tenureLedger, {
+          contentType: 'application/jsonl'
+        });
+      
+      if (!fileError) {
+        const { data: urlData } = supabase.storage
+          .from('tenure')
+          .getPublicUrl('tenure_ledger.jsonl');
+        
+        const { error: dbError } = await supabase
+          .from('tenure_ledger')
+          .upsert({
+            file_url: urlData.publicUrl,
+            size: tenureLedger.length
+          });
+        
+        if (!dbError) {
+          tenureUploaded = true;
+        }
+      }
     }
     
     return NextResponse.json({ 
       ok: true, 
-      message: 'Snapshots uploaded successfully',
+      message: 'Snapshots uploaded successfully to Supabase',
       uploaded: {
-        snapshots: snapshots ? Object.keys(snapshots).length : 0,
-        hasTenureLedger: !!tenureLedger
+        snapshots: uploadedSnapshots.length,
+        hasTenureLedger: tenureUploaded,
+        files: uploadedSnapshots
       }
     });
     

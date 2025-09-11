@@ -167,9 +167,30 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
 // Load a snapshot for a specific date
 export async function loadSnapshot(clanTag: string, date: string): Promise<DailySnapshot | null> {
   try {
-    const snapshotPath = getSnapshotPath(clanTag, date);
-    const data = await fsp.readFile(snapshotPath, 'utf-8');
-    return JSON.parse(data) as DailySnapshot;
+    const { supabase } = await import('@/lib/supabase');
+    const safeTag = clanTag.replace('#', '').toLowerCase();
+    const filename = `${safeTag}_${date}.json`;
+    
+    // Get the file URL from database
+    const { data: snapshotData, error } = await supabase
+      .from('snapshots')
+      .select('file_url')
+      .eq('clan_tag', safeTag)
+      .eq('filename', filename)
+      .single();
+    
+    if (error || !snapshotData) {
+      return null;
+    }
+    
+    // Fetch the actual snapshot data
+    const response = await fetch(snapshotData.file_url);
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    return data as DailySnapshot;
   } catch (error) {
     return null;
   }
@@ -177,21 +198,31 @@ export async function loadSnapshot(clanTag: string, date: string): Promise<Daily
 
 // Get the most recent snapshot
 export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot | null> {
-  const snapshotsDir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
-  const safeTag = clanTag.replace('#', '').toLowerCase();
-  
   try {
-    const files = await fsp.readdir(snapshotsDir);
-    const snapshotFiles = files
-      .filter(f => f.startsWith(safeTag) && f.endsWith('.json'))
-      .sort()
-      .reverse();
+    const { supabase } = await import('@/lib/supabase');
+    const safeTag = clanTag.replace('#', '').toLowerCase();
     
-    if (snapshotFiles.length === 0) return null;
+    // Get the most recent snapshot from database
+    const { data: snapshotData, error } = await supabase
+      .from('snapshots')
+      .select('file_url')
+      .eq('clan_tag', safeTag)
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .single();
     
-    const latestFile = snapshotFiles[0];
-    const data = await fsp.readFile(path.join(snapshotsDir, latestFile), 'utf-8');
-    return JSON.parse(data) as DailySnapshot;
+    if (error || !snapshotData) {
+      return null;
+    }
+    
+    // Fetch the actual snapshot data
+    const response = await fetch(snapshotData.file_url);
+    if (!response.ok) {
+      return null;
+    }
+    
+    const data = await response.json();
+    return data as DailySnapshot;
   } catch (error) {
     return null;
   }

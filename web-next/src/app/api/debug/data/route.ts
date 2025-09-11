@@ -1,55 +1,59 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fsp } from 'fs';
-import path from 'path';
+import { supabase } from '@/lib/supabase';
 
 export async function GET(request: NextRequest) {
   try {
-    const dataRoot = '/tmp/data';
-    const snapshotsDir = path.join(dataRoot, 'snapshots');
-    
     const result: any = {
-      dataRoot,
-      snapshotsDir,
-      exists: {
-        dataRoot: false,
-        snapshotsDir: false
+      storage: 'Supabase',
+      snapshots: {
+        count: 0,
+        files: []
       },
-      files: {
-        dataRoot: [],
-        snapshotsDir: []
+      tenureLedger: {
+        exists: false,
+        size: 0,
+        url: null
       }
     };
     
-    // Check if directories exist
+    // Check snapshots in Supabase
     try {
-      const stats = await fsp.stat(dataRoot);
-      result.exists.dataRoot = stats.isDirectory();
+      const { data: snapshots, error: snapshotsError } = await supabase
+        .from('snapshots')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (!snapshotsError && snapshots) {
+        result.snapshots.count = snapshots.length;
+        result.snapshots.files = snapshots.map(snapshot => ({
+          filename: snapshot.filename,
+          url: snapshot.file_url,
+          clanTag: snapshot.clan_tag,
+          date: snapshot.date,
+          memberCount: snapshot.member_count,
+          createdAt: snapshot.created_at
+        }));
+      }
     } catch (e) {
-      result.exists.dataRoot = false;
+      console.error('Error querying snapshots from Supabase:', e);
     }
     
+    // Check tenure ledger in Supabase
     try {
-      const stats = await fsp.stat(snapshotsDir);
-      result.exists.snapshotsDir = stats.isDirectory();
+      const { data: tenureData, error: tenureError } = await supabase
+        .from('tenure_ledger')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (!tenureError && tenureData && tenureData.length > 0) {
+        const ledger = tenureData[0];
+        result.tenureLedger.exists = true;
+        result.tenureLedger.size = ledger.size;
+        result.tenureLedger.url = ledger.file_url;
+      }
     } catch (e) {
-      result.exists.snapshotsDir = false;
-    }
-    
-    // List files if directories exist
-    if (result.exists.dataRoot) {
-      try {
-        result.files.dataRoot = await fsp.readdir(dataRoot);
-      } catch (e) {
-        result.files.dataRoot = [];
-      }
-    }
-    
-    if (result.exists.snapshotsDir) {
-      try {
-        result.files.snapshotsDir = await fsp.readdir(snapshotsDir);
-      } catch (e) {
-        result.files.snapshotsDir = [];
-      }
+      console.error('Error checking tenure ledger from Supabase:', e);
     }
     
     return NextResponse.json(result);

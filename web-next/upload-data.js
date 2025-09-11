@@ -25,8 +25,8 @@ async function uploadData() {
       tenureLedger = fs.readFileSync(tenureLedgerPath, 'utf8');
     }
     
-    // Upload to Vercel
-    const response = await fetch('https://clash-intelligence-oadzmcdbq-dougs-projects-e9ca299b.vercel.app/api/upload-snapshots', {
+          // Upload to Vercel
+          const response = await fetch('https://clash-intelligence-nhhx1t8xn-dougs-projects-e9ca299b.vercel.app/api/upload-snapshots', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
