@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         });
       }
       
-      // Transform data for response
+      // Transform data for response and deduplicate by date
       const formattedSnapshots = snapshots?.map(snapshot => ({
         date: snapshot.date,
         memberCount: snapshot.member_count,
@@ -39,9 +39,19 @@ export async function GET(request: NextRequest) {
         filename: snapshot.filename
       })) || [];
       
+      // Deduplicate by date using Map to ensure we keep the most recent for each date
+      const dateMap = new Map();
+      formattedSnapshots.forEach(snapshot => {
+        if (!dateMap.has(snapshot.date)) {
+          dateMap.set(snapshot.date, snapshot);
+        }
+      });
+      const uniqueSnapshots = Array.from(dateMap.values());
+      
+      
       return NextResponse.json({
         success: true,
-        snapshots: formattedSnapshots
+        snapshots: uniqueSnapshots
       });
     } catch (error) {
       console.error('Error querying snapshots:', error);

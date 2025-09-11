@@ -823,7 +823,7 @@ export default function HomePage(){
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [page, setPage] = useState(1);
   const [recentClanFilter, setRecentClanFilter] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants">("roster");
+  const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants" | "intelligence">("roster");
   const [showDepartureManager, setShowDepartureManager] = useState(false);
   const [departureNotifications, setDepartureNotifications] = useState(0);
   const [departureNotificationsData, setDepartureNotificationsData] = useState<any>(null);
@@ -1707,13 +1707,43 @@ Please analyze this clan data and provide insights on:
             <span className="text-4xl hidden">⚔️</span>
           </div>
           
-          {/* Center - Clan Name (Prominent) */}
-          <div className="text-center">
-            <div className="font-bold text-4xl text-white drop-shadow-lg">
+          {/* Center - Clan Name & Input */}
+          <div className="text-center flex-1 max-w-2xl">
+            <div className="font-bold text-4xl text-white drop-shadow-lg mb-2">
               {clanName || "No Clan Loaded"}
             </div>
-            <div className="text-lg text-blue-100 mt-1">
-              {clanTag || homeClan || "Enter clan tag to load"}
+            <div className="flex flex-col sm:flex-row items-center gap-2 justify-center">
+              <input
+                value={clanTag}
+                onChange={(e) => {
+                  let value = e.target.value.toUpperCase();
+                  // Auto-add # if not present
+                  if (value && !value.startsWith('#')) {
+                    value = '#' + value;
+                  }
+                  setClanTag(value);
+                }}
+                onKeyDown={(e)=>{ if (e.key === "Enter") onLoad().catch(()=>{}); }}
+                className="border border-white/30 bg-white/10 text-white placeholder-white/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/20 transition-all backdrop-blur-sm"
+                placeholder="Enter clan tag..."
+                title="Enter a clan tag to load their roster data"
+              />
+              <button 
+                onClick={()=>onLoad().catch(()=>{})} 
+                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-medium transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-white/30"
+                title="Load clan data and switch to this clan"
+              >
+                {status==="loading" ? "⏳ Loading..." : "🔄 Switch Clan"}
+              </button>
+              {homeClan && clanTag !== homeClan && (
+                <button 
+                  onClick={onSetHome} 
+                  className="px-3 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg text-sm transition-all duration-200 hover:scale-105"
+                  title="Set as home clan"
+                >
+                  🏠 Set Home
+                </button>
+              )}
             </div>
           </div>
           
@@ -1754,12 +1784,13 @@ Please analyze this clan data and provide insights on:
           {/* Tab Container with Background */}
           <div className="bg-white/90 backdrop-blur-sm rounded-t-xl border border-b-0 border-gray-200 shadow-xl">
             <nav className="flex flex-wrap gap-1 p-2 sm:flex-nowrap">
+              {/* Tab navigation with improved contrast */}
               <button
                 onClick={() => setActiveTab("roster")}
-                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "roster"
                     ? "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform scale-105 border-2 border-blue-400"
-                    : "text-gray-700 hover:text-blue-600 hover:bg-blue-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-blue-200"
+                    : "bg-gray-100 text-gray-600 hover:text-blue-600 hover:bg-blue-50/80 hover:shadow-md hover:scale-102 border-2 border-gray-200 hover:border-blue-200"
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
@@ -1772,10 +1803,10 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("changes")}
-                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "changes"
                     ? "bg-gradient-to-br from-green-500 to-green-600 text-white shadow-lg transform scale-105 border-2 border-green-400"
-                    : "text-gray-700 hover:text-green-600 hover:bg-green-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-green-200"
+                    : "bg-gray-100 text-gray-600 hover:text-green-600 hover:bg-green-50/80 hover:shadow-md hover:scale-102 border-2 border-gray-200 hover:border-green-200"
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
@@ -1788,10 +1819,10 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("database")}
-                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "database"
                     ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg transform scale-105 border-2 border-purple-400"
-                    : "text-gray-700 hover:text-purple-600 hover:bg-purple-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-purple-200"
+                    : "!bg-gray-100 !text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 hover:shadow-md hover:scale-102 !border-2 !border-gray-200 hover:border-purple-200"
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
@@ -1804,10 +1835,10 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("coaching")}
-                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "coaching"
                     ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg transform scale-105 border-2 border-indigo-400"
-                    : "text-gray-700 hover:text-indigo-600 hover:bg-indigo-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-indigo-200"
+                    : "!bg-gray-100 !text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 hover:shadow-md hover:scale-102 !border-2 !border-gray-200 hover:border-indigo-200"
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
@@ -1820,10 +1851,10 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("events")}
-                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "events"
                     ? "bg-gradient-to-br from-emerald-500 to-emerald-600 text-white shadow-lg transform scale-105 border-2 border-emerald-400"
-                    : "text-gray-700 hover:text-emerald-600 hover:bg-emerald-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-emerald-200"
+                    : "!bg-gray-100 !text-gray-600 hover:text-emerald-600 hover:bg-emerald-50/80 hover:shadow-md hover:scale-102 !border-2 !border-gray-200 hover:border-emerald-200"
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
@@ -1836,10 +1867,10 @@ Please analyze this clan data and provide insights on:
               </button>
               <button
                 onClick={() => setActiveTab("applicants")}
-                className={`relative px-3 sm:px-8 py-3 sm:py-5 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
                   activeTab === "applicants"
                     ? "bg-gradient-to-br from-orange-500 to-orange-600 text-white shadow-lg transform scale-105 border-2 border-orange-400"
-                    : "text-gray-700 hover:text-orange-600 hover:bg-orange-50/80 hover:shadow-md hover:scale-102 border-2 border-transparent hover:border-orange-200"
+                    : "!bg-gray-100 !text-gray-600 hover:text-orange-600 hover:bg-orange-50/80 hover:shadow-md hover:scale-102 !border-2 !border-gray-200 hover:border-orange-200"
                 }`}
               >
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
@@ -1847,6 +1878,22 @@ Please analyze this clan data and provide insights on:
                   <span className="hidden sm:inline">Applicants</span>
                 </span>
                 {activeTab === "applicants" && (
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
+                )}
+              </button>
+              <button
+                onClick={() => setActiveTab("intelligence")}
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                  activeTab === "intelligence"
+                    ? "bg-gradient-to-br from-indigo-500 to-indigo-600 text-white shadow-lg transform scale-105 border-2 border-indigo-400"
+                    : "!bg-gray-100 !text-gray-600 hover:text-indigo-600 hover:bg-indigo-50/80 hover:shadow-md hover:scale-102 !border-2 !border-gray-200 hover:border-indigo-200"
+                }`}
+              >
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">🔍</span>
+                  <span className="hidden sm:inline">Intelligence</span>
+                </span>
+                {activeTab === "intelligence" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
@@ -1858,145 +1905,78 @@ Please analyze this clan data and provide insights on:
       <main className="min-h-screen p-6 flex flex-col gap-6 w-full bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
         {activeTab === "roster" ? (
           <>
-            {/* Controls */}
-        <section className="grid gap-4 p-4 sm:p-6 rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg border border-white/20">
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="grid gap-1">
-              <label className="text-sm font-medium">Clan Tag</label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  value={clanTag}
-                  onChange={(e) => {
-                    let value = e.target.value.toUpperCase();
-                    // Auto-add # if not present
-                    if (value && !value.startsWith('#')) {
-                      value = '#' + value;
-                    }
-                    setClanTag(value);
-                  }}
-                  onKeyDown={(e)=>{ if (e.key === "Enter") onLoad().catch(()=>{}); }}
-                  className="border rounded-xl px-3 py-2 w-full sm:w-32 focus:outline-none focus:ring"
-                  placeholder="2PR8R8V8P"
-                  title="Enter a clan tag (with or without #) and press Load"
-                />
-                <button 
-                  onClick={()=>onLoad().catch(()=>{})} 
-                  className="group relative inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-purple-600 via-purple-700 to-indigo-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border border-purple-500/20 backdrop-blur-sm"
-                  title="Load fresh clan data from Clash of Clans API (uses 22+ API calls)"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                  <span className="relative flex items-center gap-2">
-                    {status==="loading" ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        Loading…
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                        </svg>
-                        Load Live Data
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
-            </div>
+            {/* Simplified Controls */}
+        <section className="p-4 sm:p-6 rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg border border-white/20">
 
-            <div className="grid gap-1">
-              <label className="text-sm font-medium">Home</label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button 
-                  onClick={onSetHome} 
-                  className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-blue-400/20"
-                  title="Set the current clan as your home clan for quick access"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                  <span className="relative flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                    </svg>
-                    Set Home
-                  </span>
-                </button>
-                <button 
-                  onClick={()=>{ setClanTag(homeClan || ""); if (homeClan) onLoad(homeClan).catch(()=>{}); }} 
-                  className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-emerald-400/20"
-                  title="Load your saved home clan data"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                  <span className="relative flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                    </svg>
-                    Load Home
-                  </span>
-                </button>
-              </div>
+          {/* Quick Actions */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">Quick Actions</h3>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button 
+                onClick={() => setShowCreatePlayerNote(true)} 
+                className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-sky-500 to-sky-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-sky-400/20"
+                title="Create a note for a player not currently in the clan"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-sky-400 to-sky-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                <span className="relative flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Note
+                </span>
+              </button>
+              <button 
+                onClick={copyToClipboard} 
+                className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20"
+                title="Copy all clan data to clipboard for LLM analysis"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-teal-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                <span className="relative flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                  Copy Data
+                </span>
+              </button>
+              <button 
+                onClick={generateDailySummary}
+                disabled={status === "loading"}
+                className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                title="Generate daily summary with AI analysis of changes since last snapshot"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
+                <span className="relative flex items-center gap-2">
+                  {status === "loading" ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                      AI Summary
+                    </>
+                  )}
+                </span>
+              </button>
             </div>
-
-            <div className="grid gap-1">
-              <label className="text-sm font-medium">Quick Actions</label>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <button 
-                  onClick={() => setShowCreatePlayerNote(true)} 
-                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-sky-500 to-sky-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-sky-400/20"
-                  title="Create a note for a player not currently in the clan"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-sky-400 to-sky-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                  <span className="relative flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                    </svg>
-                    Note
-                  </span>
-                </button>
-                <button 
-                  onClick={copyToClipboard} 
-                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20"
-                  title="Copy all clan data to clipboard for LLM analysis"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-teal-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                  <span className="relative flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Copy
-                  </span>
-                </button>
-                <button 
-                  onClick={generateDailySummary}
-                  disabled={status === "loading"}
-                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                  title="Generate daily summary with AI analysis of changes since last snapshot"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
-                  <span className="relative flex items-center gap-2">
-                    {status === "loading" ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                        </svg>
-                        Daily Summary
-                      </>
-                    )}
-                  </span>
-                </button>
-              </div>
-            </div>
-
           </div>
 
-          <div className="grid gap-1">
-            <label className="text-sm font-medium">Data & Sorting</label>
-            <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center gap-3">
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          {message && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <p className="text-sm text-blue-800"><strong>Status:</strong> {message}</p>
+            </div>
+          )}
+        </section>
+
+        {/* Table */}
+        <section className="grid gap-2 p-4 rounded-2xl border overflow-x-auto w-full">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold">Members</h2>
+              <div className="flex items-center gap-2 mt-1">
                 <select 
                   value={selectedSnapshot} 
                   onChange={(e) => {
@@ -2007,77 +1987,42 @@ Please analyze this clan data and provide insights on:
                       loadStoredData(clanTag || homeClan || "", e.target.value).catch(()=>{});
                     }
                   }}
-                  className="border rounded-xl px-3 py-2 w-full sm:w-64"
+                  className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="latest">Latest Snapshot</option>
+                  {!availableSnapshots.some(s => s.date === roster?.date) && (
+                    <option value="latest">📸 {roster && roster.date ? new Date(roster.date + 'T00:00:00').toLocaleDateString() : 'Latest Snapshot'}</option>
+                  )}
                   {availableSnapshots.map((snapshot) => (
                     <option key={snapshot.date} value={snapshot.date}>
-                      {new Date(snapshot.date + 'T00:00:00').toLocaleDateString()} ({snapshot.memberCount} members)
+                      📸 {new Date(snapshot.date + 'T00:00:00').toLocaleDateString()}
                     </option>
                   ))}
                 </select>
                 <button
                   onClick={() => loadAvailableSnapshots(clanTag || homeClan || "")}
-                  className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-slate-500 to-slate-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-slate-400/20"
-                  title="Refresh the list of available snapshots"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                  title="Refresh snapshots"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-400 to-slate-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                  <span className="relative flex items-center gap-2">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                    </svg>
-                    Refresh
-                  </span>
+                  🔄
                 </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <label className="text-sm opacity-70">Sort by</label>
-                <div className="flex gap-2">
-                  <select value={sortKey} onChange={(e)=>setSortKey(e.target.value as SortKey)} className="border rounded-xl px-3 py-2 text-sm">
-                    <option value="trophies">trophies</option><option value="name">name</option><option value="th">TH</option>
-                    <option value="bk">BK</option><option value="aq">AQ</option><option value="gw">GW</option><option value="rc">RC</option><option value="mp">MP</option>
-                    <option value="rush">rush %</option><option value="donations">don</option><option value="donationsReceived">recv</option>
-                    <option value="tenure">tenure</option><option value="activity">last activity</option><option value="role">role</option>
-                  </select>
-                  <select value={sortDir} onChange={(e)=>setSortDir(e.target.value as "asc"|"desc")} className="border rounded-xl px-3 py-2 text-sm">
-                    <option value="desc">Desc</option><option value="asc">Asc</option>
-                  </select>
                 </div>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
-                <label className="text-sm opacity-70">Page size</label>
-                <select value={String(pageSize)} onChange={(e)=>{ setPageSize(Number(e.target.value)); setPage(1); }} className="border rounded-xl px-3 py-2 text-sm">
-                  <option value="10">10/page</option><option value="25">25/page</option><option value="50">50/page</option><option value="100">100/page</option>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs opacity-70">Showing {Math.min(end, total)} of {total}</span>
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-gray-600">Page size:</label>
+                <select 
+                  value={String(pageSize)} 
+                  onChange={(e)=>{ setPageSize(Number(e.target.value)); setPage(1); }} 
+                  className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                >
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                  <option value="100">100</option>
                 </select>
               </div>
             </div>
-          </div>
-
-          {message && <p className="text-sm pt-1"><strong>Status:</strong> {message}</p>}
-        </section>
-
-        {/* Table */}
-        <section className="grid gap-2 p-4 rounded-2xl border overflow-x-auto w-full">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Members</h2>
-              {roster && (
-                <div className="text-sm text-gray-600">
-                  {roster.source === "snapshot" ? (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      📸 Snapshot: {new Date((roster.date || "") + 'T00:00:00').toLocaleDateString()}
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                      🔴 Live Data
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-            <span className="text-xs opacity-70">Showing {Math.min(end, total)} of {total}</span>
           </div>
 
           {!roster && <p className="opacity-70 text-sm">Load a clan to begin.</p>}
@@ -2227,7 +2172,7 @@ Please analyze this clan data and provide insights on:
                         </button>
                       </div>
                     </Th>
-                    <Th onClick={()=>toggleSort("role")}> {headerEl("role","Role")} </Th>
+                    <Th onClick={()=>toggleSort("role")} className="text-center"> {headerEl("role","Role")} </Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2314,7 +2259,7 @@ Please analyze this clan data and provide insights on:
                             );
                           })()}
                         </Td>
-                        <Td>{renderRole(m.role)}</Td>
+                        <Td className="text-center">{renderRole(m.role)}</Td>
                       </tr>
                     );
                   })}
@@ -2510,6 +2455,118 @@ Please analyze this clan data and provide insights on:
                   </div>
                 </div>
               )}
+            </section>
+          </div>
+        ) : activeTab === "intelligence" ? (
+          <div className="space-y-6">
+            {/* Strategic Intelligence Section */}
+            <section className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 p-6">
+              <h2 className="text-2xl font-bold mb-4 flex items-center gap-2">
+                🔍 Strategic Intelligence
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Advanced analytics and insights to give your clan the competitive edge. Analyze opponents, 
+                track trends, and make data-driven strategic decisions.
+              </p>
+              
+              {/* Competitor Analysis */}
+              <div className="grid gap-6 md:grid-cols-2">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                  <h3 className="text-lg font-semibold text-blue-900 mb-3 flex items-center gap-2">
+                    🎯 Competitor Analysis
+                  </h3>
+                  <p className="text-blue-700 text-sm mb-4">
+                    Analyze rival clans to understand their strengths, weaknesses, and composition patterns.
+                  </p>
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="#CLAN_TAG"
+                      className="w-full border border-blue-300 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                    <button className="w-full bg-blue-500 text-white rounded-lg py-2 font-medium hover:bg-blue-600 transition-colors">
+                      📊 Analyze Clan
+                    </button>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-50 to-violet-50 rounded-xl p-6 border border-purple-200">
+                  <h3 className="text-lg font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    📈 Performance Metrics
+                  </h3>
+                  <p className="text-purple-700 text-sm mb-4">
+                    Track key performance indicators and identify trends in your clan's development.
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-purple-600">Average TH Level:</span>
+                      <span className="font-semibold">{roster && roster.length > 0 ? (roster.reduce((sum, m) => sum + m.townHallLevel, 0) / roster.length).toFixed(1) : "N/A"}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-purple-600">Active Members (7d):</span>
+                      <span className="font-semibold">{roster && Array.isArray(roster) ? roster.filter(m => m.lastActivity && m.lastActivity.includes('Today')).length : 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-purple-600">High Trophy Members:</span>
+                      <span className="font-semibold">{roster && Array.isArray(roster) ? roster.filter(m => m.trophies >= 3000).length : 0}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* War Intelligence */}
+              <div className="mt-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-6 border border-red-200">
+                <h3 className="text-lg font-semibold text-red-900 mb-3 flex items-center gap-2">
+                  ⚔️ War Intelligence
+                </h3>
+                <p className="text-red-700 text-sm mb-4">
+                  Analyze war patterns, attack strategies, and defensive capabilities across your roster.
+                </p>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">{roster && Array.isArray(roster) ? roster.filter(m => m.townHallLevel >= 15).length : 0}</div>
+                    <div className="text-sm text-red-700">TH15+ War Weight</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-orange-600">{roster && Array.isArray(roster) ? roster.filter(m => m.townHallLevel >= 13 && m.townHallLevel <= 14).length : 0}</div>
+                    <div className="text-sm text-orange-700">TH13-14 Core</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-600">{roster && Array.isArray(roster) ? roster.filter(m => m.townHallLevel <= 12).length : 0}</div>
+                    <div className="text-sm text-yellow-700">TH12- Support</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Recruitment Intelligence */}
+              <div className="mt-6 bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200">
+                <h3 className="text-lg font-semibold text-green-900 mb-3 flex items-center gap-2">
+                  🎯 Recruitment Intelligence
+                </h3>
+                <p className="text-green-700 text-sm mb-4">
+                  Smart recommendations for filling roster gaps and improving clan composition.
+                </p>
+                <div className="space-y-3">
+                  {roster && Array.isArray(roster) && roster.filter(m => m.townHallLevel >= 15).length < 10 && (
+                    <div className="bg-green-100 border border-green-300 rounded-lg p-3">
+                      <div className="font-medium text-green-800">🎯 Priority: TH15+ Players</div>
+                      <div className="text-sm text-green-700">Consider recruiting {10 - roster.filter(m => m.townHallLevel >= 15).length} more TH15+ members for war strength</div>
+                    </div>
+                  )}
+                  {roster && Array.isArray(roster) && roster.filter(m => m.trophies >= 4000).length < 15 && (
+                    <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
+                      <div className="font-medium text-blue-800">🏆 Trophy Push Potential</div>
+                      <div className="text-sm text-blue-700">Room for {15 - roster.filter(m => m.trophies >= 4000).length} more high-trophy pushers (4000+)</div>
+                    </div>
+                  )}
+                  {roster && Array.isArray(roster) && roster.filter(m => m.lastActivity && m.lastActivity.includes('Today')).length < Math.floor(roster.length * 0.8) && (
+                    <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
+                      <div className="font-medium text-yellow-800">⚡ Activity Focus Needed</div>
+                      <div className="text-sm text-yellow-700">Consider reviewing inactive members to improve overall clan activity</div>
+                    </div>
+                  )}
+                </div>
+              </div>
             </section>
           </div>
         ) : (
