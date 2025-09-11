@@ -77,13 +77,15 @@ const MOCK_DATA = {
     warTies: 10,
     warLosses: 20,
     isWarLogPublic: true,
-    warLeague: { id: 48000007, name: 'Master League II' },
-    members: [
-      { tag: '#VGQVRLRL', name: 'DoubleD', role: 'leader', townHallLevel: 15, trophies: 5200, donations: 1500, donationsReceived: 200, attackWins: 2500, versusBattleWins: 150, versusTrophies: 3200, clanCapitalContributions: 15000 },
-      { tag: '#QULRCQ02G', name: 'Sirojiddin', role: 'coLeader', townHallLevel: 14, trophies: 4800, donations: 1200, donationsReceived: 150, attackWins: 2200, versusBattleWins: 120, versusTrophies: 3000, clanCapitalContributions: 12000 },
-      { tag: '#LP920YJC', name: 'Mate 238', role: 'elder', townHallLevel: 13, trophies: 4200, donations: 800, donationsReceived: 100, attackWins: 1800, versusBattleWins: 80, versusTrophies: 2800, clanCapitalContributions: 8000 },
-      { tag: '#QYLYG8J9G', name: '_RSENIC', role: 'member', townHallLevel: 12, trophies: 3800, donations: 600, donationsReceived: 80, attackWins: 1500, versusBattleWins: 60, versusTrophies: 2600, clanCapitalContributions: 6000 },
-      { tag: '#8CRRR2RQ2', name: 'ShakiB', role: 'member', townHallLevel: 11, trophies: 3400, donations: 400, donationsReceived: 60, attackWins: 1200, versusBattleWins: 40, versusTrophies: 2400, clanCapitalContributions: 4000 }
+    warLeague: { id: 48000007, name: 'Master League II' }
+  },
+  '/clans/%232PR8R8V8P/members?limit=50': {
+    items: [
+      { tag: '#VGQVRLRL', name: 'DoubleD', role: 'leader', trophies: 5200, donations: 1500, donationsReceived: 200 },
+      { tag: '#QULRCQ02G', name: 'Sirojiddin', role: 'coLeader', trophies: 4800, donations: 1200, donationsReceived: 150 },
+      { tag: '#LP920YJC', name: 'Mate 238', role: 'elder', trophies: 4200, donations: 800, donationsReceived: 100 },
+      { tag: '#QYLYG8J9G', name: '_RSENIC', role: 'member', trophies: 3800, donations: 600, donationsReceived: 80 },
+      { tag: '#8CRRR2RQ2', name: 'ShakiB', role: 'member', trophies: 3400, donations: 400, donationsReceived: 60 }
     ]
   }
 };
@@ -132,8 +134,8 @@ async function api<T>(path: string): Promise<T> {
     
     // Return mock clan data
     if (path.includes('/clans/')) {
-      const mockClanData = MOCK_DATA['/clans/%232PR8R8V8P'];
-      return mockClanData as T;
+      const mockData = MOCK_DATA[path as keyof typeof MOCK_DATA] || MOCK_DATA['/clans/%232PR8R8V8P'];
+      return mockData as T;
     }
     
     // Return mock player data
@@ -162,10 +164,10 @@ async function api<T>(path: string): Promise<T> {
       
       // Return mock clan data
       if (path.includes('/clans/')) {
-        const mockClanData = MOCK_DATA['/clans/%232PR8R8V8P'];
-        if (mockClanData) {
-          setCached(path, mockClanData);
-          return mockClanData as T;
+        const mockData = MOCK_DATA[path as keyof typeof MOCK_DATA] || MOCK_DATA['/clans/%232PR8R8V8P'];
+        if (mockData) {
+          setCached(path, mockData);
+          return mockData as T;
         }
       }
       
