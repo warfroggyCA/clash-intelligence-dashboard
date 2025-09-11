@@ -1,4 +1,5 @@
 // web-next/src/app/layout.tsx
+// GitHub integration test - $(date)
 import "./globals.css";
 
 export const metadata = {
