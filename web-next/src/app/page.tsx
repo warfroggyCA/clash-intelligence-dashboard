@@ -25,6 +25,7 @@ import ChangeDashboard from "../components/ChangeDashboard";
 import DepartureManager from "../components/DepartureManager";
 import PlayerDatabase from "../components/PlayerDatabase";
 import AICoaching from "../components/AICoaching";
+import FontSizeControl from "../components/FontSizeControl";
 
 type Member = {
   name: string; tag: string; townHallLevel?: number; th?: number;
@@ -1986,6 +1987,7 @@ Please analyze this clan data and provide insights on:
               <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
             </div>
             <div className="flex items-center space-x-4">
+              <FontSizeControl />
               <a
                 href="/faq"
                 className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
@@ -4209,7 +4211,15 @@ function PlayerProfileModal({
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-xl sm:text-3xl font-bold text-gray-900 truncate">{member.name}</h2>
-              <p className="text-sm sm:text-base text-gray-600 truncate">{member.tag}</p>
+              <div className="flex items-center space-x-4 mt-1">
+                <p className="text-sm sm:text-base text-gray-600 font-mono">{member.tag}</p>
+                <span className="text-sm text-gray-400">•</span>
+                <div className="text-sm text-gray-600">{renderRole(member.role)}</div>
+                <span className="text-sm text-gray-400">•</span>
+                <div className="text-sm text-gray-600">TH {th || "?"}</div>
+                <span className="text-sm text-gray-400">•</span>
+                <div className="text-sm text-gray-600">{member.trophies || 0} trophies</div>
+              </div>
             </div>
           </div>
           <div className="flex space-x-1 sm:space-x-2 flex-shrink-0">
@@ -4244,27 +4254,113 @@ function PlayerProfileModal({
 
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-          {/* Left Column - Game Stats */}
+          {/* Left Column - Hero Levels, Events, Game Stats */}
           <div className="space-y-6">
+            {/* Hero Levels - Moved to top */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4">Hero Levels</h3>
+              <div className="grid grid-cols-2 gap-6 text-sm">
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Barbarian King:</span>
+                  <span className="text-gray-600">{renderHeroCell(member, "bk")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Archer Queen:</span>
+                  <span className="text-gray-600">{renderHeroCell(member, "aq")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Grand Warden:</span>
+                  <span className="text-gray-600">{renderHeroCell(member, "gw")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Royal Champion:</span>
+                  <span className="text-gray-600">{renderHeroCell(member, "rc")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Minion Prince:</span>
+                  <span className="text-gray-600">{renderHeroCell(member, "mp")}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">Rush %:</span>
+                  <span className={`font-medium ${rushClass(rp)}`}>{rp}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Significant Events - Moved up */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold">Significant Events</h3>
+                <button
+                  onClick={() => onViewAllEvents(member.tag.toUpperCase())}
+                  disabled={!eventHistory[member.tag.toUpperCase()] || eventHistory[member.tag.toUpperCase()].length === 0}
+                  className={`px-3 py-1 rounded-lg transition-colors text-sm ${
+                    eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0
+                      ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
+                      : "bg-gray-100 text-gray-400 cursor-not-allowed"
+                  }`}
+                  title={
+                    eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0
+                      ? "View all events for this player"
+                      : "No events tracked yet - events are detected when data changes between loads"
+                  }
+                >
+                  📊 View All Events {eventHistory[member.tag.toUpperCase()] ? `(${eventHistory[member.tag.toUpperCase()].length})` : "(0)"}
+                </button>
+              </div>
+              
+              {/* Debug Info */}
+              <div className="text-xs text-gray-500 mb-3 p-2 bg-gray-100 rounded">
+                <strong>Event Tracking Status:</strong> {eventHistory[member.tag.toUpperCase()] ? 
+                  `${eventHistory[member.tag.toUpperCase()].length} events tracked` : 
+                  "No events tracked yet"
+                } • Events are detected when you load fresh data and changes are found
+              </div>
+              {eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0 ? (
+                <div className="space-y-3">
+                  {eventHistory[member.tag.toUpperCase()]
+                    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                    .map((event) => (
+                    <div key={event.id} className="text-sm border-l-4 border-blue-300 pl-3">
+                      <div className="flex items-center space-x-2 mb-1">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          event.eventType === 'th_upgrade' ? 'bg-green-100 text-green-800' :
+                          event.eventType === 'role_change' ? 'bg-purple-100 text-purple-800' :
+                          event.eventType === 'trophy_milestone' ? 'bg-yellow-100 text-yellow-800' :
+                          event.eventType === 'hero_upgrade' ? 'bg-blue-100 text-blue-800' :
+                          event.eventType === 'donation_milestone' ? 'bg-orange-100 text-orange-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {event.eventType === 'th_upgrade' ? '🏗️ TH Upgrade' :
+                           event.eventType === 'role_change' ? '👑 Role Change' :
+                           event.eventType === 'trophy_milestone' ? '🏆 Trophy Milestone' :
+                           event.eventType === 'hero_upgrade' ? '⚔️ Hero Upgrade' :
+                           event.eventType === 'donation_milestone' ? '💝 Donation Milestone' :
+                           '📝 Event'}
+                        </span>
+                        <span className="text-gray-500 text-xs">
+                          {new Date(event.timestamp).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-gray-700 font-medium">{event.eventData.details}</p>
+                      {event.eventData.milestone && (
+                        <p className="text-gray-600 text-xs">Milestone: {event.eventData.milestone}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-500">
+                  <p className="text-sm">No events tracked yet</p>
+                  <p className="text-xs mt-1">Events will appear here when changes are detected between data loads</p>
+                </div>
+              )}
+            </div>
+
+            {/* Game Statistics - Moved down */}
             <div className="bg-gray-50 rounded-lg p-4">
               <h3 className="text-lg font-semibold mb-4">Game Statistics</h3>
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Player Tag:</span>
-                  <p className="text-gray-600">{member.tag}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Role:</span>
-                  <div className="text-gray-600">{renderRole(member.role)}</div>
-                </div>
-                <div>
-                  <span className="font-medium">Town Hall:</span>
-                  <p className="text-gray-600">{th || "Unknown"}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Trophies:</span>
-                  <p className="text-gray-600">{member.trophies || 0}</p>
-                </div>
                 <div>
                   <span className="font-medium">Donations Given:</span>
                   <p className="text-gray-600">{member.donations || 0}</p>
@@ -4297,9 +4393,9 @@ function PlayerProfileModal({
                       };
                       
                       return (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-3">
                           <div className="flex items-center gap-2">
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getActivityColor(activity.level)}`}>
+                            <span className={`px-4 py-2 rounded-full text-sm font-medium ${getActivityColor(activity.level)}`}>
                               {activity.level} (Score: {activity.score}/100)
                             </span>
                             {!previousMember && (
@@ -4394,37 +4490,6 @@ function PlayerProfileModal({
               </div>
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="text-lg font-semibold mb-4">Hero Levels</h3>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Barbarian King:</span>
-                  <p className="text-gray-600">{renderHeroCell(member, "bk")}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Archer Queen:</span>
-                  <p className="text-gray-600">{renderHeroCell(member, "aq")}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Grand Warden:</span>
-                  <p className="text-gray-600">{renderHeroCell(member, "gw")}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Royal Champion:</span>
-                  <p className="text-gray-600">{renderHeroCell(member, "rc")}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Minion Prince:</span>
-                  <p className="text-gray-600">{renderHeroCell(member, "mp")}</p>
-                </div>
-                <div>
-                  <span className="font-medium">Rush %:</span>
-                  <p className={`font-medium ${rushClass(rp)}`}>{rp}%</p>
-                </div>
-              </div>
-            </div>
-
-
                     <div className="bg-gray-50 rounded-lg p-4">
                       <h3 className="text-lg font-semibold mb-4">Clan History</h3>
                       <div className="text-sm">
@@ -4462,160 +4527,10 @@ function PlayerProfileModal({
                         </div>
                       </div>
                     )}
-
-                    {/* Event History */}
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-lg font-semibold">Significant Events</h3>
-                        <button
-                          onClick={() => onViewAllEvents(member.tag.toUpperCase())}
-                          disabled={!eventHistory[member.tag.toUpperCase()] || eventHistory[member.tag.toUpperCase()].length === 0}
-                          className={`px-3 py-1 rounded-lg transition-colors text-sm ${
-                            eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0
-                              ? "bg-blue-100 text-blue-700 hover:bg-blue-200"
-                              : "bg-gray-100 text-gray-400 cursor-not-allowed"
-                          }`}
-                          title={
-                            eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0
-                              ? "View all events for this player"
-                              : "No events tracked yet - events are detected when data changes between loads"
-                          }
-                        >
-                          📊 View All Events {eventHistory[member.tag.toUpperCase()] ? `(${eventHistory[member.tag.toUpperCase()].length})` : "(0)"}
-                        </button>
-                      </div>
-                      
-                      {/* Debug Info */}
-                      <div className="text-xs text-gray-500 mb-3 p-2 bg-gray-100 rounded">
-                        <strong>Event Tracking Status:</strong> {eventHistory[member.tag.toUpperCase()] ? 
-                          `${eventHistory[member.tag.toUpperCase()].length} events tracked` : 
-                          "No events tracked yet"
-                        } • Events are detected when you load fresh data and changes are found
-                      </div>
-                      {eventHistory[member.tag.toUpperCase()] && eventHistory[member.tag.toUpperCase()].length > 0 ? (
-                        <div className="space-y-3">
-                          {eventHistory[member.tag.toUpperCase()]
-                            .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-                            .map((event) => (
-                            <div key={event.id} className="text-sm border-l-4 border-blue-300 pl-3">
-                              <div className="flex items-center space-x-2 mb-1">
-                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  event.eventType === 'th_upgrade' ? 'bg-green-100 text-green-800' :
-                                  event.eventType === 'role_change' ? 'bg-purple-100 text-purple-800' :
-                                  event.eventType === 'trophy_milestone' ? 'bg-yellow-100 text-yellow-800' :
-                                  event.eventType === 'hero_upgrade' ? 'bg-blue-100 text-blue-800' :
-                                  event.eventType === 'donation_milestone' ? 'bg-orange-100 text-orange-800' :
-                                  'bg-gray-100 text-gray-800'
-                                }`}>
-                                  {event.eventType === 'th_upgrade' ? '🏗️ TH Upgrade' :
-                                   event.eventType === 'role_change' ? '👑 Role Change' :
-                                   event.eventType === 'trophy_milestone' ? '🏆 Trophy Milestone' :
-                                   event.eventType === 'hero_upgrade' ? '⚔️ Hero Upgrade' :
-                                   event.eventType === 'donation_milestone' ? '💝 Donation Milestone' :
-                                   '📝 Event'}
-                                </span>
-                                <span className="text-gray-500 text-xs">
-                                  {new Date(event.timestamp).toLocaleDateString()}
-                                </span>
-                              </div>
-                              <p className="text-gray-700 font-medium">{event.eventData.details}</p>
-                              {event.eventData.milestone && (
-                                <p className="text-gray-600 text-xs">Milestone: {event.eventData.milestone}</p>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="text-center py-4 text-gray-500">
-                          <p className="text-sm">No events tracked yet</p>
-                          <p className="text-xs mt-1">Events will appear here when changes are detected between data loads</p>
-                        </div>
-                      )}
-                    </div>
           </div>
 
-          {/* Right Column - Notes & Custom Fields */}
+          {/* Right Column - Other Info */}
           <div className="space-y-6">
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <h3 className="text-lg font-semibold mb-4">Player Notes</h3>
-                      
-                      {/* Display existing notes */}
-                      <div className="space-y-3 mb-4">
-                        {playerNotes.length === 0 ? (
-                          <p className="text-sm text-gray-500">No notes added yet.</p>
-                        ) : (
-                          playerNotes.map((note, index) => (
-                            <div key={index} className="bg-white rounded-lg p-3 border">
-                              <div className="text-xs text-gray-500 mb-1">
-                                {new Date(note.timestamp).toLocaleString()}
-                              </div>
-                              <div className="text-sm text-gray-700">{note.note}</div>
-                              {Object.keys(note.customFields).length > 0 && (
-                                <div className="mt-2 text-xs text-gray-600">
-                                  {Object.entries(note.customFields).map(([key, value]) => (
-                                    <div key={key}><strong>{key}:</strong> {value}</div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))
-                        )}
-                      </div>
-
-                      {/* Add new note */}
-                      {isEditing ? (
-                        <div className="space-y-3">
-                          <textarea
-                            value={newNote}
-                            onChange={(e) => setNewNote(e.target.value)}
-                            placeholder="Add a new note about this player..."
-                            className="w-full h-24 border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            autoFocus
-                          />
-                          
-                          {/* Custom fields for new note */}
-                          <div>
-                            <div className="flex items-center justify-between mb-2">
-                              <label className="text-sm font-medium">Custom Fields</label>
-                              <button
-                                onClick={addCustomField}
-                                className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
-                              >
-                                Add Field
-                              </button>
-                            </div>
-                            <div className="space-y-2">
-                              {Object.entries(newCustomFields).map(([fieldName, fieldValue]) => (
-                                <div key={fieldName} className="flex items-center space-x-2">
-                                  <span className="font-medium text-xs w-20">{fieldName}:</span>
-                                  <input
-                                    type="text"
-                                    value={fieldValue}
-                                    onChange={(e) => setNewCustomFields(prev => ({ ...prev, [fieldName]: e.target.value }))}
-                                    className="flex-1 border rounded px-2 py-1 text-xs"
-                                  />
-                                  <button
-                                    onClick={() => removeCustomField(fieldName)}
-                                    className="text-red-600 hover:text-red-800 font-semibold"
-                                  >
-                                    <X className="w-3 h-3" />
-                                  </button>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      ) : (
-                        <button
-                          onClick={() => setIsEditing(true)}
-                          className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                        >
-                          Add New Note
-                        </button>
-                      )}
-                    </div>
-
-
             {/* Departure History */}
             {departureHistory.length > 0 && (
               <div className="bg-red-50 rounded-lg p-4">
@@ -4631,6 +4546,86 @@ function PlayerProfileModal({
                 </div>
               </div>
             )}
+
+            {/* Player Notes - Moved to bottom */}
+            <div className="bg-blue-50 rounded-lg p-4">
+              <h3 className="text-lg font-semibold mb-4">Player Notes</h3>
+              
+              {/* Display existing notes */}
+              <div className="space-y-3 mb-4">
+                {playerNotes.length === 0 ? (
+                  <p className="text-sm text-gray-500">No notes added yet.</p>
+                ) : (
+                  playerNotes.map((note, index) => (
+                    <div key={index} className="bg-white rounded-lg p-3 border">
+                      <div className="text-xs text-gray-500 mb-1">
+                        {new Date(note.timestamp).toLocaleString()}
+                      </div>
+                      <div className="text-sm text-gray-700">{note.note}</div>
+                      {Object.keys(note.customFields).length > 0 && (
+                        <div className="mt-2 text-xs text-gray-600">
+                          {Object.entries(note.customFields).map(([key, value]) => (
+                            <div key={key}><strong>{key}:</strong> {value}</div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Add new note */}
+              {isEditing ? (
+                <div className="space-y-3">
+                  <textarea
+                    value={newNote}
+                    onChange={(e) => setNewNote(e.target.value)}
+                    placeholder="Add a new note about this player..."
+                    className="w-full h-24 border rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    autoFocus
+                  />
+                  
+                  {/* Custom fields for new note */}
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium">Custom Fields</label>
+                      <button
+                        onClick={addCustomField}
+                        className="px-2 py-1 bg-blue-600 text-white rounded text-xs hover:bg-blue-700"
+                      >
+                        Add Field
+                      </button>
+                    </div>
+                    <div className="space-y-2">
+                      {Object.entries(newCustomFields).map(([fieldName, fieldValue]) => (
+                        <div key={fieldName} className="flex items-center space-x-2">
+                          <span className="font-medium text-xs w-20">{fieldName}:</span>
+                          <input
+                            type="text"
+                            value={fieldValue}
+                            onChange={(e) => setNewCustomFields(prev => ({ ...prev, [fieldName]: e.target.value }))}
+                            className="flex-1 border rounded px-2 py-1 text-xs"
+                          />
+                          <button
+                            onClick={() => removeCustomField(fieldName)}
+                            className="text-red-600 hover:text-red-800 font-semibold"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                >
+                  Add New Note
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>

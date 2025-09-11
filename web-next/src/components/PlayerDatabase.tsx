@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { X, Plus } from "lucide-react";
 import CreatePlayerNoteModal from "./CreatePlayerNoteModal";
+import FontSizeControl from "./FontSizeControl";
 
 interface PlayerNote {
   timestamp: string;
@@ -309,6 +310,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
           <p className="text-sm text-gray-600 mt-1">Players who have left the clan or were never in the clan</p>
         </div>
         <div className="flex space-x-2">
+          <FontSizeControl />
           <button
             onClick={() => setShowCreatePlayerNote(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
@@ -409,42 +411,85 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
       {/* Player Detail Modal */}
       {showPlayerModal && selectedPlayer && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <h2 className="text-xl sm:text-2xl font-bold truncate pr-2">Player: {selectedPlayer.name}</h2>
-              <button onClick={closePlayerModal} className="text-gray-500 hover:text-gray-700 flex-shrink-0">
+          <div className="bg-white rounded-lg p-4 sm:p-6 max-w-5xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+            {/* Compact Header with All Key Info */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-gray-200">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-4 mb-2">
+                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">
+                    {selectedPlayer.name}
+                  </h2>
+                  <span className="text-sm text-gray-500 font-mono bg-gray-100 px-2 py-1 rounded">
+                    {selectedPlayer.tag}
+                  </span>
+                </div>
+                <div className="flex items-center space-x-6 text-sm">
+                  <span className="text-gray-600">
+                    {selectedPlayer.notes.length} note{selectedPlayer.notes.length !== 1 ? 's' : ''}
+                  </span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-600">Last updated: {new Date(selectedPlayer.lastUpdated).toLocaleDateString()}</span>
+                </div>
+              </div>
+              <button 
+                onClick={closePlayerModal} 
+                className="text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full p-2 transition-colors flex-shrink-0"
+                title="Close"
+              >
                 <X className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
 
-            <div className="mb-4 p-4 bg-gray-50 rounded-lg">
-              <p><strong>Tag:</strong> {selectedPlayer.tag}</p>
-              <p><strong>Name:</strong> {selectedPlayer.name}</p>
-              <p><strong>Total Notes:</strong> {selectedPlayer.notes.length}</p>
-            </div>
-
+            {/* Compact Notes Section */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold">All Notes</h3>
-              {selectedPlayer.notes.map((note, index) => (
-                <div key={index} className="border rounded-lg p-4">
-                  <div className="text-sm text-gray-500 mb-2">
-                    {new Date(note.timestamp).toLocaleString()}
-                  </div>
-                  <div className="text-gray-700 mb-3">{note.note}</div>
-                  {Object.keys(note.customFields).length > 0 && (
-                    <div className="text-sm">
-                      <strong>Custom Fields:</strong>
-                      <div className="mt-1 space-y-1">
-                        {Object.entries(note.customFields).map(([key, value]) => (
-                          <div key={key} className="text-gray-600">
-                            <strong>{key}:</strong> {value}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-gray-900">Player Notes</h3>
+                <button
+                  onClick={() => setShowCreatePlayerNote(true)}
+                  className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Add Note
+                </button>
+              </div>
+              
+              {selectedPlayer.notes.length === 0 ? (
+                <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
+                  <div className="text-4xl mb-3">📝</div>
+                  <p className="text-lg mb-2">No notes added yet</p>
+                  <p className="text-sm">Click "Add Note" to create your first note for this player</p>
                 </div>
-              ))}
+              ) : (
+                <div className="space-y-3">
+                  {selectedPlayer.notes.map((note, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="text-sm text-gray-500">
+                          {new Date(note.timestamp).toLocaleString()}
+                        </div>
+                        {Object.keys(note.customFields).length > 0 && (
+                          <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                            {Object.keys(note.customFields).length} field{Object.keys(note.customFields).length !== 1 ? 's' : ''}
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-gray-900 mb-3 leading-relaxed">{note.note}</div>
+                      {Object.keys(note.customFields).length > 0 && (
+                        <div className="border-t border-gray-100 pt-3">
+                          <div className="text-sm font-medium text-gray-700 mb-2">Custom Fields:</div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                            {Object.entries(note.customFields).map(([key, value]) => (
+                              <div key={key} className="text-sm">
+                                <span className="font-medium text-gray-600">{key}:</span>
+                                <span className="ml-2 text-gray-900">{value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
