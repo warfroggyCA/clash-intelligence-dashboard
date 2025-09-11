@@ -2925,7 +2925,7 @@ Please analyze this clan data and provide insights on:
                     </div>
                     <div className="flex justify-between">
                       <span className="text-purple-600">High Trophy Members:</span>
-                      <span className="font-semibold">{roster && roster.members ? roster.members.filter(m => m.trophies >= 3000).length : 0}</span>
+                      <span className="font-semibold">{roster && roster.members ? roster.members.filter(m => (m.trophies || 0) >= 3000).length : 0}</span>
                     </div>
                   </div>
                 </div>
@@ -3363,10 +3363,10 @@ Please analyze this clan data and provide insights on:
                       <div className="text-sm text-green-700">Consider recruiting {10 - roster.members.filter(m => m.townHallLevel >= 15).length} more TH15+ members for war strength</div>
                     </div>
                   )}
-                  {roster && roster.members && roster.members.filter(m => m.trophies >= 4000).length < 15 && (
+                  {roster && roster.members && roster.members.filter(m => (m.trophies || 0) >= 4000).length < 15 && (
                     <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
                       <div className="font-medium text-blue-800">🏆 Trophy Push Potential</div>
-                      <div className="text-sm text-blue-700">Room for {15 - roster.members.filter(m => m.trophies >= 4000).length} more high-trophy pushers (4000+)</div>
+                      <div className="text-sm text-blue-700">Room for {15 - roster.members.filter(m => (m.trophies || 0) >= 4000).length} more high-trophy pushers (4000+)</div>
                     </div>
                   )}
                   {roster && roster.members && roster.members.filter(m => m.lastSeen && m.lastSeen.toString().includes('Today')).length < Math.floor(roster.members.length * 0.8) && (
