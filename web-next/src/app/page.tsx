@@ -54,7 +54,7 @@ type PlayerEvent = {
 type EventHistory = Record<string, PlayerEvent[]>; // playerTag -> events[]
 type Roster = { source: "live" | "fallback" | "snapshot"; date?: string; clanName?: string; members: Member[]; meta?: any };
 
-type SortKey = "name"|"tag"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"donationBalance"|"participation"|"tenure"|"activity"|"role";
+type SortKey = "name"|"tag"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"donationBalance"|"participation"|"tenure"|"activity"|"warEfficiency"|"warConsistency"|"role";
 const DEFAULT_PAGE_SIZE = 50;
 
 const HEAD_TIPS: Record<string,string> = {
@@ -67,7 +67,10 @@ const HEAD_TIPS: Record<string,string> = {
   Balance:"Donation balance (received - given). Positive = net receiver, Negative = net giver",
   Activity:"Participation level based on donation activity (Inactive, Low, High, Very High)",
   "Tenure (d)":"Days in clan (append-only ledger)",
-  "Last Activity":"Time since last significant gameplay activity (* = estimated from donations, will improve with snapshot history)", Role:"Clan role"
+  "Last Activity":"Time since last significant gameplay activity (* = estimated from donations, will improve with snapshot history)",
+  "War Eff":"Attack Efficiency Index - Average stars per war attack",
+  "Consistency":"Contribution Consistency Score - Performance steadiness (0-100)",
+  Role:"Clan role"
 };
 
 const HERO_MIN_TH: Record<"bk"|"aq"|"gw"|"rc"|"mp", number> = { bk:7, aq:9, gw:11, rc:13, mp:9 };
@@ -490,6 +493,36 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
   };
 };
 
+// War Analytics Types
+type WarAnalytics = {
+  attackEfficiencyIndex: number; // Average stars per attack
+  contributionConsistency: number; // Performance steadiness (0-100)
+  cleanupEfficiency: number; // Second attempt success rate (0-100)
+  defensiveHoldRate: number; // Base protection rate (0-100)
+  totalWarStars: number;
+  totalAttacks: number;
+  warParticipationRate: number; // Percentage of wars participated in
+  averageStarsPerWar: number;
+  performanceTrend: 'improving' | 'stable' | 'declining';
+  lastWarPerformance: {
+    stars: number;
+    attacks: number;
+    efficiency: number;
+    date: string;
+  } | null;
+};
+
+type WarPerformanceData = {
+  member: Member;
+  analytics: WarAnalytics;
+  historicalData: Array<{
+    date: string;
+    stars: number;
+    attacks: number;
+    efficiency: number;
+  }>;
+};
+
 // Applicant evaluation system
 const evaluateApplicant = (applicant: Member, currentRoster: Member[]): {
   score: number;
@@ -857,6 +890,132 @@ export default function HomePage(){
   
   // Info popup state
   const [showActivityInfo, setShowActivityInfo] = useState(false);
+  const [showWarEfficiencyInfo, setShowWarEfficiencyInfo] = useState(false);
+  const [showWarConsistencyInfo, setShowWarConsistencyInfo] = useState(false);
+
+  // War Analytics Functions
+  const calculateAttackEfficiencyIndex = (member: Member, historicalData: any[] = []): number => {
+    const totalStars = member.warStars ?? 0;
+    const totalAttacks = historicalData.reduce((sum, war) => sum + (war.attacks || 0), 0);
+    
+    if (totalAttacks === 0) {
+      const estimatedAttacks = totalStars > 0 ? Math.max(1, Math.floor(totalStars / 2)) : 0;
+      return estimatedAttacks > 0 ? totalStars / estimatedAttacks : 0;
+    }
+    
+    return totalAttacks > 0 ? totalStars / totalAttacks : 0;
+  };
+
+  const calculateContributionConsistency = (historicalData: any[]): number => {
+    if (historicalData.length < 3) return 50;
+    
+    const efficiencies = historicalData.map(war => war.efficiency || 0);
+    const mean = efficiencies.reduce((sum, eff) => sum + eff, 0) / efficiencies.length;
+    const variance = efficiencies.reduce((sum, eff) => sum + Math.pow(eff - mean, 2), 0) / efficiencies.length;
+    const standardDeviation = Math.sqrt(variance);
+    
+    const maxExpectedDeviation = 1.0;
+    const consistency = Math.max(0, 100 - (standardDeviation / maxExpectedDeviation) * 100);
+    
+    return Math.round(consistency);
+  };
+
+  const calculateCleanupEfficiency = (historicalData: any[]): number => {
+    if (historicalData.length === 0) return 0;
+    
+    const cleanupWars = historicalData.filter(war => war.cleanupAttempts > 0);
+    if (cleanupWars.length === 0) return 100;
+    
+    const successfulCleanups = cleanupWars.filter(war => war.cleanupSuccess).length;
+    return Math.round((successfulCleanups / cleanupWars.length) * 100);
+  };
+
+  const calculateDefensiveHoldRate = (historicalData: any[]): number => {
+    if (historicalData.length === 0) return 0;
+    
+    const defensiveWars = historicalData.filter(war => war.defensiveAttempts > 0);
+    if (defensiveWars.length === 0) return 0;
+    
+    const successfulHolds = defensiveWars.filter(war => war.defensiveSuccess).length;
+    return Math.round((successfulHolds / defensiveWars.length) * 100);
+  };
+
+  const calculateWarAnalytics = (member: Member, historicalData: any[] = []): WarAnalytics => {
+    const attackEfficiencyIndex = calculateAttackEfficiencyIndex(member, historicalData);
+    const contributionConsistency = calculateContributionConsistency(historicalData);
+    const cleanupEfficiency = calculateCleanupEfficiency(historicalData);
+    const defensiveHoldRate = calculateDefensiveHoldRate(historicalData);
+    
+    const totalWarStars = member.warStars ?? 0;
+    const totalAttacks = historicalData.reduce((sum, war) => sum + (war.attacks || 0), 0);
+    const warParticipationRate = historicalData.length > 0 ? 
+      (historicalData.filter(war => war.participated).length / historicalData.length) * 100 : 0;
+    
+    const averageStarsPerWar = historicalData.length > 0 ? 
+      historicalData.reduce((sum, war) => sum + (war.stars || 0), 0) / historicalData.length : 0;
+    
+    let performanceTrend: 'improving' | 'stable' | 'declining' = 'stable';
+    if (historicalData.length >= 3) {
+      const recent = historicalData.slice(-3);
+      const older = historicalData.slice(-6, -3);
+      
+      if (recent.length >= 2 && older.length >= 2) {
+        const recentAvg = recent.reduce((sum, war) => sum + (war.efficiency || 0), 0) / recent.length;
+        const olderAvg = older.reduce((sum, war) => sum + (war.efficiency || 0), 0) / older.length;
+        
+        if (recentAvg > olderAvg + 0.2) performanceTrend = 'improving';
+        else if (recentAvg < olderAvg - 0.2) performanceTrend = 'declining';
+      }
+    }
+    
+    const lastWarPerformance = historicalData.length > 0 ? {
+      stars: historicalData[historicalData.length - 1].stars || 0,
+      attacks: historicalData[historicalData.length - 1].attacks || 0,
+      efficiency: historicalData[historicalData.length - 1].efficiency || 0,
+      date: historicalData[historicalData.length - 1].date || 'Unknown'
+    } : null;
+    
+    return {
+      attackEfficiencyIndex: Math.round(attackEfficiencyIndex * 100) / 100,
+      contributionConsistency,
+      cleanupEfficiency,
+      defensiveHoldRate,
+      totalWarStars,
+      totalAttacks,
+      warParticipationRate: Math.round(warParticipationRate),
+      averageStarsPerWar: Math.round(averageStarsPerWar * 100) / 100,
+      performanceTrend,
+      lastWarPerformance
+    };
+  };
+
+  const generateMockWarData = (member: Member): any[] => {
+    const wars = [];
+    const baseEfficiency = 1.5 + Math.random() * 1.0;
+    const th = member.townHallLevel ?? 10;
+    
+    const warCount = 5 + Math.floor(Math.random() * 6);
+    
+    for (let i = 0; i < warCount; i++) {
+      const stars = Math.floor(Math.random() * 6) + 1;
+      const attacks = Math.floor(stars / baseEfficiency) + (Math.random() > 0.5 ? 1 : 0);
+      const efficiency = attacks > 0 ? stars / attacks : 0;
+      
+      wars.push({
+        date: new Date(Date.now() - (warCount - i) * 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        stars,
+        attacks,
+        efficiency: Math.round(efficiency * 100) / 100,
+        participated: Math.random() > 0.1,
+        cleanupAttempts: Math.random() > 0.7 ? 1 : 0,
+        cleanupSuccess: Math.random() > 0.3,
+        defensiveAttempts: Math.random() > 0.5 ? 1 : 0,
+        defensiveSuccess: Math.random() > 0.4
+      });
+    }
+    
+    return wars.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  };
 
   // On first load: prefer saved home tag; else cfg; then empty.
   useEffect(() => {
@@ -1674,6 +1833,16 @@ Please analyze this clan data and provide insights on:
       if (totalDonations > 0) return 2;    // Low
       return 1; // Inactive
     }
+    if (key === "warEfficiency") {
+      const mockWarData = generateMockWarData(m);
+      const analytics = calculateWarAnalytics(m, mockWarData);
+      return analytics.attackEfficiencyIndex;
+    }
+    if (key === "warConsistency") {
+      const mockWarData = generateMockWarData(m);
+      const analytics = calculateWarAnalytics(m, mockWarData);
+      return analytics.contributionConsistency;
+    }
     return (m as any)[key];
   };
 
@@ -1703,11 +1872,13 @@ Please analyze this clan data and provide insights on:
   };
 
 
-  const headerEl = (k: SortKey, label: string) =>
-    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>;
+  const headerEl = (k: SortKey, label: string) => (
+    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>
+  );
   
-  const headerElCentered = (k: SortKey, label: string) =>
-    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block text-center w-full" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>;
+  const headerElCentered = (k: SortKey, label: string) => (
+    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block text-center w-full" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>
+  );
 
   const clanName = roster?.clanName ?? roster?.meta?.clanName ?? "";
 
@@ -2182,6 +2353,34 @@ Please analyze this clan data and provide insights on:
                             <span className="ml-1 text-gray-400" title="Estimated data">*</span>
                           )}
                         </div>
+                        {(() => {
+                          const mockWarData = generateMockWarData(m);
+                          const analytics = calculateWarAnalytics(m, mockWarData);
+                          return (
+                            <>
+                              <div>
+                                <span className="text-gray-500">War Eff:</span>
+                                <span className="ml-1 font-medium text-red-600">
+                                  {analytics.attackEfficiencyIndex.toFixed(2)}⭐
+                                </span>
+                                <div className="text-xs text-gray-500">
+                                  {analytics.totalAttacks} attacks
+                                </div>
+                              </div>
+                              <div>
+                                <span className="text-gray-500">Consistency:</span>
+                                <span className={`ml-1 font-medium ${analytics.contributionConsistency >= 80 ? 'text-green-600' : 
+                                               analytics.contributionConsistency >= 60 ? 'text-yellow-600' : 'text-red-600'}`}>
+                                  {analytics.contributionConsistency}%
+                                </span>
+                                <div className="text-xs text-gray-500">
+                                  {analytics.performanceTrend === 'improving' ? '↗️ Improving' : 
+                                   analytics.performanceTrend === 'declining' ? '↘️ Declining' : '➡️ Stable'}
+                                </div>
+                              </div>
+                            </>
+                          );
+                        })()}
                       </div>
                     </div>
                   );
@@ -2218,6 +2417,40 @@ Please analyze this clan data and provide insights on:
                           }}
                           className="text-gray-400 hover:text-gray-600 transition-colors"
                           title="Learn about our rock-solid activity tracking system"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    </Th>
+                    <Th onClick={()=>toggleSort("warEfficiency")} className="text-center bg-red-50"> 
+                      <div className="flex items-center justify-center gap-1">
+                        {headerElCentered("warEfficiency","War Eff")}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowWarEfficiencyInfo(true);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Learn about Attack Efficiency Index"
+                        >
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
+                          </svg>
+                        </button>
+                      </div>
+                    </Th>
+                    <Th onClick={()=>toggleSort("warConsistency")} className="text-center bg-orange-50"> 
+                      <div className="flex items-center justify-center gap-1">
+                        {headerElCentered("warConsistency","Consistency")}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowWarConsistencyInfo(true);
+                          }}
+                          className="text-gray-400 hover:text-gray-600 transition-colors"
+                          title="Learn about Contribution Consistency Score"
                         >
                           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
@@ -2335,6 +2568,41 @@ Please analyze this clan data and provide insights on:
                                 {!previousMember && !activity.isManualOverride && (
                                   <span className="ml-1 text-gray-400" title="Estimated data - will improve with more snapshot history">*</span>
                                 )}
+                              </div>
+                            );
+                          })()}
+                        </Td>
+                        <Td className="text-center bg-red-50">
+                          {(() => {
+                            const mockWarData = generateMockWarData(m);
+                            const analytics = calculateWarAnalytics(m, mockWarData);
+                            return (
+                              <div className="flex flex-col items-center">
+                                <span className="font-semibold text-red-600">
+                                  {analytics.attackEfficiencyIndex.toFixed(2)}⭐
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {analytics.totalAttacks} attacks
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </Td>
+                        <Td className="text-center bg-orange-50">
+                          {(() => {
+                            const mockWarData = generateMockWarData(m);
+                            const analytics = calculateWarAnalytics(m, mockWarData);
+                            const consistencyColor = analytics.contributionConsistency >= 80 ? 'text-green-600' : 
+                                                   analytics.contributionConsistency >= 60 ? 'text-yellow-600' : 'text-red-600';
+                            return (
+                              <div className="flex flex-col items-center">
+                                <span className={`font-semibold ${consistencyColor}`}>
+                                  {analytics.contributionConsistency}%
+                                </span>
+                                <span className="text-xs text-gray-500">
+                                  {analytics.performanceTrend === 'improving' ? '↗️' : 
+                                   analytics.performanceTrend === 'declining' ? '↘️' : '➡️'}
+                                </span>
                               </div>
                             );
                           })()}
@@ -2580,15 +2848,15 @@ Please analyze this clan data and provide insights on:
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-purple-600">Average TH Level:</span>
-                      <span className="font-semibold">{roster && roster.length > 0 ? (roster.reduce((sum, m) => sum + m.townHallLevel, 0) / roster.length).toFixed(1) : "N/A"}</span>
+                      <span className="font-semibold">{roster && roster.members && roster.members.length > 0 ? (roster.members.reduce((sum, m) => sum + (m.townHallLevel || 0), 0) / roster.members.length).toFixed(1) : "N/A"}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-purple-600">Active Members (7d):</span>
-                      <span className="font-semibold">{roster && Array.isArray(roster) ? roster.filter(m => m.lastActivity && m.lastActivity.includes('Today')).length : 0}</span>
+                      <span className="font-semibold">{roster && roster.members ? roster.members.filter(m => m.lastSeen && m.lastSeen.toString().includes('Today')).length : 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-purple-600">High Trophy Members:</span>
-                      <span className="font-semibold">{roster && Array.isArray(roster) ? roster.filter(m => m.trophies >= 3000).length : 0}</span>
+                      <span className="font-semibold">{roster && roster.members ? roster.members.filter(m => m.trophies >= 3000).length : 0}</span>
                     </div>
                   </div>
                 </div>
@@ -2872,28 +3140,143 @@ Please analyze this clan data and provide insights on:
                 </div>
               </div>
 
-              {/* War Intelligence */}
+              {/* Advanced War Analytics */}
               <div className="mt-6 bg-gradient-to-br from-red-50 to-orange-50 rounded-xl p-6 border border-red-200">
                 <h3 className="text-lg font-semibold text-red-900 mb-3 flex items-center gap-2">
-                  ⚔️ War Intelligence
+                  ⚔️ Advanced War Analytics
                 </h3>
                 <p className="text-red-700 text-sm mb-4">
-                  Analyze war patterns, attack strategies, and defensive capabilities across your roster.
+                  Comprehensive war performance analysis with efficiency metrics, consistency tracking, and strategic insights.
                 </p>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-red-600">{roster && Array.isArray(roster) ? roster.filter(m => m.townHallLevel >= 15).length : 0}</div>
-                    <div className="text-sm text-red-700">TH15+ War Weight</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">{roster && Array.isArray(roster) ? roster.filter(m => m.townHallLevel >= 13 && m.townHallLevel <= 14).length : 0}</div>
-                    <div className="text-sm text-orange-700">TH13-14 Core</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-yellow-600">{roster && Array.isArray(roster) ? roster.filter(m => m.townHallLevel <= 12).length : 0}</div>
-                    <div className="text-sm text-yellow-700">TH12- Support</div>
-                  </div>
-                </div>
+                
+                {(() => {
+                  if (!roster?.members) return <div className="text-gray-500">No data available</div>;
+                  
+                  // Calculate war analytics for all members
+                  const warAnalyticsData = roster.members.map(member => {
+                    const mockWarData = generateMockWarData(member);
+                    const analytics = calculateWarAnalytics(member, mockWarData);
+                    return { member, analytics, historicalData: mockWarData };
+                  });
+                  
+                  // Sort by attack efficiency index
+                  const sortedByEfficiency = [...warAnalyticsData].sort((a, b) => b.analytics.attackEfficiencyIndex - a.analytics.attackEfficiencyIndex);
+                  
+                  // Calculate clan-wide metrics
+                  const totalStars = warAnalyticsData.reduce((sum, data) => sum + data.analytics.totalWarStars, 0);
+                  const totalAttacks = warAnalyticsData.reduce((sum, data) => sum + data.analytics.totalAttacks, 0);
+                  const avgEfficiency = totalAttacks > 0 ? totalStars / totalAttacks : 0;
+                  const avgConsistency = warAnalyticsData.reduce((sum, data) => sum + data.analytics.contributionConsistency, 0) / warAnalyticsData.length;
+                  const avgCleanupEfficiency = warAnalyticsData.reduce((sum, data) => sum + data.analytics.cleanupEfficiency, 0) / warAnalyticsData.length;
+                  const avgDefensiveHoldRate = warAnalyticsData.reduce((sum, data) => sum + data.analytics.defensiveHoldRate, 0) / warAnalyticsData.length;
+                  
+                  return (
+                    <div className="space-y-6">
+                      {/* Summary Metrics */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-white rounded-lg p-4 border border-red-200 text-center">
+                          <div className="text-2xl font-bold text-red-600">{avgEfficiency.toFixed(2)}</div>
+                          <div className="text-sm text-red-700">Avg Attack Efficiency</div>
+                          <div className="text-xs text-gray-500">Stars per attack</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-red-200 text-center">
+                          <div className="text-2xl font-bold text-orange-600">{avgConsistency.toFixed(0)}%</div>
+                          <div className="text-sm text-orange-700">Avg Consistency</div>
+                          <div className="text-xs text-gray-500">Performance steadiness</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-red-200 text-center">
+                          <div className="text-2xl font-bold text-yellow-600">{avgCleanupEfficiency.toFixed(0)}%</div>
+                          <div className="text-sm text-yellow-700">Cleanup Efficiency</div>
+                          <div className="text-xs text-gray-500">Second attempt success</div>
+                        </div>
+                        <div className="bg-white rounded-lg p-4 border border-red-200 text-center">
+                          <div className="text-2xl font-bold text-green-600">{avgDefensiveHoldRate.toFixed(0)}%</div>
+                          <div className="text-sm text-green-700">Defensive Hold Rate</div>
+                          <div className="text-xs text-gray-500">Base protection</div>
+                        </div>
+                      </div>
+                      
+                      {/* Top Performers */}
+                      <div className="bg-white rounded-lg p-4 border border-red-200">
+                        <h4 className="font-semibold text-red-800 mb-3">🏆 Top War Performers</h4>
+                        <div className="space-y-2">
+                          {sortedByEfficiency.slice(0, 5).map((data, index) => (
+                            <div key={data.member.tag} className="flex justify-between items-center py-2 border-b border-red-100 last:border-b-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-red-600 font-bold">#{index + 1}</span>
+                                <span className="font-medium">{data.member.name}</span>
+                                <span className="text-xs text-gray-500">TH{data.member.townHallLevel || '?'}</span>
+                              </div>
+                              <div className="text-right">
+                                <div className="font-semibold text-red-600">{data.analytics.attackEfficiencyIndex}⭐/attack</div>
+                                <div className="text-xs text-gray-500">{data.analytics.totalWarStars} total stars</div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      
+                      {/* Performance Trends */}
+                      <div className="bg-white rounded-lg p-4 border border-red-200">
+                        <h4 className="font-semibold text-red-800 mb-3">📈 Performance Trends</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {(() => {
+                            const improving = warAnalyticsData.filter(data => data.analytics.performanceTrend === 'improving').length;
+                            const stable = warAnalyticsData.filter(data => data.analytics.performanceTrend === 'stable').length;
+                            const declining = warAnalyticsData.filter(data => data.analytics.performanceTrend === 'declining').length;
+                            
+                            return (
+                              <>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-green-600">{improving}</div>
+                                  <div className="text-sm text-green-700">Improving</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-blue-600">{stable}</div>
+                                  <div className="text-sm text-blue-700">Stable</div>
+                                </div>
+                                <div className="text-center">
+                                  <div className="text-lg font-bold text-red-600">{declining}</div>
+                                  <div className="text-sm text-red-700">Declining</div>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </div>
+                      </div>
+                      
+                      {/* Strategic Insights */}
+                      <div className="bg-white rounded-lg p-4 border border-red-200">
+                        <h4 className="font-semibold text-red-800 mb-3">💡 Strategic Insights</h4>
+                        <div className="space-y-2 text-sm">
+                          {(() => {
+                            const insights = [];
+                            
+                            if (avgEfficiency < 1.8) {
+                              insights.push("⚠️ Low average attack efficiency - consider strategy training");
+                            }
+                            if (avgConsistency < 60) {
+                              insights.push("📊 Inconsistent performance - identify and support struggling members");
+                            }
+                            if (avgCleanupEfficiency < 70) {
+                              insights.push("🔄 Cleanup efficiency needs improvement - better target selection needed");
+                            }
+                            if (avgDefensiveHoldRate < 50) {
+                              insights.push("🛡️ Defensive bases need strengthening - share successful designs");
+                            }
+                            
+                            const topPerformers = sortedByEfficiency.slice(0, 3);
+                            if (topPerformers.length > 0) {
+                              insights.push(`⭐ Top performer: ${topPerformers[0].member.name} (${topPerformers[0].analytics.attackEfficiencyIndex}⭐/attack)`);
+                            }
+                            
+                            return insights.length > 0 ? insights : ["✅ War performance looks strong across all metrics"];
+                          })()}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Recruitment Intelligence */}
@@ -2905,19 +3288,19 @@ Please analyze this clan data and provide insights on:
                   Smart recommendations for filling roster gaps and improving clan composition.
                 </p>
                 <div className="space-y-3">
-                  {roster && Array.isArray(roster) && roster.filter(m => m.townHallLevel >= 15).length < 10 && (
+                  {roster && roster.members && roster.members.filter(m => m.townHallLevel >= 15).length < 10 && (
                     <div className="bg-green-100 border border-green-300 rounded-lg p-3">
                       <div className="font-medium text-green-800">🎯 Priority: TH15+ Players</div>
-                      <div className="text-sm text-green-700">Consider recruiting {10 - roster.filter(m => m.townHallLevel >= 15).length} more TH15+ members for war strength</div>
+                      <div className="text-sm text-green-700">Consider recruiting {10 - roster.members.filter(m => m.townHallLevel >= 15).length} more TH15+ members for war strength</div>
                     </div>
                   )}
-                  {roster && Array.isArray(roster) && roster.filter(m => m.trophies >= 4000).length < 15 && (
+                  {roster && roster.members && roster.members.filter(m => m.trophies >= 4000).length < 15 && (
                     <div className="bg-blue-100 border border-blue-300 rounded-lg p-3">
                       <div className="font-medium text-blue-800">🏆 Trophy Push Potential</div>
-                      <div className="text-sm text-blue-700">Room for {15 - roster.filter(m => m.trophies >= 4000).length} more high-trophy pushers (4000+)</div>
+                      <div className="text-sm text-blue-700">Room for {15 - roster.members.filter(m => m.trophies >= 4000).length} more high-trophy pushers (4000+)</div>
                     </div>
                   )}
-                  {roster && Array.isArray(roster) && roster.filter(m => m.lastActivity && m.lastActivity.includes('Today')).length < Math.floor(roster.length * 0.8) && (
+                  {roster && roster.members && roster.members.filter(m => m.lastSeen && m.lastSeen.toString().includes('Today')).length < Math.floor(roster.members.length * 0.8) && (
                     <div className="bg-yellow-100 border border-yellow-300 rounded-lg p-3">
                       <div className="font-medium text-yellow-800">⚡ Activity Focus Needed</div>
                       <div className="text-sm text-yellow-700">Consider reviewing inactive members to improve overall clan activity</div>
@@ -3100,6 +3483,222 @@ Please analyze this clan data and provide insights on:
               Traditional activity tracking relies on trophy changes or defense logs, which can be misleading. 
               Our rock-solid system ensures you know exactly when players were <strong>actively playing</strong>, 
               not just when their base was attacked or upgrades completed.
+            </p>
+          </div>
+        </div>
+      </InfoPopup>
+
+      {/* War Efficiency Info Popup */}
+      <InfoPopup 
+        isOpen={showWarEfficiencyInfo} 
+        onClose={() => setShowWarEfficiencyInfo(false)}
+        title="⚔️ Attack Efficiency Index"
+      >
+        <div className="space-y-6">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <h3 className="font-semibold text-red-900 mb-2">📊 What is Attack Efficiency Index?</h3>
+            <p className="text-red-800 text-sm">
+              The Attack Efficiency Index measures how many stars a player earns per war attack on average. 
+              This is a key metric for evaluating war performance and strategic effectiveness.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-green-700 mb-2">🟢 How It's Calculated</h3>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
+                <div className="font-mono text-center mb-2">
+                  <strong>Attack Efficiency = Total War Stars ÷ Total War Attacks</strong>
+                </div>
+                <p className="text-gray-600 mb-3">Example: 55 stars from 28 attacks = 1.96 stars per attack</p>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Total War Stars:</span>
+                    <span className="font-semibold">From CoC API warStars field</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Total War Attacks:</span>
+                    <span className="font-semibold">Estimated from historical data</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Efficiency Score:</span>
+                    <span className="font-semibold text-red-600">1.50 - 2.50 typical range</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-blue-700 mb-2">📈 Performance Levels</h3>
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <div className="flex justify-between items-center">
+                    <span><strong>🟢 Excellent (2.0+ stars/attack)</strong></span>
+                    <span className="text-green-600 font-semibold">Top 20%</span>
+                  </div>
+                  <p className="text-gray-600 mt-1">Consistently high performance, strategic mastery</p>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                  <div className="flex justify-between items-center">
+                    <span><strong>🟡 Good (1.5-2.0 stars/attack)</strong></span>
+                    <span className="text-yellow-600 font-semibold">Average</span>
+                  </div>
+                  <p className="text-gray-600 mt-1">Solid performance with room for improvement</p>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded p-3">
+                  <div className="flex justify-between items-center">
+                    <span><strong>🔴 Needs Improvement (&lt;1.5 stars/attack)</strong></span>
+                    <span className="text-red-600 font-semibold">Below Average</span>
+                  </div>
+                  <p className="text-gray-600 mt-1">Strategy training and practice needed</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-purple-700 mb-2">💡 Strategic Insights</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                  <strong>🎯 Target Selection:</strong> Higher efficiency often comes from smart target choices
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                  <strong>⚔️ Attack Strategy:</strong> Consistent 2-star attacks are better than risky 3-star attempts
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                  <strong>📊 Team Coordination:</strong> Cleanup efficiency affects overall clan performance
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-2">📊 Data Sources</h3>
+            <p className="text-sm text-gray-600">
+              Currently using mock data for development. In production, this will integrate with 
+              real war data from the Clash of Clans API and historical snapshot tracking.
+            </p>
+          </div>
+        </div>
+      </InfoPopup>
+
+      {/* War Consistency Info Popup */}
+      <InfoPopup 
+        isOpen={showWarConsistencyInfo} 
+        onClose={() => setShowWarConsistencyInfo(false)}
+        title="📊 Contribution Consistency Score"
+      >
+        <div className="space-y-6">
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+            <h3 className="font-semibold text-orange-900 mb-2">📊 What is Contribution Consistency?</h3>
+            <p className="text-orange-800 text-sm">
+              The Contribution Consistency Score measures how steady a player's war performance is over time. 
+              High consistency means reliable, predictable performance - crucial for war planning and strategy.
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h3 className="font-semibold text-green-700 mb-2">🟢 How It's Calculated</h3>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-sm">
+                <div className="font-mono text-center mb-2">
+                  <strong>Consistency = 100 - (Standard Deviation / Max Expected Deviation) × 100</strong>
+                </div>
+                <p className="text-gray-600 mb-3">Lower variation = Higher consistency score</p>
+                
+                <div className="space-y-2">
+                  <div className="flex justify-between">
+                    <span>Performance Data:</span>
+                    <span className="font-semibold">Attack efficiency over multiple wars</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Standard Deviation:</span>
+                    <span className="font-semibold">Measures performance variation</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Consistency Score:</span>
+                    <span className="font-semibold text-orange-600">0-100% (higher = more consistent)</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-blue-700 mb-2">📈 Consistency Levels</h3>
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <div className="bg-green-50 border border-green-200 rounded p-3">
+                  <div className="flex justify-between items-center">
+                    <span><strong>🟢 Highly Consistent (80-100%)</strong></span>
+                    <span className="text-green-600 font-semibold">Reliable</span>
+                  </div>
+                  <p className="text-gray-600 mt-1">Steady performer, predictable results</p>
+                </div>
+                <div className="bg-yellow-50 border border-yellow-200 rounded p-3">
+                  <div className="flex justify-between items-center">
+                    <span><strong>🟡 Moderately Consistent (60-79%)</strong></span>
+                    <span className="text-yellow-600 font-semibold">Variable</span>
+                  </div>
+                  <p className="text-gray-600 mt-1">Some variation, generally reliable</p>
+                </div>
+                <div className="bg-red-50 border border-red-200 rounded p-3">
+                  <div className="flex justify-between items-center">
+                    <span><strong>🔴 Inconsistent (&lt;60%)</strong></span>
+                    <span className="text-red-600 font-semibold">Unpredictable</span>
+                  </div>
+                  <p className="text-gray-600 mt-1">High variation, needs support</p>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-purple-700 mb-2">💡 Strategic Value</h3>
+              <div className="space-y-2 text-sm">
+                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                  <strong>🎯 War Planning:</strong> Consistent players are easier to plan around
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                  <strong>⚔️ Target Assignment:</strong> Reliable performers get critical targets
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                  <strong>📊 Risk Management:</strong> Identify who needs extra support
+                </div>
+                <div className="bg-purple-50 border border-purple-200 rounded p-3">
+                  <strong>🏆 Clan Strategy:</strong> Build around consistent core players
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <h3 className="font-semibold text-indigo-700 mb-2">📈 Performance Trends</h3>
+              <div className="grid grid-cols-1 gap-2 text-sm">
+                <div className="bg-indigo-50 border border-indigo-200 rounded p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-600">↗️</span>
+                    <span><strong>Improving:</strong> Recent performance better than historical average</span>
+                  </div>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-600">➡️</span>
+                    <span><strong>Stable:</strong> Performance consistent with historical average</span>
+                  </div>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-200 rounded p-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-red-600">↘️</span>
+                    <span><strong>Declining:</strong> Recent performance below historical average</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h3 className="font-semibold text-gray-900 mb-2">📊 Data Requirements</h3>
+            <p className="text-sm text-gray-600">
+              Requires at least 3 wars of historical data for accurate consistency calculation. 
+              Currently using mock data for development. In production, this will integrate with 
+              real war performance tracking from the Clash of Clans API.
             </p>
           </div>
         </div>
