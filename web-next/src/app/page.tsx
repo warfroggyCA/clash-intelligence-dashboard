@@ -850,7 +850,12 @@ export default function HomePage(){
   // clan tag UX
   const fromCfg = (cfg.homeClanTag || "").toUpperCase();
   const [clanTag, setClanTag] = useState<string>("");
-  const [homeClan, setHomeClan] = useState<string | null>(null);
+  const [homeClan, setHomeClan] = useState<string | null>(fromCfg || null);
+  
+  // Debug: Log home clan changes
+  useEffect(() => {
+    console.log("Home clan changed:", homeClan);
+  }, [homeClan]);
 
   // table UX
   const [sortKey, setSortKey] = useState<SortKey>("trophies");
@@ -1023,6 +1028,7 @@ export default function HomePage(){
     
     const saved = (typeof window !== "undefined" && window.localStorage.getItem("homeClanTag")) || "";
     const initial = (saved || fromCfg || "").toUpperCase();
+    console.log("Initializing with:", { saved, fromCfg, initial });
     setClanTag(initial);
     setIsInitialized(true);
     
@@ -1950,6 +1956,15 @@ Please analyze this clan data and provide insights on:
               <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
             </div>
             <div className="flex items-center space-x-4">
+              <a
+                href="/faq"
+                className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
+                title="View FAQ and Help Guide"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </a>
               <button
                 onClick={checkDepartureNotifications}
                 className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
