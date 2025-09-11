@@ -3357,10 +3357,10 @@ Please analyze this clan data and provide insights on:
                   Smart recommendations for filling roster gaps and improving clan composition.
                 </p>
                 <div className="space-y-3">
-                  {roster && roster.members && roster.members.filter(m => m.townHallLevel >= 15).length < 10 && (
+                  {roster && roster.members && roster.members.filter(m => (m.townHallLevel || 0) >= 15).length < 10 && (
                     <div className="bg-green-100 border border-green-300 rounded-lg p-3">
                       <div className="font-medium text-green-800">🎯 Priority: TH15+ Players</div>
-                      <div className="text-sm text-green-700">Consider recruiting {10 - roster.members.filter(m => m.townHallLevel >= 15).length} more TH15+ members for war strength</div>
+                      <div className="text-sm text-green-700">Consider recruiting {10 - roster.members.filter(m => (m.townHallLevel || 0) >= 15).length} more TH15+ members for war strength</div>
                     </div>
                   )}
                   {roster && roster.members && roster.members.filter(m => (m.trophies || 0) >= 4000).length < 15 && (

@@ -142,7 +142,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
       
       keys.forEach(key => {
         const notes = JSON.parse(localStorage.getItem(key) || "[]");
-        const uniqueNotes = [];
+        const uniqueNotes: any[] = [];
         const seenNotes = new Set();
         
         notes.forEach((note: any) => {
@@ -208,7 +208,8 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
       }
     } catch (error) {
       console.error('[PlayerDatabase] Error during migration:', error);
-      alert(`Migration failed: ${error.message || 'Unknown error'}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Migration failed: ${errorMessage}`);
     } finally {
       setLoading(false);
     }

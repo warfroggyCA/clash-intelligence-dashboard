@@ -111,7 +111,7 @@ async function storeDepartureForPlayerDB(departure: DepartureRecord): Promise<vo
     }
     
     // Check if we already have this departure to avoid duplicates
-    const existingIndex = departures.findIndex(d => 
+    const existingIndex = departures.findIndex((d: any) => 
       d.memberTag === departure.memberTag && 
       d.departureDate === departure.departureDate
     );

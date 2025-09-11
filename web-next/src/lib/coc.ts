@@ -60,8 +60,11 @@ function getCached<T>(key: string): T | null {
   return null;
 }
 
-function setCache(key: string, data: any): void {
-  cache.set(key, { data, timestamp: Date.now() });
+function setCached<T>(key: string, data: T): void {
+  cache.set(key, {
+    data,
+    timestamp: Date.now()
+  });
 }
 
 // Mock data for development mode
@@ -213,7 +216,7 @@ async function api<T>(path: string): Promise<T> {
     const response = await axios.get(`${BASE}${path}`, axiosConfig);
     
     // Cache the response
-    setCache(path, response.data);
+    setCached(path, response.data);
     
     return response.data as T;
   } catch (error: any) {
