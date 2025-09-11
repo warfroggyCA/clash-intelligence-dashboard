@@ -54,8 +54,8 @@ type PlayerEvent = {
 type EventHistory = Record<string, PlayerEvent[]>; // playerTag -> events[]
 type Roster = { source: "live" | "fallback" | "snapshot"; date?: string; clanName?: string; members: Member[]; meta?: any };
 
-type SortKey = "name"|"tag"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"tenure"|"activity"|"role";
-const DEFAULT_PAGE_SIZE = 100;
+type SortKey = "name"|"tag"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"donationBalance"|"participation"|"tenure"|"activity"|"role";
+const DEFAULT_PAGE_SIZE = 50;
 
 const HEAD_TIPS: Record<string,string> = {
   Name:"Player name", Tag:"Player tag", TH:"Town Hall level",
@@ -64,6 +64,8 @@ const HEAD_TIPS: Record<string,string> = {
   Trophies:"Trophy count", 
   Don:"Donations given (red number below shows deficit if receiving more than giving)", 
   Recv:"Donations received",
+  Balance:"Donation balance (received - given). Positive = net receiver, Negative = net giver",
+  Activity:"Participation level based on donation activity (Inactive, Low, High, Very High)",
   "Tenure (d)":"Days in clan (append-only ledger)",
   "Last Activity":"Time since last significant gameplay activity (* = estimated from donations, will improve with snapshot history)", Role:"Clan role"
 };
@@ -1660,6 +1662,18 @@ Please analyze this clan data and provide insights on:
       return activity.score;
     }
     if (key === "rush") return rushPercent(m, thCaps);
+    if (key === "donationBalance") {
+      const balance = getDonationBalance(m);
+      return balance.balance;
+    }
+    if (key === "participation") {
+      const balance = getDonationBalance(m);
+      const totalDonations = balance.given + balance.received;
+      if (totalDonations >= 500) return 4; // Very High
+      if (totalDonations >= 100) return 3; // High
+      if (totalDonations > 0) return 2;    // Low
+      return 1; // Inactive
+    }
     return (m as any)[key];
   };
 
@@ -2030,7 +2044,6 @@ Please analyze this clan data and provide insights on:
                   <option value="10">10</option>
                   <option value="25">25</option>
                   <option value="50">50</option>
-                  <option value="100">100</option>
                 </select>
               </div>
             </div>
@@ -2114,13 +2127,40 @@ Please analyze this clan data and provide insights on:
                         <div>
                           <span className="text-gray-500">Donations:</span>
                           <span className="ml-1 font-medium">{m.donations ?? ""}</span>
-                          {balance.isNegative && balance.balance > 0 && (
-                            <div className="text-xs text-red-600 font-semibold">-{balance.balance}</div>
-                          )}
                         </div>
                         <div>
                           <span className="text-gray-500">Received:</span>
                           <span className="ml-1 font-medium">{m.donationsReceived ?? ""}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Balance:</span>
+                          <span className={`ml-1 font-medium ${balance.balance > 0 ? "text-red-600" : balance.balance < 0 ? "text-green-600" : ""}`}>
+                            {balance.balance > 0 ? `+${balance.balance}` : balance.balance}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            Ratio: {balance.given > 0 ? (balance.received / balance.given).toFixed(2) : "∞"}
+                          </div>
+                        </div>
+                        <div>
+                          <span className="text-gray-500">Activity:</span>
+                          <span className={`ml-1 font-medium ${(() => {
+                            const totalDonations = balance.given + balance.received;
+                            if (totalDonations >= 500) return "text-blue-600 font-semibold";
+                            if (totalDonations >= 100) return "text-green-600 font-semibold";
+                            if (totalDonations > 0) return "text-yellow-600 font-semibold";
+                            return "text-red-600 font-semibold";
+                          })()}`}>
+                            {(() => {
+                              const totalDonations = balance.given + balance.received;
+                              if (totalDonations >= 500) return "Very High";
+                              if (totalDonations >= 100) return "High";
+                              if (totalDonations > 0) return "Low";
+                              return "Inactive";
+                            })()}
+                          </span>
+                          <div className="text-xs text-gray-500">
+                            {balance.given + balance.received} total donations
+                          </div>
                         </div>
                         <div>
                           <span className="text-gray-500">Tenure:</span>
@@ -2165,6 +2205,8 @@ Please analyze this clan data and provide insights on:
                     <Th onClick={()=>toggleSort("trophies")} className="text-center"> {headerElCentered("trophies","Trophies")} </Th>
                     <Th onClick={()=>toggleSort("donations")}> {headerEl("donations","Don")} </Th>
                     <Th onClick={()=>toggleSort("donationsReceived")}> {headerEl("donationsReceived","Recv")} </Th>
+                    <Th onClick={()=>toggleSort("donationBalance")}> {headerEl("donationBalance","Balance")} </Th>
+                    <Th onClick={()=>toggleSort("participation")}> {headerEl("participation","Activity")} </Th>
                     <Th onClick={()=>toggleSort("tenure")}> {headerEl("tenure","Tenure (d)")} </Th>
                     <Th onClick={()=>toggleSort("activity")}> 
                       <div className="flex items-center gap-1">
@@ -2227,23 +2269,50 @@ Please analyze this clan data and provide insights on:
                           </span>
                         </Td>
                         <Td className="text-center">{m.trophies ?? ""}</Td>
-                        <Td>
-                          <div className="flex flex-col">
-                            <span>{m.donations ?? ""}</span>
-                            {(() => {
-                              const balance = getDonationBalance(m);
-                              if (balance.isNegative && balance.balance > 0) {
-                                return (
-                                  <span className="text-xs text-red-600 font-semibold" title={`Receives ${balance.balance} more than gives`}>
-                                    -{balance.balance}
-                                  </span>
-                                );
-                              }
-                              return null;
-                            })()}
-                          </div>
-                        </Td>
+                        <Td>{m.donations ?? ""}</Td>
                         <Td>{m.donationsReceived ?? ""}</Td>
+                        <Td>
+                          {(() => {
+                            const balance = getDonationBalance(m);
+                            const ratio = balance.given > 0 ? (balance.received / balance.given).toFixed(2) : "∞";
+                            return (
+                              <div className="flex flex-col">
+                                <span className={balance.balance > 0 ? "text-red-600 font-semibold" : balance.balance < 0 ? "text-green-600 font-semibold" : ""}>
+                                  {balance.balance > 0 ? `+${balance.balance}` : balance.balance}
+                                </span>
+                                <span className="text-xs text-gray-500">Ratio: {ratio}</span>
+                              </div>
+                            );
+                          })()}
+                        </Td>
+                        <Td>
+                          {(() => {
+                            const balance = getDonationBalance(m);
+                            const totalDonations = balance.given + balance.received;
+                            let level, color;
+                            
+                            if (totalDonations >= 500) {
+                              level = "Very High";
+                              color = "text-blue-600 font-semibold";
+                            } else if (totalDonations >= 100) {
+                              level = "High";
+                              color = "text-green-600 font-semibold";
+                            } else if (totalDonations > 0) {
+                              level = "Low";
+                              color = "text-yellow-600 font-semibold";
+                            } else {
+                              level = "Inactive";
+                              color = "text-red-600 font-semibold";
+                            }
+                            
+                            return (
+                              <div className="flex flex-col">
+                                <span className={color}>{level}</span>
+                                <span className="text-xs text-gray-500">{totalDonations} total</span>
+                              </div>
+                            );
+                          })()}
+                        </Td>
                         <Td>{getTenure(m)}</Td>
                         <Td>
                           {(() => {
@@ -2522,6 +2591,284 @@ Please analyze this clan data and provide insights on:
                       <span className="font-semibold">{roster && Array.isArray(roster) ? roster.filter(m => m.trophies >= 3000).length : 0}</span>
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Town Hall Distribution Analysis */}
+              <div className="mt-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-6 border border-emerald-200">
+                <h3 className="text-lg font-semibold text-emerald-900 mb-3 flex items-center gap-2">
+                  🏰 Town Hall Distribution Analysis
+                </h3>
+                <p className="text-emerald-700 text-sm mb-4">
+                  Analyze your clan's composition and identify potential gaps in your roster structure.
+                </p>
+                <div className="space-y-4">
+                  {(() => {
+                    if (!roster?.members) return <div className="text-gray-500">No data available</div>;
+                    
+                    // Calculate TH distribution
+                    const thDistribution = roster.members.reduce((acc, member) => {
+                      const th = member.townHallLevel || 0;
+                      acc[th] = (acc[th] || 0) + 1;
+                      return acc;
+                    }, {} as Record<number, number>);
+                    
+                    const sortedTHs = Object.keys(thDistribution)
+                      .map(Number)
+                      .sort((a, b) => b - a);
+                    
+                    const totalMembers = roster.members.length;
+                    
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          {sortedTHs.map(th => {
+                            const count = thDistribution[th];
+                            const percentage = ((count / totalMembers) * 100).toFixed(1);
+                            return (
+                              <div key={th} className="bg-white rounded-lg p-3 border border-emerald-200">
+                                <div className="text-center">
+                                  <div className="text-2xl font-bold text-emerald-800">TH{th}</div>
+                                  <div className="text-sm text-emerald-600">{count} members</div>
+                                  <div className="text-xs text-gray-500">{percentage}%</div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        
+                        {/* Analysis insights */}
+                        <div className="bg-white rounded-lg p-4 border border-emerald-200">
+                          <h4 className="font-semibold text-emerald-800 mb-2">📊 Roster Insights</h4>
+                          <div className="space-y-2 text-sm">
+                            {(() => {
+                              const insights = [];
+                              const maxTH = Math.max(...sortedTHs);
+                              const minTH = Math.min(...sortedTHs);
+                              const thSpread = maxTH - minTH;
+                              
+                              if (thSpread > 3) {
+                                insights.push("⚠️ Large TH spread may affect war matching");
+                              }
+                              if (thDistribution[maxTH] < 3) {
+                                insights.push("🔍 Consider recruiting more TH" + maxTH + " players");
+                              }
+                              if (thDistribution[15] && thDistribution[15] < 5) {
+                                insights.push("💎 Low TH15 count - focus on high-level recruitment");
+                              }
+                              if (thDistribution[14] && thDistribution[14] < 8) {
+                                insights.push("⭐ Consider more TH14 players for CWL depth");
+                              }
+                              
+                              return insights.length > 0 ? insights : ["✅ Roster composition looks balanced"];
+                            })()}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Donation Analysis */}
+              <div className="mt-6 bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
+                <h3 className="text-lg font-semibold text-amber-900 mb-3 flex items-center gap-2">
+                  💝 Donation Analysis
+                </h3>
+                <p className="text-amber-700 text-sm mb-4">
+                  Analyze donation patterns and identify members who contribute most to clan support.
+                </p>
+                <div className="space-y-4">
+                  {(() => {
+                    if (!roster?.members) return <div className="text-gray-500">No data available</div>;
+                    
+                    // Calculate donation metrics
+                    const donationData = roster.members.map(member => {
+                      const balance = getDonationBalance(member);
+                      return {
+                        name: member.name,
+                        given: balance.given,
+                        received: balance.received,
+                        balance: balance.balance,
+                        ratio: balance.given > 0 ? balance.received / balance.given : 0
+                      };
+                    });
+                    
+                    // Sort by donation balance (net givers first)
+                    const sortedByBalance = [...donationData].sort((a, b) => a.balance - b.balance);
+                    
+                    // Calculate clan-wide metrics
+                    const totalGiven = donationData.reduce((sum, m) => sum + m.given, 0);
+                    const totalReceived = donationData.reduce((sum, m) => sum + m.received, 0);
+                    const netGivers = donationData.filter(m => m.balance < 0).length;
+                    const netReceivers = donationData.filter(m => m.balance > 0).length;
+                    const balanced = donationData.filter(m => m.balance === 0).length;
+                    
+                    return (
+                      <div className="space-y-4">
+                        {/* Summary metrics */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-white rounded-lg p-3 border border-amber-200 text-center">
+                            <div className="text-lg font-bold text-amber-800">{totalGiven.toLocaleString()}</div>
+                            <div className="text-xs text-amber-600">Total Given</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-amber-200 text-center">
+                            <div className="text-lg font-bold text-amber-800">{totalReceived.toLocaleString()}</div>
+                            <div className="text-xs text-amber-600">Total Received</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-amber-200 text-center">
+                            <div className="text-lg font-bold text-green-600">{netGivers}</div>
+                            <div className="text-xs text-amber-600">Net Givers</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-amber-200 text-center">
+                            <div className="text-lg font-bold text-red-600">{netReceivers}</div>
+                            <div className="text-xs text-amber-600">Net Receivers</div>
+                          </div>
+                        </div>
+                        
+                        {/* Top contributors */}
+                        <div className="bg-white rounded-lg p-4 border border-amber-200">
+                          <h4 className="font-semibold text-amber-800 mb-3">🏆 Top Contributors</h4>
+                          <div className="space-y-2">
+                            {sortedByBalance.slice(0, 5).map((member, index) => (
+                              <div key={member.name} className="flex justify-between items-center py-2 border-b border-amber-100 last:border-b-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-amber-600 font-bold">#{index + 1}</span>
+                                  <span className="font-medium">{member.name}</span>
+                                </div>
+                                <div className="text-right">
+                                  <div className={`font-semibold ${member.balance < 0 ? "text-green-600" : member.balance > 0 ? "text-red-600" : ""}`}>
+                                    {member.balance < 0 ? `-${Math.abs(member.balance)}` : `+${member.balance}`}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {member.given} given, {member.received} received
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Participation Analysis */}
+              <div className="mt-6 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-xl p-6 border border-cyan-200">
+                <h3 className="text-lg font-semibold text-cyan-900 mb-3 flex items-center gap-2">
+                  📊 Participation Analysis
+                </h3>
+                <p className="text-cyan-700 text-sm mb-4">
+                  Track member engagement and identify participation patterns across different activities.
+                </p>
+                <div className="space-y-4">
+                  {(() => {
+                    if (!roster?.members) return <div className="text-gray-500">No data available</div>;
+                    
+                    // Calculate participation metrics
+                    const participationData = roster.members.map(member => {
+                      const balance = getDonationBalance(member);
+                      const totalDonations = balance.given + balance.received;
+                      const isActive = totalDonations > 0;
+                      const isHighActivity = totalDonations >= 100;
+                      const isVeryActive = totalDonations >= 500;
+                      
+                      return {
+                        name: member.name,
+                        tag: member.tag,
+                        role: member.role,
+                        totalDonations,
+                        isActive,
+                        isHighActivity,
+                        isVeryActive,
+                        trophies: member.trophies || 0,
+                        townHall: member.townHallLevel || 0
+                      };
+                    });
+                    
+                    // Calculate clan-wide participation metrics
+                    const totalMembers = participationData.length;
+                    const activeMembers = participationData.filter(m => m.isActive).length;
+                    const highActivityMembers = participationData.filter(m => m.isHighActivity).length;
+                    const veryActiveMembers = participationData.filter(m => m.isVeryActive).length;
+                    const inactiveMembers = totalMembers - activeMembers;
+                    
+                    const participationRate = totalMembers > 0 ? (activeMembers / totalMembers * 100).toFixed(1) : 0;
+                    const highActivityRate = totalMembers > 0 ? (highActivityMembers / totalMembers * 100).toFixed(1) : 0;
+                    
+                    return (
+                      <div className="space-y-4">
+                        {/* Summary metrics */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-white rounded-lg p-3 border border-cyan-200 text-center">
+                            <div className="text-lg font-bold text-cyan-800">{participationRate}%</div>
+                            <div className="text-xs text-cyan-600">Active Members</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-cyan-200 text-center">
+                            <div className="text-lg font-bold text-green-600">{highActivityMembers}</div>
+                            <div className="text-xs text-cyan-600">High Activity</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-cyan-200 text-center">
+                            <div className="text-lg font-bold text-blue-600">{veryActiveMembers}</div>
+                            <div className="text-xs text-cyan-600">Very Active</div>
+                          </div>
+                          <div className="bg-white rounded-lg p-3 border border-cyan-200 text-center">
+                            <div className="text-lg font-bold text-red-600">{inactiveMembers}</div>
+                            <div className="text-xs text-cyan-600">Inactive</div>
+                          </div>
+                        </div>
+                        
+                        {/* Activity breakdown by role */}
+                        <div className="bg-white rounded-lg p-4 border border-cyan-200">
+                          <h4 className="font-semibold text-cyan-800 mb-3">👥 Activity by Role</h4>
+                          <div className="space-y-2">
+                            {(() => {
+                              const roleStats = participationData.reduce((acc, member) => {
+                                const role = formatRole(member.role);
+                                if (!acc[role]) {
+                                  acc[role] = { total: 0, active: 0, highActivity: 0 };
+                                }
+                                acc[role].total++;
+                                if (member.isActive) acc[role].active++;
+                                if (member.isHighActivity) acc[role].highActivity++;
+                                return acc;
+                              }, {} as Record<string, { total: number; active: number; highActivity: number }>);
+                              
+                              return Object.entries(roleStats).map(([role, stats]) => {
+                                const activeRate = ((stats.active / stats.total) * 100).toFixed(1);
+                                const highActivityRate = ((stats.highActivity / stats.total) * 100).toFixed(1);
+                                
+                                return (
+                                  <div key={role} className="flex justify-between items-center py-2 border-b border-cyan-100 last:border-b-0">
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-medium">{role}</span>
+                                      <span className="text-xs text-gray-500">({stats.total} members)</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="text-sm font-semibold text-cyan-800">{activeRate}% active</div>
+                                      <div className="text-xs text-gray-500">{highActivityRate}% high activity</div>
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+                        
+                        {/* Inactive members alert */}
+                        {inactiveMembers > 0 && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                            <h4 className="font-semibold text-red-800 mb-2">⚠️ Inactive Members Alert</h4>
+                            <div className="text-sm text-red-700">
+                              {inactiveMembers} member{inactiveMembers > 1 ? 's' : ''} show{inactiveMembers === 1 ? 's' : ''} no recent activity. 
+                              Consider reaching out to re-engage or evaluate their clan status.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
