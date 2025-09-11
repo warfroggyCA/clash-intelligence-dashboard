@@ -22,18 +22,35 @@ CREATE TABLE tenure_ledger (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Create ai_summaries table
+CREATE TABLE ai_summaries (
+  id BIGSERIAL PRIMARY KEY,
+  clan_tag TEXT NOT NULL,
+  date TEXT NOT NULL,
+  summary TEXT NOT NULL,
+  summary_type TEXT DEFAULT 'full_analysis',
+  unread BOOLEAN DEFAULT true,
+  actioned BOOLEAN DEFAULT false,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_snapshots_clan_tag ON snapshots(clan_tag);
 CREATE INDEX idx_snapshots_date ON snapshots(date);
 CREATE INDEX idx_snapshots_timestamp ON snapshots(timestamp);
+CREATE INDEX idx_ai_summaries_clan_tag ON ai_summaries(clan_tag);
+CREATE INDEX idx_ai_summaries_date ON ai_summaries(date);
+CREATE INDEX idx_ai_summaries_created_at ON ai_summaries(created_at);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenure_ledger ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ai_summaries ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all for now, you can restrict later)
 CREATE POLICY "Allow all operations on snapshots" ON snapshots FOR ALL USING (true);
 CREATE POLICY "Allow all operations on tenure_ledger" ON tenure_ledger FOR ALL USING (true);
+CREATE POLICY "Allow all operations on ai_summaries" ON ai_summaries FOR ALL USING (true);
 
 -- Create storage bucket for files
 INSERT INTO storage.buckets (id, name, public) VALUES ('snapshots', 'snapshots', true);

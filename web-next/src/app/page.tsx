@@ -1651,32 +1651,34 @@ Please analyze this clan data and provide insights on:
 
       const result = await response.json();
       
-      // Store the summary using the snapshots system
+      // Store the summary in Supabase
       const summary = {
+        clan_tag: clanTag || homeClan || "",
         date: new Date().toISOString().split('T')[0],
-        clanTag: clanTag || homeClan || "",
-        changes: [], // No changes for full analysis
         summary: result.summary,
+        summary_type: 'full_analysis',
         unread: true,
-        actioned: false,
-        createdAt: new Date().toISOString(),
-        type: 'full_analysis'
+        actioned: false
       };
 
-      // Save using the snapshots API
-      const saveResponse = await fetch('/api/snapshots/changes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: 'save',
-          changeSummary: summary
-        })
-      });
-
-      if (!saveResponse.ok) {
-        console.warn('Failed to save AI summary to snapshots system');
+      // Save to Supabase
+      try {
+        const { saveAISummary } = await import('@/lib/supabase');
+        await saveAISummary(summary);
+      } catch (error) {
+        console.warn('Failed to save AI summary to Supabase:', error);
+        // Fallback to localStorage if Supabase fails
+        try {
+          const existingSummaries = JSON.parse(localStorage.getItem('ai_summaries') || '[]');
+          existingSummaries.unshift({
+            ...summary,
+            id: Date.now(), // Generate a temporary ID
+            created_at: new Date().toISOString()
+          });
+          localStorage.setItem('ai_summaries', JSON.stringify(existingSummaries));
+        } catch (localError) {
+          console.warn('Failed to save AI summary to localStorage:', localError);
+        }
       }
 
       setStatus("success");
