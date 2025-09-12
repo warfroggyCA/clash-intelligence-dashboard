@@ -1634,6 +1634,7 @@ Please analyze this clan data and provide insights on:
 
       setMessage("🤖 Sending data to OpenAI for analysis...");
       
+      console.log('Calling /api/ai-summary/generate with clanData:', clanData);
       const response = await fetch('/api/ai-summary/generate', {
         method: 'POST',
         headers: {
@@ -1646,10 +1647,13 @@ Please analyze this clan data and provide insights on:
       });
 
       if (!response.ok) {
-        throw new Error('Failed to generate AI summary');
+        const errorText = await response.text();
+        console.error('AI Summary API error:', response.status, errorText);
+        throw new Error(`Failed to generate AI summary: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
+      console.log('AI Summary API response:', result);
       
       // Store the summary in Supabase
       const summary = {
