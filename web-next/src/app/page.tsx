@@ -1032,27 +1032,27 @@ export default function HomePage(){
     setIsInitialized(true);
     
     if (initial) {
-      // Set home clan and auto-load stored snapshot data
+      // Set home clan and load available snapshots (no automatic data loading)
       setHomeClan(initial);
       console.log("Setting home clan to:", initial);
       
-      // Load snapshots first, then load stored data
-      const initializeData = async () => {
+      // Load snapshots only, don't auto-load data
+      const initializeSnapshots = async () => {
         try {
-          console.log("Initializing data for:", initial);
-          setStatus("loading");
-          setMessage("Loading home clan data...");
+          console.log("Loading available snapshots for:", initial);
           await loadAvailableSnapshots(initial);
-          await loadStoredData(initial);
-          console.log("Home clan data loaded successfully");
+          console.log("Available snapshots loaded successfully");
+          // Don't auto-load data - let user choose when to load
+          setStatus("success");
+          setMessage(`Ready to load data for ${initial}. Select a snapshot or click Load.`);
         } catch (error) {
-          console.error("Auto-loading failed:", error);
+          console.error("Failed to load snapshots:", error);
           setStatus("error");
-          setMessage(`Auto-loading failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+          setMessage(`Failed to load snapshots: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
       };
       
-      initializeData();
+      initializeSnapshots();
     } else {
       console.log("No initial clan tag found");
     }
