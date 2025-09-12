@@ -236,16 +236,10 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
       return null;
     }
     
-    // Try to load from local file first (faster)
-    try {
-      const localPath = getSnapshotPath(clanTag, snapshotData.date);
-      const localData = await fsp.readFile(localPath, 'utf-8');
-      return JSON.parse(localData) as DailySnapshot;
-    } catch (localError) {
-      // If local file doesn't exist, return null
-      console.log('Local snapshot file not found, returning null');
-      return null;
-    }
+    // For now, return null since we don't have the actual snapshot data stored
+    // The snapshots in Supabase only have metadata, not the full member data
+    console.log('Snapshot metadata found but no member data available');
+    return null;
   } catch (error) {
     return null;
   }
