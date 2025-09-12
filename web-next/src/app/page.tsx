@@ -455,13 +455,14 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
   } else {
     // No previous data - use current activity levels to infer recency
     // High donation activity suggests very recent activity
-    if (totalDonationActivity >= 100) {
+    const donationActivity = member.donations ?? 0;
+    if (donationActivity >= 100) {
       score += 10;
       indicators.push("High recent donation activity");
-    } else if (totalDonationActivity >= 50) {
+    } else if (donationActivity >= 50) {
       score += 8;
       indicators.push("Good recent donation activity");
-    } else if (totalDonationActivity > 0) {
+    } else if (donationActivity > 0) {
       score += 5;
       indicators.push("Some recent donation activity");
     } else {

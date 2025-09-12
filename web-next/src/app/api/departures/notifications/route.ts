@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { checkForRejoins, getActiveDepartures } from '../../../../lib/departures';
 
+// Force dynamic rendering for this route
+export const dynamic = 'force-dynamic';
+
 // GET /api/departures/notifications?clanTag=#TAG
 export async function GET(request: NextRequest) {
   try {
