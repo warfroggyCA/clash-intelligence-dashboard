@@ -1036,19 +1036,23 @@ export default function HomePage(){
       setHomeClan(initial);
       console.log("Setting home clan to:", initial);
       
-      // Load snapshots only, don't auto-load data
+      // Load snapshots and auto-load latest snapshot data
       const initializeSnapshots = async () => {
         try {
           console.log("Loading available snapshots for:", initial);
           await loadAvailableSnapshots(initial);
           console.log("Available snapshots loaded successfully");
-          // Don't auto-load data - let user choose when to load
-          setStatus("success");
-          setMessage(`Ready to load data for ${initial}. Select a snapshot or click Load.`);
+          
+          // Auto-load the latest snapshot data (no API calls, just snapshot data)
+          console.log("Auto-loading latest snapshot data");
+          setStatus("loading");
+          setMessage("Loading latest snapshot data...");
+          await loadStoredData(initial, "latest");
+          console.log("Latest snapshot data loaded successfully");
         } catch (error) {
-          console.error("Failed to load snapshots:", error);
+          console.error("Failed to load snapshots or data:", error);
           setStatus("error");
-          setMessage(`Failed to load snapshots: ${error instanceof Error ? error.message : "Unknown error"}`);
+          setMessage(`Failed to load data: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
       };
       
