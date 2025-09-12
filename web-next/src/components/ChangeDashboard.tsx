@@ -83,10 +83,14 @@ export default function ChangeDashboard({
       let aiSummaries: ChangeSummary[] = [];
       try {
         const savedSummaries = localStorage.getItem('ai_summaries');
+        console.log('Loading AI summaries from localStorage:', savedSummaries);
         if (savedSummaries) {
-          aiSummaries = JSON.parse(savedSummaries).filter((summary: ChangeSummary) => 
+          const parsed = JSON.parse(savedSummaries);
+          console.log('Parsed AI summaries:', parsed);
+          aiSummaries = parsed.filter((summary: ChangeSummary) => 
             summary.clanTag === clanTag
           );
+          console.log('Filtered AI summaries for clan:', aiSummaries);
         }
       } catch (error) {
         console.warn('Failed to load AI summaries from localStorage:', error);
@@ -107,17 +111,22 @@ export default function ChangeDashboard({
       }
       
       const data = await response.json();
+      console.log('Server response data:', data);
       
       if (data.success) {
         // Combine server changes with AI summaries
         const serverChanges = data.changes || [];
+        console.log('Server changes:', serverChanges);
+        console.log('AI summaries:', aiSummaries);
         const allChanges = [...aiSummaries, ...serverChanges];
+        console.log('Combined changes:', allChanges);
         
         // Sort by date (newest first)
         allChanges.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
         
         setChanges(allChanges);
       } else {
+        console.log('Server error:', data.error);
         setError(data.error || "Failed to load changes");
       }
     } catch (err: any) {
