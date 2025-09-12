@@ -1735,6 +1735,7 @@ Please analyze this clan data and provide insights on:
 
   // Manual daily summary generation - always use AI summary generation
   const generateDailySummary = async () => {
+    console.log('generateDailySummary called - using AI summary generation');
     const currentClanTag = clanTag || homeClan;
     if (!currentClanTag) {
       setMessage("Please enter a clan tag first");
@@ -1743,6 +1744,7 @@ Please analyze this clan data and provide insights on:
 
     // Always use AI summary generation instead of snapshot creation
     // This works on both local and Vercel environments
+    console.log('Calling generateAISummary directly');
     await generateAISummary();
   };
 
