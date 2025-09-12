@@ -18,7 +18,7 @@ export async function generateChangeSummary(
     apiKey: process.env.OPENAI_API_KEY,
   });
 
-  if (changes.length === 0) {
+  if (changes.length === 0 && !customPrompt) {
     return "No significant changes detected in the clan today.";
   }
 
