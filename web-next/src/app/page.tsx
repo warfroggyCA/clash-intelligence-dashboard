@@ -1741,7 +1741,15 @@ Please analyze this clan data and provide insights on:
     setMessage("Generating daily summary...");
 
     try {
-      // First create a snapshot
+      // On Vercel, skip snapshot creation and go directly to AI summary
+      // since we already have the current clan data
+      if (process.env.NODE_ENV === 'production') {
+        // Use the existing AI summary generation instead
+        await generateAISummary();
+        return;
+      }
+
+      // For local development, create snapshot first
       const snapshotResponse = await fetch('/api/snapshots/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
