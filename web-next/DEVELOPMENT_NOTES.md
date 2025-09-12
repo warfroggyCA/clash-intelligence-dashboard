@@ -381,3 +381,38 @@ This roadmap transforms the dashboard from a stats page into a strategic command
 
 ## Development Guidelines
 - **CRITICAL: JSX Structure Safety** - When working on JSX structure, be extra careful and think, re-think code so that syntax doesn't break the site. Always verify function braces, component structure, and return statements are properly nested before testing.
+
+## 🚀 Deployment Workflow (NEW - v0.16.1)
+
+### Multi-Environment Setup
+- **Development**: Local development with test data
+- **Staging**: Vercel preview deployments for testing
+- **Production**: Live application with real data
+
+### Safe Development Process
+1. **Never develop directly in production** - Use staging environment
+2. **Feature branches** - Create branches for new features
+3. **Staging testing** - Always test in staging before production
+4. **Environment variables** - Separate configs for each environment
+
+### Quick Commands
+```bash
+# Local development
+npm run dev
+
+# Deploy to staging
+npm run deploy:staging
+
+# Deploy to production
+npm run deploy:prod
+
+# Check environment
+npm run env:check
+```
+
+### Environment Configuration
+- Copy `env.example` to `.env.local` for local development
+- Configure Vercel environment variables for staging/production
+- Use different API keys and database instances for each environment
+
+See `DEPLOYMENT.md` for complete deployment guide.

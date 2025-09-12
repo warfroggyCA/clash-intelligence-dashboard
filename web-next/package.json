@@ -1,13 +1,18 @@
 {
   "name": "clash-intelligence",
   "private": true,
-  "version": "0.15.0",
+  "version": "0.16.1",
   "scripts": {
     "dev": "next dev -p 5050",
+    "dev:staging": "VERCEL_ENV=preview next dev -p 5050",
     "build": "next build",
+    "build:staging": "VERCEL_ENV=preview next build",
     "start": "next start -p 5050",
     "test": "jest",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "deploy:staging": "vercel --target preview",
+    "deploy:prod": "vercel --target production",
+    "env:check": "node scripts/check-env.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.57.4",
