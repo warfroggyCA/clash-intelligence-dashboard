@@ -1,7 +1,7 @@
 {
   "name": "clash-intelligence",
   "private": true,
-  "version": "0.16.1",
+  "version": "0.16.2",
   "scripts": {
     "dev": "next dev -p 5050",
     "dev:staging": "VERCEL_ENV=preview next dev -p 5050",

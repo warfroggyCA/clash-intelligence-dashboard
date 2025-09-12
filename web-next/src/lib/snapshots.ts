@@ -255,7 +255,7 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
   }
 }
 
-// Compare two snapshots and detect changes
+// Compare two snapshots and detect changes (enhanced with better sensitivity)
 export function detectChanges(previous: DailySnapshot, current: DailySnapshot): MemberChange[] {
   const changes: MemberChange[] = [];
   
@@ -295,7 +295,7 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
     }
   }
   
-  // Check for changes in existing members
+  // Check for changes in existing members with enhanced sensitivity
   for (const [tag, currentMember] of currMembers) {
     const prevMember = prevMembers.get(tag);
     if (!prevMember) continue;
@@ -338,9 +338,9 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       }
     }
     
-    // Trophy changes (significant changes only)
+    // Enhanced trophy changes (lower threshold for better sensitivity)
     const trophyDiff = (currentMember.trophies || 0) - (prevMember.trophies || 0);
-    if (Math.abs(trophyDiff) >= 50) {
+    if (Math.abs(trophyDiff) >= 20) { // Lowered from 50
       changes.push({
         type: 'trophy_change',
         member: {
@@ -355,9 +355,9 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       });
     }
     
-    // Donation changes (significant changes only) - ROCK-SOLID SIGNAL
+    // Enhanced donation changes (lower threshold for better sensitivity)
     const donationDiff = (currentMember.donations || 0) - (prevMember.donations || 0);
-    if (donationDiff >= 100) {
+    if (donationDiff >= 25) { // Lowered from 100
       changes.push({
         type: 'donation_change',
         member: {
@@ -372,9 +372,9 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       });
     }
     
-    // Donations received changes - HIGH-CONFIDENCE SIGNAL
+    // Donations received changes (lower threshold)
     const donationsReceivedDiff = (currentMember.donationsReceived || 0) - (prevMember.donationsReceived || 0);
-    if (donationsReceivedDiff >= 50) {
+    if (donationsReceivedDiff >= 25) { // Lowered from 50
       changes.push({
         type: 'donation_received_change',
         member: {
@@ -389,7 +389,7 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       });
     }
     
-    // Attack wins changes - ROCK-SOLID SIGNAL
+    // Attack wins changes (any increase)
     const attackWinsDiff = (currentMember.attackWins || 0) - (prevMember.attackWins || 0);
     if (attackWinsDiff > 0) {
       changes.push({
@@ -406,7 +406,7 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       });
     }
     
-    // Versus battle wins changes - ROCK-SOLID SIGNAL
+    // Versus battle wins changes (any increase)
     const versusWinsDiff = (currentMember.versusBattleWins || 0) - (prevMember.versusBattleWins || 0);
     if (versusWinsDiff > 0) {
       changes.push({
@@ -423,9 +423,9 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       });
     }
     
-    // Versus trophies changes - ROCK-SOLID SIGNAL
+    // Versus trophies changes (lower threshold)
     const versusTrophiesDiff = (currentMember.versusTrophies || 0) - (prevMember.versusTrophies || 0);
-    if (Math.abs(versusTrophiesDiff) >= 20) {
+    if (Math.abs(versusTrophiesDiff) >= 10) { // Lowered from 20
       changes.push({
         type: 'versus_trophies_change',
         member: {
@@ -440,7 +440,7 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       });
     }
     
-    // Clan Capital contributions changes - ROCK-SOLID SIGNAL
+    // Clan Capital contributions changes (any increase)
     const capitalContributionsDiff = (currentMember.clanCapitalContributions || 0) - (prevMember.clanCapitalContributions || 0);
     if (capitalContributionsDiff > 0) {
       changes.push({
@@ -480,10 +480,93 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
 // Enhanced activity tracking with rock-solid signals and confidence levels
 export type ActivityEvidence = {
   last_active_at: string; // timestamp of the snapshot where change was observed
-  confidence: 'definitive' | 'high' | 'weak';
+  confidence: 'definitive' | 'high' | 'medium' | 'weak';
   evidence: string[]; // list of fields that changed
   priority: number; // 1-5, higher = more recent activity
+  activity_level?: 'Very High' | 'High' | 'Medium' | 'Low' | 'Inactive';
+  days_since_activity?: number;
 };
+
+// Real-time activity calculation from current member data
+export function calculateRealTimeActivity(member: Member): {
+  activity_level: 'Very High' | 'High' | 'Medium' | 'Low' | 'Inactive';
+  confidence: 'definitive' | 'high' | 'medium' | 'weak';
+  evidence: string[];
+  last_active_at: string;
+} {
+  const now = new Date().toISOString();
+  const evidence: string[] = [];
+  let activity_level: 'Very High' | 'High' | 'Medium' | 'Low' | 'Inactive' = 'Inactive';
+  let confidence: 'definitive' | 'high' | 'medium' | 'weak' = 'weak';
+
+  // Check donation activity (most reliable indicator)
+  if (member.donations && member.donations > 0) {
+    if (member.donations >= 1000) {
+      activity_level = 'Very High';
+      confidence = 'high';
+      evidence.push(`donations: ${member.donations}`);
+    } else if (member.donations >= 500) {
+      activity_level = 'High';
+      confidence = 'high';
+      evidence.push(`donations: ${member.donations}`);
+    } else if (member.donations >= 200) {
+      activity_level = 'Medium';
+      confidence = 'medium';
+      evidence.push(`donations: ${member.donations}`);
+    } else if (member.donations >= 50) {
+      activity_level = 'Low';
+      confidence = 'medium';
+      evidence.push(`donations: ${member.donations}`);
+    }
+  }
+
+  // Check attack wins (war activity - highest priority)
+  if (member.attackWins && member.attackWins > 0) {
+    activity_level = 'Very High';
+    confidence = 'definitive';
+    evidence.push(`attack_wins: ${member.attackWins}`);
+  }
+
+  // Check clan capital contributions (very recent activity)
+  if (member.clanCapitalContributions && member.clanCapitalContributions > 0) {
+    activity_level = 'Very High';
+    confidence = 'definitive';
+    evidence.push(`capital_contributions: ${member.clanCapitalContributions}`);
+  }
+
+  // Check versus battle activity
+  if (member.versusBattleWins && member.versusBattleWins > 0) {
+    if (activity_level === 'Inactive') {
+      activity_level = 'Medium';
+      confidence = 'medium';
+    }
+    evidence.push(`versus_battles: ${member.versusBattleWins}`);
+  }
+
+  // Check trophy level (indicates recent play)
+  if (member.trophies && member.trophies > 0) {
+    if (member.trophies >= 5000) {
+      if (activity_level === 'Inactive') {
+        activity_level = 'High';
+        confidence = 'medium';
+      }
+      evidence.push(`trophies: ${member.trophies}`);
+    } else if (member.trophies >= 3000) {
+      if (activity_level === 'Inactive') {
+        activity_level = 'Medium';
+        confidence = 'medium';
+      }
+      evidence.push(`trophies: ${member.trophies}`);
+    }
+  }
+
+  return {
+    activity_level,
+    confidence,
+    evidence,
+    last_active_at: now
+  };
+}
 
 export function calculateLastActive(
   memberTag: string, 

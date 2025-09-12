@@ -21,6 +21,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Bell, X } from "lucide-react";
 import { cfg } from "../lib/config";
+import { calculateRealTimeActivity } from "../lib/activity-calculator";
 import ChangeDashboard from "../components/ChangeDashboard";
 import DepartureManager from "../components/DepartureManager";
 import PlayerDatabase from "../components/PlayerDatabase";
@@ -281,6 +282,7 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
 } => {
   const indicators: string[] = [];
   let score = 0;
+  
 
   // Check for manual override first
   const manualOverride = getManualActivityOverride(member.tag);
@@ -308,23 +310,60 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
     };
   }
 
-  // 1. Donation Activity (0-30 points)
-  const donations = member.donations ?? 0;
-  const donationsReceived = member.donationsReceived ?? 0;
-  const totalDonationActivity = donations + donationsReceived;
+  // Enhanced activity calculation using real-time data
+  const realTimeActivity = calculateRealTimeActivity(member);
   
-  if (totalDonationActivity >= 1000) {
-    score += 30;
-    indicators.push("High donation activity");
-  } else if (totalDonationActivity >= 500) {
-    score += 20;
-    indicators.push("Good donation activity");
-  } else if (totalDonationActivity >= 100) {
-    score += 10;
-    indicators.push("Moderate donation activity");
-  } else if (totalDonationActivity > 0) {
-    score += 5;
-    indicators.push("Low donation activity");
+  
+  
+  // Use real-time activity as base score
+  let baseScore = 0;
+  switch (realTimeActivity.activity_level) {
+    case 'Very High':
+      baseScore = realTimeActivity.confidence === 'definitive' ? 35 : 30;
+      break;
+    case 'High':
+      baseScore = realTimeActivity.confidence === 'definitive' ? 25 : 20;
+      break;
+    case 'Medium':
+      baseScore = realTimeActivity.confidence === 'high' ? 15 : 10;
+      break;
+    case 'Low':
+      baseScore = realTimeActivity.confidence === 'high' ? 8 : 5;
+      break;
+    case 'Inactive':
+      baseScore = 0;
+      break;
+  }
+  
+  score += baseScore;
+  
+  // Add indicators from real-time activity
+  realTimeActivity.evidence.forEach(evidence => {
+    if (evidence.includes('donations:')) {
+      const donations = parseInt(evidence.split(': ')[1]);
+      if (donations >= 1000) indicators.push("Very high donation activity");
+      else if (donations >= 500) indicators.push("High donation activity");
+      else if (donations >= 200) indicators.push("Moderate donation activity");
+      else indicators.push("Low donation activity");
+    } else if (evidence.includes('attack_wins:')) {
+      indicators.push("Recent war activity");
+    } else if (evidence.includes('capital_contributions:')) {
+      indicators.push("Clan Capital activity");
+    } else if (evidence.includes('versus_battles:')) {
+      indicators.push("Versus battle activity");
+    } else if (evidence.includes('trophies:')) {
+      const trophies = parseInt(evidence.split(': ')[1]);
+      if (trophies >= 5000) indicators.push("High trophy level");
+      else if (trophies >= 3000) indicators.push("Moderate trophy level");
+      else indicators.push("Low trophy level");
+    }
+  });
+  
+  // Add confidence indicator
+  if (realTimeActivity.confidence === 'definitive') {
+    indicators.push("Definitive activity evidence");
+  } else if (realTimeActivity.confidence === 'high') {
+    indicators.push("High confidence activity");
   }
 
   // 2. Trophy Activity (0-25 points)
@@ -432,13 +471,32 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
     }
   }
 
-  // Determine activity level
+  // Determine activity level - prioritize real-time activity over score
   let level: 'Very Active' | 'Active' | 'Moderate' | 'Low' | 'Inactive';
-  if (score >= 70) level = 'Very Active';
-  else if (score >= 50) level = 'Active';
-  else if (score >= 30) level = 'Moderate';
-  else if (score >= 15) level = 'Low';
-  else level = 'Inactive';
+  
+  // Use real-time activity as primary indicator
+  switch (realTimeActivity.activity_level) {
+    case 'Very High':
+      level = 'Very Active';
+      break;
+    case 'High':
+      level = 'Active';
+      break;
+    case 'Medium':
+      level = 'Moderate';
+      break;
+    case 'Low':
+      level = 'Low';
+      break;
+    case 'Inactive':
+      // Only use score-based system if real-time shows inactive
+      if (score >= 70) level = 'Very Active';
+      else if (score >= 50) level = 'Active';
+      else if (score >= 30) level = 'Moderate';
+      else if (score >= 15) level = 'Low';
+      else level = 'Inactive';
+      break;
+  }
 
   // Generate last activity description and date
   let lastActivity = "Unknown";
@@ -456,31 +514,26 @@ const calculateActivityScore = (member: Member, previousMember?: Member): {
       lastActivity = indicators[0];
     }
     
-    // For last activity date, use donation activity as a proxy for recency
-    // High donation activity suggests very recent activity (donations reset monthly)
-    if (totalDonationActivity >= 1000) {
-      lastActivityDate = "Today";
-    } else if (totalDonationActivity >= 500) {
-      lastActivityDate = "1-2 days";
-    } else if (totalDonationActivity >= 200) {
-      lastActivityDate = "3-5 days";
-    } else if (totalDonationActivity >= 100) {
-      lastActivityDate = "1 week";
-    } else if (totalDonationActivity >= 50) {
-      lastActivityDate = "1-2 weeks";
-    } else if (totalDonationActivity > 0) {
-      lastActivityDate = "2-3 weeks";
-    } else {
-      // No donation activity - use overall score
-      if (score >= 50) {
-        lastActivityDate = "1-2 weeks";
-      } else if (score >= 30) {
-        lastActivityDate = "2-4 weeks";
-      } else {
-        lastActivityDate = "1+ months";
-      }
+    // Use real-time activity for more accurate last activity estimation
+    switch (realTimeActivity.activity_level) {
+      case 'Very High':
+        lastActivityDate = "Today";
+        break;
+      case 'High':
+        lastActivityDate = "1-2 days";
+        break;
+      case 'Medium':
+        lastActivityDate = "3-5 days";
+        break;
+      case 'Low':
+        lastActivityDate = "1 week";
+        break;
+      case 'Inactive':
+        lastActivityDate = "2+ weeks";
+        break;
     }
   }
+
 
   return { 
     score, 
@@ -1036,14 +1089,14 @@ export default function HomePage(){
       setHomeClan(initial);
       console.log("Setting home clan to:", initial);
       
-      // Load snapshots and auto-load latest snapshot data
-      const initializeSnapshots = async () => {
+      // Load available snapshots (database only, no API calls)
+      const initializeData = async () => {
         try {
           console.log("Loading available snapshots for:", initial);
           await loadAvailableSnapshots(initial);
           console.log("Available snapshots loaded successfully");
           
-          // Auto-load the latest snapshot data (no API calls, just snapshot data)
+          // Auto-load the latest snapshot data (database only, no API calls)
           console.log("Auto-loading latest snapshot data");
           setStatus("loading");
           setMessage("Loading latest snapshot data...");
@@ -1056,7 +1109,7 @@ export default function HomePage(){
         }
       };
       
-      initializeSnapshots();
+      initializeData();
     } else {
       console.log("No initial clan tag found");
     }
@@ -1157,11 +1210,12 @@ export default function HomePage(){
   };
 
   // Check notifications when clan tag changes (different clan = new data needed)
-  useEffect(() => {
-    if (clanTag || homeClan) {
-      checkDepartureNotifications();
-    }
-  }, [clanTag, homeClan]);
+  // DISABLED: No automatic API calls
+  // useEffect(() => {
+  //   if (clanTag || homeClan) {
+  //     checkDepartureNotifications();
+  //   }
+  // }, [clanTag, homeClan]);
 
   // Fetch applicant data from CoC API
   const fetchApplicantData = async () => {
@@ -1435,6 +1489,49 @@ export default function HomePage(){
     } catch (error) {
       console.error('Failed to load snapshots:', error);
       throw error;
+    }
+  };
+
+  // Refresh current data with fresh API call
+  const refreshCurrentData = async (): Promise<void> => {
+    const currentClanTag = clanTag || homeClan || "";
+    if (!currentClanTag) {
+      console.log("No clan tag to refresh");
+      return;
+    }
+
+    try {
+      setStatus("loading");
+      setMessage("Refreshing data from API...");
+      
+      // Ensure the clan tag has # prefix for API compatibility
+      const apiTag = currentClanTag.startsWith('#') ? currentClanTag : `#${currentClanTag}`;
+      
+      // Fetch fresh data from API
+      console.log("Fetching fresh data from API:", `/api/roster?clanTag=${encodeURIComponent(apiTag)}&mode=live`);
+      const response = await fetch(`/api/roster?clanTag=${encodeURIComponent(apiTag)}&mode=live`);
+      console.log("API response status:", response.status, response.ok);
+      const data = await response.json();
+      console.log("API response data:", data);
+      
+      if (data.members && Array.isArray(data.members)) {
+        // The API response format is different - data is directly in the response
+        setRoster(data);
+        setStatus("success");
+        setMessage(`Data refreshed successfully! Loaded ${data.members.length} members.`);
+        console.log("Data refreshed successfully:", data.members.length, "members");
+        
+        // Also refresh the snapshots list
+        await loadAvailableSnapshots(currentClanTag);
+      } else {
+        setStatus("error");
+        setMessage(`Failed to refresh data: ${data.error || "Invalid response format"}`);
+        console.error("Failed to refresh data:", data.error);
+      }
+    } catch (error) {
+      setStatus("error");
+      setMessage(`Failed to refresh data: ${error instanceof Error ? error.message : "Unknown error"}`);
+      console.error('Failed to refresh data:', error);
     }
   };
 
@@ -1823,6 +1920,8 @@ Please analyze this clan data and provide insights on:
       // Find previous member data for comparison
       const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
       const activity = calculateActivityScore(m, previousMember);
+      
+      
       return activity.score;
     }
     if (key === "rush") return rushPercent(m, thCaps);
@@ -2161,10 +2260,16 @@ Please analyze this clan data and provide insights on:
                 </span>
               </button>
               <button 
-                onClick={generateDailySummary}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  console.log("🤖 AI SUMMARY BUTTON CLICKED - Should generate AI summary");
+                  generateDailySummary();
+                }}
                 disabled={status === "loading"}
                 className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                 title="Generate daily summary with AI analysis of changes since last snapshot"
+                type="button"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
                 <span className="relative flex items-center gap-2">
@@ -2221,9 +2326,15 @@ Please analyze this clan data and provide insights on:
                   ))}
                 </select>
                 <button
-                  onClick={() => loadAvailableSnapshots(clanTag || homeClan || "")}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log("🔄 REFRESH BUTTON CLICKED - Should load fresh data");
+                    refreshCurrentData();
+                  }}
                   className="text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Refresh snapshots"
+                  title="Refresh data from API"
+                  type="button"
                 >
                   🔄
                 </button>
@@ -2259,6 +2370,7 @@ Please analyze this clan data and provide insights on:
                   const balance = getDonationBalance(m);
                   const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
                   const activity = calculateActivityScore(m, previousMember);
+                  
                   
                   return (
                     <div key={`${m.tag}-${i}`} className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg p-4 border border-white/20">
@@ -2341,22 +2453,19 @@ Please analyze this clan data and provide insights on:
                         <div>
                           <span className="text-gray-500">Activity:</span>
                           <span className={`ml-1 font-medium ${(() => {
-                            const totalDonations = balance.given + balance.received;
-                            if (totalDonations >= 500) return "text-blue-600 font-semibold";
-                            if (totalDonations >= 100) return "text-green-600 font-semibold";
-                            if (totalDonations > 0) return "text-yellow-600 font-semibold";
-                            return "text-red-600 font-semibold";
+                            switch (activity.level) {
+                              case 'Very Active': return "text-blue-600 font-semibold";
+                              case 'Active': return "text-green-600 font-semibold";
+                              case 'Moderate': return "text-yellow-600 font-semibold";
+                              case 'Low': return "text-orange-600 font-semibold";
+                              case 'Inactive': return "text-red-600 font-semibold";
+                              default: return "text-gray-600 font-semibold";
+                            }
                           })()}`}>
-                            {(() => {
-                              const totalDonations = balance.given + balance.received;
-                              if (totalDonations >= 500) return "Very High";
-                              if (totalDonations >= 100) return "High";
-                              if (totalDonations > 0) return "Low";
-                              return "Inactive";
-                            })()}
+                            {activity.level}
                           </span>
                           <div className="text-xs text-gray-500">
-                            {balance.given + balance.received} total donations
+                            {activity.lastActivityDate} • {activity.indicators.join(', ')}
                           </div>
                         </div>
                         <div>
@@ -2582,28 +2691,25 @@ Please analyze this clan data and provide insights on:
                         </Td>
                         <Td className="border-r border-slate-300">
                           {(() => {
-                            const balance = getDonationBalance(m);
-                            const totalDonations = balance.given + balance.received;
-                            let level, color;
+                            // Find previous member data for comparison
+                            const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
+                            const activity = calculateActivityScore(m, previousMember);
                             
-                            if (totalDonations >= 500) {
-                              level = "Very High";
-                              color = "text-blue-600 font-semibold";
-                            } else if (totalDonations >= 100) {
-                              level = "High";
-                              color = "text-green-600 font-semibold";
-                            } else if (totalDonations > 0) {
-                              level = "Low";
-                              color = "text-yellow-600 font-semibold";
-                            } else {
-                              level = "Inactive";
-                              color = "text-red-600 font-semibold";
-                            }
+                            const getActivityColor = (level: string) => {
+                              switch (level) {
+                                case 'Very Active': return "text-blue-600 font-semibold";
+                                case 'Active': return "text-green-600 font-semibold";
+                                case 'Moderate': return "text-yellow-600 font-semibold";
+                                case 'Low': return "text-orange-600 font-semibold";
+                                case 'Inactive': return "text-red-600 font-semibold";
+                                default: return "text-gray-600 font-semibold";
+                              }
+                            };
                             
                             return (
                               <div className="flex flex-col">
-                                <span className={color}>{level}</span>
-                                <span className="text-xs text-gray-500">{totalDonations} total</span>
+                                <span className={getActivityColor(activity.level)}>{activity.level}</span>
+                                <span className="text-xs text-gray-500">{activity.lastActivityDate}</span>
                               </div>
                             );
                           })()}
@@ -2614,6 +2720,7 @@ Please analyze this clan data and provide insights on:
                             // Find previous member data for comparison
                             const previousMember = roster?.members?.find(prev => prev.tag === m.tag);
                             const activity = calculateActivityScore(m, previousMember);
+                            
                             
                             return (
                               <div className="flex items-center gap-2">
@@ -3766,7 +3873,7 @@ Please analyze this clan data and provide insights on:
             <div className="flex items-center space-x-4">
               <span>Clash Intelligence Dashboard</span>
               <span className="text-gray-400">•</span>
-              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.14.0</span>
+              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.16.2</span>
               <span className="text-gray-400">•</span>
               <span className="text-gray-500">A warfroggy project</span>
             </div>
@@ -4052,14 +4159,15 @@ function PlayerProfileModal({
   const [newNote, setNewNote] = useState("");
   const [newCustomFields, setNewCustomFields] = useState<Record<string, string>>({});
   const [isEditing, setIsEditing] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [departureHistory, setDepartureHistory] = useState<any[]>([]);
   const [isEditingActivity, setIsEditingActivity] = useState(false);
   const [selectedActivity, setSelectedActivity] = useState<ActivityOption>("Today");
 
-  useEffect(() => {
-    loadPlayerData();
-  }, [member.tag, clanTag]);
+  // DISABLED: No automatic API calls
+  // useEffect(() => {
+  //   loadPlayerData();
+  // }, [member.tag, clanTag]);
 
   const loadPlayerData = async () => {
     try {
