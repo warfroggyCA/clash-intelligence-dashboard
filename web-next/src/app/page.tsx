@@ -1665,18 +1665,32 @@ Please analyze this clan data and provide insights on:
         actioned: false
       };
 
-      // Save to localStorage (skip Supabase for now)
+      // Save to Supabase
       try {
-        const existingSummaries = JSON.parse(localStorage.getItem('ai_summaries') || '[]');
-        existingSummaries.unshift({
-          ...summary,
-          id: Date.now(), // Generate a temporary ID
-          created_at: new Date().toISOString()
-        });
-        localStorage.setItem('ai_summaries', JSON.stringify(existingSummaries));
-        console.log('AI summary saved to localStorage');
-      } catch (localError) {
-        console.warn('Failed to save AI summary to localStorage:', localError);
+        const { saveAISummary } = await import('@/lib/supabase');
+        await saveAISummary(summary);
+        console.log('AI summary saved to Supabase');
+      } catch (supabaseError) {
+        console.warn('Failed to save AI summary to Supabase, falling back to localStorage:', supabaseError);
+        // Fallback to localStorage if Supabase fails
+        try {
+          const existingSummaries = JSON.parse(localStorage.getItem('ai_summaries') || '[]');
+          const aiSummary = {
+            date: summary.date,
+            clanTag: summary.clan_tag,
+            changes: [], // AI summaries don't have specific changes
+            summary: result.summary,
+            gameChatMessages: [],
+            unread: true,
+            actioned: false,
+            createdAt: new Date().toISOString()
+          };
+          existingSummaries.unshift(aiSummary);
+          localStorage.setItem('ai_summaries', JSON.stringify(existingSummaries));
+          console.log('AI summary saved to localStorage as fallback');
+        } catch (localError) {
+          console.warn('Failed to save AI summary to localStorage:', localError);
+        }
       }
 
       setStatus("success");

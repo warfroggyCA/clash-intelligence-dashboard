@@ -79,21 +79,42 @@ export default function ChangeDashboard({
       setLoading(true);
       setError(null);
       
-      // Load AI summaries from localStorage first
+      // Load AI summaries from Supabase first
       let aiSummaries: ChangeSummary[] = [];
       try {
-        const savedSummaries = localStorage.getItem('ai_summaries');
-        console.log('Loading AI summaries from localStorage:', savedSummaries);
-        if (savedSummaries) {
-          const parsed = JSON.parse(savedSummaries);
-          console.log('Parsed AI summaries:', parsed);
-          aiSummaries = parsed.filter((summary: ChangeSummary) => 
-            summary.clanTag === clanTag
-          );
-          console.log('Filtered AI summaries for clan:', aiSummaries);
+        const { getAISummaries } = await import('@/lib/supabase');
+        const supabaseSummaries = await getAISummaries(clanTag);
+        console.log('Loading AI summaries from Supabase:', supabaseSummaries);
+        
+        // Convert Supabase format to ChangeSummary format
+        aiSummaries = supabaseSummaries.map((summary: any) => ({
+          date: summary.date,
+          clanTag: summary.clan_tag,
+          changes: [], // AI summaries don't have specific changes
+          summary: summary.summary,
+          gameChatMessages: [],
+          unread: summary.unread,
+          actioned: summary.actioned,
+          createdAt: summary.created_at
+        }));
+        console.log('Converted AI summaries for Activity tab:', aiSummaries);
+      } catch (supabaseError) {
+        console.warn('Failed to load AI summaries from Supabase, trying localStorage fallback:', supabaseError);
+        // Fallback to localStorage if Supabase fails
+        try {
+          const savedSummaries = localStorage.getItem('ai_summaries');
+          console.log('Loading AI summaries from localStorage fallback:', savedSummaries);
+          if (savedSummaries) {
+            const parsed = JSON.parse(savedSummaries);
+            console.log('Parsed AI summaries from localStorage:', parsed);
+            aiSummaries = parsed.filter((summary: ChangeSummary) => 
+              summary.clanTag === clanTag
+            );
+            console.log('Filtered AI summaries for clan from localStorage:', aiSummaries);
+          }
+        } catch (localError) {
+          console.warn('Failed to load AI summaries from localStorage:', localError);
         }
-      } catch (error) {
-        console.warn('Failed to load AI summaries from localStorage:', error);
       }
       
       // Add timeout to prevent hanging
