@@ -3745,7 +3745,7 @@ Please analyze this clan data and provide insights on:
             <div className="flex items-center space-x-4">
               <span>Clash Intelligence Dashboard</span>
               <span className="text-gray-400">•</span>
-              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.8.5</span>
+              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.14.0</span>
               <span className="text-gray-400">•</span>
               <span className="text-gray-500">A warfroggy project</span>
             </div>
