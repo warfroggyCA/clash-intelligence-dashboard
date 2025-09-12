@@ -1729,7 +1729,7 @@ Please analyze this clan data and provide insights on:
     }
   };
 
-  // Manual daily summary generation
+  // Manual daily summary generation - always use AI summary generation
   const generateDailySummary = async () => {
     const currentClanTag = clanTag || homeClan;
     if (!currentClanTag) {
@@ -1737,46 +1737,9 @@ Please analyze this clan data and provide insights on:
       return;
     }
 
-    setStatus("loading");
-    setMessage("Generating daily summary...");
-
-    try {
-      // On Vercel, skip snapshot creation and go directly to AI summary
-      // since we already have the current clan data
-      if (process.env.NODE_ENV === 'production') {
-        // Use the existing AI summary generation instead
-        await generateAISummary();
-        return;
-      }
-
-      // For local development, create snapshot first
-      const snapshotResponse = await fetch('/api/snapshots/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clanTag: currentClanTag })
-      });
-
-      if (!snapshotResponse.ok) {
-        throw new Error('Failed to create snapshot');
-      }
-
-      const snapshotData = await snapshotResponse.json();
-      
-      if (snapshotData.changes && snapshotData.changes.summary) {
-        setMessage(`Daily summary generated successfully! ${snapshotData.changes.changes.length} changes detected.`);
-        setStatus("success");
-        
-        // Switch to changes tab to show the new summary
-        setActiveTab("changes");
-      } else {
-        setMessage("No changes detected since last snapshot");
-        setStatus("success");
-      }
-    } catch (error: any) {
-      console.error('Failed to generate daily summary:', error);
-      setStatus("error");
-      setMessage(error?.message || "Failed to generate daily summary");
-    }
+    // Always use AI summary generation instead of snapshot creation
+    // This works on both local and Vercel environments
+    await generateAISummary();
   };
 
   // LIVE fetch from server using the typed tag; never hardcoded.
