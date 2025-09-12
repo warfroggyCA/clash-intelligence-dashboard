@@ -66,6 +66,8 @@ export default function ChangeDashboard({
     setAiSummaryLoading(true);
     try {
       await onGenerateAISummary();
+      // Refresh the activity data after generating AI summary
+      await loadChanges();
     } finally {
       // Keep loading state for a bit to show completion
       setTimeout(() => setAiSummaryLoading(false), 1000);
@@ -274,27 +276,36 @@ export default function ChangeDashboard({
       <div className="mb-6">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-2xl font-bold text-gray-900">Clan Activity Dashboard</h2>
-          {onGenerateAISummary && (
+          <div className="flex items-center space-x-2">
             <button
-              onClick={handleGenerateAISummary}
-              disabled={aiSummaryLoading}
-              className={`rounded-xl px-3 py-2 border shadow-sm transition-colors text-sm ${
-                aiSummaryLoading 
-                  ? 'bg-purple-200 text-purple-500 border-purple-300 cursor-not-allowed' 
-                  : 'bg-purple-100 text-purple-700 border-purple-200 hover:shadow hover:bg-purple-200'
-              }`}
-              title={aiSummaryLoading ? "Generating AI summary..." : "Generate an AI-powered summary of current clan state and changes"}
+              onClick={loadChanges}
+              className="rounded-xl px-3 py-2 border shadow-sm transition-colors text-sm bg-white hover:bg-gray-50 text-gray-700 border-gray-300"
+              title="Refresh activity data"
             >
-              {aiSummaryLoading ? (
-                <span className="flex items-center space-x-2">
-                  <span className="animate-spin">⏳</span>
-                  <span>Generating...</span>
-                </span>
-              ) : (
-                "🤖 AI Summary"
-              )}
+              🔄 Refresh
             </button>
-          )}
+            {onGenerateAISummary && (
+              <button
+                onClick={handleGenerateAISummary}
+                disabled={aiSummaryLoading}
+                className={`rounded-xl px-3 py-2 border shadow-sm transition-colors text-sm ${
+                  aiSummaryLoading 
+                    ? 'bg-purple-200 text-purple-500 border-purple-300 cursor-not-allowed' 
+                    : 'bg-purple-100 text-purple-700 border-purple-200 hover:shadow hover:bg-purple-200'
+                }`}
+                title={aiSummaryLoading ? "Generating AI summary..." : "Generate an AI-powered summary of current clan state and changes"}
+              >
+                {aiSummaryLoading ? (
+                  <span className="flex items-center space-x-2">
+                    <span className="animate-spin">⏳</span>
+                    <span>Generating...</span>
+                  </span>
+                ) : (
+                  "🤖 AI Summary"
+                )}
+              </button>
+            )}
+          </div>
         </div>
         <p className="text-gray-600">Daily summaries of clan changes and activity</p>
       </div>
