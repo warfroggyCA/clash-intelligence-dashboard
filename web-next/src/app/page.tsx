@@ -1733,16 +1733,16 @@ Please analyze this clan data and provide insights on:
     }
   };
 
-  // AI Summary generation - FIXED VERSION
+  // AI SUMMARY GENERATION - NUCLEAR FIX VERSION
   const generateDailySummary = async () => {
-    console.log('=== AI SUMMARY GENERATION STARTED ===');
+    console.log('🚀🚀🚀 NUCLEAR FIX - AI SUMMARY GENERATION STARTED 🚀🚀🚀');
     const currentClanTag = clanTag || homeClan;
     if (!currentClanTag) {
       setMessage("Please enter a clan tag first");
       return;
     }
 
-    console.log('Using AI summary generation (no snapshot creation)');
+    console.log('🔥 USING AI SUMMARY GENERATION - NO SNAPSHOT CREATION 🔥');
     await generateAISummary();
   };
 
