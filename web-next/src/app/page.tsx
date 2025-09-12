@@ -1665,24 +1665,18 @@ Please analyze this clan data and provide insights on:
         actioned: false
       };
 
-      // Save to Supabase
+      // Save to localStorage (skip Supabase for now)
       try {
-        const { saveAISummary } = await import('@/lib/supabase');
-        await saveAISummary(summary);
-      } catch (error) {
-        console.warn('Failed to save AI summary to Supabase:', error);
-        // Fallback to localStorage if Supabase fails
-        try {
-          const existingSummaries = JSON.parse(localStorage.getItem('ai_summaries') || '[]');
-          existingSummaries.unshift({
-            ...summary,
-            id: Date.now(), // Generate a temporary ID
-            created_at: new Date().toISOString()
-          });
-          localStorage.setItem('ai_summaries', JSON.stringify(existingSummaries));
-        } catch (localError) {
-          console.warn('Failed to save AI summary to localStorage:', localError);
-        }
+        const existingSummaries = JSON.parse(localStorage.getItem('ai_summaries') || '[]');
+        existingSummaries.unshift({
+          ...summary,
+          id: Date.now(), // Generate a temporary ID
+          created_at: new Date().toISOString()
+        });
+        localStorage.setItem('ai_summaries', JSON.stringify(existingSummaries));
+        console.log('AI summary saved to localStorage');
+      } catch (localError) {
+        console.warn('Failed to save AI summary to localStorage:', localError);
       }
 
       setStatus("success");
