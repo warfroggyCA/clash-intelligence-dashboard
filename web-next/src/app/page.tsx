@@ -1421,7 +1421,10 @@ export default function HomePage(){
       const response = await fetch(`/api/snapshots/list?clanTag=${encodeURIComponent(apiTag)}`);
       const data = await response.json();
       
-      if (data.success) {
+      if (Array.isArray(data)) {
+        setAvailableSnapshots(data);
+        console.log("Loaded snapshots:", data.length);
+      } else if (data.success) {
         setAvailableSnapshots(data.snapshots || []);
         console.log("Loaded snapshots:", data.snapshots?.length || 0);
       }
