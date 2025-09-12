@@ -144,21 +144,14 @@ export async function GET(req: Request) {
         console.log(`No snapshot found for ${raw}, falling back to live data`);
         // Continue to live data fetching below instead of returning error
       } else {
-        // Read effective tenure map (append-only)
-        const tenureMap = await readLedgerEffective();
-
-        // Enrich snapshot members with current tenure data
-        const enrichedMembers = snapshot.members.map(member => ({
-          ...member,
-          tenure_days: tenureMap[member.tag.toUpperCase()] || member.tenure_days || 0,
-        }));
-
+        // Return snapshot data without tenure enrichment for faster loading
+        // Tenure data can be enriched on the client side if needed
         return NextResponse.json({
           source: "snapshot",
           date: snapshot.date,
           clanName: snapshot.clanName,
           meta: { clanTag: raw, clanName: snapshot.clanName },
-          members: enrichedMembers,
+          members: snapshot.members, // Use original members without tenure enrichment
         }, { status: 200 });
       }
     }
