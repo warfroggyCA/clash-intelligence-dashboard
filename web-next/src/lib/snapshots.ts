@@ -226,7 +226,7 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
     // Get the most recent snapshot from database
     const { data: snapshotData, error } = await supabase
       .from('snapshots')
-      .select('file_url')
+      .select('*')
       .eq('clan_tag', safeTag)
       .order('timestamp', { ascending: false })
       .limit(1)
@@ -236,14 +236,16 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
       return null;
     }
     
-    // Fetch the actual snapshot data
-    const response = await fetch(snapshotData.file_url);
-    if (!response.ok) {
+    // Try to load from local file first (faster)
+    try {
+      const localPath = getSnapshotPath(clanTag, snapshotData.date);
+      const localData = await fsp.readFile(localPath, 'utf-8');
+      return JSON.parse(localData) as DailySnapshot;
+    } catch (localError) {
+      // If local file doesn't exist, return null
+      console.log('Local snapshot file not found, returning null');
       return null;
     }
-    
-    const data = await response.json();
-    return data as DailySnapshot;
   } catch (error) {
     return null;
   }
