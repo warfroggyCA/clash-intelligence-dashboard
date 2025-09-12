@@ -236,10 +236,20 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
       return null;
     }
     
-    // For now, return null since we don't have the actual snapshot data stored
-    // The snapshots in Supabase only have metadata, not the full member data
-    console.log('Snapshot metadata found but no member data available');
-    return null;
+    // Load the full snapshot data from the file_url (now stored as base64)
+    try {
+      const response = await fetch(snapshotData.file_url);
+      if (!response.ok) {
+        console.log('Failed to fetch snapshot data from URL');
+        return null;
+      }
+      
+      const data = await response.json();
+      return data as DailySnapshot;
+    } catch (error) {
+      console.log('Error loading snapshot data:', error);
+      return null;
+    }
   } catch (error) {
     return null;
   }
