@@ -401,7 +401,9 @@ export default function ChangeDashboard({
             </div>
 
             <div className="mb-3">
-              <p className="text-gray-700">{changeSummary.summary}</p>
+              <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+                {changeSummary.summary}
+              </div>
             </div>
 
             {changeSummary.gameChatMessages && changeSummary.gameChatMessages.length > 0 && (
