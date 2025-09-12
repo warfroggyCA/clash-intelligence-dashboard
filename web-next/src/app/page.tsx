@@ -1733,18 +1733,16 @@ Please analyze this clan data and provide insights on:
     }
   };
 
-  // Manual daily summary generation - always use AI summary generation
+  // AI Summary generation - FIXED VERSION
   const generateDailySummary = async () => {
-    console.log('generateDailySummary called - using AI summary generation');
+    console.log('=== AI SUMMARY GENERATION STARTED ===');
     const currentClanTag = clanTag || homeClan;
     if (!currentClanTag) {
       setMessage("Please enter a clan tag first");
       return;
     }
 
-    // Always use AI summary generation instead of snapshot creation
-    // This works on both local and Vercel environments
-    console.log('Calling generateAISummary directly');
+    console.log('Using AI summary generation (no snapshot creation)');
     await generateAISummary();
   };
 
