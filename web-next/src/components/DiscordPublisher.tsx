@@ -127,7 +127,7 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
     if (redRushedMembers.length > 0) {
       message += `🔴 **${redRushedMembers.length} severely rushed players (70%+)** need immediate attention:\n\n`;
 
-      redRushedMembers.slice(0, 5).forEach((member, index) => {
+      redRushedMembers.slice(0, 10).forEach((member, index) => {
         const th = getTH(member);
         
         message += `🔴 **${member.name}** (TH${th})\n`;
@@ -148,15 +148,15 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
         message += `   • Role: ${member.role || 'Member'}\n\n`;
       });
 
-      if (redRushedMembers.length > 5) {
-        message += `... and ${redRushedMembers.length - 5} more severely rushed players need attention.\n\n`;
+      if (redRushedMembers.length > 10) {
+        message += `... and ${redRushedMembers.length - 10} more severely rushed players need attention.\n\n`;
       }
     }
     
     if (amberRushedMembers.length > 0) {
       message += `🟡 **${amberRushedMembers.length} moderately rushed players (50-69%)** need attention:\n\n`;
 
-      amberRushedMembers.slice(0, 5).forEach((member, index) => {
+      amberRushedMembers.slice(0, 10).forEach((member, index) => {
         const th = getTH(member);
         
         message += `🟡 **${member.name}** (TH${th})\n`;
@@ -177,8 +177,8 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
         message += `   • Role: ${member.role || 'Member'}\n\n`;
       });
 
-      if (amberRushedMembers.length > 5) {
-        message += `... and ${amberRushedMembers.length - 5} more moderately rushed players need attention.\n\n`;
+      if (amberRushedMembers.length > 10) {
+        message += `... and ${amberRushedMembers.length - 10} more moderately rushed players need attention.\n\n`;
       }
     }
 
