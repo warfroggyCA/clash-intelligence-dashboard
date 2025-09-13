@@ -3089,14 +3089,34 @@ Please analyze this clan data and provide insights on:
             clanTag={clanTag || homeClan || ""} 
           />
         ) : activeTab === "discord" ? (
-          <LeadershipGuard requiredPermission="canAccessDiscordPublisher">
+          <LeadershipGuard 
+            requiredPermission="canAccessDiscordPublisher"
+            fallback={
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">📢</div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Discord Publisher</h3>
+                <p className="text-gray-600 mb-4">This feature requires leadership access.</p>
+                <p className="text-sm text-gray-500">Use the role selector in the top right to switch to Leader or Co-Leader role.</p>
+              </div>
+            }
+          >
             <DiscordPublisher 
               clanData={roster} 
               clanTag={clanTag || homeClan || ""} 
             />
           </LeadershipGuard>
         ) : (
-          <LeadershipGuard requiredPermission="canGenerateAICoaching">
+          <LeadershipGuard 
+            requiredPermission="canGenerateAICoaching"
+            fallback={
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">🤖</div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">AI Coaching</h3>
+                <p className="text-gray-600 mb-4">This feature requires leadership access.</p>
+                <p className="text-sm text-gray-500">Use the role selector in the top right to switch to Leader or Co-Leader role.</p>
+              </div>
+            }
+          >
             <AICoaching clanData={roster} clanTag={clanTag || homeClan || ""} />
           </LeadershipGuard>
         )}
