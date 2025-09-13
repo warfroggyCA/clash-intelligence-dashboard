@@ -1,20 +1,10 @@
 {
   "functions": {
-    "api/mcp/tools.js": {
+    "src/app/api/mcp/tools/route.ts": {
       "maxDuration": 30
     },
-    "api/mcp/tools/[toolName].js": {
+    "src/app/api/mcp/tools/[toolName]/route.ts": {
       "maxDuration": 30
     }
-  },
-  "rewrites": [
-    {
-      "source": "/mcp/tools",
-      "destination": "/api/mcp/tools"
-    },
-    {
-      "source": "/mcp/tools/(.*)",
-      "destination": "/api/mcp/tools/$1"
-    }
-  ]
+  }
 }
