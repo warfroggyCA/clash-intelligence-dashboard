@@ -1,6 +1,20 @@
 {
-  "version": 2,
-  "env": {
-    "NODE_ENV": "production"
-  }
+  "functions": {
+    "api/mcp/tools.js": {
+      "maxDuration": 30
+    },
+    "api/mcp/tools/[toolName].js": {
+      "maxDuration": 30
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/mcp/tools",
+      "destination": "/api/mcp/tools"
+    },
+    {
+      "source": "/mcp/tools/(.*)",
+      "destination": "/api/mcp/tools/$1"
+    }
+  ]
 }
