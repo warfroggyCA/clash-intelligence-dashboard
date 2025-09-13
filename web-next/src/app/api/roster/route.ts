@@ -26,7 +26,17 @@ function daysSince(ymd: string): number {
   const diff = Math.floor((b - a) / 86400000);
   return diff > 0 ? diff : 0;
 }
-async function readLedgerEffective(): Promise<Record<string, number>> {
+
+function daysSinceToDate(ymd: string, targetDate: string): number {
+  const m1 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || "");
+  const m2 = /^(\d{4})-(\d{2})-(\d{2})$/.exec(targetDate || "");
+  if (!m1 || !m2) return 0;
+  const a = Date.UTC(+m1[1], +m1[2] - 1, +m1[3]);
+  const b = Date.UTC(+m2[1], +m2[2] - 1, +m2[3]);
+  const diff = Math.floor((b - a) / 86400000);
+  return diff > 0 ? diff : 0;
+}
+async function readLedgerEffective(targetDate?: string): Promise<Record<string, number>> {
   const ledger = path.join(process.cwd(), cfg.dataRoot, "tenure_ledger.jsonl");
   try { 
     await fsp.stat(ledger); 
@@ -57,7 +67,10 @@ async function readLedgerEffective(): Promise<Record<string, number>> {
 
   const map: Record<string,number> = {};
   for (const [tag, b] of Object.entries(base)) {
-    map[tag] = Math.max(0, Math.round(b + daysSince(asof[tag] || "")));
+    // If targetDate is provided, calculate days from as_of to targetDate
+    // Otherwise, calculate days from as_of to today
+    const daysToAdd = targetDate ? daysSinceToDate(asof[tag] || "", targetDate) : daysSince(asof[tag] || "");
+    map[tag] = Math.max(0, Math.round(b + daysToAdd));
   }
   return map;
 }
@@ -156,14 +169,21 @@ export async function GET(req: Request) {
         console.log(`No snapshot found for ${raw}, falling back to live data`);
         // Continue to live data fetching below instead of returning error
       } else {
-        // Return snapshot data without tenure enrichment for faster loading
-        // Tenure data can be enriched on the client side if needed
+        // Load tenure data as it was on the snapshot date
+        const tenureMap = await readLedgerEffective(snapshot.date);
+        
+        // Enrich snapshot members with date-appropriate tenure data
+        const enrichedMembers = snapshot.members.map((member: any) => ({
+          ...member,
+          tenure_days: tenureMap[member.tag.toUpperCase()] || 0,
+        }));
+        
         return NextResponse.json({
           source: "snapshot",
           date: snapshot.date,
           clanName: snapshot.clanName,
           meta: { clanTag: raw, clanName: snapshot.clanName },
-          members: snapshot.members, // Use original members without tenure enrichment
+          members: enrichedMembers,
         }, { status: 200 });
       }
     }
@@ -185,8 +205,6 @@ export async function GET(req: Request) {
 
     // 2) read effective tenure map (append-only)
     const tenureMap = await readLedgerEffective();
-    console.log('Tenure map loaded:', Object.keys(tenureMap).length, 'entries');
-    console.log('Sample tenure data:', Object.entries(tenureMap).slice(0, 3));
 
     // 3) pull each player for TH + heroes (rate-limited)
     const enriched = await mapLimit(members, 3, async (m) => {
@@ -207,7 +225,7 @@ export async function GET(req: Request) {
           gw: typeof heroes.gw === "number" ? heroes.gw : null,
           rc: typeof heroes.rc === "number" ? heroes.rc : null,
           mp: typeof heroes.mp === "number" ? heroes.mp : null,
-          tenure_days: tenureMap[m.tag.toUpperCase()],
+          tenure_days: tenureMap[m.tag.toUpperCase()] || 0,
         };
       } finally {
         rateLimiter.release();
