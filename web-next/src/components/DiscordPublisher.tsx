@@ -106,22 +106,23 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
       return { ...member, rushPercentage };
     }).filter(m => m.rushPercentage > 0);
 
-    // Sort by rush percentage (highest first)
-    const rushedMembers = membersWithRush.sort((a, b) => b.rushPercentage - a.rushPercentage);
+    // Filter for only "red" level rushes (70%+)
+    const redRushedMembers = membersWithRush
+      .filter(member => member.rushPercentage >= 70)
+      .sort((a, b) => b.rushPercentage - a.rushPercentage);
 
-    if (rushedMembers.length === 0) {
-      return `🎯 **Rush Analysis for ${clanData.clanName || 'Your Clan'}**\n\n✅ **Great news!** No rushed players detected in the clan. Everyone is developing their bases at an appropriate pace for their Town Hall level.`;
+    if (redRushedMembers.length === 0) {
+      return `🎯 **Rush Analysis for ${clanData.clanName || 'Your Clan'}**\n\n✅ **Great news!** No severely rushed players (70%+) detected in the clan. Everyone is developing their bases at an appropriate pace for their Town Hall level.`;
     }
 
-    let message = `🚨 **Rush Analysis for ${clanData.clanName || 'Your Clan'}**\n\n`;
-    message += `📊 **${rushedMembers.length} players** need attention with their base development:\n\n`;
+    let message = `🚨 **Severely Rushed Players (70%+) - ${clanData.clanName || 'Your Clan'}**\n\n`;
+    message += `🔴 **${redRushedMembers.length} severely rushed players** need immediate attention:\n\n`;
 
-    rushedMembers.slice(0, 10).forEach((member, index) => {
+    redRushedMembers.slice(0, 10).forEach((member, index) => {
       const th = getTH(member);
-      const rushEmoji = member.rushPercentage >= 70 ? "🔴" : member.rushPercentage >= 50 ? "🟡" : "🟠";
       
-      message += `${rushEmoji} **${member.name}** (TH${th})\n`;
-      message += `   • Rush Level: **${member.rushPercentage}%**\n`;
+      message += `🔴 **${member.name}** (TH${th})\n`;
+      message += `   • Rush Level: **${member.rushPercentage}%** (SEVERELY RUSHED!)\n`;
       
       // Add hero details
       const heroDetails = [];
@@ -138,11 +139,11 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
       message += `   • Role: ${member.role || 'Member'}\n\n`;
     });
 
-    if (rushedMembers.length > 10) {
-      message += `... and ${rushedMembers.length - 10} more players need attention.\n\n`;
+    if (redRushedMembers.length > 10) {
+      message += `... and ${redRushedMembers.length - 10} more severely rushed players need attention.\n\n`;
     }
 
-    message += `💡 **Recommendation:** Focus on upgrading heroes and key defenses before advancing Town Hall levels. This will improve war performance and overall clan strength!`;
+    message += `💡 **URGENT RECOMMENDATION:** These players need to STOP upgrading Town Hall and focus ONLY on heroes and defenses. Their rush level is severely impacting clan war performance and needs immediate attention!`;
 
     return message;
   };
