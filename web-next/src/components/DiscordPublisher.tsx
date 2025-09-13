@@ -106,44 +106,88 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
       return { ...member, rushPercentage };
     }).filter(m => m.rushPercentage > 0);
 
-    // Filter for only "red" level rushes (70%+)
+    // Filter for red (70%+) and amber (50-69%) level rushes
     const redRushedMembers = membersWithRush
       .filter(member => member.rushPercentage >= 70)
       .sort((a, b) => b.rushPercentage - a.rushPercentage);
+    
+    const amberRushedMembers = membersWithRush
+      .filter(member => member.rushPercentage >= 50 && member.rushPercentage < 70)
+      .sort((a, b) => b.rushPercentage - a.rushPercentage);
 
-    if (redRushedMembers.length === 0) {
-      return `🎯 **Rush Analysis for ${clanData.clanName || 'Your Clan'}**\n\n✅ **Great news!** No severely rushed players (70%+) detected in the clan. Everyone is developing their bases at an appropriate pace for their Town Hall level.`;
+    const totalRushedMembers = redRushedMembers.length + amberRushedMembers.length;
+
+    if (totalRushedMembers === 0) {
+      return `🎯 **Rush Analysis for ${clanData.clanName || 'Your Clan'}**\n\n✅ **Great news!** No rushed players detected in the clan. Everyone is developing their bases at an appropriate pace for their Town Hall level.\n\n📊 **Rush Percentage Explained:** This bot tracks how far behind each player's heroes are compared to their Town Hall level. A higher percentage means they're more rushed and need to focus on heroes before advancing further.`;
     }
 
-    let message = `🚨 **Severely Rushed Players (70%+) - ${clanData.clanName || 'Your Clan'}**\n\n`;
-    message += `🔴 **${redRushedMembers.length} severely rushed players** need immediate attention:\n\n`;
+    let message = `🚨 **Rushed Players Analysis - ${clanData.clanName || 'Your Clan'}**\n\n`;
+    message += `📊 **Rush Percentage Explained:** This bot tracks how far behind each player's heroes are compared to their Town Hall level. A higher percentage means they're more rushed and need to focus on heroes before advancing further.\n\n`;
+    
+    if (redRushedMembers.length > 0) {
+      message += `🔴 **${redRushedMembers.length} severely rushed players (70%+)** need immediate attention:\n\n`;
 
-    redRushedMembers.slice(0, 10).forEach((member, index) => {
-      const th = getTH(member);
-      
-      message += `🔴 **${member.name}** (TH${th})\n`;
-      message += `   • Rush Level: **${member.rushPercentage}%** (SEVERELY RUSHED!)\n`;
-      
-      // Add hero details
-      const heroDetails = [];
-      if (member.bk) heroDetails.push(`BK:${member.bk}`);
-      if (member.aq) heroDetails.push(`AQ:${member.aq}`);
-      if (member.gw) heroDetails.push(`GW:${member.gw}`);
-      if (member.rc) heroDetails.push(`RC:${member.rc}`);
-      if (member.mp) heroDetails.push(`MP:${member.mp}`);
-      
-      if (heroDetails.length > 0) {
-        message += `   • Heroes: ${heroDetails.join(" | ")}\n`;
+      redRushedMembers.slice(0, 5).forEach((member, index) => {
+        const th = getTH(member);
+        
+        message += `🔴 **${member.name}** (TH${th})\n`;
+        message += `   • Rush Level: **${member.rushPercentage}%** (SEVERELY RUSHED!)\n`;
+        
+        // Add hero details
+        const heroDetails = [];
+        if (member.bk) heroDetails.push(`BK:${member.bk}`);
+        if (member.aq) heroDetails.push(`AQ:${member.aq}`);
+        if (member.gw) heroDetails.push(`GW:${member.gw}`);
+        if (member.rc) heroDetails.push(`RC:${member.rc}`);
+        if (member.mp) heroDetails.push(`MP:${member.mp}`);
+        
+        if (heroDetails.length > 0) {
+          message += `   • Heroes: ${heroDetails.join(" | ")}\n`;
+        }
+        
+        message += `   • Role: ${member.role || 'Member'}\n\n`;
+      });
+
+      if (redRushedMembers.length > 5) {
+        message += `... and ${redRushedMembers.length - 5} more severely rushed players need attention.\n\n`;
       }
-      
-      message += `   • Role: ${member.role || 'Member'}\n\n`;
-    });
+    }
+    
+    if (amberRushedMembers.length > 0) {
+      message += `🟡 **${amberRushedMembers.length} moderately rushed players (50-69%)** need attention:\n\n`;
 
-    if (redRushedMembers.length > 10) {
-      message += `... and ${redRushedMembers.length - 10} more severely rushed players need attention.\n\n`;
+      amberRushedMembers.slice(0, 5).forEach((member, index) => {
+        const th = getTH(member);
+        
+        message += `🟡 **${member.name}** (TH${th})\n`;
+        message += `   • Rush Level: **${member.rushPercentage}%** (moderately rushed)\n`;
+        
+        // Add hero details
+        const heroDetails = [];
+        if (member.bk) heroDetails.push(`BK:${member.bk}`);
+        if (member.aq) heroDetails.push(`AQ:${member.aq}`);
+        if (member.gw) heroDetails.push(`GW:${member.gw}`);
+        if (member.rc) heroDetails.push(`RC:${member.rc}`);
+        if (member.mp) heroDetails.push(`MP:${member.mp}`);
+        
+        if (heroDetails.length > 0) {
+          message += `   • Heroes: ${heroDetails.join(" | ")}\n`;
+        }
+        
+        message += `   • Role: ${member.role || 'Member'}\n\n`;
+      });
+
+      if (amberRushedMembers.length > 5) {
+        message += `... and ${amberRushedMembers.length - 5} more moderately rushed players need attention.\n\n`;
+      }
     }
 
-    message += `💡 **URGENT RECOMMENDATION:** These players need to STOP upgrading Town Hall and focus ONLY on heroes and defenses. Their rush level is severely impacting clan war performance and needs immediate attention!`;
+    if (redRushedMembers.length > 0) {
+      message += `💡 **URGENT RECOMMENDATION:** Severely rushed players (70%+) need to STOP upgrading Town Hall and focus ONLY on heroes and defenses. Their rush level is severely impacting clan war performance!\n\n`;
+    }
+    if (amberRushedMembers.length > 0) {
+      message += `💡 **MODERATE RECOMMENDATION:** Moderately rushed players (50-69%) should prioritize hero upgrades before advancing Town Hall. This will improve their war performance and clan contribution.`;
+    }
 
     return message;
   };
