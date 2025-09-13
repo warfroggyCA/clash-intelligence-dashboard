@@ -29,6 +29,11 @@ import AICoaching from "../components/AICoaching";
 import FontSizeControl from "../components/FontSizeControl";
 import PlayerDNADashboard from "../components/PlayerDNADashboard";
 import DiscordPublisher from "../components/DiscordPublisher";
+import UserRoleSelector, { useUserRole } from "../components/UserRoleSelector";
+import LeadershipGuard from "../components/LeadershipGuard";
+import AccessManager from "../components/AccessManager";
+import AccessSetup from "../components/AccessSetup";
+import AccessLogin from "../components/AccessLogin";
 
 type Member = {
   name: string; tag: string; townHallLevel?: number; th?: number;
@@ -919,7 +924,17 @@ export default function HomePage(){
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [page, setPage] = useState(1);
   const [recentClanFilter, setRecentClanFilter] = useState<string>("");
+  
+  // Leadership access control
+  const [userRole, setUserRole] = useUserRole();
   const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants" | "intelligence" | "discord">("roster");
+  
+  // Access management system
+  const [showAccessManager, setShowAccessManager] = useState(false);
+  const [showAccessSetup, setShowAccessSetup] = useState(false);
+  const [showAccessLogin, setShowAccessLogin] = useState(false);
+  const [currentAccessMember, setCurrentAccessMember] = useState<any>(null);
+  const [accessPermissions, setAccessPermissions] = useState<any>(null);
   const [showDepartureManager, setShowDepartureManager] = useState(false);
   const [departureNotifications, setDepartureNotifications] = useState(0);
   const [departureNotificationsData, setDepartureNotificationsData] = useState<any>(null);
@@ -2059,21 +2074,47 @@ Please analyze this clan data and provide insights on:
                 placeholder="Enter clan tag..."
                 title="Enter a clan tag to load their roster data"
               />
-              <button 
-                onClick={()=>onLoad().catch(()=>{})} 
-                className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-medium transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-white/30"
-                title="Load clan data and switch to this clan"
+              <LeadershipGuard 
+                requiredPermission="canModifyClanData" 
+                fallback={
+                  <button 
+                    disabled
+                    className="px-4 py-2 bg-white/10 text-white/50 rounded-lg font-medium cursor-not-allowed backdrop-blur-sm border border-white/20"
+                    title="Leadership access required to switch clans"
+                  >
+                    🔒 Switch Clan (Leadership Only)
+                  </button>
+                }
               >
-                {status==="loading" ? "⏳ Loading..." : "🔄 Switch Clan"}
-              </button>
-              {homeClan && clanTag !== homeClan && (
                 <button 
-                  onClick={onSetHome} 
-                  className="px-3 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg text-sm transition-all duration-200 hover:scale-105"
-                  title="Set as home clan"
+                  onClick={()=>onLoad().catch(()=>{})} 
+                  className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-medium transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-white/30"
+                  title="Load clan data and switch to this clan"
                 >
-                  🏠 Set Home
+                  {status==="loading" ? "⏳ Loading..." : "🔄 Switch Clan"}
                 </button>
+              </LeadershipGuard>
+              {homeClan && clanTag !== homeClan && (
+                <LeadershipGuard 
+                  requiredPermission="canModifyClanData" 
+                  fallback={
+                    <button 
+                      disabled
+                      className="px-3 py-2 bg-blue-500/40 text-white/50 rounded-lg text-sm cursor-not-allowed"
+                      title="Leadership access required to set home clan"
+                    >
+                      🔒 Set Home
+                    </button>
+                  }
+                >
+                  <button 
+                    onClick={onSetHome} 
+                    className="px-3 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg text-sm transition-all duration-200 hover:scale-105"
+                    title="Set as home clan"
+                  >
+                    🏠 Set Home
+                  </button>
+                </LeadershipGuard>
               )}
             </div>
           </div>
@@ -2085,6 +2126,23 @@ Please analyze this clan data and provide insights on:
               <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
             </div>
             <div className="flex items-center space-x-4">
+              <UserRoleSelector 
+                currentRole={userRole} 
+                onRoleChange={setUserRole}
+                className="hidden sm:block"
+              />
+              <LeadershipGuard 
+                requiredPermission="canManageAccess" 
+                fallback={null}
+              >
+                <button
+                  onClick={() => setShowAccessManager(true)}
+                  className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
+                  title="Manage clan access"
+                >
+                  👥
+                </button>
+              </LeadershipGuard>
               <FontSizeControl />
               <a
                 href="/faq"
@@ -2095,25 +2153,42 @@ Please analyze this clan data and provide insights on:
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
               </a>
-              <button
-                onClick={checkDepartureNotifications}
-                className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
-                title="Check for new departure notifications"
-              >
-                🔄
-              </button>
-              {departureNotifications > 0 && (
-              <button
-                  onClick={() => setShowDepartureManager(true)}
-                  className="relative p-2 hover:bg-indigo-600 rounded-lg transition-colors"
-                  title="Member departure notifications"
-                >
-                  <Bell className="w-5 h-5" />
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {departureNotifications}
+              <LeadershipGuard 
+                requiredPermission="canManageChangeDashboard" 
+                fallback={
+                  <span 
+                    className="p-2 text-gray-400 cursor-not-allowed"
+                    title="Leadership access required to check departure notifications"
+                  >
+                    🔒
                   </span>
+                }
+              >
+                <button
+                  onClick={checkDepartureNotifications}
+                  className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
+                  title="Check for new departure notifications"
+                >
+                  🔄
                 </button>
-              )}
+              </LeadershipGuard>
+              <LeadershipGuard 
+                requiredPermission="canManageChangeDashboard" 
+                fallback={null}
+              >
+                {departureNotifications > 0 && (
+                <button
+                    onClick={() => setShowDepartureManager(true)}
+                    className="relative p-2 hover:bg-indigo-600 rounded-lg transition-colors"
+                    title="Member departure notifications"
+                  >
+                    <Bell className="w-5 h-5" />
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                      {departureNotifications}
+                    </span>
+                  </button>
+                )}
+              </LeadershipGuard>
             </div>
           </div>
         </div>
@@ -2185,6 +2260,7 @@ Please analyze this clan data and provide insights on:
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
                   <span className="text-base sm:text-lg">🤖</span>
                   <span className="hidden sm:inline">AI Coaching</span>
+                  <span className="text-xs text-yellow-400" title="Leadership Only">👑</span>
                 </span>
                 {activeTab === "coaching" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -2249,6 +2325,7 @@ Please analyze this clan data and provide insights on:
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
                   <span className="text-base sm:text-lg">📢</span>
                   <span className="hidden sm:inline">Discord</span>
+                  <span className="text-xs text-yellow-400" title="Leadership Only">👑</span>
                 </span>
                 {activeTab === "discord" && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
@@ -2348,19 +2425,31 @@ Please analyze this clan data and provide insights on:
                     </option>
                   ))}
                 </select>
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log("🔄 REFRESH BUTTON CLICKED - Should load fresh data");
-                    refreshCurrentData();
-                  }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors"
-                  title="Refresh data from API"
-                  type="button"
+                <LeadershipGuard 
+                  requiredPermission="canModifyClanData" 
+                  fallback={
+                    <span 
+                      className="text-gray-300 cursor-not-allowed"
+                      title="Leadership access required to refresh data"
+                    >
+                      🔒
+                    </span>
+                  }
                 >
-                  🔄
-                </button>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      console.log("🔄 REFRESH BUTTON CLICKED - Should load fresh data");
+                      refreshCurrentData();
+                    }}
+                    className="text-gray-400 hover:text-gray-600 transition-colors"
+                    title="Refresh data from API"
+                    type="button"
+                  >
+                    🔄
+                  </button>
+                </LeadershipGuard>
                 </div>
             </div>
             <div className="flex items-center gap-3">
@@ -2998,33 +3087,39 @@ Please analyze this clan data and provide insights on:
             clanTag={clanTag || homeClan || ""} 
           />
         ) : activeTab === "discord" ? (
-          <DiscordPublisher 
-            clanData={roster} 
-            clanTag={clanTag || homeClan || ""} 
-          />
+          <LeadershipGuard requiredPermission="canAccessDiscordPublisher">
+            <DiscordPublisher 
+              clanData={roster} 
+              clanTag={clanTag || homeClan || ""} 
+            />
+          </LeadershipGuard>
         ) : (
-          <AICoaching clanData={roster} clanTag={clanTag || homeClan || ""} />
+          <LeadershipGuard requiredPermission="canGenerateAICoaching">
+            <AICoaching clanData={roster} clanTag={clanTag || homeClan || ""} />
+          </LeadershipGuard>
         )}
       </main>
 
       {/* Departure Manager Modal */}
       {showDepartureManager && (
-        <DepartureManager
-          clanTag={clanTag || homeClan || ""}
-          onClose={() => {
-            setShowDepartureManager(false);
-          }}
-          onNotificationChange={(updatedData) => {
-            // Update cached data directly instead of making new API call
-            if (updatedData) {
-              setDepartureNotificationsData(updatedData);
-              const totalNotifications = (updatedData.rejoins?.length || 0) + (updatedData.activeDepartures?.length || 0);
-              setDepartureNotifications(totalNotifications);
-            }
-          }}
-          onDismissAll={dismissAllNotifications}
-          cachedNotifications={departureNotificationsData}
-        />
+        <LeadershipGuard requiredPermission="canManageChangeDashboard">
+          <DepartureManager
+            clanTag={clanTag || homeClan || ""}
+            onClose={() => {
+              setShowDepartureManager(false);
+            }}
+            onNotificationChange={(updatedData) => {
+              // Update cached data directly instead of making new API call
+              if (updatedData) {
+                setDepartureNotificationsData(updatedData);
+                const totalNotifications = (updatedData.rejoins?.length || 0) + (updatedData.activeDepartures?.length || 0);
+                setDepartureNotifications(totalNotifications);
+              }
+            }}
+            onDismissAll={dismissAllNotifications}
+            cachedNotifications={departureNotificationsData}
+          />
+        </LeadershipGuard>
       )}
 
       {/* Quick Departure Modal */}
@@ -3659,6 +3754,40 @@ function EventDashboard({
           <p className="text-sm">Try adjusting the filters above.</p>
         </div>
       )}
+
+      {/* Access Management Modals */}
+      {showAccessManager && (
+        <AccessManager
+          clanTag={clanTag || homeClan || ""}
+          clanName={clanName}
+          onClose={() => setShowAccessManager(false)}
+        />
+      )}
+
+      {showAccessSetup && (
+        <AccessSetup
+          clanTag={clanTag || homeClan || ""}
+          clanName={clanName}
+          onAccessCreated={(ownerPassword) => {
+            console.log('Access created with password:', ownerPassword);
+            setShowAccessSetup(false);
+          }}
+          onClose={() => setShowAccessSetup(false)}
+        />
+      )}
+
+      {showAccessLogin && (
+        <AccessLogin
+          clanTag={clanTag || homeClan || ""}
+          clanName={clanName}
+          onAccessGranted={(accessMember, permissions) => {
+            setCurrentAccessMember(accessMember);
+            setAccessPermissions(permissions);
+            setShowAccessLogin(false);
+          }}
+          onClose={() => setShowAccessLogin(false)}
+        />
+      )}
     </div>
   );
 }
@@ -4244,12 +4373,25 @@ function PlayerProfileModal({
                   </div>
                 </div>
               ) : (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                <LeadershipGuard 
+                  requiredPermission="canModifyClanData" 
+                  fallback={
+                    <button
+                      disabled
+                      className="w-full px-4 py-2 bg-gray-400 text-white rounded-lg cursor-not-allowed opacity-50"
+                      title="Leadership access required to add notes"
+                    >
+                      🔒 Add New Note (Leadership Only)
+                    </button>
+                  }
                 >
-                  Add New Note
-                </button>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    Add New Note
+                  </button>
+                </LeadershipGuard>
               )}
             </div>
           </div>
