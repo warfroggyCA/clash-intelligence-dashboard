@@ -2022,11 +2022,11 @@ Please analyze this clan data and provide insights on:
       <header className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white shadow-lg">
         <div className="w-full px-6 py-4 flex items-center justify-between">
           {/* Left side - Logo */}
-          <div className="flex items-center">
+          <div className="flex items-center overflow-hidden">
             <img 
               src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoic3VwZXJjZWxsXC9maWxlXC91OGFIS25ZUkpQaXlvVHh5a1Q0OC5wbmcifQ:supercell:8_pSWOLovwldaAWJu_t2Q6C91k6oc7p_mY0m9yar7G0?width=1218&format=webp&quality=100"
               alt="Clash of Clans Logo"
-              className="h-16 w-auto object-contain"
+              className="h-32 w-auto object-contain -ml-4 -mt-2"
               onError={(e) => {
                 // Fallback to emoji if image fails to load
                 e.currentTarget.style.display = 'none';
