@@ -8,6 +8,8 @@ import { generateChangeSummary, generateGameChatMessages } from "@/lib/ai-summar
 import { cfg } from "@/lib/config";
 import { addDeparture } from "@/lib/departures";
 import { resolveUnknownPlayers } from "@/lib/player-resolver";
+import { aiProcessor } from "@/lib/ai-processor";
+import { saveBatchAIResults, cachePlayerDNAForClan } from "@/lib/ai-storage";
 import { promises as fsp } from 'fs';
 import path from 'path';
 
@@ -82,7 +84,7 @@ export async function GET(req: Request) {
             console.log(`[CRON] Recorded departure for ${departure.member.name}`);
           }
           
-          // Generate AI summary and game chat messages
+          // Generate AI summary and game chat messages (legacy)
           const summary = await generateChangeSummary(changes, clanTag, currentSnapshot.date);
           const gameChatMessages = generateGameChatMessages(changes);
           
@@ -97,9 +99,32 @@ export async function GET(req: Request) {
             createdAt: new Date().toISOString(),
           };
           
-          // Save change summary
+          // Save change summary (legacy)
           await saveChangeSummary(changeSummary);
           console.log(`[CRON] Saved change summary for ${clanTag}`);
+
+          // NEW: Generate comprehensive batch AI analysis
+          console.log(`[CRON] Starting batch AI processing for ${clanTag}`);
+          try {
+            const batchAIResults = await aiProcessor.processBatchAI(
+              currentSnapshot,
+              changes,
+              clanTag,
+              currentSnapshot.date
+            );
+            
+            // Save batch AI results to Supabase
+            await saveBatchAIResults(batchAIResults);
+            console.log(`[CRON] Saved batch AI results for ${clanTag}`);
+            
+            // Cache player DNA profiles for instant access
+            await cachePlayerDNAForClan(currentSnapshot, clanTag, currentSnapshot.date);
+            console.log(`[CRON] Cached player DNA profiles for ${clanTag}`);
+            
+          } catch (aiError) {
+            console.error(`[CRON] Batch AI processing failed for ${clanTag}:`, aiError);
+            // Continue with normal processing even if AI fails
+          }
         }
       }
 

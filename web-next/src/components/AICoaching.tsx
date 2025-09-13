@@ -39,6 +39,8 @@ interface CoachingAdvice {
   chatMessage?: string;
   priority: "high" | "medium" | "low";
   icon: string;
+  timestamp?: string;
+  date?: string;
 }
 
 interface AICoachingProps {
@@ -54,11 +56,11 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
   const [showActioned, setShowActioned] = useState(false);
 
   useEffect(() => {
-    // Load existing coaching advice from localStorage instead of auto-generating
+    // Load coaching advice from batch AI results or localStorage
     if (clanData?.members) {
-      loadExistingAdvice();
+      loadCoachingAdvice();
     }
-  }, [clanData]);
+  }, [clanData, clanTag]);
 
   useEffect(() => {
     // Load actioned tips from localStorage
@@ -72,20 +74,47 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     }
   }, [clanTag]);
 
-  const loadExistingAdvice = () => {
-    // Try to load existing coaching advice from localStorage
-    const saved = localStorage.getItem(`coaching_advice_${clanTag}`);
-    if (saved) {
-      try {
-        const parsedAdvice = JSON.parse(saved);
-        setAdvice(parsedAdvice);
-      } catch (error) {
-        console.error('Failed to load existing coaching advice:', error);
-        setAdvice([]);
+  const loadCoachingAdvice = async () => {
+    setLoading(true);
+    try {
+      // First, try to load from batch AI results
+      const response = await fetch(`/api/ai/batch-results?clanTag=${encodeURIComponent(clanTag)}`);
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data?.coaching_advice) {
+          setAdvice(result.data.coaching_advice);
+          console.log('[AI Coaching] Loaded advice from batch AI results');
+          return;
+        }
       }
-    } else {
-      // No existing advice, show empty state
+      
+      // Fallback to localStorage if batch AI results not available
+      const saved = localStorage.getItem(`coaching_advice_${clanTag}`);
+      if (saved) {
+        try {
+          const parsedAdvice = JSON.parse(saved);
+          // Add timestamps to advice that doesn't have them
+          const adviceWithTimestamps = parsedAdvice.map((item: CoachingAdvice) => ({
+            ...item,
+            timestamp: item.timestamp || new Date().toISOString(),
+            date: item.date || new Date().toLocaleDateString()
+          }));
+          setAdvice(adviceWithTimestamps);
+          console.log('[AI Coaching] Loaded advice from localStorage');
+        } catch (error) {
+          console.error('Failed to load existing coaching advice:', error);
+          setAdvice([]);
+        }
+      } else {
+        setAdvice([]);
+        console.log('[AI Coaching] No existing advice found');
+      }
+    } catch (error) {
+      console.error('[AI Coaching] Error loading coaching advice:', error);
       setAdvice([]);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -132,14 +161,28 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
       if (response.ok) {
         const result = await response.json();
         const newAdvice = result.advice || [];
-        setAdvice(newAdvice);
+        
+        // Add timestamps to new advice
+        const adviceWithTimestamps = newAdvice.map((item: CoachingAdvice) => ({
+          ...item,
+          timestamp: new Date().toISOString(),
+          date: new Date().toLocaleDateString()
+        }));
+        
+        setAdvice(adviceWithTimestamps);
         // Save to localStorage for persistence
-        localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(newAdvice));
+        localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(adviceWithTimestamps));
       } else {
         // Fallback to local analysis if API fails
         const localAdvice = generateLocalAdvice();
-        setAdvice(localAdvice);
-        localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(localAdvice));
+        // Add timestamps to local advice
+        const adviceWithTimestamps = localAdvice.map((item: CoachingAdvice) => ({
+          ...item,
+          timestamp: new Date().toISOString(),
+          date: new Date().toLocaleDateString()
+        }));
+        setAdvice(adviceWithTimestamps);
+        localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(adviceWithTimestamps));
       }
     } catch (error) {
       console.error('Failed to generate AI coaching advice:', error);
@@ -389,7 +432,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
                         {item.priority.toUpperCase()}
                       </span>
                     </div>
-                    <p className="text-sm text-gray-600">{item.category}</p>
+                    <div className="flex items-center space-x-3">
+                      <p className="text-sm text-gray-600">{item.category}</p>
+                      {item.date && (
+                        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                          📅 {item.date}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
                 {!showActioned ? (
