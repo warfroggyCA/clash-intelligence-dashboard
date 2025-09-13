@@ -56,11 +56,11 @@ type PlayerEvent = {
 type EventHistory = Record<string, PlayerEvent[]>; // playerTag -> events[]
 type Roster = { source: "live" | "fallback" | "snapshot"; date?: string; clanName?: string; members: Member[]; meta?: any };
 
-type SortKey = "name"|"tag"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"donationBalance"|"participation"|"tenure"|"activity"|"warEfficiency"|"warConsistency"|"role";
+type SortKey = "name"|"th"|"bk"|"aq"|"gw"|"rc"|"mp"|"rush"|"trophies"|"donations"|"donationsReceived"|"donationBalance"|"participation"|"tenure"|"activity"|"warEfficiency"|"warConsistency"|"role";
 const DEFAULT_PAGE_SIZE = 50;
 
 const HEAD_TIPS: Record<string,string> = {
-  Name:"Player name", Tag:"Player tag", TH:"Town Hall level",
+  Name:"Player name", TH:"Town Hall level",
   BK:"Barbarian King", AQ:"Archer Queen", GW:"Grand Warden", RC:"Royal Champion", MP:"Minion Prince",
   "Rush %":"Deficit vs best heroes at same TH in your roster (0% = green / not rushed, 100% = red / very rushed)",
   Trophies:"Trophy count", 
@@ -2398,8 +2398,6 @@ Please analyze this clan data and provide insights on:
                         <span className="text-sm font-medium text-gray-600">{renderRole(m.role)}</span>
                       </div>
                       
-                      {/* Tag */}
-                      <div className="text-sm text-gray-500 mb-3">{m.tag}</div>
                       
                       {/* Stats Grid */}
                       <div className="grid grid-cols-2 gap-3 text-sm">
@@ -2530,7 +2528,7 @@ Please analyze this clan data and provide insights on:
                 <thead className="text-left">
                   {/* Grouping Headers Row */}
                   <tr className="bg-gradient-to-r from-slate-100 to-slate-200 border-b border-slate-300">
-                    <th colSpan={4} className="py-2 px-4 font-bold text-slate-800 text-center border-r border-slate-400">
+                    <th colSpan={3} className="py-2 px-4 font-bold text-slate-800 text-center border-r border-slate-400">
                       <div className="flex items-center justify-center gap-2">
                         <span className="text-sm">👤</span>
                         <span className="text-xs uppercase tracking-wide">Basic Info</span>
@@ -2566,7 +2564,6 @@ Please analyze this clan data and provide insights on:
                   <tr className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
                     <Th onClick={()=>toggleSort("name")} className="border-r border-slate-300"> {headerEl("name","Name")} </Th>
                     <Th onClick={()=>toggleSort("role")} className="text-center border-r border-slate-300"> {headerEl("role","Role")} </Th>
-                    <Th onClick={()=>toggleSort("tag")} className="border-r border-slate-300">  {headerEl("tag","Tag")}  </Th>
                     <Th onClick={()=>toggleSort("th")} className="border-r border-slate-400">   {headerEl("th","TH")}   </Th>
                     <Th onClick={()=>toggleSort("bk")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("bk","BK")}   </Th>
                     <Th onClick={()=>toggleSort("aq")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("aq","AQ")}   </Th>
@@ -2659,7 +2656,6 @@ Please analyze this clan data and provide insights on:
                           </div>
                         </Td>
                         <Td className="text-center border-r border-slate-300">{renderRole(m.role)}</Td>
-                        <Td className="border-r border-slate-300">{m.tag}</Td>
                         <Td className="border-r border-slate-400">{th}</Td>
                         <Td className="text-center bg-slate-100 border-r border-slate-300">{renderHeroCell(m,"bk")}</Td>
                         <Td className="text-center bg-slate-100 border-r border-slate-300">{renderHeroCell(m,"aq")}</Td>
