@@ -109,6 +109,17 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
       } else {
         setAdvice([]);
         console.log('[AI Coaching] No existing advice found');
+        
+        // Show helpful message for first-time users
+        setAdvice([{
+          category: "System",
+          title: "AI Coaching Setup",
+          description: "The AI coaching system is being set up. Your first batch of personalized coaching advice will be available after the daily AI processing completes (usually within 24 hours). You can also generate advice manually using the button below.",
+          priority: "medium" as const,
+          icon: "🤖",
+          timestamp: new Date().toISOString(),
+          date: new Date().toLocaleDateString()
+        }]);
       }
     } catch (error) {
       console.error('[AI Coaching] Error loading coaching advice:', error);
@@ -125,6 +136,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     }
 
     setLoading(true);
+    console.log('[AI Coaching] Generating new coaching advice manually...');
     try {
       const response = await fetch('/api/ai-coaching/generate', {
         method: 'POST',
@@ -384,9 +396,13 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
           <button
             onClick={generateCoachingAdvice}
             disabled={loading}
-            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+            className={`px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 transition-all ${
+              advice.length === 0 || (advice.length === 1 && advice[0].category === "System")
+                ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-semibold shadow-lg"
+                : "bg-purple-600 text-white"
+            }`}
           >
-            {loading ? "Analyzing..." : "🤖 Generate New Advice"}
+            {loading ? "🤖 Generating..." : advice.length === 0 || (advice.length === 1 && advice[0].category === "System") ? "🚀 Generate Your First AI Advice" : "🤖 Generate New Advice"}
           </button>
         </div>
       </div>
