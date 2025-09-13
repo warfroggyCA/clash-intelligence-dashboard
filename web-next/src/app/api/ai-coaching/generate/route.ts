@@ -33,13 +33,15 @@ export async function POST(request: NextRequest) {
 
 CLAN: ${clanData.clanName} (${clanData.clanTag}) - ${clanData.memberCount} members
 
-SPECIFIC MEMBER DATA:
+SPECIFIC MEMBER DATA (with contextual insights):
 ${members.map((member: any) => `
 ${member.name} (${member.tag})
 - Role: ${member.role} | TH: ${member.townHall} | Trophies: ${member.trophies}
-- Donations: ${member.donations} given, ${member.donationsReceived} received
+- Donations: ${member.donations} given, ${member.donationsReceived} received (Balance: ${member.donationBalance > 0 ? '+' : ''}${member.donationBalance})
 - Tenure: ${member.tenure} days | Last Seen: ${member.lastSeen} days ago
+- Rush Percentage: ${member.rushPercentage}% ${member.isVeryRushed ? '(VERY RUSHED!)' : member.isRushed ? '(rushed)' : '(good)'}
 - Heroes: BK:${member.heroes.barbarianKing || 'N/A'} AQ:${member.heroes.archerQueen || 'N/A'} GW:${member.heroes.grandWarden || 'N/A'} RC:${member.heroes.royalChampion || 'N/A'} MP:${member.heroes.minionPrince || 'N/A'}
+- Context: ${member.isNetReceiver ? 'Net receiver' : 'Net giver'}${member.isLowDonator ? ', Low donator' : ''}
 `).join('')}
 
 CLAN METRICS:
@@ -69,8 +71,13 @@ Focus on SPECIFIC situations like:
 - Individual inactive members (e.g., "PlayerA hasn't been seen in 5 days")
 - Specific hero upgrade opportunities (e.g., "PlayerB's AQ is ready for level 30")
 - Individual trophy situations (e.g., "PlayerC is close to Champion league")
+- RUSH SITUATIONS: Be contextually aware! If someone is upgrading heroes but is very rushed (70%+), acknowledge both the progress AND the rush problem
+- Donation balance issues (e.g., "PlayerX is receiving more than giving")
+- Contextual coaching that considers multiple factors (rush % + hero upgrades + donation patterns)
 
 Make messages PERSONAL and SPECIFIC. Use actual player names. Mention specific numbers and achievements.
+
+IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high rush percentage (70%+), acknowledge BOTH the progress AND the underlying rush problem. Don't just celebrate hero upgrades without considering the bigger picture.
 
 Return ONLY a valid JSON array.`;
 

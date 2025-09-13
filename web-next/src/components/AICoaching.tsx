@@ -3,6 +3,45 @@
 import { useState, useEffect } from "react";
 import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle } from "lucide-react";
 
+// Import rush percentage calculation (simplified version)
+const getTH = (m: any): number => m.townHallLevel ?? m.th ?? 0;
+
+type Caps = Partial<Record<"bk"|"aq"|"gw"|"rc"|"mp", number>>;
+
+const rushPercent = (m: any, thCaps?: Map<number, Caps>): number => {
+  const th = getTH(m) ?? 0; 
+  const caps = thCaps?.get(th) || {};
+  const keys: ("bk"|"aq"|"gw"|"rc"|"mp")[] = []; 
+  for (const k of ["bk", "aq", "gw", "rc", "mp"] as const) {
+    if (caps[k] && caps[k]! > 0) keys.push(k);
+  }
+  if (keys.length === 0) return 0;
+  let total = 0;
+  for (const k of keys) {
+    const current = (m[k] ?? 0);
+    const cap = caps[k]!;
+    total += Math.max(0, cap - current) / cap;
+  }
+  return Math.round((total / keys.length) * 100);
+};
+
+const calculateThCaps = (members: any[]): Map<number, Caps> => {
+  const caps = new Map<number, Caps>();
+  for (const m of members) {
+    const th = getTH(m); 
+    if (th < 8) continue;
+    const entry = caps.get(th) || {};
+    for (const k of ["bk", "aq", "gw", "rc", "mp"] as const) {
+      const v = m[k];
+      if (typeof v === "number" && v > 0) {
+        entry[k] = Math.max(entry[k] || 0, v);
+      }
+    }
+    caps.set(th, entry);
+  }
+  return caps;
+};
+
 interface Member {
   name: string;
   tag: string;
@@ -137,6 +176,12 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
 
     setLoading(true);
     console.log('[AI Coaching] Generating new coaching advice manually...');
+    
+    // Calculate contextual data for smarter AI coaching
+    const thCaps = calculateThCaps(clanData.members);
+    const totalDonations = clanData.members.reduce((sum, m) => sum + (m.donations || 0), 0);
+    const avgDonations = totalDonations / clanData.members.length;
+    
     try {
       const response = await fetch('/api/ai-coaching/generate', {
         method: 'POST',
@@ -148,24 +193,38 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
             clanName: clanData.clanName,
             clanTag,
             memberCount: clanData.members.length,
-            members: clanData.members.map(member => ({
-              name: member.name,
-              tag: member.tag,
-              townHall: member.townHallLevel || member.th,
-              role: member.role,
-              trophies: member.trophies,
-              donations: member.donations,
-              donationsReceived: member.donationsReceived,
-              tenure: member.tenure_days || member.tenure,
-              lastSeen: member.lastSeen,
-              heroes: {
-                barbarianKing: member.bk,
-                archerQueen: member.aq,
-                grandWarden: member.gw,
-                royalChampion: member.rc,
-                minionPrince: member.mp
-              }
-            }))
+            averageDonations: Math.round(avgDonations),
+            members: clanData.members.map(member => {
+              const rushPercentage = rushPercent(member, thCaps);
+              const donationBalance = (member.donationsReceived || 0) - (member.donations || 0);
+              const isNetReceiver = donationBalance > 0;
+              const isLowDonator = (member.donations || 0) < avgDonations * 0.5;
+              
+              return {
+                name: member.name,
+                tag: member.tag,
+                townHall: member.townHallLevel || member.th,
+                role: member.role,
+                trophies: member.trophies,
+                donations: member.donations,
+                donationsReceived: member.donationsReceived,
+                donationBalance: donationBalance,
+                tenure: member.tenure_days || member.tenure,
+                lastSeen: member.lastSeen,
+                rushPercentage: rushPercentage,
+                isRushed: rushPercentage > 50,
+                isVeryRushed: rushPercentage > 70,
+                isNetReceiver: isNetReceiver,
+                isLowDonator: isLowDonator,
+                heroes: {
+                  barbarianKing: member.bk,
+                  archerQueen: member.aq,
+                  grandWarden: member.gw,
+                  royalChampion: member.rc,
+                  minionPrince: member.mp
+                }
+              };
+            })
           }
         })
       });
