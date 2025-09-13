@@ -926,7 +926,7 @@ export default function HomePage(){
   const [recentClanFilter, setRecentClanFilter] = useState<string>("");
   
   // Leadership access control
-  const [userRole, setUserRole] = useUserRole();
+  const [userRole, setUserRole, isHydrated] = useUserRole();
   const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants" | "intelligence" | "discord">("roster");
   
   // Access management system
@@ -2126,11 +2126,13 @@ Please analyze this clan data and provide insights on:
               <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
             </div>
             <div className="flex items-center space-x-4">
-              <UserRoleSelector 
-                currentRole={userRole} 
-                onRoleChange={setUserRole}
-                className="hidden sm:block"
-              />
+              {isHydrated && (
+                <UserRoleSelector 
+                  currentRole={userRole} 
+                  onRoleChange={setUserRole}
+                  className="hidden sm:block"
+                />
+              )}
               <LeadershipGuard 
                 requiredPermission="canManageAccess" 
                 fallback={null}

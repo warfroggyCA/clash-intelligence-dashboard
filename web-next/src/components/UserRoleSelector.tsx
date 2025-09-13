@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { type ClanRole, getRoleDisplayName } from '../lib/leadership';
 
 interface UserRoleSelectorProps {
@@ -72,18 +72,26 @@ export default function UserRoleSelector({
 
 /**
  * Hook to manage user role state with localStorage persistence
+ * Hydration-safe implementation to prevent SSR/client mismatches
  */
-export function useUserRole(): [ClanRole, (role: ClanRole) => void] {
-  const [userRole, setUserRole] = useState<ClanRole>(() => {
-    if (typeof window === 'undefined') return 'member';
+export function useUserRole(): [ClanRole, (role: ClanRole) => void, boolean] {
+  const [userRole, setUserRole] = useState<ClanRole>('member');
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    // Mark as hydrated after component mounts on client
+    setIsHydrated(true);
     
-    const stored = localStorage.getItem('clash-intelligence-user-role');
-    if (stored && ['leader', 'coLeader', 'elder', 'member'].includes(stored)) {
-      return stored as ClanRole;
+    // Load from localStorage after hydration
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('clash-intelligence-user-role');
+      if (stored && ['leader', 'coLeader', 'elder', 'member'].includes(stored)) {
+        setUserRole(stored as ClanRole);
+      } else {
+        localStorage.setItem('clash-intelligence-user-role', 'member');
+      }
     }
-    
-    return 'member';
-  });
+  }, []);
 
   const updateUserRole = (role: ClanRole) => {
     setUserRole(role);
@@ -92,5 +100,5 @@ export function useUserRole(): [ClanRole, (role: ClanRole) => void] {
     }
   };
 
-  return [userRole, updateUserRole];
+  return [userRole, updateUserRole, isHydrated];
 }
