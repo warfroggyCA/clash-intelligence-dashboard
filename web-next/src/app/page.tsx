@@ -28,6 +28,7 @@ import PlayerDatabase from "../components/PlayerDatabase";
 import AICoaching from "../components/AICoaching";
 import FontSizeControl from "../components/FontSizeControl";
 import PlayerDNADashboard from "../components/PlayerDNADashboard";
+import DiscordPublisher from "../components/DiscordPublisher";
 
 type Member = {
   name: string; tag: string; townHallLevel?: number; th?: number;
@@ -918,7 +919,7 @@ export default function HomePage(){
   const [pageSize, setPageSize] = useState<number>(DEFAULT_PAGE_SIZE);
   const [page, setPage] = useState(1);
   const [recentClanFilter, setRecentClanFilter] = useState<string>("");
-  const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants" | "intelligence">("roster");
+  const [activeTab, setActiveTab] = useState<"roster" | "changes" | "database" | "coaching" | "events" | "applicants" | "intelligence" | "discord">("roster");
   const [showDepartureManager, setShowDepartureManager] = useState(false);
   const [departureNotifications, setDepartureNotifications] = useState(0);
   const [departureNotificationsData, setDepartureNotificationsData] = useState<any>(null);
@@ -2237,6 +2238,22 @@ Please analyze this clan data and provide insights on:
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
                 )}
               </button>
+              <button
+                onClick={() => setActiveTab("discord")}
+                className={`relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none ${
+                  activeTab === "discord"
+                    ? "bg-gradient-to-br from-purple-500 to-purple-600 text-white shadow-lg transform scale-105 border-2 border-purple-400"
+                    : "!bg-gray-100 !text-gray-600 hover:text-purple-600 hover:bg-purple-50/80 hover:shadow-md hover:scale-102 !border-2 !border-gray-200 hover:border-purple-200"
+                }`}
+              >
+                <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
+                  <span className="text-base sm:text-lg">📢</span>
+                  <span className="hidden sm:inline">Discord</span>
+                </span>
+                {activeTab === "discord" && (
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full"></div>
+                )}
+              </button>
             </nav>
           </div>
         </div>
@@ -2978,6 +2995,11 @@ Please analyze this clan data and provide insights on:
         ) : activeTab === "intelligence" ? (
           <PlayerDNADashboard 
             members={roster?.members || []} 
+            clanTag={clanTag || homeClan || ""} 
+          />
+        ) : activeTab === "discord" ? (
+          <DiscordPublisher 
+            clanData={roster} 
             clanTag={clanTag || homeClan || ""} 
           />
         ) : (
