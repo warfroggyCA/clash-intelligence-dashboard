@@ -189,12 +189,34 @@ export class AIProcessor {
     const members = clanData.members;
     const totalDonations = members.reduce((sum: number, m: any) => sum + (m.donations || 0), 0);
     const avgDonations = totalDonations / members.length;
-    const topDonators = members.sort((a: any, b: any) => (b.donations || 0) - (a.donations || 0)).slice(0, 3);
-    const lowDonators = members.filter((m: any) => (m.donations || 0) < avgDonations * 0.5);
-    const inactiveMembers = members.filter((m: any) => typeof m.lastSeen === "number" && m.lastSeen > 3);
-    const newMembers = members.filter((m: any) => (m.tenure || 0) < 7);
-    const highTrophyMembers = members.filter((m: any) => (m.trophies || 0) > 2000);
-    const lowTrophyMembers = members.filter((m: any) => (m.trophies || 0) < 1000);
+    
+    // Calculate rush percentages and contextual data (same as enhanced manual generation)
+    const thCaps = this.calculateThCaps(members);
+    const membersWithContext = members.map((member: any) => {
+      const rushPercentage = this.calculateRushPercentage(member, thCaps);
+      const donationBalance = (member.donationsReceived || 0) - (member.donations || 0);
+      const isNetReceiver = donationBalance > 0;
+      const isLowDonator = (member.donations || 0) < avgDonations * 0.5;
+      
+      return {
+        ...member,
+        rushPercentage,
+        isRushed: rushPercentage > 50,
+        isVeryRushed: rushPercentage > 70,
+        donationBalance,
+        isNetReceiver,
+        isLowDonator
+      };
+    });
+    
+    const topDonators = membersWithContext.sort((a: any, b: any) => (b.donations || 0) - (a.donations || 0)).slice(0, 3);
+    const lowDonators = membersWithContext.filter((m: any) => (m.donations || 0) < avgDonations * 0.5);
+    const inactiveMembers = membersWithContext.filter((m: any) => typeof m.lastSeen === "number" && m.lastSeen > 3);
+    const newMembers = membersWithContext.filter((m: any) => (m.tenure || 0) < 7);
+    const highTrophyMembers = membersWithContext.filter((m: any) => (m.trophies || 0) > 2000);
+    const lowTrophyMembers = membersWithContext.filter((m: any) => (m.trophies || 0) < 1000);
+    const rushedMembers = membersWithContext.filter((m: any) => m.isRushed);
+    const veryRushedMembers = membersWithContext.filter((m: any) => m.isVeryRushed);
 
     const prompt = `You are an expert Clash of Clans clan leader. Analyze this SPECIFIC clan data and provide personalized coaching advice based on what's actually happening RIGHT NOW.
 
@@ -205,6 +227,17 @@ CLAN: ${clanData.clanName} (${clanData.clanTag})
 - Total Donations: ${totalDonations}
 - Average Donations: ${avgDonations.toFixed(1)}
 
+MEMBER ANALYSIS (with contextual insights):
+${membersWithContext.map((member: any) => `
+${member.name} (${member.tag})
+- Role: ${member.role} | TH: ${member.townHall || member.townHallLevel} | Trophies: ${member.trophies}
+- Donations: ${member.donations} given, ${member.donationsReceived} received (Balance: ${member.donationBalance > 0 ? '+' : ''}${member.donationBalance})
+- Tenure: ${member.tenure || member.tenure_days} days | Last Seen: ${member.lastSeen} days ago
+- Rush Percentage: ${member.rushPercentage}% ${member.isVeryRushed ? '(VERY RUSHED!)' : member.isRushed ? '(rushed)' : '(good)'}
+- Heroes: BK:${member.bk || 'N/A'} AQ:${member.aq || 'N/A'} GW:${member.gw || 'N/A'} RC:${member.rc || 'N/A'} MP:${member.mp || 'N/A'}
+- Context: ${member.isNetReceiver ? 'Net receiver' : 'Net giver'}${member.isLowDonator ? ', Low donator' : ''}
+`).join('')}
+
 KEY INSIGHTS:
 - Top donators: ${topDonators.map((m: any) => `${m.name} (${m.donations})`).join(', ')}
 - Low donators: ${lowDonators.map((m: any) => `${m.name} (${m.donations})`).join(', ')}
@@ -212,6 +245,8 @@ KEY INSIGHTS:
 - New members: ${newMembers.map((m: any) => `${m.name} (${m.tenure} days)`).join(', ')}
 - High trophy members (>2000): ${highTrophyMembers.map((m: any) => m.name).join(', ')}
 - Low trophy members (<1000): ${lowTrophyMembers.map((m: any) => m.name).join(', ')}
+- Rushed members (50%+): ${rushedMembers.map((m: any) => `${m.name} (${m.rushPercentage}%)`).join(', ')}
+- Very rushed members (70%+): ${veryRushedMembers.map((m: any) => `${m.name} (${m.rushPercentage}%)`).join(', ')}
 
 Provide 3-5 SPECIFIC, PERSONALIZED recommendations based on what's actually happening in this clan. Use REAL NAMES and SPECIFIC SITUATIONS.
 
@@ -231,8 +266,13 @@ Focus on SPECIFIC situations like:
 - Individual inactive members (e.g., "PlayerA hasn't been seen in 5 days")
 - Specific hero upgrade opportunities (e.g., "PlayerB's AQ is ready for level 30")
 - Individual trophy situations (e.g., "PlayerC is close to Champion league")
+- RUSH SITUATIONS: Be contextually aware! If someone is upgrading heroes but is very rushed (70%+), acknowledge both the progress AND the rush problem
+- Donation balance issues (e.g., "PlayerX is receiving more than giving")
+- Contextual coaching that considers multiple factors (rush % + hero upgrades + donation patterns)
 
-Make messages PERSONAL and SPECIFIC. Use actual player names. Mention specific numbers and achievements.`;
+Make messages PERSONAL and SPECIFIC. Use actual player names. Mention specific numbers and achievements.
+
+IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high rush percentage (70%+), acknowledge BOTH the progress AND the underlying rush problem. Don't just celebrate hero upgrades without considering the bigger picture.`;
 
     if (!this.openai) {
       throw new Error('OpenAI client not initialized');
@@ -606,6 +646,45 @@ Provide an engaging, concise summary highlighting the most important changes and
        s.toLowerCase().includes('consider'))
     );
     return sentences.slice(0, 3).map(s => s.trim());
+  }
+
+  // Rush percentage calculation methods (same as enhanced manual generation)
+  private getTH(m: any): number {
+    return m.townHallLevel ?? m.townHall ?? m.th ?? 0;
+  }
+
+  private calculateRushPercentage(m: any, thCaps: Map<number, any>): number {
+    const th = this.getTH(m) ?? 0; 
+    const caps = thCaps?.get(th) || {};
+    const keys: ("bk"|"aq"|"gw"|"rc"|"mp")[] = []; 
+    for (const k of ["bk", "aq", "gw", "rc", "mp"] as const) {
+      if (caps[k] && caps[k]! > 0) keys.push(k);
+    }
+    if (keys.length === 0) return 0;
+    let total = 0;
+    for (const k of keys) {
+      const current = (m[k] ?? 0);
+      const cap = caps[k]!;
+      total += Math.max(0, cap - current) / cap;
+    }
+    return Math.round((total / keys.length) * 100);
+  }
+
+  private calculateThCaps(members: any[]): Map<number, any> {
+    const caps = new Map<number, any>();
+    for (const m of members) {
+      const th = this.getTH(m); 
+      if (th < 8) continue;
+      const entry = caps.get(th) || {};
+      for (const k of ["bk", "aq", "gw", "rc", "mp"] as const) {
+        const v = m[k];
+        if (typeof v === "number" && v > 0) {
+          entry[k] = Math.max(entry[k] || 0, v);
+        }
+      }
+      caps.set(th, entry);
+    }
+    return caps;
   }
 }
 
