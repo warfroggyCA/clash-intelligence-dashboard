@@ -2003,11 +2003,15 @@ Please analyze this clan data and provide insights on:
 
 
   const headerEl = (k: SortKey, label: string) => (
-    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>
+    <span className={`hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block ${
+      sortKey === k ? "font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 shadow-sm" : ""
+    }`} title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>
   );
   
   const headerElCentered = (k: SortKey, label: string) => (
-    <span className="hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block text-center w-full" title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>
+    <span className={`hover:underline hover:decoration-dotted hover:underline-offset-2 hover:font-medium hover:scale-105 transition-all duration-200 cursor-pointer transform-gpu inline-block text-center w-full ${
+      sortKey === k ? "font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded-md border border-blue-200 shadow-sm" : ""
+    }`} title={HEAD_TIPS[label] || ""}>{label}{sortKey===k?` ${sortDir==="asc"?"▲":"▼"}`:""}</span>
   );
 
   const clanName = roster?.clanName ?? roster?.meta?.clanName ?? "";
@@ -2562,22 +2566,22 @@ Please analyze this clan data and provide insights on:
                   
                   {/* Column Headers Row */}
                   <tr className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
-                    <Th onClick={()=>toggleSort("name")} className="border-r border-slate-300"> {headerEl("name","Name")} </Th>
-                    <Th onClick={()=>toggleSort("role")} className="text-center border-r border-slate-300"> {headerEl("role","Role")} </Th>
-                    <Th onClick={()=>toggleSort("th")} className="border-r border-slate-400">   {headerEl("th","TH")}   </Th>
-                    <Th onClick={()=>toggleSort("bk")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("bk","BK")}   </Th>
-                    <Th onClick={()=>toggleSort("aq")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("aq","AQ")}   </Th>
-                    <Th onClick={()=>toggleSort("gw")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("gw","GW")}   </Th>
-                    <Th onClick={()=>toggleSort("rc")} className="bg-slate-100 text-center border-r border-slate-300">   {headerElCentered("rc","RC")}   </Th>
-                    <Th onClick={()=>toggleSort("mp")} className="bg-slate-100 text-center border-r border-slate-400">   {headerElCentered("mp","MP")}   </Th>
-                    <Th onClick={()=>toggleSort("rush")} className="text-center border-r border-slate-300"> {headerElCentered("rush","Rush %")} </Th>
-                    <Th onClick={()=>toggleSort("trophies")} className="text-center border-r border-slate-300"> {headerElCentered("trophies","Trophies")} </Th>
-                    <Th onClick={()=>toggleSort("donations")} className="border-r border-slate-300"> {headerEl("donations","Don")} </Th>
-                    <Th onClick={()=>toggleSort("donationsReceived")} className="border-r border-slate-300"> {headerEl("donationsReceived","Recv")} </Th>
-                    <Th onClick={()=>toggleSort("donationBalance")} className="border-r border-slate-400"> {headerEl("donationBalance","Balance")} </Th>
-                    <Th onClick={()=>toggleSort("participation")} className="border-r border-slate-300"> {headerEl("participation","Activity")} </Th>
-                    <Th onClick={()=>toggleSort("tenure")} className="border-r border-slate-300"> {headerEl("tenure","Tenure (d)")} </Th>
-                    <Th onClick={()=>toggleSort("activity")} className="border-r border-slate-400"> 
+                    <Th onClick={()=>toggleSort("name")} className="border-r border-slate-300" isActive={sortKey === "name"}> {headerEl("name","Name")} </Th>
+                    <Th onClick={()=>toggleSort("role")} className="text-center border-r border-slate-300" isActive={sortKey === "role"}> {headerEl("role","Role")} </Th>
+                    <Th onClick={()=>toggleSort("th")} className="border-r border-slate-400" isActive={sortKey === "th"}>   {headerEl("th","TH")}   </Th>
+                    <Th onClick={()=>toggleSort("bk")} className="bg-slate-100 text-center border-r border-slate-300" isActive={sortKey === "bk"}>   {headerElCentered("bk","BK")}   </Th>
+                    <Th onClick={()=>toggleSort("aq")} className="bg-slate-100 text-center border-r border-slate-300" isActive={sortKey === "aq"}>   {headerElCentered("aq","AQ")}   </Th>
+                    <Th onClick={()=>toggleSort("gw")} className="bg-slate-100 text-center border-r border-slate-300" isActive={sortKey === "gw"}>   {headerElCentered("gw","GW")}   </Th>
+                    <Th onClick={()=>toggleSort("rc")} className="bg-slate-100 text-center border-r border-slate-300" isActive={sortKey === "rc"}>   {headerElCentered("rc","RC")}   </Th>
+                    <Th onClick={()=>toggleSort("mp")} className="bg-slate-100 text-center border-r border-slate-400" isActive={sortKey === "mp"}>   {headerElCentered("mp","MP")}   </Th>
+                    <Th onClick={()=>toggleSort("rush")} className="text-center border-r border-slate-300" isActive={sortKey === "rush"}> {headerElCentered("rush","Rush %")} </Th>
+                    <Th onClick={()=>toggleSort("trophies")} className="text-center border-r border-slate-300" isActive={sortKey === "trophies"}> {headerElCentered("trophies","Trophies")} </Th>
+                    <Th onClick={()=>toggleSort("donations")} className="border-r border-slate-300" isActive={sortKey === "donations"}> {headerEl("donations","Don")} </Th>
+                    <Th onClick={()=>toggleSort("donationsReceived")} className="border-r border-slate-300" isActive={sortKey === "donationsReceived"}> {headerEl("donationsReceived","Recv")} </Th>
+                    <Th onClick={()=>toggleSort("donationBalance")} className="border-r border-slate-400" isActive={sortKey === "donationBalance"}> {headerEl("donationBalance","Balance")} </Th>
+                    <Th onClick={()=>toggleSort("participation")} className="border-r border-slate-300" isActive={sortKey === "participation"}> {headerEl("participation","Activity")} </Th>
+                    <Th onClick={()=>toggleSort("tenure")} className="border-r border-slate-300" isActive={sortKey === "tenure"}> {headerEl("tenure","Tenure (d)")} </Th>
+                    <Th onClick={()=>toggleSort("activity")} className="border-r border-slate-400" isActive={sortKey === "activity"}> 
                       <div className="flex items-center gap-1">
                         {headerEl("activity","Last Activity")}
                         <button
@@ -2594,7 +2598,7 @@ Please analyze this clan data and provide insights on:
                         </button>
                       </div>
                     </Th>
-                    <Th onClick={()=>toggleSort("warEfficiency")} className="text-center bg-red-50 border-r border-slate-300"> 
+                    <Th onClick={()=>toggleSort("warEfficiency")} className="text-center bg-red-50 border-r border-slate-300" isActive={sortKey === "warEfficiency"}> 
                       <div className="flex items-center justify-center gap-1">
                         {headerElCentered("warEfficiency","War Eff")}
                         <button
@@ -2611,7 +2615,7 @@ Please analyze this clan data and provide insights on:
                         </button>
                       </div>
                     </Th>
-                    <Th onClick={()=>toggleSort("warConsistency")} className="text-center bg-orange-50"> 
+                    <Th onClick={()=>toggleSort("warConsistency")} className="text-center bg-orange-50" isActive={sortKey === "warConsistency"}> 
                       <div className="flex items-center justify-center gap-1">
                         {headerElCentered("warConsistency","Consistency")}
                         <button
@@ -3385,7 +3389,9 @@ Please analyze this clan data and provide insights on:
   );
 }
 
-function Th({ children, onClick, className }:{ children: React.ReactNode; onClick?: ()=>void; className?: string }){ return <th className={`py-3 px-4 cursor-pointer font-semibold text-slate-700 hover:bg-slate-100/50 transition-colors ${className || ""}`} onClick={onClick}>{children}</th>; }
+function Th({ children, onClick, className, isActive }:{ children: React.ReactNode; onClick?: ()=>void; className?: string; isActive?: boolean }){ 
+  return <th className={`py-3 px-4 cursor-pointer font-semibold text-slate-700 hover:bg-slate-100/50 transition-colors ${isActive ? "bg-blue-100 border-blue-300" : ""} ${className || ""}`} onClick={onClick}>{children}</th>; 
+}
 function Td({ children, className }:{ children: React.ReactNode; className?: string }){ return <td className={`py-3 px-4 ${className || ""}`}>{children}</td>; }
 function rushClass(p:number){ return p>=70 ? "text-red-700 font-semibold" : p>=40 ? "text-amber-600" : "text-green-700"; }
 
