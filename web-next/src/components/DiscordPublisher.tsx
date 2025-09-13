@@ -100,11 +100,11 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
     const members = clanData.members;
     const thCaps = calculateThCaps(members);
     
-    // Calculate rush percentages
+    // Calculate rush percentages for all members
     const membersWithRush = members.map(member => {
       const rushPercentage = rushPercent(member, thCaps);
       return { ...member, rushPercentage };
-    }).filter(m => m.rushPercentage > 0);
+    });
 
     // Filter for red (70%+) and amber (50-69%) level rushes
     const redRushedMembers = membersWithRush
