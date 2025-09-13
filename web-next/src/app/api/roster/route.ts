@@ -27,26 +27,38 @@ function daysSince(ymd: string): number {
   return diff > 0 ? diff : 0;
 }
 async function readLedgerEffective(): Promise<Record<string, number>> {
-  const file = path.join(process.cwd(), cfg.dataRoot, "tenure_ledger.jsonl");
-  const map: Record<string, number> = {};
-  const latest: Record<string, string> = {};
-  try {
-    const text = await fsp.readFile(file, "utf-8");
-    for (const line of text.split(/\r?\n/)) {
-      const s = line.trim(); if (!s) continue;
-      let row: any; try { row = JSON.parse(s); } catch { continue; }
-      const tag = String(row?.tag ?? "").toUpperCase().trim();
-      const ts  = String(row?.ts ?? "");
-      if (!CLASH_TAG_RE.test(tag) || !ts) continue;
-      if (latest[tag] && latest[tag] >= ts) continue;
-      latest[tag] = ts;
-      const base = typeof row.base === "number" ? row.base :
-                   typeof row.tenure_days === "number" ? row.tenure_days : undefined;
-      if (typeof base !== "number") continue;
-      const as_of = String(row?.as_of ?? "") || ymdNowUTC();
-      map[tag] = Math.max(0, Math.round(base + daysSince(as_of)));
+  const ledger = path.join(process.cwd(), cfg.dataRoot, "tenure_ledger.jsonl");
+  try { 
+    await fsp.stat(ledger); 
+  } catch { 
+    return {}; 
+  }
+  
+  const lines = (await fsp.readFile(ledger, "utf-8")).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+  const latest: Record<string,string> = {};
+  const base: Record<string,number> = {};
+  const asof: Record<string,string> = {};
+
+  for (const line of lines) {
+    let row: any = null; 
+    try { 
+      row = JSON.parse(line); 
+    } catch { 
+      continue; 
     }
-  } catch { /* no ledger yet */ }
+    const tag = String(row?.tag || "").toUpperCase().trim();
+    const ts  = String(row?.ts || "");
+    if (!CLASH_TAG_RE.test(tag) || !ts) continue;
+    if (latest[tag] && latest[tag] >= ts) continue;
+    latest[tag] = ts; 
+    base[tag] = Number(row?.base ?? row?.tenure_days ?? 0) || 0; 
+    asof[tag] = String(row?.as_of || "");
+  }
+
+  const map: Record<string,number> = {};
+  for (const [tag, b] of Object.entries(base)) {
+    map[tag] = Math.max(0, Math.round(b + daysSince(asof[tag] || "")));
+  }
   return map;
 }
 const sleep = (ms:number)=> new Promise(r=>setTimeout(r,ms));
@@ -173,6 +185,8 @@ export async function GET(req: Request) {
 
     // 2) read effective tenure map (append-only)
     const tenureMap = await readLedgerEffective();
+    console.log('Tenure map loaded:', Object.keys(tenureMap).length, 'entries');
+    console.log('Sample tenure data:', Object.entries(tenureMap).slice(0, 3));
 
     // 3) pull each player for TH + heroes (rate-limited)
     const enriched = await mapLimit(members, 3, async (m) => {
