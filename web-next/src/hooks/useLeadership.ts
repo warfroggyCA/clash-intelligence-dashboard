@@ -17,43 +17,64 @@ export function useLeadership(): UseLeadershipResult {
   const [error, setError] = useState<string | null>(null);
   const [userRole, setUserRole] = useState<string | undefined>();
 
-  useEffect(() => {
-    const loadUserRole = () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Check localStorage for stored role (for development/testing)
-        if (typeof window !== 'undefined') {
-          const storedRole = localStorage.getItem('clash-intelligence-user-role');
-          if (storedRole && ['leader', 'coLeader', 'elder', 'member'].includes(storedRole)) {
-            // Convert stored role back to CoC API format
-            switch (storedRole) {
-              case 'leader':
-                return 'leader';
-              case 'coLeader':
-                return 'coleader';
-              case 'elder':
-                return 'elder';
-              case 'member':
-              default:
-                return 'member';
-            }
+  const loadUserRole = () => {
+    try {
+      setError(null);
+      
+      // Check localStorage for stored role (for development/testing)
+      if (typeof window !== 'undefined') {
+        const storedRole = localStorage.getItem('clash-intelligence-user-role');
+        if (storedRole && ['leader', 'coLeader', 'elder', 'member'].includes(storedRole)) {
+          // Convert stored role back to CoC API format
+          switch (storedRole) {
+            case 'leader':
+              return 'leader';
+            case 'coLeader':
+              return 'coleader';
+            case 'elder':
+              return 'elder';
+            case 'member':
+            default:
+              return 'member';
           }
         }
-        
-        // Default to member if no role is stored
-        return 'member';
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to load user role');
-        return 'member';
-      } finally {
-        setIsLoading(false);
+      }
+      
+      // Default to member if no role is stored
+      return 'member';
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load user role');
+      return 'member';
+    }
+  };
+
+  useEffect(() => {
+    // Initial load
+    const role = loadUserRole();
+    setUserRole(role);
+    setIsLoading(false);
+
+    // Listen for localStorage changes (when role selector updates the role)
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'clash-intelligence-user-role') {
+        const role = loadUserRole();
+        setUserRole(role);
       }
     };
 
-    const role = loadUserRole();
-    setUserRole(role);
+    // Listen for custom events (for same-tab updates)
+    const handleRoleChange = () => {
+      const role = loadUserRole();
+      setUserRole(role);
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    window.addEventListener('userRoleChanged', handleRoleChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('userRoleChanged', handleRoleChange);
+    };
   }, []);
 
   const check = checkLeadershipAccess(userRole);

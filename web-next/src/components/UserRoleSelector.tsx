@@ -97,6 +97,8 @@ export function useUserRole(): [ClanRole, (role: ClanRole) => void, boolean] {
     setUserRole(role);
     if (typeof window !== 'undefined') {
       localStorage.setItem('clash-intelligence-user-role', role);
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(new CustomEvent('userRoleChanged'));
     }
   };
 
