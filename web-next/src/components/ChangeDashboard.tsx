@@ -161,7 +161,7 @@ export default function ChangeDashboard({
     }
   };
 
-  const markAsRead = async (date: string) => {
+  const markAsRead = async (date: string, createdAt?: string) => {
     try {
       const response = await fetch('/api/snapshots/changes', {
         method: 'POST',
@@ -170,9 +170,13 @@ export default function ChangeDashboard({
       });
       
       if (response.ok) {
-        setChanges(prev => prev.map(c => 
-          c.date === date ? { ...c, unread: false } : c
-        ));
+        setChanges(prev => prev.map(c => {
+          // Use createdAt as a unique identifier to avoid affecting multiple entries with same date
+          if (c.date === date && (createdAt ? c.createdAt === createdAt : true)) {
+            return { ...c, unread: false };
+          }
+          return c;
+        }));
         onNotificationChange?.(); // Refresh notification count
       }
     } catch (err) {
@@ -180,7 +184,7 @@ export default function ChangeDashboard({
     }
   };
 
-  const markAsActioned = async (date: string) => {
+  const markAsActioned = async (date: string, createdAt?: string) => {
     try {
       const response = await fetch('/api/snapshots/changes', {
         method: 'POST',
@@ -189,9 +193,13 @@ export default function ChangeDashboard({
       });
       
       if (response.ok) {
-        setChanges(prev => prev.map(c => 
-          c.date === date ? { ...c, actioned: true, unread: false } : c
-        ));
+        setChanges(prev => prev.map(c => {
+          // Use createdAt as a unique identifier to avoid affecting multiple entries with same date
+          if (c.date === date && (createdAt ? c.createdAt === createdAt : true)) {
+            return { ...c, actioned: true, unread: false };
+          }
+          return c;
+        }));
         onNotificationChange?.(); // Refresh notification count
       }
     } catch (err) {
@@ -385,13 +393,13 @@ export default function ChangeDashboard({
               {changeSummary.unread && (
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => markAsRead(changeSummary.date)}
+                    onClick={() => markAsRead(changeSummary.date, changeSummary.createdAt)}
                     className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                   >
                     Mark Read
                   </button>
                   <button
-                    onClick={() => markAsActioned(changeSummary.date)}
+                    onClick={() => markAsActioned(changeSummary.date, changeSummary.createdAt)}
                     className="text-sm text-green-600 hover:text-green-800 font-medium"
                   >
                     Mark Actioned
