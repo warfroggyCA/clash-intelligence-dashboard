@@ -1,0 +1,17 @@
+{
+  "name": "clash-intelligence-mcp",
+  "version": "1.0.0",
+  "description": "MCP Server for Clash Intelligence",
+  "main": "mcp-server.js",
+  "scripts": {
+    "start": "node mcp-server.js",
+    "dev": "nodemon mcp-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}
