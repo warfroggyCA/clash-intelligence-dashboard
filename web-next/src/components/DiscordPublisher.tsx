@@ -112,7 +112,7 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
       .sort((a, b) => b.rushPercentage - a.rushPercentage);
     
     const amberRushedMembers = membersWithRush
-      .filter(member => member.rushPercentage >= 50 && member.rushPercentage < 70)
+      .filter(member => member.rushPercentage >= 40 && member.rushPercentage < 70)
       .sort((a, b) => b.rushPercentage - a.rushPercentage);
 
     const totalRushedMembers = redRushedMembers.length + amberRushedMembers.length;
@@ -154,7 +154,7 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
     }
     
     if (amberRushedMembers.length > 0) {
-      message += `🟡 **${amberRushedMembers.length} moderately rushed players (50-69%)** need attention:\n\n`;
+      message += `🟡 **${amberRushedMembers.length} moderately rushed players (40-69%)** need attention:\n\n`;
 
       amberRushedMembers.slice(0, 10).forEach((member, index) => {
         const th = getTH(member);
@@ -186,7 +186,7 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
       message += `💡 **URGENT RECOMMENDATION:** Severely rushed players (70%+) need to STOP upgrading Town Hall and focus ONLY on heroes and defenses. Their rush level is severely impacting clan war performance!\n\n`;
     }
     if (amberRushedMembers.length > 0) {
-      message += `💡 **MODERATE RECOMMENDATION:** Moderately rushed players (50-69%) should prioritize hero upgrades before advancing Town Hall. This will improve their war performance and clan contribution.`;
+      message += `💡 **MODERATE RECOMMENDATION:** Moderately rushed players (40-69%) should prioritize hero upgrades before advancing Town Hall. This will improve their war performance and clan contribution.`;
     }
 
     return message;
