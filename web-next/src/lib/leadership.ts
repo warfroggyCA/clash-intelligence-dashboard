@@ -83,7 +83,7 @@ export function getRolePermissions(role: ClanRole): RolePermissions {
   
   return {
     canViewSensitiveData: isLeadership,
-    canModifyClanData: role === 'leader', // Only leaders can modify
+    canModifyClanData: isLeadership, // Leaders and co-leaders can modify
     canAccessDiscordPublisher: isLeadership,
     canGenerateAICoaching: isLeadership,
     canManageChangeDashboard: isLeadership,
