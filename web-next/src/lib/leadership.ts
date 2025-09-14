@@ -75,6 +75,7 @@ export interface RolePermissions {
   canGenerateAICoaching: boolean;
   canManageChangeDashboard: boolean;
   canViewLeadershipFeatures: boolean;
+  canManageAccess: boolean;
 }
 
 export function getRolePermissions(role: ClanRole): RolePermissions {
@@ -86,7 +87,8 @@ export function getRolePermissions(role: ClanRole): RolePermissions {
     canAccessDiscordPublisher: isLeadership,
     canGenerateAICoaching: isLeadership,
     canManageChangeDashboard: isLeadership,
-    canViewLeadershipFeatures: isLeadership
+    canViewLeadershipFeatures: isLeadership,
+    canManageAccess: role === 'leader' // Only leaders can manage access
   };
 }
 
