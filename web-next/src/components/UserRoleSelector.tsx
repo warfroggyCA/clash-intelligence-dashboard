@@ -30,10 +30,10 @@ export default function UserRoleSelector({
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
       >
-        <span className="text-sm font-medium">Role:</span>
+        <span className="text-sm font-medium text-gray-700">Role:</span>
         <span className="text-sm text-gray-700">{getRoleDisplayName(currentRole)}</span>
         <svg 
-          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 transition-transform text-gray-700 ${isOpen ? 'rotate-180' : ''}`}
           fill="none" 
           stroke="currentColor" 
           viewBox="0 0 24 24"
