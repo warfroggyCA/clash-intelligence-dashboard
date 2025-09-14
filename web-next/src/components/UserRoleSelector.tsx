@@ -13,6 +13,12 @@ export default function UserRoleSelector({
   className = "" 
 }: UserRoleSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Prevent hydration mismatch by only showing role after client hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const roles: ClanRole[] = ['leader', 'coLeader', 'elder', 'member'];
 
@@ -31,7 +37,11 @@ export default function UserRoleSelector({
         className="flex items-center gap-2 px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
       >
         <span className="text-sm font-medium text-gray-700">Role:</span>
-        <span className="text-sm text-gray-700">{getRoleDisplayName(currentRole)}</span>
+        {isHydrated ? (
+          <span className="text-sm text-gray-700">{getRoleDisplayName(currentRole)}</span>
+        ) : (
+          <span className="text-sm text-gray-700">Member</span>
+        )}
         <svg 
           className={`w-4 h-4 transition-transform text-gray-700 ${isOpen ? 'rotate-180' : ''}`}
           fill="none" 
@@ -50,12 +60,12 @@ export default function UserRoleSelector({
                 key={role}
                 onClick={() => handleRoleChange(role)}
                 className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
-                  currentRole === role ? 'bg-purple-50 text-purple-700 font-medium' : 'text-gray-700'
+                  isHydrated && currentRole === role ? 'bg-purple-50 text-purple-700 font-medium' : 'text-gray-700'
                 }`}
               >
                 <div className="flex items-center justify-between">
                   <span>{getRoleDisplayName(role)}</span>
-                  {currentRole === role && (
+                  {isHydrated && currentRole === role && (
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>

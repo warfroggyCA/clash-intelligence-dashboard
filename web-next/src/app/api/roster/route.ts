@@ -81,8 +81,8 @@ class CoCRateLimiter {
   private queue: Array<() => void> = [];
   private active = 0;
   private lastRequest = 0;
-  private readonly maxConcurrent = 3; // Conservative limit
-  private readonly minInterval = 700; // ~85 requests/minute (well under 100/min limit)
+  private readonly maxConcurrent = process.env.NODE_ENV === 'development' ? 5 : 3; // More concurrent in dev
+  private readonly minInterval = process.env.NODE_ENV === 'development' ? 100 : 700; // Much faster in dev
 
   async acquire(): Promise<void> {
     return new Promise((resolve) => {
@@ -207,7 +207,7 @@ export async function GET(req: Request) {
     const tenureMap = await readLedgerEffective();
 
     // 3) pull each player for TH + heroes (rate-limited)
-    const enriched = await mapLimit(members, 3, async (m) => {
+    const enriched = await mapLimit(members, process.env.NODE_ENV === 'development' ? 5 : 3, async (m) => {
       await rateLimiter.acquire();
       try {
         const p = await getPlayer(m.tag);

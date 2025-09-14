@@ -119,11 +119,11 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const sizeStyles = getSizeStyles(size);
-  const modalStyles = `relative bg-white rounded-lg shadow-xl border border-gray-200 w-full ${sizeStyles} ${className}`.trim();
+  const modalStyles = `relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 w-full ${sizeStyles} ${className}`.trim();
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gradient-to-br from-black/20 via-purple-900/20 to-blue-900/30 backdrop-blur-md"
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"

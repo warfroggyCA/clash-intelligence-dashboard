@@ -43,13 +43,13 @@ export interface ButtonProps extends ComponentWithChildrenAndClassName {
 
 const getVariantStyles = (variant: ButtonVariant): string => {
   const variants = {
-    primary: 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md hover:shadow-lg hover:from-blue-600 hover:to-blue-700 border border-blue-400/20',
-    secondary: 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-md hover:shadow-lg hover:from-gray-600 hover:to-gray-700 border border-gray-400/20',
-    success: 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-md hover:shadow-lg hover:from-green-600 hover:to-green-700 border border-green-400/20',
-    warning: 'bg-gradient-to-r from-yellow-500 to-yellow-600 text-white shadow-md hover:shadow-lg hover:from-yellow-600 hover:to-yellow-700 border border-yellow-400/20',
-    danger: 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md hover:shadow-lg hover:from-red-600 hover:to-red-700 border border-red-400/20',
-    ghost: 'bg-transparent text-gray-700 hover:bg-gray-100 border border-transparent',
-    outline: 'bg-transparent text-blue-600 border border-blue-600 hover:bg-blue-50 hover:border-blue-700',
+    primary: 'bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 text-white shadow-xl hover:shadow-2xl hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 border border-blue-400/30 backdrop-blur-sm',
+    secondary: 'bg-gradient-to-r from-gray-500 via-gray-600 to-slate-600 text-white shadow-xl hover:shadow-2xl hover:from-gray-600 hover:via-slate-600 hover:to-gray-700 border border-gray-400/30 backdrop-blur-sm',
+    success: 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 text-white shadow-xl hover:shadow-2xl hover:from-emerald-600 hover:via-teal-500 hover:to-cyan-600 border border-emerald-400/30 backdrop-blur-sm',
+    warning: 'bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white shadow-xl hover:shadow-2xl hover:from-amber-600 hover:via-orange-500 hover:to-red-500 border border-amber-400/30 backdrop-blur-sm',
+    danger: 'bg-gradient-to-r from-red-500 via-rose-500 to-pink-600 text-white shadow-xl hover:shadow-2xl hover:from-red-600 hover:via-pink-500 hover:to-rose-600 border border-red-400/30 backdrop-blur-sm',
+    ghost: 'bg-white/20 backdrop-blur-sm text-gray-700 hover:bg-white/40 border border-gray-200/50 shadow-lg hover:shadow-xl',
+    outline: 'bg-white/10 backdrop-blur-sm text-blue-600 border-2 border-blue-500/50 hover:bg-blue-50/80 hover:border-blue-600 shadow-lg hover:shadow-xl',
   };
   
   return variants[variant];
@@ -90,7 +90,7 @@ export const Button: React.FC<ButtonProps> = ({
   'aria-label': ariaLabel,
   'data-testid': testId,
 }) => {
-  const baseStyles = 'inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 transform-gpu focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500';
+  const baseStyles = 'inline-flex items-center justify-center font-semibold rounded-xl transition-all duration-300 transform-gpu focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 hover:scale-105 active:scale-95';
   
   const variantStyles = getVariantStyles(variant);
   const sizeStyles = getSizeStyles(size);

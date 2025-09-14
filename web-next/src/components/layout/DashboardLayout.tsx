@@ -15,7 +15,7 @@
  * Last Updated: January 2025
  */
 
-import React from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
@@ -55,30 +55,136 @@ const DashboardHeader: React.FC = () => {
   const clanName = selectors.clanName(useDashboardStore.getState());
   const hasLeadershipAccess = selectors.hasLeadershipAccess(useDashboardStore.getState());
 
+  // Define handleLoadHome first before using it in useEffect
+  const handleLoadHome = useCallback(async () => {
+    if (!homeClan) {
+      setMessage('No home clan set. Use "Set Home" to save a clan.');
+      return;
+    }
+    
+    try {
+      setClanTag(homeClan);
+      console.log('[DashboardLayout] Loading home clan:', homeClan);
+      await loadRoster(homeClan);
+      setMessage(`Loaded home clan: ${homeClan}`);
+    } catch (error) {
+      console.error('[DashboardLayout] Failed to load home clan:', error);
+      setMessage('Failed to load home clan. Please try again.');
+    }
+  }, [homeClan, setClanTag, loadRoster, setMessage]);
+
+  // Clean up corrupted clan tag data on mount and auto-load home clan
+  useEffect(() => {
+    // Only run on client side after hydration
+    if (typeof window === 'undefined') return;
+    
+    if (clanTag && (clanTag.includes('232') || clanTag.length > 15)) {
+      console.log('[DashboardHeader] Detected corrupted clan tag, clearing:', clanTag);
+      setClanTag('');
+    }
+  }, [clanTag, setClanTag]);
+
+  // Separate effect for home clan initialization (runs only once)
+  useEffect(() => {
+    // Only run on client side after hydration
+    if (typeof window === 'undefined') return;
+    
+    // Set default home clan if none is set
+    if (!homeClan) {
+      console.log('[DashboardHeader] No home clan set, setting default:', '#2PR8R8V8P');
+      setHomeClan('#2PR8R8V8P');
+    }
+  }, []); // Empty dependency array - runs only once on mount
+
+  // Separate effect for auto-loading home clan
+  useEffect(() => {
+    // Only run on client side after hydration
+    if (typeof window === 'undefined') return;
+    
+    // Auto-load home clan if no clan is currently loaded and home clan exists
+    if (!clanTag && homeClan) {
+      console.log('[DashboardHeader] Auto-loading home clan on initialization:', homeClan);
+      handleLoadHome();
+    }
+  }, [clanTag, homeClan, handleLoadHome]);
+
   const handleClanTagChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setClanTag(event.target.value);
+    let value = event.target.value.trim().toUpperCase();
+    
+    // Only allow alphanumeric characters and # symbol
+    value = value.replace(/[^A-Z0-9#]/g, '');
+    
+    // Ensure only one # at the beginning
+    if (value.includes('#')) {
+      const parts = value.split('#');
+      value = parts[0] + '#' + parts.slice(1).join('');
+      if (value.startsWith('#')) {
+        value = '#' + value.substring(1).replace(/#/g, '');
+      }
+    }
+    
+    // Limit length to prevent extremely long tags
+    if (value.length > 15) {
+      value = value.substring(0, 15);
+    }
+    
+    setClanTag(value);
   };
 
   const handleLoadClan = async () => {
-    if (!clanTag.trim()) {
+    let cleanTag = clanTag.trim().toUpperCase();
+    
+    if (!cleanTag) {
       setMessage('Please enter a clan tag');
       return;
     }
     
-    const formattedTag = clanTag.startsWith('#') ? clanTag : `#${clanTag}`;
-    await loadRoster(formattedTag);
+    // Remove any # symbols and non-alphanumeric characters
+    cleanTag = cleanTag.replace(/[^A-Z0-9]/g, '');
+    
+    if (!cleanTag || cleanTag.length < 3) {
+      setMessage('Please enter a valid clan tag (at least 3 characters)');
+      return;
+    }
+    
+    // Format as proper clan tag
+    const formattedTag = `#${cleanTag}`;
+    
+    // Update the state with the clean tag
+    setClanTag(formattedTag);
+    
+    // Add some debugging
+    console.log('[DashboardLayout] Loading clan with tag:', formattedTag);
+    
+    try {
+      await loadRoster(formattedTag);
+    } catch (error) {
+      console.error('[DashboardLayout] Failed to load roster:', error);
+      setMessage('Failed to load clan data. Please try again.');
+    }
   };
 
   const handleSetHome = () => {
-    const tag = clanTag.trim().toUpperCase();
-    if (!tag) {
+    const cleanTag = clanTag.trim().toUpperCase();
+    
+    if (!cleanTag) {
       setHomeClan(null);
       setMessage('Home clan cleared.');
       return;
     }
     
     try {
-      const formattedTag = tag.startsWith('#') ? tag : `#${tag}`;
+      // Ensure proper format: single # followed by alphanumeric characters
+      let formattedTag = cleanTag.replace(/^#+/, ''); // Remove any # symbols
+      formattedTag = formattedTag.replace(/[^A-Z0-9]/g, ''); // Keep only alphanumeric
+      
+      if (!formattedTag) {
+        setMessage('Please enter a valid clan tag');
+        return;
+      }
+      
+      formattedTag = `#${formattedTag}`; // Add single # prefix
+      
       setHomeClan(formattedTag);
       setMessage(`Home clan set to ${formattedTag}`);
     } catch (error) {
@@ -118,8 +224,13 @@ const DashboardHeader: React.FC = () => {
               {clanName}
             </div>
           ) : (
-            <div className="font-bold text-4xl text-white drop-shadow-lg mb-2">
-              No Clan Loaded
+            <div className="text-center">
+              <div className="font-bold text-4xl text-white drop-shadow-lg mb-2">
+                Clash Intelligence Dashboard
+              </div>
+              <div className="text-lg text-white/80 drop-shadow-md">
+                Enter a clan tag below to get started
+              </div>
             </div>
           )}
           
@@ -128,7 +239,7 @@ const DashboardHeader: React.FC = () => {
               type="text"
               value={clanTag}
               onChange={handleClanTagChange}
-              placeholder="Enter clan tag..."
+              placeholder="Enter clan tag (e.g., #2PR8R8V8P)..."
               className="border border-white/30 bg-white/10 text-white placeholder-white/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/20 transition-all backdrop-blur-sm"
               title="Enter a clan tag to load their roster data"
               onKeyDown={(e) => e.key === 'Enter' && handleLoadClan()}
@@ -147,6 +258,15 @@ const DashboardHeader: React.FC = () => {
             >
               🏠 Set Home
             </button>
+            {homeClan && (
+              <button
+                onClick={handleLoadHome}
+                className="px-3 py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-lg text-sm transition-all duration-200 hover:scale-105"
+                title={`Load home clan: ${homeClan}`}
+              >
+                🏡 Load Home
+              </button>
+            )}
           </div>
         </div>
         

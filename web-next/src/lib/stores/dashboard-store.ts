@@ -233,10 +233,10 @@ export const useDashboardStore = create<DashboardState>()(
           const response = await fetch(`/api/roster?clanTag=${encodeURIComponent(clanTag)}`);
           const data = await response.json();
           
-          if (data.ok) {
+          if (data.members && Array.isArray(data.members)) {
             setRoster(data);
             setStatus('success');
-            setMessage(`Loaded ${data.members?.length || 0} members`);
+            setMessage(`Loaded ${data.members.length} members`);
           } else {
             setStatus('error');
             setMessage(data.error || 'Failed to load roster');
@@ -328,6 +328,13 @@ export const useDashboardStore = create<DashboardState>()(
         pageSize: state.pageSize,
         userRole: state.userRole,
       }),
+      // Prevent hydration mismatch by using onRehydrateStorage
+      onRehydrateStorage: () => (state) => {
+        // This runs after rehydration completes
+        if (state) {
+          console.log('[DashboardStore] Rehydrated successfully');
+        }
+      },
     }
   )
 );
@@ -440,24 +447,4 @@ if (typeof window !== 'undefined') {
 // INITIALIZATION
 // =============================================================================
 
-// Initialize store from localStorage
-if (typeof window !== 'undefined') {
-  const storedClanTag = localStorage.getItem('currentClanTag');
-  const storedHomeClan = localStorage.getItem('homeClanTag');
-  const storedUserRole = localStorage.getItem('userRole') as ClanRole;
-  
-  if (storedClanTag) {
-    useDashboardStore.getState().setClanTag(storedClanTag);
-  }
-  
-  if (storedHomeClan) {
-    useDashboardStore.getState().setHomeClan(storedHomeClan);
-  }
-  
-  if (storedUserRole && ['leader', 'coLeader', 'elder', 'member'].includes(storedUserRole)) {
-    useDashboardStore.getState().setUserRole(storedUserRole);
-  }
-  
-  // Mark as hydrated after initialization
-  useDashboardStore.getState().setHydrated(true);
-}
+// Zustand persistence will handle initialization automatically
