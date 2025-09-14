@@ -3182,6 +3182,40 @@ Please analyze this clan data and provide insights on:
         />
       )}
 
+      {/* Access Management Modals */}
+      {showAccessManager && (
+        <AccessManager
+          clanTag={clanTag || homeClan || ""}
+          clanName={clanName}
+          onClose={() => setShowAccessManager(false)}
+        />
+      )}
+
+      {showAccessSetup && (
+        <AccessSetup
+          clanTag={clanTag || homeClan || ""}
+          clanName={clanName}
+          onAccessCreated={(ownerPassword) => {
+            console.log('Access created with password:', ownerPassword);
+            setShowAccessSetup(false);
+          }}
+          onClose={() => setShowAccessSetup(false)}
+        />
+      )}
+
+      {showAccessLogin && (
+        <AccessLogin
+          clanTag={clanTag || homeClan || ""}
+          clanName={clanName}
+          onAccessGranted={(accessMember, permissions) => {
+            setCurrentAccessMember(accessMember);
+            setAccessPermissions(permissions);
+            setShowAccessLogin(false);
+          }}
+          onClose={() => setShowAccessLogin(false)}
+        />
+      )}
+
       {/* Player Profile Modal */}
       {showPlayerProfile && selectedPlayer && (
         <PlayerProfileModal
@@ -3801,40 +3835,6 @@ function EventDashboard({
           <p>No events match your current filters.</p>
           <p className="text-sm">Try adjusting the filters above.</p>
         </div>
-      )}
-
-      {/* Access Management Modals */}
-      {showAccessManager && (
-        <AccessManager
-          clanTag={clanTag || homeClan || ""}
-          clanName={clanName}
-          onClose={() => setShowAccessManager(false)}
-        />
-      )}
-
-      {showAccessSetup && (
-        <AccessSetup
-          clanTag={clanTag || homeClan || ""}
-          clanName={clanName}
-          onAccessCreated={(ownerPassword) => {
-            console.log('Access created with password:', ownerPassword);
-            setShowAccessSetup(false);
-          }}
-          onClose={() => setShowAccessSetup(false)}
-        />
-      )}
-
-      {showAccessLogin && (
-        <AccessLogin
-          clanTag={clanTag || homeClan || ""}
-          clanName={clanName}
-          onAccessGranted={(accessMember, permissions) => {
-            setCurrentAccessMember(accessMember);
-            setAccessPermissions(permissions);
-            setShowAccessLogin(false);
-          }}
-          onClose={() => setShowAccessLogin(false)}
-        />
       )}
     </div>
   );

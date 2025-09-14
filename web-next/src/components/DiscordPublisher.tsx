@@ -227,8 +227,8 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
     if (!clanData || !clanData.members) return "";
 
     const members = clanData.members;
-    const activeMembers = members.filter(m => (m.lastSeen || 0) <= 1);
-    const inactiveMembers = members.filter(m => (m.lastSeen || 0) > 3);
+    const activeMembers = members.filter(m => Number(m.lastSeen || 0) <= 1);
+    const inactiveMembers = members.filter(m => Number(m.lastSeen || 0) > 3);
     const newMembers = members.filter(m => (m.tenure_days || m.tenure || 0) < 7);
 
     let message = `⚡ **Activity Report for ${clanData.clanName || 'Your Clan'}**\n\n`;
