@@ -3124,7 +3124,27 @@ Please analyze this clan data and provide insights on:
 
       {/* Departure Manager Modal */}
       {showDepartureManager && (
-        <LeadershipGuard requiredPermission="canManageChangeDashboard">
+        <LeadershipGuard 
+          requiredPermission="canManageChangeDashboard"
+          fallback={
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                <div className="text-center">
+                  <div className="text-4xl mb-4">🔔</div>
+                  <h3 className="text-lg font-semibold text-gray-800 mb-2">Departure Manager</h3>
+                  <p className="text-gray-600 mb-4">This feature requires leadership access.</p>
+                  <p className="text-sm text-gray-500 mb-4">Use the role selector in the top right to switch to Leader or Co-Leader role.</p>
+                  <button
+                    onClick={() => setShowDepartureManager(false)}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          }
+        >
           <DepartureManager
             clanTag={clanTag || homeClan || ""}
             onClose={() => {
