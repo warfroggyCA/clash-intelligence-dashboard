@@ -30,7 +30,7 @@ export function useLeadership(): UseLeadershipResult {
             case 'leader':
               return 'leader';
             case 'coLeader':
-              return 'coleader';
+              return 'coLeader';
             case 'elder':
               return 'elder';
             case 'member':
