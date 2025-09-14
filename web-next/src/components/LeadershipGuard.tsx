@@ -37,7 +37,7 @@ export default function LeadershipGuard({
   }
 
   if (!permissions[requiredPermission]) {
-    if (fallback) {
+    if (fallback !== undefined) {
       return <>{fallback}</>;
     }
 
