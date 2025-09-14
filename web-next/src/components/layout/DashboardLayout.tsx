@@ -51,6 +51,8 @@ const DashboardHeader: React.FC = () => {
     setMessage,
     loadRoster,
     refreshData,
+    selectedSnapshot,
+    setSelectedSnapshot,
     departureNotifications,
     setShowDepartureManager,
     setShowAccessManager,
@@ -307,6 +309,15 @@ const DashboardHeader: React.FC = () => {
         {/* Row 2 (right column): Tag input + actions (right-aligned, compact) */}
         <div className="col-[3] row-[2]">
           <div className="flex flex-col sm:flex-row items-center justify-end gap-2">
+          <select
+            value={selectedSnapshot}
+            onChange={(e) => { setSelectedSnapshot(e.target.value); if (clanTag) refreshData(); }}
+            className="h-8 px-2 rounded-md border border-white/30 bg-white/10 text-white text-xs backdrop-blur-sm"
+            title="Data source: live or latest snapshot"
+          >
+            <option className="text-black" value="live">Live</option>
+            <option className="text-black" value="latest">Snapshot</option>
+          </select>
           <input
             type="text"
             value={clanTag}
@@ -389,7 +400,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="flex items-center space-x-4">
               <span>Clash Intelligence Dashboard</span>
               <span className="text-gray-400">•</span>
-              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v0.16.3</span>
+              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v{process.env.NEXT_PUBLIC_APP_VERSION || '0.16.3'}</span>
               <span className="text-gray-400">•</span>
               <span className="text-gray-500">A warfroggy project</span>
             </div>

@@ -24,6 +24,7 @@ import AccessManager from '@/components/AccessManager';
 import AccessSetup from '@/components/AccessSetup';
 import AccessLogin from '@/components/AccessLogin';
 import { PlayerProfileModal } from './PlayerProfileModal';
+import { showToast } from '@/lib/toast';
 import { QuickDepartureModal } from './QuickDepartureModal';
 
 // =============================================================================
@@ -208,8 +209,7 @@ const PlayerProfileModals: React.FC = () => {
             setSelectedMember(null);
           }}
           onSave={(departureData) => {
-            // Handle departure data saving
-            console.log('Departure data:', departureData);
+            showToast('Departure recorded','success');
             setShowDepartureModal(false);
             setSelectedMember(null);
           }}

@@ -254,33 +254,26 @@ function getRemainingLevels(townHallLevel: number, heroKey: string, currentLevel
 // Generate copyable game chat messages for significant achievements
 export function generateGameChatMessages(changes: MemberChange[]): string[] {
   const messages: string[] = [];
-  
-  // Hero upgrades (any level for now, can adjust thresholds later)
-  const heroUpgrades = changes.filter(change => change.type === 'hero_upgrade');
-  
-  for (const change of heroUpgrades) {
-    const heroName = getHeroDisplayName(change.description);
-    const heroKey = getHeroKeyFromDescription(change.description);
-    const townHallLevel = change.member.townHallLevel;
-    
-    // Calculate remaining levels if we have the data
-    let remainingText = '';
-    if (heroKey && townHallLevel) {
-      const remaining = getRemainingLevels(townHallLevel, heroKey, change.newValue);
-      if (remaining !== null && remaining > 0) {
-        remainingText = ` Only ${remaining} to go!`;
-      }
-    }
-    
-    if (change.newValue >= 90) {
-      messages.push(`🎉 ${change.member.name} just MAXED their ${heroName}! Incredible dedication! 🏆`);
-    } else if (change.newValue >= 75) {
-      messages.push(`🔥 ${change.member.name} upgraded their ${heroName} to level ${change.newValue}!${remainingText} Getting close to max! 💪`);
-    } else if (change.newValue >= 50) {
-      messages.push(`⚡ ${change.member.name} upgraded their ${heroName} to level ${change.newValue}!${remainingText} Great progress! 🎯`);
-    } else {
-      messages.push(`💪 ${change.member.name} upgraded their ${heroName} to level ${change.newValue}!${remainingText} Keep it up! 🚀`);
-    }
+
+  // Hero upgrades → group per player for a single "boffo" line
+  const heroUpgrades = changes.filter(c => c.type === 'hero_upgrade');
+  const byPlayer = new Map<string, { name: string; items: Array<{ hero: string; lvl: number; th?: number }>; sum: number }>();
+  for (const c of heroUpgrades) {
+    const hero = getHeroDisplayName(c.description);
+    const entry = byPlayer.get(c.member.tag) || { name: c.member.name, items: [], sum: 0 };
+    entry.items.push({ hero, lvl: Number(c.newValue) || 0, th: c.member.townHallLevel });
+    entry.sum += Number(c.newValue) || 0;
+    byPlayer.set(c.member.tag, entry);
+  }
+  // Compose grouped lines
+  for (const [, v] of byPlayer) {
+    // Order by level desc, take first 3 to keep short
+    const sorted = v.items.sort((a, b) => b.lvl - a.lvl);
+    const shown = sorted.slice(0, 3).map(it => shortHero(it.hero) + ' ' + it.lvl);
+    const extra = v.items.length - shown.length;
+    const tail = extra > 0 ? `, +${extra} more` : '';
+    const emoji = v.items.length >= 4 ? '🚀' : v.items.length >= 2 ? '💪' : '⚡';
+    messages.push(`${emoji} ${v.name} went off: ${shown.join(', ')}${tail}!`);
   }
   
   // Town Hall upgrades
@@ -350,4 +343,13 @@ function getHeroDisplayName(description: string): string {
   if (description.includes('RC') || description.includes('Royal Champion')) return 'Royal Champion';
   if (description.includes('MP') || description.includes('Minion Prince')) return 'Minion Prince';
   return 'Hero';
+}
+
+function shortHero(name: string): string {
+  if (/Barbarian King/i.test(name)) return 'BK';
+  if (/Archer Queen/i.test(name)) return 'AQ';
+  if (/Grand Warden/i.test(name)) return 'GW';
+  if (/Royal Champion/i.test(name)) return 'RC';
+  if (/Minion Prince/i.test(name)) return 'MP';
+  return name;
 }

@@ -158,16 +158,19 @@ export default function HomePage() {
     homeClan, 
     clanTag, 
     roster,
-    setClanTag 
+    setClanTag,
+    hydrateRosterFromCache
   } = useDashboardStore();
 
   // Initialize with home clan if available
   useEffect(() => {
     const currentTag = clanTag || homeClan;
-    if (currentTag) {
-      loadRoster(currentTag);
-    }
-  }, [clanTag, homeClan, loadRoster]);
+    if (!currentTag) return;
+    // First paint from cache if available
+    const had = hydrateRosterFromCache();
+    // Then load snapshot/live in background without blocking paint
+    loadRoster(currentTag);
+  }, [clanTag, homeClan, loadRoster, hydrateRosterFromCache]);
 
   // Get current clan tag for components that need it
   const currentClanTag = clanTag || homeClan || '';

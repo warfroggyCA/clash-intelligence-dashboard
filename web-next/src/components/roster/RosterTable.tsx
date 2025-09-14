@@ -38,6 +38,7 @@ import { TableFilters } from './TableFilters';
 import { Pagination } from './Pagination';
 import { Button } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
+import { QuickActions } from '@/components/layout/QuickActions';
 
 // =============================================================================
 // TYPES
@@ -340,16 +341,23 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Table Filters */}
-      <TableFilters
-        filters={filters}
-        onFilterChange={handleFilterChange}
-        onClearFilters={handleClearFilters}
-        uniqueRoles={uniqueRoles}
-        uniqueTownHalls={uniqueTownHalls}
-        totalMembers={members.length}
-        filteredCount={filteredMembers.length}
-      />
+      {/* Filters + Quick Actions side-by-side on large screens */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+        <div className="lg:col-span-2">
+          <TableFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+            uniqueRoles={uniqueRoles}
+            uniqueTownHalls={uniqueTownHalls}
+            totalMembers={members.length}
+            filteredCount={filteredMembers.length}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <QuickActions />
+        </div>
+      </div>
 
       {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">
