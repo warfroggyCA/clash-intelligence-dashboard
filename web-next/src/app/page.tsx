@@ -3088,6 +3088,20 @@ Please analyze this clan data and provide insights on:
             members={roster?.members || []} 
             clanTag={clanTag || homeClan || ""} 
           />
+        ) : activeTab === "coaching" ? (
+          <LeadershipGuard 
+            requiredPermission="canGenerateAICoaching"
+            fallback={
+              <div className="text-center py-8">
+                <div className="text-4xl mb-4">🤖</div>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">AI Coaching</h3>
+                <p className="text-gray-600 mb-4">This feature requires leadership access.</p>
+                <p className="text-sm text-gray-500">Use the role selector in the top right to switch to Leader or Co-Leader role.</p>
+              </div>
+            }
+          >
+            <AICoaching clanData={roster} clanTag={clanTag || homeClan || ""} />
+          </LeadershipGuard>
         ) : activeTab === "discord" ? (
           <LeadershipGuard 
             requiredPermission="canAccessDiscordPublisher"
@@ -3106,19 +3120,11 @@ Please analyze this clan data and provide insights on:
             />
           </LeadershipGuard>
         ) : (
-          <LeadershipGuard 
-            requiredPermission="canGenerateAICoaching"
-            fallback={
-              <div className="text-center py-8">
-                <div className="text-4xl mb-4">🤖</div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">AI Coaching</h3>
-                <p className="text-gray-600 mb-4">This feature requires leadership access.</p>
-                <p className="text-sm text-gray-500">Use the role selector in the top right to switch to Leader or Co-Leader role.</p>
-              </div>
-            }
-          >
-            <AICoaching clanData={roster} clanTag={clanTag || homeClan || ""} />
-          </LeadershipGuard>
+          <div className="text-center py-8">
+            <div className="text-4xl mb-4">❓</div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Unknown Tab</h3>
+            <p className="text-gray-600">This tab is not implemented yet.</p>
+          </div>
         )}
       </main>
 
