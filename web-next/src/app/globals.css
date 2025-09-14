@@ -5,6 +5,13 @@
 :root { 
   color-scheme: light; 
   --font-size-multiplier: 1;
+  /* Shared gradient for header + tabs lip */
+  --header-gradient: linear-gradient(to right, rgb(79,70,229), rgb(147,51,234), rgb(37,99,235));
+}
+
+/* Utility to apply shared header gradient */
+.bg-header-gradient {
+  background-image: var(--header-gradient);
 }
 
 body { @apply bg-white text-gray-900; }
@@ -47,4 +54,3 @@ th { @apply text-left font-semibold; }
   -ms-animation-delay: 0s !important;
   -o-animation-delay: 0s !important;
 }
-

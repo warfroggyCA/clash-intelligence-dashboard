@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * DashboardLayout Component
  * 
@@ -15,7 +17,7 @@
  * Last Updated: January 2025
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useState } from 'react';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
@@ -24,8 +26,9 @@ import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
 import { QuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
+import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
-import { sanitizeInputTag, normalizeTag, isValidTag } from '@/lib/tags';
+import { sanitizeInputTag, normalizeTag, isValidTag, safeTagForFilename } from '@/lib/tags';
 
 // =============================================================================
 // TYPES
@@ -54,8 +57,18 @@ const DashboardHeader: React.FC = () => {
     checkDepartureNotifications,
   } = useDashboardStore();
 
-  const clanName = selectors.clanName(useDashboardStore.getState());
-  const hasLeadershipAccess = selectors.hasLeadershipAccess(useDashboardStore.getState());
+  const clanName = useDashboardStore(selectors.clanName);
+  const hasLeadershipAccess = useDashboardStore(selectors.hasLeadershipAccess);
+
+  // Shrink-on-scroll state
+  const [isScrolled, setIsScrolled] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onScroll = () => setIsScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   // Define handleLoadHome first before using it in useEffect
   const handleLoadHome = useCallback(async () => {
@@ -170,150 +183,162 @@ const DashboardHeader: React.FC = () => {
     }
   };
 
+  // Logo source candidates: try several common paths/extensions before fallback
+  const activeTag = (clanTag || homeClan || '').toString();
+  const logoSafe = activeTag ? safeTagForFilename(activeTag) : '';
+  const logoUpper = activeTag.replace('#', '');
+  const logoLower = logoUpper.toLowerCase();
+  const logoCandidates = [
+    logoSafe ? `/clans/${logoSafe}.png` : '',
+    logoSafe ? `/clans/${logoSafe}.jpg` : '',
+    logoSafe ? `/clans/${logoSafe}.jpeg` : '',
+    logoSafe ? `/clans/${logoSafe}.webp` : '',
+    logoLower ? `/${logoLower}.png` : '',
+    logoLower ? `/${logoLower}.jpg` : '',
+    logoLower ? `/${logoLower}.jpeg` : '',
+    logoLower ? `/${logoLower}.webp` : '',
+    logoUpper ? `/${logoUpper}.PNG` : '',
+  ].filter(Boolean);
+  const [logoIdx, setLogoIdx] = useState(0);
+  useEffect(() => { setLogoIdx(0); }, [logoSafe, logoLower, logoUpper]);
+  const logoSrc = logoCandidates[logoIdx] || '/clan-logo.png';
+
   return (
-    <header className="w-full bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 text-white shadow-lg">
-      <div className="w-full px-6 py-4 flex items-center justify-between">
-        {/* Left side - Logo */}
-        <div className="flex items-center overflow-hidden">
-          <img 
-            src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXRoIjoic3VwZXJjZWxsXC9maWxlXC91OGFIS25ZUkpQaXlvVHh5a1Q0OC5wbmcifQ:supercell:8_pSWOLovwldaAWJu_t2Q6C91k6oc7p_mY0m9yar7G0?width=1218&format=webp&quality=100"
-            alt="Clash of Clans Logo"
-            className="h-32 w-auto object-contain -ml-4 -mt-2"
-            onError={(e) => {
-              // Fallback to emoji if image fails to load
-              e.currentTarget.style.display = 'none';
-              const fallback = e.currentTarget.nextElementSibling as HTMLElement;
-              if (fallback) fallback.style.display = 'block';
-            }}
-          />
-          <span className="text-4xl hidden">⚔️</span>
+    <header className="w-full sticky top-0 z-50 bg-header-gradient text-white shadow-lg/70 backdrop-blur supports-[backdrop-filter]:bg-white/10">
+      {/* Unified 2-row grid: left/right controls; name centered across rows */}
+      <div className="w-full px-4 py-2 grid grid-cols-[auto,1fr,auto] grid-rows-[auto,auto] items-center gap-x-4 gap-y-1">
+        {/* Left (row 1): Logo + App name */}
+        <div className="flex items-center gap-2 min-w-0 col-[1] row-[1]">
+          <div className="relative h-10 w-10">
+            <img
+              src={logoSrc}
+              alt="Clan Logo"
+              className="h-10 w-10 rounded-md object-cover ring-1 ring-white/30 bg-white/10 absolute inset-0"
+              onError={(e) => {
+                // Try next candidate, then hide if exhausted
+                setLogoIdx((i) => {
+                  const next = i + 1;
+                  if (next < logoCandidates.length) return next;
+                  (e.currentTarget as HTMLImageElement).style.display = 'none';
+                  return i;
+                });
+              }}
+            />
+            {/* Visible placeholder when no custom logo is present */}
+            <div
+              className="h-10 w-10 rounded-md ring-1 ring-white/30 bg-white/10 flex items-center justify-center text-white/80 select-none"
+              title={logoSafe
+                ? `Add clan logo at /public/clans/${logoSafe}.png or /public/${logoLower}.png`
+                : 'Add clan logo at /public/clan-logo.png'}
+            >
+              🛡️
+            </div>
+          </div>
+          <div className="hidden sm:block">
+            <div className="font-semibold leading-tight">Clash Intelligence</div>
+            <div className="text-xs text-blue-100">Clan Analytics</div>
+          </div>
         </div>
-        
-        {/* Center - Clan Name & Input */}
-        <div className="text-center flex-1 max-w-2xl">
+
+        {/* Center (rows 1-2): Clan name (vertically centered across both rows) */}
+        <div className="col-[2] row-[1] row-span-2 flex justify-center items-center">
           {clanName ? (
-            <div className="font-bold text-4xl text-white drop-shadow-lg mb-2">
+            <div
+              className={
+                `font-extrabold tracking-tight text-center drop-shadow-md leading-none transition-all duration-200 ` +
+                (isScrolled ? 'text-2xl' : 'text-4xl')
+              }
+            >
               {clanName}
             </div>
           ) : (
             <div className="text-center">
-              <div className="font-bold text-4xl text-white drop-shadow-lg mb-2">
-                Clash Intelligence Dashboard
-              </div>
-              <div className="text-lg text-white/80 drop-shadow-md">
-                Enter a clan tag below to get started
-              </div>
+              <div className="font-extrabold text-3xl drop-shadow-md leading-none">Clash Intelligence</div>
+              <div className="text-xs text-blue-100">Enter a clan tag below to begin</div>
             </div>
           )}
-          
-          <div className="flex flex-col sm:flex-row items-center gap-2 justify-center">
-            <input
-              type="text"
-              value={clanTag}
-              onChange={handleClanTagChange}
-              placeholder="Enter clan tag (e.g., #2PR8R8V8P)..."
-              className="border border-white/30 bg-white/10 text-white placeholder-white/70 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white/20 transition-all backdrop-blur-sm"
-              title="Enter a clan tag to load their roster data"
-              onKeyDown={(e) => e.key === 'Enter' && handleLoadClan()}
-            />
+        </div>
+
+        {/* Right (row 1): Role + tiny controls */}
+        <div className="flex items-center justify-end gap-2 col-[3] row-[1]">
+          {/* Role Selector (compact) */}
+          <UserRoleSelector
+            currentRole={useDashboardStore.getState().userRole}
+            onRoleChange={useDashboardStore.getState().setUserRole}
+            className="hidden md:block text-xs"
+          />
+
+          {/* Access Management */}
+          <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
             <button
-              onClick={handleLoadClan}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg font-medium transition-all duration-200 hover:scale-105 backdrop-blur-sm border border-white/30"
-              title="Load clan data and switch to this clan"
+              onClick={() => setShowAccessManager(true)}
+              className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm"
+              title="Manage clan access"
             >
-              🔄 Switch Clan
+              👥
             </button>
-            <button
-              onClick={handleSetHome}
-              className="px-3 py-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-lg text-sm transition-all duration-200 hover:scale-105"
-              title="Set as home clan"
-            >
-              🏠 Set Home
-            </button>
-            {homeClan && (
+          </LeadershipGuard>
+
+          {/* Font Size Control */}
+          <div className="hidden md:block scale-90 origin-right"><FontSizeControl /></div>
+
+          {/* FAQ */}
+          <a href="/faq" className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm inline-flex items-center" title="FAQ">❓</a>
+
+          {/* Refresh */}
+          <button onClick={handleRefresh} className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" title="Refresh">🔄</button>
+
+          {/* Departure Notifications */}
+          <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
+            {departureNotifications > 0 && (
               <button
-                onClick={handleLoadHome}
-                className="px-3 py-2 bg-green-500/80 hover:bg-green-500 text-white rounded-lg text-sm transition-all duration-200 hover:scale-105"
-                title={`Load home clan: ${homeClan}`}
+                onClick={() => setShowDepartureManager(true)}
+                className="relative h-8 px-2 hover:bg-indigo-600 rounded-md text-sm"
+                title="Member departure notifications"
               >
-                🏡 Load Home
+                🔔
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center">
+                  {departureNotifications}
+                </span>
               </button>
             )}
-          </div>
+          </LeadershipGuard>
         </div>
-        
-        {/* Right side - App Title & Controls */}
-        <div className="flex flex-col items-end space-y-2">
-          <div className="text-right">
-            <div className="font-bold text-xl">Clash Intelligence Dashboard</div>
-            <div className="text-sm text-blue-100">Advanced Clan Analytics</div>
-          </div>
-          
-          <div className="flex items-center space-x-4">
-            {/* Role Selector */}
-            <UserRoleSelector
-              currentRole={useDashboardStore.getState().userRole}
-              onRoleChange={useDashboardStore.getState().setUserRole}
-              className="hidden sm:block"
-            />
-            
-            {/* Access Management */}
-            <LeadershipGuard
-              requiredPermission="canManageAccess"
-              fallback={null}
-            >
-              <button
-                onClick={() => setShowAccessManager(true)}
-                className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
-                title="Manage clan access"
-              >
-                👥
-              </button>
-            </LeadershipGuard>
-            
-            {/* Font Size Control */}
-            <FontSizeControl />
-            
-            {/* FAQ Link */}
-            <a
-              href="/faq"
-              className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
-              title="View FAQ and Help Guide"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </a>
-            
-            {/* Refresh Button */}
+        {/* Row 2 (right column): Tag input + actions (right-aligned, compact) */}
+        <div className="col-[3] row-[2]">
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-2">
+          <input
+            type="text"
+            value={clanTag}
+            onChange={handleClanTagChange}
+            placeholder="Enter clan tag (e.g., #2PR8R8V8P)"
+            className="h-8 min-w-[260px] border border-white/30 bg-white/10 text-white placeholder-white/70 rounded-md px-2 text-xs focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all backdrop-blur-sm"
+            title="Enter a clan tag to load their roster data"
+            onKeyDown={(e) => e.key === 'Enter' && handleLoadClan()}
+          />
+          <button
+            onClick={handleLoadClan}
+            className="h-8 px-3 bg-white/20 hover:bg-white/30 text-white rounded-md text-xs font-medium transition-all border border-white/30"
+            title="Load clan data and switch to this clan"
+          >
+            Switch
+          </button>
+          <button
+            onClick={handleSetHome}
+            className="h-8 px-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-md text-xs transition-all"
+            title="Set as home clan"
+          >
+            Set Home
+          </button>
+          {homeClan && (
             <button
-              onClick={handleRefresh}
-              className="p-2 hover:bg-indigo-600 rounded-lg transition-all duration-200 hover:scale-110"
-              title="Refresh data from API"
+              onClick={handleLoadHome}
+              className="h-8 px-2 bg-green-500/80 hover:bg-green-500 text-white rounded-md text-xs transition-all"
+              title={`Load home clan: ${homeClan}`}
             >
-              🔄
+              Load Home
             </button>
-            
-            {/* Departure Notifications */}
-            <LeadershipGuard 
-              requiredPermission="canManageChangeDashboard" 
-              fallback={null}
-            >
-              {departureNotifications > 0 && (
-                <button
-                  onClick={() => setShowDepartureManager(true)}
-                  className="relative p-2 hover:bg-indigo-600 rounded-lg transition-colors"
-                  title="Member departure notifications"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-5 5v-5zM4 19h6v-6H4v6z" />
-                  </svg>
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                    {departureNotifications}
-                  </span>
-                </button>
-              )}
-            </LeadershipGuard>
+          )}
           </div>
         </div>
       </div>
@@ -334,21 +359,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Header */}
       <DashboardHeader />
       
-      {/* Tab Navigation */}
-      <div className="w-full px-6 pt-6">
-        <div className="relative">
-          <div className="bg-white/90 backdrop-blur-sm rounded-t-xl border border-b-0 border-gray-200 shadow-xl">
-            <TabNavigation />
-          </div>
+      {/* Tab Navigation (glued under header) */}
+      <div className="w-full px-0 -mt-2">
+        <div className="relative bg-white/90 backdrop-blur-sm rounded-b-xl border border-t-0 border-gray-200">
+          {/* Thin gradient seam to visually glue to header */}
+          <div className="absolute -top-2 left-0 right-0 h-2 bg-header-gradient" />
+          <TabNavigation />
         </div>
       </div>
       
       {/* Main Content */}
-      <main className="min-h-screen p-6 flex flex-col gap-6 w-full bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
+      <main className="min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
+        <ToastHub />
         {/* Dev Status */}
         <DevStatusBadge />
-        {/* Quick Actions */}
-        <QuickActions />
+        {/* Quick Actions (hide on Roster; rendered inside roster alongside filters) */}
+        {useDashboardStore.getState().activeTab !== 'roster' && (
+          <QuickActions />
+        )}
         
         {/* Page Content */}
         {children}

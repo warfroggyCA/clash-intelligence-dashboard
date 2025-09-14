@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * TabNavigation Component
  * 
@@ -115,7 +117,7 @@ const TabButton: React.FC<TabButtonProps> = ({ config, isActive, onClick }) => {
   const hasLeadershipAccess = selectors.hasLeadershipAccess(useDashboardStore.getState());
   const canAccess = !config.requiresLeadership || hasLeadershipAccess;
   
-  const baseStyles = "relative px-3 sm:px-6 py-1 sm:py-2 font-semibold text-sm sm:text-base transition-all duration-300 rounded-lg flex-1 sm:flex-none";
+  const baseStyles = "relative px-3 sm:px-6 py-1.5 sm:py-2 font-semibold text-base sm:text-lg transition-all duration-300 rounded-lg flex-1 sm:flex-none";
   
   const activeStyles = "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform scale-105 border-2 border-blue-400";
   const inactiveStyles = canAccess 
@@ -132,8 +134,8 @@ const TabButton: React.FC<TabButtonProps> = ({ config, isActive, onClick }) => {
       title={canAccess ? config.description : 'Leadership access required'}
       aria-label={config.description}
     >
-      <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
-        <span className="text-base sm:text-lg">
+      <span className="flex items-center gap-1.5 sm:gap-3 justify-center sm:justify-start">
+        <span className="text-lg sm:text-xl">
           {config.icon}
           {config.requiresLeadership && hasLeadershipAccess && (
             <span className="ml-1 text-xs">👑</span>

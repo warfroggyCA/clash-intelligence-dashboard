@@ -34,6 +34,8 @@ import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
 import { getHeroDisplayValue, isHeroAvailable } from '@/lib/business/calculations';
 import { Button } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { showToast } from '@/lib/toast';
 
 // =============================================================================
 // TYPES
@@ -107,13 +109,13 @@ const formatDays = (days: number | undefined): string => {
 // CELL COMPONENTS
 // =============================================================================
 
-interface TableCellProps {
+interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   className?: string;
   children: React.ReactNode;
 }
 
-const TableCell: React.FC<TableCellProps> = ({ className = '', children }) => (
-  <td className={`py-3 px-4 ${className}`}>
+const TableCell: React.FC<TableCellProps> = ({ className = '', children, ...rest }) => (
+  <td className={`py-3 px-4 ${className}`} {...rest}>
     {children}
   </td>
 );
@@ -128,6 +130,7 @@ export const TableRow: React.FC<TableRowProps> = ({
   roster,
   className = ''
 }) => {
+  const { setShowPlayerProfile, setSelectedPlayer, setShowDepartureModal, setSelectedMember } = useDashboardStore();
   // Calculate member metrics
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
@@ -141,19 +144,19 @@ export const TableRow: React.FC<TableRowProps> = ({
 
   // Handle member actions
   const handleOpenProfile = () => {
-    // This would be handled by the parent component
-    console.log('Open profile for:', member.name);
+    setSelectedPlayer(member);
+    setShowPlayerProfile(true);
   };
 
   const handleQuickDeparture = () => {
-    // This would be handled by the parent component
-    console.log('Quick departure for:', member.name);
+    setSelectedMember(member);
+    setShowDepartureModal(true);
   };
 
   // Row styling
   const rowStyles = `
-    border-b border-slate-100 last:border-0 transition-all duration-200 
-    hover:bg-blue-50/50 hover:scale-[1.01] hover:shadow-md cursor-pointer
+    border-b border-slate-100 last:border-0 transition-colors duration-150 
+    hover:bg-blue-50/50 cursor-pointer
     ${index % 2 === 1 ? "bg-slate-50/50" : "bg-white/50"}
   `;
 
@@ -216,7 +219,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           <span className="font-semibold">TH{th}</span>
           {isRushedPlayer && (
             <span className="text-xs text-red-600" title={`Rushed: ${rushPercent}%`}>
-              {isVeryRushedPlayer ? '🔴' : '🟡'}
+              {isVeryRushedPlayer ? '🔴' : '⚠️'}
             </span>
           )}
         </div>
@@ -322,30 +325,12 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Donations Given Column */}
       <TableCell className="text-center border-r border-slate-300" title={`Donations given/received: ${(donationBalance.given).toLocaleString()} / ${(donationBalance.received).toLocaleString()} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
-        <div className="flex flex-col items-center">
-          <span className="font-semibold text-green-700">
-            {formatNumber(member.donations)}
-          </span>
-          {isLowDonatorPlayer && (
-            <span className="text-xs text-red-600" title="Low donator">
-              ⚠️
-            </span>
-          )}
-        </div>
+        <span className="font-semibold text-green-700">{formatNumber(member.donations)}</span>
       </TableCell>
 
       {/* Donations Received Column */}
       <TableCell className="text-center border-r border-slate-300" title={`Donations received: ${formatNumber(member.donationsReceived)} (net ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
-        <div className="flex flex-col items-center">
-          <span className="font-semibold text-blue-700">
-            {formatNumber(member.donationsReceived)}
-          </span>
-          {isNetReceiverPlayer && (
-            <span className="text-xs text-orange-600" title="Net receiver">
-              📥
-            </span>
-          )}
-        </div>
+        <span className="font-semibold text-blue-700">{formatNumber(member.donationsReceived)}</span>
       </TableCell>
 
       {/* Tenure Column */}
@@ -364,17 +349,20 @@ export const TableRow: React.FC<TableRowProps> = ({
         <div className="relative inline-block text-left">
           <ActionsMenu 
             onViewProfile={(e) => { e.stopPropagation(); handleOpenProfile(); }}
-            onCopyTag={(e) => { e.stopPropagation(); navigator.clipboard.writeText(member.tag).catch(()=>{}); }}
+            onCopyTag={(e) => { e.stopPropagation(); navigator.clipboard.writeText(member.tag).then(() => showToast('Tag copied','success')).catch(() => showToast('Copy failed','error')); }}
             onDeparture={(e) => { e.stopPropagation(); handleQuickDeparture(); }}
             onGrantTenure={async (e) => {
               e.stopPropagation();
               try {
-                await fetch('/api/tenure/update', {
+                const res = await fetch('/api/tenure/update', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ clanTag: roster.clanTag || '', memberTag: member.tag, mode: 'grant-existing' })
                 });
-              } catch {}
+                if (res.ok) showToast('Granted prior tenure','success'); else showToast('Failed to grant tenure','error');
+              } catch {
+                showToast('Failed to grant tenure','error');
+              }
             }}
           />
         </div>
@@ -391,17 +379,44 @@ const ActionsMenu: React.FC<{
   onGrantTenure: (e: React.MouseEvent) => void;
 }> = ({ onViewProfile, onCopyTag, onDeparture, onGrantTenure }) => {
   const [open, setOpen] = useState(false);
+  const ref = React.useRef<HTMLDivElement>(null);
+
+  // Close on outside click / Escape
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (!ref.current) return;
+      if (!ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onScroll = () => setOpen(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    document.addEventListener('mousedown', onDown, true);
+    window.addEventListener('scroll', onScroll, true);
+    document.addEventListener('keydown', onKey, true);
+    return () => {
+      document.removeEventListener('mousedown', onDown, true);
+      window.removeEventListener('scroll', onScroll, true);
+      document.removeEventListener('keydown', onKey, true);
+    };
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
       <button
-        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
-        className="px-2 py-1 border border-slate-300 rounded hover:bg-slate-50"
+        onClick={() => setOpen(v => !v)}
+        className="px-2 py-1 border border-slate-300 rounded hover:bg-slate-50 focus:outline-none"
         title="Actions"
+        aria-haspopup="menu"
+        aria-expanded={open}
       >
         ⋯
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded shadow z-10">
+        <div className="absolute right-0 mt-2 min-w-[12rem] whitespace-nowrap bg-white border border-slate-200 rounded-md shadow-xl ring-1 ring-black/5 z-[1000] overflow-hidden">
           <button onClick={(e) => { onViewProfile(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">View Profile</button>
           <button onClick={(e) => { onCopyTag(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Copy Tag</button>
           <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>

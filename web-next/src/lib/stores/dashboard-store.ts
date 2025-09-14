@@ -127,6 +127,7 @@ interface DashboardState {
   refreshData: () => Promise<void>;
   checkDepartureNotifications: () => Promise<void>;
   dismissAllNotifications: () => void;
+  hydrateRosterFromCache: () => boolean;
 }
 
 // =============================================================================
@@ -172,7 +173,7 @@ const initialState = {
   
   // Snapshots & History
   availableSnapshots: [],
-  selectedSnapshot: 'live',
+  selectedSnapshot: 'latest',
   playerNameHistory: {},
   eventHistory: {},
   eventFilterPlayer: '',
@@ -192,7 +193,17 @@ export const useDashboardStore = create<DashboardState>()(
       // BASIC SETTERS
       // =============================================================================
       
-      setRoster: (roster) => set({ roster }),
+      setRoster: (roster) => {
+        set({ roster });
+        try {
+          if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
+            const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
+            if (tag) {
+              localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(roster));
+            }
+          }
+        } catch {}
+      },
       setClanTag: (clanTag) => set({ clanTag }),
       setHomeClan: (homeClan) => set({ homeClan }),
       setMessage: (message) => set({ message }),
@@ -285,6 +296,23 @@ export const useDashboardStore = create<DashboardState>()(
           setLastLoadInfo(undefined);
         }
       },
+
+      // Hydrate roster from local cache for instant paint
+      hydrateRosterFromCache: () => {
+        try {
+          if (typeof window === 'undefined') return false;
+          const tag = (get().clanTag || get().homeClan || '').toString();
+          if (!tag) return false;
+          const raw = localStorage.getItem(`lastRoster:${tag}`);
+          if (!raw) return false;
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.members)) {
+            set({ roster: parsed as Roster });
+            return true;
+          }
+        } catch {}
+        return false;
+      },
       
       refreshData: async () => {
         const { clanTag, loadRoster } = get();
@@ -368,7 +396,7 @@ export const useDashboardStore = create<DashboardState>()(
         userRole: state.userRole,
       }),
       // Prevent hydration mismatch by using onRehydrateStorage
-      onRehydrateStorage: () => (state) => {
+      onRehydrateStorage: () => (state: DashboardState | undefined) => {
         // This runs after rehydration completes
         if (state) {
           console.log('[DashboardStore] Rehydrated successfully');
