@@ -7,37 +7,17 @@ import path from "path";
 import { promises as fsp } from "fs";
 import { cfg } from "@/lib/config";
 import { getClanMembers, getPlayer, extractHeroLevels } from "@/lib/coc";
+import { normalizeTag, isValidTag } from "@/lib/tags";
+import { rateLimiter } from "@/lib/rate-limiter";
 
-function sleep(ms: number) { return new Promise((r) => setTimeout(r, ms)); }
-
-// Tiny concurrency helper to be gentle with the API
-async function mapLimit<T, R>(
-  items: T[],
-  limit: number,
-  fn: (x: T, i: number) => Promise<R>
-): Promise<R[]> {
-  const out: R[] = new Array(items.length) as any;
-  let i = 0, active = 0;
-  return new Promise((resolve) => {
-    const launch = () => {
-      if (i >= items.length && active === 0) return resolve(out);
-      while (active < limit && i < items.length) {
-        const idx = i++, it = items[idx]; active++;
-        fn(it, idx)
-          .then((res) => { out[idx] = res; })
-          .catch((_e) => { out[idx] = undefined as any; })
-          .finally(() => { active--; launch(); });
-      }
-    };
-    launch();
-  });
-}
+// Concurrency is governed by the shared rateLimiter
 
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const clanTag = url.searchParams.get("clanTag") || cfg.homeClanTag;
-    if (!clanTag) {
+    const raw = url.searchParams.get("clanTag") || cfg.homeClanTag || '';
+    const clanTag = normalizeTag(raw);
+    if (!clanTag || !isValidTag(clanTag)) {
       return NextResponse.json({ ok: false, error: "Missing clanTag" }, { status: 400 });
     }
 
@@ -48,12 +28,16 @@ export async function GET(request: Request) {
     }
 
     // 2) Pull each player (heroes) with modest concurrency
-    const results = await mapLimit(members, 5, async (m) => {
-      await sleep(60); // tiny jitter
-      const p = await getPlayer(m.tag);
-      const heroes = extractHeroLevels(p); // maps to {bk,aq,gw,rc,mp}
-      return { tag: m.tag.toUpperCase(), heroes };
-    });
+    const results = await Promise.all(members.map(async (m) => {
+      await rateLimiter.acquire();
+      try {
+        const p = await getPlayer(m.tag);
+        const heroes = extractHeroLevels(p); // maps to {bk,aq,gw,rc,mp}
+        return { tag: normalizeTag(m.tag), heroes };
+      } finally {
+        rateLimiter.release();
+      }
+    }));
 
     // 3) Write hero_index.json (fallback data used by /api/roster when live is unavailable)
     const heroIndex: Record<string, any> = {};
@@ -90,4 +74,3 @@ export async function GET(request: Request) {
     return NextResponse.json({ ok: false, error: e?.message || "sync failed" }, { status: 500 });
   }
 }
-

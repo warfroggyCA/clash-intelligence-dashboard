@@ -126,6 +126,22 @@ Ok # Clash Intelligence Dashboard - Development Ideas
 - [ ] **CRITICAL: Fix change detection system** - Not detecting member departures (e.g., "Gambit" left but system said "no changes")
 - [ ] **CRITICAL: Fix dashboard auto-loading** - Dashboard should auto-load latest snapshot data on startup but currently shows empty
 
+### 2025-09-14 Updates
+- [x] Hardened change detection: normalize tags to uppercase when diffing snapshots to ensure joins/leaves are correctly detected regardless of case drift.
+- [x] Snapshot-first loading: `loadRoster()` now attempts `mode=snapshot&date=latest` by default and falls back to live if no snapshot exists. Status messages indicate the data source.
+- [x] Centralized tag handling: Added `lib/tags.ts` and refactored API/routes/libs to use shared helpers (normalize, validate, filenames).
+- [x] Extracted rate limiter: Shared `lib/rate-limiter.ts` imported by APIs for consistent pacing.
+- [x] Data-source policy: `lib/data-source-policy.ts` decides snapshot/live fetch order; store uses it for clarity.
+- [x] Added focused unit tests: tags utils and mixed-case snapshot change detection.
+- [x] Clean tab nav: hide leadership-only tabs for non-leaders; renamed "AI Coaching" to "Coaching".
+
+### Structural Improvements (Modularity/SOLID)
+- **Tag utilities**: Centralize clan/player tag normalization (uppercasing, prefix handling) in a small util to avoid divergent logic across API, store, and detectors.
+- **Data source policy**: Encapsulated snapshot-vs-live selection and fallback in a dedicated module used by the store.
+- **Rate limiter boundary**: Extracted a reusable limiter. Next, consider standardizing around limiter-only and removing ad-hoc `mapLimit` where it duplicates pacing logic.
+- **Typed domain models**: Share `Member`/`Roster` types across API/Store/Components to prevent optional/nullable drift and ease future analytics features.
+- **Observability hooks**: Add minimal debug logs and timings behind `ENABLE_DEBUG_LOGGING` to trace cache hits, limiter waits, and data source decisions.
+
 ## Technical Debt
 - [ ] Refactor rate limiting to use Redis
 - [ ] Implement proper logging system

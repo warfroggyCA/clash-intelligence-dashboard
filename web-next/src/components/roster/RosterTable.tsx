@@ -22,6 +22,7 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Member, Roster, SortKey, SortDirection } from '@/types';
 import { 
   calculateRushPercentage, 
+  calculateOverallRush,
   calculateDonationBalance, 
   calculateActivityScore,
   getTownHallLevel,
@@ -126,6 +127,10 @@ const sortMembers = (members: Member[], sortKey: SortKey, sortDirection: SortDir
         aValue = calculateRushPercentage(a);
         bValue = calculateRushPercentage(b);
         break;
+      case 'overallRush':
+        aValue = calculateOverallRush(a);
+        bValue = calculateOverallRush(b);
+        break;
       case 'trophies':
         aValue = a.trophies || 0;
         bValue = b.trophies || 0;
@@ -173,7 +178,12 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 
     // Role filter
     if (filters.role && filters.role !== 'all') {
-      if (member.role !== filters.role) return false;
+      if (filters.role === 'leadership') {
+        const r = (member.role || '').toLowerCase();
+        if (!(r === 'leader' || r === 'coleader' || member.role === 'coLeader')) return false;
+      } else if (member.role !== filters.role) {
+        return false;
+      }
     }
 
     // Town Hall filter

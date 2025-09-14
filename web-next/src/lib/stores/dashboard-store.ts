@@ -23,6 +23,7 @@ import {
   EventHistory,
   PlayerEvent
 } from '@/types';
+import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 
 // =============================================================================
 // STORE INTERFACES
@@ -71,6 +72,14 @@ interface DashboardState {
   playerNameHistory: Record<string, Array<{ name: string; timestamp: string }>>;
   eventHistory: EventHistory;
   eventFilterPlayer: string;
+
+  // Dev status info
+  lastLoadInfo?: {
+    source: 'live' | 'snapshot' | 'fallback';
+    ms: number;
+    tenureMatches: number;
+    total: number;
+  };
   
   // Actions
   setRoster: (roster: Roster | null) => void;
@@ -109,6 +118,8 @@ interface DashboardState {
   setPlayerNameHistory: (history: Record<string, Array<{ name: string; timestamp: string }>>) => void;
   setEventHistory: (history: EventHistory) => void;
   setEventFilterPlayer: (player: string) => void;
+
+  setLastLoadInfo: (info: DashboardState['lastLoadInfo']) => void;
   
   // Complex Actions
   resetDashboard: () => void;
@@ -161,10 +172,11 @@ const initialState = {
   
   // Snapshots & History
   availableSnapshots: [],
-  selectedSnapshot: 'latest',
+  selectedSnapshot: 'live',
   playerNameHistory: {},
   eventHistory: {},
   eventFilterPlayer: '',
+  lastLoadInfo: undefined,
 };
 
 // =============================================================================
@@ -216,6 +228,8 @@ export const useDashboardStore = create<DashboardState>()(
       setPlayerNameHistory: (playerNameHistory) => set({ playerNameHistory }),
       setEventHistory: (eventHistory) => set({ eventHistory }),
       setEventFilterPlayer: (eventFilterPlayer) => set({ eventFilterPlayer }),
+
+      setLastLoadInfo: (lastLoadInfo) => set({ lastLoadInfo }),
       
       // =============================================================================
       // COMPLEX ACTIONS
@@ -224,26 +238,51 @@ export const useDashboardStore = create<DashboardState>()(
       resetDashboard: () => set(initialState),
       
       loadRoster: async (clanTag: string) => {
-        const { setStatus, setMessage, setRoster } = get();
+        const { setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo } = get();
         
         try {
           setStatus('loading');
           setMessage('');
-          
-          const response = await fetch(`/api/roster?clanTag=${encodeURIComponent(clanTag)}`);
-          const data = await response.json();
-          
-          if (data.members && Array.isArray(data.members)) {
-            setRoster(data);
-            setStatus('success');
-            setMessage(`Loaded ${data.members.length} members`);
-          } else {
-            setStatus('error');
-            setMessage(data.error || 'Failed to load roster');
+          const t0 = Date.now();
+
+          const plan = buildRosterFetchPlan(clanTag, selectedSnapshot);
+          const tryFetch = async (url: string) => {
+            // Add a safety timeout to avoid indefinite spin
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 10000);
+            let res: Response;
+            try {
+              res = await fetch(url, { signal: controller.signal });
+            } finally {
+              clearTimeout(timer);
+            }
+            const json = await res.json();
+            return { ok: res.ok, json } as { ok: boolean; json: any };
+          };
+
+          let lastError: any = null;
+          for (const url of plan.urls) {
+            const result = await tryFetch(url);
+            if (result.ok && Array.isArray(result.json?.members)) {
+              setRoster(result.json);
+              setStatus('success');
+              const src = result.json?.source || plan.sourcePreference;
+              setMessage(`Loaded ${result.json.members.length} members (${src})`);
+              // Update dev status badge info
+              const tenureMatches = (result.json.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
+              setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (result.json.members || []).length });
+              return;
+            }
+            lastError = result.json?.error || 'Failed to load roster';
           }
+
+          setStatus('error');
+          setMessage(lastError || 'Failed to load roster (timeout)');
+          setLastLoadInfo(undefined);
         } catch (error: any) {
           setStatus('error');
-          setMessage(error.message || 'Failed to load roster');
+          setMessage(error.name === 'AbortError' ? 'Roster request timed out' : (error.message || 'Failed to load roster'));
+          setLastLoadInfo(undefined);
         }
       },
       

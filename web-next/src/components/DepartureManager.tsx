@@ -266,12 +266,54 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                         )}
                       </div>
                     </div>
-                    <button
-                      onClick={() => markRejoinResolved(rejoin.memberTag)}
-                      className="ml-4 px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 hover:scale-105 transition-all duration-200 font-medium"
-                    >
-                      Mark Resolved
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 ml-4 items-stretch sm:items-center">
+                      <button
+                        onClick={async () => {
+                          try {
+                            await fetch('/api/tenure/update', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                clanTag,
+                                memberTag: rejoin.memberTag,
+                                mode: 'grant-existing'
+                              })
+                            });
+                          } catch (e) { console.error(e); }
+                          await markRejoinResolved(rejoin.memberTag);
+                        }}
+                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
+                        title="Grant prior tenure and resume counting from today"
+                      >
+                        Grant Tenure
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await fetch('/api/tenure/update', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                clanTag,
+                                memberTag: rejoin.memberTag,
+                                mode: 'reset'
+                              })
+                            });
+                          } catch (e) { console.error(e); }
+                          await markRejoinResolved(rejoin.memberTag);
+                        }}
+                        className="px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 hover:scale-105 transition-all duration-200 font-medium"
+                        title="Reset tenure to 0 starting today"
+                      >
+                        Reset Tenure
+                      </button>
+                      <button
+                        onClick={() => markRejoinResolved(rejoin.memberTag)}
+                        className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 hover:scale-105 transition-all duration-200 font-medium"
+                      >
+                        Mark Resolved
+                      </button>
+                    </div>
                   </div>
                 </div>
               ))}

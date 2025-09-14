@@ -262,15 +262,24 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
           <span className="text-sm text-gray-600">Quick filters:</span>
           <div className="flex flex-wrap gap-2">
             <Button
-              onClick={() => onFilterChange({ role: 'leader' })}
-              variant={filters.role === 'leader' ? 'primary' : 'outline'}
+              onClick={() => onFilterChange({ role: filters.role === 'leadership' ? 'all' : 'leadership' })}
+              variant={filters.role === 'leadership' ? 'primary' : 'outline'}
+              size="sm"
+              className="text-xs"
+              title="Leaders & Co-Leaders"
+            >
+              Leaders & Co-Leaders
+            </Button>
+            <Button
+              onClick={() => onFilterChange({ role: filters.role === 'elder' ? 'all' : 'elder' })}
+              variant={filters.role === 'elder' ? 'primary' : 'outline'}
               size="sm"
               className="text-xs"
             >
-              Leaders
+              Elders
             </Button>
             <Button
-              onClick={() => onFilterChange({ rushLevel: 'very-rushed' })}
+              onClick={() => onFilterChange({ rushLevel: filters.rushLevel === 'very-rushed' ? 'all' : 'very-rushed' })}
               variant={filters.rushLevel === 'very-rushed' ? 'primary' : 'outline'}
               size="sm"
               className="text-xs"
@@ -278,7 +287,7 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
               Very Rushed
             </Button>
             <Button
-              onClick={() => onFilterChange({ activityLevel: 'inactive' })}
+              onClick={() => onFilterChange({ activityLevel: filters.activityLevel === 'inactive' ? 'all' : 'inactive' })}
               variant={filters.activityLevel === 'inactive' ? 'primary' : 'outline'}
               size="sm"
               className="text-xs"
@@ -286,7 +295,7 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
               Inactive
             </Button>
             <Button
-              onClick={() => onFilterChange({ donationStatus: 'low-donator' })}
+              onClick={() => onFilterChange({ donationStatus: filters.donationStatus === 'low-donator' ? 'all' : 'low-donator' })}
               variant={filters.donationStatus === 'low-donator' ? 'primary' : 'outline'}
               size="sm"
               className="text-xs"

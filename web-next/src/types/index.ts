@@ -38,6 +38,7 @@ export interface Member {
   // Activity & Tenure
   tenure_days?: number; // Effective tenure for display
   tenure?: number;      // Alias for tenure_days
+  tenure_as_of?: string; // Date tenure base was last set
   lastSeen?: string | number;
   
   // Clan Info
@@ -404,6 +405,7 @@ export type SortKey =
   | "rc"
   | "mp"
   | "rush"
+  | "overallRush"
   | "trophies"
   | "donations"
   | "donationsReceived"
@@ -413,7 +415,8 @@ export type SortKey =
   | "activity"
   | "warEfficiency"
   | "warConsistency"
-  | "role";
+  | "role"
+  | "actions";
 
 /**
  * Sort direction

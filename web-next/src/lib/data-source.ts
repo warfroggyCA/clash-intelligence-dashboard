@@ -2,6 +2,7 @@
 // Data source abstraction for local vs Supabase data
 
 import { cfg } from './config';
+import { normalizeTag, safeTagForFilename } from './tags';
 import { DailySnapshot, ChangeSummary } from './snapshots';
 import { promises as fsp } from 'fs';
 import path from 'path';
@@ -20,7 +21,7 @@ class LocalDataSource {
     try {
       // Try to load from local snapshots first
       const snapshotsDir = path.join(process.cwd(), this.dataRoot, 'snapshots');
-      const safeTag = clanTag.replace('#', '').toLowerCase();
+      const safeTag = safeTagForFilename(clanTag);
       
       const files = await fsp.readdir(snapshotsDir);
       const snapshotFiles = files
@@ -46,7 +47,7 @@ class LocalDataSource {
     try {
       // Try to load from fallback data
       const fallbackDir = path.join(process.cwd(), this.fallbackDataRoot);
-      const safeTag = clanTag.replace('#', '').toLowerCase();
+      const safeTag = safeTagForFilename(clanTag);
       
       const files = await fsp.readdir(fallbackDir);
       const snapshotFiles = files
@@ -71,7 +72,7 @@ class LocalDataSource {
   async loadSnapshot(clanTag: string, date: string): Promise<DailySnapshot | null> {
     try {
       const snapshotsDir = path.join(process.cwd(), this.dataRoot, 'snapshots');
-      const safeTag = clanTag.replace('#', '').toLowerCase();
+      const safeTag = safeTagForFilename(clanTag);
       const filename = `${safeTag}_${date}.json`;
       
       const data = await fsp.readFile(path.join(snapshotsDir, filename), 'utf-8');
@@ -85,7 +86,7 @@ class LocalDataSource {
   async getChangeSummaries(clanTag: string): Promise<ChangeSummary[]> {
     try {
       const changesDir = path.join(process.cwd(), this.dataRoot, 'changes');
-      const safeTag = clanTag.replace('#', '').toLowerCase();
+      const safeTag = safeTagForFilename(clanTag);
       
       const files = await fsp.readdir(changesDir);
       const changeFiles = files
@@ -116,7 +117,7 @@ class SupabaseDataSource {
   async getLatestSnapshot(clanTag: string): Promise<DailySnapshot | null> {
     try {
       const { supabase } = await import('@/lib/supabase');
-      const safeTag = clanTag.replace('#', '').toLowerCase();
+      const safeTag = safeTagForFilename(clanTag);
       
       const { data: snapshotData, error } = await supabase
         .from('snapshots')
@@ -146,7 +147,7 @@ class SupabaseDataSource {
   async loadSnapshot(clanTag: string, date: string): Promise<DailySnapshot | null> {
     try {
       const { supabase } = await import('@/lib/supabase');
-      const safeTag = clanTag.replace('#', '').toLowerCase();
+      const safeTag = safeTagForFilename(clanTag);
       const filename = `${safeTag}_${date}.json`;
       
       const { data: snapshotData, error } = await supabase

@@ -41,7 +41,8 @@ export async function GET(req: Request) {
       
       // Get previous snapshot for comparison (not the one we just created)
       const snapshotsDir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
-      const safeTag = clanTag.replace('#', '').toLowerCase();
+      const { safeTagForFilename } = await import('@/lib/tags');
+      const safeTag = safeTagForFilename(clanTag);
       
       let previousSnapshot = null;
       try {

@@ -17,10 +17,11 @@
  * Last Updated: January 2025
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Member, Roster } from '@/types';
 import { 
   calculateRushPercentage, 
+  calculateOverallRush,
   calculateDonationBalance, 
   calculateActivityScore,
   getTownHallLevel,
@@ -29,6 +30,8 @@ import {
   isNetReceiver,
   isLowDonator
 } from '@/lib/business/calculations';
+import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
+import { getHeroDisplayValue, isHeroAvailable } from '@/lib/business/calculations';
 import { Button } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
 
@@ -54,20 +57,38 @@ const getRushClass = (rushPercent: number): string => {
 };
 
 const getActivityClass = (level: string): string => {
-  switch (level.toLowerCase()) {
-    case 'very active':
-      return 'bg-green-100 text-green-800';
-    case 'active':
-      return 'bg-blue-100 text-blue-800';
-    case 'moderate':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'low':
-      return 'bg-orange-100 text-orange-800';
-    case 'inactive':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
+  const l = level.toLowerCase();
+  if (l === 'very active') return 'bg-green-100 text-green-800';
+  if (l === 'active') return 'bg-blue-100 text-blue-800';
+  if (l === 'moderate') return 'bg-yellow-100 text-yellow-800';
+  if (l === 'low') return 'bg-orange-100 text-orange-800';
+  if (l === 'inactive') return 'bg-red-100 text-red-800';
+  return 'bg-gray-100 text-gray-800';
+};
+
+// Short labels for activity
+const getActivityShortLabel = (level: string): string => {
+  const l = level.toLowerCase();
+  if (l === 'very active') return 'High';
+  if (l === 'active') return 'Med';
+  if (l === 'moderate') return 'Med';
+  if (l === 'low') return 'Low';
+  if (l === 'inactive') return 'Inactive';
+  return level;
+};
+
+// Relative day label for last active
+const relativeFrom = (iso?: string): string | null => {
+  if (!iso) return null;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const then = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const days = Math.floor((start - then) / 86400000);
+  if (days <= 0) return 'Today';
+  if (days === 1) return 'Yesterday';
+  return `${days} days ago`;
 };
 
 const formatNumber = (num: number | undefined): string => {
@@ -111,6 +132,7 @@ export const TableRow: React.FC<TableRowProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
+  const overallRush = calculateOverallRush(member);
   const activity = calculateActivityScore(member);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
@@ -158,18 +180,38 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Role Column */}
       <TableCell className="text-center border-r border-slate-300">
-        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-          member.role === 'leader' ? 'bg-purple-100 text-purple-800' :
-          member.role === 'coleader' ? 'bg-blue-100 text-blue-800' :
-          member.role === 'elder' ? 'bg-green-100 text-green-800' :
-          'bg-gray-100 text-gray-800'
-        }`}>
-          {member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : 'Member'}
-        </span>
+        {(() => {
+          const raw = (member.role || '').toString();
+          const r = raw.toLowerCase();
+          let label = 'Member';
+          let icon = '';
+          let cls = 'bg-gray-100 text-gray-800';
+
+          if (r === 'leader') {
+            label = 'Leader';
+            icon = '👑';
+            cls = 'bg-yellow-100 text-yellow-800';
+          } else if (r === 'coleader' || raw === 'coLeader') {
+            label = 'Co-leader';
+            icon = '💎';
+            cls = 'bg-purple-100 text-purple-800';
+          } else if (r === 'elder' || r === 'admin') {
+            label = 'Elder';
+            icon = '⭐';
+            cls = 'bg-blue-100 text-blue-800';
+          }
+
+          return (
+            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold ${cls}`}>
+              {icon && <span aria-hidden>{icon}</span>}
+              <span>{label}</span>
+            </span>
+          );
+        })()}
       </TableCell>
 
       {/* Town Hall Column */}
-      <TableCell className="border-r border-slate-400">
+      <TableCell className="border-r border-slate-400" title={`Town Hall ${th}`}>
         <div className="flex items-center space-x-1">
           <span className="font-semibold">TH{th}</span>
           {isRushedPlayer && (
@@ -180,53 +222,106 @@ export const TableRow: React.FC<TableRowProps> = ({
         </div>
       </TableCell>
 
-      {/* Hero Columns */}
-      <TableCell className="bg-slate-100 text-center border-r border-slate-300">
-        <span className="font-semibold">
-          {member.bk || 'N/A'}
-        </span>
-      </TableCell>
-
-      <TableCell className="bg-slate-100 text-center border-r border-slate-300">
-        <span className="font-semibold">
-          {member.aq || 'N/A'}
-        </span>
-      </TableCell>
-
-      <TableCell className="bg-slate-100 text-center border-r border-slate-300">
-        <span className="font-semibold">
-          {member.gw || 'N/A'}
-        </span>
-      </TableCell>
-
-      <TableCell className="bg-slate-100 text-center border-r border-slate-300">
-        <span className="font-semibold">
-          {member.rc || 'N/A'}
-        </span>
-      </TableCell>
-
-      <TableCell className="bg-slate-100 text-center border-r border-slate-400">
-        <span className="font-semibold">
-          {member.mp || 'N/A'}
-        </span>
-      </TableCell>
-
-      {/* Rush Percentage Column */}
-      <TableCell className="text-center border-r border-slate-300">
-        <span className={`font-semibold ${getRushClass(rushPercent)}`}>
-          {rushPercent.toFixed(1)}%
-        </span>
-      </TableCell>
-
-      {/* Trophies Column */}
-      <TableCell className="text-center border-r border-slate-300">
+      {/* Trophies Column (after TH) */}
+      <TableCell className="text-center border-r border-slate-400" title="Current trophies">
         <span className="font-semibold">
           {formatNumber(member.trophies)}
         </span>
       </TableCell>
 
-      {/* Donations Given Column */}
+      {/* Hero Columns */}
+      <TableCell
+        className="bg-slate-100 text-center border-r border-slate-300"
+        title={isHeroAvailable('bk', th)
+          ? `BK at TH${th} (max ${HERO_MAX_LEVELS[th]?.bk ?? 0})`
+          : `BK unlocks at TH${HERO_MIN_TH.bk}`}
+      >
+        <span className="font-semibold">
+          {getHeroDisplayValue(member, 'bk', th)}
+        </span>
+      </TableCell>
+
+      <TableCell
+        className="bg-slate-100 text-center border-r border-slate-300"
+        title={isHeroAvailable('aq', th)
+          ? `AQ at TH${th} (max ${HERO_MAX_LEVELS[th]?.aq ?? 0})`
+          : `AQ unlocks at TH${HERO_MIN_TH.aq}`}
+      >
+        <span className="font-semibold">
+          {getHeroDisplayValue(member, 'aq', th)}
+        </span>
+      </TableCell>
+
+      <TableCell
+        className="bg-slate-100 text-center border-r border-slate-300"
+        title={isHeroAvailable('gw', th)
+          ? `GW at TH${th} (max ${HERO_MAX_LEVELS[th]?.gw ?? 0})`
+          : `GW unlocks at TH${HERO_MIN_TH.gw}`}
+      >
+        <span className="font-semibold">
+          {getHeroDisplayValue(member, 'gw', th)}
+        </span>
+      </TableCell>
+
+      <TableCell
+        className="bg-slate-100 text-center border-r border-slate-300"
+        title={isHeroAvailable('rc', th)
+          ? `RC at TH${th} (max ${HERO_MAX_LEVELS[th]?.rc ?? 0})`
+          : `RC unlocks at TH${HERO_MIN_TH.rc}`}
+      >
+        <span className="font-semibold">
+          {getHeroDisplayValue(member, 'rc', th)}
+        </span>
+      </TableCell>
+
+      <TableCell
+        className="bg-slate-100 text-center border-r border-slate-300"
+        title={isHeroAvailable('mp', th)
+          ? `MP at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
+          : `MP unlocks at TH${HERO_MIN_TH.mp}`}
+      >
+        <span className="font-semibold">
+          {getHeroDisplayValue(member, 'mp', th)}
+        </span>
+      </TableCell>
+
+      {/* Rush Percentage Column */}
+      <TableCell className="text-center border-r border-slate-300"
+        title={`Rush is how far heroes are from TH caps. BK ${member.bk ?? 0}/${HERO_MAX_LEVELS[th]?.bk ?? 0}, AQ ${member.aq ?? 0}/${HERO_MAX_LEVELS[th]?.aq ?? 0}, GW ${member.gw ?? 0}/${HERO_MAX_LEVELS[th]?.gw ?? 0}, RC ${member.rc ?? 0}/${HERO_MAX_LEVELS[th]?.rc ?? 0}.`}
+      >
+        <span className={`font-semibold ${getRushClass(rushPercent)}`}>
+          {rushPercent.toFixed(1)}%
+        </span>
+      </TableCell>
+
+      {/* Overall Rush (placeholder) */}
+      <TableCell className="text-center border-r border-slate-300" title="Overall rush (heroes for now; offense/defense later)">
+        <span className={`font-semibold ${getRushClass(overallRush)}`}>
+          {overallRush.toFixed(1)}%
+        </span>
+      </TableCell>
+
+      {/* Activity Column (under Analysis group) */}
       <TableCell className="text-center border-r border-slate-300">
+        <div className="flex flex-col items-center space-y-1">
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-semibold ${getActivityClass(activity.level)}`}
+            title={
+              `Activity rating\n` +
+              `High: lots of recent evidence (donations/attacks/etc.)\n` +
+              `Med: some recent evidence\n` +
+              `Low: little recent evidence\n` +
+              `Inactive: no recent evidence`
+            }
+          >
+            {getActivityShortLabel(activity.level)}
+          </span>
+          {/* Removed relative date to avoid always showing Today */}
+        </div>
+      </TableCell>
+
+      {/* Donations Given Column */}
+      <TableCell className="text-center border-r border-slate-300" title={`Donations given/received: ${(donationBalance.given).toLocaleString()} / ${(donationBalance.received).toLocaleString()} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
         <div className="flex flex-col items-center">
           <span className="font-semibold text-green-700">
             {formatNumber(member.donations)}
@@ -240,7 +335,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       {/* Donations Received Column */}
-      <TableCell className="text-center border-r border-slate-300">
+      <TableCell className="text-center border-r border-slate-300" title={`Donations received: ${formatNumber(member.donationsReceived)} (net ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
         <div className="flex flex-col items-center">
           <span className="font-semibold text-blue-700">
             {formatNumber(member.donationsReceived)}
@@ -255,48 +350,67 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Tenure Column */}
       <TableCell className="text-center border-r border-slate-300">
-        <span className="font-semibold">
+        <span
+          className="font-semibold"
+          title={member.tenure_as_of ? `Tenure last set: ${new Date(member.tenure_as_of).toLocaleDateString()}` : 'Tenure accrues daily from join or last set date'}
+        >
           {formatDays(member.tenure_days || member.tenure)}
         </span>
       </TableCell>
 
-      {/* Activity Column */}
-      <TableCell className="text-center">
-        <div className="flex flex-col items-center space-y-1">
-          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getActivityClass(activity.level)}`}>
-            {activity.level}
-          </span>
-          {activity.last_active_at && (
-            <span className="text-xs text-gray-500">
-              {new Date(activity.last_active_at).toLocaleDateString()}
-            </span>
-          )}
-        </div>
-      </TableCell>
 
-      {/* Action Buttons */}
+      {/* Actions Menu */}
       <TableCell className="text-center">
-        <div className="flex items-center justify-center space-x-2">
-          <LeadershipGuard
-            requiredPermission="canModifyClanData"
-            fallback={null}
-          >
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleQuickDeparture();
-              }}
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-300 hover:bg-red-50"
-              title="Record departure"
-            >
-              📤
-            </Button>
-          </LeadershipGuard>
+        <div className="relative inline-block text-left">
+          <ActionsMenu 
+            onViewProfile={(e) => { e.stopPropagation(); handleOpenProfile(); }}
+            onCopyTag={(e) => { e.stopPropagation(); navigator.clipboard.writeText(member.tag).catch(()=>{}); }}
+            onDeparture={(e) => { e.stopPropagation(); handleQuickDeparture(); }}
+            onGrantTenure={async (e) => {
+              e.stopPropagation();
+              try {
+                await fetch('/api/tenure/update', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ clanTag: roster.clanTag || '', memberTag: member.tag, mode: 'grant-existing' })
+                });
+              } catch {}
+            }}
+          />
         </div>
       </TableCell>
     </tr>
+  );
+};
+
+// Simple actions dropdown
+const ActionsMenu: React.FC<{
+  onViewProfile: (e: React.MouseEvent) => void;
+  onCopyTag: (e: React.MouseEvent) => void;
+  onDeparture: (e: React.MouseEvent) => void;
+  onGrantTenure: (e: React.MouseEvent) => void;
+}> = ({ onViewProfile, onCopyTag, onDeparture, onGrantTenure }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <button
+        onClick={(e) => { e.stopPropagation(); setOpen(v => !v); }}
+        className="px-2 py-1 border border-slate-300 rounded hover:bg-slate-50"
+        title="Actions"
+      >
+        ⋯
+      </button>
+      {open && (
+        <div className="absolute right-0 mt-2 w-40 bg-white border border-slate-200 rounded shadow z-10">
+          <button onClick={(e) => { onViewProfile(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">View Profile</button>
+          <button onClick={(e) => { onCopyTag(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Copy Tag</button>
+          <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+            <button onClick={(e) => { onDeparture(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Record Departure</button>
+            <button onClick={(e) => { onGrantTenure(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Grant Tenure</button>
+          </LeadershipGuard>
+        </div>
+      )}
+    </div>
   );
 };
 

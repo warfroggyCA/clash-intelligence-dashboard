@@ -64,7 +64,7 @@ const TAB_CONFIGS: TabConfig[] = [
   },
   {
     id: 'coaching',
-    label: 'AI Coaching',
+    label: 'Coaching',
     icon: '🤖',
     shortLabel: 'AI Coaching',
     requiresLeadership: true,
@@ -161,14 +161,18 @@ const TabButton: React.FC<TabButtonProps> = ({ config, isActive, onClick }) => {
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ className = '' }) => {
   const { activeTab, setActiveTab } = useDashboardStore();
+  const hasLeadershipAccess = selectors.hasLeadershipAccess(useDashboardStore.getState());
   
   const handleTabChange = (tabId: TabType) => {
     setActiveTab(tabId);
   };
   
+  // Hide tabs the user cannot access (cleaner UX than locking)
+  const visibleTabs = TAB_CONFIGS.filter(cfg => !cfg.requiresLeadership || hasLeadershipAccess);
+
   return (
     <nav className={`flex flex-wrap gap-1 p-2 sm:flex-nowrap ${className}`}>
-      {TAB_CONFIGS.map((config) => (
+      {visibleTabs.map((config) => (
         <TabButton
           key={config.id}
           config={config}

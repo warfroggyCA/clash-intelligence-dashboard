@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { getAllChangeSummaries, loadChangeSummary } from "@/lib/snapshots";
+import { normalizeTag, isValidTag } from "@/lib/tags";
 
 // Simple in-memory cache for change summaries (resets on server restart)
 const changeCache = new Map<string, { data: any; timestamp: number }>();
@@ -12,10 +13,11 @@ const CACHE_TTL = 30000; // 30 seconds cache
 export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
-    const clanTag = url.searchParams.get('clanTag');
+    const raw = url.searchParams.get('clanTag') || '';
+    const clanTag = normalizeTag(raw);
     const date = url.searchParams.get('date');
     
-    if (!clanTag) {
+    if (!clanTag || !isValidTag(clanTag)) {
       return NextResponse.json({ error: "clanTag is required" }, { status: 400 });
     }
 

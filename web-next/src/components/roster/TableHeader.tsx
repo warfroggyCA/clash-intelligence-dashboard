@@ -72,6 +72,15 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Town Hall level'
   },
   {
+    key: 'trophies',
+    label: 'Trophies',
+    shortLabel: 'Trophies',
+    group: 'Basic Info',
+    sortable: true,
+    className: 'text-center border-r border-slate-400',
+    description: 'Current trophy count'
+  },
+  {
     key: 'bk',
     label: 'BK',
     shortLabel: 'BK',
@@ -113,26 +122,35 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'MP',
     group: 'Heroes',
     sortable: true,
-    className: 'bg-slate-100 text-center border-r border-slate-400',
+    className: 'bg-slate-100 text-center border-r border-slate-300',
     description: 'Master Builder level'
   },
   {
     key: 'rush',
-    label: 'Rush %',
-    shortLabel: 'Rush %',
+    label: 'Hero Rush %',
+    shortLabel: 'Hero %',
     group: 'Analysis',
     sortable: true,
     className: 'text-center border-r border-slate-300',
-    description: 'Rush percentage based on hero levels'
+    description: 'Hero Rush includes BK, AQ, GW, RC, MP'
   },
   {
-    key: 'trophies',
-    label: 'Trophies',
-    shortLabel: 'Trophies',
-    group: 'Stats',
+    key: 'overallRush',
+    label: 'Overall Rush %',
+    shortLabel: 'Overall %',
+    group: 'Analysis',
     sortable: true,
     className: 'text-center border-r border-slate-300',
-    description: 'Current trophy count'
+    description: 'Overall rush (heroes only for now)'
+  },
+  {
+    key: 'activity',
+    label: 'Activity',
+    shortLabel: 'Activity',
+    group: 'Analysis',
+    sortable: true,
+    className: 'text-center border-r border-slate-300',
+    description: 'Activity level based on recent changes'
   },
   {
     key: 'donations',
@@ -162,13 +180,13 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Days in clan'
   },
   {
-    key: 'activity',
-    label: 'Activity',
-    shortLabel: 'Activity',
-    group: 'Analysis',
-    sortable: true,
+    key: 'actions',
+    label: 'Actions',
+    shortLabel: 'Actions',
+    group: 'Actions',
+    sortable: false,
     className: 'text-center',
-    description: 'Activity level based on recent changes'
+    description: 'Row actions'
   }
 ];
 
@@ -187,7 +205,7 @@ const GROUP_CONFIGS: GroupConfig[] = [
   {
     name: 'Basic Info',
     icon: '👤',
-    columns: 3,
+    columns: 4,
     className: 'border-r border-slate-400'
   },
   {
@@ -199,19 +217,25 @@ const GROUP_CONFIGS: GroupConfig[] = [
   {
     name: 'Analysis',
     icon: '📊',
-    columns: 2,
-    className: 'border-r border-slate-400'
-  },
-  {
-    name: 'Stats',
-    icon: '📈',
-    columns: 2,
+    columns: 3,
     className: 'border-r border-slate-400'
   },
   {
     name: 'Donations',
     icon: '💝',
     columns: 2,
+    className: 'border-r border-slate-400'
+  },
+  {
+    name: 'Stats',
+    icon: '📈',
+    columns: 1,
+    className: ''
+  },
+  {
+    name: '',
+    icon: '',
+    columns: 1,
     className: ''
   }
 ];

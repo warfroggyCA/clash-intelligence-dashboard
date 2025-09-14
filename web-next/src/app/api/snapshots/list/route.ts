@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { normalizeTag, isValidTag, safeTagForFilename } from '@/lib/tags';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -8,13 +9,14 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const clanTag = searchParams.get('clanTag');
+    const raw = searchParams.get('clanTag') || '';
+    const clanTag = normalizeTag(raw);
     
-    if (!clanTag) {
+    if (!clanTag || !isValidTag(clanTag)) {
       return NextResponse.json({ error: 'Clan tag is required' }, { status: 400 });
     }
     
-    const safeTag = clanTag.replace('#', '').toLowerCase();
+    const safeTag = safeTagForFilename(clanTag);
     
     try {
       // Query snapshots from Supabase database

@@ -5,6 +5,7 @@
 import { Agent } from "undici";
 import axios from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
+import { normalizeTag } from './tags';
 
 type CoCPlayer = {
   tag: string;
@@ -141,8 +142,8 @@ function generateMockPlayer(tag: string, name: string) {
 }
 
 function encTag(tag: string) {
-  const t = String(tag || "").trim();
-  return t.startsWith("#") ? `%23${t.slice(1)}` : `%23${t}`;
+  const t = normalizeTag(tag);
+  return `%23${t.slice(1)}`;
 }
 
 async function api<T>(path: string): Promise<T> {
@@ -245,7 +246,7 @@ export async function getClanMembers(clanTag: string) {
   const t = encTag(clanTag);
   const r = await api<CoCClanMembersResp>(`/clans/${t}/members?limit=50`);
   return r.items.map((m) => ({
-    tag: m.tag.toUpperCase(),
+    tag: normalizeTag(m.tag),
     name: m.name,
     role: m.role,
     trophies: m.trophies,
@@ -277,25 +278,27 @@ export function extractHeroLevels(p: CoCPlayer) {
   const out: Partial<Record<"bk" | "aq" | "gw" | "rc" | "mp", number | null>> = {
     bk: null, aq: null, gw: null, rc: null, mp: null,
   };
-  
+
   for (const h of p.heroes || []) {
     const k = heroKeyFromName(h.name || "");
     if (!k) continue;
-    
-    // Try different level properties in order of preference
-    let lvl = 0;
-    if (typeof h.level === "number" && h.level > 0) {
-      lvl = h.level;
-    } else if (typeof h.currentLevel === "number" && h.currentLevel > 0) {
+
+    // Precedence: currentLevel > level > maxLevel; 0 is a valid value when hero exists
+    let lvl: number | null = null;
+    if (typeof h.currentLevel === "number") {
       lvl = h.currentLevel;
-    } else if (typeof h.maxLevel === "number" && h.maxLevel > 0) {
+    } else if (typeof h.level === "number") {
+      lvl = h.level;
+    } else if (typeof h.maxLevel === "number") {
       lvl = h.maxLevel;
+    } else {
+      lvl = 0; // hero present but no numeric level provided
     }
-    
-    // Only set the level if it's a valid positive number
-    out[k] = lvl > 0 ? lvl : null;
+
+    // Ensure non-negative
+    if (typeof lvl === 'number' && lvl < 0) lvl = 0;
+    out[k] = lvl;
   }
-  
+
   return out;
 }
-

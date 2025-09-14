@@ -30,6 +30,7 @@ interface PlayerDNADashboardProps {
 }
 
 export default function PlayerDNADashboard({ members, clanTag }: PlayerDNADashboardProps) {
+  const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === 'true';
   const [selectedPlayer, setSelectedPlayer] = useState<Member | null>(null);
   const [viewMode, setViewMode] = useState<'overview' | 'individual'>('overview');
   const [cachedDNAs, setCachedDNAs] = useState<any[]>([]);
@@ -37,8 +38,9 @@ export default function PlayerDNADashboard({ members, clanTag }: PlayerDNADashbo
 
   // Load cached DNA profiles from batch AI results
   useEffect(() => {
+    if (!aiEnabled) return; // Skip in dev unless explicitly enabled
     loadCachedDNAs();
-  }, [clanTag]);
+  }, [clanTag, aiEnabled]);
 
   const loadCachedDNAs = async () => {
     setLoading(true);
@@ -71,7 +73,7 @@ export default function PlayerDNADashboard({ members, clanTag }: PlayerDNADashbo
 
     return members.map(member => {
       // Try to find cached DNA first
-      const cachedDNA = cachedDNAs.find(cached => cached.player_tag === member.tag);
+      const cachedDNA = aiEnabled ? cachedDNAs.find(cached => cached.player_tag === member.tag) : null;
       
       if (cachedDNA) {
         return {
@@ -91,7 +93,7 @@ export default function PlayerDNADashboard({ members, clanTag }: PlayerDNADashbo
         };
       }
     });
-  }, [members, cachedDNAs]);
+  }, [members, cachedDNAs, aiEnabled]);
 
   // Calculate clan DNA summary
   const clanDNA = useMemo(() => {
@@ -102,6 +104,9 @@ export default function PlayerDNADashboard({ members, clanTag }: PlayerDNADashbo
 
   return (
     <div className="space-y-6">
+      {process.env.NODE_ENV === 'development' && !aiEnabled && (
+        <div className="text-xs text-gray-600">AI features are disabled in dev. Set NEXT_PUBLIC_ENABLE_AI=true to enable.</div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

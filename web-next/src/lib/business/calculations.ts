@@ -69,6 +69,28 @@ export const calculateRushPercentage = (member: Member, thCaps?: Map<number, Her
 };
 
 /**
+ * Overall Rush (placeholder): for now, mirrors Hero Rush.
+ * Later, blend offense/defense when data is available.
+ */
+export const calculateOverallRush = (member: Member): number => {
+  const th = getTownHallLevel(member);
+  const caps = getHeroCaps(th);
+
+  // Main-base heroes only (excludes MP) for overall view
+  const heroKeys: Array<keyof HeroCaps> = ['bk', 'aq', 'gw', 'rc'];
+  const available = heroKeys.filter(key => caps[key] && caps[key]! > 0);
+  if (available.length === 0) return 0;
+
+  let totalDeficit = 0;
+  for (const hero of available) {
+    const current = member[hero] ?? 0;
+    const max = caps[hero]!;
+    totalDeficit += Math.max(0, (max - current) / max);
+  }
+  return Math.round((totalDeficit / available.length) * 100);
+};
+
+/**
  * Calculate Town Hall caps for a list of members
  */
 export const calculateTownHallCaps = (members: Member[]): Map<number, HeroCaps> => {

@@ -2,6 +2,7 @@
 import { promises as fsp } from 'fs';
 import path from 'path';
 import { cfg } from './config';
+import { safeTagForFilename } from './tags';
 
 export interface PlayerNote {
   timestamp: string;
@@ -44,7 +45,7 @@ export async function resolveUnknownPlayers(): Promise<{
       throw new Error('No home clan configured');
     }
 
-    const safeTag = clanTag.replace('#', '').toLowerCase();
+    const safeTag = safeTagForFilename(clanTag);
     
     // Get the most recent snapshot
     const files = await fsp.readdir(snapshotsDir);

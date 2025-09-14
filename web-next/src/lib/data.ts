@@ -2,6 +2,7 @@
 import { promises as fsp } from "fs";
 import path from "path";
 import { cfg } from "./config";
+import { normalizeTag, isValidTag } from "./tags";
 
 export type Member = {
   name: string;
@@ -40,7 +41,6 @@ async function readJSON<T = any>(p: string): Promise<T> {
 }
 
 type LedgerRow = { tag: string; base?: number; tenure_days?: number; as_of?: string; ts?: string };
-const CLASH_TAG_RE = /^#[0289PYLQGRJCUV]{5,}$/;
 
 function ymdNowUTC(): string {
   const d = new Date();
@@ -63,9 +63,9 @@ export async function readLedgerEffective(): Promise<Record<string, number>> {
   const lines = (await fsp.readFile(file, "utf-8")).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
   for (const line of lines) {
     let row: LedgerRow | null = null; try { row = JSON.parse(line); } catch { continue; }
-    const tag = String(row?.tag ?? "").toUpperCase().trim();
+    const tag = normalizeTag(String(row?.tag ?? ""));
     const ts  = String(row?.ts ?? "");
-    if (!CLASH_TAG_RE.test(tag) || !ts) continue;
+    if (!isValidTag(tag) || !ts) continue;
     if (latest[tag] && latest[tag] >= ts) continue; latest[tag] = ts;
     const base = typeof row?.base === "number" ? row.base : (typeof row?.tenure_days === "number" ? row.tenure_days : undefined);
     if (typeof base !== "number") continue;
@@ -99,7 +99,7 @@ export async function loadRoster(): Promise<RosterPayload> {
   const tenureMap = await readLedgerEffective();
 
   const merged: Member[] = (members || []).map((m) => {
-    const tag = String(m.tag || "").toUpperCase();
+    const tag = normalizeTag(String(m.tag || ""));
     const hero = (heroIdx as any)[tag] || {};
     const th = m.townHallLevel ?? m.th;
     const add: Partial<Member> = {
@@ -122,4 +122,3 @@ export async function loadRoster(): Promise<RosterPayload> {
     meta: { clanName: (clanInfo as any)?.name, recentClans: collectRecentClans(merged) }
   };
 }
-

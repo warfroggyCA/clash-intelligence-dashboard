@@ -130,6 +130,7 @@ const useQuickActions = () => {
 // =============================================================================
 
 export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) => {
+  const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === 'true';
   const {
     handleCopyData,
     handleGenerateAISummary,
@@ -172,10 +173,10 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
           {/* AI Summary Button */}
           <Button
             onClick={handleGenerateAISummary}
-            disabled={!hasData || isGeneratingSummary}
+            disabled={!hasData || isGeneratingSummary || !aiEnabled}
             loading={isGeneratingSummary}
             className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            title="Generate daily summary with AI analysis of changes since last snapshot"
+            title={aiEnabled ? "Generate daily summary with AI analysis of changes since last snapshot" : "AI disabled in dev (set NEXT_PUBLIC_ENABLE_AI=true)"}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
             <span className="relative flex items-center gap-2">

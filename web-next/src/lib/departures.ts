@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { normalizeTag } from './tags';
 
 export interface DepartureRecord {
   memberTag: string;
@@ -35,7 +36,8 @@ async function ensureDeparturesDir() {
 
 // Get departure file path for a clan
 function getDepartureFilePath(clanTag: string): string {
-  const cleanTag = clanTag.replace('#', '').toUpperCase();
+  // Preserve uppercase file convention for backward compatibility
+  const cleanTag = normalizeTag(clanTag).slice(1).toUpperCase();
   return path.join(DEPARTURES_DIR, `${cleanTag}.json`);
 }
 
@@ -138,17 +140,17 @@ export async function checkForRejoins(
   currentMembers: Array<{ tag: string; name: string }>
 ): Promise<RejoinNotification[]> {
   const departures = await readDepartures(clanTag);
-  const currentMemberTags = new Set(currentMembers.map(m => m.tag));
+  const currentMemberTags = new Set(currentMembers.map(m => normalizeTag(m.tag)));
   
   const rejoins: RejoinNotification[] = [];
   
   for (const departure of departures) {
-    if (currentMemberTags.has(departure.memberTag)) {
+    if (currentMemberTags.has(normalizeTag(departure.memberTag))) {
       const departureDate = new Date(departure.departureDate);
       const now = new Date();
       const daysAway = Math.floor((now.getTime() - departureDate.getTime()) / (1000 * 60 * 60 * 24));
       
-      const currentMember = currentMembers.find(m => m.tag === departure.memberTag);
+      const currentMember = currentMembers.find(m => normalizeTag(m.tag) === normalizeTag(departure.memberTag));
       
       rejoins.push({
         memberTag: departure.memberTag,
@@ -169,14 +171,14 @@ export async function getActiveDepartures(
   currentMembers: Array<{ tag: string; name: string }>
 ): Promise<DepartureRecord[]> {
   const departures = await readDepartures(clanTag);
-  const currentMemberTags = new Set(currentMembers.map(m => m.tag));
+  const currentMemberTags = new Set(currentMembers.map(m => normalizeTag(m.tag)));
   
-  return departures.filter(departure => !currentMemberTags.has(departure.memberTag));
+  return departures.filter(departure => !currentMemberTags.has(normalizeTag(departure.memberTag)));
 }
 
 // Mark a departure as resolved (member returned)
 export async function markDepartureResolved(clanTag: string, memberTag: string): Promise<void> {
   const departures = await readDepartures(clanTag);
-  const filtered = departures.filter(d => d.memberTag !== memberTag);
+  const filtered = departures.filter(d => normalizeTag(d.memberTag) !== normalizeTag(memberTag));
   await writeDepartures(clanTag, filtered);
 }

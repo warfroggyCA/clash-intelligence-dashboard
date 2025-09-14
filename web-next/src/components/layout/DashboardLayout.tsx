@@ -24,6 +24,8 @@ import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
 import { QuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
+import DevStatusBadge from './DevStatusBadge';
+import { sanitizeInputTag, normalizeTag, isValidTag } from '@/lib/tags';
 
 // =============================================================================
 // TYPES
@@ -109,55 +111,31 @@ const DashboardHeader: React.FC = () => {
   }, [clanTag, homeClan, handleLoadHome]);
 
   const handleClanTagChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    let value = event.target.value.trim().toUpperCase();
-    
-    // Only allow alphanumeric characters and # symbol
-    value = value.replace(/[^A-Z0-9#]/g, '');
-    
-    // Ensure only one # at the beginning
-    if (value.includes('#')) {
-      const parts = value.split('#');
-      value = parts[0] + '#' + parts.slice(1).join('');
-      if (value.startsWith('#')) {
-        value = '#' + value.substring(1).replace(/#/g, '');
-      }
-    }
-    
-    // Limit length to prevent extremely long tags
-    if (value.length > 15) {
-      value = value.substring(0, 15);
-    }
-    
+    const value = sanitizeInputTag(event.target.value);
     setClanTag(value);
   };
 
   const handleLoadClan = async () => {
-    let cleanTag = clanTag.trim().toUpperCase();
-    
+    let cleanTag = normalizeTag(clanTag);
+
     if (!cleanTag) {
       setMessage('Please enter a clan tag');
       return;
     }
     
-    // Remove any # symbols and non-alphanumeric characters
-    cleanTag = cleanTag.replace(/[^A-Z0-9]/g, '');
-    
-    if (!cleanTag || cleanTag.length < 3) {
-      setMessage('Please enter a valid clan tag (at least 3 characters)');
+    if (!isValidTag(cleanTag)) {
+      setMessage('Please enter a valid clan tag (e.g., #2PR8R8V8P)');
       return;
     }
     
-    // Format as proper clan tag
-    const formattedTag = `#${cleanTag}`;
-    
     // Update the state with the clean tag
-    setClanTag(formattedTag);
+    setClanTag(cleanTag);
     
     // Add some debugging
-    console.log('[DashboardLayout] Loading clan with tag:', formattedTag);
+    console.log('[DashboardLayout] Loading clan with tag:', cleanTag);
     
     try {
-      await loadRoster(formattedTag);
+      await loadRoster(cleanTag);
     } catch (error) {
       console.error('[DashboardLayout] Failed to load roster:', error);
       setMessage('Failed to load clan data. Please try again.');
@@ -165,8 +143,8 @@ const DashboardHeader: React.FC = () => {
   };
 
   const handleSetHome = () => {
-    const cleanTag = clanTag.trim().toUpperCase();
-    
+    const cleanTag = normalizeTag(clanTag);
+
     if (!cleanTag) {
       setHomeClan(null);
       setMessage('Home clan cleared.');
@@ -174,19 +152,13 @@ const DashboardHeader: React.FC = () => {
     }
     
     try {
-      // Ensure proper format: single # followed by alphanumeric characters
-      let formattedTag = cleanTag.replace(/^#+/, ''); // Remove any # symbols
-      formattedTag = formattedTag.replace(/[^A-Z0-9]/g, ''); // Keep only alphanumeric
-      
-      if (!formattedTag) {
+      if (!isValidTag(cleanTag)) {
         setMessage('Please enter a valid clan tag');
         return;
       }
       
-      formattedTag = `#${formattedTag}`; // Add single # prefix
-      
-      setHomeClan(formattedTag);
-      setMessage(`Home clan set to ${formattedTag}`);
+      setHomeClan(cleanTag);
+      setMessage(`Home clan set to ${cleanTag}`);
     } catch (error) {
       setMessage('Failed to set home clan');
     }
@@ -373,6 +345,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       
       {/* Main Content */}
       <main className="min-h-screen p-6 flex flex-col gap-6 w-full bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
+        {/* Dev Status */}
+        <DevStatusBadge />
         {/* Quick Actions */}
         <QuickActions />
         

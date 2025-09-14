@@ -4,7 +4,9 @@
 import { promises as fsp } from 'fs';
 import path from 'path';
 import { cfg } from './config';
+import { normalizeTag, safeTagForFilename } from './tags';
 import { getClanInfo, getClanMembers, getPlayer, extractHeroLevels } from './coc';
+import { rateLimiter } from './rate-limiter';
 
 export type Member = {
   name: string;
@@ -86,12 +88,12 @@ function ymdToday(): string {
 }
 
 function getSnapshotPath(clanTag: string, date: string): string {
-  const safeTag = clanTag.replace('#', '').toLowerCase();
+  const safeTag = safeTagForFilename(clanTag);
   return path.join(process.cwd(), cfg.dataRoot, 'snapshots', `${safeTag}_${date}.json`);
 }
 
 function getChangesPath(clanTag: string, date: string): string {
-  const safeTag = clanTag.replace('#', '').toLowerCase();
+  const safeTag = safeTagForFilename(clanTag);
   return path.join(process.cwd(), cfg.dataRoot, 'changes', `${safeTag}_${date}.json`);
 }
 
@@ -122,13 +124,13 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
   ]);
 
   // Enrich members with detailed data (using existing rate limiter)
-  const enrichedMembers: Member[] = [];
-  for (const member of members) {
+  const enrichedMembers: Member[] = await Promise.all(members.map(async (member) => {
+    await rateLimiter.acquire();
     try {
       const player = await getPlayer(member.tag);
       const heroes = extractHeroLevels(player);
       
-      enrichedMembers.push({
+      return {
         name: member.name,
         tag: member.tag,
         townHallLevel: player.townHallLevel,
@@ -147,11 +149,11 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
         versusBattleWins: player.versusBattleWins || 0,
         versusTrophies: player.versusTrophies || 0,
         clanCapitalContributions: player.clanCapitalContributions || 0,
-      });
+      } as Member;
     } catch (error) {
       console.error(`Failed to fetch player data for ${member.tag}:`, error);
       // Add basic member data even if detailed fetch fails
-      enrichedMembers.push({
+      return {
         name: member.name,
         tag: member.tag,
         trophies: member.trophies,
@@ -163,9 +165,11 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
         versusBattleWins: 0,
         versusTrophies: 0,
         clanCapitalContributions: 0,
-      });
+      } as Member;
+    } finally {
+      rateLimiter.release();
     }
-  }
+  }));
 
   const snapshot: DailySnapshot = {
     date,
@@ -187,43 +191,56 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
 
 // Load a snapshot for a specific date
 export async function loadSnapshot(clanTag: string, date: string): Promise<DailySnapshot | null> {
+  const safeTag = safeTagForFilename(clanTag);
+  // Development fast-path: read from local filesystem
+  if (cfg.useLocalData) {
+    try {
+      const p = path.join(process.cwd(), cfg.dataRoot, 'snapshots', `${safeTag}_${date}.json`);
+      const raw = await fsp.readFile(p, 'utf-8');
+      return JSON.parse(raw) as DailySnapshot;
+    } catch {}
+  }
+  // Supabase path
   try {
     const { supabase } = await import('@/lib/supabase');
-    const safeTag = clanTag.replace('#', '').toLowerCase();
     const filename = `${safeTag}_${date}.json`;
-    
-    // Get the file URL from database
     const { data: snapshotData, error } = await supabase
       .from('snapshots')
       .select('file_url')
       .eq('clan_tag', safeTag)
       .eq('filename', filename)
       .single();
-    
-    if (error || !snapshotData) {
-      return null;
-    }
-    
-    // Fetch the actual snapshot data
+    if (error || !snapshotData) return null;
     const response = await fetch(snapshotData.file_url);
-    if (!response.ok) {
-      return null;
-    }
-    
+    if (!response.ok) return null;
     const data = await response.json();
     return data as DailySnapshot;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
 
 // Get the most recent snapshot
 export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot | null> {
+  const safeTag = safeTagForFilename(clanTag);
+  // Development fast-path: read latest local snapshot
+  if (cfg.useLocalData) {
+    try {
+      const dir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
+      const files = await fsp.readdir(dir);
+      const list = files
+        .filter(f => f.startsWith(`${safeTag}_`) && f.endsWith('.json'))
+        .sort()
+        .reverse();
+      if (list.length > 0) {
+        const raw = await fsp.readFile(path.join(dir, list[0]), 'utf-8');
+        return JSON.parse(raw) as DailySnapshot;
+      }
+    } catch {}
+  }
+  // Supabase path
   try {
     const { supabase } = await import('@/lib/supabase');
-    const safeTag = clanTag.replace('#', '').toLowerCase();
-    
-    // Get the most recent snapshot from database
     const { data: snapshotData, error } = await supabase
       .from('snapshots')
       .select('*')
@@ -231,26 +248,12 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
       .order('timestamp', { ascending: false })
       .limit(1)
       .single();
-    
-    if (error || !snapshotData) {
-      return null;
-    }
-    
-    // Load the full snapshot data from the file_url (now stored as base64)
-    try {
-      const response = await fetch(snapshotData.file_url);
-      if (!response.ok) {
-        console.log('Failed to fetch snapshot data from URL');
-        return null;
-      }
-      
-      const data = await response.json();
-      return data as DailySnapshot;
-    } catch (error) {
-      console.log('Error loading snapshot data:', error);
-      return null;
-    }
-  } catch (error) {
+    if (error || !snapshotData) return null;
+    const response = await fetch(snapshotData.file_url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data as DailySnapshot;
+  } catch {
     return null;
   }
 }
@@ -259,9 +262,9 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
 export function detectChanges(previous: DailySnapshot, current: DailySnapshot): MemberChange[] {
   const changes: MemberChange[] = [];
   
-  // Create maps for easier comparison
-  const prevMembers = new Map(previous.members.map(m => [m.tag, m]));
-  const currMembers = new Map(current.members.map(m => [m.tag, m]));
+  // Create maps for easier comparison (normalize tags to uppercase)
+  const prevMembers = new Map(previous.members.map(m => [normalizeTag(m.tag), m]));
+  const currMembers = new Map(current.members.map(m => [normalizeTag(m.tag), m]));
   
   // Check for new members
   for (const [tag, member] of currMembers) {
@@ -701,7 +704,7 @@ export async function loadChangeSummary(clanTag: string, date: string): Promise<
 // Get all change summaries for a clan
 export async function getAllChangeSummaries(clanTag: string): Promise<ChangeSummary[]> {
   const changesDir = path.join(process.cwd(), cfg.dataRoot, 'changes');
-  const safeTag = clanTag.replace('#', '').toLowerCase();
+  const safeTag = safeTagForFilename(clanTag);
   
   try {
     const files = await fsp.readdir(changesDir);
