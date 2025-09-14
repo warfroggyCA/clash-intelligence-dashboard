@@ -1,5 +1,17 @@
 Ok # Clash Intelligence Dashboard - Development Ideas
 
+## What's New (Unreleased)
+- Header overhaul: two-row, full-width with centered clan name; controls right-aligned and compact.
+- Tabs visually “glued” to header via gradient seam; still render below.
+- Clan logo support: detects `/clans/<safeTag>.*` and common root paths, with fallback to `/clan-logo.png`.
+- Shared gradient variable `--header-gradient` and utility `.bg-header-gradient`.
+- Data Source toggle (Live/Snapshot) added to header.
+- Toast notifications: `lib/toast.ts` + `components/layout/ToastHub.tsx`.
+- Build/type fixes: td `title` support, client directives, store rehydrate typing.
+- Version display wired to `NEXT_PUBLIC_APP_VERSION`; scripts inject version and add `release:*` helpers.
+
+See full details in CHANGELOG.md.
+
 ## Version 0.8.5 - Released ✅
 - [x] **Critical Bug Fixes Complete**
   - Fixed auto-loading issue: API calls now include # prefix for compatibility
