@@ -73,7 +73,13 @@ export async function POST(request: NextRequest) {
     }
     
     if (action === 'add' && departure) {
-      await addDeparture(clanTag, departure);
+      // Ensure required fields are present
+      const departureRecord = {
+        ...departure,
+        memberName: departure.memberName || 'Unknown Player',
+        departureDate: departure.departureDate || new Date().toISOString().split('T')[0]
+      };
+      await addDeparture(clanTag, departureRecord);
       return json({ success: true });
     }
     
