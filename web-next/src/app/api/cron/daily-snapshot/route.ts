@@ -14,6 +14,10 @@ import { createApiContext } from "@/lib/api/route-helpers";
 export async function GET(req: Request) {
   const { json } = createApiContext(req, '/api/cron/daily-snapshot');
   try {
+    if (!cfg.isDevelopment) {
+      return json({ success: false, error: 'This endpoint has been retired. Use the ingestion worker.' }, { status: 410 });
+    }
+
     // Verify this is a legitimate cron request (you might want to add authentication)
     const authHeader = req.headers.get('authorization');
     const expectedAuth = process.env.CRON_SECRET;

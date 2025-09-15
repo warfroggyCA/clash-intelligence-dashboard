@@ -551,3 +551,31 @@ See `DEPLOYMENT.md` for complete deployment guide.
   - Location: `src/lib/applicants.ts`
   - Criteria and weights: Town Hall (25), Hero Development (30) vs TH caps, Trophy Count (20), Clan Fit vs avg TH (15), Activity via donations (10).
   - Uses `HERO_MAX_LEVELS` from `src/types`.
+
+## Deployment Strategy (Updated January 2025)
+
+### Preview Deployment Workflow
+**Cost**: FREE - No additional charges for preview deployments
+
+**Workflow**:
+1. Create feature branch: `git checkout -b feature/your-feature-name`
+2. Make changes and commit: `git commit -m "feat: your feature description"`
+3. Push branch: `git push origin feature/your-feature-name`
+4. **Vercel automatically creates preview URL**: `https://clash-intelligence-[hash]-dougs-projects.vercel.app`
+5. Test on preview URL before merging
+6. Merge to main: `git checkout main && git merge feature/your-feature-name`
+7. Push main: `git push origin main` → Deploys to production
+8. Delete feature branch: `git branch -D feature/your-feature-name`
+
+**Benefits**:
+- ✅ Zero additional cost
+- ✅ Automatic preview URLs for every feature branch
+- ✅ Test changes safely before production
+- ✅ No manual configuration needed
+- ✅ Better than staging (unique URL per feature)
+
+**Production URLs**:
+- Main production: `https://clash-intelligence-new.vercel.app`
+- Preview deployments: `https://clash-intelligence-[hash]-dougs-projects.vercel.app`
+
+**Environment Variables**: All environments (production, preview) automatically inherit the same environment variables from Vercel project settings.
