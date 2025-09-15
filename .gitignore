@@ -13,3 +13,4 @@ _backup*/
 _backups/
 .DS_Store
 
+.vercel
