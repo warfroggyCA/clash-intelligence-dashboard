@@ -54,7 +54,7 @@ CLAN OVERVIEW:
 - Average Town Hall Level: ${clanData.averageTownHall}
 - Average Trophies: ${clanData.averageTrophies}
 - Total Donations: ${clanData.totalDonations}
-- Role Distribution: ${Object.entries(clanData.roleDistribution).map(([role, count]) => `${role}: ${count}`).join(', ')}
+- Role Distribution: ${Object.entries(clanData.roleDistribution || {}).map(([role, count]) => `${role}: ${count}`).join(', ')}
 
 MEMBER ANALYSIS:
 ${clanData.members.map((member: any) => `
