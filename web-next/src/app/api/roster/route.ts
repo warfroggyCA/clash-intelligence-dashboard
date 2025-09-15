@@ -1,8 +1,9 @@
 // web-next/src/app/api/roster/route.ts
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { cfg } from "@/lib/config";
 import { getClanInfo, getClanMembers, getPlayer, extractHeroLevels } from "@/lib/coc";
 import { getLatestSnapshot, loadSnapshot } from "@/lib/snapshots";
@@ -10,6 +11,10 @@ import { isValidTag, normalizeTag } from "@/lib/tags";
 import { rateLimiter } from "@/lib/rate-limiter";
 import { ymdNowUTC } from "@/lib/date";
 import { readTenureDetails } from "@/lib/tenure";
+import type { Roster, Member, ApiResponse } from "@/types";
+import { rateLimitAllow, formatRateLimitHeaders } from "@/lib/inbound-rate-limit";
+import { createRequestLogger } from "@/lib/logger";
+import { z } from "zod";
 
 // ---------- small helpers ----------
 // Validation moved to lib/tags
@@ -19,23 +24,53 @@ import { readTenureDetails } from "@/lib/tenure";
 // Concurrency is governed by the shared rateLimiter
 
 // ---------- route ----------
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   try {
+    const logger = createRequestLogger(req, { route: '/api/roster' });
+    const t0 = Date.now();
     const url = new URL(req.url);
-    const raw = url.searchParams.get("clanTag") || cfg.homeClanTag || "";
+    const params = Object.fromEntries(url.searchParams.entries());
+
+    // Zod validation for query params
+    const QuerySchema = z.object({
+      clanTag: z.string().optional(),
+      mode: z.enum(["live", "snapshot"]).optional().default("live"),
+      date: z.string().optional(),
+    });
+    const q = QuerySchema.parse(params);
+
+    const raw = q.clanTag || cfg.homeClanTag || "";
     const clanTag = normalizeTag(raw);
-    const mode = url.searchParams.get("mode") || "live";
-    
+    const mode = q.mode;
+
     if (!clanTag || !isValidTag(clanTag)) {
-      return NextResponse.json({ ok:false, error:"Provide a valid clanTag like #2PR8R8V8P" }, { status:400 });
+      return NextResponse.json<ApiResponse>({ success: false, error: "Provide a valid clanTag like #2PR8R8V8P" }, { status: 400 });
+    }
+
+    // Basic inbound rate limit per IP+route+mode
+    const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const key = `roster:${mode}:${clanTag}:${ip}`;
+    const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 30 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 30),
+        }
+      });
     }
 
     // Handle snapshot mode - load from stored snapshots
     if (mode === "snapshot") {
-      const requestedDate = url.searchParams.get("date");
+      const requestedDate = q.date;
       let snapshot;
       
       if (requestedDate && requestedDate !== "latest") {
+        // Validate YYYY-MM-DD
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
+          return NextResponse.json<ApiResponse>({ success: false, error: "Invalid date format. Use YYYY-MM-DD or 'latest'" }, { status: 400 });
+        }
         snapshot = await loadSnapshot(clanTag, requestedDate);
       } else {
         snapshot = await getLatestSnapshot(clanTag);
@@ -43,30 +78,37 @@ export async function GET(req: Request) {
       
       if (!snapshot) {
         // Fallback to live data if no snapshot available
-        console.log(`No snapshot found for ${clanTag}, falling back to live data`);
+        logger.info('No snapshot found, falling back to live', { clanTag });
         // Continue to live data fetching below instead of returning error
       } else {
         // Load tenure data as it was on the snapshot date
         const tenureDetails = await readTenureDetails(snapshot.date);
         
         // Enrich snapshot members with date-appropriate tenure data
-        const enrichedMembers = snapshot.members.map((member: any) => {
+        const enrichedMembers: Member[] = snapshot.members.map((member: any) => {
           const key = normalizeTag(member.tag);
           const t = tenureDetails[key];
           return {
             ...member,
             tenure_days: t?.days || 0,
             tenure_as_of: t?.as_of,
-          };
+          } as Member;
         });
         
-        return NextResponse.json({
+        const payload: Roster = {
           source: "snapshot",
           date: snapshot.date,
           clanName: snapshot.clanName,
+          clanTag,
           meta: { clanTag, clanName: snapshot.clanName },
           members: enrichedMembers,
-        }, { status: 200 });
+        };
+        const res = NextResponse.json<ApiResponse<Roster>>(
+          { success: true, data: payload },
+          { status: 200, headers: { "Cache-Control": "private, max-age=60" } }
+        );
+        logger.info('Served roster snapshot', { clanTag, ms: Date.now() - t0, members: enrichedMembers.length });
+        return res;
       }
     }
 
@@ -82,7 +124,7 @@ export async function GET(req: Request) {
       rateLimiter.release();
     }
     if (!members?.length) {
-      return NextResponse.json({ ok:false, error:`No members returned for ${clanTag}` }, { status:404 });
+      return NextResponse.json<ApiResponse>({ success: false, error: `No members returned for ${clanTag}` }, { status: 404 });
     }
 
     // 2) read effective tenure map (append-only)
@@ -97,7 +139,7 @@ export async function GET(req: Request) {
     }
 
     // 3) pull each player for TH + heroes (rate-limited)
-    const enriched = await Promise.all(members.map(async (m) => {
+    const enriched: Member[] = await Promise.all(members.map(async (m) => {
       await rateLimiter.acquire();
       try {
         const p = await getPlayer(m.tag);
@@ -119,25 +161,32 @@ export async function GET(req: Request) {
           mp: typeof heroes.mp === "number" ? heroes.mp : null,
           tenure_days: t?.days || 0,
           tenure_as_of: t?.as_of,
-        };
+        } as Member;
       } finally {
         rateLimiter.release();
       }
     }))
 
-    return NextResponse.json({
+    const payload: Roster = {
       source: "live",
       date: ymdNowUTC(),
       clanName: (info as any)?.name,
+      clanTag,
       meta: { clanTag, clanName: (info as any)?.name },
-      members: (enriched || []).filter(Boolean),
-    }, { status: 200 });
+      members: enriched || [],
+    };
+    const res = NextResponse.json<ApiResponse<Roster>>(
+      { success: true, data: payload },
+      { status: 200, headers: { "Cache-Control": "private, max-age=60" } }
+    );
+    logger.info('Served roster live', { clanTag, ms: Date.now() - t0, members: payload.members.length });
+    return res;
   } catch (e: any) {
     console.error('Roster API error:', e);
-    return NextResponse.json({ 
-      ok: false, 
+    return NextResponse.json<ApiResponse>({ 
+      success: false, 
       error: e?.message || "Internal server error",
-      details: process.env.NODE_ENV === 'development' ? e?.stack : undefined
+      message: process.env.NODE_ENV === 'development' ? e?.stack : undefined
     }, { status: 500 });
   }
 }

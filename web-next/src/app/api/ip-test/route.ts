@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import type { ApiResponse } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -11,21 +12,17 @@ export async function GET(request: NextRequest) {
     const testResponse = await fetch('https://httpbin.org/ip');
     const ipData = await testResponse.json();
     
-    return NextResponse.json({
-      ok: true,
-      headers: {
+    return NextResponse.json<ApiResponse>({
+      success: true,
+      data: {
         'x-forwarded-for': forwarded,
         'x-real-ip': realIp,
         'cf-connecting-ip': cfConnectingIp,
-      },
-      actualIp: ipData.origin,
-      timestamp: new Date().toISOString()
+        actualIp: ipData.origin,
+        timestamp: new Date().toISOString()
+      }
     });
   } catch (error) {
-    return NextResponse.json({ 
-      ok: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }
-

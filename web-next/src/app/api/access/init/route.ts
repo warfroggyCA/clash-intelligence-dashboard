@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ClanAccessConfig, AccessMember, generateAccessPassword } from '../../../../lib/access-management';
+import { z } from 'zod';
+import type { ApiResponse } from '@/types';
 
 // This would be stored in Supabase in production
 let accessConfigs: Map<string, ClanAccessConfig> = new Map();
@@ -7,21 +9,16 @@ let accessConfigs: Map<string, ClanAccessConfig> = new Map();
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { clanTag, clanName, ownerName, ownerCocTag } = body;
-
-    if (!clanTag || !clanName || !ownerName) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Clan tag, clan name, and owner name are required' 
-      }, { status: 400 });
+    const Schema = z.object({ clanTag: z.string(), clanName: z.string(), ownerName: z.string(), ownerCocTag: z.string().optional() });
+    const parsed = Schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Clan tag, clan name, and owner name are required' }, { status: 400 });
     }
+    const { clanTag, clanName, ownerName, ownerCocTag } = parsed.data as any;
 
     // Check if access config already exists
     if (accessConfigs.has(clanTag.toUpperCase())) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Access configuration already exists for this clan' 
-      }, { status: 409 });
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Access configuration already exists for this clan' }, { status: 409 });
     }
 
     // Create owner access member
@@ -56,68 +53,34 @@ export async function POST(req: NextRequest) {
     // Store the configuration
     accessConfigs.set(clanTag.toUpperCase(), accessConfig);
 
-    return NextResponse.json({
-      success: true,
-      message: 'Access configuration created successfully',
-      ownerAccess: {
-        name: ownerName,
-        accessLevel: 'leader',
-        password: ownerPassword,
-        instructions: `Share this password with clan members: ${ownerPassword}`
-      },
-      clanInfo: {
-        clanTag: accessConfig.clanTag,
-        clanName: accessConfig.clanName
-      }
-    });
+    return NextResponse.json<ApiResponse>({ success: true, data: { message: 'Access configuration created successfully', ownerAccess: { name: ownerName, accessLevel: 'leader', password: ownerPassword, instructions: `Share this password with clan members: ${ownerPassword}` }, clanInfo: { clanTag: accessConfig.clanTag, clanName: accessConfig.clanName } } });
 
   } catch (error) {
     console.error('Error initializing access:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const clanTag = searchParams.get('clanTag');
-
-    if (!clanTag) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Clan tag required' 
-      }, { status: 400 });
+    const Schema = z.object({ clanTag: z.string() });
+    const parsed = Schema.safeParse(Object.fromEntries(searchParams.entries()));
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Clan tag required' }, { status: 400 });
     }
+    const clanTag = parsed.data.clanTag;
 
     const config = accessConfigs.get(clanTag.toUpperCase());
     if (!config) {
-      return NextResponse.json({ 
-        success: false, 
-        exists: false,
-        error: 'No access configuration found for this clan' 
-      }, { status: 404 });
+      return NextResponse.json<ApiResponse>({ success: false, error: 'No access configuration found for this clan' }, { status: 404 });
     }
 
     // Return basic info (without sensitive data)
-    return NextResponse.json({
-      success: true,
-      exists: true,
-      clanInfo: {
-        clanTag: config.clanTag,
-        clanName: config.clanName,
-        memberCount: config.accessMembers.filter(m => m.isActive).length,
-        createdAt: config.createdAt
-      }
-    });
+    return NextResponse.json<ApiResponse>({ success: true, data: { exists: true, clanInfo: { clanTag: config.clanTag, clanName: config.clanName, memberCount: config.accessMembers.filter(m => m.isActive).length, createdAt: config.createdAt } } });
 
   } catch (error) {
     console.error('Error checking access config:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Internal server error' 
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -5,15 +5,31 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getLatestBatchAIResults, getBatchAIResultsByDate } from '@/lib/ai-storage';
+import { z } from 'zod';
+import type { ApiResponse } from '@/types';
+import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const clanTag = searchParams.get('clanTag');
-    const date = searchParams.get('date');
+    const Schema = z.object({ clanTag: z.string(), date: z.string().optional() });
+    const parsed = Schema.safeParse(Object.fromEntries(searchParams.entries()));
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Clan tag is required' }, { status: 400 });
+    }
+    const { clanTag, date } = parsed.data;
 
-    if (!clanTag) {
-      return NextResponse.json({ error: 'Clan tag is required' }, { status: 400 });
+    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const key = `ai:batch-results:${clanTag}:${ip}`;
+    const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 60 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 60),
+        }
+      });
     }
 
     let results;
@@ -24,23 +40,13 @@ export async function GET(request: NextRequest) {
     }
 
     if (!results) {
-      return NextResponse.json({ 
-        error: 'No batch AI results found',
-        clanTag,
-        date: date || 'latest'
-      }, { status: 404 });
+      return NextResponse.json<ApiResponse>({ success: false, error: 'No batch AI results found' }, { status: 404 });
     }
 
-    return NextResponse.json({
-      success: true,
-      data: results
-    });
+    return NextResponse.json<ApiResponse>({ success: true, data: results });
 
   } catch (error: any) {
     console.error('[API] Error fetching batch AI results:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch batch AI results' },
-      { status: 500 }
-    );
+    return NextResponse.json<ApiResponse>({ success: false, error: error.message || 'Failed to fetch batch AI results' }, { status: 500 });
   }
 }

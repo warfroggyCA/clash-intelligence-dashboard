@@ -16,16 +16,11 @@
  * Last Updated: January 2025
  */
 
-"use client";
-
-import React, { useEffect } from 'react';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
-import { DashboardLayout, RosterTable } from '@/components';
-import ChangeDashboard from '@/components/ChangeDashboard';
-import PlayerDatabase from '@/components/PlayerDatabase';
-import AICoaching from '@/components/AICoaching';
-import PlayerDNADashboard from '@/components/PlayerDNADashboard';
-import DiscordPublisher from '@/components/DiscordPublisher';
+import React from 'react';
+import ClientDashboard from './ClientDashboard';
+import { cfg } from '@/lib/config';
+import type { Roster } from '@/types';
+import { buildRosterSnapshotFirst } from '@/lib/roster';
 
 // =============================================================================
 // BEAUTIFUL PLACEHOLDER COMPONENTS
@@ -151,80 +146,13 @@ const ApplicantsDashboard = () => (
 // MAIN COMPONENT
 // =============================================================================
 
-export default function HomePage() {
-  const { 
-    activeTab, 
-    loadRoster, 
-    homeClan, 
-    clanTag, 
-    roster,
-    setClanTag,
-    hydrateRosterFromCache
-  } = useDashboardStore();
+export default async function HomePage() {
+  const initialClanTag = cfg.homeClanTag;
+  let initialRoster: Roster | null = null;
 
-  // Initialize with home clan if available
-  useEffect(() => {
-    const currentTag = clanTag || homeClan;
-    if (!currentTag) return;
-    // First paint from cache if available
-    const had = hydrateRosterFromCache();
-    // Then load snapshot/live in background without blocking paint
-    loadRoster(currentTag);
-  }, [clanTag, homeClan, loadRoster, hydrateRosterFromCache]);
+  try {
+    initialRoster = await buildRosterSnapshotFirst(initialClanTag, 'latest');
+  } catch {}
 
-  // Get current clan tag for components that need it
-  const currentClanTag = clanTag || homeClan || '';
-
-  // Render content based on active tab
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case 'roster':
-        return <RosterTable />;
-      
-      case 'changes':
-        return <ChangeDashboard clanTag={currentClanTag} />;
-      
-      case 'database':
-        return <PlayerDatabase />;
-      
-      case 'coaching':
-        return (
-          <AICoaching 
-            clanData={roster}
-            clanTag={currentClanTag}
-          />
-        );
-      
-      case 'events':
-        return <EventsDashboard />;
-      
-      case 'applicants':
-        return <ApplicantsDashboard />;
-      
-      case 'intelligence':
-        return (
-          <PlayerDNADashboard 
-            members={roster?.members || []}
-            clanTag={currentClanTag}
-          />
-        );
-      
-      case 'discord':
-        return (
-          <DiscordPublisher 
-            clanData={roster}
-            clanTag={currentClanTag}
-          />
-        );
-      
-      default:
-        return <RosterTable />;
-    }
-  };
-
-  return (
-    <DashboardLayout>
-      {renderTabContent()}
-    </DashboardLayout>
-  );
+  return <ClientDashboard initialRoster={initialRoster} initialClanTag={initialClanTag} />;
 }

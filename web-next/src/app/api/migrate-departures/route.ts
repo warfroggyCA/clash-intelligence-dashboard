@@ -2,16 +2,32 @@ import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { cfg } from '@/lib/config';
+import type { ApiResponse } from '@/types';
+import { z } from 'zod';
+import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 
 // POST /api/migrate-departures
 // One-time migration to scan historical snapshots and detect departures
 export async function POST(request: NextRequest) {
   try {
-    const { days = 7 } = await request.json().catch(() => ({})); // Default to 7 days
+    const parsed = z.object({ days: z.number().int().positive().max(365).optional() }).safeParse(await request.json().catch(() => ({})));
+    const days = (parsed.success && parsed.data.days) ? parsed.data.days : 7;
     const clanTag = cfg.homeClanTag;
     
     if (!clanTag) {
-      return NextResponse.json({ error: 'No home clan configured' }, { status: 400 });
+      return NextResponse.json<ApiResponse>({ success: false, error: 'No home clan configured' }, { status: 400 });
+    }
+
+    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const limit = await rateLimitAllow(`migrate-departures:${ip}`, { windowMs: 60_000, max: 3 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 3),
+        }
+      });
     }
 
     console.log(`[Migration] Starting departure migration for ${clanTag} (last ${days} days)`);
@@ -145,28 +161,27 @@ export async function POST(request: NextRequest) {
       console.log(`[Migration] Stored ${departures.length} historical departures`);
     }
 
-    return NextResponse.json({
+    return NextResponse.json<ApiResponse>({
       success: true,
-      message: `Migration completed successfully`,
-      departuresFound: departures.length,
-      snapshotsProcessed: processedSnapshots.length,
-      dateRange: {
-        from: processedSnapshots[0]?.date || 'N/A',
-        to: processedSnapshots[processedSnapshots.length - 1]?.date || 'N/A'
-      },
-      departures: departures.map(d => ({
-        memberName: d.memberName,
-        memberTag: d.memberTag,
-        departureDate: d.departureDate,
-        lastRole: d.lastRole
-      }))
+      data: {
+        message: `Migration completed successfully`,
+        departuresFound: departures.length,
+        snapshotsProcessed: processedSnapshots.length,
+        dateRange: {
+          from: processedSnapshots[0]?.date || 'N/A',
+          to: processedSnapshots[processedSnapshots.length - 1]?.date || 'N/A'
+        },
+        departures: departures.map(d => ({
+          memberName: d.memberName,
+          memberTag: d.memberTag,
+          departureDate: d.departureDate,
+          lastRole: d.lastRole
+        }))
+      }
     });
 
   } catch (error: any) {
     console.error('[Migration] Error during departure migration:', error);
-    return NextResponse.json({ 
-      error: error.message || 'Migration failed',
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: error.message || 'Migration failed', message: process.env.NODE_ENV === 'development' ? error?.stack : undefined }, { status: 500 });
   }
 }

@@ -1,16 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { z } from 'zod';
+import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
+import type { ApiResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { clanData } = await request.json();
-    
-    if (!clanData) {
-      return NextResponse.json({ error: 'Clan data is required' }, { status: 400 });
+    const body = await request.json();
+    const MemberSchema = z.object({
+      name: z.string(),
+      tag: z.string(),
+      role: z.string().optional(),
+      townHall: z.number().optional(),
+      trophies: z.number().optional(),
+      donations: z.number().optional(),
+      donationsReceived: z.number().optional(),
+      lastSeen: z.number().optional(),
+      tenure: z.number().optional(),
+      rushPercentage: z.number().optional(),
+      heroes: z.any().optional(),
+      donationBalance: z.number().optional(),
+      isNetReceiver: z.boolean().optional(),
+      isLowDonator: z.boolean().optional(),
+      isVeryRushed: z.boolean().optional(),
+      isRushed: z.boolean().optional(),
+    });
+    const Schema = z.object({
+      clanData: z.object({
+        clanName: z.string().optional(),
+        clanTag: z.string().optional(),
+        memberCount: z.number().optional(),
+        members: z.array(MemberSchema),
+      })
+    });
+    const parsed = Schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Clan data is required' }, { status: 400 });
+    }
+    const { clanData } = parsed.data;
+
+    // Inbound rate limit; AI is expensive
+    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const key = `ai:coaching:${clanData.clanTag || 'unknown'}:${ip}`;
+    const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 5 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 5),
+        }
+      });
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 });
+      return NextResponse.json<ApiResponse>({ success: false, error: 'OpenAI API key not configured' }, { status: 500 });
     }
 
     const openai = new OpenAI({
@@ -117,17 +161,16 @@ Return ONLY a valid JSON array.`;
       }
     }
 
-    return NextResponse.json({
+    return NextResponse.json<ApiResponse>({
       success: true,
-      advice: Array.isArray(advice) ? advice : [],
-      timestamp: new Date().toISOString()
+      data: {
+        advice: Array.isArray(advice) ? advice : [],
+        timestamp: new Date().toISOString()
+      }
     });
 
   } catch (error: any) {
     console.error('Error generating AI coaching advice:', error);
-    return NextResponse.json({ 
-      error: 'Failed to generate coaching advice',
-      details: error.message 
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: 'Failed to generate coaching advice', message: error.message }, { status: 500 });
   }
 }

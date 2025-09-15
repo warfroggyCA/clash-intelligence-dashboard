@@ -2,6 +2,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import type { ApiResponse } from "@/types";
 
 async function fetchText(url: string, timeoutMs = 4000): Promise<string> {
   const ac = new AbortController();
@@ -36,7 +37,7 @@ async function getOutboundIp(): Promise<{ ip?: string; source?: string; error?: 
 export async function GET(req: Request) {
   try {
     if (process.env.NODE_ENV === "production") {
-      return NextResponse.json({ ok: false, error: "Not available in production" }, { status: 404 });
+      return NextResponse.json<ApiResponse>({ success: false, error: "Not available in production" }, { status: 404 });
     }
 
     const headers = new Headers(req.headers);
@@ -44,15 +45,16 @@ export async function GET(req: Request) {
     const xri = headers.get("x-real-ip") || undefined;
     const { ip, source, error } = await getOutboundIp();
 
-    return NextResponse.json({
-      ok: true,
-      env: process.env.NODE_ENV,
-      outbound: { ip, source, error },
-      request: { xForwardedFor: xff, xRealIp: xri }
+    return NextResponse.json<ApiResponse>({
+      success: true,
+      data: {
+        env: process.env.NODE_ENV,
+        outbound: { ip, source, error },
+        request: { xForwardedFor: xff, xRealIp: xri }
+      }
     });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "failed" }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || "failed" }, { status: 500 });
   }
 }
-
 

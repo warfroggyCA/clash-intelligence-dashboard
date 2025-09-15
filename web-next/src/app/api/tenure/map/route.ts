@@ -3,6 +3,7 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
+import type { ApiResponse } from "@/types";
 import path from "path";
 import { promises as fsp } from "fs";
 import { cfg } from "../../../../lib/config";
@@ -39,9 +40,8 @@ export async function GET() {
 
     const map: Record<string,number> = {};
     for (const [tag, b] of Object.entries(base)) map[tag] = Math.max(0, Math.round(b + daysSince(asof[tag] || "")));
-    return NextResponse.json(map);
+    return NextResponse.json<ApiResponse>({ success: true, data: map }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message || "map failed" }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || "map failed" }, { status: 500 });
   }
 }
-

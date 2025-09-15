@@ -1,12 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateChangeSummary } from '@/lib/ai-summarizer';
+import { z } from 'zod';
+import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
+import type { ApiResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
   try {
-    const { clanData, type } = await request.json();
-    
-    if (!clanData) {
-      return NextResponse.json({ error: 'Clan data is required' }, { status: 400 });
+    const body = await request.json();
+    const Schema = z.object({
+      type: z.literal('full_analysis'),
+      clanData: z.object({
+        clanName: z.string().optional(),
+        clanTag: z.string().optional(),
+        memberCount: z.number().optional(),
+        averageTownHall: z.number().optional(),
+        averageTrophies: z.number().optional(),
+        totalDonations: z.number().optional(),
+        roleDistribution: z.record(z.number()).optional(),
+        members: z.array(z.any()).optional()
+      })
+    });
+    const parsed = Schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Invalid request' }, { status: 400 });
+    }
+    const { clanData, type } = parsed.data;
+
+    // Inbound rate limit (AI)
+    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const key = `ai:summary:${clanData.clanTag || 'unknown'}:${ip}`;
+    const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 5 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 5),
+        }
+      });
     }
 
     let summary: string;
@@ -50,21 +81,16 @@ Format your response as a clear, actionable summary that would be useful for cla
       // Use the existing AI summarizer but with a custom prompt
       summary = await generateChangeSummary([], clanData.clanTag, new Date().toISOString().split('T')[0], prompt);
     } else {
-      return NextResponse.json({ error: 'Invalid analysis type' }, { status: 400 });
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Invalid analysis type' }, { status: 400 });
     }
 
-    return NextResponse.json({
+    return NextResponse.json<ApiResponse>({
       success: true,
-      summary,
-      type,
-      timestamp: new Date().toISOString()
+      data: { summary, type, timestamp: new Date().toISOString() }
     });
 
   } catch (error: any) {
     console.error('Error generating AI summary:', error);
-    return NextResponse.json({ 
-      error: 'Failed to generate AI summary',
-      details: error.message 
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: 'Failed to generate AI summary', message: error.message }, { status: 500 });
   }
 }

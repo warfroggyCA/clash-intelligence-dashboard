@@ -1,9 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import type { ApiResponse } from '@/types';
+import { z } from 'zod';
+import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 
 export async function POST(request: NextRequest) {
   try {
-    const { snapshots, tenureLedger } = await request.json();
+    const body = await request.json();
+    const Schema = z.object({
+      snapshots: z.record(z.any()).optional(),
+      tenureLedger: z.string().optional(),
+    });
+    const parsed = Schema.safeParse(body);
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Invalid payload' }, { status: 400 });
+    }
+    const { snapshots, tenureLedger } = parsed.data as any;
+
+    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const limit = await rateLimitAllow(`upload-snapshots:${ip}`, { windowMs: 60_000, max: 6 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 6),
+        }
+      });
+    }
     
     const uploadedSnapshots = [];
     
@@ -79,22 +103,10 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    return NextResponse.json({ 
-      ok: true, 
-      message: 'Snapshots uploaded successfully to Supabase',
-      uploaded: {
-        snapshots: uploadedSnapshots.length,
-        hasTenureLedger: tenureUploaded,
-        files: uploadedSnapshots
-      }
-    });
+    return NextResponse.json<ApiResponse>({ success: true, data: { message: 'Snapshots uploaded successfully to Supabase', uploaded: { snapshots: uploadedSnapshots.length, hasTenureLedger: tenureUploaded, files: uploadedSnapshots } } });
     
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json({ 
-      ok: false, 
-      error: error instanceof Error ? error.message : 'Upload failed' 
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: error instanceof Error ? error.message : 'Upload failed' }, { status: 500 });
   }
 }
-

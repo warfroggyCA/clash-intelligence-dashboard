@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import type { ApiResponse } from '@/types';
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,12 +57,9 @@ export async function GET(request: NextRequest) {
       console.error('Error checking tenure ledger from Supabase:', e);
     }
     
-    return NextResponse.json(result);
+    return NextResponse.json<ApiResponse>({ success: true, data: result });
     
   } catch (error: any) {
-    return NextResponse.json({ 
-      error: error.message,
-      stack: error.stack 
-    }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: error.message, message: error.stack }, { status: 500 });
   }
 }

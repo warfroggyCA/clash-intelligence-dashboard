@@ -1,8 +1,8 @@
 // web-next/src/lib/coc.ts
 // Server-only Clash of Clans API helpers.
-// Reads process.env.COC_API_TOKEN. Forces IPv4 egress to avoid invalidIp on IPv6.
+// Uses native fetch and undici to correctly force IPv4 when not using a proxy.
 
-import { Agent } from "undici";
+import { Agent, setGlobalDispatcher } from "undici";
 import axios from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { normalizeTag } from './tags';
@@ -42,8 +42,13 @@ type CoCClan = { tag: string; name?: string };
 
 const BASE = process.env.COC_API_BASE || "https://api.clashofclans.com/v1";
 
-// Force IPv4 for all requests (some keys/IP-allowlists are v4-only)
-const agent4 = new Agent({ connect: { family: 4 } });
+// Force IPv4 for native fetch (some keys/IP-allowlists are v4-only) when no proxy is set
+const FIXIE_URL = process.env.FIXIE_URL;
+if (!FIXIE_URL) {
+  try {
+    setGlobalDispatcher(new Agent({ connect: { family: 4 } }));
+  } catch {}
+}
 
 // Development mode - skip API calls to save Fixie quota
 const DEV_MODE = process.env.NODE_ENV === 'development' && process.env.SKIP_API_CALLS === 'true';
@@ -204,41 +209,49 @@ async function api<T>(path: string): Promise<T> {
     throw new Error("COC_API_TOKEN not set");
   }
   
-  const axiosConfig: any = {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-    timeout: 10000,
-  };
-
-  // Use Fixie proxy if available (for production), otherwise use IPv4 agent
-  if (process.env.FIXIE_URL) {
-    console.log('Using Fixie proxy with axios:', process.env.FIXIE_URL);
-    // Use HttpsProxyAgent for axios
-    const proxyAgent = new HttpsProxyAgent(process.env.FIXIE_URL);
+  // If a proxy URL is provided, use axios + https-proxy-agent (fetch proxy dispatcher not installed)
+  if (FIXIE_URL) {
+    const axiosConfig: any = {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      timeout: 10000,
+    };
+    console.log('Using Fixie proxy with axios:', FIXIE_URL);
+    const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
     axiosConfig.httpsAgent = proxyAgent;
     axiosConfig.httpAgent = proxyAgent;
-  } else {
-    // Always use IPv4 agent when no proxy
-    axiosConfig.httpsAgent = agent4;
-    axiosConfig.httpAgent = agent4;
+    try {
+      console.log(`[API Call] (proxy) ${path}`);
+      const response = await axios.get(`${BASE}${path}`, axiosConfig);
+      setCached(path, response.data);
+      return response.data as T;
+    } catch (error: any) {
+      if (error.response) {
+        const status = error.response.status;
+        const statusText = error.response.statusText;
+        const data = error.response.data;
+        throw new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
+      } else {
+        throw new Error(`CoC API request failed: ${error.message}`);
+      }
+    }
   }
 
+  // Default path: native fetch using global IPv4 dispatcher
   try {
-    console.log(`[API Call] Fetching ${path}`);
-    const response = await axios.get(`${BASE}${path}`, axiosConfig);
-    
-    // Cache the response
-    setCached(path, response.data);
-    
-    return response.data as T;
-  } catch (error: any) {
-    if (error.response) {
-      const status = error.response.status;
-      const statusText = error.response.statusText;
-      const data = error.response.data;
-      throw new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
-    } else {
-      throw new Error(`CoC API request failed: ${error.message}`);
+    console.log(`[API Call] ${path}`);
+    const res = await fetch(`${BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`CoC API ${res.status} ${res.statusText}: ${text}`);
     }
+    const data = (await res.json()) as T;
+    setCached(path, data);
+    return data;
+  } catch (error: any) {
+    throw new Error(`CoC API request failed: ${error.message}`);
   }
 }
 

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { normalizeTag, isValidTag, safeTagForFilename } from '@/lib/tags';
+import { z } from 'zod';
+import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
+import type { ApiResponse } from '@/types';
+import { createRequestLogger } from '@/lib/logger';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -8,12 +12,31 @@ export const dynamic = 'force-dynamic';
 // GET /api/snapshots/list?clanTag=#TAG
 export async function GET(request: NextRequest) {
   try {
+    const logger = createRequestLogger(request, { route: '/api/snapshots/list' });
     const { searchParams } = new URL(request.url);
-    const raw = searchParams.get('clanTag') || '';
-    const clanTag = normalizeTag(raw);
+    const Schema = z.object({ clanTag: z.string() });
+    const parsed = Schema.safeParse(Object.fromEntries(searchParams.entries()));
+    if (!parsed.success) {
+      return NextResponse.json<ApiResponse>({ success: false, error: 'clanTag is required' }, { status: 400 });
+    }
+    const clanTag = normalizeTag(parsed.data.clanTag);
     
     if (!clanTag || !isValidTag(clanTag)) {
-      return NextResponse.json({ error: 'Clan tag is required' }, { status: 400 });
+      return NextResponse.json<ApiResponse>({ success: false, error: 'Provide a valid clanTag like #2PR8R8V8P' }, { status: 400 });
+    }
+
+    // Basic inbound rate limit
+    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const key = `snapshots:list:${clanTag}:${ip}`;
+    const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 60 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 60),
+        }
+      });
     }
     
     const safeTag = safeTagForFilename(clanTag);
@@ -28,10 +51,7 @@ export async function GET(request: NextRequest) {
       
       if (error) {
         console.error('Database query error:', error);
-        return NextResponse.json({
-          success: true,
-          snapshots: []
-        });
+        return NextResponse.json<ApiResponse>({ success: true, data: [] });
       }
       
       // Transform data for response and deduplicate by date
@@ -54,13 +74,15 @@ export async function GET(request: NextRequest) {
       const uniqueSnapshots = Array.from(dateMap.values());
       
       
-      return NextResponse.json(uniqueSnapshots);
+      const res = NextResponse.json<ApiResponse>({ success: true, data: uniqueSnapshots }, { headers: { 'Cache-Control': 'private, max-age=60' } });
+      logger.info('Served snapshot list', { clanTag, count: uniqueSnapshots.length });
+      return res;
     } catch (error) {
       console.error('Error querying snapshots:', error);
-      return NextResponse.json([]);
+      return NextResponse.json<ApiResponse>({ success: true, data: [] });
     }
   } catch (error: any) {
     console.error('Error listing snapshots:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: error.message || 'Internal error' }, { status: 500 });
   }
 }

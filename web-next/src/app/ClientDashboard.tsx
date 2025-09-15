@@ -1,0 +1,103 @@
+"use client";
+
+import React, { useEffect } from 'react';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { DashboardLayout, RosterTable } from '@/components';
+import ChangeDashboard from '@/components/ChangeDashboard';
+import PlayerDatabase from '@/components/PlayerDatabase';
+import AICoaching from '@/components/AICoaching';
+import PlayerDNADashboard from '@/components/PlayerDNADashboard';
+import DiscordPublisher from '@/components/DiscordPublisher';
+import type { Roster } from '@/types';
+
+type Props = {
+  initialRoster?: Roster | null;
+  initialClanTag: string;
+};
+
+export default function ClientDashboard({ initialRoster, initialClanTag }: Props) {
+  const {
+    activeTab,
+    loadRoster,
+    homeClan,
+    clanTag,
+    roster,
+    setClanTag,
+    setHomeClan,
+    setRoster,
+    hydrateRosterFromCache,
+  } = useDashboardStore();
+
+  // Hydrate store on first mount
+  useEffect(() => {
+    if (initialClanTag) {
+      setHomeClan(initialClanTag);
+      if (!clanTag) setClanTag(initialClanTag);
+    }
+    let had = false;
+    try {
+      had = hydrateRosterFromCache();
+    } catch {}
+    if (initialRoster && !roster) {
+      setRoster(initialRoster);
+    } else {
+      const tag = clanTag || initialClanTag || homeClan || '';
+      if (!had && tag && !roster) {
+        loadRoster(tag);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const currentClanTag = clanTag || homeClan || initialClanTag || '';
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'roster':
+        return <RosterTable />;
+      case 'changes':
+        return <ChangeDashboard clanTag={currentClanTag} />;
+      case 'database':
+        return <PlayerDatabase />;
+      case 'coaching':
+        return <AICoaching clanData={roster} clanTag={currentClanTag} />;
+      case 'events':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">
+            <div className="container mx-auto px-6 py-12">
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full mb-6 shadow-2xl">
+                  <span className="text-4xl">📊</span>
+                </div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">Events Dashboard</h1>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto">Track significant player events, milestones, and clan activities with beautiful analytics</p>
+              </div>
+            </div>
+          </div>
+        );
+      case 'applicants':
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
+            <div className="container mx-auto px-6 py-12">
+              <div className="text-center mb-12">
+                <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full mb-6 shadow-2xl">
+                  <span className="text-4xl">🎯</span>
+                </div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">Applicant Evaluation</h1>
+                <p className="text-xl text-gray-600 max-w-2xl mx-auto">Comprehensive scoring system for evaluating potential clan members with AI-powered insights</p>
+              </div>
+            </div>
+          </div>
+        );
+      case 'intelligence':
+        return <PlayerDNADashboard members={roster?.members || []} clanTag={currentClanTag} />;
+      case 'discord':
+        return <DiscordPublisher clanData={roster} clanTag={currentClanTag} />;
+      default:
+        return <RosterTable />;
+    }
+  };
+
+  return <DashboardLayout>{renderTabContent()}</DashboardLayout>;
+}
+

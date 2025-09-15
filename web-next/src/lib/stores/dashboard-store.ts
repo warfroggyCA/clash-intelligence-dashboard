@@ -274,17 +274,18 @@ export const useDashboardStore = create<DashboardState>()(
           let lastError: any = null;
           for (const url of plan.urls) {
             const result = await tryFetch(url);
-            if (result.ok && Array.isArray(result.json?.members)) {
-              setRoster(result.json);
+            const payload = result.json?.data ?? result.json;
+            if (result.ok && Array.isArray(payload?.members)) {
+              setRoster(payload);
               setStatus('success');
-              const src = result.json?.source || plan.sourcePreference;
-              setMessage(`Loaded ${result.json.members.length} members (${src})`);
+              const src = payload?.source || plan.sourcePreference;
+              setMessage(`Loaded ${payload.members.length} members (${src})`);
               // Update dev status badge info
-              const tenureMatches = (result.json.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
-              setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (result.json.members || []).length });
+              const tenureMatches = (payload.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
+              setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (payload.members || []).length });
               return;
             }
-            lastError = result.json?.error || 'Failed to load roster';
+            lastError = result.json?.error || result.json?.message || 'Failed to load roster';
           }
 
           setStatus('error');

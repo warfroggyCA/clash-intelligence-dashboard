@@ -1,6 +1,16 @@
 Ok # Clash Intelligence Dashboard - Development Ideas
 
 ## What's New (Unreleased)
+- Security + API hardening sweep (2025-09-15)
+  - Added production security headers (CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy) and disabled x-powered-by.
+  - Standardized all hot API routes to ApiResponse<T> shape with Zod input validation and short Cache-Control headers.
+  - Introduced durable inbound rate limiting via Upstash Redis with in-memory dev fallback; applied to roster, snapshots, departures, AI, sync, uploads, migrations.
+  - Server-rendered initial roster without API hop for faster first paint; added `lib/roster.ts` snapshot-first helper.
+  - Leadership middleware (opt-in with LEADERSHIP_TOKEN) to protect admin/write endpoints.
+  - Structured JSON request logging for key routes to aid observability.
+  - Fix: CoC client now truly forces IPv4 for native fetch; proxy path uses axios + https-proxy-agent.
+  - Breaking (minor): Roster API now returns `{ success, data }`; store updated; dependent routes adjusted.
+
 - Header overhaul: two-row, full-width with centered clan name; controls right-aligned and compact.
 - Tabs visually “glued” to header via gradient seam; still render below.
 - Clan logo support: detects `/clans/<safeTag>.*` and common root paths, with fallback to `/clan-logo.png`.

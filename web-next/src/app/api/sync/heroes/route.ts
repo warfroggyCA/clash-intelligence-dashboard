@@ -9,6 +9,9 @@ import { cfg } from "@/lib/config";
 import { getClanMembers, getPlayer, extractHeroLevels } from "@/lib/coc";
 import { normalizeTag, isValidTag } from "@/lib/tags";
 import { rateLimiter } from "@/lib/rate-limiter";
+import { z } from 'zod';
+import type { ApiResponse } from '@/types';
+import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 
 // Concurrency is governed by the shared rateLimiter
 
@@ -18,13 +21,27 @@ export async function GET(request: Request) {
     const raw = url.searchParams.get("clanTag") || cfg.homeClanTag || '';
     const clanTag = normalizeTag(raw);
     if (!clanTag || !isValidTag(clanTag)) {
-      return NextResponse.json({ ok: false, error: "Missing clanTag" }, { status: 400 });
+      return NextResponse.json<ApiResponse>({ success: false, error: "Missing clanTag" }, { status: 400 });
+    }
+
+    // Rate limit (expensive writer)
+    const ip = (request.headers as any).get?.('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const key = `sync:heroes:${clanTag}:${ip}`;
+    const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 6 });
+    if (!limit.ok) {
+      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+        status: 429,
+        headers: {
+          'Content-Type': 'application/json',
+          ...formatRateLimitHeaders({ remaining: limit.remaining, resetAt: limit.resetAt }, 6),
+        }
+      });
     }
 
     // 1) List members from CoC
     const members = await getClanMembers(clanTag);
     if (!members.length) {
-      return NextResponse.json({ ok: false, error: "No members from API" }, { status: 404 });
+      return NextResponse.json<ApiResponse>({ success: false, error: "No members from API" }, { status: 404 });
     }
 
     // 2) Pull each player (heroes) with modest concurrency
@@ -61,9 +78,9 @@ export async function GET(request: Request) {
 
     await fsp.writeFile(outPath, JSON.stringify(heroIndex, null, 2) + "\n", "utf-8");
 
-    return NextResponse.json({
-      ok: true,
-      summary: {
+    return NextResponse.json<ApiResponse>({
+      success: true,
+      data: {
         clanTag,
         members: members.length,
         heroesWritten: Object.keys(heroIndex).length,
@@ -71,6 +88,6 @@ export async function GET(request: Request) {
       }
     });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "sync failed" }, { status: 500 });
+    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || "sync failed" }, { status: 500 });
   }
 }

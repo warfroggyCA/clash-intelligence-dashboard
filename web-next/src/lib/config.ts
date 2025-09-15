@@ -1,9 +1,34 @@
 // web-next/src/lib/config.ts
+import { z } from 'zod';
 
 // Environment detection
 const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "development";
 const isStaging = process.env.VERCEL_ENV === "preview";
 const isProduction = process.env.NODE_ENV === "production" && process.env.VERCEL_ENV === "production";
+
+// Fail-fast env validation in production. In development, warn but do not crash.
+const REQUIRED_IN_PROD = [
+  'NEXT_PUBLIC_SUPABASE_URL',
+  'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+  'SUPABASE_SERVICE_ROLE_KEY',
+  'COC_API_TOKEN',
+];
+
+function validateEnv() {
+  if (!isProduction) {
+    const missing = REQUIRED_IN_PROD.filter((k) => !process.env[k]);
+    if (missing.length) {
+      console.warn(`[config] Missing env vars (development): ${missing.join(', ')}`);
+    }
+    return;
+  }
+  const missing = REQUIRED_IN_PROD.filter((k) => !process.env[k]);
+  if (missing.length) {
+    throw new Error(`[config] Missing required env vars in production: ${missing.join(', ')}`);
+  }
+}
+
+validateEnv();
 
 // Data source configuration
 const useLocalData = isDevelopment && process.env.USE_LOCAL_DATA !== "false";
@@ -29,10 +54,10 @@ export const cfg = {
   
   // Database configuration
   database: {
-    // Use different Supabase projects for different environments
-    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    // Different Supabase projects by environment
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+    supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "",
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY || "",
     
     // Environment-specific settings
     projectId: isProduction ? "prod" : isStaging ? "staging" : "dev",
@@ -41,9 +66,9 @@ export const cfg = {
   
   // API configuration
   api: {
-    cocApiKey: process.env.COC_API_KEY!,
+    cocApiKey: process.env.COC_API_KEY || process.env.COC_API_TOKEN || "",
     cocBaseUrl: process.env.COC_BASE_URL || "https://api.clashofclans.com/v1",
-    openaiApiKey: process.env.OPENAI_API_KEY!,
+    openaiApiKey: process.env.OPENAI_API_KEY || "",
   },
   
   // Development settings
@@ -53,4 +78,3 @@ export const cfg = {
     useTestData: process.env.USE_TEST_DATA === "true",
   }
 } as const;
-
