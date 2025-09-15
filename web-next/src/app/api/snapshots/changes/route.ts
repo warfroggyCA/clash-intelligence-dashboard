@@ -66,7 +66,7 @@ export async function GET(req: NextRequest) {
         return res;
       }
       
-      const allChanges = await cached(['changes','all', clanTag], () => getAllChangeSummaries(clanTag), 10);
+      const allChanges = await getAllChangeSummaries(clanTag);
       changeCache.set(cacheKey, { data: allChanges, timestamp: now });
       
       const res = json({ success: true, data: allChanges }, { headers: { 'Cache-Control': 'private, max-age=30' } });
