@@ -1,0 +1,15 @@
+name: Get GitHub Actions IPs
+
+on:
+  workflow_dispatch:  # Manual trigger only
+
+jobs:
+  get-ips:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Get current IP
+        run: |
+          echo "Current GitHub Actions IP:"
+          curl -s https://api.ipify.org
+          echo ""
+          echo "Add this IP to your CoC API key whitelist"
