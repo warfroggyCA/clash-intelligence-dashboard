@@ -81,7 +81,7 @@ Please provide a comprehensive analysis covering:
 Format your response as a clear, actionable summary that would be useful for clan leadership.`;
 
       // Use the existing AI summarizer but with a custom prompt
-      summary = await generateChangeSummary([], clanData.clanTag, new Date().toISOString().split('T')[0], prompt);
+      summary = await generateChangeSummary([], clanData.clanTag || '#UNKNOWN', new Date().toISOString().split('T')[0], prompt);
     } else {
       return json({ success: false, error: 'Invalid analysis type' }, { status: 400 });
     }
