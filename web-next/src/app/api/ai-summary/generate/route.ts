@@ -57,7 +57,7 @@ CLAN OVERVIEW:
 - Role Distribution: ${Object.entries(clanData.roleDistribution || {}).map(([role, count]) => `${role}: ${count}`).join(', ')}
 
 MEMBER ANALYSIS:
-${clanData.members.map((member: any) => `
+${(clanData.members || []).map((member: any) => `
 ${member.name} (${member.tag})
 - Role: ${member.role}
 - Town Hall: ${member.townHall}
