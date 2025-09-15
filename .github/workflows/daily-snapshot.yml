@@ -37,10 +37,10 @@ jobs:
           
           # OpenAI API key for AI processing
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-
-             # Fixie proxy for CoC API calls
-   FIXIE_URL: ${{ secrets.FIXIE_URL }}
-
+          
+          # Fixie proxy for CoC API calls
+          FIXIE_URL: ${{ secrets.FIXIE_URL }}
+          
           # Environment configuration
           NODE_ENV: production
           VERCEL_ENV: production
