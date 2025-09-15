@@ -170,7 +170,7 @@ export async function GET(req: NextRequest) {
       date: ymdNowUTC(),
       clanName: (info as any)?.name,
       clanTag,
-      meta: { clanTag, clanName: (info as any)?.name },
+      meta: { clanName: (info as any)?.name },
       members: enriched || [],
     };
     const res = json<Roster>({ success: true, data: payload }, { status: 200, headers: { "Cache-Control": "private, max-age=60" } });
