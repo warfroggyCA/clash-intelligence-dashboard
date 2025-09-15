@@ -210,7 +210,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
           <div className="md:col-span-2">
             <label className="text-sm text-gray-600 inline-flex items-center gap-1">Player Tag
-              <Info className="w-3.5 h-3.5 text-gray-400" title="Enter a Clash player tag like #ABC123XYZ. We’ll score the player against your clan’s profile." />
+              <Info className="w-3.5 h-3.5 text-gray-400" />
             </label>
             <input className="mt-1 w-full border rounded px-3 py-2" placeholder="#XXXXXXXX" value={tag} onChange={e => setTag(e.target.value)} />
             <p className="mt-1 text-xs text-gray-500">Clan context defaults to your current clan for fit scoring.</p>
