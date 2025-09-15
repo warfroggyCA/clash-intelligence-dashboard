@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
       .reverse(); // Most recent first
 
     if (snapshotFiles.length < 2) {
-      return json({ success: true, message: 'Not enough snapshots to detect departures', snapshotsFound: snapshotFiles.length });
+      return json({ success: true, message: `Not enough snapshots to detect departures (found ${snapshotFiles.length})` });
     }
 
     // Calculate cutoff date
