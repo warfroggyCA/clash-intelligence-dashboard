@@ -101,7 +101,7 @@ export async function GET(req: NextRequest) {
           date: snapshot.date,
           clanName: snapshot.clanName,
           clanTag,
-          meta: { clanTag, clanName: snapshot.clanName },
+          meta: { clanName: snapshot.clanName },
           members: enrichedMembers,
         };
         const res = json<Roster>({ success: true, data: payload }, { status: 200, headers: { "Cache-Control": "private, max-age=60" } });
