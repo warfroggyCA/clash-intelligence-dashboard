@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       
       // Deduplicate by date using Map to ensure we keep the most recent for each date
       const dateMap = new Map();
-      formattedSnapshots.forEach(snapshot => {
+      formattedSnapshots.forEach((snapshot: any) => {
         if (!dateMap.has(snapshot.date)) {
           dateMap.set(snapshot.date, snapshot);
         }
