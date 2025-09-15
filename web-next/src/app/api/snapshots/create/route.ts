@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     // Inbound rate limit (expensive path)
     const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const key = `snapshots:create:${clanTag}:${ip}`;
-    const limit = rateLimitAllow(key, { windowMs: 60_000, max: 6 });
+    const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 6 });
     if (!limit.ok) {
       return json({ success: false, error: 'Too many requests' }, {
         status: 429,
