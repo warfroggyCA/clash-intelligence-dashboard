@@ -278,31 +278,31 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min TH
-                <Info className="w-3.5 h-3.5 text-gray-400" Filter out candidates below this Town Hall" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={16} value={minTh} onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max TH
-                <Info className="w-3.5 h-3.5 text-gray-400" Filter out candidates above this Town Hall" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={16} value={maxTh} onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Score
-                <Info className="w-3.5 h-3.5 text-gray-400" Minimum evaluation score (0-100)" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={100} value={minScore} onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-24 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Trophies
-                <Info className="w-3.5 h-3.5 text-gray-400" Filter out candidates below this trophy count" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} value={minTrophies} onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-28 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max Rush %
-                <Info className="w-3.5 h-3.5 text-gray-400" Exclude players at or above this rush percentage (rush = average hero deficit vs TH caps)" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={100} value={maxRush} onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} className="mt-1 w-28 border rounded px-2 py-1" />
             </div>
@@ -342,7 +342,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
           <div className="flex flex-wrap items-end gap-3 mb-3">
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">External Clan Tag
-                <Info className="w-3.5 h-3.5 text-gray-400" Enter a clan tag to fetch its current roster and evaluate fits." />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input className="mt-1 w-48 border rounded px-2 py-1" placeholder="#XXXXXXXX" value={scanTag} onChange={e => setScanTag(e.target.value)} />
             </div>
@@ -352,31 +352,31 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min TH
-                <Info className="w-3.5 h-3.5 text-gray-400" Filter out candidates below this Town Hall" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={16} value={minTh} onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max TH
-                <Info className="w-3.5 h-3.5 text-gray-400" Filter out candidates above this Town Hall" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={16} value={maxTh} onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Score
-                <Info className="w-3.5 h-3.5 text-gray-400" Minimum evaluation score (0-100)" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={100} value={minScore} onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-24 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Trophies
-                <Info className="w-3.5 h-3.5 text-gray-400" Filter out candidates below this trophy count" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} value={minTrophies} onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-28 border rounded px-2 py-1" />
             </div>
             <div>
               <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max Rush %
-                <Info className="w-3.5 h-3.5 text-gray-400" Exclude players at or above this rush percentage (rush = average hero deficit vs TH caps)" />
+                <Info className="w-3.5 h-3.5 text-gray-400" />
               </label>
               <input type="number" min={0} max={100} value={maxRush} onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} className="mt-1 w-28 border rounded px-2 py-1" />
             </div>

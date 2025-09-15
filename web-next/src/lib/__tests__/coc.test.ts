@@ -2,7 +2,7 @@ import { extractHeroLevels } from '../coc';
 
 describe('extractHeroLevels', () => {
   it('should extract hero levels from currentLevel field', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: [
@@ -26,7 +26,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should extract hero levels from level field when currentLevel is missing', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: [
@@ -47,7 +47,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should handle missing heroes array', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer'
     };
@@ -64,7 +64,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should handle empty heroes array', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: []
@@ -82,7 +82,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should handle unknown hero names', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: [
@@ -104,7 +104,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should handle heroes with null/undefined levels', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: [
@@ -126,7 +126,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should handle case-insensitive hero names', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: [
@@ -148,7 +148,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should handle partial hero names', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: [
@@ -169,7 +169,7 @@ describe('extractHeroLevels', () => {
   });
 
   it('should prioritize currentLevel over level when both exist', () => {
-    const player = {
+    const player: any = {
       tag: '#TEST123',
       name: 'TestPlayer',
       heroes: [

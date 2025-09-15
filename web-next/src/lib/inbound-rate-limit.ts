@@ -26,7 +26,8 @@ async function getRedisLimiter(max: number, windowMs: number) {
     });
     ratelimit = new Ratelimit({
       redis,
-      limiter: Ratelimit.fixedWindow(max, windowMs / 1000),
+      // Upstash Duration expects a string like "1000 ms" | "60 s"
+      limiter: Ratelimit.fixedWindow(max, `${windowMs} ms` as any),
       prefix: 'rate-limit',
     });
     upstashMax = max;

@@ -32,7 +32,7 @@ export async function buildRosterSnapshotFirst(clanTagRaw: string, date: 'latest
       date: snapshot.date,
       clanName: snapshot.clanName,
       clanTag,
-      meta: { clanTag, clanName: snapshot.clanName },
+      meta: { clanName: snapshot.clanName },
       members,
     };
   }
@@ -77,8 +77,7 @@ export async function buildRosterSnapshotFirst(clanTagRaw: string, date: 'latest
     date: ymdNowUTC(),
     clanName: (info as any)?.name,
     clanTag,
-    meta: { clanTag, clanName: (info as any)?.name },
+    meta: { clanName: (info as any)?.name },
     members: enriched,
   };
 }
-
