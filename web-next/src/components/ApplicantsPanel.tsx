@@ -237,7 +237,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             <div className="mb-3 flex flex-wrap gap-2 items-center">
               <div className="flex items-center gap-2">
                 <label className="text-sm text-gray-600 inline-flex items-center gap-1">Status
-                  <Info className="w-3.5 h-3.5 text-gray-400" title="Set applicant status and save to Player DB (local)." />
+                  <Info className="w-3.5 h-3.5 text-gray-400" />
                 </label>
                 <select value={status} onChange={e => setStatus(e.target.value)} className="border rounded px-2 py-1 text-sm">
                   <option value="shortlisted">Shortlisted</option>
