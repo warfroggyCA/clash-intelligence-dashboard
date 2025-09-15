@@ -25,9 +25,10 @@ export function middleware(request: Request) {
 
   const provided = (request.headers as any).get?.('x-leadership-token') || '';
   if (provided !== token) {
-    return new NextResponse(JSON.stringify({ success: false, error: 'Unauthorized' }), {
+    const requestId = Math.random().toString(36).slice(2, 10);
+    return new NextResponse(JSON.stringify({ success: false, error: 'Unauthorized', requestId }), {
       status: 401,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-request-id': requestId },
     });
   }
   return NextResponse.next();

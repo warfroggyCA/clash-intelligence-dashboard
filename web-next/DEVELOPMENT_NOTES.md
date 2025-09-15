@@ -1,15 +1,34 @@
 Ok # Clash Intelligence Dashboard - Development Ideas
 
 ## What's New (Unreleased)
-- Security + API hardening sweep (2025-09-15)
-  - Added production security headers (CSP, HSTS, X-Frame-Options, Referrer-Policy, Permissions-Policy) and disabled x-powered-by.
-  - Standardized all hot API routes to ApiResponse<T> shape with Zod input validation and short Cache-Control headers.
-  - Introduced durable inbound rate limiting via Upstash Redis with in-memory dev fallback; applied to roster, snapshots, departures, AI, sync, uploads, migrations.
-  - Server-rendered initial roster without API hop for faster first paint; added `lib/roster.ts` snapshot-first helper.
-  - Leadership middleware (opt-in with LEADERSHIP_TOKEN) to protect admin/write endpoints.
-  - Structured JSON request logging for key routes to aid observability.
-  - Fix: CoC client now truly forces IPv4 for native fetch; proxy path uses axios + https-proxy-agent.
-  - Breaking (minor): Roster API now returns `{ success, data }`; store updated; dependent routes adjusted.
+### Security + API hardening sweep (2025‑09‑15)
+- Production security headers: CSP, HSTS, X‑Frame‑Options, Referrer‑Policy, Permissions‑Policy; disabled `x-powered-by`.
+- Standardized API response shape: every hot route returns `ApiResponse<T>` with `{ success, data?, error?, message?, requestId? }`.
+- Zod‑validated inputs across routes; consistent 400/401/403/404/429 semantics.
+- Durable inbound rate limiting via Upstash Redis with in‑memory fallback; applied to roster, snapshots, departures, AI, sync, uploads, migrations.
+- SSR roster snapshot‑first bootstrap for fast first paint; `lib/roster.ts` helper.
+- Leadership middleware (opt‑in via `LEADERSHIP_TOKEN`) guarding admin/write endpoints.
+- Structured JSON request logging with `requestId`; pluggable transport (provider hook), console JSON fallback.
+- Fix: CoC client uses IPv4 for native fetch; proxy path uses axios + https‑proxy‑agent.
+- Breaking: Roster and other APIs return `{ success, data }`—external consumers must read `json.data`.
+
+### RequestId + ApiResponse standardization (details)
+- Helper: `createApiContext(req, route)` provides `{ logger, json }`.
+  - `json(body, init?)` injects `requestId` into body and sets `x-request-id` header.
+  - `logger` emits structured JSON logs with consistent fields: `level, msg, route, path, ip, requestId, ts`.
+- Updated routes to use helper: roster, snapshots (list/create/changes), departures (+notifications), AI (summary/coaching/batch-results/dna-cache), sync/heroes, tenure (map/save/seed/update), health, diag (ip/env), access (init/list), player‑resolver, player/[tag], upload‑snapshots, migrate‑departures, cron/daily‑snapshot, ip‑test, debug (data/player).
+- Middleware 401s include `requestId` and set `x-request-id`.
+
+### Read‑side caching
+- Added tiny wrapper `cached(key, fn, ttlSeconds)` over `next/cache` `unstable_cache` for brief deduping on hot reads.
+- Applied conservatively (defaults 10s): snapshots list (Supabase), snapshot/tenure reads in roster snapshot path, snapshot changes (by‑date/all), departures list, player‑resolver file, departures/notifications roster fetch, tenure ledger lines, AI batch‑results.
+
+### Logging transport (provider‑ready)
+- `src/lib/logger.ts` now supports a pluggable provider via `globalThis.__structuredLogger` with `info|warn|error|debug(payload)`; falls back to console JSON.
+- Keep current logs but future‑proof for pino or hosted transports without touching call sites.
+
+### MCP compatibility
+- `web-next/mcp-server.js` updated to read `response.data` for roster and activity changes (breaking change consumer fix).
 
 - Header overhaul: two-row, full-width with centered clan name; controls right-aligned and compact.
 - Tabs visually “glued” to header via gradient seam; still render below.
@@ -509,3 +528,26 @@ npm run env:check
 - Use different API keys and database instances for each environment
 
 See `DEPLOYMENT.md` for complete deployment guide.
+### Applicant Evaluation (new feature)
+- Endpoint: `GET /api/applicants/evaluate?tag=#PLAYER_TAG&clanTag=#CLAN_TAG`
+  - Returns `{ success, data: { applicant, evaluation }, requestId }` where `evaluation = { score (0-100), recommendation ('Excellent'|'Good'|'Fair'|'Poor'), breakdown: [{ category, points, maxPoints, details }] }`.
+  - Input validation via Zod; inbound rate limited; uses `requestId` helper.
+  - Clan context is optional; when provided, uses latest snapshot (if available) to compute “Clan Fit” vs average TH; otherwise treated neutral.
+- UI: Applicant tab now includes an evaluation panel
+  - Component: `src/components/ApplicantsPanel.tsx`
+  - Enter player tag (and optional clan tag), hit Evaluate; shows score, recommendation, and category breakdown.
+  - Consumes the new API and respects standardized `ApiResponse` shape.
+  - One-click "Save to Player DB": stores an applicant note in localStorage under `player_notes_<TAG>` and name under `player_name_<TAG>`. View saved applicants in the Player Database tab.
+  - Discord copy: "Copy Discord Blurb" creates a short, readable message with score, TH, trophies, hero levels, strengths and a top gap.
+  - Applicant status: choose status (shortlisted/consider-later/hired/rejected); saved alongside the note and editable from Player Database modal.
+  - Shortlist Builder: Build a ranked shortlist from locally saved candidates (status shortlisted/consider-later), parameterized Top N.
+    - API: `POST /api/applicants/shortlist { clanTag?, tags: string[], top? }` returns `{ shortlist: [{ applicant, evaluation }] }`.
+    - UI: Button on Applicants tab; copies individual blurbs; uses standardized `ApiResponse` and requestId.
+  - Scan External Clan: Type a clan tag, fetch roster, score all, return Top N.
+    - API: `GET /api/applicants/scan-clan?sourceClanTag=#&contextClanTag=#&top=20`
+    - Filters supported on both shortlist + scan: `minTh`, `maxTh`, `minScore`, `minTrophies`, and `includeRoles` (member, elder, coleader, leader).
+    - UI: Filter inputs (TH, score, trophies) and role checkboxes (leaders/co-leaders off by default).
+- Scoring logic
+  - Location: `src/lib/applicants.ts`
+  - Criteria and weights: Town Hall (25), Hero Development (30) vs TH caps, Trophy Count (20), Clan Fit vs avg TH (15), Activity via donations (10).
+  - Uses `HERO_MAX_LEVELS` from `src/types`.

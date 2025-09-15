@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
-import { DashboardLayout, RosterTable } from '@/components';
+import { DashboardLayout, RosterTable, ApplicantsPanel } from '@/components';
 import ChangeDashboard from '@/components/ChangeDashboard';
 import PlayerDatabase from '@/components/PlayerDatabase';
 import AICoaching from '@/components/AICoaching';
@@ -76,19 +76,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
           </div>
         );
       case 'applicants':
-        return (
-          <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-teal-50 to-cyan-50">
-            <div className="container mx-auto px-6 py-12">
-              <div className="text-center mb-12">
-                <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-full mb-6 shadow-2xl">
-                  <span className="text-4xl">🎯</span>
-                </div>
-                <h1 className="text-4xl font-bold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent mb-4">Applicant Evaluation</h1>
-                <p className="text-xl text-gray-600 max-w-2xl mx-auto">Comprehensive scoring system for evaluating potential clan members with AI-powered insights</p>
-              </div>
-            </div>
-          </div>
-        );
+        return <ApplicantsPanel defaultClanTag={currentClanTag} />;
       case 'intelligence':
         return <PlayerDNADashboard members={roster?.members || []} clanTag={currentClanTag} />;
       case 'discord':
@@ -100,4 +88,3 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
 
   return <DashboardLayout>{renderTabContent()}</DashboardLayout>;
 }
-

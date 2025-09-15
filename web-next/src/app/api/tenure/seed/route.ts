@@ -12,6 +12,7 @@ import { ymdNowUTC, daysSince, daysSinceToDate } from '@/lib/date';
 import { readTenureDetails, appendTenureLedgerEntry } from '@/lib/tenure';
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
+import { createApiContext } from '@/lib/api/route-helpers';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 
 async function listSnapshotDates(clanTag: string): Promise<string[]> {
@@ -55,6 +56,7 @@ async function firstSeenDateForTags(clanTag: string, tags: string[]): Promise<Re
 }
 
 export async function POST(req: Request) {
+  const { json } = createApiContext(req, '/api/tenure/seed');
   try {
     const body = await req.json().catch(() => ({}));
     const Schema = z.object({ clanTag: z.string().optional() });
@@ -62,7 +64,7 @@ export async function POST(req: Request) {
     const raw = (parsed.success ? parsed.data.clanTag : undefined) || cfg.homeClanTag || '';
     const clanTag = normalizeTag(raw);
     if (!isValidTag(clanTag)) {
-      return NextResponse.json<ApiResponse>({ success: false, error: 'Invalid clanTag' }, { status: 400 });
+      return json({ success: false, error: 'Invalid clanTag' }, { status: 400 });
     }
 
     // Rate limit (write path)
@@ -70,7 +72,7 @@ export async function POST(req: Request) {
     const key = `tenure:seed:${clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 6 });
     if (!limit.ok) {
-      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+      return json({ success: false, error: 'Too many requests' }, {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
@@ -87,7 +89,7 @@ export async function POST(req: Request) {
     const missing = currentTags.filter(t => !tenure[t]);
 
     if (missing.length === 0) {
-      return NextResponse.json<ApiResponse>({ success: true, data: { message: 'No missing tenure entries', seeded: 0 } });
+      return json({ success: true, data: { message: 'No missing tenure entries', seeded: 0 } });
     }
 
     // Determine first-seen dates from snapshots
@@ -113,8 +115,8 @@ export async function POST(req: Request) {
       seeded++;
     }
 
-    return NextResponse.json<ApiResponse>({ success: true, data: { clanTag, seeded, missingCount: missing.length } });
+    return json({ success: true, data: { clanTag, seeded, missingCount: missing.length } });
   } catch (e: any) {
-    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || 'Failed to seed tenure' }, { status: 500 });
+    return json({ success: false, error: e?.message || 'Failed to seed tenure' }, { status: 500 });
   }
 }

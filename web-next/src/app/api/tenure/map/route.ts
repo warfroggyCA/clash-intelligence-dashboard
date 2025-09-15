@@ -7,6 +7,8 @@ import type { ApiResponse } from "@/types";
 import path from "path";
 import { promises as fsp } from "fs";
 import { cfg } from "../../../../lib/config";
+import { createApiContext } from "@/lib/api/route-helpers";
+import { cached } from "@/lib/cache";
 
 const TAG_RE = /^#[0289PYLQGRJCUV]{5,}$/;
 
@@ -19,11 +21,15 @@ function daysSince(ymd: string): number {
   return d > 0 ? d : 0;
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { json } = createApiContext(request, '/api/tenure/map');
   try {
     const ledger = path.join(process.cwd(), cfg.dataRoot, "tenure_ledger.jsonl");
-    try { await fsp.stat(ledger); } catch { return NextResponse.json({}); }
-    const lines = (await fsp.readFile(ledger, "utf-8")).split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    try { await fsp.stat(ledger); } catch { return json({ success: true, data: {} }); }
+    const lines = await cached(['tenure','ledger','lines'], async () => {
+      const raw = await fsp.readFile(ledger, "utf-8");
+      return raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+    }, 10);
 
     const latest: Record<string,string> = {};
     const base: Record<string,number> = {};
@@ -40,8 +46,8 @@ export async function GET() {
 
     const map: Record<string,number> = {};
     for (const [tag, b] of Object.entries(base)) map[tag] = Math.max(0, Math.round(b + daysSince(asof[tag] || "")));
-    return NextResponse.json<ApiResponse>({ success: true, data: map }, { headers: { 'Cache-Control': 'private, max-age=300' } });
+    return json({ success: true, data: map }, { headers: { 'Cache-Control': 'private, max-age=300' } });
   } catch (e: any) {
-    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || "map failed" }, { status: 500 });
+    return json({ success: false, error: e?.message || "map failed" }, { status: 500 });
   }
 }

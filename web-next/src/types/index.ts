@@ -487,6 +487,8 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   message?: string;
+  // Correlates requests in logs and responses
+  requestId?: string;
 }
 
 /**

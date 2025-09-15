@@ -9,13 +9,16 @@ import { cfg } from '@/lib/config';
 import type { ApiResponse } from '@/types';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 import { z } from 'zod';
+import { createApiContext } from '@/lib/api/route-helpers';
+import { cached } from '@/lib/cache';
 
 export async function GET(request: Request) {
+  const { json } = createApiContext(request, '/api/player-resolver');
   try {
     const ip = (request.headers as any).get?.('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const limit = await rateLimitAllow(`player-resolver:${ip}`, { windowMs: 60_000, max: 60 });
     if (!limit.ok) {
-      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+      return json({ success: false, error: 'Too many requests' }, {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
@@ -30,17 +33,17 @@ export async function GET(request: Request) {
     try {
       await fsp.access(resolutionFile);
     } catch {
-      return NextResponse.json<ApiResponse>({ success: false, error: "No resolution data available" }, { status: 404 });
+      return json({ success: false, error: "No resolution data available" }, { status: 404 });
     }
     
     // Read and return resolution data
-    const resolutionData = await fsp.readFile(resolutionFile, 'utf-8');
+    const resolutionData = await cached(['player-resolver','file'], () => fsp.readFile(resolutionFile, 'utf-8'), 10);
     const data = JSON.parse(resolutionData);
     
-    return NextResponse.json<ApiResponse>({ success: true, data }, { headers: { 'Cache-Control': 'private, max-age=60' } });
+    return json({ success: true, data }, { headers: { 'Cache-Control': 'private, max-age=60' } });
     
   } catch (error: any) {
     console.error('[PlayerResolver API] Error:', error);
-    return NextResponse.json<ApiResponse>({ success: false, error: error.message || "Failed to get resolution data" }, { status: 500 });
+    return json({ success: false, error: error.message || "Failed to get resolution data" }, { status: 500 });
   }
 }

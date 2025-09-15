@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import type { ApiResponse } from '@/types';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 // POST /api/player-db/sync-departures
 // This endpoint syncs departure data to the Player DB by creating player notes
 export async function POST(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/player-db/sync-departures');
   try {
     // First, check the main departures directory for existing data
     const departuresDir = path.join(process.cwd(), 'data', 'departures');
@@ -30,7 +33,7 @@ export async function POST(request: NextRequest) {
         console.log(`[Sync] Loaded ${departures.length} departures from player-db file`);
       } catch (error2) {
         // No departure data found
-        return NextResponse.json({ success: true, synced: 0, message: 'No departure data to sync' });
+        return json({ success: true, data: { synced: 0, message: 'No departure data to sync' } });
       }
     }
     
@@ -75,18 +78,21 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    return NextResponse.json({
+    return json({
       success: true,
-      synced: syncedCount,
-      total: departures.length,
-      errors: errors.length > 0 ? errors : undefined,
-      departureData: departures // Return the data for client-side processing
+      data: {
+        synced: syncedCount,
+        total: departures.length,
+        errors: errors.length > 0 ? errors : undefined,
+        departureData: departures
+      }
     });
   } catch (error: any) {
     console.error('Error syncing departures to Player DB:', error);
-    return NextResponse.json({ 
+    return json({ 
+      success: false,
       error: error.message || 'Failed to sync departures',
-      details: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      message: process.env.NODE_ENV === 'development' ? error?.stack : undefined
     }, { status: 500 });
   }
 }

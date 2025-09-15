@@ -430,6 +430,25 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                   </span>
                   <span className="text-gray-400">•</span>
                   <span className="text-gray-600">Last updated: {new Date(selectedPlayer.lastUpdated).toLocaleDateString()}</span>
+                  <span className="text-gray-400">•</span>
+                  <span className="text-gray-600">Status:</span>
+                  <select
+                    className="border rounded px-2 py-1 text-sm"
+                    value={(typeof window !== 'undefined' ? (localStorage.getItem(`player_status_${selectedPlayer.tag}`) || '') : '')}
+                    onChange={(e) => {
+                      try {
+                        const key = `player_status_${selectedPlayer.tag.toUpperCase()}`;
+                        const val = e.target.value;
+                        if (val) localStorage.setItem(key, val); else localStorage.removeItem(key);
+                      } catch {}
+                    }}
+                  >
+                    <option value="">—</option>
+                    <option value="shortlisted">Shortlisted</option>
+                    <option value="consider-later">Consider Later</option>
+                    <option value="hired">Hired</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
                 </div>
               </div>
               <button 
@@ -443,6 +462,14 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
             {/* Compact Notes Section */}
             <div className="space-y-4">
+              <details className="bg-gray-50 rounded border p-3">
+                <summary className="cursor-pointer font-medium text-gray-800">How to use this modal</summary>
+                <div className="mt-2 text-sm text-gray-700 space-y-1">
+                  <p>- Set the player’s Status to track applicant progress (Shortlisted, Hired, Rejected, etc.).</p>
+                  <p>- Click “Add Note” to append timestamped notes with custom fields (e.g., interview results or reasons).</p>
+                  <p>- Notes and status are stored locally in your browser. Use “Scan History” to import departures.</p>
+                </div>
+              </details>
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold text-gray-900">Player Notes</h3>
                 <button

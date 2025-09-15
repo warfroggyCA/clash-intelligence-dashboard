@@ -29,6 +29,6 @@ export { default as LeadershipGuard } from './LeadershipGuard';
 export { default as AccessManager } from './AccessManager';
 export { default as AccessSetup } from './AccessSetup';
 export { default as AccessLogin } from './AccessLogin';
-
+export { default as ApplicantsPanel } from './ApplicantsPanel';
 
 

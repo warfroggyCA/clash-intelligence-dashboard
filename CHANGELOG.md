@@ -29,3 +29,19 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ## [0.16.3] - 2025-09-14
 - Baseline prior to header/tabs redesign and infrastructure updates.
 
+## [0.17.0] - 2025-09-15
+### Added
+- Security + API hardening sweep: standardized ApiResponse with requestId; Zod-validated inputs; durable Upstash rate limiting; production security headers; leadership middleware; structured JSON logging with provider hook; brief read-side caching for hot GETs.
+- Applicant Evaluation feature:
+  - API endpoints: `/api/applicants/evaluate`, `/api/applicants/shortlist` (batch), `/api/applicants/scan-clan` (batch roster scan).
+  - UI Applicants panel: single evaluation, save to Player DB, Discord blurb, Shortlist Builder (local candidates), Scan External Clan (rank external clan members).
+  - Filters: Top N, min/max TH, min score, min trophies, include roles, and max rush%.
+  - Rush% exposed in UI and copied blurbs; tooltips added throughout for clarity.
+- Player Database enhancements: status badge in list; modal “How to use” section; status selector persisted locally.
+
+### Changed
+- MCP server updated to consume `response.data` after ApiResponse standardization.
+- Health/diag/access/snapshots/departures/AI routes now emit requestId and consistent headers.
+
+### Notes
+- Version surfaces via `NEXT_PUBLIC_APP_VERSION` from package.json in dev/build scripts.

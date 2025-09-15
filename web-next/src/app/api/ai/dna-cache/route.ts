@@ -5,8 +5,11 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getPlayerDNACache, getPlayerDNACacheByPlayer } from '@/lib/ai-storage';
+import { createApiContext } from '@/lib/api/route-helpers';
+import type { ApiResponse } from '@/types';
 
 export async function GET(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/ai/dna-cache');
   try {
     const { searchParams } = new URL(request.url);
     const clanTag = searchParams.get('clanTag');
@@ -14,7 +17,7 @@ export async function GET(request: NextRequest) {
     const date = searchParams.get('date');
 
     if (!clanTag) {
-      return NextResponse.json({ error: 'Clan tag is required' }, { status: 400 });
+      return json({ success: false, error: 'Clan tag is required' }, { status: 400 });
     }
 
     let results;
@@ -24,16 +27,10 @@ export async function GET(request: NextRequest) {
       results = await getPlayerDNACache(clanTag, date || undefined);
     }
 
-    return NextResponse.json({
-      success: true,
-      data: results
-    });
+    return json({ success: true, data: results });
 
   } catch (error: any) {
     console.error('[API] Error fetching DNA cache:', error);
-    return NextResponse.json(
-      { error: error.message || 'Failed to fetch DNA cache' },
-      { status: 500 }
-    );
+    return json<ApiResponse>({ success: false, error: error.message || 'Failed to fetch DNA cache' }, { status: 500 });
   }
 }

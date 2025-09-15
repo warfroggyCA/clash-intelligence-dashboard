@@ -13,7 +13,8 @@ import { ymdNowUTC } from "@/lib/date";
 import { readTenureDetails } from "@/lib/tenure";
 import type { Roster, Member, ApiResponse } from "@/types";
 import { rateLimitAllow, formatRateLimitHeaders } from "@/lib/inbound-rate-limit";
-import { createRequestLogger } from "@/lib/logger";
+import { createApiContext } from "@/lib/api/route-helpers";
+import { cached } from "@/lib/cache";
 import { z } from "zod";
 
 // ---------- small helpers ----------
@@ -25,8 +26,8 @@ import { z } from "zod";
 
 // ---------- route ----------
 export async function GET(req: NextRequest) {
+  const { logger, json } = createApiContext(req as unknown as Request, '/api/roster');
   try {
-    const logger = createRequestLogger(req, { route: '/api/roster' });
     const t0 = Date.now();
     const url = new URL(req.url);
     const params = Object.fromEntries(url.searchParams.entries());
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
     const mode = q.mode;
 
     if (!clanTag || !isValidTag(clanTag)) {
-      return NextResponse.json<ApiResponse>({ success: false, error: "Provide a valid clanTag like #2PR8R8V8P" }, { status: 400 });
+      return json({ success: false, error: "Provide a valid clanTag like #2PR8R8V8P" }, { status: 400 });
     }
 
     // Basic inbound rate limit per IP+route+mode
@@ -52,7 +53,7 @@ export async function GET(req: NextRequest) {
     const key = `roster:${mode}:${clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 30 });
     if (!limit.ok) {
-      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+      return json({ success: false, error: 'Too many requests' }, {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
@@ -69,11 +70,11 @@ export async function GET(req: NextRequest) {
       if (requestedDate && requestedDate !== "latest") {
         // Validate YYYY-MM-DD
         if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
-          return NextResponse.json<ApiResponse>({ success: false, error: "Invalid date format. Use YYYY-MM-DD or 'latest'" }, { status: 400 });
+          return json({ success: false, error: "Invalid date format. Use YYYY-MM-DD or 'latest'" }, { status: 400 });
         }
-        snapshot = await loadSnapshot(clanTag, requestedDate);
+        snapshot = await cached(["roster","snapshot",clanTag,requestedDate], () => loadSnapshot(clanTag, requestedDate));
       } else {
-        snapshot = await getLatestSnapshot(clanTag);
+        snapshot = await cached(["roster","snapshot","latest",clanTag], () => getLatestSnapshot(clanTag));
       }
       
       if (!snapshot) {
@@ -82,7 +83,7 @@ export async function GET(req: NextRequest) {
         // Continue to live data fetching below instead of returning error
       } else {
         // Load tenure data as it was on the snapshot date
-        const tenureDetails = await readTenureDetails(snapshot.date);
+        const tenureDetails = await cached(["tenure","as-of",snapshot.date], () => readTenureDetails(snapshot.date));
         
         // Enrich snapshot members with date-appropriate tenure data
         const enrichedMembers: Member[] = snapshot.members.map((member: any) => {
@@ -103,10 +104,7 @@ export async function GET(req: NextRequest) {
           meta: { clanTag, clanName: snapshot.clanName },
           members: enrichedMembers,
         };
-        const res = NextResponse.json<ApiResponse<Roster>>(
-          { success: true, data: payload },
-          { status: 200, headers: { "Cache-Control": "private, max-age=60" } }
-        );
+        const res = json<Roster>({ success: true, data: payload }, { status: 200, headers: { "Cache-Control": "private, max-age=60" } });
         logger.info('Served roster snapshot', { clanTag, ms: Date.now() - t0, members: enrichedMembers.length });
         return res;
       }
@@ -124,7 +122,7 @@ export async function GET(req: NextRequest) {
       rateLimiter.release();
     }
     if (!members?.length) {
-      return NextResponse.json<ApiResponse>({ success: false, error: `No members returned for ${clanTag}` }, { status: 404 });
+      return json({ success: false, error: `No members returned for ${clanTag}` }, { status: 404 });
     }
 
     // 2) read effective tenure map (append-only)
@@ -175,18 +173,15 @@ export async function GET(req: NextRequest) {
       meta: { clanTag, clanName: (info as any)?.name },
       members: enriched || [],
     };
-    const res = NextResponse.json<ApiResponse<Roster>>(
-      { success: true, data: payload },
-      { status: 200, headers: { "Cache-Control": "private, max-age=60" } }
-    );
+    const res = json<Roster>({ success: true, data: payload }, { status: 200, headers: { "Cache-Control": "private, max-age=60" } });
     logger.info('Served roster live', { clanTag, ms: Date.now() - t0, members: payload.members.length });
     return res;
   } catch (e: any) {
     console.error('Roster API error:', e);
-    return NextResponse.json<ApiResponse>({ 
-      success: false, 
+    return json({
+      success: false,
       error: e?.message || "Internal server error",
-      message: process.env.NODE_ENV === 'development' ? e?.stack : undefined
+      message: process.env.NODE_ENV === 'development' ? e?.stack : undefined,
     }, { status: 500 });
   }
 }

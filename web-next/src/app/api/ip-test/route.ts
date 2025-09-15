@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import type { ApiResponse } from '@/types';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 export async function GET(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/ip-test');
   try {
     // Get the IP from various headers
     const forwarded = request.headers.get('x-forwarded-for');
@@ -12,7 +14,7 @@ export async function GET(request: NextRequest) {
     const testResponse = await fetch('https://httpbin.org/ip');
     const ipData = await testResponse.json();
     
-    return NextResponse.json<ApiResponse>({
+    return json({
       success: true,
       data: {
         'x-forwarded-for': forwarded,
@@ -23,6 +25,6 @@ export async function GET(request: NextRequest) {
       }
     });
   } catch (error) {
-    return NextResponse.json<ApiResponse>({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
+    return json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 });
   }
 }

@@ -2,9 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
+import { createApiContext } from '@/lib/api/route-helpers';
 import type { ApiResponse } from '@/types';
 
 export async function POST(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/ai-coaching/generate');
   try {
     const body = await request.json();
     const MemberSchema = z.object({
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
     });
     const parsed = Schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json<ApiResponse>({ success: false, error: 'Clan data is required' }, { status: 400 });
+      return json({ success: false, error: 'Clan data is required' }, { status: 400 });
     }
     const { clanData } = parsed.data;
 
@@ -44,7 +46,7 @@ export async function POST(request: NextRequest) {
     const key = `ai:coaching:${clanData.clanTag || 'unknown'}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 5 });
     if (!limit.ok) {
-      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+      return json({ success: false, error: 'Too many requests' }, {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json<ApiResponse>({ success: false, error: 'OpenAI API key not configured' }, { status: 500 });
+      return json({ success: false, error: 'OpenAI API key not configured' }, { status: 500 });
     }
 
     const openai = new OpenAI({
@@ -161,7 +163,7 @@ Return ONLY a valid JSON array.`;
       }
     }
 
-    return NextResponse.json<ApiResponse>({
+    return json({
       success: true,
       data: {
         advice: Array.isArray(advice) ? advice : [],
@@ -171,6 +173,6 @@ Return ONLY a valid JSON array.`;
 
   } catch (error: any) {
     console.error('Error generating AI coaching advice:', error);
-    return NextResponse.json<ApiResponse>({ success: false, error: 'Failed to generate coaching advice', message: error.message }, { status: 500 });
+    return json({ success: false, error: 'Failed to generate coaching advice', message: error.message }, { status: 500 });
   }
 }

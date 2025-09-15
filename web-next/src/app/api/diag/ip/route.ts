@@ -3,6 +3,7 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import type { ApiResponse } from "@/types";
+import { createApiContext } from "@/lib/api/route-helpers";
 
 async function fetchText(url: string, timeoutMs = 4000): Promise<string> {
   const ac = new AbortController();
@@ -35,9 +36,10 @@ async function getOutboundIp(): Promise<{ ip?: string; source?: string; error?: 
 }
 
 export async function GET(req: Request) {
+  const { json } = createApiContext(req, '/api/diag/ip');
   try {
     if (process.env.NODE_ENV === "production") {
-      return NextResponse.json<ApiResponse>({ success: false, error: "Not available in production" }, { status: 404 });
+      return json({ success: false, error: "Not available in production" }, { status: 404 });
     }
 
     const headers = new Headers(req.headers);
@@ -45,7 +47,7 @@ export async function GET(req: Request) {
     const xri = headers.get("x-real-ip") || undefined;
     const { ip, source, error } = await getOutboundIp();
 
-    return NextResponse.json<ApiResponse>({
+    return json({
       success: true,
       data: {
         env: process.env.NODE_ENV,
@@ -54,7 +56,6 @@ export async function GET(req: Request) {
       }
     });
   } catch (e: any) {
-    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || "failed" }, { status: 500 });
+    return json({ success: false, error: e?.message || "failed" }, { status: 500 });
   }
 }
-

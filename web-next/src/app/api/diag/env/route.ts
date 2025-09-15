@@ -4,10 +4,12 @@ export const runtime = "nodejs";
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import type { ApiResponse } from "@/types";
+import { createApiContext } from "@/lib/api/route-helpers";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const { json } = createApiContext(request, '/api/diag/env');
   const tok = process.env.COC_API_TOKEN || "";
-  return NextResponse.json<ApiResponse>({
+  return json({
     success: true,
     data: {
       hasCoC: !!tok,

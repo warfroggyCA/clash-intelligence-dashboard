@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import type { ApiResponse } from '@/types';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 export async function GET(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/debug/data');
   try {
     const result: any = {
       storage: 'Supabase',
@@ -57,9 +59,9 @@ export async function GET(request: NextRequest) {
       console.error('Error checking tenure ledger from Supabase:', e);
     }
     
-    return NextResponse.json<ApiResponse>({ success: true, data: result });
+    return json({ success: true, data: result });
     
   } catch (error: any) {
-    return NextResponse.json<ApiResponse>({ success: false, error: error.message, message: error.stack }, { status: 500 });
+    return json({ success: false, error: error.message, message: error.stack }, { status: 500 });
   }
 }

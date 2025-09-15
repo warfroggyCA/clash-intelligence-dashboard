@@ -10,6 +10,7 @@ import { readDepartures } from '@/lib/departures';
 import { cfg } from '@/lib/config';
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 type Body = {
   clanTag?: string;
@@ -19,6 +20,7 @@ type Body = {
 };
 
 export async function POST(req: Request) {
+  const { json } = createApiContext(req, '/api/tenure/update');
   try {
     const Schema = z.object({
       clanTag: z.string().optional(),
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
     });
     const parsed = Schema.safeParse(await req.json());
     if (!parsed.success) {
-      return NextResponse.json<ApiResponse>({ success: false, error: 'Invalid request' }, { status: 400 });
+      return json({ success: false, error: 'Invalid request' }, { status: 400 });
     }
     const body = parsed.data as Body;
     const clanTag = normalizeTag(body.clanTag || cfg.homeClanTag || '');
@@ -37,7 +39,7 @@ export async function POST(req: Request) {
     const asOf = body.asOf || ymdNowUTC();
 
     if (!isValidTag(clanTag) || !isValidTag(memberTag)) {
-      return NextResponse.json<ApiResponse>({ success: false, error: 'Invalid clanTag or memberTag' }, { status: 400 });
+      return json({ success: false, error: 'Invalid clanTag or memberTag' }, { status: 400 });
     }
 
     let base = 0;
@@ -58,8 +60,8 @@ export async function POST(req: Request) {
 
     await appendTenureLedgerEntry(memberTag, base, asOf);
 
-    return NextResponse.json<ApiResponse>({ success: true, data: { clanTag, memberTag, mode, base, asOf, message: mode === 'grant-existing' ? 'Granted prior tenure starting today' : 'Reset tenure starting today' } });
+    return json({ success: true, data: { clanTag, memberTag, mode, base, asOf, message: mode === 'grant-existing' ? 'Granted prior tenure starting today' : 'Reset tenure starting today' } });
   } catch (e: any) {
-    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || 'Failed to update tenure' }, { status: 500 });
+    return json({ success: false, error: e?.message || 'Failed to update tenure' }, { status: 500 });
   }
 }

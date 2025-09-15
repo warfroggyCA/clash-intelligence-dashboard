@@ -8,6 +8,7 @@ import path from "path";
 import { cfg } from "../../../../lib/config";
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 type Update = { tag: string; tenure_days: number };
 const TAG_RE = /^#[0289PYLQGRJCUV]{5,}$/;
@@ -17,11 +18,12 @@ function ymdUTC(d = new Date()): string {
 }
 
 export async function POST(req: Request) {
+  const { json } = createApiContext(req, '/api/tenure/save');
   try {
     const body = await req.json().catch(() => ({}));
     const Schema = z.object({ updates: z.array(z.object({ tag: z.string(), tenure_days: z.number() })) });
     const parsed = Schema.safeParse(body);
-    if (!parsed.success) return NextResponse.json<ApiResponse>({ success: false, error: "No updates" }, { status: 400 });
+    if (!parsed.success) return json({ success: false, error: "No updates" }, { status: 400 });
     const updates: Update[] = parsed.data.updates;
 
     const invalid: string[] = [];
@@ -31,7 +33,7 @@ export async function POST(req: Request) {
       if (!TAG_RE.test(tag)) invalid.push(tag || "(empty)");
       return { tag, base };
     });
-    if (invalid.length) return NextResponse.json<ApiResponse>({ success: false, error: `Invalid tag(s): ${invalid.join(", ")}` }, { status: 400 });
+    if (invalid.length) return json({ success: false, error: `Invalid tag(s): ${invalid.join(", ")}` }, { status: 400 });
 
     const outDir = path.join(process.cwd(), cfg.dataRoot);
     const ledger = path.join(outDir, "tenure_ledger.jsonl");
@@ -47,8 +49,8 @@ export async function POST(req: Request) {
     const lines = cleaned.map((c) => JSON.stringify({ tag: c.tag, base: c.base, as_of, ts }));
     await fsp.appendFile(ledger, lines.join("\n") + "\n", "utf-8");
 
-    return NextResponse.json<ApiResponse>({ success: true, data: { count: cleaned.length } });
+    return json({ success: true, data: { count: cleaned.length } });
   } catch (e: any) {
-    return NextResponse.json<ApiResponse>({ success: false, error: e?.message || "Save failed" }, { status: 500 });
+    return json({ success: false, error: e?.message || "Save failed" }, { status: 500 });
   }
 }

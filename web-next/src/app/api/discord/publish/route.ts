@@ -6,11 +6,11 @@ import { NextResponse } from "next/server";
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
-import { createRequestLogger } from '@/lib/logger';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 export async function POST(req: Request) {
+  const { logger, json } = createApiContext(req, '/api/discord/publish');
   try {
-    const logger = createRequestLogger(req, { route: '/api/discord/publish' });
     const body = await req.json();
     const Schema = z.object({
       webhookUrl: z.string(),
@@ -20,21 +20,18 @@ export async function POST(req: Request) {
     });
     const parsed = Schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json<ApiResponse>({ success: false, error: 'Webhook URL and message are required' }, { status: 400 });
+      return json({ success: false, error: 'Webhook URL and message are required' }, { status: 400 });
     }
     const { webhookUrl, message, exhibitType, clanTag } = parsed.data as any;
 
     if (!webhookUrl || !message) {
-      return NextResponse.json(
-        { error: "Webhook URL and message are required" },
-        { status: 400 }
-      );
+      return json({ success: false, error: "Webhook URL and message are required" }, { status: 400 });
     }
 
     // Validate webhook URL format
     if (!webhookUrl.startsWith('https://discord.com/api/webhooks/') && 
         !webhookUrl.startsWith('https://discordapp.com/api/webhooks/')) {
-      return NextResponse.json<ApiResponse>({ success: false, error: "Invalid Discord webhook URL format" }, { status: 400 });
+      return json({ success: false, error: "Invalid Discord webhook URL format" }, { status: 400 });
     }
 
     // Create Discord embed for better formatting
@@ -67,16 +64,16 @@ export async function POST(req: Request) {
     if (!discordResponse.ok) {
       const errorText = await discordResponse.text();
       console.error('Discord webhook error:', errorText);
-      return NextResponse.json<ApiResponse>({ success: false, error: `Discord API error: ${discordResponse.status} ${discordResponse.statusText}` }, { status: 500 });
+      return json({ success: false, error: `Discord API error: ${discordResponse.status} ${discordResponse.statusText}` }, { status: 500 });
     }
 
     // Log successful publish (for debugging)
     logger.info('Published to Discord', { exhibitType, clanTag });
-    return NextResponse.json<ApiResponse>({ success: true, data: { message: 'Exhibit published to Discord successfully', exhibitType, clanTag } });
+    return json({ success: true, data: { message: 'Exhibit published to Discord successfully', exhibitType, clanTag } });
 
   } catch (error: any) {
     console.error('Discord publish error:', error);
-    return NextResponse.json<ApiResponse>({ success: false, error: error.message || "Failed to publish to Discord" }, { status: 500 });
+    return json({ success: false, error: error.message || "Failed to publish to Discord" }, { status: 500 });
   }
 }
 

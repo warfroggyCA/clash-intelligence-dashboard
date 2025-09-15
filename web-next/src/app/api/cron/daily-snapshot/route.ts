@@ -13,15 +13,17 @@ import { saveBatchAIResults, cachePlayerDNAForClan } from "@/lib/ai-storage";
 import { promises as fsp } from 'fs';
 import path from 'path';
 import type { ApiResponse } from "@/types";
+import { createApiContext } from "@/lib/api/route-helpers";
 
 export async function GET(req: Request) {
+  const { json } = createApiContext(req, '/api/cron/daily-snapshot');
   try {
     // Verify this is a legitimate cron request (you might want to add authentication)
     const authHeader = req.headers.get('authorization');
     const expectedAuth = process.env.CRON_SECRET;
     
     if (expectedAuth && authHeader !== `Bearer ${expectedAuth}`) {
-      return NextResponse.json<ApiResponse>({ success: false, error: "Unauthorized" }, { status: 401 });
+      return json({ success: false, error: "Unauthorized" }, { status: 401 });
     }
 
     const results = [];
@@ -30,7 +32,7 @@ export async function GET(req: Request) {
     const clanTag = cfg.homeClanTag;
     
     if (!clanTag) {
-      return NextResponse.json<ApiResponse>({ success: false, error: "No home clan configured" }, { status: 400 });
+      return json({ success: false, error: "No home clan configured" }, { status: 400 });
     }
 
     console.log(`[CRON] Starting daily snapshot for ${clanTag} at ${new Date().toISOString()}`);
@@ -157,9 +159,9 @@ export async function GET(req: Request) {
 
     console.log(`[CRON] Daily snapshot completed at ${new Date().toISOString()}`);
 
-    return NextResponse.json<ApiResponse>({ success: true, data: { timestamp: new Date().toISOString(), results } });
+    return json({ success: true, data: { timestamp: new Date().toISOString(), results } });
   } catch (error: any) {
     console.error('[CRON] Daily snapshot error:', error);
-    return NextResponse.json<ApiResponse>({ success: false, error: error.message || "Failed to create daily snapshot" }, { status: 500 });
+    return json({ success: false, error: error.message || "Failed to create daily snapshot" }, { status: 500 });
   }
 }

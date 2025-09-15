@@ -3,8 +3,10 @@ import { supabase } from '@/lib/supabase';
 import type { ApiResponse } from '@/types';
 import { z } from 'zod';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 export async function POST(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/upload-snapshots');
   try {
     const body = await request.json();
     const Schema = z.object({
@@ -13,14 +15,14 @@ export async function POST(request: NextRequest) {
     });
     const parsed = Schema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json<ApiResponse>({ success: false, error: 'Invalid payload' }, { status: 400 });
+      return json({ success: false, error: 'Invalid payload' }, { status: 400 });
     }
     const { snapshots, tenureLedger } = parsed.data as any;
 
     const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const limit = await rateLimitAllow(`upload-snapshots:${ip}`, { windowMs: 60_000, max: 6 });
     if (!limit.ok) {
-      return new NextResponse(JSON.stringify({ success: false, error: 'Too many requests' } satisfies ApiResponse), {
+      return json({ success: false, error: 'Too many requests' }, {
         status: 429,
         headers: {
           'Content-Type': 'application/json',
@@ -103,10 +105,10 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    return NextResponse.json<ApiResponse>({ success: true, data: { message: 'Snapshots uploaded successfully to Supabase', uploaded: { snapshots: uploadedSnapshots.length, hasTenureLedger: tenureUploaded, files: uploadedSnapshots } } });
+    return json({ success: true, data: { message: 'Snapshots uploaded successfully to Supabase', uploaded: { snapshots: uploadedSnapshots.length, hasTenureLedger: tenureUploaded, files: uploadedSnapshots } } });
     
   } catch (error) {
     console.error('Upload error:', error);
-    return NextResponse.json<ApiResponse>({ success: false, error: error instanceof Error ? error.message : 'Upload failed' }, { status: 500 });
+    return json({ success: false, error: error instanceof Error ? error.message : 'Upload failed' }, { status: 500 });
   }
 }

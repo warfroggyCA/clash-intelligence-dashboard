@@ -108,13 +108,13 @@ app.post('/mcp/tools/:toolName', async (req, res) => {
 
     switch (toolName) {
       case "analyze_clan_rush_status":
-        const rosterData = await fetchFromAPI(`/api/roster?mode=${mode}&clanTag=${encodeURIComponent(clanTag)}`);
-        result = analyzeRushStatus(rosterData);
+        const rosterResp = await fetchFromAPI(`/api/roster?mode=${mode}&clanTag=${encodeURIComponent(clanTag)}`);
+        result = analyzeRushStatus(rosterResp?.data || rosterResp);
         break;
 
       case "get_clan_activity_summary":
-        const changesData = await fetchFromAPI(`/api/snapshots/changes?clanTag=${encodeURIComponent(clanTag)}`);
-        result = formatActivitySummary(changesData);
+        const changesResp = await fetchFromAPI(`/api/snapshots/changes?clanTag=${encodeURIComponent(clanTag)}`);
+        result = formatActivitySummary(changesResp?.data || changesResp);
         break;
 
       case "generate_ai_coaching_advice":
@@ -123,7 +123,8 @@ app.post('/mcp/tools/:toolName', async (req, res) => {
         break;
 
       case "get_clan_roster":
-        result = await fetchFromAPI(`/api/roster?mode=${mode}&clanTag=${encodeURIComponent(clanTag)}`);
+        const rosterForTool = await fetchFromAPI(`/api/roster?mode=${mode}&clanTag=${encodeURIComponent(clanTag)}`);
+        result = rosterForTool?.data || rosterForTool;
         break;
 
       default:
@@ -209,4 +210,3 @@ app.listen(PORT, () => {
   console.log(`Available at: http://localhost:${PORT}`);
   console.log(`MCP endpoint: http://localhost:${PORT}/mcp/tools`);
 });
-
