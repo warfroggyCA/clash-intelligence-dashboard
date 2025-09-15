@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
       }
       
       // Transform data for response and deduplicate by date
-      const formattedSnapshots = snapshots?.map(snapshot => ({
+      const formattedSnapshots = snapshots?.map((snapshot: any) => ({
         date: snapshot.date,
         memberCount: snapshot.member_count,
         clanName: snapshot.clan_name,
