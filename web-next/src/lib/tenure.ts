@@ -2,6 +2,7 @@
 import path from 'path';
 import { promises as fsp } from 'fs';
 import { cfg } from './config';
+import { getSupabaseAdminClient } from './supabase-admin';
 import { isValidTag, normalizeTag } from './tags';
 import { daysSince, daysSinceToDate } from './date';
 
@@ -38,9 +39,8 @@ export function parseTenureLedger(lines: string[], targetDate?: string): Record<
 
 // Reads the configured ledger and returns effective tenure map
 export async function readLedgerEffective(targetDate?: string): Promise<Record<string, number>> {
-  const ledger = path.join(process.cwd(), cfg.dataRoot, 'tenure_ledger.jsonl');
-  try { await fsp.stat(ledger); } catch { return {}; }
-  const lines = (await fsp.readFile(ledger, 'utf-8')).split(/\r?\n/);
+  const lines = await readLedgerLines();
+  if (!lines.length) return {};
   return parseTenureLedger(lines, targetDate);
 }
 
@@ -74,9 +74,8 @@ export function parseTenureDetails(lines: string[], targetDate?: string): Record
 }
 
 export async function readTenureDetails(targetDate?: string): Promise<Record<string, { days: number; as_of?: string }>> {
-  const ledger = path.join(process.cwd(), cfg.dataRoot, 'tenure_ledger.jsonl');
-  try { await fsp.stat(ledger); } catch { return {}; }
-  const lines = (await fsp.readFile(ledger, 'utf-8')).split(/\r?\n/);
+  const lines = await readLedgerLines();
+  if (!lines.length) return {};
   return parseTenureDetails(lines, targetDate);
 }
 
@@ -84,9 +83,54 @@ export async function readTenureDetails(targetDate?: string): Promise<Record<str
 export async function appendTenureLedgerEntry(tag: string, base: number, asOfYmd: string): Promise<void> {
   const t = normalizeTag(tag);
   if (!isValidTag(t)) throw new Error('Invalid tag');
-  const dir = path.join(process.cwd(), cfg.dataRoot);
-  await fsp.mkdir(dir, { recursive: true });
-  const ledger = path.join(dir, 'tenure_ledger.jsonl');
   const row = { tag: t, base: Math.max(0, Math.round(base || 0)), as_of: asOfYmd, ts: new Date().toISOString() };
-  await fsp.appendFile(ledger, JSON.stringify(row) + '\n', 'utf-8');
+
+  if (cfg.useLocalData) {
+    const dir = path.join(process.cwd(), cfg.dataRoot);
+    await fsp.mkdir(dir, { recursive: true });
+    const ledger = path.join(dir, 'tenure_ledger.jsonl');
+    await fsp.appendFile(ledger, JSON.stringify(row) + '\n', 'utf-8');
+  }
+
+  if (cfg.useSupabase) {
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase.storage.from('tenure').download('tenure_ledger.jsonl');
+    let content = '';
+    if (!error && data) {
+      content = await data.text();
+    }
+    content += JSON.stringify(row) + '\n';
+    await supabase.storage
+      .from('tenure')
+      .upload('tenure_ledger.jsonl', content, { contentType: 'application/jsonl', upsert: true });
+  }
+}
+
+async function readLedgerLines(): Promise<string[]> {
+  // Prefer local data when enabled (dev)
+  if (cfg.useLocalData) {
+    const ledger = path.join(process.cwd(), cfg.dataRoot, 'tenure_ledger.jsonl');
+    try {
+      await fsp.stat(ledger);
+      const raw = await fsp.readFile(ledger, 'utf-8');
+      return raw.split(/\r?\n/);
+    } catch {
+      // fall through to Supabase
+    }
+  }
+
+  if (cfg.useSupabase) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { data, error } = await supabase.storage.from('tenure').download('tenure_ledger.jsonl');
+      if (error || !data) return [];
+      const text = await data.text();
+      return text.split(/\r?\n/);
+    } catch (error) {
+      console.error('[Tenure] Failed to read ledger from Supabase:', error);
+      return [];
+    }
+  }
+
+  return [];
 }

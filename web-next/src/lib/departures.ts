@@ -1,6 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { normalizeTag } from './tags';
+import { cfg } from './config';
+import { getSupabaseAdminClient } from './supabase-admin';
 
 export interface DepartureRecord {
   memberTag: string;
@@ -24,9 +26,12 @@ export interface RejoinNotification {
 }
 
 const DEPARTURES_DIR = path.join(process.cwd(), 'data', 'departures');
+const DEPARTURES_BUCKET = 'departures';
+const PLAYER_DB_BUCKET = 'player-db';
 
 // Ensure departures directory exists
 async function ensureDeparturesDir() {
+  if (!cfg.useLocalData) return;
   try {
     await fs.mkdir(DEPARTURES_DIR, { recursive: true });
   } catch (error) {
@@ -41,24 +46,69 @@ function getDepartureFilePath(clanTag: string): string {
   return path.join(DEPARTURES_DIR, `${cleanTag}.json`);
 }
 
+function getDepartureFilename(clanTag: string) {
+  return `${normalizeTag(clanTag).slice(1).toUpperCase()}.json`;
+}
+
+async function loadDeparturesFromSupabase(clanTag: string): Promise<DepartureRecord[] | null> {
+  try {
+    const supabase = getSupabaseAdminClient();
+    const filename = getDepartureFilename(clanTag);
+    const { data, error } = await supabase.storage.from(DEPARTURES_BUCKET).download(filename);
+    if (error || !data) return null;
+    const text = await data.text();
+    return JSON.parse(text) as DepartureRecord[];
+  } catch (error) {
+    console.error('[Departures] Failed to load from Supabase:', error);
+    return null;
+  }
+}
+
+async function saveDeparturesToSupabase(clanTag: string, departures: DepartureRecord[]): Promise<void> {
+  try {
+    const supabase = getSupabaseAdminClient();
+    const filename = getDepartureFilename(clanTag);
+    const { error } = await supabase.storage
+      .from(DEPARTURES_BUCKET)
+      .upload(filename, JSON.stringify(departures, null, 2), { contentType: 'application/json', upsert: true });
+    if (error) throw error;
+  } catch (error) {
+    console.error('[Departures] Failed to save to Supabase:', error);
+  }
+}
+
 // Read all departures for a clan
 export async function readDepartures(clanTag: string): Promise<DepartureRecord[]> {
-  try {
-    await ensureDeparturesDir();
-    const filePath = getDepartureFilePath(clanTag);
-    const data = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(data);
-  } catch (error) {
-    // File doesn't exist or is empty
-    return [];
+  if (cfg.useLocalData) {
+    try {
+      await ensureDeparturesDir();
+      const filePath = getDepartureFilePath(clanTag);
+      const data = await fs.readFile(filePath, 'utf-8');
+      return JSON.parse(data);
+    } catch (error) {
+      return [];
+    }
   }
+
+  if (cfg.useSupabase) {
+    const data = await loadDeparturesFromSupabase(clanTag);
+    return data || [];
+  }
+
+  return [];
 }
 
 // Write departures for a clan
 export async function writeDepartures(clanTag: string, departures: DepartureRecord[]): Promise<void> {
-  await ensureDeparturesDir();
-  const filePath = getDepartureFilePath(clanTag);
-  await fs.writeFile(filePath, JSON.stringify(departures, null, 2));
+  if (cfg.useLocalData) {
+    await ensureDeparturesDir();
+    const filePath = getDepartureFilePath(clanTag);
+    await fs.writeFile(filePath, JSON.stringify(departures, null, 2));
+  }
+
+  if (cfg.useSupabase) {
+    await saveDeparturesToSupabase(clanTag, departures);
+  }
 }
 
 // Add a new departure record
@@ -77,7 +127,7 @@ export async function addDeparture(clanTag: string, departure: DepartureRecord):
   }
   
   await writeDepartures(clanTag, departures);
-  
+
   // Store departure data for Player DB integration
   await storeDepartureForPlayerDB(departure);
 }
@@ -99,35 +149,54 @@ async function storeDepartureForPlayerDB(departure: DepartureRecord): Promise<vo
     };
 
     // Store in a special file that the Player DB can read
-    const playerDBDir = path.join(process.cwd(), 'data', 'player-db');
-    await fs.mkdir(playerDBDir, { recursive: true });
-    
-    const filePath = path.join(playerDBDir, 'departures.json');
-    let departures = [];
-    
-    try {
-      const data = await fs.readFile(filePath, 'utf-8');
-      departures = JSON.parse(data);
-    } catch (error) {
-      // File doesn't exist yet, start with empty array
+    if (cfg.useLocalData) {
+      const playerDBDir = path.join(process.cwd(), 'data', 'player-db');
+      await fs.mkdir(playerDBDir, { recursive: true });
+      const filePath = path.join(playerDBDir, 'departures.json');
+      let departures = [];
+      try {
+        const data = await fs.readFile(filePath, 'utf-8');
+        departures = JSON.parse(data);
+      } catch {}
+      const existingIndex = departures.findIndex((d: any) =>
+        d.memberTag === departure.memberTag &&
+        d.departureDate === departure.departureDate
+      );
+      if (existingIndex >= 0) {
+        departures[existingIndex] = departureData;
+      } else {
+        departures.push(departureData);
+      }
+      await fs.writeFile(filePath, JSON.stringify(departures, null, 2));
     }
-    
-    // Check if we already have this departure to avoid duplicates
-    const existingIndex = departures.findIndex((d: any) => 
-      d.memberTag === departure.memberTag && 
-      d.departureDate === departure.departureDate
-    );
-    
-    if (existingIndex >= 0) {
-      // Update existing record
-      departures[existingIndex] = departureData;
-    } else {
-      // Add new record
-      departures.push(departureData);
+
+    if (cfg.useSupabase) {
+      try {
+        const supabase = getSupabaseAdminClient();
+        const filename = 'departures.json';
+        const { data, error } = await supabase.storage.from(PLAYER_DB_BUCKET).download(filename);
+        let departures: any[] = [];
+        if (!error && data) {
+          const text = await data.text();
+          departures = JSON.parse(text || '[]');
+        }
+        const existingIndex = departures.findIndex((d: any) =>
+          d.memberTag === departure.memberTag &&
+          d.departureDate === departure.departureDate
+        );
+        if (existingIndex >= 0) {
+          departures[existingIndex] = departureData;
+        } else {
+          departures.push(departureData);
+        }
+        await supabase.storage
+          .from(PLAYER_DB_BUCKET)
+          .upload(filename, JSON.stringify(departures, null, 2), { contentType: 'application/json', upsert: true });
+      } catch (error) {
+        console.error('[Departure] Failed to store Player DB departure in Supabase:', error);
+      }
     }
-    
-    await fs.writeFile(filePath, JSON.stringify(departures, null, 2));
-    
+
     console.log(`[Departure] Stored departure data for Player DB: ${departure.memberName} (${departure.memberTag})`);
   } catch (error) {
     console.error('Failed to store departure for Player DB:', error);

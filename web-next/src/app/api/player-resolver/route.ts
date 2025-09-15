@@ -2,11 +2,10 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
 import { promises as fsp } from 'fs';
 import path from 'path';
 import { cfg } from '@/lib/config';
-import type { ApiResponse } from '@/types';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 import { z } from 'zod';
 import { createApiContext } from '@/lib/api/route-helpers';
@@ -28,18 +27,40 @@ export async function GET(request: Request) {
     }
     const dataDir = path.join(process.cwd(), cfg.dataRoot);
     const resolutionFile = path.join(dataDir, 'player-name-resolution.json');
-    
-    // Check if resolution file exists
-    try {
-      await fsp.access(resolutionFile);
-    } catch {
+
+    const raw = await cached(['player-resolver','file'], async () => {
+      if (cfg.useLocalData) {
+        try {
+          await fsp.access(resolutionFile);
+          return await fsp.readFile(resolutionFile, 'utf-8');
+        } catch {
+          // fall through
+        }
+      }
+
+      if (cfg.useSupabase) {
+        try {
+          const supabase = getSupabaseAdminClient();
+          const { data, error } = await supabase.storage
+            .from('player-db')
+            .download('player-name-resolution.json');
+          if (!error && data) {
+            return await data.text();
+          }
+        } catch (error) {
+          console.error('[PlayerResolver API] Failed to read Supabase resolution file:', error);
+        }
+      }
+
+      throw new Error('No resolution data available');
+    }, 10).catch(() => null);
+
+    if (!raw) {
       return json({ success: false, error: "No resolution data available" }, { status: 404 });
     }
-    
-    // Read and return resolution data
-    const resolutionData = await cached(['player-resolver','file'], () => fsp.readFile(resolutionFile, 'utf-8'), 10);
-    const data = JSON.parse(resolutionData);
-    
+
+    const data = JSON.parse(raw);
+
     return json({ success: true, data }, { headers: { 'Cache-Control': 'private, max-age=60' } });
     
   } catch (error: any) {

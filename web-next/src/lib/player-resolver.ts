@@ -3,6 +3,8 @@ import { promises as fsp } from 'fs';
 import path from 'path';
 import { cfg } from './config';
 import { safeTagForFilename } from './tags';
+import { getSupabaseAdminClient } from './supabase-admin';
+import type { DailySnapshot } from './snapshots';
 
 export interface PlayerNote {
   timestamp: string;
@@ -36,9 +38,6 @@ export async function resolveUnknownPlayers(): Promise<{
     // Get all player note keys from localStorage (this would be done in browser context)
     // For cron job, we need to simulate this by checking the data directory
     const dataDir = path.join(process.cwd(), cfg.dataRoot);
-    
-    // Get recent snapshots to build a player name lookup
-    const snapshotsDir = path.join(dataDir, 'snapshots');
     const clanTag = cfg.homeClanTag;
     
     if (!clanTag) {
@@ -46,51 +45,22 @@ export async function resolveUnknownPlayers(): Promise<{
     }
 
     const safeTag = safeTagForFilename(clanTag);
-    
-    // Get the most recent snapshot
-    const files = await fsp.readdir(snapshotsDir);
-    const snapshotFiles = files
-      .filter(f => f.startsWith(safeTag) && f.endsWith('.json'))
-      .sort()
-      .reverse();
 
-    if (snapshotFiles.length === 0) {
+    // Collect recent snapshots (latest + previous 30)
+    const snapshots: DailySnapshot[] = await loadRecentSnapshots(safeTag, 30);
+
+    if (!snapshots.length) {
       console.log('[PlayerResolver] No snapshots found');
       return results;
     }
 
-    // Load the most recent snapshot
-    const latestSnapshotFile = snapshotFiles[0];
-    const snapshotData = await fsp.readFile(path.join(snapshotsDir, latestSnapshotFile), 'utf-8');
-    const snapshot = JSON.parse(snapshotData);
-
-    // Build player name lookup from current and recent snapshots
     const playerNameLookup = new Map<string, string>();
-    
-    // Add current snapshot members
-    if (snapshot.members) {
-      snapshot.members.forEach((member: any) => {
-        playerNameLookup.set(member.tag, member.name);
-      });
-    }
-
-    // Add members from recent snapshots (last 30 days worth)
-    const recentFiles = snapshotFiles.slice(0, 30); // Last 30 snapshots
-    for (const file of recentFiles) {
-      try {
-        const fileData = await fsp.readFile(path.join(snapshotsDir, file), 'utf-8');
-        const fileSnapshot = JSON.parse(fileData);
-        
-        if (fileSnapshot.members) {
-          fileSnapshot.members.forEach((member: any) => {
-            if (!playerNameLookup.has(member.tag)) {
-              playerNameLookup.set(member.tag, member.name);
-            }
-          });
+    for (const snap of snapshots) {
+      (snap.members || []).forEach((member: any) => {
+        if (!playerNameLookup.has(member.tag)) {
+          playerNameLookup.set(member.tag, member.name);
         }
-      } catch (error) {
-        console.warn(`[PlayerResolver] Failed to load snapshot ${file}:`, error);
-      }
+      });
     }
 
     console.log(`[PlayerResolver] Built lookup for ${playerNameLookup.size} players`);
@@ -107,10 +77,26 @@ export async function resolveUnknownPlayers(): Promise<{
       totalPlayers: playerNameLookup.size
     };
 
-    const resolutionFile = path.join(dataDir, 'player-name-resolution.json');
-    await fsp.writeFile(resolutionFile, JSON.stringify(resolutionData, null, 2));
+    if (cfg.useLocalData) {
+      const resolutionFile = path.join(dataDir, 'player-name-resolution.json');
+      await fsp.writeFile(resolutionFile, JSON.stringify(resolutionData, null, 2));
+    }
 
-    console.log(`[PlayerResolver] Created resolution file with ${playerNameLookup.size} player names`);
+    if (cfg.useSupabase) {
+      try {
+        const supabase = getSupabaseAdminClient();
+        await supabase.storage
+          .from('player-db')
+          .upload('player-name-resolution.json', JSON.stringify(resolutionData, null, 2), {
+            contentType: 'application/json',
+            upsert: true,
+          });
+      } catch (error) {
+        console.error('[PlayerResolver] Failed to upload resolution data to Supabase:', error);
+      }
+    }
+
+    console.log(`[PlayerResolver] Created resolution data with ${playerNameLookup.size} player names`);
     
     results.resolved = playerNameLookup.size;
 
@@ -120,6 +106,72 @@ export async function resolveUnknownPlayers(): Promise<{
   }
 
   return results;
+}
+
+async function loadRecentSnapshots(safeTag: string, limit = 30): Promise<DailySnapshot[]> {
+  const snapshots: DailySnapshot[] = [];
+
+  if (cfg.useLocalData) {
+    const snapshotsDir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
+    try {
+      const files = await fsp.readdir(snapshotsDir);
+      const snapshotFiles = files
+        .filter(f => f.startsWith(safeTag) && f.endsWith('.json'))
+        .sort()
+        .reverse()
+        .slice(0, limit);
+
+      for (const file of snapshotFiles) {
+        try {
+          const snapshotData = await fsp.readFile(path.join(snapshotsDir, file), 'utf-8');
+          snapshots.push(JSON.parse(snapshotData));
+        } catch (error) {
+          console.warn(`[PlayerResolver] Failed to load snapshot ${file}:`, error);
+        }
+      }
+    } catch (error) {
+      console.warn('[PlayerResolver] Failed to read local snapshots:', error);
+    }
+  }
+
+  if (cfg.useSupabase) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { data, error } = await supabase
+        .from('snapshots')
+        .select('filename, file_url, date')
+        .eq('clan_tag', safeTag)
+        .order('date', { ascending: false })
+        .limit(limit);
+      if (!error && data) {
+        for (const row of data as any[]) {
+          try {
+            let json: DailySnapshot | null = null;
+            if (row.file_url) {
+              const response = await fetch(row.file_url);
+              if (response.ok) {
+                json = await response.json();
+              }
+            }
+            if (!json) {
+              const { data: fileData } = await supabase.storage.from('snapshots').download(row.filename);
+              if (fileData) {
+                const text = await fileData.text();
+                json = JSON.parse(text);
+              }
+            }
+            if (json) snapshots.push(json);
+          } catch (error) {
+            console.warn('[PlayerResolver] Failed to load Supabase snapshot:', error);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('[PlayerResolver] Failed to load snapshots from Supabase:', error);
+    }
+  }
+
+  return snapshots;
 }
 
 /**

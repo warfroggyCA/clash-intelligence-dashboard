@@ -7,8 +7,30 @@ on:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - name: Trigger Daily Snapshot
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ingestion worker
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          COC_API_TOKEN: ${{ secrets.COC_API_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          CLAN_TAG: ${{ secrets.CLAN_TAG }}
         run: |
-          curl -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-               ${{ secrets.APP_URL }}/api/cron/daily-snapshot
+          if [ -n "$CLAN_TAG" ]; then
+            npm run ingest:daily -- "$CLAN_TAG"
+          else
+            npm run ingest:daily
+          fi

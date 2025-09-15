@@ -1,0 +1,97 @@
+// Load environment variables from .env.local FIRST, before any other imports
+import { config } from 'dotenv';
+config({ path: '.env.local' });
+
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+process.env.VERCEL_ENV = process.env.VERCEL_ENV || 'production';
+
+// Now import other modules that depend on environment variables
+import { cfg } from '../../src/lib/config';
+import { createDailySnapshot, detectChanges, getSnapshotBeforeDate, saveChangeSummary } from '../../src/lib/snapshots';
+import { generateChangeSummary, generateGameChatMessages } from '../../src/lib/ai-summarizer';
+import { addDeparture } from '../../src/lib/departures';
+import { resolveUnknownPlayers } from '../../src/lib/player-resolver';
+import { aiProcessor } from '../../src/lib/ai-processor';
+import { saveBatchAIResults, cachePlayerDNAForClan } from '../../src/lib/ai-storage';
+
+async function run() {
+  const clanTag = process.argv[2] || cfg.homeClanTag;
+  if (!clanTag) {
+    throw new Error('No clan tag provided (pass as argument or set cfg.homeClanTag)');
+  }
+
+  console.log(`[Ingest] Starting daily snapshot for ${clanTag}`);
+
+  const currentSnapshot = await createDailySnapshot(clanTag);
+  console.log(`[Ingest] Snapshot created at ${currentSnapshot.timestamp} with ${currentSnapshot.memberCount} members`);
+
+  const previousSnapshot = await getSnapshotBeforeDate(clanTag, currentSnapshot.date);
+
+  if (previousSnapshot && previousSnapshot.date !== currentSnapshot.date) {
+    const changes = detectChanges(previousSnapshot, currentSnapshot);
+    console.log(`[Ingest] Detected ${changes.length} changes compared to ${previousSnapshot.date}`);
+
+    if (changes.length > 0) {
+      const departures = changes.filter((c) => c.type === 'left_member');
+      for (const departure of departures) {
+        await addDeparture(clanTag, {
+          memberTag: departure.member.tag,
+          memberName: departure.member.name,
+          departureDate: currentSnapshot.date,
+          lastSeen: new Date().toISOString(),
+          lastRole: departure.member.role,
+          lastTownHall: departure.member.townHallLevel,
+          lastTrophies: (departure.member as any).trophies,
+        });
+        console.log(`[Ingest] Recorded departure for ${departure.member.name}`);
+      }
+
+      const summary = await generateChangeSummary(changes, clanTag, currentSnapshot.date);
+      const gameChatMessages = generateGameChatMessages(changes);
+
+      const payload = {
+        date: currentSnapshot.date,
+        clanTag,
+        changes,
+        summary,
+        gameChatMessages,
+        unread: true,
+        actioned: false,
+        createdAt: new Date().toISOString(),
+      };
+
+      await saveChangeSummary(payload);
+      console.log('[Ingest] Change summary saved');
+
+      try {
+        const batchAIResults = await aiProcessor.processBatchAI(
+          currentSnapshot,
+          changes,
+          clanTag,
+          currentSnapshot.date
+        );
+        await saveBatchAIResults(batchAIResults);
+        await cachePlayerDNAForClan(currentSnapshot, clanTag, currentSnapshot.date);
+        console.log('[Ingest] AI batch results stored and DNA cached');
+      } catch (error) {
+        console.error('[Ingest] AI batch processing failed:', error);
+      }
+    }
+  }
+
+  console.log('[Ingest] Resolving unknown players...');
+  const resolution = await resolveUnknownPlayers();
+  console.log(`[Ingest] Resolved ${resolution.resolved} player names`);
+
+  console.log('[Ingest] Daily snapshot complete');
+}
+
+run()
+  .then(() => {
+    console.log('[Ingest] Success');
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error('[Ingest] Failed:', error);
+    process.exit(1);
+  });

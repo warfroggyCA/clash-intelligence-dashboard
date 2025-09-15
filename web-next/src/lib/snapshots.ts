@@ -7,6 +7,7 @@ import { cfg } from './config';
 import { normalizeTag, safeTagForFilename } from './tags';
 import { getClanInfo, getClanMembers, getPlayer, extractHeroLevels } from './coc';
 import { rateLimiter } from './rate-limiter';
+import { getSupabaseAdminClient } from './supabase-admin';
 
 export type Member = {
   name: string;
@@ -99,6 +100,7 @@ function getChangesPath(clanTag: string, date: string): string {
 
 // Ensure directories exist
 async function ensureDirectories(): Promise<void> {
+  if (!cfg.useLocalData) return;
   const snapshotsDir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
   const changesDir = path.join(process.cwd(), cfg.dataRoot, 'changes');
   
@@ -107,6 +109,70 @@ async function ensureDirectories(): Promise<void> {
     await fsp.mkdir(changesDir, { recursive: true });
   } catch (error) {
     // Directories might already exist
+  }
+}
+
+async function uploadJsonToSupabase(bucket: string, filePath: string, payload: any): Promise<string | null> {
+  try {
+    const supabase = getSupabaseAdminClient();
+    const body = typeof payload === 'string' ? payload : JSON.stringify(payload, null, 2);
+    const { error } = await supabase.storage
+      .from(bucket)
+      .upload(filePath, body, { contentType: 'application/json', upsert: true });
+    if (error) throw error;
+    const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
+    return data?.publicUrl || null;
+  } catch (error) {
+    console.error(`[Supabase] Failed to upload ${bucket}/${filePath}:`, error);
+    return null;
+  }
+}
+
+async function downloadJsonFromSupabase<T>(bucket: string, filePath: string): Promise<T | null> {
+  try {
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase.storage.from(bucket).download(filePath);
+    if (error || !data) return null;
+    const text = await data.text();
+    return JSON.parse(text) as T;
+  } catch (error) {
+    console.error(`[Supabase] Failed to download ${bucket}/${filePath}:`, error);
+    return null;
+  }
+}
+
+async function recordSnapshotMetadata(snapshot: DailySnapshot, fileUrl: string | null, filename: string): Promise<void> {
+  try {
+    const supabase = getSupabaseAdminClient();
+    const safeTag = safeTagForFilename(snapshot.clanTag);
+    await supabase
+      .from('snapshots')
+      .upsert({
+        clan_tag: safeTag,
+        filename,
+        date: snapshot.date,
+        member_count: snapshot.memberCount,
+        clan_name: snapshot.clanName || 'Unknown Clan',
+        timestamp: snapshot.timestamp,
+        file_url: fileUrl,
+      }, { onConflict: 'clan_tag,filename' as any });
+  } catch (error) {
+    console.error('[Supabase] Failed to record snapshot metadata:', error);
+  }
+}
+
+async function persistSnapshot(snapshot: DailySnapshot): Promise<void> {
+  const safeTag = safeTagForFilename(snapshot.clanTag);
+  const filename = `${safeTag}_${snapshot.date}.json`;
+
+  if (cfg.useLocalData) {
+    const snapshotPath = getSnapshotPath(snapshot.clanTag, snapshot.date);
+    await fsp.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2));
+  }
+
+  if (cfg.useSupabase) {
+    const url = await uploadJsonToSupabase('snapshots', filename, snapshot);
+    await recordSnapshotMetadata(snapshot, url, filename);
   }
 }
 
@@ -182,9 +248,7 @@ export async function createDailySnapshot(clanTag: string): Promise<DailySnapsho
     totalDonations: enrichedMembers.reduce((sum, m) => sum + (m.donations || 0), 0),
   };
 
-  // Save snapshot
-  const snapshotPath = getSnapshotPath(clanTag, date);
-  await fsp.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2));
+  await persistSnapshot(snapshot);
 
   return snapshot;
 }
@@ -211,10 +275,14 @@ export async function loadSnapshot(clanTag: string, date: string): Promise<Daily
       .eq('filename', filename)
       .single();
     if (error || !snapshotData) return null;
-    const response = await fetch(snapshotData.file_url);
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data as DailySnapshot;
+    if (snapshotData.file_url) {
+      const response = await fetch(snapshotData.file_url);
+      if (response.ok) {
+        const data = await response.json();
+        return data as DailySnapshot;
+      }
+    }
+    return downloadJsonFromSupabase<DailySnapshot>('snapshots', filename);
   } catch {
     return null;
   }
@@ -249,10 +317,59 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
       .limit(1)
       .single();
     if (error || !snapshotData) return null;
-    const response = await fetch(snapshotData.file_url);
-    if (!response.ok) return null;
-    const data = await response.json();
-    return data as DailySnapshot;
+    if (snapshotData.file_url) {
+      const response = await fetch(snapshotData.file_url);
+      if (response.ok) {
+        const data = await response.json();
+        return data as DailySnapshot;
+      }
+    }
+    return downloadJsonFromSupabase<DailySnapshot>('snapshots', snapshotData.filename);
+  } catch {
+    return null;
+  }
+}
+
+export async function getSnapshotBeforeDate(clanTag: string, beforeDate: string): Promise<DailySnapshot | null> {
+  const safeTag = safeTagForFilename(clanTag);
+  if (cfg.useLocalData) {
+    try {
+      const dir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
+      const files = await fsp.readdir(dir);
+      const list = files
+        .filter((f) => f.startsWith(`${safeTag}_`) && f.endsWith('.json'))
+        .filter((f) => {
+          const datePart = f.slice(safeTag.length + 1, safeTag.length + 11);
+          return datePart < beforeDate;
+        })
+        .sort()
+        .reverse();
+      if (list.length === 0) return null;
+      const raw = await fsp.readFile(path.join(dir, list[0]), 'utf-8');
+      return JSON.parse(raw) as DailySnapshot;
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const { supabase } = await import('@/lib/supabase');
+    const { data, error } = await supabase
+      .from('snapshots')
+      .select('*')
+      .eq('clan_tag', safeTag)
+      .lt('date', beforeDate)
+      .order('date', { ascending: false })
+      .limit(1);
+    if (error || !data || data.length === 0) return null;
+    const record = data[0] as any;
+    if (record.file_url) {
+      const response = await fetch(record.file_url);
+      if (response.ok) {
+        return (await response.json()) as DailySnapshot;
+      }
+    }
+    return await downloadJsonFromSupabase<DailySnapshot>('snapshots', record.filename);
   } catch {
     return null;
   }
@@ -685,51 +802,86 @@ function generateEvidenceString(change: MemberChange): string {
 // Save change summary
 export async function saveChangeSummary(summary: ChangeSummary): Promise<void> {
   await ensureDirectories();
-  
-  const changesPath = getChangesPath(summary.clanTag, summary.date);
-  await fsp.writeFile(changesPath, JSON.stringify(summary, null, 2));
+
+  if (cfg.useLocalData) {
+    const changesPath = getChangesPath(summary.clanTag, summary.date);
+    await fsp.writeFile(changesPath, JSON.stringify(summary, null, 2));
+  }
+
+  if (cfg.useSupabase) {
+    const safeTag = safeTagForFilename(summary.clanTag);
+    const filename = `${safeTag}_${summary.date}.json`;
+    await uploadJsonToSupabase('changes', filename, summary);
+  }
 }
 
 // Load change summary
 export async function loadChangeSummary(clanTag: string, date: string): Promise<ChangeSummary | null> {
-  try {
-    const changesPath = getChangesPath(clanTag, date);
-    const data = await fsp.readFile(changesPath, 'utf-8');
-    return JSON.parse(data) as ChangeSummary;
-  } catch (error) {
-    return null;
+  if (cfg.useLocalData) {
+    try {
+      const changesPath = getChangesPath(clanTag, date);
+      const data = await fsp.readFile(changesPath, 'utf-8');
+      return JSON.parse(data) as ChangeSummary;
+    } catch (error) {
+      return null;
+    }
   }
+
+  if (cfg.useSupabase) {
+    const safeTag = safeTagForFilename(clanTag);
+    const filename = `${safeTag}_${date}.json`;
+    return downloadJsonFromSupabase<ChangeSummary>('changes', filename);
+  }
+
+  return null;
 }
 
 // Get all change summaries for a clan
 export async function getAllChangeSummaries(clanTag: string): Promise<ChangeSummary[]> {
-  const changesDir = path.join(process.cwd(), cfg.dataRoot, 'changes');
   const safeTag = safeTagForFilename(clanTag);
-  
-  try {
-    const files = await fsp.readdir(changesDir);
-    const changeFiles = files
-      .filter(f => f.startsWith(safeTag) && f.endsWith('.json'))
-      .sort()
-      .reverse();
-    
-    // Read all files in parallel for much better performance
-    const summaries: ChangeSummary[] = [];
-    const readPromises = changeFiles.map(async (file) => {
-      try {
-        const data = await fsp.readFile(path.join(changesDir, file), 'utf-8');
-        return JSON.parse(data) as ChangeSummary;
-      } catch (error) {
-        console.error(`Failed to load change summary ${file}:`, error);
-        return null;
-      }
-    });
-    
-    const results = await Promise.all(readPromises);
-    summaries.push(...results.filter((summary): summary is ChangeSummary => summary !== null));
-    
-    return summaries;
-  } catch (error) {
-    return [];
+
+  if (cfg.useLocalData) {
+    const changesDir = path.join(process.cwd(), cfg.dataRoot, 'changes');
+    try {
+      const files = await fsp.readdir(changesDir);
+      const changeFiles = files
+        .filter(f => f.startsWith(safeTag) && f.endsWith('.json'))
+        .sort()
+        .reverse();
+      const summaries: ChangeSummary[] = [];
+      const readPromises = changeFiles.map(async (file) => {
+        try {
+          const data = await fsp.readFile(path.join(changesDir, file), 'utf-8');
+          return JSON.parse(data) as ChangeSummary;
+        } catch (error) {
+          console.error(`Failed to load change summary ${file}:`, error);
+          return null;
+        }
+      });
+
+      const results = await Promise.all(readPromises);
+      summaries.push(...results.filter((summary): summary is ChangeSummary => summary !== null));
+      return summaries;
+    } catch (error) {
+      return [];
+    }
   }
+
+  if (cfg.useSupabase) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { data, error } = await supabase.storage.from('changes').list('', { limit: 1000 });
+      if (error || !data) return [];
+      const relevant = data.filter((file) => file.name?.startsWith(`${safeTag}_`));
+      const summaries = await Promise.all(
+        relevant.map((file) => downloadJsonFromSupabase<ChangeSummary>('changes', file.name))
+      );
+      return summaries.filter((summary): summary is ChangeSummary => Boolean(summary));
+    } catch (error) {
+      console.error('[Supabase] Failed to list change summaries:', error);
+      return [];
+    }
+  }
+
+  return [];
 }

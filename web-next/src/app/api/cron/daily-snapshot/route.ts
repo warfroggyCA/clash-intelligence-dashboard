@@ -2,17 +2,13 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
-import { createDailySnapshot, detectChanges, saveChangeSummary, getLatestSnapshot } from "@/lib/snapshots";
+import { createDailySnapshot, detectChanges, saveChangeSummary, getSnapshotBeforeDate } from "@/lib/snapshots";
 import { generateChangeSummary, generateGameChatMessages } from "@/lib/ai-summarizer";
 import { cfg } from "@/lib/config";
 import { addDeparture } from "@/lib/departures";
 import { resolveUnknownPlayers } from "@/lib/player-resolver";
 import { aiProcessor } from "@/lib/ai-processor";
 import { saveBatchAIResults, cachePlayerDNAForClan } from "@/lib/ai-storage";
-import { promises as fsp } from 'fs';
-import path from 'path';
-import type { ApiResponse } from "@/types";
 import { createApiContext } from "@/lib/api/route-helpers";
 
 export async function GET(req: Request) {
@@ -43,27 +39,7 @@ export async function GET(req: Request) {
       console.log(`[CRON] Created snapshot for ${clanTag} with ${currentSnapshot.memberCount} members`);
       
       // Get previous snapshot for comparison (not the one we just created)
-      const snapshotsDir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
-      const { safeTagForFilename } = await import('@/lib/tags');
-      const safeTag = safeTagForFilename(clanTag);
-      
-      let previousSnapshot = null;
-      try {
-        const files = await fsp.readdir(snapshotsDir);
-        const snapshotFiles = files
-          .filter(f => f.startsWith(safeTag) && f.endsWith('.json'))
-          .sort()
-          .reverse();
-        
-        // Get the second most recent snapshot (skip the one we just created)
-        if (snapshotFiles.length > 1) {
-          const previousFile = snapshotFiles[1];
-          const data = await fsp.readFile(path.join(snapshotsDir, previousFile), 'utf-8');
-          previousSnapshot = JSON.parse(data);
-        }
-      } catch (error) {
-        console.error('Failed to load previous snapshot:', error);
-      }
+      const previousSnapshot = await getSnapshotBeforeDate(clanTag, currentSnapshot.date);
       
       let changeSummary = null;
       

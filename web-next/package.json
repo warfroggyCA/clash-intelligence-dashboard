@@ -15,6 +15,8 @@
     "deploy:staging": "vercel --target preview",
     "deploy:prod": "vercel --target production",
     "env:check": "node scripts/check-env.js",
+    "ingest:daily": "tsx scripts/ingest/daily-snapshot.ts",
+    "setup:storage": "tsx scripts/setup-supabase-storage.ts",
     "release:patch": "npm version patch && git push && git push --tags",
     "release:minor": "npm version minor && git push && git push --tags",
     "release:major": "npm version major && git push && git push --tags",
@@ -28,6 +30,7 @@
     "@vercel/kv": "^3.0.0",
     "axios": "^1.11.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.2",
     "express": "^5.1.0",
     "http-proxy-agent": "^7.0.2",
     "https-proxy-agent": "^7.0.6",
@@ -56,6 +59,7 @@
     "postcss": "^8.4.41",
     "tailwindcss": "^3.4.10",
     "ts-jest": "^29.4.1",
+    "tsx": "^4.7.1",
     "typescript": "^5.5.4"
   }
 }
