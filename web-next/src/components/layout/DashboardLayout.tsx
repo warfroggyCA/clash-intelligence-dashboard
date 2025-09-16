@@ -295,9 +295,13 @@ const DashboardHeader: React.FC = () => {
 
           {/* Settings */}
           <button 
-            onClick={() => setShowSettings(true)} 
+            onClick={() => {
+              console.log('[DashboardLayout] Settings button clicked');
+              setShowSettings(true);
+            }} 
             className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" 
             title="Settings"
+            type="button"
           >
             ⚙️
           </button>
