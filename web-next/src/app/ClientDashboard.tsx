@@ -32,13 +32,30 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     hydrateRosterFromCache,
   } = useDashboardStore();
 
-  // Debug: Log roster changes
+  // Debug: Log roster changes and add global error handler
   useEffect(() => {
     console.log('[ClientDashboard] Roster changed:', {
       hasRoster: !!roster,
       memberCount: roster?.members?.length,
       clanTag: roster?.clanTag
     });
+
+    // Add global error handler for date formatting errors
+    const handleError = (event: ErrorEvent) => {
+      if (event.message?.includes('Format string contains an unescaped latin alphabet character')) {
+        console.error('=== DATE FORMATTING ERROR CAUGHT ===');
+        console.error('Error message:', event.message);
+        console.error('Error filename:', event.filename);
+        console.error('Error line:', event.lineno);
+        console.error('Error column:', event.colno);
+        console.error('Current roster:', roster);
+        console.error('Stack trace:', event.error?.stack);
+        console.error('=====================================');
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
   }, [roster]);
 
   // Hydrate store on first mount
