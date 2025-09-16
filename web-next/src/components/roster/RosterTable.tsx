@@ -240,7 +240,7 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 // =============================================================================
 
 export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
-  const { roster, sortKey, sortDir, setSortKey, setSortDir } = useDashboardStore();
+  const { roster, sortKey, sortDir, setSortKey, setSortDir, dataFetchedAt } = useDashboardStore();
   const [filters, setFilters] = useState<TableFilters>({
     search: '',
     role: 'all',
@@ -358,6 +358,31 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
           <QuickActions />
         </div>
       </div>
+
+      {/* Data Source Indicator */}
+      {roster && (
+        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-3 border border-green-200 mb-4">
+          <div className="flex items-center justify-between text-sm">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                <span className="font-medium text-gray-700">
+                  Data Source: {roster.source === 'live' ? 'Live API' : 'Snapshot'}
+                </span>
+              </div>
+              <div className="text-gray-600">
+                Date: {roster.date}
+              </div>
+              <div className="text-gray-600">
+                Members: {roster.members.length}
+              </div>
+            </div>
+            <div className="text-gray-500 text-xs">
+              Last updated: {dataFetchedAt ? new Date(dataFetchedAt).toLocaleTimeString() : 'Unknown'}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">

@@ -83,6 +83,9 @@ interface DashboardState {
     total: number;
   };
   
+  // Data freshness info
+  dataFetchedAt?: number; // timestamp when data was last fetched
+  
   // Actions
   setRoster: (roster: Roster | null) => void;
   setClanTag: (tag: string) => void;
@@ -122,6 +125,7 @@ interface DashboardState {
   setEventFilterPlayer: (player: string) => void;
 
   setLastLoadInfo: (info: DashboardState['lastLoadInfo']) => void;
+  setDataFetchedAt: (timestamp: number) => void;
   
   // Complex Actions
   resetDashboard: () => void;
@@ -181,6 +185,7 @@ const initialState = {
   eventHistory: {},
   eventFilterPlayer: '',
   lastLoadInfo: undefined,
+  dataFetchedAt: undefined,
 };
 
 // =============================================================================
@@ -246,6 +251,7 @@ export const useDashboardStore = create<DashboardState>()(
       setEventFilterPlayer: (eventFilterPlayer) => set({ eventFilterPlayer }),
 
       setLastLoadInfo: (lastLoadInfo) => set({ lastLoadInfo }),
+      setDataFetchedAt: (dataFetchedAt) => set({ dataFetchedAt }),
       
       // =============================================================================
       // COMPLEX ACTIONS
@@ -254,7 +260,7 @@ export const useDashboardStore = create<DashboardState>()(
       resetDashboard: () => set(initialState),
       
       loadRoster: async (clanTag: string) => {
-        const { setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo } = get();
+        const { setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo, setDataFetchedAt } = get();
         
         try {
           setStatus('loading');
@@ -288,6 +294,7 @@ export const useDashboardStore = create<DashboardState>()(
               // Update dev status badge info
               const tenureMatches = (payload.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
               setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (payload.members || []).length });
+              setDataFetchedAt(Date.now());
               return;
             }
             lastError = result.json?.error || result.json?.message || 'Failed to load roster';
@@ -321,7 +328,7 @@ export const useDashboardStore = create<DashboardState>()(
       },
       
       refreshData: async () => {
-        const { clanTag, loadRoster, setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo } = get();
+        const { clanTag, loadRoster, setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo, setDataFetchedAt } = get();
         if (!clanTag) return;
         
         try {
@@ -368,6 +375,7 @@ export const useDashboardStore = create<DashboardState>()(
                   tenureMatches: (json.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
                   total: (json.members || []).length
                 });
+                setDataFetchedAt(Date.now());
                 setStatus('success');
                 setMessage(`Loaded ${json.members.length} members from ${wantsSnapshot ? 'snapshot' : 'live'} data`);
                 return;
