@@ -430,12 +430,12 @@ export default function ChangeDashboard({
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center space-x-2">
                 <h3 className="font-semibold text-gray-900">
-                  {new Date(changeSummary.date).toLocaleDateString('en-US', {
+                  {changeSummary.date ? new Date(changeSummary.date).toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
-                  })}
+                  }) : 'Unknown Date'}
                 </h3>
                 {changeSummary.unread && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

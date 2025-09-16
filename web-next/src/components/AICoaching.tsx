@@ -105,7 +105,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     if (!snapshotMetadata) return '';
     const parts: string[] = [];
     parts.push(`Snapshot date: ${snapshotMetadata.snapshotDate}`);
-    parts.push(`Fetched: ${new Date(snapshotMetadata.fetchedAt).toLocaleString()}`);
+    parts.push(`Fetched: ${snapshotMetadata.fetchedAt ? new Date(snapshotMetadata.fetchedAt).toLocaleString() : 'Unknown'}`);
     parts.push(`Members: ${snapshotMetadata.memberCount}`);
     if (snapshotAgeHours != null) {
       const freshness = snapshotAgeHours <= 24 ? 'Fresh (≤24h)' : snapshotAgeHours <= 48 ? 'Stale (24-48h)' : 'Outdated (>48h)';
