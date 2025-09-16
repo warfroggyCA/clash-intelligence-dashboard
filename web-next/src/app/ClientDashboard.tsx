@@ -32,8 +32,26 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     hydrateRosterFromCache,
   } = useDashboardStore();
 
+  // Debug: Log roster changes
+  useEffect(() => {
+    console.log('[ClientDashboard] Roster changed:', {
+      hasRoster: !!roster,
+      memberCount: roster?.members?.length,
+      clanTag: roster?.clanTag
+    });
+  }, [roster]);
+
   // Hydrate store on first mount
   useEffect(() => {
+    console.log('[ClientDashboard] useEffect running with:', {
+      initialClanTag,
+      initialRoster: !!initialRoster,
+      initialRosterMembers: initialRoster?.members?.length,
+      currentClanTag: clanTag,
+      currentHomeClan: homeClan,
+      currentRoster: !!roster
+    });
+    
     if (initialClanTag) {
       setHomeClan(initialClanTag);
       if (!clanTag) setClanTag(initialClanTag);
@@ -41,16 +59,20 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     let had = false;
     try {
       had = hydrateRosterFromCache();
+      console.log('[ClientDashboard] Cache hydration result:', had);
     } catch (error) {
       console.error('[ClientDashboard] Cache hydration error:', error);
     }
     // Prioritize initialRoster from server-side rendering
     if (initialRoster) {
+      console.log('[ClientDashboard] Setting initial roster from server');
       setRoster(initialRoster);
     } else if (!had) {
       // Only load from API if we don't have cached data and no initial roster
       const tag = clanTag || initialClanTag || homeClan || '';
+      console.log('[ClientDashboard] Checking load conditions:', { had, tag, hasRoster: !!roster });
       if (tag && !roster) {
+        console.log('[ClientDashboard] Loading roster for tag:', tag);
         loadRoster(tag);
       }
     }

@@ -25,6 +25,7 @@ import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
 import { QuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
+import { SettingsModal } from './SettingsModal';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
@@ -56,6 +57,7 @@ const DashboardHeader: React.FC = () => {
     departureNotifications,
     setShowDepartureManager,
     setShowAccessManager,
+    setShowSettings,
     checkDepartureNotifications,
     currentAccessMember,
     accessPermissions,
@@ -74,6 +76,7 @@ const DashboardHeader: React.FC = () => {
 
   // Shrink-on-scroll state
   const [isScrolled, setIsScrolled] = useState(false);
+  
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const onScroll = () => setIsScrolled(window.scrollY > 12);
@@ -289,6 +292,15 @@ const DashboardHeader: React.FC = () => {
 
           {/* Refresh */}
           <button onClick={handleRefresh} className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" title="Refresh">🔄</button>
+
+          {/* Settings */}
+          <button 
+            onClick={() => setShowSettings(true)} 
+            className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" 
+            title="Settings"
+          >
+            ⚙️
+          </button>
 
           {/* Departure Notifications */}
           <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>

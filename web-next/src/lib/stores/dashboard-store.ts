@@ -102,6 +102,7 @@ interface DashboardState {
   showDepartureManager: boolean;
   showDepartureModal: boolean;
   showPlayerProfile: boolean;
+  showSettings: boolean;
   selectedMember: Member | null;
   selectedPlayer: Member | null;
   
@@ -223,6 +224,7 @@ const initialState = {
   showDepartureManager: false,
   showDepartureModal: false,
   showPlayerProfile: false,
+  showSettings: false,
   selectedMember: null,
   selectedPlayer: null,
   
@@ -255,6 +257,12 @@ export const useDashboardStore = create<DashboardState>()(
       // =============================================================================
       
       setRoster: (roster) => {
+        console.log('[DashboardStore] setRoster called with:', {
+          hasRoster: !!roster,
+          memberCount: roster?.members?.length,
+          clanTag: roster?.clanTag,
+          source: roster?.source
+        });
         set({ 
           roster,
           snapshotMetadata: roster?.snapshotMetadata || null,
@@ -299,6 +307,7 @@ export const useDashboardStore = create<DashboardState>()(
       setShowDepartureManager: (showDepartureManager) => set({ showDepartureManager }),
       setShowDepartureModal: (showDepartureModal) => set({ showDepartureModal }),
       setShowPlayerProfile: (showPlayerProfile) => set({ showPlayerProfile }),
+      setShowSettings: (showSettings) => set({ showSettings }),
       setSelectedMember: (selectedMember) => set({ selectedMember }),
       setSelectedPlayer: (selectedPlayer) => set({ selectedPlayer }),
       
@@ -678,4 +687,27 @@ if (typeof window !== 'undefined') {
 // INITIALIZATION
 // =============================================================================
 
-// Zustand persistence will handle initialization automatically
+// Hydrate store from localStorage on client-side initialization
+if (typeof window !== 'undefined') {
+  const hydrateFromStorage = () => {
+    try {
+      const currentClanTag = localStorage.getItem('currentClanTag');
+      const homeClanTag = localStorage.getItem('homeClanTag');
+      const userRole = localStorage.getItem('userRole');
+      
+      if (currentClanTag || homeClanTag || userRole) {
+        useDashboardStore.setState((state) => ({
+          ...state,
+          clanTag: currentClanTag || state.clanTag,
+          homeClan: homeClanTag || state.homeClan,
+          userRole: (userRole as ClanRole) || state.userRole,
+        }));
+      }
+    } catch (error) {
+      console.error('[DashboardStore] Failed to hydrate from localStorage:', error);
+    }
+  };
+  
+  // Hydrate immediately
+  hydrateFromStorage();
+}
