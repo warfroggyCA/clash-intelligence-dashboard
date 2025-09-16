@@ -315,7 +315,7 @@ const DashboardHeader: React.FC = () => {
             className="h-8 px-2 rounded-md border border-white/30 bg-white/10 text-white text-xs backdrop-blur-sm"
             title="Data source: live or latest snapshot"
           >
-            <option className="text-black" value="live">Latest</option>
+            <option className="text-black" value="live">Live</option>
             <option className="text-black" value="latest">Snapshot</option>
           </select>
           <input
