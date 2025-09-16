@@ -22,20 +22,42 @@ export async function GET(request: NextRequest) {
     // Check snapshots in Supabase
     try {
       const { data: snapshots, error: snapshotsError } = await supabase
-        .from('snapshots')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
+        .from('clan_snapshots')
+        .select('clan_tag, snapshot_date, fetched_at, metadata, created_at')
+        .order('snapshot_date', { ascending: false });
+
       if (!snapshotsError && snapshots) {
         result.snapshots.count = snapshots.length;
-        result.snapshots.files = snapshots.map(snapshot => ({
-          filename: snapshot.filename,
-          url: snapshot.file_url,
+        result.snapshots.files = snapshots.map((snapshot: any) => ({
           clanTag: snapshot.clan_tag,
-          date: snapshot.date,
-          memberCount: snapshot.member_count,
+          date: snapshot.snapshot_date,
+          memberCount: snapshot.metadata?.memberCount ?? null,
+          fetchedAt: snapshot.fetched_at,
           createdAt: snapshot.created_at
         }));
+      } else if (snapshotsError?.code !== 'PGRST116') {
+        console.error('Error querying clan_snapshots from Supabase:', snapshotsError);
+      }
+
+      if (!result.snapshots.count) {
+        const { data: legacySnapshots, error: legacyError } = await supabase
+          .from('snapshots')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (!legacyError && legacySnapshots) {
+          result.snapshots.count = legacySnapshots.length;
+          result.snapshots.files = legacySnapshots.map(snapshot => ({
+            filename: snapshot.filename,
+            url: snapshot.file_url,
+            clanTag: snapshot.clan_tag,
+            date: snapshot.date,
+            memberCount: snapshot.member_count,
+            createdAt: snapshot.created_at
+          }));
+        } else if (legacyError && legacyError.code !== 'PGRST116') {
+          console.error('Error querying legacy snapshots from Supabase:', legacyError);
+        }
       }
     } catch (e) {
       console.error('Error querying snapshots from Supabase:', e);

@@ -43,43 +43,60 @@ export async function GET(request: NextRequest) {
     const safeTag = safeTagForFilename(clanTag);
     
     try {
-      // Query snapshots from Supabase database
       const { data: snapshots, error } = await cached([
-        'snapshots','list', safeTag
+        'snapshots', 'list', safeTag
       ], async () => {
         const { data, error } = await supabase
-          .from('snapshots')
-          .select('*')
+          .from('clan_snapshots')
+          .select('snapshot_date, fetched_at, metadata, clan, member_summaries')
           .eq('clan_tag', safeTag)
-          .order('timestamp', { ascending: false });
+          .order('snapshot_date', { ascending: false });
         return { data, error } as any;
       }, 10);
-      
+
       if (error) {
         console.error('Database query error:', error);
         return json({ success: true, data: [] });
       }
-      
-      // Transform data for response and deduplicate by date
-      const formattedSnapshots = snapshots?.map((snapshot: any) => ({
-        date: snapshot.date,
-        memberCount: snapshot.member_count,
-        clanName: snapshot.clan_name,
-        timestamp: snapshot.timestamp,
-        url: snapshot.file_url,
-        filename: snapshot.filename
+
+      let formattedSnapshots = snapshots?.map((snapshot: any) => ({
+        date: snapshot.snapshot_date,
+        memberCount: snapshot.metadata?.memberCount ?? snapshot.member_summaries?.length ?? null,
+        clanName: snapshot.clan?.name || null,
+        timestamp: snapshot.fetched_at,
       })) || [];
-      
+
+      // Fallback to legacy table if no new snapshots are found
+      if (!formattedSnapshots.length) {
+        const { data: legacySnapshots, error: legacyError } = await supabase
+          .from('snapshots')
+          .select('*')
+          .eq('clan_tag', safeTag)
+          .order('timestamp', { ascending: false });
+        if (legacyError) {
+          console.error('Legacy database query error:', legacyError);
+        } else {
+          formattedSnapshots = legacySnapshots?.map((snapshot: any) => ({
+            date: snapshot.date,
+            memberCount: snapshot.member_count,
+            clanName: snapshot.clan_name,
+            timestamp: snapshot.timestamp,
+            url: snapshot.file_url,
+            filename: snapshot.filename
+          })) || [];
+        }
+      }
+
       // Deduplicate by date using Map to ensure we keep the most recent for each date
       const dateMap = new Map();
       formattedSnapshots.forEach((snapshot: any) => {
+        if (!snapshot?.date) return;
         if (!dateMap.has(snapshot.date)) {
           dateMap.set(snapshot.date, snapshot);
         }
       });
       const uniqueSnapshots = Array.from(dateMap.values());
-      
-      
+
       const res = json({ success: true, data: uniqueSnapshots }, { headers: { 'Cache-Control': 'private, max-age=60' } });
       logger.info('Served snapshot list', { clanTag, count: uniqueSnapshots.length });
       return res;
