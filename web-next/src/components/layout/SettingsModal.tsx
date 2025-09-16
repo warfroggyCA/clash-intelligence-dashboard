@@ -5,6 +5,7 @@ import { Modal } from '@/components/ui/Modal';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { Settings, Home, Users, Palette, Bell, Shield, Database, RefreshCw } from 'lucide-react';
+import { showToast } from '@/lib/toast';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [newClanTag, setNewClanTag] = useState(clanTag || '');
   const [newUserRole, setNewUserRole] = useState(userRole);
   const [isLoading, setIsLoading] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [message, setMessage] = useState('');
 
   // Update local state when props change
@@ -117,6 +119,47 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const handleSaveUserRole = () => {
     setUserRole(newUserRole);
     setMessage('User role updated successfully!');
+  };
+
+  const handleForceRefresh = async () => {
+    clearMessage();
+    if (!clanTag) {
+      setMessage('No clan loaded. Please load a clan first.');
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      const response = await fetch('/api/admin/force-refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          clanTag: clanTag,
+          includeAI: true
+        }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setMessage(`Force refresh completed! ${result.data.memberCount} members, ${result.data.changesDetected} changes detected. AI analysis: ${result.data.aiGenerated ? 'Generated' : 'Skipped'}`);
+        showToast('Force refresh completed successfully!', 'success');
+        
+        // Refresh the current roster to show new data
+        await loadRoster(clanTag);
+      } else {
+        setMessage(`Force refresh failed: ${result.error}`);
+        showToast('Force refresh failed', 'error');
+      }
+    } catch (error) {
+      console.error('Force refresh error:', error);
+      setMessage('Force refresh failed. Please try again.');
+      showToast('Force refresh failed', 'error');
+    } finally {
+      setIsRefreshing(false);
+    }
   };
 
   const clearMessage = () => {
@@ -232,24 +275,66 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         </div>
 
-        {/* Future Settings Placeholders - Compact */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Coming Soon</h3>
-          <div className="grid grid-cols-1 gap-2">
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <Palette className="w-3 h-3" />
-              <span>Appearance & Themes</span>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <Bell className="w-3 h-3" />
-              <span>Notifications</span>
-            </div>
-            <div className="flex items-center space-x-2 text-sm text-gray-500">
-              <Database className="w-3 h-3" />
-              <span>Data Management</span>
-            </div>
-          </div>
-        </div>
+                {/* Force Full Refresh */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <RefreshCw className="w-4 h-4 text-red-600" />
+                    <h3 className="text-base font-semibold text-gray-900">Force Full Refresh</h3>
+                  </div>
+                  
+                  <div className="bg-red-50 rounded-lg p-4">
+                    <p className="text-sm text-gray-700 mb-3">
+                      Simulate the overnight cron job to rebuild all data from scratch. This will:
+                    </p>
+                    <ul className="text-xs text-gray-600 space-y-1 mb-4">
+                      <li>• Fetch fresh clan data from Clash of Clans API</li>
+                      <li>• Create new snapshot in database</li>
+                      <li>• Detect changes and generate AI summaries</li>
+                      <li>• Fix 404 errors and greyed-out buttons</li>
+                    </ul>
+                    <button
+                      onClick={handleForceRefresh}
+                      disabled={isRefreshing || !clanTag}
+                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
+                    >
+                      {isRefreshing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Refreshing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <RefreshCw className="w-4 h-4" />
+                          <span>Force Full Refresh</span>
+                        </>
+                      )}
+                    </button>
+                    {!clanTag && (
+                      <p className="text-xs text-red-600 mt-2">
+                        Load a clan first to enable force refresh
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Future Settings Placeholders - Compact */}
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Coming Soon</h3>
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <Palette className="w-3 h-3" />
+                      <span>Appearance & Themes</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <Bell className="w-3 h-3" />
+                      <span>Notifications</span>
+                    </div>
+                    <div className="flex items-center space-x-2 text-sm text-gray-500">
+                      <Database className="w-3 h-3" />
+                      <span>Data Management</span>
+                    </div>
+                  </div>
+                </div>
 
         {/* Footer */}
         <div className="pt-4 border-t border-gray-200">
