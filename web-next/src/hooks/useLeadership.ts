@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useMemo } from 'react';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-management';
 import { checkLeadershipAccess, getRolePermissions, type LeadershipCheck, type RolePermissions, type ClanRole } from '../lib/leadership';
 
 export interface UseLeadershipResult {
@@ -13,78 +15,33 @@ export interface UseLeadershipResult {
  * Uses localStorage for role persistence during development
  */
 export function useLeadership(): UseLeadershipResult {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [userRole, setUserRole] = useState<string | undefined>();
+  const accessPermissions = useDashboardStore((state) => state.accessPermissions) || ACCESS_LEVEL_PERMISSIONS.member;
+  const currentAccessMember = useDashboardStore((state) => state.currentAccessMember);
 
-  const loadUserRole = () => {
-    try {
-      setError(null);
-      
-      // Check localStorage for stored role (for development/testing)
-      if (typeof window !== 'undefined') {
-        const storedRole = localStorage.getItem('clash-intelligence-user-role');
-        if (storedRole && ['leader', 'coLeader', 'elder', 'member'].includes(storedRole)) {
-          // Convert stored role back to CoC API format
-          switch (storedRole) {
-            case 'leader':
-              return 'leader';
-            case 'coLeader':
-              return 'coLeader';
-            case 'elder':
-              return 'elder';
-            case 'member':
-            default:
-              return 'member';
-          }
-        }
-      }
-      
-      // Default to member if no role is stored
-      return 'member';
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load user role');
-      return 'member';
-    }
-  };
+  const derived = useMemo(() => {
+    const accessLevel: AccessLevel = currentAccessMember?.accessLevel || 'member';
+    const normalizedRole: ClanRole = accessLevel === 'coleader'
+      ? 'coLeader'
+      : accessLevel === 'viewer'
+        ? 'member'
+        : (accessLevel as ClanRole);
 
-  useEffect(() => {
-    // Initial load
-    const role = loadUserRole();
-    setUserRole(role);
-    setIsLoading(false);
+    const check = {
+      isLeader: normalizedRole === 'leader',
+      isCoLeader: normalizedRole === 'coLeader',
+      isElder: normalizedRole === 'elder',
+      hasLeadershipAccess: Boolean(accessPermissions?.canViewLeadershipFeatures),
+      role: normalizedRole,
+    } satisfies LeadershipCheck;
 
-    // Listen for localStorage changes (when role selector updates the role)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === 'clash-intelligence-user-role') {
-        const role = loadUserRole();
-        setUserRole(role);
-      }
-    };
-
-    // Listen for custom events (for same-tab updates)
-    const handleRoleChange = () => {
-      const role = loadUserRole();
-      setUserRole(role);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    window.addEventListener('userRoleChanged', handleRoleChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('userRoleChanged', handleRoleChange);
-    };
-  }, []);
-
-  const check = checkLeadershipAccess(userRole);
-  const permissions = getRolePermissions(check.role);
+    return { check, permissions: accessPermissions as RolePermissions };
+  }, [accessPermissions, currentAccessMember]);
 
   return {
-    check,
-    permissions,
-    isLoading,
-    error
+    check: derived.check,
+    permissions: derived.permissions,
+    isLoading: false,
+    error: null,
   };
 }
 

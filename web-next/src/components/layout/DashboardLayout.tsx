@@ -21,13 +21,13 @@ import React, { useEffect, useCallback, useState } from 'react';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
-import UserRoleSelector from '@/components/UserRoleSelector';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
 import { QuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
+import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
 import { sanitizeInputTag, normalizeTag, isValidTag, safeTagForFilename } from '@/lib/tags';
 
 // =============================================================================
@@ -57,10 +57,20 @@ const DashboardHeader: React.FC = () => {
     setShowDepartureManager,
     setShowAccessManager,
     checkDepartureNotifications,
+    currentAccessMember,
+    accessPermissions,
   } = useDashboardStore();
 
   const clanName = useDashboardStore(selectors.clanName);
   const hasLeadershipAccess = useDashboardStore(selectors.hasLeadershipAccess);
+  const inferredAccessLevel: AccessLevel = currentAccessMember?.accessLevel
+    || (accessPermissions.canManageAccess
+      ? 'leader'
+      : accessPermissions.canAccessDiscordPublisher
+        ? 'coleader'
+        : 'member');
+  const accessLevelLabel = getAccessLevelDisplayName(inferredAccessLevel);
+
 
   // Shrink-on-scroll state
   const [isScrolled, setIsScrolled] = useState(false);
@@ -208,67 +218,55 @@ const DashboardHeader: React.FC = () => {
   return (
     <header className="w-full sticky top-0 z-50 bg-header-gradient text-white shadow-lg/70 backdrop-blur supports-[backdrop-filter]:bg-white/10">
       {/* Unified 2-row grid: left/right controls; name centered across rows */}
-      <div className="w-full px-4 py-2 grid grid-cols-[auto,1fr,auto] grid-rows-[auto,auto] items-center gap-x-4 gap-y-1">
-        {/* Left (row 1): Logo + App name */}
-        <div className="flex items-center gap-2 min-w-0 col-[1] row-[1]">
-          <div className="relative h-10 w-10">
-            <img
-              src={logoSrc}
-              alt="Clan Logo"
-              className="h-10 w-10 rounded-md object-cover ring-1 ring-white/30 bg-white/10 absolute inset-0"
-              onError={(e) => {
-                // Try next candidate, then hide if exhausted
-                setLogoIdx((i) => {
-                  const next = i + 1;
-                  if (next < logoCandidates.length) return next;
-                  (e.currentTarget as HTMLImageElement).style.display = 'none';
-                  return i;
-                });
-              }}
-            />
-            {/* Visible placeholder when no custom logo is present */}
-            <div
-              className="h-10 w-10 rounded-md ring-1 ring-white/30 bg-white/10 flex items-center justify-center text-white/80 select-none"
-              title={logoSafe
-                ? `Add clan logo at /public/clans/${logoSafe}.png or /public/${logoLower}.png`
-                : 'Add clan logo at /public/clan-logo.png'}
-            >
-              🛡️
+      <div className="w-full px-4 py-2 grid grid-cols-1 sm:grid-cols-[auto,1fr,auto] grid-rows-[auto,auto] items-center gap-x-4 gap-y-1">
+        {/* Left badge */}
+        <div className="hidden sm:flex flex-col justify-center col-[1] row-[1] row-span-2">
+          <span className="text-xl font-semibold tracking-wide text-white/80 uppercase">Clan Dashboard</span>
+        </div>
+
+        {/* Logo + clan name */}
+        <div className="col-[1] sm:col-[2] row-[1] row-span-2 flex justify-center">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="relative h-14 w-14 sm:h-16 sm:w-16">
+              <img
+                src={logoSrc}
+                alt="Clan Logo"
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover ring-2 ring-white/30 bg-white/10 absolute inset-0 shadow-lg"
+                onError={(e) => {
+                  setLogoIdx((i) => {
+                    const next = i + 1;
+                    if (next < logoCandidates.length) return next;
+                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    return i;
+                  });
+                }}
+              />
+              <div
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-xl ring-2 ring-white/30 bg-white/10 flex items-center justify-center text-white/80 select-none"
+                title={logoSafe
+                  ? `Add clan logo at /public/clans/${logoSafe}.png or /public/${logoLower}.png`
+                  : 'Add clan logo at /public/clan-logo.png'}
+              >
+                🛡️
+              </div>
             </div>
-          </div>
-          <div className="hidden sm:block">
-            <div className="font-semibold leading-tight">Clash Intelligence</div>
-            <div className="text-xs text-blue-100">Clan Analytics</div>
+            <div className="text-center sm:text-left">
+              {clanName ? (
+                <div className={`font-extrabold tracking-tight drop-shadow-lg leading-none transition-all duration-200 ${isScrolled ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'}`}>
+                  {clanName}
+                </div>
+              ) : (
+                <div className="font-extrabold text-3xl sm:text-4xl drop-shadow-lg leading-none">Clash Intelligence</div>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Center (rows 1-2): Clan name (vertically centered across both rows) */}
-        <div className="col-[2] row-[1] row-span-2 flex justify-center items-center">
-          {clanName ? (
-            <div
-              className={
-                `font-extrabold tracking-tight text-center drop-shadow-md leading-none transition-all duration-200 ` +
-                (isScrolled ? 'text-2xl' : 'text-4xl')
-              }
-            >
-              {clanName}
-            </div>
-          ) : (
-            <div className="text-center">
-              <div className="font-extrabold text-3xl drop-shadow-md leading-none">Clash Intelligence</div>
-              <div className="text-xs text-blue-100">Enter a clan tag below to begin</div>
-            </div>
-          )}
-        </div>
-
-        {/* Right (row 1): Role + tiny controls */}
+        {/* Right (row 1): Access level + tiny controls */}
         <div className="flex items-center justify-end gap-2 col-[3] row-[1]">
-          {/* Role Selector (compact) */}
-          <UserRoleSelector
-            currentRole={useDashboardStore.getState().userRole}
-            onRoleChange={useDashboardStore.getState().setUserRole}
-            className="hidden md:block text-xs"
-          />
+          <span className="hidden md:inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-md">
+            {accessLevelLabel}
+          </span>
 
           {/* Access Management */}
           <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
@@ -315,7 +313,7 @@ const DashboardHeader: React.FC = () => {
             className="h-8 px-2 rounded-md border border-white/30 bg-white/10 text-white text-xs backdrop-blur-sm"
             title="Data source: live or latest snapshot"
           >
-            <option className="text-black" value="live">Live</option>
+            <option className="text-black" value="live">Latest</option>
             <option className="text-black" value="latest">Snapshot</option>
           </select>
           <input

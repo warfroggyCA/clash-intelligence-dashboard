@@ -38,6 +38,7 @@ Ok # Clash Intelligence Dashboard - Development Ideas
 - Toast notifications: `lib/toast.ts` + `components/layout/ToastHub.tsx`.
 - Build/type fixes: td `title` support, client directives, store rehydrate typing.
 - Version display wired to `NEXT_PUBLIC_APP_VERSION`; scripts inject version and add `release:*` helpers.
+- Consider introducing a Settings gear entry point to consolidate defaults, permission controls, and other configuration toggles.
 
 See full details in CHANGELOG.md.
 
@@ -579,3 +580,8 @@ See `DEPLOYMENT.md` for complete deployment guide.
 - Preview deployments: `https://clash-intelligence-[hash]-dougs-projects.vercel.app`
 
 **Environment Variables**: All environments (production, preview) automatically inherit the same environment variables from Vercel project settings.
+
+### Future: Discord-Based Authentication & Auto Access
+- Discord bot command `/link <playerTag>` issues a signed one-time URL that ties `discordId` to the clan roster tag; visiting the link sets a session cookie.
+- Sessions derive permissions automatically from Supabase roster snapshots (leader/coleader/elder/member) so tabs/access update instantly; leaving the clan revokes access on the next request.
+- Keep Access Manager for manual overrides and external viewers; `/unlink` command or roster removal tears down sessions immediately.

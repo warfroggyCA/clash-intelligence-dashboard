@@ -40,6 +40,8 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageChangeDashboard: false,
     canModifyClanData: false,
     canManageAccess: false,
+    canViewSensitiveData: false,
+    canViewLeadershipFeatures: false,
   },
   member: {
     canViewRoster: true,
@@ -49,6 +51,8 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageChangeDashboard: false,
     canModifyClanData: false,
     canManageAccess: false,
+    canViewSensitiveData: false,
+    canViewLeadershipFeatures: false,
   },
   elder: {
     canViewRoster: true,
@@ -58,6 +62,8 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageChangeDashboard: true,
     canModifyClanData: false,
     canManageAccess: false,
+    canViewSensitiveData: true,
+    canViewLeadershipFeatures: true,
   },
   coleader: {
     canViewRoster: true,
@@ -67,6 +73,8 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageChangeDashboard: true,
     canModifyClanData: false,
     canManageAccess: false,
+    canViewSensitiveData: true,
+    canViewLeadershipFeatures: true,
   },
   leader: {
     canViewRoster: true,
@@ -76,6 +84,8 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageChangeDashboard: true,
     canModifyClanData: true,
     canManageAccess: true,
+    canViewSensitiveData: true,
+    canViewLeadershipFeatures: true,
   },
 };
 

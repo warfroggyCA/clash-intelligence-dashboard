@@ -10,12 +10,12 @@
 
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
-import { 
-  Member, 
-  Roster, 
-  SortKey, 
-  SortDirection, 
-  TabType, 
+import {
+  Member,
+  Roster,
+  SortKey,
+  SortDirection,
+  TabType,
   Status,
   ClanRole,
   AccessMember,
@@ -23,6 +23,8 @@ import {
   EventHistory,
   PlayerEvent
 } from '@/types';
+import type { RolePermissions } from '@/lib/leadership';
+import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-management';
 import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 
 // =============================================================================
@@ -49,7 +51,7 @@ interface DashboardState {
   userRole: ClanRole;
   isHydrated: boolean;
   currentAccessMember: AccessMember | null;
-  accessPermissions: any;
+  accessPermissions: RolePermissions;
   
   // Modals & UI
   showAccessManager: boolean;
@@ -98,7 +100,7 @@ interface DashboardState {
   setUserRole: (role: ClanRole) => void;
   setHydrated: (hydrated: boolean) => void;
   setCurrentAccessMember: (member: AccessMember | null) => void;
-  setAccessPermissions: (permissions: any) => void;
+  setAccessPermissions: (permissions: Partial<RolePermissions> | null) => void;
   
   setShowAccessManager: (show: boolean) => void;
   setShowAccessSetup: (show: boolean) => void;
@@ -134,6 +136,7 @@ interface DashboardState {
 // INITIAL STATE
 // =============================================================================
 
+const DEFAULT_ACCESS_LEVEL: AccessLevel = 'leader';
 const initialState = {
   // Core Data
   roster: null,
@@ -154,7 +157,7 @@ const initialState = {
   userRole: 'member' as ClanRole,
   isHydrated: false,
   currentAccessMember: null,
-  accessPermissions: null,
+  accessPermissions: ACCESS_LEVEL_PERMISSIONS[DEFAULT_ACCESS_LEVEL],
   
   // Modals & UI
   showAccessManager: false,
@@ -219,7 +222,9 @@ export const useDashboardStore = create<DashboardState>()(
       setUserRole: (userRole) => set({ userRole }),
       setHydrated: (isHydrated) => set({ isHydrated }),
       setCurrentAccessMember: (currentAccessMember) => set({ currentAccessMember }),
-      setAccessPermissions: (accessPermissions) => set({ accessPermissions }),
+      setAccessPermissions: (accessPermissions) => set({ 
+        accessPermissions: accessPermissions ? { ...ACCESS_LEVEL_PERMISSIONS[DEFAULT_ACCESS_LEVEL], ...accessPermissions } : ACCESS_LEVEL_PERMISSIONS[DEFAULT_ACCESS_LEVEL] 
+      }),
       
       setShowAccessManager: (showAccessManager) => set({ showAccessManager }),
       setShowAccessSetup: (showAccessSetup) => set({ showAccessSetup }),
