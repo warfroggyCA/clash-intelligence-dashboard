@@ -2423,7 +2423,7 @@ Please analyze this clan data and provide insights on:
                   )}
                   {availableSnapshots.map((snapshot) => (
                     <option key={snapshot.date} value={snapshot.date}>
-                      📸 {new Date(snapshot.date + 'T00:00:00').toLocaleDateString()}
+                      📸 {snapshot.date ? new Date(snapshot.date + 'T00:00:00').toLocaleDateString() : 'Unknown Date'}
                     </option>
                   ))}
                 </select>
@@ -3817,10 +3817,10 @@ function EventDashboard({
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">
-                    {new Date(event.timestamp).toLocaleDateString()}
+                    {event.timestamp ? new Date(event.timestamp).toLocaleDateString() : 'Unknown Date'}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {new Date(event.timestamp).toLocaleTimeString()}
+                    {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : 'Unknown Time'}
                   </p>
                   <p className="text-xs text-blue-600 mt-1">Click to view profile →</p>
                 </div>
@@ -4142,7 +4142,7 @@ function PlayerProfileModal({
                            '📝 Event'}
                         </span>
                         <span className="text-gray-500 text-xs">
-                          {new Date(event.timestamp).toLocaleDateString()}
+                          {event.timestamp ? new Date(event.timestamp).toLocaleDateString() : 'Unknown Date'}
                         </span>
                       </div>
                       <p className="text-gray-700 font-medium">{event.eventData.details}</p>
@@ -4320,7 +4320,7 @@ function PlayerProfileModal({
                             <div key={index} className="text-sm border-l-4 border-yellow-300 pl-3">
                               <p><strong>{entry.name}</strong></p>
                               <p className="text-gray-500 text-xs">
-                                {new Date(entry.timestamp).toLocaleString()}
+                                {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown'}
                                 {index === playerNameHistory[member.tag.toUpperCase()].length - 1 && (
                                   <span className="ml-2 text-green-600 font-medium">(Current)</span>
                                 )}
@@ -4341,7 +4341,7 @@ function PlayerProfileModal({
                 <div className="space-y-2">
                   {departureHistory.map((departure, index) => (
                     <div key={index} className="text-sm border-l-4 border-red-300 pl-3">
-                      <p><strong>Date:</strong> {new Date(departure.departureDate).toLocaleDateString()}</p>
+                      <p><strong>Date:</strong> {departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date'}</p>
                       {departure.departureReason && <p><strong>Reason:</strong> {departure.departureReason}</p>}
                       {departure.notes && <p><strong>Notes:</strong> {departure.notes}</p>}
                     </div>
@@ -4362,7 +4362,7 @@ function PlayerProfileModal({
                   playerNotes.map((note, index) => (
                     <div key={index} className="bg-white rounded-lg p-3 border">
                       <div className="text-xs text-gray-500 mb-1">
-                        {new Date(note.timestamp).toLocaleString()}
+                        {note.timestamp ? new Date(note.timestamp).toLocaleString() : 'Unknown'}
                       </div>
                       <div className="text-sm text-gray-700">{note.note}</div>
                       {Object.keys(note.customFields).length > 0 && (
