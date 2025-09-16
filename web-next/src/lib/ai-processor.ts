@@ -307,7 +307,14 @@ IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high
       const advice = JSON.parse(content);
       // Add timestamps to all advice items
       const timestamp = new Date().toISOString();
-      const date = new Date().toLocaleDateString();
+      const date = (() => {
+        try {
+          return new Date().toLocaleDateString();
+        } catch (error) {
+          console.error('Date formatting error in ai-processor:', error);
+          return 'Unknown Date';
+        }
+      })();
       
       return advice.map((item: AICoachingAdvice) => ({
         ...item,
