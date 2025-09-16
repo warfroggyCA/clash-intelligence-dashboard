@@ -1280,7 +1280,14 @@ export default function HomePage(){
       const existingNotes = JSON.parse(localStorage.getItem('playerNotes') || '{}');
       const applicantNotes = existingNotes[tag] || [];
       const newNote = {
-        note: `Applicant evaluation - ${new Date().toLocaleDateString()}`,
+        note: `Applicant evaluation - ${(() => {
+          try {
+            return new Date().toLocaleDateString();
+          } catch (error) {
+            console.error('Date formatting error in page-backup:', error);
+            return 'Unknown Date';
+          }
+        })()}`,
         timestamp: new Date().toISOString()
       };
       existingNotes[tag] = [...applicantNotes, newNote];

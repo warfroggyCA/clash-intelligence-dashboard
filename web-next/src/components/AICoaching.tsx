@@ -204,7 +204,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
           priority: "medium" as const,
           icon: "🤖",
           timestamp: new Date().toISOString(),
-          date: new Date().toLocaleDateString()
+          date: (() => {
+            try {
+              return new Date().toLocaleDateString();
+            } catch (error) {
+              console.error('Date formatting error in AICoaching setup:', error);
+              return 'Unknown Date';
+            }
+          })()
         }]);
       }
     } catch (error) {

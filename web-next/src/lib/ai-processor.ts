@@ -331,7 +331,14 @@ IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high
         priority: "low" as const,
         icon: "⚠️",
         timestamp: new Date().toISOString(),
-        date: new Date().toLocaleDateString()
+        date: (() => {
+          try {
+            return new Date().toLocaleDateString();
+          } catch (error) {
+            console.error('Date formatting error in ai-processor fallback:', error);
+            return 'Unknown Date';
+          }
+        })()
       }];
     }
   }
