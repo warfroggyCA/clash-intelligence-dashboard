@@ -8,7 +8,7 @@ import { cfg } from "@/lib/config";
 import { addDeparture } from "@/lib/departures";
 import { resolveUnknownPlayers } from "@/lib/player-resolver";
 import { aiProcessor } from "@/lib/ai-processor";
-import { saveBatchAIResults, cachePlayerDNAForClan } from "@/lib/ai-storage";
+import { saveBatchAIResults, cachePlayerDNAForClan, generateSnapshotSummary } from "@/lib/ai-storage";
 import { createApiContext } from "@/lib/api/route-helpers";
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from "@/lib/full-snapshot";
 
@@ -121,6 +121,17 @@ export async function GET(req: Request) {
           // NEW: Generate comprehensive batch AI analysis
           console.log(`[CRON] Starting batch AI processing for ${clanTag}`);
           try {
+            // Generate snapshot summary for context
+            const snapshotSummary = generateSnapshotSummary(
+              fullSnapshot.metadata,
+              {
+                currentWar: fullSnapshot.currentWar,
+                warLog: fullSnapshot.warLog,
+                capitalRaidSeasons: fullSnapshot.capitalRaidSeasons,
+              },
+              0 // Fresh data from cron
+            );
+            
             const batchAIResults = await aiProcessor.processBatchAI(
               currentSnapshot,
               changes,
@@ -128,9 +139,12 @@ export async function GET(req: Request) {
               currentSnapshot.date
             );
             
+            // Add snapshot summary to batch results
+            batchAIResults.snapshotSummary = snapshotSummary;
+            
             // Save batch AI results to Supabase
             await saveBatchAIResults(batchAIResults);
-            console.log(`[CRON] Saved batch AI results for ${clanTag}`);
+            console.log(`[CRON] Saved batch AI results with snapshot summary for ${clanTag}`);
             
             // Cache player DNA profiles for instant access
             await cachePlayerDNAForClan(currentSnapshot, clanTag, currentSnapshot.date);

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle, Send } from "lucide-react";
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 
 // Import rush percentage calculation (simplified version)
 const getTH = (m: any): number => m.townHallLevel ?? m.th ?? 0;
@@ -93,6 +94,39 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [actionedTips, setActionedTips] = useState<Set<string>>(new Set());
   const [showActioned, setShowActioned] = useState(false);
+  const [discordWebhookUrl, setDiscordWebhookUrl] = useState<string>("");
+  const [isSharingToDiscord, setIsSharingToDiscord] = useState<string | null>(null);
+
+  const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
+  const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
+  const snapshotAgeHours = useDashboardStore(selectors.dataAge);
+
+  const snapshotSummary = useMemo(() => {
+    if (!snapshotMetadata) return '';
+    const parts: string[] = [];
+    parts.push(`Snapshot date: ${snapshotMetadata.snapshotDate}`);
+    parts.push(`Fetched: ${new Date(snapshotMetadata.fetchedAt).toLocaleString()}`);
+    parts.push(`Members: ${snapshotMetadata.memberCount}`);
+    if (snapshotAgeHours != null) {
+      const freshness = snapshotAgeHours <= 24 ? 'Fresh (≤24h)' : snapshotAgeHours <= 48 ? 'Stale (24-48h)' : 'Outdated (>48h)';
+      parts.push(`Freshness: ${freshness}`);
+    }
+    if (snapshotDetails?.currentWar) {
+      const war = snapshotDetails.currentWar;
+      const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
+      parts.push(`Current war: ${war.state || 'unknown'} vs ${opponent} • Team ${war.teamSize}${war.attacksPerMember ? ` x${war.attacksPerMember}` : ''}`);
+      if (war.endTime) parts.push(`War ends: ${new Date(war.endTime).toLocaleString()}`);
+    }
+    if (snapshotDetails?.warLog?.length) {
+      const wins = snapshotDetails.warLog.filter((w) => w.result === 'WIN').length;
+      parts.push(`Recent wars: ${wins} wins of ${snapshotDetails.warLog.length}`);
+    }
+    if (snapshotDetails?.capitalRaidSeasons?.length) {
+      const latest = snapshotDetails.capitalRaidSeasons[0];
+      parts.push(`Capital raid: Hall ${latest.capitalHallLevel} • ${latest.state || 'unknown'} • Off ${latest.offensiveLoot?.toLocaleString() ?? '0'} / Def ${latest.defensiveLoot?.toLocaleString() ?? '0'}`);
+    }
+    return parts.join('\n');
+  }, [snapshotMetadata, snapshotDetails, snapshotAgeHours]);
 
   useEffect(() => {
     // Load coaching advice from batch AI results or localStorage
@@ -110,6 +144,12 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
       } catch (error) {
         console.error('Failed to load actioned tips:', error);
       }
+    }
+
+    // Load Discord webhook URL from localStorage
+    const savedWebhook = localStorage.getItem(`discord_webhook_${clanTag}`);
+    if (savedWebhook) {
+      setDiscordWebhookUrl(savedWebhook);
     }
   }, [clanTag]);
 
@@ -225,7 +265,10 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
                 }
               };
             })
-          }
+          },
+          snapshotMetadata,
+          snapshotDetails,
+          snapshotSummary,
         })
       });
 
@@ -384,6 +427,44 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     localStorage.removeItem(`actioned_tips_${clanTag}`);
   };
 
+  const shareToDiscord = async (advice: CoachingAdvice, tipId: string) => {
+    if (!discordWebhookUrl) {
+      alert("Please configure your Discord webhook URL first! Go to the Discord tab to set it up.");
+      return;
+    }
+
+    setIsSharingToDiscord(tipId);
+    try {
+      // Create Discord-friendly message with snapshot context
+      const discordMessage = `🤖 **AI Coaching Advice**\n\n**${advice.title}**\n${advice.description}\n\n**Ready-to-paste message:**\n${advice.chatMessage}\n\n**Context:** ${snapshotSummary || 'No snapshot context available'}`;
+
+      const response = await fetch('/api/discord/publish', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          webhookUrl: discordWebhookUrl,
+          content: discordMessage,
+          exhibitType: 'ai_coaching',
+          clanTag: clanTag,
+        }),
+      });
+
+      if (response.ok) {
+        alert("AI coaching advice shared to Discord successfully!");
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to share to Discord: ${errorData.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Discord share error:', error);
+      alert("Failed to share to Discord. Please check your webhook URL.");
+    } finally {
+      setIsSharingToDiscord(null);
+    }
+  };
+
   const generateTipId = (tip: CoachingAdvice, index: number): string => {
     // Create a unique ID based on the tip content and clan data
     return `${clanTag}_${tip.category}_${tip.title}_${index}`.replace(/[^a-zA-Z0-9_]/g, '_');
@@ -465,6 +546,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
           </button>
         </div>
       </div>
+      {snapshotSummary && (
+        <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 shadow-sm">
+          <p className="text-xs uppercase tracking-wide text-indigo-700 font-semibold">Snapshot context used for AI coaching</p>
+          <pre className="mt-2 whitespace-pre-wrap text-sm text-indigo-900 font-mono leading-relaxed">
+{snapshotSummary}
+          </pre>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-8">
@@ -540,13 +629,24 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
                 <div className="bg-white rounded-lg p-4 border">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="font-medium text-gray-900">Ready-to-paste chat message:</h4>
-                    <button
-                      onClick={() => copyToClipboard(item.chatMessage!, `message-${tipId}`)}
-                      className="flex items-center space-x-1 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
-                    >
-                      <Copy className="w-4 h-4" />
-                      <span>{copiedMessage === `message-${tipId}` ? "Copied!" : "Copy"}</span>
-                    </button>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => copyToClipboard(item.chatMessage!, `message-${tipId}`)}
+                        className="flex items-center space-x-1 px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                      >
+                        <Copy className="w-4 h-4" />
+                        <span>{copiedMessage === `message-${tipId}` ? "Copied!" : "Copy"}</span>
+                      </button>
+                      <button
+                        onClick={() => shareToDiscord(item, tipId)}
+                        disabled={isSharingToDiscord === tipId}
+                        className="flex items-center space-x-1 px-3 py-1 bg-indigo-100 text-indigo-700 rounded hover:bg-indigo-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="Share to Discord with snapshot context"
+                      >
+                        <Send className="w-4 h-4" />
+                        <span>{isSharingToDiscord === tipId ? "Sharing..." : "Share"}</span>
+                      </button>
+                    </div>
                   </div>
                   <div className="bg-gray-50 rounded p-3 text-sm text-gray-800 font-mono">
                     {item.chatMessage}

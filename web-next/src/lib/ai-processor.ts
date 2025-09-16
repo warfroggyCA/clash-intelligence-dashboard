@@ -52,6 +52,7 @@ export interface BatchAIResults {
   clanDNAInsights?: ClanDNAInsights;
   gameChatMessages?: string[];
   performanceAnalysis?: AISummaryAnalysis;
+  snapshotSummary?: string;
   error?: string;
 }
 
