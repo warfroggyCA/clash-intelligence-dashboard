@@ -128,7 +128,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       title="Settings"
-      size="lg"
+      size="xl"
     >
       <div className="space-y-4 max-h-[70vh] overflow-y-auto w-full max-w-full">
         {/* Message Display */}
@@ -150,8 +150,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         )}
 
-        {/* Clan Management - Responsive Layout */}
-        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
+        {/* Clan Management - Side by Side */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Home Clan Management */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2">

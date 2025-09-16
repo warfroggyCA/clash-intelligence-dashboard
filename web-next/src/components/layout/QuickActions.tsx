@@ -455,13 +455,13 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
           Quick Actions
         </h3>
         
-        <div className="flex flex-col sm:flex-row gap-2">
+        <div className="flex flex-wrap gap-2">
           {/* Copy Data Button */}
           <Button
             onClick={handleCopyData}
             disabled={!hasData || isCopyingData}
             loading={isCopyingData}
-            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
             title="Copy all clan data to clipboard for LLM analysis"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-teal-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
@@ -483,7 +483,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             onClick={handleRefreshData}
             disabled={!hasData || isRefreshing}
             loading={isRefreshing}
-            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-blue-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-blue-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
             title="Refresh roster data from the selected source"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
@@ -500,7 +500,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             onClick={handleCopySnapshotSummary}
             disabled={!hasData || isCopyingSnapshot}
             loading={isCopyingSnapshot}
-            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
             title="Copy nightly snapshot summary for sharing"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
@@ -517,7 +517,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             onClick={handleCopyForDiscord}
             disabled={!hasData || isCopyingDiscord}
             loading={isCopyingDiscord}
-            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-indigo-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-indigo-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
             title="Copy Discord-friendly snapshot summary"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-indigo-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
@@ -534,7 +534,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             <Button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={!hasData || isExporting}
-              className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-emerald-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-emerald-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
               title="Export snapshot data in various formats"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
