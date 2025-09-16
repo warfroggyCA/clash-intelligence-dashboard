@@ -236,7 +236,9 @@ const DashboardHeader: React.FC = () => {
                   setLogoIdx((i) => {
                     const next = i + 1;
                     if (next < logoCandidates.length) return next;
-                    (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    if (e.currentTarget) {
+                      (e.currentTarget as HTMLImageElement).style.display = 'none';
+                    }
                     return i;
                   });
                 }}
