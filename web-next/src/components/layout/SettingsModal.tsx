@@ -128,9 +128,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       isOpen={isOpen}
       onClose={onClose}
       title="Settings"
-      size="xl"
+      size="lg"
     >
-      <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+      <div className="space-y-4 max-h-[70vh] overflow-y-auto w-full max-w-full">
         {/* Message Display */}
         {message && (
           <div className={`p-3 rounded-lg ${
@@ -150,8 +150,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         )}
 
-        {/* Clan Management - Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Clan Management - Responsive Layout */}
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
           {/* Home Clan Management */}
           <div className="space-y-3">
             <div className="flex items-center space-x-2">
@@ -159,7 +159,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <h3 className="text-base font-semibold text-gray-900">Home Clan Management</h3>
             </div>
             
-            <div className="bg-gray-50 rounded-lg p-3 space-y-3">
+            <div className="bg-gray-50 rounded-lg p-3 space-y-3 w-full overflow-hidden">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Set Home Clan
@@ -219,7 +219,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <h3 className="text-base font-semibold text-gray-900">Clan Switching</h3>
             </div>
             
-            <div className="bg-gray-50 rounded-lg p-3">
+            <div className="bg-gray-50 rounded-lg p-3 w-full overflow-hidden">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Switch to Clan
