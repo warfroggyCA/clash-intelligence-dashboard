@@ -24,7 +24,7 @@ import AccessManager from '@/components/AccessManager';
 import AccessSetup from '@/components/AccessSetup';
 import AccessLogin from '@/components/AccessLogin';
 import { PlayerProfileModal } from './PlayerProfileModal';
-import { SettingsModal } from './SettingsModal';
+import SettingsModal from './SettingsModal';
 import { showToast } from '@/lib/toast';
 import { QuickDepartureModal } from './QuickDepartureModal';
 
