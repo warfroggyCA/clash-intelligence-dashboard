@@ -41,12 +41,16 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     let had = false;
     try {
       had = hydrateRosterFromCache();
-    } catch {}
-    if (initialRoster && !roster) {
+    } catch (error) {
+      console.error('[ClientDashboard] Cache hydration error:', error);
+    }
+    // Prioritize initialRoster from server-side rendering
+    if (initialRoster) {
       setRoster(initialRoster);
-    } else {
+    } else if (!had) {
+      // Only load from API if we don't have cached data and no initial roster
       const tag = clanTag || initialClanTag || homeClan || '';
-      if (!had && tag && !roster) {
+      if (tag && !roster) {
         loadRoster(tag);
       }
     }
