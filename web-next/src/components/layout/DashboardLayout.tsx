@@ -309,15 +309,9 @@ const DashboardHeader: React.FC = () => {
         {/* Row 2 (right column): Tag input + actions (right-aligned, compact) */}
         <div className="col-[3] row-[2]">
           <div className="flex flex-col sm:flex-row items-center justify-end gap-2">
-          <select
-            value={selectedSnapshot}
-            onChange={(e) => { setSelectedSnapshot(e.target.value); if (clanTag) refreshData(); }}
-            className="h-8 px-2 rounded-md border border-white/30 bg-white/10 text-white text-xs backdrop-blur-sm"
-            title="Data source: live or latest snapshot"
-          >
-            <option className="text-black" value="live">Live</option>
-            <option className="text-black" value="latest">Snapshot</option>
-          </select>
+          <div className="h-8 px-3 rounded-md border border-white/30 bg-blue-500/20 text-white text-xs backdrop-blur-sm flex items-center">
+            📸 Snapshot Data
+          </div>
           <input
             type="text"
             value={clanTag}

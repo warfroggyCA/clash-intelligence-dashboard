@@ -180,7 +180,7 @@ const initialState = {
   
   // Snapshots & History
   availableSnapshots: [],
-  selectedSnapshot: 'latest',
+  selectedSnapshot: 'latest', // Always use snapshot data for roster
   playerNameHistory: {},
   eventHistory: {},
   eventFilterPlayer: '',
@@ -336,19 +336,14 @@ export const useDashboardStore = create<DashboardState>()(
           setMessage('Refreshing data...');
           const t0 = Date.now();
 
-          // Force fresh data by adding cache-busting parameter
+          // Force fresh snapshot data by adding cache-busting parameter
           const base = `/api/roster?clanTag=${encodeURIComponent(clanTag)}`;
           const cacheBuster = `&_t=${Date.now()}`;
-          const wantsSnapshot = !!selectedSnapshot && selectedSnapshot !== 'live';
           const date = selectedSnapshot === 'latest' || !selectedSnapshot ? 'latest' : selectedSnapshot;
           
-          let urls: string[];
-          if (wantsSnapshot) {
-            const snapshotUrl = `${base}&mode=snapshot&date=${encodeURIComponent(date)}${cacheBuster}`;
-            urls = [snapshotUrl, `${base}${cacheBuster}`];
-          } else {
-            urls = [`${base}${cacheBuster}`];
-          }
+          // Always use snapshot data for roster
+          const snapshotUrl = `${base}&mode=snapshot&date=${encodeURIComponent(date)}${cacheBuster}`;
+          const urls = [snapshotUrl, `${base}${cacheBuster}`];
 
           const tryFetch = async (url: string) => {
             const controller = new AbortController();
@@ -370,14 +365,14 @@ export const useDashboardStore = create<DashboardState>()(
               if (ok && json?.members) {
                 setRoster(json);
                 setLastLoadInfo({
-                  source: wantsSnapshot ? 'snapshot' : 'live',
+                  source: 'snapshot',
                   ms: Date.now() - t0,
                   tenureMatches: (json.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
                   total: (json.members || []).length
                 });
                 setDataFetchedAt(Date.now());
                 setStatus('success');
-                setMessage(`Loaded ${json.members.length} members from ${wantsSnapshot ? 'snapshot' : 'live'} data`);
+                setMessage(`Loaded ${json.members.length} members from snapshot data`);
                 return;
               }
               lastError = json?.error || 'Invalid response format';
