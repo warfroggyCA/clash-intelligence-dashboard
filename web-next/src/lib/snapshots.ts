@@ -8,6 +8,7 @@ import { normalizeTag, safeTagForFilename } from './tags';
 import { getClanInfo, getClanMembers, getPlayer, extractHeroLevels } from './coc';
 import { rateLimiter } from './rate-limiter';
 import { getSupabaseAdminClient } from './supabase-admin';
+import type { FullClanSnapshot, MemberSummary } from './full-snapshot';
 
 export type Member = {
   name: string;
@@ -88,6 +89,47 @@ function ymdToday(): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Convert FullClanSnapshot to DailySnapshot format for backward compatibility
+function convertFullSnapshotToDailySnapshot(fullSnapshot: FullClanSnapshot): DailySnapshot & { fullSnapshot?: FullClanSnapshot } {
+  const members: Member[] = fullSnapshot.memberSummaries.map((summary: MemberSummary) => {
+    // Get detailed player data if available
+    const playerDetail = fullSnapshot.playerDetails[summary.tag];
+    
+    return {
+      name: summary.name,
+      tag: summary.tag,
+      townHallLevel: summary.townHallLevel,
+      bk: playerDetail ? extractHeroLevels(playerDetail).bk : null,
+      aq: playerDetail ? extractHeroLevels(playerDetail).aq : null,
+      gw: playerDetail ? extractHeroLevels(playerDetail).gw : null,
+      rc: playerDetail ? extractHeroLevels(playerDetail).rc : null,
+      mp: playerDetail ? extractHeroLevels(playerDetail).mp : null,
+      trophies: summary.trophies,
+      donations: summary.donations,
+      donationsReceived: summary.donationsReceived,
+      role: summary.role,
+      tenure_days: 0, // Will be populated from tenure ledger if needed
+      // Additional properties for change detection
+      attackWins: playerDetail?.attackWins || 0,
+      versusBattleWins: playerDetail?.versusBattleWins || 0,
+      versusTrophies: summary.builderTrophies || 0,
+      clanCapitalContributions: playerDetail?.clanCapitalContributions || 0,
+    } as Member;
+  });
+
+  return {
+    date: fullSnapshot.fetchedAt.slice(0, 10), // YYYY-MM-DD format
+    clanTag: fullSnapshot.clanTag,
+    clanName: fullSnapshot.clan?.name,
+    timestamp: fullSnapshot.fetchedAt,
+    members,
+    memberCount: members.length,
+    totalTrophies: members.reduce((sum, m) => sum + (m.trophies || 0), 0),
+    totalDonations: members.reduce((sum, m) => sum + (m.donations || 0), 0),
+    fullSnapshot, // Include the full snapshot for enhanced metadata
+  };
+}
+
 function getSnapshotPath(clanTag: string, date: string): string {
   const safeTag = safeTagForFilename(clanTag);
   return path.join(process.cwd(), cfg.dataRoot, 'snapshots', `${safeTag}_${date}.json`);
@@ -112,6 +154,7 @@ async function ensureDirectories(): Promise<void> {
   }
 }
 
+// Storage bucket helpers for change summaries (still needed)
 async function uploadJsonToSupabase(bucket: string, filePath: string, payload: any): Promise<string | null> {
   try {
     const supabase = getSupabaseAdminClient();
@@ -141,162 +184,133 @@ async function downloadJsonFromSupabase<T>(bucket: string, filePath: string): Pr
   }
 }
 
-async function recordSnapshotMetadata(snapshot: DailySnapshot, fileUrl: string | null, filename: string): Promise<void> {
-  try {
-    const supabase = getSupabaseAdminClient();
-    const safeTag = safeTagForFilename(snapshot.clanTag);
-    await supabase
-      .from('snapshots')
-      .upsert({
-        clan_tag: safeTag,
-        filename,
-        date: snapshot.date,
-        member_count: snapshot.memberCount,
-        clan_name: snapshot.clanName || 'Unknown Clan',
-        timestamp: snapshot.timestamp,
-        file_url: fileUrl,
-      }, { onConflict: 'clan_tag,filename' as any });
-  } catch (error) {
-    console.error('[Supabase] Failed to record snapshot metadata:', error);
-  }
-}
-
-async function persistSnapshot(snapshot: DailySnapshot): Promise<void> {
-  const safeTag = safeTagForFilename(snapshot.clanTag);
-  const filename = `${safeTag}_${snapshot.date}.json`;
-
-  if (cfg.useLocalData) {
-    const snapshotPath = getSnapshotPath(snapshot.clanTag, snapshot.date);
-    await fsp.writeFile(snapshotPath, JSON.stringify(snapshot, null, 2));
-  }
-
-  if (cfg.useSupabase) {
-    const url = await uploadJsonToSupabase('snapshots', filename, snapshot);
-    await recordSnapshotMetadata(snapshot, url, filename);
-  }
-}
-
-// Create a daily snapshot
-export async function createDailySnapshot(clanTag: string): Promise<DailySnapshot> {
-  await ensureDirectories();
-  
-  const date = ymdToday();
-  const timestamp = new Date().toISOString();
-  
-  // Fetch clan data
-  const [clanInfo, members] = await Promise.all([
-    getClanInfo(clanTag),
-    getClanMembers(clanTag)
-  ]);
-
-  // Enrich members with detailed data (using existing rate limiter)
-  const enrichedMembers: Member[] = await Promise.all(members.map(async (member) => {
-    await rateLimiter.acquire();
-    try {
-      const player = await getPlayer(member.tag);
-      const heroes = extractHeroLevels(player);
-      
-      return {
-        name: member.name,
-        tag: member.tag,
-        townHallLevel: player.townHallLevel,
-        bk: typeof heroes.bk === "number" ? heroes.bk : null,
-        aq: typeof heroes.aq === "number" ? heroes.aq : null,
-        gw: typeof heroes.gw === "number" ? heroes.gw : null,
-        rc: typeof heroes.rc === "number" ? heroes.rc : null,
-        mp: typeof heroes.mp === "number" ? heroes.mp : null,
-        trophies: member.trophies,
-        donations: member.donations,
-        donationsReceived: member.donationsReceived,
-        role: member.role,
-        tenure_days: 0, // Will be populated from ledger if needed
-        // Additional properties for change detection
-        attackWins: player.attackWins || 0,
-        versusBattleWins: player.versusBattleWins || 0,
-        versusTrophies: player.versusTrophies || 0,
-        clanCapitalContributions: player.clanCapitalContributions || 0,
-      } as Member;
-    } catch (error) {
-      console.error(`Failed to fetch player data for ${member.tag}:`, error);
-      // Add basic member data even if detailed fetch fails
-      return {
-        name: member.name,
-        tag: member.tag,
-        trophies: member.trophies,
-        donations: member.donations,
-        donationsReceived: member.donationsReceived,
-        role: member.role,
-        // Set default values for change detection properties
-        attackWins: 0,
-        versusBattleWins: 0,
-        versusTrophies: 0,
-        clanCapitalContributions: 0,
-      } as Member;
-    } finally {
-      rateLimiter.release();
-    }
-  }));
-
-  const snapshot: DailySnapshot = {
-    date,
-    clanTag,
-    clanName: (clanInfo as any)?.name,
-    timestamp,
-    members: enrichedMembers,
-    memberCount: enrichedMembers.length,
-    totalTrophies: enrichedMembers.reduce((sum, m) => sum + (m.trophies || 0), 0),
-    totalDonations: enrichedMembers.reduce((sum, m) => sum + (m.donations || 0), 0),
-  };
-
-  await persistSnapshot(snapshot);
-
-  return snapshot;
-}
+// Legacy snapshot creation functions removed - now using full-snapshot.ts
 
 // Load a snapshot for a specific date
 export async function loadSnapshot(clanTag: string, date: string): Promise<DailySnapshot | null> {
   const safeTag = safeTagForFilename(clanTag);
-  // Development fast-path: read from local filesystem
+  
+  // Try new clan_snapshots table first
+  if (cfg.useSupabase) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { data, error } = await supabase
+        .from('clan_snapshots')
+        .select('*')
+        .eq('clan_tag', safeTag)
+        .eq('snapshot_date', date)
+        .single();
+
+      if (error || !data) {
+        console.log(`[Snapshots] No clan snapshot found for ${safeTag} on ${date}`);
+      } else {
+        // Convert database row back to FullClanSnapshot format
+        const fullSnapshot: FullClanSnapshot = {
+          clanTag: data.clan_tag,
+          fetchedAt: data.fetched_at,
+          clan: data.clan,
+          memberSummaries: data.member_summaries,
+          playerDetails: data.player_details,
+          currentWar: data.current_war,
+          warLog: data.war_log,
+          capitalRaidSeasons: data.capital_seasons,
+          metadata: data.metadata,
+        };
+        
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+    } catch (error) {
+      console.error('[Snapshots] Failed to load from clan_snapshots:', error);
+    }
+  }
+
+  // Fallback to local data if configured
   if (cfg.useLocalData) {
     try {
+      // Try full-snapshots directory first
+      const fullSnapshotDir = path.join(process.cwd(), cfg.dataRoot, 'full-snapshots');
+      const files = await fsp.readdir(fullSnapshotDir);
+      const matchingFile = files.find(f => f.startsWith(`${safeTag}_`) && f.includes(date));
+      if (matchingFile) {
+        const filePath = path.join(fullSnapshotDir, matchingFile);
+        const raw = await fsp.readFile(filePath, 'utf-8');
+        const fullSnapshot = JSON.parse(raw) as FullClanSnapshot;
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+      
+      // Fallback to legacy snapshots directory
       const p = path.join(process.cwd(), cfg.dataRoot, 'snapshots', `${safeTag}_${date}.json`);
       const raw = await fsp.readFile(p, 'utf-8');
       return JSON.parse(raw) as DailySnapshot;
-    } catch {}
-  }
-  // Supabase path
-  try {
-    const { supabase } = await import('@/lib/supabase');
-    const filename = `${safeTag}_${date}.json`;
-    const { data: snapshotData, error } = await supabase
-      .from('snapshots')
-      .select('file_url')
-      .eq('clan_tag', safeTag)
-      .eq('filename', filename)
-      .single();
-    if (error || !snapshotData) return null;
-    if (snapshotData.file_url) {
-      const response = await fetch(snapshotData.file_url);
-      if (response.ok) {
-        const data = await response.json();
-        return data as DailySnapshot;
-      }
+    } catch (error) {
+      console.log(`[Snapshots] No local snapshot found for ${safeTag} on ${date}`);
     }
-    return downloadJsonFromSupabase<DailySnapshot>('snapshots', filename);
-  } catch {
-    return null;
   }
+
+  return null;
 }
 
 // Get the most recent snapshot
 export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot | null> {
   const safeTag = safeTagForFilename(clanTag);
-  // Development fast-path: read latest local snapshot
+  
+  // Try new clan_snapshots table first
+  if (cfg.useSupabase) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { data, error } = await supabase
+        .from('clan_snapshots')
+        .select('*')
+        .eq('clan_tag', safeTag)
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error || !data) {
+        console.log(`[Snapshots] No clan snapshots found for ${safeTag}`);
+      } else {
+        // Convert database row back to FullClanSnapshot format
+        const fullSnapshot: FullClanSnapshot = {
+          clanTag: data.clan_tag,
+          fetchedAt: data.fetched_at,
+          clan: data.clan,
+          memberSummaries: data.member_summaries,
+          playerDetails: data.player_details,
+          currentWar: data.current_war,
+          warLog: data.war_log,
+          capitalRaidSeasons: data.capital_seasons,
+          metadata: data.metadata,
+        };
+        
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+    } catch (error) {
+      console.error('[Snapshots] Failed to load latest from clan_snapshots:', error);
+    }
+  }
+
+  // Fallback to local data if configured
   if (cfg.useLocalData) {
     try {
+      // Try full-snapshots directory first
+      const fullSnapshotDir = path.join(process.cwd(), cfg.dataRoot, 'full-snapshots');
+      const files = await fsp.readdir(fullSnapshotDir);
+      const matchingFiles = files
+        .filter(f => f.startsWith(`${safeTag}_`) && f.endsWith('.json'))
+        .sort()
+        .reverse();
+      
+      if (matchingFiles.length > 0) {
+        const filePath = path.join(fullSnapshotDir, matchingFiles[0]);
+        const raw = await fsp.readFile(filePath, 'utf-8');
+        const fullSnapshot = JSON.parse(raw) as FullClanSnapshot;
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+      
+      // Fallback to legacy snapshots directory
       const dir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
-      const files = await fsp.readdir(dir);
-      const list = files
+      const files2 = await fsp.readdir(dir);
+      const list = files2
         .filter(f => f.startsWith(`${safeTag}_`) && f.endsWith('.json'))
         .sort()
         .reverse();
@@ -304,38 +318,59 @@ export async function getLatestSnapshot(clanTag: string): Promise<DailySnapshot 
         const raw = await fsp.readFile(path.join(dir, list[0]), 'utf-8');
         return JSON.parse(raw) as DailySnapshot;
       }
-    } catch {}
-  }
-  // Supabase path
-  try {
-    const { supabase } = await import('@/lib/supabase');
-    const { data: snapshotData, error } = await supabase
-      .from('snapshots')
-      .select('*')
-      .eq('clan_tag', safeTag)
-      .order('timestamp', { ascending: false })
-      .limit(1)
-      .single();
-    if (error || !snapshotData) return null;
-    if (snapshotData.file_url) {
-      const response = await fetch(snapshotData.file_url);
-      if (response.ok) {
-        const data = await response.json();
-        return data as DailySnapshot;
-      }
+    } catch (error) {
+      console.log(`[Snapshots] No local snapshots found for ${safeTag}`);
     }
-    return downloadJsonFromSupabase<DailySnapshot>('snapshots', snapshotData.filename);
-  } catch {
-    return null;
   }
+
+  return null;
 }
 
 export async function getSnapshotBeforeDate(clanTag: string, beforeDate: string): Promise<DailySnapshot | null> {
   const safeTag = safeTagForFilename(clanTag);
+  
+  // Try new clan_snapshots table first
+  if (cfg.useSupabase) {
+    try {
+      const supabase = getSupabaseAdminClient();
+      const { data, error } = await supabase
+        .from('clan_snapshots')
+        .select('*')
+        .eq('clan_tag', safeTag)
+        .lt('snapshot_date', beforeDate)
+        .order('snapshot_date', { ascending: false })
+        .limit(1);
+
+      if (error || !data || data.length === 0) {
+        console.log(`[Snapshots] No clan snapshots found for ${safeTag} before ${beforeDate}`);
+      } else {
+        const record = data[0];
+        // Convert database row back to FullClanSnapshot format
+        const fullSnapshot: FullClanSnapshot = {
+          clanTag: record.clan_tag,
+          fetchedAt: record.fetched_at,
+          clan: record.clan,
+          memberSummaries: record.member_summaries,
+          playerDetails: record.player_details,
+          currentWar: record.current_war,
+          warLog: record.war_log,
+          capitalRaidSeasons: record.capital_seasons,
+          metadata: record.metadata,
+        };
+        
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+    } catch (error) {
+      console.error('[Snapshots] Failed to load from clan_snapshots:', error);
+    }
+  }
+
+  // Fallback to local data if configured
   if (cfg.useLocalData) {
     try {
-      const dir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
-      const files = await fsp.readdir(dir);
+      // Try full-snapshots directory first
+      const fullSnapshotDir = path.join(process.cwd(), cfg.dataRoot, 'full-snapshots');
+      const files = await fsp.readdir(fullSnapshotDir);
       const list = files
         .filter((f) => f.startsWith(`${safeTag}_`) && f.endsWith('.json'))
         .filter((f) => {
@@ -344,35 +379,33 @@ export async function getSnapshotBeforeDate(clanTag: string, beforeDate: string)
         })
         .sort()
         .reverse();
-      if (list.length === 0) return null;
-      const raw = await fsp.readFile(path.join(dir, list[0]), 'utf-8');
+      if (list.length > 0) {
+        const filePath = path.join(fullSnapshotDir, list[0]);
+        const raw = await fsp.readFile(filePath, 'utf-8');
+        const fullSnapshot = JSON.parse(raw) as FullClanSnapshot;
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+      
+      // Fallback to legacy snapshots directory
+      const dir = path.join(process.cwd(), cfg.dataRoot, 'snapshots');
+      const files2 = await fsp.readdir(dir);
+      const list2 = files2
+        .filter((f) => f.startsWith(`${safeTag}_`) && f.endsWith('.json'))
+        .filter((f) => {
+          const datePart = f.slice(safeTag.length + 1, safeTag.length + 11);
+          return datePart < beforeDate;
+        })
+        .sort()
+        .reverse();
+      if (list2.length === 0) return null;
+      const raw = await fsp.readFile(path.join(dir, list2[0]), 'utf-8');
       return JSON.parse(raw) as DailySnapshot;
-    } catch {
-      return null;
+    } catch (error) {
+      console.log(`[Snapshots] No local snapshots found for ${safeTag} before ${beforeDate}`);
     }
   }
 
-  try {
-    const { supabase } = await import('@/lib/supabase');
-    const { data, error } = await supabase
-      .from('snapshots')
-      .select('*')
-      .eq('clan_tag', safeTag)
-      .lt('date', beforeDate)
-      .order('date', { ascending: false })
-      .limit(1);
-    if (error || !data || data.length === 0) return null;
-    const record = data[0] as any;
-    if (record.file_url) {
-      const response = await fetch(record.file_url);
-      if (response.ok) {
-        return (await response.json()) as DailySnapshot;
-      }
-    }
-    return await downloadJsonFromSupabase<DailySnapshot>('snapshots', record.filename);
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 // Compare two snapshots and detect changes (enhanced with better sensitivity)

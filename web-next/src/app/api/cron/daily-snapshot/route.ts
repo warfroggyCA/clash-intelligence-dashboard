@@ -2,7 +2,7 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { createDailySnapshot, detectChanges, saveChangeSummary, getSnapshotBeforeDate } from "@/lib/snapshots";
+import { detectChanges, saveChangeSummary, getSnapshotBeforeDate, getLatestSnapshot } from "@/lib/snapshots";
 import { generateChangeSummary, generateGameChatMessages } from "@/lib/ai-summarizer";
 import { cfg } from "@/lib/config";
 import { addDeparture } from "@/lib/departures";
@@ -10,6 +10,7 @@ import { resolveUnknownPlayers } from "@/lib/player-resolver";
 import { aiProcessor } from "@/lib/ai-processor";
 import { saveBatchAIResults, cachePlayerDNAForClan } from "@/lib/ai-storage";
 import { createApiContext } from "@/lib/api/route-helpers";
+import { fetchFullClanSnapshot, persistFullClanSnapshot } from "@/lib/full-snapshot";
 
 export async function GET(req: Request) {
   const { json } = createApiContext(req, '/api/cron/daily-snapshot');
@@ -38,11 +39,41 @@ export async function GET(req: Request) {
     console.log(`[CRON] Starting daily snapshot for ${clanTag} at ${new Date().toISOString()}`);
 
     try {
-      // Create today's snapshot
-      const currentSnapshot = await createDailySnapshot(clanTag);
-      console.log(`[CRON] Created snapshot for ${clanTag} with ${currentSnapshot.memberCount} members`);
+      // Create today's full snapshot
+      console.log(`[CRON] Creating full snapshot for ${clanTag}...`);
+      const fullSnapshot = await fetchFullClanSnapshot(clanTag, {
+        warLogLimit: 10,
+        capitalSeasonLimit: 3,
+      });
+      await persistFullClanSnapshot(fullSnapshot);
+      console.log(`[CRON] Created full snapshot: ${fullSnapshot.memberSummaries.length} members, ${fullSnapshot.metadata.warLogEntries} war log entries, ${fullSnapshot.metadata.capitalSeasons} capital seasons`);
       
-      // Get previous snapshot for comparison (not the one we just created)
+      // Convert to DailySnapshot format for change detection
+      const currentSnapshot = {
+        date: fullSnapshot.fetchedAt.slice(0, 10),
+        clanTag: fullSnapshot.clanTag,
+        clanName: fullSnapshot.clan?.name,
+        timestamp: fullSnapshot.fetchedAt,
+        members: fullSnapshot.memberSummaries.map((summary: any) => ({
+          name: summary.name,
+          tag: summary.tag,
+          townHallLevel: summary.townHallLevel,
+          trophies: summary.trophies,
+          donations: summary.donations,
+          donationsReceived: summary.donationsReceived,
+          role: summary.role,
+          tenure_days: 0,
+          attackWins: 0,
+          versusBattleWins: 0,
+          versusTrophies: summary.builderTrophies || 0,
+          clanCapitalContributions: 0,
+        })),
+        memberCount: fullSnapshot.memberSummaries.length,
+        totalTrophies: fullSnapshot.memberSummaries.reduce((sum: number, m: any) => sum + (m.trophies || 0), 0),
+        totalDonations: fullSnapshot.memberSummaries.reduce((sum: number, m: any) => sum + (m.donations || 0), 0),
+      };
+      
+      // Get previous snapshot for comparison
       const previousSnapshot = await getSnapshotBeforeDate(clanTag, currentSnapshot.date);
       
       let changeSummary = null;

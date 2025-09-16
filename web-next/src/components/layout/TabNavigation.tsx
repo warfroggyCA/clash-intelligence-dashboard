@@ -18,6 +18,7 @@ interface TabConfig {
 const TAB_CONFIGS: TabConfig[] = [
   { id: "roster", label: "Roster", icon: "🛡️", description: "View clan member roster and statistics" },
   { id: "changes", label: "Activity", icon: "📈", description: "Track member activity and changes" },
+  { id: "snapshots", label: "Snapshots", icon: "📸", description: "View comprehensive clan snapshots with war and capital data" },
   { id: "database", label: "Player DB", icon: "🗄️", description: "Player database and notes" },
   { id: "coaching", label: "Coaching", icon: "🤖", description: "AI-powered coaching advice" },
   { id: "events", label: "Events", icon: "📊", description: "Significant player events and milestones" },

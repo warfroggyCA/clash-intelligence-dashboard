@@ -96,6 +96,9 @@ export async function GET(req: NextRequest) {
           } as Member;
         });
         
+        // Check if we have full snapshot data for enhanced metadata
+        const fullSnapshot = (snapshot as any).fullSnapshot;
+        
         const payload: Roster = {
           source: "snapshot",
           date: snapshot.date,
@@ -103,6 +106,39 @@ export async function GET(req: NextRequest) {
           clanTag,
           meta: { clanName: snapshot.clanName },
           members: enrichedMembers,
+          // Enhanced snapshot metadata
+          snapshotMetadata: {
+            snapshotDate: snapshot.date,
+            fetchedAt: snapshot.timestamp,
+            memberCount: snapshot.memberCount,
+            warLogEntries: fullSnapshot?.metadata?.warLogEntries || 0,
+            capitalSeasons: fullSnapshot?.metadata?.capitalSeasons || 0,
+            version: fullSnapshot?.metadata?.version || "2025-01-16",
+          },
+          snapshotDetails: {
+            currentWar: fullSnapshot?.currentWar ? {
+              state: fullSnapshot.currentWar.state,
+              teamSize: fullSnapshot.currentWar.teamSize,
+              opponent: fullSnapshot.currentWar.opponent,
+              attacksPerMember: fullSnapshot.currentWar.attacksPerMember,
+              startTime: fullSnapshot.currentWar.startTime,
+              endTime: fullSnapshot.currentWar.endTime,
+            } : undefined,
+            warLog: fullSnapshot?.warLog?.map((war: any) => ({
+              result: war.result,
+              opponent: war.opponent,
+              endTime: war.endTime,
+              teamSize: war.teamSize,
+              attacksPerMember: war.attacksPerMember,
+            })) || [],
+            capitalRaidSeasons: fullSnapshot?.capitalRaidSeasons?.map((season: any) => ({
+              capitalHallLevel: season.capitalHallLevel,
+              state: season.state,
+              endTime: season.endTime,
+              offensiveLoot: season.offensiveLoot || 0,
+              defensiveLoot: season.defensiveLoot || 0,
+            })) || [],
+          },
         };
         const res = json<Roster>({ success: true, data: payload }, { status: 200, headers: { "Cache-Control": "private, max-age=60" } });
         logger.info('Served roster snapshot', { clanTag, ms: Date.now() - t0, members: enrichedMembers.length });

@@ -62,6 +62,23 @@ CREATE TABLE player_dna_cache (
   UNIQUE(clan_tag, player_tag, date)
 );
 
+-- Create clan_snapshots table for full snapshot data
+CREATE TABLE clan_snapshots (
+  id BIGSERIAL PRIMARY KEY,
+  clan_tag TEXT NOT NULL,
+  snapshot_date TEXT NOT NULL,
+  fetched_at TIMESTAMP WITH TIME ZONE NOT NULL,
+  clan JSONB NOT NULL,
+  member_summaries JSONB NOT NULL,
+  player_details JSONB NOT NULL,
+  current_war JSONB,
+  war_log JSONB NOT NULL,
+  capital_seasons JSONB NOT NULL,
+  metadata JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(clan_tag, snapshot_date)
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_snapshots_clan_tag ON snapshots(clan_tag);
 CREATE INDEX idx_snapshots_date ON snapshots(date);
@@ -75,6 +92,9 @@ CREATE INDEX idx_batch_ai_results_timestamp ON batch_ai_results(timestamp);
 CREATE INDEX idx_player_dna_cache_clan_tag ON player_dna_cache(clan_tag);
 CREATE INDEX idx_player_dna_cache_player_tag ON player_dna_cache(player_tag);
 CREATE INDEX idx_player_dna_cache_date ON player_dna_cache(date);
+CREATE INDEX idx_clan_snapshots_clan_tag ON clan_snapshots(clan_tag);
+CREATE INDEX idx_clan_snapshots_snapshot_date ON clan_snapshots(snapshot_date);
+CREATE INDEX idx_clan_snapshots_fetched_at ON clan_snapshots(fetched_at);
 
 -- Enable Row Level Security (RLS)
 ALTER TABLE snapshots ENABLE ROW LEVEL SECURITY;
@@ -82,6 +102,7 @@ ALTER TABLE tenure_ledger ENABLE ROW LEVEL SECURITY;
 ALTER TABLE ai_summaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE batch_ai_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_dna_cache ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clan_snapshots ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all for now, you can restrict later)
 CREATE POLICY "Allow all operations on snapshots" ON snapshots FOR ALL USING (true);
@@ -89,6 +110,7 @@ CREATE POLICY "Allow all operations on tenure_ledger" ON tenure_ledger FOR ALL U
 CREATE POLICY "Allow all operations on ai_summaries" ON ai_summaries FOR ALL USING (true);
 CREATE POLICY "Allow all operations on batch_ai_results" ON batch_ai_results FOR ALL USING (true);
 CREATE POLICY "Allow all operations on player_dna_cache" ON player_dna_cache FOR ALL USING (true);
+CREATE POLICY "Allow all operations on clan_snapshots" ON clan_snapshots FOR ALL USING (true);
 
 -- Create storage bucket for files
 INSERT INTO storage.buckets (id, name, public) VALUES ('snapshots', 'snapshots', true);

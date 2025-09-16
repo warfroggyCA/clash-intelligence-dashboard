@@ -4,10 +4,13 @@ import React, { useEffect } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { DashboardLayout, RosterTable, ApplicantsPanel } from '@/components';
 import ChangeDashboard from '@/components/ChangeDashboard';
+import FullSnapshotDashboard from '@/components/FullSnapshotDashboard';
 import PlayerDatabase from '@/components/PlayerDatabase';
 import AICoaching from '@/components/AICoaching';
 import PlayerDNADashboard from '@/components/PlayerDNADashboard';
 import DiscordPublisher from '@/components/DiscordPublisher';
+import SnapshotInfoBanner from '@/components/SnapshotInfoBanner';
+import SnapshotDetailsPanel from '@/components/SnapshotDetailsPanel';
 import type { Roster } from '@/types';
 
 type Props = {
@@ -54,9 +57,19 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   const renderTabContent = () => {
     switch (activeTab) {
       case 'roster':
-        return <RosterTable />;
+        return (
+          <div className="space-y-6">
+            <SnapshotInfoBanner />
+            <div className="space-y-6">
+              <RosterTable />
+              <SnapshotDetailsPanel />
+            </div>
+          </div>
+        );
       case 'changes':
         return <ChangeDashboard clanTag={currentClanTag} />;
+      case 'snapshots':
+        return <FullSnapshotDashboard clanTag={currentClanTag} />;
       case 'database':
         return <PlayerDatabase />;
       case 'coaching':

@@ -65,6 +65,45 @@ export interface Roster {
     recentClans?: string[];
     memberCount?: number;
   };
+  // Enhanced snapshot metadata
+  snapshotMetadata?: {
+    snapshotDate: string;
+    fetchedAt: string;
+    memberCount: number;
+    warLogEntries: number;
+    capitalSeasons: number;
+    version: string;
+  };
+  snapshotDetails?: {
+    currentWar?: {
+      state: string;
+      teamSize: number;
+      opponent?: {
+        name: string;
+        tag: string;
+      };
+      attacksPerMember?: number;
+      startTime?: string;
+      endTime?: string;
+    };
+    warLog?: Array<{
+      result: string;
+      opponent: {
+        name: string;
+        tag: string;
+      };
+      endTime: string;
+      teamSize: number;
+      attacksPerMember: number;
+    }>;
+    capitalRaidSeasons?: Array<{
+      capitalHallLevel: number;
+      state: string;
+      endTime: string;
+      offensiveLoot: number;
+      defensiveLoot: number;
+    }>;
+  };
 }
 
 /**
@@ -429,6 +468,7 @@ export type SortDirection = "asc" | "desc";
 export type TabType = 
   | "roster" 
   | "changes" 
+  | "snapshots"
   | "database" 
   | "coaching" 
   | "events" 
