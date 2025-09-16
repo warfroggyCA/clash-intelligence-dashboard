@@ -485,7 +485,7 @@ export function generateSnapshotSummary(
     parts.push(`Snapshot date: ${snapshotDate}`);
   }
   if (fetchedAt) {
-    parts.push(`Fetched: ${new Date(fetchedAt).toLocaleString()}`);
+    parts.push(`Fetched: ${fetchedAt ? new Date(fetchedAt).toLocaleString() : 'Unknown'}`);
   }
   if (typeof memberCount === 'number') {
     parts.push(`Members: ${memberCount}`);
@@ -506,7 +506,7 @@ export function generateSnapshotSummary(
     const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
     parts.push(`Current war: ${war.state} vs ${opponent} (${war.teamSize} members)`);
     if (war.endTime) {
-      parts.push(`War ends: ${new Date(war.endTime).toLocaleString()}`);
+      parts.push(`War ends: ${war.endTime ? new Date(war.endTime).toLocaleString() : 'Unknown'}`);
     }
   }
   
