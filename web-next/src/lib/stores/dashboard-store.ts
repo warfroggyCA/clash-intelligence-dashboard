@@ -450,7 +450,7 @@ export const useDashboardStore = create<DashboardState>()(
                 
                 // Show toast notification with snapshot metadata
                 if (json.snapshotMetadata) {
-                  const snapshotDate = new Date(json.snapshotMetadata.snapshotDate).toLocaleDateString();
+                  const snapshotDate = json.snapshotMetadata.snapshotDate ? new Date(json.snapshotMetadata.snapshotDate).toLocaleDateString() : 'Unknown';
                   const fetchedTime = new Date(json.snapshotMetadata.fetchedAt).toLocaleTimeString('en-US', { 
                     hour12: false, 
                     timeZone: 'UTC' 
