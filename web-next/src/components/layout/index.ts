@@ -13,3 +13,4 @@ export { QuickActions } from './QuickActions';
 export { ModalsContainer } from './ModalsContainer';
 export { PlayerProfileModal } from './PlayerProfileModal';
 export { QuickDepartureModal } from './QuickDepartureModal';
+export { default as SettingsModal } from './SettingsModal';

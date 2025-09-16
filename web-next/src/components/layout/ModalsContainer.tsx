@@ -24,6 +24,7 @@ import AccessManager from '@/components/AccessManager';
 import AccessSetup from '@/components/AccessSetup';
 import AccessLogin from '@/components/AccessLogin';
 import { PlayerProfileModal } from './PlayerProfileModal';
+import { SettingsModal } from './SettingsModal';
 import { showToast } from '@/lib/toast';
 import { QuickDepartureModal } from './QuickDepartureModal';
 
@@ -168,6 +169,25 @@ const AccessManagementModals: React.FC = () => {
   );
 };
 
+const SettingsModals: React.FC = () => {
+  const {
+    showSettings,
+    setShowSettings
+  } = useDashboardStore();
+
+  return (
+    <>
+      {/* Settings Modal */}
+      {showSettings && (
+        <SettingsModal
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
+    </>
+  );
+};
+
 const PlayerProfileModals: React.FC = () => {
   const {
     showPlayerProfile,
@@ -226,6 +246,9 @@ const PlayerProfileModals: React.FC = () => {
 export const ModalsContainer: React.FC<ModalsContainerProps> = ({ className = '' }) => {
   return (
     <div className={className}>
+      {/* Settings Modals */}
+      <SettingsModals />
+      
       {/* Departure Manager Modal */}
       <DepartureManagerModal />
       
