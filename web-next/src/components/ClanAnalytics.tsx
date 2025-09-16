@@ -138,7 +138,23 @@ export default function ClanAnalytics() {
                     </span>
                     <div>
                       <p className="font-semibold text-gray-800">{war.opponent?.name || 'Unknown Opponent'}</p>
-                      <p className="text-xs text-gray-500">{war.endTime ? new Date(war.endTime).toLocaleDateString() : 'Unknown Date'} • Team Size {war.teamSize}</p>
+                      <p className="text-xs text-gray-500">{war.endTime ? (() => {
+                        try {
+                          if (typeof war.endTime !== 'string' || war.endTime.includes('U') || war.endTime.includes('u')) {
+                            console.error('Invalid date string contains U character:', war.endTime);
+                            return 'Invalid Date';
+                          }
+                          const date = new Date(war.endTime);
+                          if (isNaN(date.getTime())) {
+                            console.error('Invalid date object created from:', war.endTime);
+                            return 'Invalid Date';
+                          }
+                          return date.toLocaleDateString();
+                        } catch (error) {
+                          console.error('Date formatting error:', error, 'Input:', war.endTime);
+                          return 'Invalid Date';
+                        }
+                      })() : 'Unknown Date'} • Team Size {war.teamSize}</p>
                     </div>
                   </div>
                   <div className="text-sm text-gray-600">
@@ -181,7 +197,23 @@ export default function ClanAnalytics() {
               {capitalTotals.latest.map((season, index) => (
                 <div key={`${season.endTime}-${index}`} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <p className="text-xs text-slate-500 uppercase tracking-wide">Season End</p>
-                  <p className="text-sm font-semibold text-slate-800">{season.endTime ? new Date(season.endTime).toLocaleDateString() : 'Unknown Date'}</p>
+                  <p className="text-sm font-semibold text-slate-800">{season.endTime ? (() => {
+                    try {
+                      if (typeof season.endTime !== 'string' || season.endTime.includes('U') || season.endTime.includes('u')) {
+                        console.error('Invalid date string contains U character:', season.endTime);
+                        return 'Invalid Date';
+                      }
+                      const date = new Date(season.endTime);
+                      if (isNaN(date.getTime())) {
+                        console.error('Invalid date object created from:', season.endTime);
+                        return 'Invalid Date';
+                      }
+                      return date.toLocaleDateString();
+                    } catch (error) {
+                      console.error('Date formatting error:', error, 'Input:', season.endTime);
+                      return 'Invalid Date';
+                    }
+                  })() : 'Unknown Date'}</p>
                   <div className="mt-2 text-xs text-slate-600 space-y-1">
                     <p>Hall Level {season.capitalHallLevel}</p>
                     <p>State: {season.state || 'Unknown'}</p>
