@@ -152,7 +152,9 @@ export default async function HomePage() {
 
   try {
     initialRoster = await buildRosterSnapshotFirst(initialClanTag, 'latest');
-  } catch {}
+  } catch (error) {
+    console.error('[Page] Failed to build initial roster:', error);
+  }
 
   return <ClientDashboard initialRoster={initialRoster} initialClanTag={initialClanTag} />;
 }

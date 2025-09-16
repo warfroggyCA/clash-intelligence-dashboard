@@ -330,6 +330,7 @@ export const useDashboardStore = create<DashboardState>()(
           const t0 = Date.now();
 
           const plan = buildRosterFetchPlan(clanTag, selectedSnapshot);
+          
           const tryFetch = async (url: string) => {
             // Add a safety timeout to avoid indefinite spin
             const controller = new AbortController();
@@ -381,7 +382,8 @@ export const useDashboardStore = create<DashboardState>()(
           const raw = localStorage.getItem(`lastRoster:${tag}`);
           if (!raw) return false;
           const parsed = JSON.parse(raw);
-          if (parsed && Array.isArray(parsed.members)) {
+          // Only use cached data if it has actual members (not empty)
+          if (parsed && Array.isArray(parsed.members) && parsed.members.length > 0) {
             set({ roster: parsed as Roster });
             return true;
           }
