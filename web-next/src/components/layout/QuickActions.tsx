@@ -127,7 +127,7 @@ const useQuickActions = () => {
     setIsRefreshing(true);
     try {
       await refreshData();
-      setMessage(selectedSnapshot === 'live' ? 'Latest data refreshed' : 'Snapshot reloaded');
+      setMessage('Snapshot data refreshed');
       setStatus('success');
     } catch (error) {
       console.error('Failed to refresh data:', error);

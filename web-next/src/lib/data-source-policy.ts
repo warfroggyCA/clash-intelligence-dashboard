@@ -8,13 +8,9 @@ export type RosterFetchPlan = {
 
 export function buildRosterFetchPlan(clanTag: string, selectedSnapshot?: string): RosterFetchPlan {
   const base = `/api/roster?clanTag=${encodeURIComponent(clanTag)}`;
-  const wantsSnapshot = !!selectedSnapshot && selectedSnapshot !== 'live';
+  // Always prefer snapshot data for roster - live data is only for ad-hoc queries
   const date = selectedSnapshot === 'latest' || !selectedSnapshot ? 'latest' : selectedSnapshot;
-
-  if (wantsSnapshot) {
-    const snapshotUrl = `${base}&mode=snapshot&date=${encodeURIComponent(date)}`;
-    return { urls: [snapshotUrl, base], sourcePreference: 'snapshot' };
-  }
-  return { urls: [base], sourcePreference: 'live' };
+  const snapshotUrl = `${base}&mode=snapshot&date=${encodeURIComponent(date)}`;
+  return { urls: [snapshotUrl, base], sourcePreference: 'snapshot' };
 }
 
