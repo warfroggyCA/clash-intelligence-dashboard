@@ -40,6 +40,34 @@ type CoCClanMembersResp = {
 
 type CoCClan = { tag: string; name?: string };
 
+type CoCWarLogEntry = {
+  result?: string;
+  teamSize?: number;
+  endTime?: string;
+  clan?: Record<string, any>;
+  opponent?: Record<string, any>;
+};
+
+type CoCCurrentWar = {
+  state?: string;
+  teamSize?: number;
+  preparationStartTime?: string;
+  startTime?: string;
+  endTime?: string;
+  clan?: Record<string, any>;
+  opponent?: Record<string, any>;
+};
+
+type CoCCapitalRaidSeason = {
+  id?: string;
+  startTime?: string;
+  endTime?: string;
+  capitalTotalLoot?: number;
+  defensiveReward?: number;
+  offensiveReward?: number;
+  members?: Array<Record<string, any>>;
+};
+
 const BASE = process.env.COC_API_BASE || "https://api.clashofclans.com/v1";
 
 // Force IPv4 for native fetch (some keys/IP-allowlists are v4-only) when no proxy is set
@@ -274,6 +302,36 @@ export async function getClanInfo(clanTag: string) {
 
 export async function getPlayer(tag: string) {
   return api<CoCPlayer>(`/players/${encTag(tag)}`);
+}
+
+export async function getClanWarLog(clanTag: string, limit = 10) {
+  const t = encTag(clanTag);
+  const safeLimit = Math.min(Math.max(limit, 1), 50);
+  const res = await api<{ items: CoCWarLogEntry[] }>(`/clans/${t}/warlog?limit=${safeLimit}`);
+  return Array.isArray(res?.items) ? res.items : [];
+}
+
+export async function getClanCurrentWar(clanTag: string) {
+  const t = encTag(clanTag);
+  try {
+    return await api<CoCCurrentWar>(`/clans/${t}/currentwar`);
+  } catch (error: any) {
+    // API returns 404/403 when war log hidden or no war
+    console.warn('[CoC] Failed to load current war', error?.message || error);
+    return null;
+  }
+}
+
+export async function getClanCapitalRaidSeasons(clanTag: string, limit = 5) {
+  const t = encTag(clanTag);
+  const safeLimit = Math.min(Math.max(limit, 1), 10);
+  try {
+    const res = await api<{ items: CoCCapitalRaidSeason[] }>(`/clans/${t}/capitalraidseasons?limit=${safeLimit}`);
+    return Array.isArray(res?.items) ? res.items : [];
+  } catch (error: any) {
+    console.warn('[CoC] Failed to load capital raid seasons', error?.message || error);
+    return [];
+  }
 }
 
 // Map CoC hero names to our short keys.

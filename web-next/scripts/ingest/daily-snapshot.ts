@@ -13,6 +13,7 @@ import { addDeparture } from '../../src/lib/departures';
 import { resolveUnknownPlayers } from '../../src/lib/player-resolver';
 import { aiProcessor } from '../../src/lib/ai-processor';
 import { saveBatchAIResults, cachePlayerDNAForClan } from '../../src/lib/ai-storage';
+import { fetchFullClanSnapshot, persistFullClanSnapshot } from '../../src/lib/full-snapshot';
 
 async function run() {
   const clanTag = process.argv[2] || cfg.homeClanTag;
@@ -21,6 +22,20 @@ async function run() {
   }
 
   console.log(`[Ingest] Starting daily snapshot for ${clanTag}`);
+
+  try {
+    const fullSnapshot = await fetchFullClanSnapshot(clanTag, {
+      warLogLimit: 10,
+      capitalSeasonLimit: 3,
+    });
+    await persistFullClanSnapshot(fullSnapshot);
+    console.log(
+      `[Ingest] Captured full snapshot: ${fullSnapshot.memberSummaries.length} members, ` +
+        `${fullSnapshot.metadata.warLogEntries} war log entries, ${fullSnapshot.metadata.capitalSeasons} capital seasons`
+    );
+  } catch (error) {
+    console.error('[Ingest] Failed to capture full snapshot (non-fatal)', error);
+  }
 
   const currentSnapshot = await createDailySnapshot(clanTag);
   console.log(`[Ingest] Snapshot created at ${currentSnapshot.timestamp} with ${currentSnapshot.memberCount} members`);
