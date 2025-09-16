@@ -134,7 +134,17 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const formatDate = (dateString: string) => {
     if (!dateString) return 'Unknown Date';
     try {
-      return new Date(dateString).toLocaleDateString('en-US', {
+      // Check if the date string contains invalid characters
+      if (typeof dateString !== 'string' || dateString.includes('U') || dateString.includes('u')) {
+        console.error('Invalid date string contains U character:', dateString);
+        return 'Invalid Date';
+      }
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.error('Invalid date object created from:', dateString);
+        return 'Invalid Date';
+      }
+      return date.toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'short',
         day: 'numeric',

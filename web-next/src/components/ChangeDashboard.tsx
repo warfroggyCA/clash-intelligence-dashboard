@@ -430,12 +430,28 @@ export default function ChangeDashboard({
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center space-x-2">
                 <h3 className="font-semibold text-gray-900">
-                  {changeSummary.date ? new Date(changeSummary.date).toLocaleDateString('en-US', {
-                    weekday: 'long',
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  }) : 'Unknown Date'}
+                  {changeSummary.date ? (() => {
+                    try {
+                      if (typeof changeSummary.date !== 'string' || changeSummary.date.includes('U') || changeSummary.date.includes('u')) {
+                        console.error('Invalid date string contains U character:', changeSummary.date);
+                        return 'Invalid Date';
+                      }
+                      const date = new Date(changeSummary.date);
+                      if (isNaN(date.getTime())) {
+                        console.error('Invalid date object created from:', changeSummary.date);
+                        return 'Invalid Date';
+                      }
+                      return date.toLocaleDateString('en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      });
+                    } catch (error) {
+                      console.error('Date formatting error:', error, 'Input:', changeSummary.date);
+                      return 'Invalid Date';
+                    }
+                  })() : 'Unknown Date'}
                 </h3>
                 {changeSummary.unread && (
                   <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
