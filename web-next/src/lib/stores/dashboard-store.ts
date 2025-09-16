@@ -321,9 +321,68 @@ export const useDashboardStore = create<DashboardState>()(
       },
       
       refreshData: async () => {
-        const { clanTag, loadRoster } = get();
-        if (clanTag) {
-          await loadRoster(clanTag);
+        const { clanTag, loadRoster, setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo } = get();
+        if (!clanTag) return;
+        
+        try {
+          setStatus('loading');
+          setMessage('Refreshing data...');
+          const t0 = Date.now();
+
+          // Force fresh data by adding cache-busting parameter
+          const base = `/api/roster?clanTag=${encodeURIComponent(clanTag)}`;
+          const cacheBuster = `&_t=${Date.now()}`;
+          const wantsSnapshot = !!selectedSnapshot && selectedSnapshot !== 'live';
+          const date = selectedSnapshot === 'latest' || !selectedSnapshot ? 'latest' : selectedSnapshot;
+          
+          let urls: string[];
+          if (wantsSnapshot) {
+            const snapshotUrl = `${base}&mode=snapshot&date=${encodeURIComponent(date)}${cacheBuster}`;
+            urls = [snapshotUrl, `${base}${cacheBuster}`];
+          } else {
+            urls = [`${base}${cacheBuster}`];
+          }
+
+          const tryFetch = async (url: string) => {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 10000);
+            let res: Response;
+            try {
+              res = await fetch(url, { signal: controller.signal });
+            } finally {
+              clearTimeout(timer);
+            }
+            const json = await res.json();
+            return { ok: res.ok, json } as { ok: boolean; json: any };
+          };
+
+          let lastError: any = null;
+          for (const url of urls) {
+            try {
+              const { ok, json } = await tryFetch(url);
+              if (ok && json?.members) {
+                setRoster(json);
+                setLastLoadInfo({
+                  source: wantsSnapshot ? 'snapshot' : 'live',
+                  ms: Date.now() - t0,
+                  tenureMatches: (json.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
+                  total: (json.members || []).length
+                });
+                setStatus('success');
+                setMessage(`Loaded ${json.members.length} members from ${wantsSnapshot ? 'snapshot' : 'live'} data`);
+                return;
+              }
+              lastError = json?.error || 'Invalid response format';
+            } catch (error) {
+              lastError = error;
+            }
+          }
+          
+          throw lastError || new Error('All fetch attempts failed');
+        } catch (error) {
+          console.error('Failed to refresh roster:', error);
+          setStatus('error');
+          setMessage(`Failed to refresh data: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
       },
       
