@@ -26,6 +26,7 @@ import {
 import type { RolePermissions } from '@/lib/leadership';
 import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-management';
 import { buildRosterFetchPlan } from '@/lib/data-source-policy';
+import { showToast } from '@/lib/toast';
 
 // =============================================================================
 // STORE INTERFACES
@@ -38,6 +39,46 @@ interface DashboardState {
   homeClan: string | null;
   message: string;
   status: Status;
+  
+  // Snapshot Metadata
+  snapshotMetadata: {
+    snapshotDate: string;
+    fetchedAt: string;
+    memberCount: number;
+    warLogEntries: number;
+    capitalSeasons: number;
+    version: string;
+  } | null;
+  snapshotDetails: {
+    currentWar?: {
+      state: string;
+      teamSize: number;
+      opponent?: {
+        name: string;
+        tag: string;
+      };
+      attacksPerMember?: number;
+      startTime?: string;
+      endTime?: string;
+    };
+    warLog?: Array<{
+      result: string;
+      opponent: {
+        name: string;
+        tag: string;
+      };
+      endTime: string;
+      teamSize: number;
+      attacksPerMember: number;
+    }>;
+    capitalRaidSeasons?: Array<{
+      capitalHallLevel: number;
+      state: string;
+      endTime: string;
+      offensiveLoot: number;
+      defensiveLoot: number;
+    }>;
+  } | null;
   
   // UI State
   activeTab: TabType;
@@ -92,6 +133,11 @@ interface DashboardState {
   setHomeClan: (tag: string | null) => void;
   setMessage: (message: string) => void;
   setStatus: (status: Status) => void;
+  
+  // Snapshot metadata actions
+  setSnapshotMetadata: (metadata: DashboardState['snapshotMetadata']) => void;
+  setSnapshotDetails: (details: DashboardState['snapshotDetails']) => void;
+  clearSnapshotData: () => void;
   
   setActiveTab: (tab: TabType) => void;
   setSortKey: (key: SortKey) => void;
@@ -149,6 +195,10 @@ const initialState = {
   message: '',
   status: 'idle' as Status,
   
+  // Snapshot Metadata
+  snapshotMetadata: null,
+  snapshotDetails: null,
+  
   // UI State
   activeTab: 'roster' as TabType,
   sortKey: 'trophies' as SortKey,
@@ -202,7 +252,11 @@ export const useDashboardStore = create<DashboardState>()(
       // =============================================================================
       
       setRoster: (roster) => {
-        set({ roster });
+        set({ 
+          roster,
+          snapshotMetadata: roster?.snapshotMetadata || null,
+          snapshotDetails: roster?.snapshotDetails || null,
+        });
         try {
           if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
             const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
@@ -216,6 +270,11 @@ export const useDashboardStore = create<DashboardState>()(
       setHomeClan: (homeClan) => set({ homeClan }),
       setMessage: (message) => set({ message }),
       setStatus: (status) => set({ status }),
+      
+      // Snapshot metadata actions
+      setSnapshotMetadata: (snapshotMetadata) => set({ snapshotMetadata }),
+      setSnapshotDetails: (snapshotDetails) => set({ snapshotDetails }),
+      clearSnapshotData: () => set({ snapshotMetadata: null, snapshotDetails: null }),
       
       setActiveTab: (activeTab) => set({ activeTab }),
       setSortKey: (sortKey) => set({ sortKey }),
@@ -373,6 +432,20 @@ export const useDashboardStore = create<DashboardState>()(
                 setDataFetchedAt(Date.now());
                 setStatus('success');
                 setMessage(`Loaded ${json.members.length} members from snapshot data`);
+                
+                // Show toast notification with snapshot metadata
+                if (json.snapshotMetadata) {
+                  const snapshotDate = new Date(json.snapshotMetadata.snapshotDate).toLocaleDateString();
+                  const fetchedTime = new Date(json.snapshotMetadata.fetchedAt).toLocaleTimeString('en-US', { 
+                    hour12: false, 
+                    timeZone: 'UTC' 
+                  });
+                  showToast(
+                    `Latest snapshot: ${snapshotDate} ${fetchedTime} UTC`, 
+                    'success', 
+                    3000
+                  );
+                }
                 return;
               }
               lastError = json?.error || 'Invalid response format';
@@ -487,6 +560,24 @@ export const selectors = {
   // Get current member count
   memberCount: (state: DashboardState) => 
     state.roster?.members?.length ?? 0,
+  
+  // Snapshot metadata selectors
+  snapshotMetadata: (state: DashboardState) => state.snapshotMetadata,
+  snapshotDetails: (state: DashboardState) => state.snapshotDetails,
+  isDataFresh: (state: DashboardState) => {
+    if (!state.snapshotMetadata?.fetchedAt) return false;
+    const fetchedAt = new Date(state.snapshotMetadata.fetchedAt);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - fetchedAt.getTime()) / (1000 * 60 * 60);
+    return hoursDiff <= 24;
+  },
+  dataAge: (state: DashboardState) => {
+    if (!state.snapshotMetadata?.fetchedAt) return null;
+    const fetchedAt = new Date(state.snapshotMetadata.fetchedAt);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - fetchedAt.getTime()) / (1000 * 60 * 60);
+    return hoursDiff;
+  },
   
   // Get sorted and filtered members
   sortedMembers: (state: DashboardState) => {

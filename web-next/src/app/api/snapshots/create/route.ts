@@ -3,13 +3,14 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextRequest, NextResponse } from "next/server";
-import { createDailySnapshot, detectChanges, saveChangeSummary, getLatestSnapshot } from "@/lib/snapshots";
+import { detectChanges, saveChangeSummary, getLatestSnapshot } from "@/lib/snapshots";
 import { generateChangeSummary } from "@/lib/ai-summarizer";
 import { normalizeTag, isValidTag } from "@/lib/tags";
 import { z } from "zod";
 import type { ApiResponse } from "@/types";
 import { rateLimitAllow, formatRateLimitHeaders } from "@/lib/inbound-rate-limit";
 import { createApiContext } from "@/lib/api/route-helpers";
+import { fetchFullClanSnapshot, persistFullClanSnapshot } from "@/lib/full-snapshot";
 
 export async function POST(req: NextRequest) {
   const { json } = createApiContext(req, '/api/snapshots/create');
@@ -39,8 +40,37 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Create today's snapshot
-    const currentSnapshot = await createDailySnapshot(clanTag);
+    // Create today's full snapshot
+    const fullSnapshot = await fetchFullClanSnapshot(clanTag, {
+      warLogLimit: 10,
+      capitalSeasonLimit: 3,
+    });
+    await persistFullClanSnapshot(fullSnapshot);
+    
+    // Convert to DailySnapshot format for change detection
+    const currentSnapshot = {
+      date: fullSnapshot.fetchedAt.slice(0, 10),
+      clanTag: fullSnapshot.clanTag,
+      clanName: fullSnapshot.clan?.name,
+      timestamp: fullSnapshot.fetchedAt,
+      members: fullSnapshot.memberSummaries.map((summary: any) => ({
+        name: summary.name,
+        tag: summary.tag,
+        townHallLevel: summary.townHallLevel,
+        trophies: summary.trophies,
+        donations: summary.donations,
+        donationsReceived: summary.donationsReceived,
+        role: summary.role,
+        tenure_days: 0,
+        attackWins: 0,
+        versusBattleWins: 0,
+        versusTrophies: summary.builderTrophies || 0,
+        clanCapitalContributions: 0,
+      })),
+      memberCount: fullSnapshot.memberSummaries.length,
+      totalTrophies: fullSnapshot.memberSummaries.reduce((sum: number, m: any) => sum + (m.trophies || 0), 0),
+      totalDonations: fullSnapshot.memberSummaries.reduce((sum: number, m: any) => sum + (m.donations || 0), 0),
+    };
     
     // Get previous snapshot for comparison
     const previousSnapshot = await getLatestSnapshot(clanTag);

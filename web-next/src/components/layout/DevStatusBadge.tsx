@@ -11,6 +11,7 @@ export default function DevStatusBadge() {
   const { source, ms, tenureMatches, total } = lastLoadInfo;
 
   const color = source === 'live' ? 'bg-emerald-600' : source === 'snapshot' ? 'bg-sky-600' : 'bg-gray-600';
+  const displaySource = source === 'snapshot' ? 'Latest snapshot' : source;
 
   return (
     <div className="flex items-center gap-2 text-white text-xs font-medium w-fit px-3 py-1 rounded-full shadow-md"
@@ -18,7 +19,7 @@ export default function DevStatusBadge() {
       title={`Source: ${source} • Load: ${ms}ms • Tenure: ${tenureMatches}/${total} • Status: ${status}`}
     >
       <span className={`inline-block w-2 h-2 rounded-full ${color.replace('bg-', 'bg-')}`} />
-      <span>Source: {source}</span>
+      <span>Source: {displaySource}</span>
       <span>• {ms}ms</span>
       <span>• Tenure {tenureMatches}/{total}</span>
     </div>
