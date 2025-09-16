@@ -87,6 +87,7 @@
 
 ## Export/Import Functionality
 - [ ] **Export roster data** to CSV/Excel
+- [ ] **Export clan summary** - JSON/Markdown format with war status, capital raids, recent performance
 - [ ] **Import player notes** from external sources
 - [ ] **Backup/restore functionality** - Data management
 
@@ -101,6 +102,12 @@
 - [ ] **User authentication system** - Secure login
 - [ ] **Multi-user support** with roles
 - [ ] **Settings feature** for users to enter their own API credentials
+
+## Settings & Configuration
+- [ ] **Settings gear wheel** - Centralized configuration panel
+- [ ] **Home clan management** - Move from home screen to settings
+- [ ] **Clan logo editing** - Upload and manage clan logo/avatar
+- [ ] **User preferences** - Theme, notifications, display options
 
 ## API Enhancements
 - [ ] **Webhook support** for real-time updates
