@@ -35,9 +35,10 @@ export interface QuickActionsProps {
 // =============================================================================
 
 const useQuickActions = () => {
-  const { roster, clanTag, setMessage, setStatus } = useDashboardStore();
+  const { roster, clanTag, selectedSnapshot, refreshData, setMessage, setStatus } = useDashboardStore();
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isCopyingData, setIsCopyingData] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleCopyData = async () => {
     if (!roster) {
@@ -117,11 +118,33 @@ const useQuickActions = () => {
     }
   };
 
+  const handleRefreshData = async () => {
+    if (!clanTag) {
+      setMessage('Load a clan first to refresh data');
+      return;
+    }
+
+    setIsRefreshing(true);
+    try {
+      await refreshData();
+      setMessage(selectedSnapshot === 'live' ? 'Live data refreshed' : 'Snapshot reloaded');
+      setStatus('success');
+    } catch (error) {
+      console.error('Failed to refresh data:', error);
+      setMessage('Failed to refresh data');
+      setStatus('error');
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   return {
     handleCopyData,
     handleGenerateAISummary,
+    handleRefreshData,
     isGeneratingSummary,
     isCopyingData,
+    isRefreshing,
     hasData: !!roster,
     memberCount: selectors.memberCount(useDashboardStore.getState())
   };
@@ -136,8 +159,10 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
   const {
     handleCopyData,
     handleGenerateAISummary,
+    handleRefreshData,
     isGeneratingSummary,
     isCopyingData,
+    isRefreshing,
     hasData,
     memberCount
   } = useQuickActions();
@@ -169,6 +194,23 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                   {memberCount} members
                 </span>
               )}
+            </span>
+          </Button>
+
+          {/* Refresh Data Button */}
+          <Button
+            onClick={handleRefreshData}
+            disabled={!hasData || isRefreshing}
+            loading={isRefreshing}
+            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-blue-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            title="Refresh roster data from the selected source"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+            <span className="relative flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z"></path>
+              </svg>
+              Refresh Data
             </span>
           </Button>
 
