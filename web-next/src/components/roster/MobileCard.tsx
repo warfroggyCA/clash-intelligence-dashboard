@@ -279,7 +279,7 @@ export const MobileCard: React.FC<MobileCardProps> = ({
           )}
           {activity.last_active_at && (
             <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-              Last: {new Date(activity.last_active_at).toLocaleDateString()}
+              Last: {activity.last_active_at ? new Date(activity.last_active_at).toLocaleDateString() : 'Unknown'}
             </span>
           )}
         </div>

@@ -310,7 +310,7 @@ export default function AccessManager({ clanTag, clanName, onClose }: AccessMana
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
                     {member.lastAccessed 
-                      ? new Date(member.lastAccessed).toLocaleDateString()
+                      ? (member.lastAccessed ? new Date(member.lastAccessed).toLocaleDateString() : 'Unknown')
                       : 'Never'
                     }
                   </td>

@@ -88,7 +88,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
             let existingNotes = JSON.parse(localStorage.getItem(notesKey) || "[]");
             
             // Check if we already have a departure note for this specific departure date and reason
-            const departureDate = new Date(departure.departureDate).toLocaleDateString();
+            const departureDate = departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date';
             const hasDepartureNote = existingNotes.some((note: any) => 
               note.note.includes('Member departed on') && 
               note.note.includes(departureDate) &&
@@ -399,7 +399,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(player.lastUpdated).toLocaleDateString()}
+                      {player.lastUpdated ? new Date(player.lastUpdated).toLocaleDateString() : 'Unknown'}
                     </td>
                   </tr>
                 ))}
@@ -429,7 +429,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                     {selectedPlayer.notes.length} note{selectedPlayer.notes.length !== 1 ? 's' : ''}
                   </span>
                   <span className="text-gray-400">•</span>
-                  <span className="text-gray-600">Last updated: {new Date(selectedPlayer.lastUpdated).toLocaleDateString()}</span>
+                  <span className="text-gray-600">Last updated: {selectedPlayer.lastUpdated ? new Date(selectedPlayer.lastUpdated).toLocaleDateString() : 'Unknown'}</span>
                   <span className="text-gray-400">•</span>
                   <span className="text-gray-600">Status:</span>
                   <select
@@ -492,7 +492,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                     <div key={index} className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 transition-colors">
                       <div className="flex items-start justify-between mb-3">
                         <div className="text-sm text-gray-500">
-                          {new Date(note.timestamp).toLocaleString()}
+                          {note.timestamp ? new Date(note.timestamp).toLocaleString() : 'Unknown'}
                         </div>
                         {Object.keys(note.customFields).length > 0 && (
                           <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
