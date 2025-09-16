@@ -19,7 +19,30 @@ export async function POST(request: NextRequest) {
         averageTrophies: z.number().optional(),
         totalDonations: z.number().optional(),
         roleDistribution: z.record(z.number()).optional(),
-        members: z.array(z.any()).optional()
+        members: z.array(z.any()).optional(),
+        snapshotMetadata: z.object({
+          snapshotDate: z.string(),
+          fetchedAt: z.string(),
+          memberCount: z.number(),
+          warLogEntries: z.number(),
+          capitalSeasons: z.number(),
+          version: z.string(),
+        }).optional(),
+        snapshotDetails: z.object({
+          currentWar: z.object({
+            state: z.string(),
+            teamSize: z.number(),
+            opponent: z.object({
+              name: z.string(),
+              tag: z.string(),
+            }).optional(),
+            attacksPerMember: z.number().optional(),
+            startTime: z.string().optional(),
+            endTime: z.string().optional(),
+          }).optional(),
+          warLog: z.array(z.any()).optional(),
+          capitalRaidSeasons: z.array(z.any()).optional(),
+        }).optional(),
       })
     });
     const parsed = Schema.safeParse(body);
@@ -55,6 +78,28 @@ CLAN OVERVIEW:
 - Average Trophies: ${clanData.averageTrophies}
 - Total Donations: ${clanData.totalDonations}
 - Role Distribution: ${Object.entries(clanData.roleDistribution || {}).map(([role, count]) => `${role}: ${count}`).join(', ')}
+
+SNAPSHOT CONTEXT:
+- Data Source: Latest nightly snapshot
+- Analysis Date: ${new Date().toLocaleDateString()}
+- Data Freshness: ${clanData.snapshotMetadata?.fetchedAt ? `Fetched ${new Date(clanData.snapshotMetadata.fetchedAt).toLocaleString()}` : 'Unknown'}
+
+CURRENT CLAN STATUS:
+${clanData.snapshotDetails?.currentWar ? `
+- Current War: ${clanData.snapshotDetails.currentWar.state} (${clanData.snapshotDetails.currentWar.teamSize} members)
+- War Opponent: ${clanData.snapshotDetails.currentWar.opponent?.name || 'Unknown'}
+- War End Time: ${clanData.snapshotDetails.currentWar.endTime ? new Date(clanData.snapshotDetails.currentWar.endTime).toLocaleString() : 'Unknown'}
+` : '- No active war detected'}
+
+RECENT WAR PERFORMANCE:
+${clanData.snapshotDetails?.warLog?.length ? clanData.snapshotDetails.warLog.slice(0, 3).map((war: any) => `
+- ${new Date(war.endTime).toLocaleDateString()}: ${war.result} vs ${war.opponent.name} (${war.teamSize}x${war.attacksPerMember})
+`).join('') : '- No recent war data available'}
+
+CAPITAL RAID ACTIVITY:
+${clanData.snapshotDetails?.capitalRaidSeasons?.length ? clanData.snapshotDetails.capitalRaidSeasons.slice(0, 2).map((season: any) => `
+- ${new Date(season.endTime).toLocaleDateString()}: Hall ${season.capitalHallLevel} - ${season.state} (Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()})
+`).join('') : '- No capital raid data available'}
 
 MEMBER ANALYSIS:
 ${(clanData.members || []).map((member: any) => `

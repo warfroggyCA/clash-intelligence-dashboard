@@ -277,10 +277,21 @@ class ApiEndpoints {
     });
   }
 
-  async generateAISummary(clanTag: string, changes: any[]) {
+  async generateAISummary(clanTag: string, changes: any[], clanData?: any) {
     return this.client.post('/api/ai-summary/generate', {
-      clanTag,
-      changes,
+      type: 'full_analysis',
+      clanData: {
+        clanName: clanData?.clanName,
+        clanTag: clanData?.clanTag || clanTag,
+        memberCount: clanData?.memberCount,
+        averageTownHall: clanData?.averageTownHall,
+        averageTrophies: clanData?.averageTrophies,
+        totalDonations: clanData?.totalDonations,
+        roleDistribution: clanData?.roleDistribution,
+        members: clanData?.members,
+        snapshotMetadata: clanData?.snapshotMetadata,
+        snapshotDetails: clanData?.snapshotDetails,
+      }
     });
   }
 

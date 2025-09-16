@@ -17,7 +17,7 @@
  * Last Updated: January 2025
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Button, SuccessButton, WarningButton } from '@/components/ui';
 import { api } from '@/lib/api/client';
@@ -35,9 +35,21 @@ export interface QuickActionsProps {
 // =============================================================================
 
 const useQuickActions = () => {
-  const { roster, clanTag, selectedSnapshot, refreshData, setMessage, setStatus } = useDashboardStore();
+  const {
+    roster,
+    clanTag,
+    selectedSnapshot,
+    refreshData,
+    setMessage,
+    setStatus,
+    snapshotMetadata,
+    snapshotDetails,
+  } = useDashboardStore();
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isCopyingData, setIsCopyingData] = useState(false);
+  const [isCopyingSnapshot, setIsCopyingSnapshot] = useState(false);
+  const [isCopyingDiscord, setIsCopyingDiscord] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const handleCopyData = async () => {
@@ -96,7 +108,28 @@ const useQuickActions = () => {
       const changesResponse = await api.getSnapshotChanges(clanTag);
       
       if (changesResponse.success && changesResponse.data?.changes) {
-        const summaryResponse = await api.generateAISummary(clanTag, changesResponse.data.changes);
+        // Prepare clan data with snapshot metadata for enhanced AI analysis
+        const clanData = {
+          clanName: roster?.clanName,
+          clanTag: roster?.clanTag || clanTag,
+          memberCount: roster?.members?.length || 0,
+          averageTownHall: roster?.members ? 
+            roster.members.reduce((sum, m) => sum + (m.townHallLevel || 0), 0) / roster.members.length : 0,
+          averageTrophies: roster?.members ? 
+            roster.members.reduce((sum, m) => sum + (m.trophies || 0), 0) / roster.members.length : 0,
+          totalDonations: roster?.members ? 
+            roster.members.reduce((sum, m) => sum + (m.donations || 0), 0) : 0,
+          roleDistribution: roster?.members ? 
+            roster.members.reduce((acc, m) => {
+              acc[m.role] = (acc[m.role] || 0) + 1;
+              return acc;
+            }, {} as Record<string, number>) : {},
+          members: roster?.members || [],
+          snapshotMetadata,
+          snapshotDetails,
+        };
+
+        const summaryResponse = await api.generateAISummary(clanTag, changesResponse.data.changes, clanData);
         
         if (summaryResponse.success) {
           setMessage('AI summary generated successfully!');
@@ -138,12 +171,234 @@ const useQuickActions = () => {
     }
   };
 
+  const handleCopySnapshotSummary = async () => {
+    if (!snapshotMetadata) {
+      setMessage('No snapshot metadata available yet');
+      return;
+    }
+
+    setIsCopyingSnapshot(true);
+    try {
+      const lines: string[] = [];
+      const snapshotDate = new Date(snapshotMetadata.snapshotDate);
+      const fetchedAt = new Date(snapshotMetadata.fetchedAt);
+      const fmtDate = snapshotDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      const fmtTime = fetchedAt.toLocaleString(undefined, {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short',
+      });
+
+      lines.push(`# Clan Snapshot – ${fmtDate}`);
+      if (roster?.clanName) {
+        lines.push(`**Clan:** ${roster.clanName} (${snapshotMetadata.version})`);
+      }
+      lines.push(`**Members:** ${snapshotMetadata.memberCount}`);
+      lines.push(`**Fetched At:** ${fmtTime}`);
+      lines.push('');
+
+      if (snapshotDetails?.currentWar) {
+        const war = snapshotDetails.currentWar;
+        const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
+        lines.push('## Current War');
+        lines.push(`- State: ${war.state || 'unknown'}`);
+        lines.push(`- Team Size: ${war.teamSize}${war.attacksPerMember ? ` x${war.attacksPerMember}` : ''}`);
+        lines.push(`- Opponent: ${opponent}`);
+        if (war.startTime) lines.push(`- Starts: ${new Date(war.startTime).toLocaleString()}`);
+        if (war.endTime) lines.push(`- Ends: ${new Date(war.endTime).toLocaleString()}`);
+        lines.push('');
+      }
+
+      if (snapshotDetails?.warLog?.length) {
+        lines.push('## Recent War Log');
+        snapshotDetails.warLog.slice(0, 3).forEach((entry, idx) => {
+          const end = new Date(entry.endTime).toLocaleDateString();
+          lines.push(`- ${end}: ${entry.result || 'Unknown'} vs ${entry.opponent.name} (${entry.teamSize}x${entry.attacksPerMember})`);
+        });
+        lines.push('');
+      }
+
+      if (snapshotDetails?.capitalRaidSeasons?.length) {
+        lines.push('## Capital Raids');
+        snapshotDetails.capitalRaidSeasons.slice(0, 2).forEach((season) => {
+          const end = new Date(season.endTime).toLocaleDateString();
+          lines.push(
+            `- ${end}: Hall ${season.capitalHallLevel} – ${season.state || 'unknown'}, Offensive ${season.offensiveLoot.toLocaleString()}, Defensive ${season.defensiveLoot.toLocaleString()}`
+          );
+        });
+        lines.push('');
+      }
+
+      lines.push('---');
+      lines.push(`Generated from nightly snapshot (version ${snapshotMetadata.version}).`);
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setMessage('Snapshot summary copied to clipboard!');
+      setStatus('success');
+    } catch (error) {
+      console.error('Failed to copy snapshot summary:', error);
+      setMessage('Failed to copy snapshot summary');
+      setStatus('error');
+    } finally {
+      setIsCopyingSnapshot(false);
+    }
+  };
+
+  const handleCopyForDiscord = async () => {
+    if (!snapshotMetadata) {
+      setMessage('No snapshot metadata available yet');
+      return;
+    }
+
+    setIsCopyingDiscord(true);
+    try {
+      const lines: string[] = [];
+      const snapshotDate = new Date(snapshotMetadata.snapshotDate);
+      const fmtDate = snapshotDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+
+      // Discord-friendly header with emoji
+      lines.push(`🏰 **Clan Snapshot - ${fmtDate}**`);
+      if (roster?.clanName) {
+        lines.push(`**Clan:** ${roster.clanName} (${snapshotMetadata.version})`);
+      }
+      lines.push(`**Members:** ${snapshotMetadata.memberCount}`);
+      lines.push('');
+
+      if (snapshotDetails?.currentWar) {
+        const war = snapshotDetails.currentWar;
+        const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
+        lines.push('⚔️ **Current War**');
+        lines.push(`• State: ${war.state || 'unknown'}`);
+        lines.push(`• Team Size: ${war.teamSize}${war.attacksPerMember ? ` x${war.attacksPerMember}` : ''}`);
+        lines.push(`• Opponent: ${opponent}`);
+        if (war.startTime) lines.push(`• Starts: ${new Date(war.startTime).toLocaleString()}`);
+        if (war.endTime) lines.push(`• Ends: ${new Date(war.endTime).toLocaleString()}`);
+        lines.push('');
+      }
+
+      if (snapshotDetails?.warLog?.length) {
+        lines.push('📊 **Recent Wars**');
+        snapshotDetails.warLog.slice(0, 3).forEach((entry) => {
+          const end = new Date(entry.endTime).toLocaleDateString();
+          const result = entry.result === 'WIN' ? '✅' : entry.result === 'LOSE' ? '❌' : '❓';
+          lines.push(`• ${end}: ${result} vs ${entry.opponent.name} (${entry.teamSize}x${entry.attacksPerMember})`);
+        });
+        lines.push('');
+      }
+
+      if (snapshotDetails?.capitalRaidSeasons?.length) {
+        lines.push('🏛️ **Capital Raids**');
+        snapshotDetails.capitalRaidSeasons.slice(0, 2).forEach((season) => {
+          const end = new Date(season.endTime).toLocaleDateString();
+          lines.push(
+            `• ${end}: Hall ${season.capitalHallLevel} – ${season.state || 'unknown'}, Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()}`
+          );
+        });
+        lines.push('');
+      }
+
+      lines.push('---');
+      lines.push(`*Generated from nightly snapshot v${snapshotMetadata.version}*`);
+      
+      await navigator.clipboard.writeText(lines.join('\n'));
+      setMessage('Discord summary copied to clipboard!');
+      setStatus('success');
+    } catch (error) {
+      console.error('Failed to copy Discord summary:', error);
+      setMessage('Failed to copy Discord summary');
+      setStatus('error');
+    } finally {
+      setIsCopyingDiscord(false);
+    }
+  };
+
+  const handleExportSnapshot = async (format: 'json' | 'csv') => {
+    if (!snapshotMetadata || !snapshotDetails) {
+      setMessage('No snapshot data available for export');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+      const filename = `clan-snapshot-${snapshotMetadata.snapshotDate}-${timestamp}`;
+
+      if (format === 'json') {
+        const exportData = {
+          metadata: snapshotMetadata,
+          details: snapshotDetails,
+          clanInfo: {
+            name: roster?.clanName,
+            tag: roster?.clanTag,
+            memberCount: snapshotMetadata.memberCount
+          },
+          exportedAt: new Date().toISOString()
+        };
+
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${filename}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } else if (format === 'csv') {
+        // Export war log as CSV
+        if (snapshotDetails.warLog?.length) {
+          const headers = ['Date', 'Result', 'Opponent Name', 'Opponent Tag', 'Team Size', 'Attacks Per Member'];
+          const csvRows = [headers.join(',')];
+          
+          snapshotDetails.warLog.forEach(war => {
+            const row = [
+              new Date(war.endTime).toLocaleDateString(),
+              war.result || 'Unknown',
+              `"${war.opponent.name}"`,
+              war.opponent.tag,
+              war.teamSize,
+              war.attacksPerMember
+            ];
+            csvRows.push(row.join(','));
+          });
+
+          const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${filename}-war-log.csv`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+        }
+      }
+
+      setMessage(`${format.toUpperCase()} export downloaded successfully!`);
+      setStatus('success');
+    } catch (error) {
+      console.error(`Failed to export ${format}:`, error);
+      setMessage(`Failed to export ${format.toUpperCase()}`);
+      setStatus('error');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return {
     handleCopyData,
     handleGenerateAISummary,
     handleRefreshData,
+    handleCopySnapshotSummary,
+    handleCopyForDiscord,
+    handleExportSnapshot,
     isGeneratingSummary,
     isCopyingData,
+    isCopyingSnapshot,
+    isCopyingDiscord,
+    isExporting,
     isRefreshing,
     hasData: !!roster,
     memberCount: selectors.memberCount(useDashboardStore.getState())
@@ -156,12 +411,37 @@ const useQuickActions = () => {
 
 export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) => {
   const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === 'true';
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+
+    if (showExportMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showExportMenu]);
   const {
     handleCopyData,
     handleGenerateAISummary,
     handleRefreshData,
+    handleCopySnapshotSummary,
+    handleCopyForDiscord,
+    handleExportSnapshot,
     isGeneratingSummary,
     isCopyingData,
+    isCopyingSnapshot,
+    isCopyingDiscord,
+    isExporting,
     isRefreshing,
     hasData,
     memberCount
@@ -213,6 +493,95 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
               Refresh Data
             </span>
           </Button>
+
+          {/* Snapshot Summary Button */}
+          <Button
+            onClick={handleCopySnapshotSummary}
+            disabled={!hasData || isCopyingSnapshot}
+            loading={isCopyingSnapshot}
+            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            title="Copy nightly snapshot summary for sharing"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+            <span className="relative flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9a2 2 0 012-2h2m3-3h6m-6 0a2 2 0 012-2h2a2 2 0 012 2m-6 0v3m6-3v3"></path>
+              </svg>
+              Copy Snapshot Summary
+            </span>
+          </Button>
+
+          {/* Discord Copy Button */}
+          <Button
+            onClick={handleCopyForDiscord}
+            disabled={!hasData || isCopyingDiscord}
+            loading={isCopyingDiscord}
+            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-indigo-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            title="Copy Discord-friendly snapshot summary"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-indigo-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+            <span className="relative flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+              </svg>
+              Copy for Discord
+            </span>
+          </Button>
+
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportMenuRef}>
+            <Button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={!hasData || isExporting}
+              className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-emerald-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+              title="Export snapshot data in various formats"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+              <span className="relative flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                Export
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path>
+                </svg>
+              </span>
+            </Button>
+
+            {/* Export Dropdown Menu */}
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+                <div className="py-1">
+                  <button
+                    onClick={() => {
+                      handleExportSnapshot('json');
+                      setShowExportMenu(false);
+                    }}
+                    disabled={isExporting}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Export JSON
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleExportSnapshot('csv');
+                      setShowExportMenu(false);
+                    }}
+                    disabled={isExporting}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    Export War Log CSV
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* AI Summary Button */}
           <Button

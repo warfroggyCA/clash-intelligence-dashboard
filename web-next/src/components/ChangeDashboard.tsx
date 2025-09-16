@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertCircle, CheckCircle, Clock, Users, TrendingUp, Shield, Trophy } from "lucide-react";
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 
 type ChangeSummary = {
   date: string;
@@ -36,6 +37,12 @@ export default function ChangeDashboard({
   const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set());
   const [clearedMessages, setClearedMessages] = useState<Set<string>>(new Set());
   const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+
+  // Get snapshot metadata from store
+  const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
+  const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
+  const isDataFresh = useDashboardStore(selectors.isDataFresh);
+  const dataAge = useDashboardStore(selectors.dataAge);
 
   useEffect(() => {
     loadChanges();
@@ -347,6 +354,56 @@ export default function ChangeDashboard({
         </div>
         <p className="text-gray-600">Daily summaries of clan changes and activity</p>
       </div>
+
+      {/* Snapshot Info Banner */}
+      {snapshotMetadata && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-2">
+                <div className={`w-3 h-3 rounded-full ${isDataFresh ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
+                <span className="text-sm font-medium text-gray-700">
+                  Latest Snapshot: {new Date(snapshotMetadata.snapshotDate).toLocaleDateString()}
+                </span>
+              </div>
+              <div className="text-sm text-gray-600">
+                {snapshotMetadata.memberCount} members • {snapshotMetadata.warLogEntries} wars • {snapshotMetadata.capitalSeasons} capital seasons
+              </div>
+            </div>
+            <div className="text-xs text-gray-500">
+              {dataAge ? `${Math.round(dataAge)}h ago` : 'Unknown age'}
+            </div>
+          </div>
+          
+          {/* Current War Status */}
+          {snapshotDetails?.currentWar && (
+            <div className="mt-3 pt-3 border-t border-blue-200">
+              <div className="flex items-center space-x-4 text-sm">
+                <div className="flex items-center space-x-1">
+                  <span className="font-medium">Current War:</span>
+                  <span className={`px-2 py-1 rounded-full text-xs ${
+                    snapshotDetails.currentWar.state === 'inWar' 
+                      ? 'bg-orange-100 text-orange-800' 
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {snapshotDetails.currentWar.state}
+                  </span>
+                </div>
+                {snapshotDetails.currentWar.opponent && (
+                  <div className="text-gray-600">
+                    vs {snapshotDetails.currentWar.opponent.name}
+                  </div>
+                )}
+                {snapshotDetails.currentWar.endTime && (
+                  <div className="text-gray-500">
+                    Ends: {new Date(snapshotDetails.currentWar.endTime).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* AI Summary Status Message */}
       {aiSummaryLoading && (
