@@ -150,135 +150,84 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
         )}
 
-        {/* Clan Management - Side by Side */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Home Clan Management */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Home className="w-4 h-4 text-blue-600" />
-              <h3 className="text-base font-semibold text-gray-900">Home Clan Management</h3>
-            </div>
-            
-            <div className="bg-gray-50 rounded-lg p-4 space-y-4 w-full overflow-hidden">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Set Home Clan
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={newHomeClan}
-                    onChange={(e) => setNewHomeClan(e.target.value)}
-                    placeholder="#2PR8R8V8P"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0"
-                  />
-                  <button
-                    onClick={handleSaveHomeClan}
-                    disabled={isLoading}
-                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap"
-                  >
-                    {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save'}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Current home clan: <span className="font-mono">{homeClan || 'None'}</span>
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Quick Actions
-                </label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleLoadHomeClan}
-                    disabled={isLoading || !homeClan}
-                    className="flex-1 px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                  >
-                    Load Home Clan
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNewClanTag(homeClan || '');
-                      setMessage('Home clan tag copied to switch field');
-                    }}
-                    disabled={!homeClan}
-                    className="flex-1 px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
-                  >
-                    Copy to Switch
-                  </button>
-                </div>
-              </div>
-            </div>
+        {/* Default Clan */}
+        <div className="space-y-3">
+          <div className="flex items-center space-x-2">
+            <Home className="w-4 h-4 text-blue-600" />
+            <h3 className="text-base font-semibold text-gray-900">Default Clan</h3>
           </div>
-
-          {/* Clan Switching */}
-          <div className="space-y-3">
-            <div className="flex items-center space-x-2">
-              <Users className="w-4 h-4 text-purple-600" />
-              <h3 className="text-base font-semibold text-gray-900">Clan Switching</h3>
-            </div>
-            
-            <div className="bg-gray-50 rounded-lg p-4 w-full overflow-hidden">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Switch to Clan
-                </label>
-                <div className="flex space-x-2">
-                  <input
-                    type="text"
-                    value={newClanTag}
-                    onChange={(e) => setNewClanTag(e.target.value)}
-                    placeholder="#2PR8R8V8P"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-w-0"
-                  />
-                  <button
-                    onClick={handleSwitchToClan}
-                    disabled={isLoading}
-                    className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap"
-                  >
-                    {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Switch'}
-                  </button>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Current clan: <span className="font-mono">{clanTag || 'None'}</span>
-                </p>
+          
+          <div className="bg-gray-50 rounded-lg p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Set your default clan (loads automatically on refresh)
+              </label>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={newHomeClan}
+                  onChange={(e) => setNewHomeClan(e.target.value)}
+                  placeholder="#2PR8R8V8P"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0"
+                />
+                <button
+                  onClick={handleSaveHomeClan}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save'}
+                </button>
               </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Current default: <span className="font-mono">{homeClan || 'None set'}</span>
+              </p>
             </div>
+
+            {homeClan && (
+              <div>
+                <button
+                  onClick={handleLoadHomeClan}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  Load Default Clan Now
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
-        {/* User Role */}
+        {/* Switch to Different Clan */}
         <div className="space-y-3">
           <div className="flex items-center space-x-2">
-            <Shield className="w-4 h-4 text-orange-600" />
-            <h3 className="text-base font-semibold text-gray-900">User Role</h3>
+            <Users className="w-4 h-4 text-purple-600" />
+            <h3 className="text-base font-semibold text-gray-900">Switch to Different Clan</h3>
           </div>
           
           <div className="bg-gray-50 rounded-lg p-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Your Role
+                Enter any clan tag to view their data
               </label>
-              <select
-                value={newUserRole}
-                onChange={(e) => setNewUserRole(e.target.value as any)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-              >
-                <option value="member">Member</option>
-                <option value="elder">Elder</option>
-                <option value="coLeader">Co-Leader</option>
-                <option value="leader">Leader</option>
-              </select>
+              <div className="flex space-x-2">
+                <input
+                  type="text"
+                  value={newClanTag}
+                  onChange={(e) => setNewClanTag(e.target.value)}
+                  placeholder="#2PR8R8V8P"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-w-0"
+                />
+                <button
+                  onClick={handleSwitchToClan}
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Load Clan'}
+                </button>
+              </div>
               <p className="text-xs text-gray-500 mt-1">
-                Current role: <span className="font-semibold capitalize">{userRole}</span>
+                Currently viewing: <span className="font-mono">{clanTag || 'None'}</span>
               </p>
-              <button
-                onClick={handleSaveUserRole}
-                className="mt-2 px-4 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
-              >
-                Save Role
-              </button>
             </div>
           </div>
         </div>
