@@ -43,28 +43,25 @@ export async function GET(request: NextRequest) {
     const safeTag = safeTagForFilename(clanTag);
     
     try {
-      const { data: snapshots, error } = await cached([
-        'snapshots', 'list', safeTag
-      ], async () => {
-        const { data, error } = await supabase
-          .from('clan_snapshots')
-          .select('snapshot_date, fetched_at, metadata, clan, member_summaries')
-          .eq('clan_tag', safeTag)
-          .order('snapshot_date', { ascending: false });
-        return { data, error } as any;
-      }, 10);
+      // Try new table first
+      const { data: snapshots, error } = await supabase
+        .from('clan_snapshots')
+        .select('snapshot_date, fetched_at, metadata, clan, member_summaries')
+        .eq('clan_tag', safeTag)
+        .order('snapshot_date', { ascending: false });
+
+      let formattedSnapshots: any[] = [];
 
       if (error) {
-        console.error('Database query error:', error);
-        return json({ success: true, data: [] });
+        // New table doesn't exist or has no data, will fallback to legacy
+      } else {
+        formattedSnapshots = snapshots?.map((snapshot: any) => ({
+          date: snapshot.snapshot_date,
+          memberCount: snapshot.metadata?.memberCount ?? snapshot.member_summaries?.length ?? null,
+          clanName: snapshot.clan?.name || null,
+          timestamp: snapshot.fetched_at,
+        })) || [];
       }
-
-      let formattedSnapshots = snapshots?.map((snapshot: any) => ({
-        date: snapshot.snapshot_date,
-        memberCount: snapshot.metadata?.memberCount ?? snapshot.member_summaries?.length ?? null,
-        clanName: snapshot.clan?.name || null,
-        timestamp: snapshot.fetched_at,
-      })) || [];
 
       // Fallback to legacy table if no new snapshots are found
       if (!formattedSnapshots.length) {
