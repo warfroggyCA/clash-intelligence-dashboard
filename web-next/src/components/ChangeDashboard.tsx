@@ -363,7 +363,7 @@ export default function ChangeDashboard({
               <div className="flex items-center space-x-2">
                 <div className={`w-3 h-3 rounded-full ${isDataFresh ? 'bg-green-500' : 'bg-yellow-500'}`}></div>
                 <span className="text-sm font-medium text-gray-700">
-                  Latest Snapshot: {new Date(snapshotMetadata.snapshotDate).toLocaleDateString()}
+                  Latest Snapshot: {snapshotMetadata.snapshotDate ? new Date(snapshotMetadata.snapshotDate).toLocaleDateString() : 'Unknown'}
                 </span>
               </div>
               <div className="text-sm text-gray-600">
@@ -396,7 +396,7 @@ export default function ChangeDashboard({
                 )}
                 {snapshotDetails.currentWar.endTime && (
                   <div className="text-gray-500">
-                    Ends: {new Date(snapshotDetails.currentWar.endTime).toLocaleString()}
+                    Ends: {snapshotDetails.currentWar.endTime ? new Date(snapshotDetails.currentWar.endTime).toLocaleString() : 'Unknown'}
                   </div>
                 )}
               </div>

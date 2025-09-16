@@ -138,7 +138,7 @@ export default function ClanAnalytics() {
                     </span>
                     <div>
                       <p className="font-semibold text-gray-800">{war.opponent?.name || 'Unknown Opponent'}</p>
-                      <p className="text-xs text-gray-500">{new Date(war.endTime).toLocaleDateString()} • Team Size {war.teamSize}</p>
+                      <p className="text-xs text-gray-500">{war.endTime ? new Date(war.endTime).toLocaleDateString() : 'Unknown Date'} • Team Size {war.teamSize}</p>
                     </div>
                   </div>
                   <div className="text-sm text-gray-600">
@@ -181,7 +181,7 @@ export default function ClanAnalytics() {
               {capitalTotals.latest.map((season, index) => (
                 <div key={`${season.endTime}-${index}`} className="bg-slate-50 border border-slate-200 rounded-xl p-4">
                   <p className="text-xs text-slate-500 uppercase tracking-wide">Season End</p>
-                  <p className="text-sm font-semibold text-slate-800">{new Date(season.endTime).toLocaleDateString()}</p>
+                  <p className="text-sm font-semibold text-slate-800">{season.endTime ? new Date(season.endTime).toLocaleDateString() : 'Unknown Date'}</p>
                   <div className="mt-2 text-xs text-slate-600 space-y-1">
                     <p>Hall Level {season.capitalHallLevel}</p>
                     <p>State: {season.state || 'Unknown'}</p>

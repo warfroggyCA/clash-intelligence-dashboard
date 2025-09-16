@@ -215,7 +215,7 @@ const useQuickActions = () => {
       if (snapshotDetails?.warLog?.length) {
         lines.push('## Recent War Log');
         snapshotDetails.warLog.slice(0, 3).forEach((entry, idx) => {
-          const end = new Date(entry.endTime).toLocaleDateString();
+          const end = entry.endTime ? new Date(entry.endTime).toLocaleDateString() : 'Unknown Date';
           lines.push(`- ${end}: ${entry.result || 'Unknown'} vs ${entry.opponent.name} (${entry.teamSize}x${entry.attacksPerMember})`);
         });
         lines.push('');
@@ -224,7 +224,7 @@ const useQuickActions = () => {
       if (snapshotDetails?.capitalRaidSeasons?.length) {
         lines.push('## Capital Raids');
         snapshotDetails.capitalRaidSeasons.slice(0, 2).forEach((season) => {
-          const end = new Date(season.endTime).toLocaleDateString();
+          const end = season.endTime ? new Date(season.endTime).toLocaleDateString() : 'Unknown Date';
           lines.push(
             `- ${end}: Hall ${season.capitalHallLevel} – ${season.state || 'unknown'}, Offensive ${season.offensiveLoot.toLocaleString()}, Defensive ${season.defensiveLoot.toLocaleString()}`
           );
@@ -287,7 +287,7 @@ const useQuickActions = () => {
           
           snapshotDetails.warLog.forEach(war => {
             const row = [
-              new Date(war.endTime).toLocaleDateString(),
+              war.endTime ? new Date(war.endTime).toLocaleDateString() : 'Unknown Date',
               war.result || 'Unknown',
               `"${war.opponent.name}"`,
               war.opponent.tag,
