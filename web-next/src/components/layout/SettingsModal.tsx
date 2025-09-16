@@ -170,12 +170,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     value={newHomeClan}
                     onChange={(e) => setNewHomeClan(e.target.value)}
                     placeholder="#2PR8R8V8P"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent min-w-0"
                   />
                   <button
                     onClick={handleSaveHomeClan}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap"
                   >
                     {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Save'}
                   </button>
@@ -189,11 +189,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Quick Actions
                 </label>
-                <div className="flex space-x-2">
+                <div className="flex flex-wrap gap-2">
                   <button
                     onClick={handleLoadHomeClan}
                     disabled={isLoading || !homeClan}
-                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                   >
                     Load Home Clan
                   </button>
@@ -203,7 +203,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                       setMessage('Home clan tag copied to switch field');
                     }}
                     disabled={!homeClan}
-                    className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
                   >
                     Copy to Switch
                   </button>
@@ -230,12 +230,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     value={newClanTag}
                     onChange={(e) => setNewClanTag(e.target.value)}
                     placeholder="#2PR8R8V8P"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent min-w-0"
                   />
                   <button
                     onClick={handleSwitchToClan}
                     disabled={isLoading}
-                    className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-3 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm whitespace-nowrap"
                   >
                     {isLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'Switch'}
                   </button>
