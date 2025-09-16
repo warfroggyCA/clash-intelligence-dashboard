@@ -45,6 +45,9 @@ export interface FullClanSnapshot {
     warLogEntries: number;
     capitalSeasons: number;
     version: string;
+    snapshotDate?: string;
+    fetchedAt?: string;
+    clanName?: string | null;
   };
 }
 
@@ -112,9 +115,11 @@ export async function fetchFullClanSnapshot(
     };
   });
 
+  const fetchedAt = new Date().toISOString();
+
   return {
     clanTag: normalizedTag,
-    fetchedAt: new Date().toISOString(),
+    fetchedAt,
     clan,
     memberSummaries,
     playerDetails,
@@ -126,6 +131,9 @@ export async function fetchFullClanSnapshot(
       warLogEntries: warLog.length,
       capitalSeasons: capitalRaidSeasons.length,
       version: SNAPSHOT_VERSION,
+      snapshotDate: fetchedAt.slice(0, 10),
+      fetchedAt,
+      clanName: clan?.name ?? null,
     },
   };
 }

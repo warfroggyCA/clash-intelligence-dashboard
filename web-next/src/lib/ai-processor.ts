@@ -46,6 +46,7 @@ export interface ClanDNAInsights {
 export interface BatchAIResults {
   timestamp: string;
   clanTag: string;
+  date?: string;
   changeSummary?: AISummaryAnalysis;
   coachingAdvice?: AICoachingAdvice[];
   playerDNAInsights?: PlayerDNAInsights[];
@@ -81,6 +82,7 @@ export class AIProcessor {
     const results: BatchAIResults = {
       timestamp: new Date().toISOString(),
       clanTag,
+      date,
     };
 
     if (!this.isConfigured) {

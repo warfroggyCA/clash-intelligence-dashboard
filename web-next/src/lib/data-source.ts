@@ -3,7 +3,7 @@
 
 import { cfg } from './config';
 import { normalizeTag, safeTagForFilename } from './tags';
-import { DailySnapshot, ChangeSummary } from './snapshots';
+import { DailySnapshot, ChangeSummary, convertFullSnapshotToDailySnapshot } from './snapshots';
 import { promises as fsp } from 'fs';
 import path from 'path';
 
@@ -119,7 +119,36 @@ class SupabaseDataSource {
       const { supabase } = await import('@/lib/supabase');
       const safeTag = safeTagForFilename(clanTag);
       
-      const { data: snapshotData, error } = await supabase
+      const { data: record, error } = await supabase
+        .from('clan_snapshots')
+        .select('clan_tag, fetched_at, snapshot_date, clan, member_summaries, player_details, current_war, war_log, capital_seasons, metadata')
+        .eq('clan_tag', safeTag)
+        .order('snapshot_date', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!error && record) {
+        const fullSnapshot = {
+          clanTag: normalizeTag(record.clan_tag),
+          fetchedAt: record.fetched_at,
+          clan: record.clan,
+          memberSummaries: record.member_summaries,
+          playerDetails: record.player_details,
+          currentWar: record.current_war,
+          warLog: record.war_log,
+          capitalRaidSeasons: record.capital_seasons,
+          metadata: record.metadata,
+        };
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+
+      const isNotFound = error?.code === 'PGRST116';
+      if (error && !isNotFound) {
+        console.error('Failed to load clan_snapshots record:', error);
+      }
+
+      // Fallback to legacy snapshots table (pre full snapshot migration)
+      const { data: snapshotData, error: legacyError } = await supabase
         .from('snapshots')
         .select('*')
         .eq('clan_tag', safeTag)
@@ -127,7 +156,7 @@ class SupabaseDataSource {
         .limit(1)
         .single();
       
-      if (error || !snapshotData) {
+      if (legacyError || !snapshotData) {
         return null;
       }
       
@@ -148,16 +177,44 @@ class SupabaseDataSource {
     try {
       const { supabase } = await import('@/lib/supabase');
       const safeTag = safeTagForFilename(clanTag);
-      const filename = `${safeTag}_${date}.json`;
       
-      const { data: snapshotData, error } = await supabase
+      const { data: record, error } = await supabase
+        .from('clan_snapshots')
+        .select('clan_tag, fetched_at, snapshot_date, clan, member_summaries, player_details, current_war, war_log, capital_seasons, metadata')
+        .eq('clan_tag', safeTag)
+        .eq('snapshot_date', date)
+        .single();
+
+      if (!error && record) {
+        const fullSnapshot = {
+          clanTag: normalizeTag(record.clan_tag),
+          fetchedAt: record.fetched_at,
+          clan: record.clan,
+          memberSummaries: record.member_summaries,
+          playerDetails: record.player_details,
+          currentWar: record.current_war,
+          warLog: record.war_log,
+          capitalRaidSeasons: record.capital_seasons,
+          metadata: record.metadata,
+        };
+        return convertFullSnapshotToDailySnapshot(fullSnapshot);
+      }
+
+      const isNotFound = error?.code === 'PGRST116';
+      if (error && !isNotFound) {
+        console.error('Failed to load clan_snapshots record:', error);
+      }
+
+      // Fallback to legacy snapshots storage
+      const filename = `${safeTag}_${date}.json`;
+      const { data: snapshotData, error: legacyError } = await supabase
         .from('snapshots')
         .select('file_url')
         .eq('clan_tag', safeTag)
         .eq('filename', filename)
         .single();
       
-      if (error || !snapshotData) {
+      if (legacyError || !snapshotData) {
         return null;
       }
       

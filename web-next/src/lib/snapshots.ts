@@ -90,7 +90,7 @@ function ymdToday(): string {
 }
 
 // Convert FullClanSnapshot to DailySnapshot format for backward compatibility
-function convertFullSnapshotToDailySnapshot(fullSnapshot: FullClanSnapshot): DailySnapshot & { fullSnapshot?: FullClanSnapshot } {
+export function convertFullSnapshotToDailySnapshot(fullSnapshot: FullClanSnapshot): DailySnapshot & { fullSnapshot?: FullClanSnapshot } {
   const members: Member[] = fullSnapshot.memberSummaries.map((summary: MemberSummary) => {
     // Get detailed player data if available
     const playerDetail = fullSnapshot.playerDetails[summary.tag];

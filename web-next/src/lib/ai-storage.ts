@@ -4,6 +4,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { BatchAIResults, PlayerDNAInsights } from './ai-processor';
 import { calculatePlayerDNA, classifyPlayerArchetype } from './player-dna';
+import { normalizeTag, safeTagForFilename } from './tags';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -38,13 +39,17 @@ export interface StoredPlayerDNA {
 
 export async function saveBatchAIResults(results: BatchAIResults): Promise<boolean> {
   try {
-    console.log(`[AI Storage] Saving batch AI results for ${results.clanTag} on ${results.clanTag}`);
-    
+    const normalizedClanTag = normalizeTag(results.clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+    const resultDate = results.date || (results.timestamp ? results.timestamp.slice(0, 10) : new Date().toISOString().slice(0, 10));
+
+    console.log(`[AI Storage] Saving batch AI results for ${normalizedClanTag} on ${resultDate}`);
+
     const { error } = await supabase
       .from('batch_ai_results')
       .upsert({
-        clan_tag: results.clanTag,
-        date: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+        clan_tag: safeTag,
+        date: resultDate,
         timestamp: results.timestamp,
         change_summary: results.changeSummary || null,
         coaching_advice: results.coachingAdvice || null,
@@ -73,24 +78,42 @@ export async function saveBatchAIResults(results: BatchAIResults): Promise<boole
 
 export async function getLatestBatchAIResults(clanTag: string): Promise<StoredBatchAIResults | null> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+
     const { data, error } = await supabase
       .from('batch_ai_results')
       .select('*')
-      .eq('clan_tag', clanTag)
+      .eq('clan_tag', safeTag)
       .order('created_at', { ascending: false })
       .limit(1)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows found
-        return null;
+    let record = data;
+    let queryError = error;
+
+    if ((!record || queryError?.code === 'PGRST116') && normalizedClanTag) {
+      const fallback = await supabase
+        .from('batch_ai_results')
+        .select('*')
+        .eq('clan_tag', normalizedClanTag)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+      record = fallback.data || record;
+      if (!record && fallback.error && fallback.error.code !== 'PGRST116') {
+        queryError = fallback.error;
+      } else if (record) {
+        queryError = null;
       }
-      console.error('[AI Storage] Error fetching batch AI results:', error);
+    }
+
+    if (queryError && queryError.code !== 'PGRST116') {
+      console.error('[AI Storage] Error fetching batch AI results:', queryError);
       return null;
     }
 
-    return data;
+    return record || null;
   } catch (error) {
     console.error('[AI Storage] Exception fetching batch AI results:', error);
     return null;
@@ -99,23 +122,38 @@ export async function getLatestBatchAIResults(clanTag: string): Promise<StoredBa
 
 export async function getBatchAIResultsByDate(clanTag: string, date: string): Promise<StoredBatchAIResults | null> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+
     const { data, error } = await supabase
       .from('batch_ai_results')
       .select('*')
-      .eq('clan_tag', clanTag)
+      .eq('clan_tag', safeTag)
       .eq('date', date)
       .single();
 
-    if (error) {
-      if (error.code === 'PGRST116') {
-        // No rows found
+    if (!data && (!error || error.code === 'PGRST116') && normalizedClanTag) {
+      const fallback = await supabase
+        .from('batch_ai_results')
+        .select('*')
+        .eq('clan_tag', normalizedClanTag)
+        .eq('date', date)
+        .single();
+      if (fallback.data) {
+        return fallback.data;
+      }
+      if (fallback.error && fallback.error.code !== 'PGRST116') {
+        console.error('[AI Storage] Error fetching legacy batch AI results by date:', fallback.error);
         return null;
       }
+    }
+
+    if (error && error.code !== 'PGRST116') {
       console.error('[AI Storage] Error fetching batch AI results by date:', error);
       return null;
     }
 
-    return data;
+    return data || null;
   } catch (error) {
     console.error('[AI Storage] Exception fetching batch AI results by date:', error);
     return null;
@@ -130,10 +168,13 @@ export async function savePlayerDNACache(
   archetype: string
 ): Promise<boolean> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+
     const { error } = await supabase
       .from('player_dna_cache')
       .upsert({
-        clan_tag: clanTag,
+        clan_tag: safeTag,
         player_tag: playerTag,
         date,
         dna_profile: dnaProfile,
@@ -156,10 +197,13 @@ export async function savePlayerDNACache(
 
 export async function getPlayerDNACache(clanTag: string, date?: string): Promise<StoredPlayerDNA[]> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+
     let query = supabase
       .from('player_dna_cache')
       .select('*')
-      .eq('clan_tag', clanTag)
+      .eq('clan_tag', safeTag)
       .order('created_at', { ascending: false });
 
     if (date) {
@@ -168,7 +212,26 @@ export async function getPlayerDNACache(clanTag: string, date?: string): Promise
 
     const { data, error } = await query.limit(50);
 
-    if (error) {
+    if ((!data || data.length === 0) && (!error || error.code === 'PGRST116') && normalizedClanTag) {
+      let fallback = supabase
+        .from('player_dna_cache')
+        .select('*')
+        .eq('clan_tag', normalizedClanTag)
+        .order('created_at', { ascending: false });
+      if (date) {
+        fallback = fallback.eq('date', date);
+      }
+      const fallbackResult = await fallback.limit(50);
+      if (!fallbackResult.error) {
+        return fallbackResult.data || [];
+      }
+      if (fallbackResult.error.code !== 'PGRST116') {
+        console.error('[AI Storage] Error fetching legacy player DNA cache:', fallbackResult.error);
+        return [];
+      }
+    }
+
+    if (error && error.code !== 'PGRST116') {
       console.error('[AI Storage] Error fetching player DNA cache:', error);
       return [];
     }
@@ -182,15 +245,35 @@ export async function getPlayerDNACache(clanTag: string, date?: string): Promise
 
 export async function getPlayerDNACacheByPlayer(clanTag: string, playerTag: string): Promise<StoredPlayerDNA[]> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+
     const { data, error } = await supabase
       .from('player_dna_cache')
       .select('*')
-      .eq('clan_tag', clanTag)
+      .eq('clan_tag', safeTag)
       .eq('player_tag', playerTag)
       .order('created_at', { ascending: false })
       .limit(10);
 
-    if (error) {
+    if ((!data || data.length === 0) && (!error || error.code === 'PGRST116') && normalizedClanTag) {
+      const fallback = await supabase
+        .from('player_dna_cache')
+        .select('*')
+        .eq('clan_tag', normalizedClanTag)
+        .eq('player_tag', playerTag)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (!fallback.error) {
+        return fallback.data || [];
+      }
+      if (fallback.error.code !== 'PGRST116') {
+        console.error('[AI Storage] Error fetching legacy player DNA cache by player:', fallback.error);
+        return [];
+      }
+    }
+
+    if (error && error.code !== 'PGRST116') {
       console.error('[AI Storage] Error fetching player DNA cache by player:', error);
       return [];
     }
@@ -231,14 +314,33 @@ export async function cachePlayerDNAForClan(clanData: any, clanTag: string, date
 
 export async function getBatchAIResultsHistory(clanTag: string, limit: number = 10): Promise<StoredBatchAIResults[]> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+
     const { data, error } = await supabase
       .from('batch_ai_results')
       .select('*')
-      .eq('clan_tag', clanTag)
+      .eq('clan_tag', safeTag)
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (error) {
+    if ((!data || data.length === 0) && (!error || error.code === 'PGRST116') && normalizedClanTag) {
+      const fallback = await supabase
+        .from('batch_ai_results')
+        .select('*')
+        .eq('clan_tag', normalizedClanTag)
+        .order('created_at', { ascending: false })
+        .limit(limit);
+      if (!fallback.error) {
+        return fallback.data || [];
+      }
+      if (fallback.error.code !== 'PGRST116') {
+        console.error('[AI Storage] Error fetching legacy batch AI history:', fallback.error);
+        return [];
+      }
+    }
+
+    if (error && error.code !== 'PGRST116') {
       console.error('[AI Storage] Error fetching batch AI results history:', error);
       return [];
     }
@@ -252,6 +354,8 @@ export async function getBatchAIResultsHistory(clanTag: string, limit: number = 
 
 export async function deleteOldBatchAIResults(clanTag: string, daysToKeep: number = 30): Promise<number> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - daysToKeep);
     const cutoffDateStr = cutoffDate.toISOString().split('T')[0];
@@ -259,16 +363,32 @@ export async function deleteOldBatchAIResults(clanTag: string, daysToKeep: numbe
     const { data, error } = await supabase
       .from('batch_ai_results')
       .delete()
-      .eq('clan_tag', clanTag)
+      .eq('clan_tag', safeTag)
       .lt('date', cutoffDateStr)
       .select('id');
 
-    if (error) {
-      console.error('[AI Storage] Error deleting old batch AI results:', error);
-      return 0;
+    let deletedCount = data?.length || 0;
+
+    if ((!data || data.length === 0) && (!error || error.code === 'PGRST116') && normalizedClanTag) {
+      const fallback = await supabase
+        .from('batch_ai_results')
+        .delete()
+        .eq('clan_tag', normalizedClanTag)
+        .lt('date', cutoffDateStr)
+        .select('id');
+      if (!fallback.error) {
+        deletedCount += fallback.data?.length || 0;
+      } else if (fallback.error.code !== 'PGRST116') {
+        console.error('[AI Storage] Error deleting legacy batch AI results:', fallback.error);
+        return deletedCount;
+      }
     }
 
-    const deletedCount = data?.length || 0;
+    if (error && error.code !== 'PGRST116') {
+      console.error('[AI Storage] Error deleting old batch AI results:', error);
+      return deletedCount;
+    }
+
     console.log(`[AI Storage] Deleted ${deletedCount} old batch AI results for ${clanTag}`);
     return deletedCount;
   } catch (error) {
@@ -284,15 +404,36 @@ export async function getAIInsightsSummary(clanTag: string): Promise<{
   errorRate: number;
 }> {
   try {
+    const normalizedClanTag = normalizeTag(clanTag);
+    const safeTag = safeTagForFilename(normalizedClanTag);
+
     const { data, error } = await supabase
       .from('batch_ai_results')
       .select('date, error, created_at')
-      .eq('clan_tag', clanTag)
+      .eq('clan_tag', safeTag)
       .order('created_at', { ascending: false })
       .limit(30);
 
-    if (error) {
-      console.error('[AI Storage] Error fetching AI insights summary:', error);
+    let queryResults = data || [];
+    let queryError = error;
+
+    if ((queryResults.length === 0) && (!queryError || queryError.code === 'PGRST116') && normalizedClanTag) {
+      const fallback = await supabase
+        .from('batch_ai_results')
+        .select('date, error, created_at')
+        .eq('clan_tag', normalizedClanTag)
+        .order('created_at', { ascending: false })
+        .limit(30);
+      if (!fallback.error) {
+        queryResults = fallback.data || [];
+        queryError = null;
+      } else if (fallback.error.code !== 'PGRST116') {
+        queryError = fallback.error;
+      }
+    }
+
+    if (queryError && queryError.code !== 'PGRST116') {
+      console.error('[AI Storage] Error fetching AI insights summary:', queryError);
       return {
         hasRecentAI: false,
         lastAIDate: null,
@@ -301,7 +442,7 @@ export async function getAIInsightsSummary(clanTag: string): Promise<{
       };
     }
 
-    const results = data || [];
+    const results = queryResults;
     const hasRecentAI = results.length > 0;
     const lastAIDate = results.length > 0 ? results[0].date : null;
     const totalInsights = results.length;
@@ -335,9 +476,23 @@ export function generateSnapshotSummary(
   const parts: string[] = [];
   
   // Basic snapshot info
-  parts.push(`Snapshot date: ${snapshotMetadata.snapshotDate}`);
-  parts.push(`Fetched: ${new Date(snapshotMetadata.fetchedAt).toLocaleString()}`);
-  parts.push(`Members: ${snapshotMetadata.memberCount}`);
+  const snapshotDate = snapshotMetadata.snapshotDate || snapshotMetadata.date;
+  const fetchedAt = snapshotMetadata.fetchedAt;
+  const memberCount = snapshotMetadata.memberCount;
+  const clanName = snapshotMetadata.clanName;
+
+  if (snapshotDate) {
+    parts.push(`Snapshot date: ${snapshotDate}`);
+  }
+  if (fetchedAt) {
+    parts.push(`Fetched: ${new Date(fetchedAt).toLocaleString()}`);
+  }
+  if (typeof memberCount === 'number') {
+    parts.push(`Members: ${memberCount}`);
+  }
+  if (clanName) {
+    parts.push(`Clan: ${clanName}`);
+  }
   
   // Data freshness
   if (dataAgeHours !== undefined) {

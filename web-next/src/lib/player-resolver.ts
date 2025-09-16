@@ -2,9 +2,10 @@
 import { promises as fsp } from 'fs';
 import path from 'path';
 import { cfg } from './config';
-import { safeTagForFilename } from './tags';
+import { normalizeTag, safeTagForFilename } from './tags';
 import { getSupabaseAdminClient } from './supabase-admin';
 import type { DailySnapshot } from './snapshots';
+import { convertFullSnapshotToDailySnapshot } from './snapshots';
 
 export interface PlayerNote {
   timestamp: string;
@@ -138,32 +139,68 @@ async function loadRecentSnapshots(safeTag: string, limit = 30): Promise<DailySn
     try {
       const supabase = getSupabaseAdminClient();
       const { data, error } = await supabase
-        .from('snapshots')
-        .select('filename, file_url, date')
+        .from('clan_snapshots')
+        .select('clan_tag, fetched_at, snapshot_date, clan, member_summaries, player_details, current_war, war_log, capital_seasons, metadata')
         .eq('clan_tag', safeTag)
-        .order('date', { ascending: false })
+        .order('snapshot_date', { ascending: false })
         .limit(limit);
-      if (!error && data) {
-        for (const row of data as any[]) {
+
+      if (!error && data?.length) {
+        for (const record of data as any[]) {
           try {
-            let json: DailySnapshot | null = null;
-            if (row.file_url) {
-              const response = await fetch(row.file_url);
-              if (response.ok) {
-                json = await response.json();
-              }
-            }
-            if (!json) {
-              const { data: fileData } = await supabase.storage.from('snapshots').download(row.filename);
-              if (fileData) {
-                const text = await fileData.text();
-                json = JSON.parse(text);
-              }
-            }
-            if (json) snapshots.push(json);
+            const fullSnapshot = {
+              clanTag: normalizeTag(record.clan_tag),
+              fetchedAt: record.fetched_at,
+              clan: record.clan,
+              memberSummaries: record.member_summaries,
+              playerDetails: record.player_details,
+              currentWar: record.current_war,
+              warLog: record.war_log,
+              capitalRaidSeasons: record.capital_seasons,
+              metadata: record.metadata,
+            };
+            const daily = convertFullSnapshotToDailySnapshot(fullSnapshot);
+            snapshots.push(daily);
           } catch (error) {
-            console.warn('[PlayerResolver] Failed to load Supabase snapshot:', error);
+            console.warn('[PlayerResolver] Failed to parse Supabase clan snapshot:', error);
           }
+        }
+      } else {
+        if (error && error.code !== 'PGRST116') {
+          console.error('[PlayerResolver] Failed to load clan_snapshots:', error);
+        }
+
+        // Fallback to legacy snapshots bucket if needed
+        const { data: legacyData, error: legacyError } = await supabase
+          .from('snapshots')
+          .select('filename, file_url, date')
+          .eq('clan_tag', safeTag)
+          .order('date', { ascending: false })
+          .limit(limit);
+        if (!legacyError && legacyData) {
+          for (const row of legacyData as any[]) {
+            try {
+              let json: DailySnapshot | null = null;
+              if (row.file_url) {
+                const response = await fetch(row.file_url);
+                if (response.ok) {
+                  json = await response.json();
+                }
+              }
+              if (!json) {
+                const { data: fileData } = await supabase.storage.from('snapshots').download(row.filename);
+                if (fileData) {
+                  const text = await fileData.text();
+                  json = JSON.parse(text);
+                }
+              }
+              if (json) snapshots.push(json);
+            } catch (error) {
+              console.warn('[PlayerResolver] Failed to load legacy Supabase snapshot:', error);
+            }
+          }
+        } else if (legacyError && legacyError.code !== 'PGRST116') {
+          console.error('[PlayerResolver] Failed to load legacy snapshots:', legacyError);
         }
       }
     } catch (error) {
