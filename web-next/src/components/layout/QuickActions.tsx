@@ -48,7 +48,6 @@ const useQuickActions = () => {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isCopyingData, setIsCopyingData] = useState(false);
   const [isCopyingSnapshot, setIsCopyingSnapshot] = useState(false);
-  const [isCopyingDiscord, setIsCopyingDiscord] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -247,73 +246,6 @@ const useQuickActions = () => {
     }
   };
 
-  const handleCopyForDiscord = async () => {
-    if (!snapshotMetadata) {
-      setMessage('No snapshot metadata available yet');
-      return;
-    }
-
-    setIsCopyingDiscord(true);
-    try {
-      const lines: string[] = [];
-      const snapshotDate = new Date(snapshotMetadata.snapshotDate);
-      const fmtDate = snapshotDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-
-      // Discord-friendly header with emoji
-      lines.push(`🏰 **Clan Snapshot - ${fmtDate}**`);
-      if (roster?.clanName) {
-        lines.push(`**Clan:** ${roster.clanName} (${snapshotMetadata.version})`);
-      }
-      lines.push(`**Members:** ${snapshotMetadata.memberCount}`);
-      lines.push('');
-
-      if (snapshotDetails?.currentWar) {
-        const war = snapshotDetails.currentWar;
-        const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
-        lines.push('⚔️ **Current War**');
-        lines.push(`• State: ${war.state || 'unknown'}`);
-        lines.push(`• Team Size: ${war.teamSize}${war.attacksPerMember ? ` x${war.attacksPerMember}` : ''}`);
-        lines.push(`• Opponent: ${opponent}`);
-        if (war.startTime) lines.push(`• Starts: ${new Date(war.startTime).toLocaleString()}`);
-        if (war.endTime) lines.push(`• Ends: ${new Date(war.endTime).toLocaleString()}`);
-        lines.push('');
-      }
-
-      if (snapshotDetails?.warLog?.length) {
-        lines.push('📊 **Recent Wars**');
-        snapshotDetails.warLog.slice(0, 3).forEach((entry) => {
-          const end = new Date(entry.endTime).toLocaleDateString();
-          const result = entry.result === 'WIN' ? '✅' : entry.result === 'LOSE' ? '❌' : '❓';
-          lines.push(`• ${end}: ${result} vs ${entry.opponent.name} (${entry.teamSize}x${entry.attacksPerMember})`);
-        });
-        lines.push('');
-      }
-
-      if (snapshotDetails?.capitalRaidSeasons?.length) {
-        lines.push('🏛️ **Capital Raids**');
-        snapshotDetails.capitalRaidSeasons.slice(0, 2).forEach((season) => {
-          const end = new Date(season.endTime).toLocaleDateString();
-          lines.push(
-            `• ${end}: Hall ${season.capitalHallLevel} – ${season.state || 'unknown'}, Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()}`
-          );
-        });
-        lines.push('');
-      }
-
-      lines.push('---');
-      lines.push(`*Generated from nightly snapshot v${snapshotMetadata.version}*`);
-      
-      await navigator.clipboard.writeText(lines.join('\n'));
-      setMessage('Discord summary copied to clipboard!');
-      setStatus('success');
-    } catch (error) {
-      console.error('Failed to copy Discord summary:', error);
-      setMessage('Failed to copy Discord summary');
-      setStatus('error');
-    } finally {
-      setIsCopyingDiscord(false);
-    }
-  };
 
   const handleExportSnapshot = async (format: 'json' | 'csv') => {
     if (!snapshotMetadata || !snapshotDetails) {
@@ -393,12 +325,10 @@ const useQuickActions = () => {
     handleGenerateAISummary,
     handleRefreshData,
     handleCopySnapshotSummary,
-    handleCopyForDiscord,
     handleExportSnapshot,
     isGeneratingSummary,
     isCopyingData,
     isCopyingSnapshot,
-    isCopyingDiscord,
     isExporting,
     isRefreshing,
     hasData: !!roster,
@@ -436,12 +366,10 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     handleGenerateAISummary,
     handleRefreshData,
     handleCopySnapshotSummary,
-    handleCopyForDiscord,
     handleExportSnapshot,
     isGeneratingSummary,
     isCopyingData,
     isCopyingSnapshot,
-    isCopyingDiscord,
     isExporting,
     isRefreshing,
     hasData,
@@ -462,7 +390,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             disabled={!hasData || isCopyingData}
             loading={isCopyingData}
             className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
-            title="Copy all clan data to clipboard for LLM analysis"
+            title="Copy raw member data (JSON format) for analysis"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-teal-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
             <span className="relative flex items-center gap-2">
@@ -501,31 +429,14 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             disabled={!hasData || isCopyingSnapshot}
             loading={isCopyingSnapshot}
             className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
-            title="Copy nightly snapshot summary for sharing"
+            title="Copy snapshot summary (war status, capital raids, etc.)"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
             <span className="relative flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9a2 2 0 012-2h2m3-3h6m-6 0a2 2 0 012-2h2a2 2 0 012 2m-6 0v3m6-3v3"></path>
               </svg>
-              Copy Snapshot Summary
-            </span>
-          </Button>
-
-          {/* Discord Copy Button */}
-          <Button
-            onClick={handleCopyForDiscord}
-            disabled={!hasData || isCopyingDiscord}
-            loading={isCopyingDiscord}
-            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-indigo-500 to-indigo-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-indigo-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
-            title="Copy Discord-friendly snapshot summary"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-indigo-400 to-indigo-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-            <span className="relative flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-              </svg>
-              Copy for Discord
+              Copy Summary
             </span>
           </Button>
 
