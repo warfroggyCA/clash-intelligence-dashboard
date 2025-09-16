@@ -159,6 +159,7 @@ interface DashboardState {
   setShowDepartureManager: (show: boolean) => void;
   setShowDepartureModal: (show: boolean) => void;
   setShowPlayerProfile: (show: boolean) => void;
+  setShowSettings: (show: boolean) => void;
   setSelectedMember: (member: Member | null) => void;
   setSelectedPlayer: (member: Member | null) => void;
   
