@@ -204,131 +204,309 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
   const recColor = (rec?: string) => rec === 'Excellent' ? 'text-emerald-700' : rec === 'Good' ? 'text-green-700' : rec === 'Fair' ? 'text-amber-700' : 'text-rose-700';
 
   return (
-    <div className="container mx-auto px-6 py-8 max-w-4xl">
-      <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow">
-        <h2 className="text-2xl font-semibold mb-4">Evaluate Applicant</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <div className="md:col-span-2">
-            <label className="text-sm text-gray-600 inline-flex items-center gap-1">Player Tag
-              <Info className="w-3.5 h-3.5 text-gray-400" />
-            </label>
-            <input className="mt-1 w-full border rounded px-3 py-2" placeholder="#XXXXXXXX" value={tag} onChange={e => setTag(e.target.value)} />
-            <p className="mt-1 text-xs text-gray-500">Clan context defaults to your current clan for fit scoring.</p>
-          </div>
-          <div className="flex items-end">
-            <button onClick={onEvaluate} disabled={loading || !tag.trim()} className="w-full md:w-auto inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50" title="Fetch player data and compute evaluation">
-              {loading ? 'Evaluating…' : 'Evaluate'}
-            </button>
-          </div>
+    <div className="container mx-auto px-6 py-8 max-w-6xl">
+      <div className="space-y-8">
+        {/* Header */}
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Applicant Management</h1>
+          <p className="text-gray-600">Evaluate individual players, build shortlists, and scan external clans for potential recruits</p>
         </div>
-        {error && <div className="text-rose-700 text-sm mb-2">{error}</div>}
-        {result && (
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <div className="text-lg font-medium">{result.applicant?.name} <span className="text-gray-500">({result.applicant?.tag})</span></div>
-                <div className="text-sm text-gray-600">TH {result.applicant?.townHallLevel ?? '—'} • Trophies {result.applicant?.trophies ?? '—'} • Rush {result?.applicant ? computeRushPercent(result.applicant) : 0}%</div>
-              </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold">{result.evaluation.score}</div>
-                <div className={`text-sm font-medium ${recColor(result.evaluation.recommendation)}`}>{result.evaluation.recommendation}</div>
-              </div>
+
+        {/* Evaluate Applicant Section */}
+        <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-lg border border-gray-200">
+          <div className="flex items-center space-x-2 mb-6">
+            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
+              <span className="text-emerald-600 font-bold">1</span>
             </div>
-            <div className="mb-3 flex flex-wrap gap-2 items-center">
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600 inline-flex items-center gap-1">Status
-                  <Info className="w-3.5 h-3.5 text-gray-400" />
-                </label>
-                <select value={status} onChange={e => setStatus(e.target.value)} className="border rounded px-2 py-1 text-sm">
-                  <option value="shortlisted">Shortlisted</option>
-                  <option value="consider-later">Consider Later</option>
-                  <option value="hired">Hired</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
-              <button onClick={onSaveToPlayerDB} disabled={saved} className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50" title="Save this evaluation as a note in Player Database (localStorage)">
-                {saved ? 'Saved' : 'Save to Player DB'}
-              </button>
-              <button onClick={onCopyDiscord} className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700" title="Copy a Discord-ready blurb with score, rush %, and highlights">
-                {copied ? 'Copied!' : 'Copy Discord Blurb'}
-              </button>
-              {saved && <span className="text-sm text-green-700 self-center">Saved locally. View in Player Database tab.</span>}
+            <h2 className="text-xl font-semibold text-gray-900">Evaluate Individual Applicant</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+            <div className="lg:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Player Tag
+                <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+              </label>
+              <input 
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-transparent" 
+                placeholder="#XXXXXXXX" 
+                value={tag} 
+                onChange={e => setTag(e.target.value)} 
+              />
+              <p className="mt-2 text-sm text-gray-500">Clan context defaults to your current clan for fit scoring</p>
             </div>
-            <div className="divide-y rounded border">
-              {result.evaluation.breakdown.map((b, i) => (
-                <div key={i} className="flex items-start justify-between p-3">
-                  <div>
-                    <div className="font-medium">{b.category}</div>
-                    <div className="text-xs text-gray-600">{b.details}</div>
-                  </div>
-                  <div className="text-sm text-gray-800">{b.points} / {b.maxPoints}</div>
-                </div>
-              ))}
+            <div className="flex items-end">
+              <button 
+                onClick={onEvaluate} 
+                disabled={loading || !tag.trim()} 
+                className="w-full lg:w-auto inline-flex items-center justify-center px-6 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors" 
+                title="Fetch player data and compute evaluation"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Evaluating…
+                  </>
+                ) : (
+                  'Evaluate Player'
+                )}
+              </button>
             </div>
           </div>
-        )}
+          {error && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+              <div className="text-red-700 text-sm">{error}</div>
+            </div>
+          )}
+          
+          {result && (
+            <div className="bg-gray-50 rounded-lg p-6">
+              {/* Player Header */}
+              <div className="flex items-start justify-between mb-6">
+                <div className="flex-1">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    {result.applicant?.name} 
+                    <span className="text-gray-500 font-normal">({result.applicant?.tag})</span>
+                  </h3>
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                    <span>TH {result.applicant?.townHallLevel ?? '—'}</span>
+                    <span>Trophies {result.applicant?.trophies ?? '—'}</span>
+                    <span>Rush {result?.applicant ? computeRushPercent(result.applicant) : 0}%</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-4xl font-bold text-gray-900">{result.evaluation.score}</div>
+                  <div className={`text-lg font-semibold ${recColor(result.evaluation.recommendation)}`}>
+                    {result.evaluation.recommendation}
+                  </div>
+                </div>
+              </div>
 
-        <div className="mt-10">
-          <h3 className="text-lg font-semibold mb-2">Shortlist Builder</h3>
-          <p className="text-sm text-gray-600 mb-3">Build a ranked shortlist from locally saved candidates (status: shortlisted/consider-later). Apply filters to refine results.</p>
-          <div className="flex flex-wrap items-end gap-3 mb-3">
-            <div>
-              <label className="text-sm text-gray-600">Top N</label>
-              <input type="number" min={1} max={50} value={topN} onChange={e => setTopN(Math.min(50, Math.max(1, Number(e.target.value)||10)))} className="mt-1 w-24 border rounded px-2 py-1" />
+              {/* Action Buttons */}
+              <div className="flex flex-wrap gap-3 mb-6">
+                <div className="flex items-center gap-2">
+                  <label className="text-sm font-medium text-gray-700">Status:</label>
+                  <select 
+                    value={status} 
+                    onChange={e => setStatus(e.target.value)} 
+                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  >
+                    <option value="shortlisted">Shortlisted</option>
+                    <option value="consider-later">Consider Later</option>
+                    <option value="hired">Hired</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                </div>
+                <button 
+                  onClick={onSaveToPlayerDB} 
+                  disabled={saved} 
+                  className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors" 
+                  title="Save this evaluation as a note in Player Database"
+                >
+                  {saved ? '✓ Saved' : 'Save to Database'}
+                </button>
+                <button 
+                  onClick={onCopyDiscord} 
+                  className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors" 
+                  title="Copy a Discord-ready summary"
+                >
+                  {copied ? '✓ Copied!' : 'Copy Discord Summary'}
+                </button>
+                {saved && (
+                  <span className="text-sm text-green-700 self-center bg-green-100 px-3 py-1 rounded-full">
+                    ✓ Saved locally
+                  </span>
+                )}
+              </div>
+
+              {/* Evaluation Breakdown */}
+              <div className="bg-white rounded-lg border border-gray-200 divide-y">
+                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                  <h4 className="font-semibold text-gray-900">Evaluation Breakdown</h4>
+                </div>
+                {result.evaluation.breakdown.map((b, i) => (
+                  <div key={i} className="flex items-start justify-between p-4 hover:bg-gray-50 transition-colors">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900 mb-1">{b.category}</div>
+                      <div className="text-sm text-gray-600">{b.details}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm font-semibold text-gray-900">{b.points} / {b.maxPoints}</div>
+                      <div className="text-xs text-gray-500">
+                        {Math.round((b.points / b.maxPoints) * 100)}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min TH
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={16} value={minTh} onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
+          )}
+        </div>
+
+        {/* Shortlist Builder Section */}
+        <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-lg border border-gray-200">
+          <div className="flex items-center space-x-2 mb-6">
+            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <span className="text-blue-600 font-bold">2</span>
             </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max TH
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={16} value={maxTh} onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
+            <h2 className="text-xl font-semibold text-gray-900">Shortlist Builder</h2>
+          </div>
+          
+          <p className="text-gray-600 mb-6">Build a ranked shortlist from locally saved candidates (status: shortlisted/consider-later). Apply filters to refine results.</p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Filters */}
+            <div className="space-y-4">
+              <h3 className="font-medium text-gray-900">Filters</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Top N</label>
+                  <input 
+                    type="number" 
+                    min={1} 
+                    max={50} 
+                    value={topN} 
+                    onChange={e => setTopN(Math.min(50, Math.max(1, Number(e.target.value)||10)))} 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Min TH
+                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  </label>
+                  <input 
+                    type="number" 
+                    min={0} 
+                    max={16} 
+                    value={minTh} 
+                    onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Max TH
+                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  </label>
+                  <input 
+                    type="number" 
+                    min={0} 
+                    max={16} 
+                    value={maxTh} 
+                    onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Min Score
+                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  </label>
+                  <input 
+                    type="number" 
+                    min={0} 
+                    max={100} 
+                    value={minScore} 
+                    onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Min Trophies
+                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  </label>
+                  <input 
+                    type="number" 
+                    min={0} 
+                    value={minTrophies} 
+                    onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Max Rush %
+                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  </label>
+                  <input 
+                    type="number" 
+                    min={0} 
+                    max={100} 
+                    value={maxRush} 
+                    onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} 
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
+                <div className="flex flex-wrap gap-3">
+                  {(['member','elder','coleader','leader'] as const).map(r => (
+                    <label key={r} className="inline-flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        checked={!!roles[r]} 
+                        onChange={e=>setRoles(prev=>({ ...prev, [r]: e.target.checked }))} 
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700 capitalize">{r}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Score
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={100} value={minScore} onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-24 border rounded px-2 py-1" />
+            
+            {/* Action Button */}
+            <div className="flex items-end">
+              <button 
+                onClick={buildShortlist} 
+                disabled={building} 
+                className="w-full lg:w-auto inline-flex items-center justify-center px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                {building ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Building…
+                  </>
+                ) : (
+                  'Build Shortlist'
+                )}
+              </button>
             </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Trophies
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} value={minTrophies} onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-28 border rounded px-2 py-1" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max Rush %
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={100} value={maxRush} onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} className="mt-1 w-28 border rounded px-2 py-1" />
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <span>Roles:</span>
-              {(['member','elder','coleader','leader'] as const).map(r => (
-                <label key={r} className="inline-flex items-center gap-1">
-                  <input type="checkbox" checked={!!roles[r]} onChange={e=>setRoles(prev=>({ ...prev, [r]: e.target.checked }))} />
-                  <span className="capitalize">{r}</span>
-                </label>
-              ))}
-            </div>
-            <button onClick={buildShortlist} disabled={building} className="inline-flex items-center px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50">
-              {building ? 'Building…' : 'Build Shortlist'}
-            </button>
           </div>
           {shortlist.length > 0 && (
-            <div className="rounded border divide-y">
+            <div className="bg-white rounded-lg border border-gray-200 divide-y">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
+                <h4 className="font-semibold text-gray-900">Shortlist Results ({shortlist.length} candidates)</h4>
+              </div>
               {shortlist.map((item, idx) => (
-                <div key={item.applicant.tag} className="p-3 flex items-start justify-between">
-                  <div>
-                    <div className="font-medium">#{idx+1} {item.applicant.name} <span className="text-gray-500">({item.applicant.tag})</span></div>
-                    <div className="text-sm text-gray-600">Score {item.evaluation.score} • {item.evaluation.recommendation} • Rush {computeRushPercent(item.applicant)}%</div>
+                <div key={item.applicant.tag} className="p-4 flex items-start justify-between hover:bg-gray-50 transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-lg font-bold text-gray-400">#{idx+1}</span>
+                      <div>
+                        <div className="font-semibold text-gray-900">{item.applicant.name}</div>
+                        <div className="text-sm text-gray-500">{item.applicant.tag}</div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                      <span>Score: <span className="font-semibold">{item.evaluation.score}</span></span>
+                      <span>Recommendation: <span className="font-semibold text-emerald-600">{item.evaluation.recommendation}</span></span>
+                      <span>Rush: <span className="font-semibold">{computeRushPercent(item.applicant)}%</span></span>
+                    </div>
                   </div>
-                  <button onClick={async () => { await navigator.clipboard.writeText(buildDiscordBlurbFor(item)); setCopied(true); setTimeout(()=>setCopied(false),1200); }} className="text-sm px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                    {copied ? 'Copied!' : 'Copy Blurb'}
+                  <button 
+                    onClick={async () => { 
+                      await navigator.clipboard.writeText(buildDiscordBlurbFor(item)); 
+                      setCopied(true); 
+                      setTimeout(()=>setCopied(false),1200); 
+                    }} 
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                  >
+                    {copied ? '✓ Copied!' : 'Copy Summary'}
                   </button>
                 </div>
               ))}
@@ -336,78 +514,196 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
           )}
         </div>
 
-        <div className="mt-10">
-          <h3 className="text-lg font-semibold mb-2">Scan External Clan</h3>
-          <p className="text-sm text-gray-600 mb-3">Fetch a clan roster by tag, score all members against your clan’s profile, and return the top N. Apply the same filters.</p>
-          <div className="flex flex-wrap items-end gap-3 mb-3">
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">External Clan Tag
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input className="mt-1 w-48 border rounded px-2 py-1" placeholder="#XXXXXXXX" value={scanTag} onChange={e => setScanTag(e.target.value)} />
+        {/* Scan External Clan Section */}
+        <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-lg border border-gray-200">
+          <div className="flex items-center space-x-2 mb-6">
+            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+              <span className="text-purple-600 font-bold">3</span>
             </div>
-            <div>
-              <label className="text-sm text-gray-600">Top N</label>
-              <input type="number" min={1} max={50} value={topN} onChange={e => setTopN(Math.min(50, Math.max(1, Number(e.target.value)||10)))} className="mt-1 w-24 border rounded px-2 py-1" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min TH
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={16} value={minTh} onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max TH
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={16} value={maxTh} onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-20 border rounded px-2 py-1" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Score
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={100} value={minScore} onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-24 border rounded px-2 py-1" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Min Trophies
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} value={minTrophies} onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} className="mt-1 w-28 border rounded px-2 py-1" />
-            </div>
-            <div>
-              <label className="text-sm text-gray-600 inline-flex items-center gap-1">Max Rush %
-                <Info className="w-3.5 h-3.5 text-gray-400" />
-              </label>
-              <input type="number" min={0} max={100} value={maxRush} onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} className="mt-1 w-28 border rounded px-2 py-1" />
-            </div>
-            <div className="flex items-center gap-2 text-sm text-gray-700">
-              <span>Roles:</span>
-              {(['member','elder','coleader','leader'] as const).map(r => (
-                <label key={r} className="inline-flex items-center gap-1">
-                  <input type="checkbox" checked={!!roles[r]} onChange={e=>setRoles(prev=>({ ...prev, [r]: e.target.checked }))} />
-                  <span className="capitalize">{r}</span>
-                </label>
-              ))}
-            </div>
-            <button onClick={scanExternalClan} disabled={scanning || !scanTag.trim()} className="inline-flex items-center px-3 py-2 bg-emerald-600 text-white rounded hover:bg-emerald-700 disabled:opacity-50">
-              {scanning ? 'Scanning…' : 'Scan & Shortlist'}
-            </button>
-            {scanResults.length > 0 && (
-              <button onClick={async ()=>{ const text = scanResults.map(buildDiscordBlurbFor).map((t,i)=>`#${i+1} ${t}`).join('\n\n'); await navigator.clipboard.writeText(text); setCopied(true); setTimeout(()=>setCopied(false), 1200); }} className="inline-flex items-center px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                {copied ? 'Copied!' : 'Copy All'}
-              </button>
-            )}
+            <h2 className="text-xl font-semibold text-gray-900">Scan External Clan</h2>
           </div>
+          
+          <p className="text-gray-600 mb-6">Fetch a clan roster by tag, score all members against your clan's profile, and return the top N. Apply the same filters.</p>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* Clan Tag Input */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                External Clan Tag
+                <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+              </label>
+              <input 
+                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                placeholder="#XXXXXXXX" 
+                value={scanTag} 
+                onChange={e => setScanTag(e.target.value)} 
+              />
+            </div>
+            
+            {/* Action Button */}
+            <div className="flex items-end">
+              <button 
+                onClick={scanExternalClan} 
+                disabled={scanning || !scanTag.trim()} 
+                className="w-full lg:w-auto inline-flex items-center justify-center px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+              >
+                {scanning ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    Scanning…
+                  </>
+                ) : (
+                  'Scan & Shortlist'
+                )}
+              </button>
+            </div>
+          </div>
+          
+          {/* Reuse the same filters from shortlist builder */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-gray-900 mb-4">Filters (same as shortlist builder)</h3>
+            <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Top N</label>
+                <input 
+                  type="number" 
+                  min={1} 
+                  max={50} 
+                  value={topN} 
+                  onChange={e => setTopN(Math.min(50, Math.max(1, Number(e.target.value)||10)))} 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min TH
+                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                </label>
+                <input 
+                  type="number" 
+                  min={0} 
+                  max={16} 
+                  value={minTh} 
+                  onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max TH
+                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                </label>
+                <input 
+                  type="number" 
+                  min={0} 
+                  max={16} 
+                  value={maxTh} 
+                  onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Score
+                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                </label>
+                <input 
+                  type="number" 
+                  min={0} 
+                  max={100} 
+                  value={minScore} 
+                  onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Trophies
+                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                </label>
+                <input 
+                  type="number" 
+                  min={0} 
+                  value={minTrophies} 
+                  onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Max Rush %
+                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                </label>
+                <input 
+                  type="number" 
+                  min={0} 
+                  max={100} 
+                  value={maxRush} 
+                  onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} 
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                />
+              </div>
+            </div>
+            
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
+              <div className="flex flex-wrap gap-3">
+                {(['member','elder','coleader','leader'] as const).map(r => (
+                  <label key={r} className="inline-flex items-center gap-2">
+                    <input 
+                      type="checkbox" 
+                      checked={!!roles[r]} 
+                      onChange={e=>setRoles(prev=>({ ...prev, [r]: e.target.checked }))} 
+                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                    />
+                    <span className="text-sm text-gray-700 capitalize">{r}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+          
           {scanResults.length > 0 && (
-            <div className="rounded border divide-y">
+            <div className="bg-white rounded-lg border border-gray-200 divide-y">
+              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                <h4 className="font-semibold text-gray-900">Scan Results ({scanResults.length} candidates)</h4>
+                <button 
+                  onClick={async ()=>{ 
+                    const text = scanResults.map(buildDiscordBlurbFor).map((t,i)=>`#${i+1} ${t}`).join('\n\n'); 
+                    await navigator.clipboard.writeText(text); 
+                    setCopied(true); 
+                    setTimeout(()=>setCopied(false), 1200); 
+                  }} 
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                >
+                  {copied ? '✓ Copied All!' : 'Copy All Summaries'}
+                </button>
+              </div>
               {scanResults.map((item, idx) => (
-                <div key={item.applicant.tag} className="p-3 flex items-start justify-between">
-                  <div>
-                    <div className="font-medium">#{idx+1} {item.applicant.name} <span className="text-gray-500">({item.applicant.tag})</span></div>
-                    <div className="text-sm text-gray-600">Score {item.evaluation.score} • {item.evaluation.recommendation} • Rush {computeRushPercent(item.applicant)}%</div>
+                <div key={item.applicant.tag} className="p-4 flex items-start justify-between hover:bg-gray-50 transition-colors">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <span className="text-lg font-bold text-gray-400">#{idx+1}</span>
+                      <div>
+                        <div className="font-semibold text-gray-900">{item.applicant.name}</div>
+                        <div className="text-sm text-gray-500">{item.applicant.tag}</div>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                      <span>Score: <span className="font-semibold">{item.evaluation.score}</span></span>
+                      <span>Recommendation: <span className="font-semibold text-emerald-600">{item.evaluation.recommendation}</span></span>
+                      <span>Rush: <span className="font-semibold">{computeRushPercent(item.applicant)}%</span></span>
+                    </div>
                   </div>
-                  <button onClick={async () => { await navigator.clipboard.writeText(buildDiscordBlurbFor(item)); setCopied(true); setTimeout(()=>setCopied(false),1200); }} className="text-sm px-2 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700">
-                    {copied ? 'Copied!' : 'Copy Blurb'}
+                  <button 
+                    onClick={async () => { 
+                      await navigator.clipboard.writeText(buildDiscordBlurbFor(item)); 
+                      setCopied(true); 
+                      setTimeout(()=>setCopied(false),1200); 
+                    }} 
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                  >
+                    {copied ? '✓ Copied!' : 'Copy Summary'}
                   </button>
                 </div>
               ))}
