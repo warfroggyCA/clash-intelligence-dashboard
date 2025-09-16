@@ -451,10 +451,10 @@ export const useDashboardStore = create<DashboardState>()(
                 // Show toast notification with snapshot metadata
                 if (json.snapshotMetadata) {
                   const snapshotDate = json.snapshotMetadata.snapshotDate ? new Date(json.snapshotMetadata.snapshotDate).toLocaleDateString() : 'Unknown';
-                  const fetchedTime = new Date(json.snapshotMetadata.fetchedAt).toLocaleTimeString('en-US', { 
+                  const fetchedTime = json.snapshotMetadata.fetchedAt ? new Date(json.snapshotMetadata.fetchedAt).toLocaleTimeString('en-US', { 
                     hour12: false, 
                     timeZone: 'UTC' 
-                  });
+                  }) : 'Unknown';
                   showToast(
                     `Latest snapshot: ${snapshotDate} ${fetchedTime} UTC`, 
                     'success', 

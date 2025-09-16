@@ -93,12 +93,12 @@ ${clanData.snapshotDetails?.currentWar ? `
 
 RECENT WAR PERFORMANCE:
 ${clanData.snapshotDetails?.warLog?.length ? clanData.snapshotDetails.warLog.slice(0, 3).map((war: any) => `
-- ${new Date(war.endTime).toLocaleDateString()}: ${war.result} vs ${war.opponent.name} (${war.teamSize}x${war.attacksPerMember})
+- ${war.endTime ? new Date(war.endTime).toLocaleDateString() : 'Unknown Date'}: ${war.result} vs ${war.opponent.name} (${war.teamSize}x${war.attacksPerMember})
 `).join('') : '- No recent war data available'}
 
 CAPITAL RAID ACTIVITY:
 ${clanData.snapshotDetails?.capitalRaidSeasons?.length ? clanData.snapshotDetails.capitalRaidSeasons.slice(0, 2).map((season: any) => `
-- ${new Date(season.endTime).toLocaleDateString()}: Hall ${season.capitalHallLevel} - ${season.state} (Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()})
+- ${season.endTime ? new Date(season.endTime).toLocaleDateString() : 'Unknown Date'}: Hall ${season.capitalHallLevel} - ${season.state} (Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()})
 `).join('') : '- No capital raid data available'}
 
 MEMBER ANALYSIS:

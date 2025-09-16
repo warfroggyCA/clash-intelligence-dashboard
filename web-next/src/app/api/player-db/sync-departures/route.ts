@@ -46,12 +46,12 @@ export async function POST(request: NextRequest) {
         const timestamp = new Date().toISOString();
         const noteData = {
           timestamp,
-          note: `Member departed on ${new Date(departure.departureDate).toLocaleDateString()}. ${departure.departureReason ? `Reason: ${departure.departureReason}` : 'No reason provided'}. ${departure.notes ? `Additional notes: ${departure.notes}` : ''}`,
+          note: `Member departed on ${departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date'}. ${departure.departureReason ? `Reason: ${departure.departureReason}` : 'No reason provided'}. ${departure.notes ? `Additional notes: ${departure.notes}` : ''}`,
           customFields: {
             'Last Role': departure.lastRole || 'Unknown',
             'Last TH Level': departure.lastTownHall?.toString() || 'Unknown',
             'Last Trophies': departure.lastTrophies?.toString() || 'Unknown',
-            'Departure Date': new Date(departure.departureDate).toLocaleDateString(),
+            'Departure Date': departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date',
             'Departure Reason': departure.departureReason || 'Not specified',
             'Added By': departure.addedBy || 'System'
           }
