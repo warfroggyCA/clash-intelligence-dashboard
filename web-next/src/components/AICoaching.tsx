@@ -177,7 +177,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
           const adviceWithTimestamps = parsedAdvice.map((item: CoachingAdvice) => ({
             ...item,
             timestamp: item.timestamp || new Date().toISOString(),
-            date: item.date || new Date().toLocaleDateString()
+            date: item.date || (() => {
+              try {
+                return new Date().toLocaleDateString();
+              } catch (error) {
+                console.error('Date formatting error in AICoaching:', error);
+                return 'Unknown Date';
+              }
+            })()
           }));
           setAdvice(adviceWithTimestamps);
           console.log('[AI Coaching] Loaded advice from localStorage');
@@ -280,7 +287,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
         const adviceWithTimestamps = newAdvice.map((item: CoachingAdvice) => ({
           ...item,
           timestamp: new Date().toISOString(),
-          date: new Date().toLocaleDateString()
+          date: (() => {
+            try {
+              return new Date().toLocaleDateString();
+            } catch (error) {
+              console.error('Date formatting error in AICoaching:', error);
+              return 'Unknown Date';
+            }
+          })()
         }));
         
         setAdvice(adviceWithTimestamps);
@@ -293,7 +307,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
         const adviceWithTimestamps = localAdvice.map((item: CoachingAdvice) => ({
           ...item,
           timestamp: new Date().toISOString(),
-          date: new Date().toLocaleDateString()
+          date: (() => {
+            try {
+              return new Date().toLocaleDateString();
+            } catch (error) {
+              console.error('Date formatting error in AICoaching:', error);
+              return 'Unknown Date';
+            }
+          })()
         }));
         setAdvice(adviceWithTimestamps);
         localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(adviceWithTimestamps));
