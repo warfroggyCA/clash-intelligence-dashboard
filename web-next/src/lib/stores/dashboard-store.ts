@@ -25,6 +25,7 @@ import {
 } from '@/types';
 import type { RolePermissions } from '@/lib/leadership';
 import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-management';
+import { cfg } from '@/lib/config';
 import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 import { showToast } from '@/lib/toast';
 
@@ -187,11 +188,13 @@ interface DashboardState {
 // =============================================================================
 
 const DEFAULT_ACCESS_LEVEL: AccessLevel = 'leader';
+const DEFAULT_CLAN_TAG = cfg.homeClanTag;
+
 const initialState = {
   // Core Data
   roster: null,
-  clanTag: '',
-  homeClan: null,
+  clanTag: DEFAULT_CLAN_TAG,
+  homeClan: DEFAULT_CLAN_TAG,
   message: '',
   status: 'idle' as Status,
   

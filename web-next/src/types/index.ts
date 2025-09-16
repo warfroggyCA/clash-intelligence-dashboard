@@ -469,6 +469,7 @@ export type TabType =
   | "roster" 
   | "changes" 
   | "snapshots"
+  | "analytics"
   | "database" 
   | "coaching" 
   | "events" 

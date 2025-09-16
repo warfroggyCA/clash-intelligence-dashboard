@@ -121,7 +121,8 @@ const useQuickActions = () => {
             roster.members.reduce((sum, m) => sum + (m.donations || 0), 0) : 0,
           roleDistribution: roster?.members ? 
             roster.members.reduce((acc, m) => {
-              acc[m.role] = (acc[m.role] || 0) + 1;
+              const key = m.role || 'member';
+              acc[key] = (acc[key] || 0) + 1;
               return acc;
             }, {} as Record<string, number>) : {},
           members: roster?.members || [],

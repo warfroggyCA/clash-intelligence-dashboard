@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { DashboardLayout, RosterTable, ApplicantsPanel } from '@/components';
+import ClanAnalytics from '@/components/ClanAnalytics';
 import ChangeDashboard from '@/components/ChangeDashboard';
 import FullSnapshotDashboard from '@/components/FullSnapshotDashboard';
 import PlayerDatabase from '@/components/PlayerDatabase';
@@ -70,6 +71,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
         return <ChangeDashboard clanTag={currentClanTag} />;
       case 'snapshots':
         return <FullSnapshotDashboard clanTag={currentClanTag} />;
+      case 'analytics':
+        return <ClanAnalytics />;
       case 'database':
         return <PlayerDatabase />;
       case 'coaching':

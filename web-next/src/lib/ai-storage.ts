@@ -21,6 +21,7 @@ export interface StoredBatchAIResults {
   clan_dna_insights: any;
   game_chat_messages: any;
   performance_analysis: any;
+  snapshot_summary: string | null;
   error: string | null;
   created_at: string;
 }
@@ -51,6 +52,7 @@ export async function saveBatchAIResults(results: BatchAIResults): Promise<boole
         clan_dna_insights: results.clanDNAInsights || null,
         game_chat_messages: results.gameChatMessages || null,
         performance_analysis: results.performanceAnalysis || null,
+        snapshot_summary: results.snapshotSummary || null,
         error: results.error || null,
       }, {
         onConflict: 'clan_tag,date'
@@ -321,4 +323,52 @@ export async function getAIInsightsSummary(clanTag: string): Promise<{
       errorRate: 0
     };
   }
+}
+
+export function generateSnapshotSummary(
+  snapshotMetadata: any,
+  snapshotDetails: any,
+  dataAgeHours?: number
+): string {
+  if (!snapshotMetadata) return '';
+
+  const parts: string[] = [];
+  
+  // Basic snapshot info
+  parts.push(`Snapshot date: ${snapshotMetadata.snapshotDate}`);
+  parts.push(`Fetched: ${new Date(snapshotMetadata.fetchedAt).toLocaleString()}`);
+  parts.push(`Members: ${snapshotMetadata.memberCount}`);
+  
+  // Data freshness
+  if (dataAgeHours !== undefined) {
+    const freshness = dataAgeHours <= 24 ? 'Fresh' : dataAgeHours <= 48 ? 'Stale' : 'Very stale';
+    parts.push(`Data age: ${Math.round(dataAgeHours)}h (${freshness})`);
+  }
+  
+  // Current war status
+  if (snapshotDetails?.currentWar) {
+    const war = snapshotDetails.currentWar;
+    const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
+    parts.push(`Current war: ${war.state} vs ${opponent} (${war.teamSize} members)`);
+    if (war.endTime) {
+      parts.push(`War ends: ${new Date(war.endTime).toLocaleString()}`);
+    }
+  }
+  
+  // Recent war performance
+  if (snapshotDetails?.warLog?.length) {
+    const wins = snapshotDetails.warLog.filter((w: any) => w.result === 'WIN').length;
+    parts.push(`Recent wars: ${wins} wins of ${snapshotDetails.warLog.length}`);
+  }
+  
+  // Capital raid status
+  if (snapshotDetails?.capitalRaidSeasons?.length) {
+    const latest = snapshotDetails.capitalRaidSeasons[0];
+    parts.push(`Capital raids: Hall ${latest.capitalHallLevel} - ${latest.state}`);
+    if (latest.offensiveLoot) {
+      parts.push(`Latest loot: ${latest.offensiveLoot.toLocaleString()} offensive, ${latest.defensiveLoot.toLocaleString()} defensive`);
+    }
+  }
+  
+  return parts.join(' • ');
 }

@@ -33,6 +33,31 @@ export async function POST(request: NextRequest) {
         clanTag: z.string().optional(),
         memberCount: z.number().optional(),
         members: z.array(MemberSchema),
+        snapshotMetadata: z.object({
+          snapshotDate: z.string(),
+          fetchedAt: z.string(),
+          memberCount: z.number(),
+          warLogEntries: z.number(),
+          capitalSeasons: z.number(),
+          version: z.string(),
+        }).optional(),
+        snapshotDetails: z.object({
+          currentWar: z.object({
+            state: z.string(),
+            teamSize: z.number(),
+            opponent: z.object({
+              name: z.string(),
+              tag: z.string(),
+            }).optional(),
+            attacksPerMember: z.number().optional(),
+            startTime: z.string().optional(),
+            endTime: z.string().optional(),
+          }).optional(),
+          warLog: z.array(z.any()).optional(),
+          capitalRaidSeasons: z.array(z.any()).optional(),
+        }).optional(),
+        snapshotSummary: z.string().optional(),
+        context: z.string().optional(),
       })
     });
     const parsed = Schema.safeParse(body);
@@ -79,6 +104,29 @@ export async function POST(request: NextRequest) {
 
 CLAN: ${clanData.clanName} (${clanData.clanTag}) - ${clanData.memberCount} members
 
+SNAPSHOT CONTEXT:
+${clanData.snapshotSummary || 'No snapshot context available'}
+
+CURRENT CLAN STATUS:
+${clanData.snapshotDetails?.currentWar ? `
+- Current War: ${clanData.snapshotDetails.currentWar.state} (${clanData.snapshotDetails.currentWar.teamSize} members)
+- War Opponent: ${clanData.snapshotDetails.currentWar.opponent?.name || 'Unknown'}
+- War End Time: ${clanData.snapshotDetails.currentWar.endTime ? new Date(clanData.snapshotDetails.currentWar.endTime).toLocaleString() : 'Unknown'}
+` : '- No active war detected'}
+
+RECENT WAR PERFORMANCE:
+${clanData.snapshotDetails?.warLog?.length ? clanData.snapshotDetails.warLog.slice(0, 3).map((war: any) => `
+- ${new Date(war.endTime).toLocaleDateString()}: ${war.result} vs ${war.opponent.name} (${war.teamSize}x${war.attacksPerMember})
+`).join('') : '- No recent war data available'}
+
+CAPITAL RAID ACTIVITY:
+${clanData.snapshotDetails?.capitalRaidSeasons?.length ? clanData.snapshotDetails.capitalRaidSeasons.slice(0, 2).map((season: any) => `
+- ${new Date(season.endTime).toLocaleDateString()}: Hall ${season.capitalHallLevel} - ${season.state} (Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()})
+`).join('') : '- No capital raid data available'}
+
+ADDITIONAL CONTEXT:
+${clanData.context || 'No additional context provided'}
+
 SPECIFIC MEMBER DATA (with contextual insights):
 ${members.map((member: any) => `
 ${member.name} (${member.tag})
@@ -120,6 +168,18 @@ Focus on SPECIFIC situations like:
 - RUSH SITUATIONS: Be contextually aware! If someone is upgrading heroes but is very rushed (70%+), acknowledge both the progress AND the rush problem
 - Donation balance issues (e.g., "PlayerX is receiving more than giving")
 - Contextual coaching that considers multiple factors (rush % + hero upgrades + donation patterns)
+
+WAR-READY COACHING:
+- If there's an active war, focus on war preparation and attack strategies
+- Consider war opponent strength and suggest appropriate attack targets
+- Highlight members who should prioritize war attacks over other activities
+- Suggest war-specific hero upgrade priorities based on current war status
+
+CAPITAL RAID COACHING:
+- If capital raids are active, focus on capital hall upgrades and raid participation
+- Suggest capital-specific improvements based on recent raid performance
+- Highlight members who should contribute more to capital upgrades
+- Consider capital hall level and suggest appropriate upgrade priorities
 
 Make messages PERSONAL and SPECIFIC. Use actual player names. Mention specific numbers and achievements.
 
