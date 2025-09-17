@@ -461,10 +461,7 @@ Format as JSON:
             expectArray: false,
             context: `Player DNA insights for ${member.name}`
           });
-          insights.push({
-            archetype: classifyPlayerArchetype(dna, member),
-            ...parsed
-          });
+          insights.push(parsed);
         }
       } catch (error) {
         console.error(`Failed to generate DNA insights for ${member.name}:`, error);
