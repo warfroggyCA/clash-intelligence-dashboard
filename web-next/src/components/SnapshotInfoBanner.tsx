@@ -60,12 +60,40 @@ export default function SnapshotInfoBanner() {
         <div className="flex items-center space-x-6 text-sm text-gray-600">
           <div className="flex items-center space-x-1">
             <Calendar className="h-4 w-4" />
-            <span>{format(new Date(snapshotMetadata.snapshotDate), 'MMM dd, yyyy')}</span>
+            <span>{(() => {
+              try {
+                const snapshotDate = snapshotMetadata.snapshotDate;
+                if (!snapshotDate) return 'Unknown';
+                const date = new Date(snapshotDate);
+                if (isNaN(date.getTime())) {
+                  console.error('Invalid snapshotDate value in SnapshotInfoBanner:', snapshotDate);
+                  return 'Unknown';
+                }
+                return format(date, 'MMM dd, yyyy');
+              } catch (error) {
+                console.error('Date formatting error in SnapshotInfoBanner snapshotDate:', error, snapshotMetadata.snapshotDate);
+                return 'Unknown';
+              }
+            })()}</span>
           </div>
           
           <div className="flex items-center space-x-1">
             <Clock className="h-4 w-4" />
-            <span>{format(new Date(snapshotMetadata.fetchedAt), 'HH:mm UTC')}</span>
+            <span>{(() => {
+              try {
+                const fetchedAt = snapshotMetadata.fetchedAt;
+                if (!fetchedAt) return 'Unknown';
+                const date = new Date(fetchedAt);
+                if (isNaN(date.getTime())) {
+                  console.error('Invalid fetchedAt value in SnapshotInfoBanner:', fetchedAt);
+                  return 'Unknown';
+                }
+                return format(date, "HH:mm 'UTC'");
+              } catch (error) {
+                console.error('Date formatting error in SnapshotInfoBanner fetchedAt:', error, snapshotMetadata.fetchedAt);
+                return 'Unknown';
+              }
+            })()}</span>
           </div>
           
           <div className="flex items-center space-x-1">
