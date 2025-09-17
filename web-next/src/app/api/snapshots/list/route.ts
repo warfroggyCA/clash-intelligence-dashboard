@@ -42,6 +42,10 @@ export async function GET(request: NextRequest) {
     
     const safeTag = safeTagForFilename(clanTag);
     
+    if (!supabase) {
+      return NextResponse.json({ error: 'Database not available' }, { status: 503 });
+    }
+
     try {
       // Try new table first
       const { data: snapshots, error } = await supabase
