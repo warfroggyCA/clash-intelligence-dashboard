@@ -462,7 +462,6 @@ Format as JSON:
             context: `Player DNA insights for ${member.name}`
           });
           insights.push({
-            playerTag: member.tag,
             playerName: member.name,
             archetype: classifyPlayerArchetype(dna, member),
             ...parsed
