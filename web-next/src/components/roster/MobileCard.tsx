@@ -18,6 +18,7 @@
 
 import React from 'react';
 import { Member, Roster } from '@/types';
+import { safeLocaleDateString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
   calculateDonationBalance, 
@@ -279,7 +280,10 @@ export const MobileCard: React.FC<MobileCardProps> = ({
           )}
           {activity.last_active_at && (
             <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-              Last: {activity.last_active_at ? new Date(activity.last_active_at).toLocaleDateString() : 'Unknown'}
+              Last: {safeLocaleDateString(activity.last_active_at, {
+                fallback: 'Unknown',
+                context: 'MobileCard activity.last_active_at'
+              })}
             </span>
           )}
         </div>

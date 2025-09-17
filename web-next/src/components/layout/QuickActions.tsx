@@ -21,6 +21,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Button, SuccessButton, WarningButton } from '@/components/ui';
 import { api } from '@/lib/api/client';
+import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 
 // =============================================================================
 // TYPES
@@ -180,16 +181,22 @@ const useQuickActions = () => {
     setIsCopyingSnapshot(true);
     try {
       const lines: string[] = [];
-      const snapshotDate = new Date(snapshotMetadata.snapshotDate);
-      const fetchedAt = new Date(snapshotMetadata.fetchedAt);
-      const fmtDate = snapshotDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-      const fmtTime = fetchedAt.toLocaleString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        timeZoneName: 'short',
+      const fmtDate = safeLocaleDateString(snapshotMetadata.snapshotDate, {
+        options: { year: 'numeric', month: 'short', day: 'numeric' },
+        fallback: 'Unknown Date',
+        context: 'QuickActions snapshotMetadata.snapshotDate'
+      });
+      const fmtTime = safeLocaleString(snapshotMetadata.fetchedAt, {
+        options: {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          timeZoneName: 'short',
+        },
+        fallback: 'Unknown',
+        context: 'QuickActions snapshotMetadata.fetchedAt'
       });
 
       lines.push(`# Clan Snapshot – ${fmtDate}`);
@@ -207,15 +214,28 @@ const useQuickActions = () => {
         lines.push(`- State: ${war.state || 'unknown'}`);
         lines.push(`- Team Size: ${war.teamSize}${war.attacksPerMember ? ` x${war.attacksPerMember}` : ''}`);
         lines.push(`- Opponent: ${opponent}`);
-        if (war.startTime) lines.push(`- Starts: ${new Date(war.startTime).toLocaleString()}`);
-        if (war.endTime) lines.push(`- Ends: ${new Date(war.endTime).toLocaleString()}`);
+        if (war.startTime) {
+          lines.push(`- Starts: ${safeLocaleString(war.startTime, {
+            fallback: 'Unknown',
+            context: 'QuickActions war.startTime'
+          })}`);
+        }
+        if (war.endTime) {
+          lines.push(`- Ends: ${safeLocaleString(war.endTime, {
+            fallback: 'Unknown',
+            context: 'QuickActions war.endTime'
+          })}`);
+        }
         lines.push('');
       }
 
       if (snapshotDetails?.warLog?.length) {
         lines.push('## Recent War Log');
         snapshotDetails.warLog.slice(0, 3).forEach((entry, idx) => {
-          const end = entry.endTime ? new Date(entry.endTime).toLocaleDateString() : 'Unknown Date';
+          const end = safeLocaleDateString(entry.endTime, {
+            fallback: 'Unknown Date',
+            context: 'QuickActions warLog entry endTime'
+          });
           lines.push(`- ${end}: ${entry.result || 'Unknown'} vs ${entry.opponent.name} (${entry.teamSize}x${entry.attacksPerMember})`);
         });
         lines.push('');
@@ -224,7 +244,10 @@ const useQuickActions = () => {
       if (snapshotDetails?.capitalRaidSeasons?.length) {
         lines.push('## Capital Raids');
         snapshotDetails.capitalRaidSeasons.slice(0, 2).forEach((season) => {
-          const end = season.endTime ? new Date(season.endTime).toLocaleDateString() : 'Unknown Date';
+          const end = safeLocaleDateString(season.endTime, {
+            fallback: 'Unknown Date',
+            context: 'QuickActions capital raid season endTime'
+          });
           lines.push(
             `- ${end}: Hall ${season.capitalHallLevel} – ${season.state || 'unknown'}, Offensive ${season.offensiveLoot.toLocaleString()}, Defensive ${season.defensiveLoot.toLocaleString()}`
           );
@@ -287,7 +310,10 @@ const useQuickActions = () => {
           
           snapshotDetails.warLog.forEach(war => {
             const row = [
-              war.endTime ? new Date(war.endTime).toLocaleDateString() : 'Unknown Date',
+              safeLocaleDateString(war.endTime, {
+                fallback: 'Unknown Date',
+                context: 'QuickActions export warLog endTime'
+              }),
               war.result || 'Unknown',
               `"${war.opponent.name}"`,
               war.opponent.tag,

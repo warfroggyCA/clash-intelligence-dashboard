@@ -12,6 +12,21 @@ export default function SnapshotDetailsPanel() {
   }
 
   const { currentWar, warLog, capitalRaidSeasons } = snapshotDetails;
+  const safeFormat = (value: string | Date | undefined | null, pattern: string, fallback = 'Unknown') => {
+    try {
+      if (!value) return fallback;
+      const date = value instanceof Date ? value : new Date(value);
+      if (isNaN(date.getTime())) {
+        console.error('SnapshotDetailsPanel received invalid date value', value);
+        return fallback;
+      }
+      // Escape literal tokens such as UTC if ever passed in pattern by callers
+      return format(date, pattern);
+    } catch (error) {
+      console.error('SnapshotDetailsPanel failed to format date', error, value);
+      return fallback;
+    }
+  };
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -56,7 +71,7 @@ export default function SnapshotDetailsPanel() {
             {currentWar.endTime && (
               <div className="flex justify-between">
                 <span className="text-sm text-gray-600">End Time</span>
-                <span className="font-medium text-sm">{format(new Date(currentWar.endTime), 'MMM dd, HH:mm')}</span>
+                <span className="font-medium text-sm">{safeFormat(currentWar.endTime, "MMM dd, HH:mm")}</span>
               </div>
             )}
           </div>
@@ -87,7 +102,7 @@ export default function SnapshotDetailsPanel() {
                   <span className="font-medium text-sm">{war.opponent.name}</span>
                 </div>
                 <div className="text-xs text-gray-500">
-                  {format(new Date(war.endTime), 'MMM dd')}
+                  {safeFormat(war.endTime, 'MMM dd')}
                 </div>
               </div>
             ))}
@@ -120,7 +135,7 @@ export default function SnapshotDetailsPanel() {
                   </span>
                 </div>
                 <div className="text-xs text-gray-500">
-                  {format(new Date(season.endTime), 'MMM dd')}
+                  {safeFormat(season.endTime, 'MMM dd')}
                 </div>
               </div>
             ))}

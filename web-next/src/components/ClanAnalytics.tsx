@@ -2,6 +2,7 @@
 
 import React, { useMemo } from "react";
 import { useDashboardStore, selectors } from "@/lib/stores/dashboard-store";
+import { safeLocaleString } from '@/lib/date';
 
 const sectionClass =
   "bg-white/90 backdrop-blur-sm border border-white/40 rounded-2xl shadow-lg p-6 flex flex-col gap-4";
@@ -74,7 +75,10 @@ export default function ClanAnalytics() {
 
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
           <MetricCard label="Snapshot Date" value={snapshotMetadata?.snapshotDate || 'Unknown'} />
-          <MetricCard label="Fetched At" value={snapshotMetadata?.fetchedAt ? new Date(snapshotMetadata.fetchedAt).toLocaleString() : 'Unknown'} />
+          <MetricCard label="Fetched At" value={safeLocaleString(snapshotMetadata?.fetchedAt, {
+            fallback: 'Unknown',
+            context: 'ClanAnalytics snapshotMetadata.fetchedAt'
+          })} />
           <MetricCard label="Members" value={memberCount.toString()} />
           <MetricCard label="Version" value={snapshotMetadata?.version || 'N/A'} />
         </div>
@@ -104,7 +108,10 @@ export default function ClanAnalytics() {
               <div>
                 <p className="text-xs text-gray-500">Ends</p>
                 <p className="font-semibold text-gray-800">
-                  {snapshotDetails.currentWar.endTime ? new Date(snapshotDetails.currentWar.endTime).toLocaleString() : 'Unknown'}
+                  {safeLocaleString(snapshotDetails.currentWar.endTime, {
+                    fallback: 'Unknown',
+                    context: 'ClanAnalytics currentWar.endTime'
+                  })}
                 </p>
               </div>
             </div>

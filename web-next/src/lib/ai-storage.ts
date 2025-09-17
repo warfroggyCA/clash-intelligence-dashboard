@@ -5,6 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 import { BatchAIResults, PlayerDNAInsights } from './ai-processor';
 import { calculatePlayerDNA, classifyPlayerArchetype } from './player-dna';
 import { normalizeTag, safeTagForFilename } from './tags';
+import { safeLocaleString } from './date';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
@@ -485,7 +486,10 @@ export function generateSnapshotSummary(
     parts.push(`Snapshot date: ${snapshotDate}`);
   }
   if (fetchedAt) {
-    parts.push(`Fetched: ${fetchedAt ? new Date(fetchedAt).toLocaleString() : 'Unknown'}`);
+    parts.push(`Fetched: ${safeLocaleString(fetchedAt, {
+      fallback: 'Unknown',
+      context: 'AI Storage snapshotMetadata.fetchedAt'
+    })}`);
   }
   if (typeof memberCount === 'number') {
     parts.push(`Members: ${memberCount}`);
@@ -506,7 +510,10 @@ export function generateSnapshotSummary(
     const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
     parts.push(`Current war: ${war.state} vs ${opponent} (${war.teamSize} members)`);
     if (war.endTime) {
-      parts.push(`War ends: ${war.endTime ? new Date(war.endTime).toLocaleString() : 'Unknown'}`);
+      parts.push(`War ends: ${safeLocaleString(war.endTime, {
+        fallback: 'Unknown',
+        context: 'AI Storage currentWar.endTime'
+      })}`);
     }
   }
   

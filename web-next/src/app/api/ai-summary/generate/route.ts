@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 import { createApiContext } from '@/lib/api/route-helpers';
 import type { ApiResponse } from '@/types';
+import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 
 export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/ai-summary/generate');
@@ -82,23 +83,37 @@ CLAN OVERVIEW:
 SNAPSHOT CONTEXT:
 - Data Source: Latest nightly snapshot
 - Analysis Date: ${new Date().toLocaleDateString()}
-- Data Freshness: ${clanData.snapshotMetadata?.fetchedAt ? `Fetched ${new Date(clanData.snapshotMetadata.fetchedAt).toLocaleString()}` : 'Unknown'}
+- Data Freshness: ${clanData.snapshotMetadata?.fetchedAt
+        ? `Fetched ${safeLocaleString(clanData.snapshotMetadata.fetchedAt, {
+            fallback: 'Unknown',
+            context: 'AI summary snapshotMetadata.fetchedAt'
+          })}`
+        : 'Unknown'}
 
 CURRENT CLAN STATUS:
 ${clanData.snapshotDetails?.currentWar ? `
 - Current War: ${clanData.snapshotDetails.currentWar.state} (${clanData.snapshotDetails.currentWar.teamSize} members)
 - War Opponent: ${clanData.snapshotDetails.currentWar.opponent?.name || 'Unknown'}
-- War End Time: ${clanData.snapshotDetails.currentWar.endTime ? new Date(clanData.snapshotDetails.currentWar.endTime).toLocaleString() : 'Unknown'}
+- War End Time: ${safeLocaleString(clanData.snapshotDetails.currentWar.endTime, {
+        fallback: 'Unknown',
+        context: 'AI summary currentWar.endTime'
+      })}
 ` : '- No active war detected'}
 
 RECENT WAR PERFORMANCE:
 ${clanData.snapshotDetails?.warLog?.length ? clanData.snapshotDetails.warLog.slice(0, 3).map((war: any) => `
-- ${war.endTime ? new Date(war.endTime).toLocaleDateString() : 'Unknown Date'}: ${war.result} vs ${war.opponent.name} (${war.teamSize}x${war.attacksPerMember})
+- ${safeLocaleDateString(war.endTime, {
+          fallback: 'Unknown Date',
+          context: 'AI summary warLog endTime'
+        })}: ${war.result} vs ${war.opponent.name} (${war.teamSize}x${war.attacksPerMember})
 `).join('') : '- No recent war data available'}
 
 CAPITAL RAID ACTIVITY:
 ${clanData.snapshotDetails?.capitalRaidSeasons?.length ? clanData.snapshotDetails.capitalRaidSeasons.slice(0, 2).map((season: any) => `
-- ${season.endTime ? new Date(season.endTime).toLocaleDateString() : 'Unknown Date'}: Hall ${season.capitalHallLevel} - ${season.state} (Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()})
+- ${safeLocaleDateString(season.endTime, {
+          fallback: 'Unknown Date',
+          context: 'AI summary capital season endTime'
+        })}: Hall ${season.capitalHallLevel} - ${season.state} (Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()})
 `).join('') : '- No capital raid data available'}
 
 MEMBER ANALYSIS:

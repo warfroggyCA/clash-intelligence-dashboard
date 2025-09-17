@@ -20,6 +20,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Member, Roster, SortKey, SortDirection } from '@/types';
+import { safeLocaleTimeString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
   calculateOverallRush,
@@ -378,7 +379,10 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
               </div>
             </div>
             <div className="text-gray-500 text-xs">
-              Last updated: {dataFetchedAt ? new Date(dataFetchedAt).toLocaleTimeString() : 'Unknown'}
+              Last updated: {safeLocaleTimeString(dataFetchedAt, {
+                fallback: 'Unknown',
+                context: 'RosterTable dataFetchedAt'
+              })}
             </div>
           </div>
         </div>

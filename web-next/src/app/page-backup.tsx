@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AlertCircle, Bell, X } from "lucide-react";
 import { cfg } from "../lib/config";
 import { calculateRealTimeActivity } from "../lib/activity-calculator";
+import { safeLocaleDateString, safeLocaleString, safeLocaleTimeString } from "../lib/date";
 import ChangeDashboard from "../components/ChangeDashboard";
 import DepartureManager from "../components/DepartureManager";
 import PlayerDatabase from "../components/PlayerDatabase";
@@ -2426,11 +2427,23 @@ Please analyze this clan data and provide insights on:
                   className="border rounded-lg px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
                   {!availableSnapshots.some(s => s.date === roster?.date) && (
-                    <option value="latest">📸 {roster && roster.date ? new Date(roster.date + 'T00:00:00').toLocaleDateString() : 'Latest Snapshot'}</option>
+                    <option value="latest">
+                      📸 {roster?.date
+                        ? safeLocaleDateString(`${roster.date}T00:00:00`, {
+                            fallback: 'Latest Snapshot',
+                            context: 'PageBackup roster.date'
+                          })
+                        : 'Latest Snapshot'}
+                    </option>
                   )}
                   {availableSnapshots.map((snapshot) => (
                     <option key={snapshot.date} value={snapshot.date}>
-                      📸 {snapshot.date ? new Date(snapshot.date + 'T00:00:00').toLocaleDateString() : 'Unknown Date'}
+                      📸 {snapshot.date
+                        ? safeLocaleDateString(`${snapshot.date}T00:00:00`, {
+                            fallback: 'Unknown Date',
+                            context: 'PageBackup availableSnapshots.date'
+                          })
+                        : 'Unknown Date'}
                     </option>
                   ))}
                 </select>
@@ -3824,10 +3837,16 @@ function EventDashboard({
                 </div>
                 <div className="text-right">
                   <p className="text-sm font-medium text-gray-900">
-                    {event.timestamp ? new Date(event.timestamp).toLocaleDateString() : 'Unknown Date'}
+                    {safeLocaleDateString(event.timestamp, {
+                      fallback: 'Unknown Date',
+                      context: 'PageBackup events timestamp date'
+                    })}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {event.timestamp ? new Date(event.timestamp).toLocaleTimeString() : 'Unknown Time'}
+                    {safeLocaleTimeString(event.timestamp, {
+                      fallback: 'Unknown Time',
+                      context: 'PageBackup events timestamp time'
+                    })}
                   </p>
                   <p className="text-xs text-blue-600 mt-1">Click to view profile →</p>
                 </div>
@@ -4149,7 +4168,10 @@ function PlayerProfileModal({
                            '📝 Event'}
                         </span>
                         <span className="text-gray-500 text-xs">
-                          {event.timestamp ? new Date(event.timestamp).toLocaleDateString() : 'Unknown Date'}
+                          {safeLocaleDateString(event.timestamp, {
+                            fallback: 'Unknown Date',
+                            context: 'PageBackup member event timestamp'
+                          })}
                         </span>
                       </div>
                       <p className="text-gray-700 font-medium">{event.eventData.details}</p>
@@ -4327,7 +4349,10 @@ function PlayerProfileModal({
                             <div key={index} className="text-sm border-l-4 border-yellow-300 pl-3">
                               <p><strong>{entry.name}</strong></p>
                               <p className="text-gray-500 text-xs">
-                                {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : 'Unknown'}
+                                {safeLocaleString(entry.timestamp, {
+                                  fallback: 'Unknown',
+                                  context: 'PageBackup name history entry timestamp'
+                                })}
                                 {index === playerNameHistory[member.tag.toUpperCase()].length - 1 && (
                                   <span className="ml-2 text-green-600 font-medium">(Current)</span>
                                 )}
@@ -4348,7 +4373,10 @@ function PlayerProfileModal({
                 <div className="space-y-2">
                   {departureHistory.map((departure, index) => (
                     <div key={index} className="text-sm border-l-4 border-red-300 pl-3">
-                      <p><strong>Date:</strong> {departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date'}</p>
+                      <p><strong>Date:</strong> {safeLocaleDateString(departure.departureDate, {
+                        fallback: 'Unknown Date',
+                        context: 'PageBackup departure history date'
+                      })}</p>
                       {departure.departureReason && <p><strong>Reason:</strong> {departure.departureReason}</p>}
                       {departure.notes && <p><strong>Notes:</strong> {departure.notes}</p>}
                     </div>
@@ -4369,7 +4397,10 @@ function PlayerProfileModal({
                   playerNotes.map((note, index) => (
                     <div key={index} className="bg-white rounded-lg p-3 border">
                       <div className="text-xs text-gray-500 mb-1">
-                        {note.timestamp ? new Date(note.timestamp).toLocaleString() : 'Unknown'}
+                        {safeLocaleString(note.timestamp, {
+                          fallback: 'Unknown',
+                          context: 'PageBackup player note timestamp'
+                        })}
                       </div>
                       <div className="text-sm text-gray-700">{note.note}</div>
                       {Object.keys(note.customFields).length > 0 && (
@@ -4542,4 +4573,3 @@ function QuickDepartureModal({
     </div>
   );
 }
-

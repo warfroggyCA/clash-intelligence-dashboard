@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertCircle, CheckCircle, Clock, Users, TrendingUp, Shield, Trophy, Calendar, Sword, Castle } from "lucide-react";
+import { safeLocaleDateString } from '@/lib/date';
 import type { FullClanSnapshot } from "@/lib/full-snapshot";
 
 type Props = {
@@ -310,7 +311,10 @@ export default function FullSnapshotDashboard({ clanTag, onNotificationChange }:
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">
-                      {war.endTime ? new Date(war.endTime).toLocaleDateString() : 'Unknown Date'}
+                      {safeLocaleDateString(war.endTime, {
+                        fallback: 'Unknown Date',
+                        context: 'FullSnapshotDashboard warLog.endTime'
+                      })}
                     </p>
                   </div>
                 </div>

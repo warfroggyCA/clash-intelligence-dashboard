@@ -19,6 +19,7 @@
 
 import React, { useState } from 'react';
 import { Member, Roster } from '@/types';
+import { safeLocaleDateString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
   calculateOverallRush,
@@ -337,7 +338,12 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell className="text-center border-r border-slate-300">
         <span
           className="font-semibold"
-          title={member.tenure_as_of ? `Tenure last set: ${new Date(member.tenure_as_of).toLocaleDateString()}` : 'Tenure accrues daily from join or last set date'}
+          title={member.tenure_as_of
+            ? `Tenure last set: ${safeLocaleDateString(member.tenure_as_of, {
+                fallback: 'Unknown Date',
+                context: 'RosterTableRow member.tenure_as_of'
+              })}`
+            : 'Tenure accrues daily from join or last set date'}
         >
           {formatDays(member.tenure_days || member.tenure)}
         </span>

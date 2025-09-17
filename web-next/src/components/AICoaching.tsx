@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle, Send } from "lucide-react";
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import { safeLocaleString } from '@/lib/date';
 
 // Import rush percentage calculation (simplified version)
 const getTH = (m: any): number => m.townHallLevel ?? m.th ?? 0;
@@ -105,7 +106,10 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     if (!snapshotMetadata) return '';
     const parts: string[] = [];
     parts.push(`Snapshot date: ${snapshotMetadata.snapshotDate}`);
-    parts.push(`Fetched: ${snapshotMetadata.fetchedAt ? new Date(snapshotMetadata.fetchedAt).toLocaleString() : 'Unknown'}`);
+    parts.push(`Fetched: ${safeLocaleString(snapshotMetadata.fetchedAt, {
+      fallback: 'Unknown',
+      context: 'AI Coaching snapshotMetadata.fetchedAt'
+    })}`);
     parts.push(`Members: ${snapshotMetadata.memberCount}`);
     if (snapshotAgeHours != null) {
       const freshness = snapshotAgeHours <= 24 ? 'Fresh (≤24h)' : snapshotAgeHours <= 48 ? 'Stale (24-48h)' : 'Outdated (>48h)';
@@ -115,7 +119,12 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
       const war = snapshotDetails.currentWar;
       const opponent = war.opponent ? `${war.opponent.name} (${war.opponent.tag})` : 'Unknown opponent';
       parts.push(`Current war: ${war.state || 'unknown'} vs ${opponent} • Team ${war.teamSize}${war.attacksPerMember ? ` x${war.attacksPerMember}` : ''}`);
-      if (war.endTime) parts.push(`War ends: ${new Date(war.endTime).toLocaleString()}`);
+      if (war.endTime) {
+        parts.push(`War ends: ${safeLocaleString(war.endTime, {
+          fallback: 'Unknown',
+          context: 'AI Coaching current war endTime'
+        })}`);
+      }
     }
     if (snapshotDetails?.warLog?.length) {
       const wins = snapshotDetails.warLog.filter((w) => w.result === 'WIN').length;
