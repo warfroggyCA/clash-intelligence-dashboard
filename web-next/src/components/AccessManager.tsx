@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { safeLocaleDateString } from '@/lib/date';
 import { AccessMember, AccessLevel, getAccessLevelDisplayName, canManageAccessLevel } from '../lib/access-management';
 
 interface AccessManagerProps {
@@ -309,10 +310,12 @@ export default function AccessManager({ clanTag, clanName, onClose }: AccessMana
                     </div>
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-500">
-                    {member.lastAccessed 
-                      ? (member.lastAccessed ? new Date(member.lastAccessed).toLocaleDateString() : 'Unknown')
-                      : 'Never'
-                    }
+                    {member.lastAccessed
+                      ? safeLocaleDateString(member.lastAccessed, {
+                          fallback: 'Unknown',
+                          context: 'AccessManager member.lastAccessed'
+                        })
+                      : 'Never'}
                   </td>
                   <td className="px-4 py-3">
                     {member.isActive ? (

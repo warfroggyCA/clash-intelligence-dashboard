@@ -3,6 +3,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import type { ApiResponse } from '@/types';
 import { createApiContext } from '@/lib/api/route-helpers';
+import { safeLocaleDateString } from '@/lib/date';
 
 // POST /api/player-db/sync-departures
 // This endpoint syncs departure data to the Player DB by creating player notes
@@ -44,14 +45,18 @@ export async function POST(request: NextRequest) {
       try {
         // Create the departure note data
         const timestamp = new Date().toISOString();
+        const formattedDepartureDate = safeLocaleDateString(departure.departureDate, {
+          fallback: 'Unknown Date',
+          context: 'SyncDepartures departure.departureDate'
+        });
         const noteData = {
           timestamp,
-          note: `Member departed on ${departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date'}. ${departure.departureReason ? `Reason: ${departure.departureReason}` : 'No reason provided'}. ${departure.notes ? `Additional notes: ${departure.notes}` : ''}`,
+          note: `Member departed on ${formattedDepartureDate}. ${departure.departureReason ? `Reason: ${departure.departureReason}` : 'No reason provided'}. ${departure.notes ? `Additional notes: ${departure.notes}` : ''}`,
           customFields: {
             'Last Role': departure.lastRole || 'Unknown',
             'Last TH Level': departure.lastTownHall?.toString() || 'Unknown',
             'Last Trophies': departure.lastTrophies?.toString() || 'Unknown',
-            'Departure Date': departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date',
+            'Departure Date': formattedDepartureDate,
             'Departure Reason': departure.departureReason || 'Not specified',
             'Added By': departure.addedBy || 'System'
           }

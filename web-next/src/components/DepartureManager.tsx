@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { AlertCircle, UserX, UserCheck, Clock, MessageSquare, X } from "lucide-react";
+import { safeLocaleDateString } from '@/lib/date';
 
 interface DepartureRecord {
   memberTag: string;
@@ -251,7 +252,10 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                         Returned after {rejoin.daysAway} days away
                       </p>
                       <div className="mt-2 text-sm text-gray-600">
-                        <p><strong>Previous departure:</strong> {rejoin.previousDeparture.departureDate ? new Date(rejoin.previousDeparture.departureDate).toLocaleDateString() : 'Unknown Date'}</p>
+                        <p><strong>Previous departure:</strong> {safeLocaleDateString(rejoin.previousDeparture.departureDate, {
+                          context: 'DepartureManager previousDeparture',
+                          fallback: 'Unknown Date'
+                        })}</p>
                         {rejoin.previousDeparture.lastRole && (
                           <p><strong>Last role:</strong> {rejoin.previousDeparture.lastRole}</p>
                         )}
@@ -344,7 +348,10 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                         {isProcessed && <span className="ml-2 text-xs bg-green-200 text-green-800 px-2 py-1 rounded-full">✓ Processed</span>}
                       </h4>
                       <p className={`text-sm ${isProcessed ? 'text-green-600' : 'text-red-600'}`}>
-                        Left on {departure.departureDate ? new Date(departure.departureDate).toLocaleDateString() : 'Unknown Date'}
+                        Left on {safeLocaleDateString(departure.departureDate, {
+                          context: 'DepartureManager departureDate',
+                          fallback: 'Unknown Date'
+                        })}
                       </p>
                       <div className="mt-2 text-sm text-gray-600">
                         {departure.lastRole && <p><strong>Last role:</strong> {departure.lastRole}</p>}

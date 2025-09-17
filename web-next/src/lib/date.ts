@@ -29,3 +29,85 @@ export function daysSinceToDate(start: string, targetDate: string): number {
   return diff > 0 ? diff : 0;
 }
 
+type DateLike = string | number | Date | null | undefined;
+
+function normalizeDate(value: DateLike): Date | null {
+  if (value == null || value === '') {
+    return null;
+  }
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date;
+}
+
+interface SafeLocaleArgs {
+  locales?: string | string[];
+  options?: Intl.DateTimeFormatOptions;
+  fallback?: string;
+  context?: string;
+}
+
+function logInvalidDate(context: string | undefined, raw: DateLike, error?: unknown) {
+  console.error(
+    context ? `Invalid date for ${context}` : 'Invalid date value',
+    raw,
+    error instanceof Error ? error : undefined
+  );
+}
+
+export function safeLocaleDateString(value: DateLike, args: SafeLocaleArgs = {}): string {
+  const { locales, options, fallback = 'Unknown Date', context } = args;
+  try {
+    if (value == null || value === '') {
+      return fallback;
+    }
+    const date = normalizeDate(value);
+    if (!date) {
+      logInvalidDate(context, value);
+      return fallback;
+    }
+    return date.toLocaleDateString(locales, options);
+  } catch (error) {
+    logInvalidDate(context, value, error);
+    return fallback;
+  }
+}
+
+export function safeLocaleString(value: DateLike, args: SafeLocaleArgs = {}): string {
+  const { locales, options, fallback = 'Unknown', context } = args;
+  try {
+    if (value == null || value === '') {
+      return fallback;
+    }
+    const date = normalizeDate(value);
+    if (!date) {
+      logInvalidDate(context, value);
+      return fallback;
+    }
+    return date.toLocaleString(locales, options);
+  } catch (error) {
+    logInvalidDate(context, value, error);
+    return fallback;
+  }
+}
+
+export function safeLocaleTimeString(value: DateLike, args: SafeLocaleArgs = {}): string {
+  const { locales, options, fallback = 'Unknown', context } = args;
+  try {
+    if (value == null || value === '') {
+      return fallback;
+    }
+    const date = normalizeDate(value);
+    if (!date) {
+      logInvalidDate(context, value);
+      return fallback;
+    }
+    return date.toLocaleTimeString(locales, options);
+  } catch (error) {
+    logInvalidDate(context, value, error);
+    return fallback;
+  }
+}

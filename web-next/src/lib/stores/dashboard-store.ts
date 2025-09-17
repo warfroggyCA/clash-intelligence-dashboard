@@ -28,6 +28,7 @@ import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-managem
 import { cfg } from '@/lib/config';
 import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 import { showToast } from '@/lib/toast';
+import { safeLocaleDateString, safeLocaleTimeString } from '@/lib/date';
 
 // =============================================================================
 // STORE INTERFACES
@@ -450,11 +451,19 @@ export const useDashboardStore = create<DashboardState>()(
                 
                 // Show toast notification with snapshot metadata
                 if (json.snapshotMetadata) {
-                  const snapshotDate = json.snapshotMetadata.snapshotDate ? new Date(json.snapshotMetadata.snapshotDate).toLocaleDateString() : 'Unknown';
-                  const fetchedTime = json.snapshotMetadata.fetchedAt ? new Date(json.snapshotMetadata.fetchedAt).toLocaleTimeString('en-US', { 
-                    hour12: false, 
-                    timeZone: 'UTC' 
-                  }) : 'Unknown';
+                  const snapshotDate = safeLocaleDateString(json.snapshotMetadata.snapshotDate, {
+                    fallback: 'Unknown',
+                    context: 'DashboardStore snapshotMetadata.snapshotDate'
+                  });
+                  const fetchedTime = safeLocaleTimeString(json.snapshotMetadata.fetchedAt, {
+                    locales: 'en-US',
+                    options: {
+                      hour12: false,
+                      timeZone: 'UTC'
+                    },
+                    fallback: 'Unknown',
+                    context: 'DashboardStore snapshotMetadata.fetchedAt'
+                  });
                   showToast(
                     `Latest snapshot: ${snapshotDate} ${fetchedTime} UTC`, 
                     'success', 
