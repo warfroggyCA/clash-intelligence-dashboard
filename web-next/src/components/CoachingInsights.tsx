@@ -4,6 +4,9 @@ import { useState, useEffect, useMemo } from "react";
 import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle, Send } from "lucide-react";
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { safeLocaleString } from '@/lib/date';
+import type { SmartInsightsPayload, SmartInsightsRecommendation, SmartInsightsDiagnostics, SmartInsightsSource } from '@/lib/smart-insights';
+import { SMART_INSIGHTS_SCHEMA_VERSION } from '@/lib/smart-insights';
+import { loadSmartInsightsPayload } from '@/lib/smart-insights-cache';
 
 // Import rush percentage calculation (simplified version)
 const getTH = (m: any): number => m.townHallLevel ?? m.th ?? 0;
@@ -44,6 +47,11 @@ const calculateThCaps = (members: any[]): Map<number, Caps> => {
   return caps;
 };
 
+type CoachingCard = SmartInsightsRecommendation & {
+  timestamp?: string;
+  date?: string;
+};
+
 interface Member {
   name: string;
   tag: string;
@@ -73,25 +81,15 @@ interface Roster {
   meta?: any;
 }
 
-interface CoachingInsightEntry {
-  category: string;
-  title: string;
-  description: string;
-  chatMessage?: string;
-  priority: "high" | "medium" | "low";
-  icon: string;
-  timestamp?: string;
-  date?: string;
-}
-
 interface CoachingInsightsProps {
   clanData: Roster | null;
   clanTag: string;
 }
 
 export default function CoachingInsights({ clanData, clanTag }: CoachingInsightsProps) {
-  const [advice, setAdvice] = useState<CoachingInsightEntry[]>([]);
+  const [advice, setAdvice] = useState<CoachingCard[]>([]);
   const [loading, setLoading] = useState(false);
+  const setSmartInsights = useDashboardStore((state) => state.setSmartInsights);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [actionedTips, setActionedTips] = useState<Set<string>>(new Set());
   const [showActioned, setShowActioned] = useState(false);
@@ -137,6 +135,81 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     return parts.join('\n');
   }, [snapshotMetadata, snapshotDetails, snapshotAgeHours]);
 
+  const mapPayloadToAdvice = (payload: SmartInsightsPayload): CoachingCard[] => {
+    const generatedAt = payload.metadata.generatedAt;
+    return (payload.coaching || []).map((entry) => ({
+      ...entry,
+      timestamp: generatedAt,
+      date: payload.metadata.snapshotDate,
+    }));
+  };
+
+  const persistSmartInsightsPayload = (payload: SmartInsightsPayload, recommendations: CoachingCard[]) => {
+    setSmartInsights(payload);
+    try {
+      localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(recommendations));
+    } catch (storageError) {
+      console.error('[Coaching Insights] Failed to persist coaching advice cache:', storageError);
+    }
+  };
+
+  const createPayloadFromRecommendations = (
+    recommendations: CoachingCard[],
+    source: SmartInsightsSource,
+    diagnosticsOverrides: Partial<SmartInsightsDiagnostics> = {}
+  ): SmartInsightsPayload => {
+    const generatedAt = new Date().toISOString();
+    const snapshotDate = snapshotMetadata?.snapshotDate || generatedAt.slice(0, 10);
+    const diagnostics: SmartInsightsDiagnostics = {
+      openAIConfigured: diagnosticsOverrides.openAIConfigured ?? false,
+      processingTimeMs: diagnosticsOverrides.processingTimeMs ?? 0,
+      hasError: diagnosticsOverrides.hasError ?? false,
+      changeSummary: diagnosticsOverrides.changeSummary ?? false,
+      coaching: recommendations.length > 0,
+      playerDNA: diagnosticsOverrides.playerDNA ?? false,
+      clanDNA: diagnosticsOverrides.clanDNA ?? false,
+      gameChat: diagnosticsOverrides.gameChat ?? false,
+      performanceAnalysis: diagnosticsOverrides.performanceAnalysis ?? false,
+      errorMessage: diagnosticsOverrides.errorMessage,
+    };
+
+    return {
+      metadata: {
+        clanTag,
+        snapshotDate,
+        generatedAt,
+        source,
+        schemaVersion: SMART_INSIGHTS_SCHEMA_VERSION,
+        snapshotId: snapshotMetadata?.fetchedAt,
+      },
+      headlines: [],
+      coaching: recommendations.map(({ timestamp, date, ...rest }) => rest),
+      playerSpotlights: [],
+      diagnostics,
+      context: {
+        changeSummary: undefined,
+        performanceAnalysis: undefined,
+        clanDNAInsights: undefined,
+        gameChatMessages: undefined,
+      },
+    };
+  };
+
+  const attachTimestamps = (items: CoachingCard[]): CoachingCard[] => {
+    const nowIso = new Date().toISOString();
+    let today = 'Unknown Date';
+    try {
+      today = new Date().toLocaleDateString();
+    } catch (error) {
+      console.error('[Coaching Insights] Date formatting error while attaching timestamps:', error);
+    }
+    return items.map((item) => ({
+      ...item,
+      timestamp: item.timestamp || nowIso,
+      date: item.date || today,
+    }));
+  };
+
   useEffect(() => {
     // Load coaching advice from stored insights or localStorage
     if (clanData?.members) {
@@ -165,64 +238,72 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
   const loadCoachingAdvice = async () => {
     setLoading(true);
     try {
-      // First, try to load from cached insights bundle
       const response = await fetch(`/api/ai/batch-results?clanTag=${encodeURIComponent(clanTag)}`);
-      
+
       if (response.ok) {
         const result = await response.json();
-        if (result.success && result.data?.coaching_advice) {
-          setAdvice(result.data.coaching_advice);
-          console.log('[Coaching Insights] Loaded advice from cached bundle');
-          return;
+        if (result.success) {
+          const payload: SmartInsightsPayload | null =
+            result.data?.smartInsightsPayload || result.data?.smart_insights_payload || null;
+
+          if (payload) {
+            const normalized = mapPayloadToAdvice(payload);
+            setAdvice(normalized);
+            persistSmartInsightsPayload(payload, normalized);
+            console.log('[Coaching Insights] Loaded advice from Smart Insights payload');
+            return;
+          }
+
+          if (result.data?.coaching_advice) {
+            const legacyAdvice = attachTimestamps(result.data.coaching_advice as CoachingCard[]);
+            setAdvice(legacyAdvice);
+            const legacyPayload = createPayloadFromRecommendations(legacyAdvice, 'unknown', {
+              openAIConfigured: true,
+            });
+            persistSmartInsightsPayload(legacyPayload, legacyAdvice);
+            console.log('[Coaching Insights] Loaded advice from legacy coaching_advice field');
+            return;
+          }
         }
       }
-      
-      // Fallback to localStorage if cached bundle not available
-      const saved = localStorage.getItem(`coaching_advice_${clanTag}`);
-      if (saved) {
+
+      const cachedPayload = loadSmartInsightsPayload(clanTag);
+      if (cachedPayload) {
+        const normalized = mapPayloadToAdvice(cachedPayload);
+        setAdvice(normalized);
+        persistSmartInsightsPayload(cachedPayload, normalized);
+        console.log('[Coaching Insights] Loaded advice from stored Smart Insights payload');
+        return;
+      }
+
+      const savedLegacy = localStorage.getItem(`coaching_advice_${clanTag}`);
+      if (savedLegacy) {
         try {
-          const parsedAdvice = JSON.parse(saved);
-          // Add timestamps to advice that doesn't have them
-          const adviceWithTimestamps = parsedAdvice.map((item: CoachingInsightEntry) => ({
-            ...item,
-            timestamp: item.timestamp || new Date().toISOString(),
-            date: item.date || (() => {
-              try {
-                return new Date().toLocaleDateString();
-              } catch (error) {
-                console.error('Date formatting error in CoachingInsights:', error);
-                return 'Unknown Date';
-              }
-            })()
-          }));
-          setAdvice(adviceWithTimestamps);
-          console.log('[Coaching Insights] Loaded advice from localStorage');
+          const parsedAdvice = attachTimestamps(JSON.parse(savedLegacy));
+          setAdvice(parsedAdvice);
+          const payload = createPayloadFromRecommendations(parsedAdvice, 'unknown', {
+            openAIConfigured: false,
+          });
+          persistSmartInsightsPayload(payload, parsedAdvice);
+          console.log('[Coaching Insights] Loaded advice from legacy localStorage');
+          return;
         } catch (error) {
           console.error('Failed to load existing coaching advice:', error);
-          setAdvice([]);
         }
-      } else {
-        setAdvice([]);
-        console.log('[Coaching Insights] No existing advice found');
-        
-        // Show helpful message for first-time users
-        setAdvice([{
-          category: "System",
-          title: "Coaching Insights Setup",
-          description: "The coaching insights system is being set up. Your first batch of personalized guidance will be available after the nightly processing completes (usually within 24 hours). You can also generate insights manually using the button below.",
-          priority: "medium" as const,
-          icon: "🤖",
-          timestamp: new Date().toISOString(),
-          date: (() => {
-            try {
-              return new Date().toLocaleDateString();
-            } catch (error) {
-              console.error('Date formatting error in CoachingInsights setup:', error);
-              return 'Unknown Date';
-            }
-          })()
-        }]);
       }
+
+      const setupMessage: CoachingCard = {
+        id: 'setup-message',
+        category: 'System',
+        title: 'Coaching Insights Setup',
+        description:
+          'The coaching insights system is being set up. Your first batch of personalized guidance will be available after the nightly processing completes (usually within 24 hours). You can also generate insights manually using the button below.',
+        priority: 'medium',
+        icon: '🤖',
+      };
+      const initialAdvice = attachTimestamps([setupMessage]);
+      setAdvice(initialAdvice);
+      console.log('[Coaching Insights] No existing advice found; showing setup message');
     } catch (error) {
       console.error('[Coaching Insights] Error loading coaching advice:', error);
       setAdvice([]);
@@ -298,10 +379,10 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
       if (response.ok) {
         const result = await response.json();
         const rawAdvice = result?.data?.advice;
-        const newAdvice: CoachingInsightEntry[] = Array.isArray(rawAdvice) ? rawAdvice : [];
+        const newAdvice: CoachingCard[] = Array.isArray(rawAdvice) ? rawAdvice : [];
 
         // Add timestamps to new advice
-        const adviceWithTimestamps = newAdvice.map((item: CoachingInsightEntry) => ({
+        const adviceWithTimestamps = newAdvice.map((item: CoachingCard) => ({
           ...item,
           timestamp: new Date().toISOString(),
           date: (() => {
@@ -315,13 +396,15 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
         }));
 
         setAdvice(adviceWithTimestamps);
-        // Save to localStorage for persistence
-        localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(adviceWithTimestamps));
+        const payload = createPayloadFromRecommendations(adviceWithTimestamps, 'adhoc', {
+          openAIConfigured: true,
+        });
+        persistSmartInsightsPayload(payload, adviceWithTimestamps);
       } else {
         // Fallback to local analysis if API fails
         const localAdvice = generateLocalAdvice();
         // Add timestamps to local advice
-        const adviceWithTimestamps = localAdvice.map((item: CoachingInsightEntry) => ({
+        const adviceWithTimestamps = localAdvice.map((item: CoachingCard) => ({
           ...item,
           timestamp: new Date().toISOString(),
           date: (() => {
@@ -334,22 +417,30 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
           })()
         }));
         setAdvice(adviceWithTimestamps);
-        localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(adviceWithTimestamps));
+        const payload = createPayloadFromRecommendations(adviceWithTimestamps, 'adhoc', {
+          openAIConfigured: false,
+          errorMessage: 'Fallback local advice',
+        });
+        persistSmartInsightsPayload(payload, adviceWithTimestamps);
       }
     } catch (error) {
       console.error('Failed to generate coaching insight request:', error);
-      const localAdvice = generateLocalAdvice();
+      const localAdvice = attachTimestamps(generateLocalAdvice());
       setAdvice(localAdvice);
-      localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(localAdvice));
+      const payload = createPayloadFromRecommendations(localAdvice, 'adhoc', {
+        openAIConfigured: false,
+        errorMessage: 'Local fallback after error',
+      });
+      persistSmartInsightsPayload(payload, localAdvice);
     } finally {
       setLoading(false);
     }
   };
 
-  const generateLocalAdvice = (): CoachingInsightEntry[] => {
+  const generateLocalAdvice = (): CoachingCard[] => {
     if (!clanData?.members) return [];
 
-    const advice: CoachingInsightEntry[] = [];
+    const advice: CoachingCard[] = [];
     const members = clanData.members;
 
     // Analyze donations with specific names
@@ -360,6 +451,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     
     if (topDonators.length > 0 && topDonators[0].donations && topDonators[0].donations > 0) {
       advice.push({
+        id: `top-donator-${topDonators[0].tag}`,
         category: "Donations",
         title: `${topDonators[0].name} Leading Donations`,
         description: `${topDonators[0].name} is our top donator with ${topDonators[0].donations} donations this season!`,
@@ -371,6 +463,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
 
     if (lowDonators.length > 0 && lowDonators.length <= 5) {
       advice.push({
+        id: `low-donators-${lowDonators.map(m => m.tag).join('-')}`,
         category: "Donations",
         title: `${lowDonators.map(m => m.name).join(', ')} Need More Donations`,
         description: `${lowDonators.map(m => m.name).join(', ')} are below the clan average of ${Math.round(avgDonations)} donations.`,
@@ -387,6 +480,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     
     if (inactiveMembers.length > 0 && inactiveMembers.length <= 5) {
       advice.push({
+        id: `inactive-members-${inactiveMembers.map(m => m.tag).join('-')}`,
         category: "Activity",
         title: `${inactiveMembers.map(m => m.name).join(', ')} Haven't Been Active`,
         description: `${inactiveMembers.map(m => `${m.name} (${m.lastSeen} days)`).join(', ')} haven't been seen recently.`,
@@ -403,6 +497,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     
     if (newMembers.length > 0 && newMembers.length <= 5) {
       advice.push({
+        id: `new-members-${newMembers.map(m => m.tag).join('-')}`,
         category: "New Members",
         title: `Welcome ${newMembers.map(m => m.name).join(', ')}`,
         description: `${newMembers.map(m => m.name).join(', ')} joined the clan recently and need a warm welcome.`,
@@ -418,6 +513,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     
     if (highTrophyMembers.length > 0 && highTrophyMembers.length <= 3) {
       advice.push({
+        id: `high-trophies-${highTrophyMembers.map(m => m.tag).join('-')}`,
         category: "Trophies",
         title: `${highTrophyMembers.map(m => m.name).join(', ')} in High Leagues`,
         description: `${highTrophyMembers.map(m => `${m.name} (${m.trophies} trophies)`).join(', ')} are in high trophy leagues!`,
@@ -429,6 +525,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
 
     if (lowTrophyMembers.length > 0 && lowTrophyMembers.length <= 5) {
       advice.push({
+        id: `low-trophies-${lowTrophyMembers.map(m => m.tag).join('-')}`,
         category: "Trophies",
         title: `${lowTrophyMembers.map(m => m.name).join(', ')} Trophy Push Opportunity`,
         description: `${lowTrophyMembers.map(m => `${m.name} (${m.trophies} trophies)`).join(', ')} are below 1000 trophies and could benefit from a push.`,
@@ -465,7 +562,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     localStorage.removeItem(`actioned_tips_${clanTag}`);
   };
 
-  const shareToDiscord = async (advice: CoachingInsightEntry, tipId: string) => {
+  const shareToDiscord = async (advice: CoachingCard, tipId: string) => {
     if (!discordWebhookUrl) {
       alert("Please configure your Discord webhook URL first! Go to the Discord tab to set it up.");
       return;
@@ -503,7 +600,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     }
   };
 
-  const generateTipId = (tip: CoachingInsightEntry, index: number): string => {
+  const generateTipId = (tip: CoachingCard, index: number): string => {
     // Create a unique ID based on the tip content and clan data
     return `${clanTag}_${tip.category}_${tip.title}_${index}`.replace(/[^a-zA-Z0-9_]/g, '_');
   };

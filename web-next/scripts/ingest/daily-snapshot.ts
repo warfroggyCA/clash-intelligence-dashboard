@@ -5,18 +5,19 @@ config({ path: '.env.local' });
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 process.env.VERCEL_ENV = process.env.VERCEL_ENV || 'production';
 
-// Now import other modules that depend on environment variables
-import { cfg } from '../../src/lib/config';
-import { convertFullSnapshotToDailySnapshot, detectChanges, getSnapshotBeforeDate, saveChangeSummary } from '../../src/lib/snapshots';
-import { generateChangeSummary, generateGameChatMessages } from '../../src/lib/ai-summarizer';
-import { addDeparture } from '../../src/lib/departures';
-import { resolveUnknownPlayers } from '../../src/lib/player-resolver';
-import { insightsEngine } from '../../src/lib/smart-insights';
-import { saveInsightsBundle, cachePlayerDNAForClan } from '../../src/lib/insights-storage';
-import { fetchFullClanSnapshot, persistFullClanSnapshot } from '../../src/lib/full-snapshot';
-import { mockFullClanSnapshot } from '../mock-data';
+async function main() {
+  const { cfg } = await import('../../src/lib/config');
+  const snapshotsModule = await import('../../src/lib/snapshots');
+  const { convertFullSnapshotToDailySnapshot, detectChanges, getSnapshotBeforeDate, saveChangeSummary } = snapshotsModule;
+  const { generateChangeSummary, generateGameChatMessages } = await import('../../src/lib/ai-summarizer');
+  const { addDeparture } = await import('../../src/lib/departures');
+  const { resolveUnknownPlayers } = await import('../../src/lib/player-resolver');
+  const { insightsEngine } = await import('../../src/lib/smart-insights');
+  const { saveInsightsBundle, cachePlayerDNAForClan } = await import('../../src/lib/insights-storage');
+  const { saveAISummary } = await import('../../src/lib/supabase');
+  const { fetchFullClanSnapshot, persistFullClanSnapshot } = await import('../../src/lib/full-snapshot');
+  const { mockFullClanSnapshot } = await import('../mock-data');
 
-async function run() {
   // Parse CLI args: daily-snapshot.ts <clanTag> [--no-mock]
   const args = process.argv.slice(2);
   const flags = new Set(args.filter((a) => a.startsWith('--')));
@@ -122,11 +123,29 @@ async function run() {
       console.log('[Ingest] Change summary saved');
 
       try {
+        await saveAISummary({
+          clan_tag: clanTag,
+          date: currentSnapshot.date,
+          summary,
+          summary_type: 'automation',
+          unread: true,
+          actioned: false,
+        });
+        console.log('[Ingest] Insights summary saved to Supabase');
+      } catch (summaryError) {
+        console.warn('[Ingest] Failed to save insights summary:', summaryError);
+      }
+
+      try {
         const insightsBundle = await insightsEngine.processBundle(
           currentSnapshot,
           changes,
           clanTag,
-          currentSnapshot.date
+          currentSnapshot.date,
+          {
+            source: 'nightly_cron',
+            snapshotId: currentSnapshot.timestamp,
+          }
         );
         await saveInsightsBundle(insightsBundle);
         await cachePlayerDNAForClan(currentSnapshot, clanTag, currentSnapshot.date);
@@ -144,7 +163,7 @@ async function run() {
   console.log('[Ingest] Daily snapshot complete');
 }
 
-run()
+main()
   .then(() => {
     console.log('[Ingest] Success');
     process.exit(0);

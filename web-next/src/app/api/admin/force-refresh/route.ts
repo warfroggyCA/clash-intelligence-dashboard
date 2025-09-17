@@ -119,7 +119,11 @@ export async function POST(req: NextRequest) {
           currentSnapshot,
           changes || [],
           clanTag,
-          currentSnapshot.date
+          currentSnapshot.date,
+          {
+            source: 'manual_refresh',
+            snapshotId: currentSnapshot.timestamp,
+          }
         );
 
         // Add snapshot summary to batch results

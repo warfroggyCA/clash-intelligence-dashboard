@@ -9,6 +9,7 @@ import { addDeparture } from "@/lib/departures";
 import { resolveUnknownPlayers } from "@/lib/player-resolver";
 import { insightsEngine } from "@/lib/smart-insights";
 import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from "@/lib/insights-storage";
+import { saveAISummary } from "@/lib/supabase";
 import { createApiContext } from "@/lib/api/route-helpers";
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from "@/lib/full-snapshot";
 
@@ -118,6 +119,20 @@ export async function GET(req: Request) {
           await saveChangeSummary(changeSummary);
           console.log(`[CRON] Saved change summary for ${clanTag}`);
 
+          try {
+            await saveAISummary({
+              clan_tag: clanTag,
+              date: currentSnapshot.date,
+              summary,
+              summary_type: 'automation',
+              unread: true,
+              actioned: false,
+            });
+            console.log(`[CRON] Saved insights summary for ${clanTag}`);
+          } catch (summaryError) {
+            console.warn(`[CRON] Failed to save insights summary for ${clanTag}:`, summaryError);
+          }
+
           // Generate comprehensive insights bundle
           console.log(`[CRON] Starting automated insights processing for ${clanTag}`);
           try {
@@ -136,7 +151,11 @@ export async function GET(req: Request) {
               currentSnapshot,
               changes,
               clanTag,
-              currentSnapshot.date
+              currentSnapshot.date,
+              {
+                source: 'nightly_cron',
+                snapshotId: currentSnapshot.timestamp,
+              }
             );
             
             // Add snapshot summary to batch results

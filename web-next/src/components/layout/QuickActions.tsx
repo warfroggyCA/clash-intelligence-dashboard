@@ -45,12 +45,18 @@ const useQuickActions = () => {
     setStatus,
     snapshotMetadata,
     snapshotDetails,
+    loadSmartInsights,
   } = useDashboardStore();
+  const smartInsights = useDashboardStore(selectors.smartInsights);
+  const smartInsightsStatus = useDashboardStore(selectors.smartInsightsStatus);
+  const smartInsightsError = useDashboardStore(selectors.smartInsightsError);
+  const smartInsightsIsStale = useDashboardStore(selectors.smartInsightsIsStale);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isCopyingData, setIsCopyingData] = useState(false);
   const [isCopyingSnapshot, setIsCopyingSnapshot] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
 
   const handleCopyData = async () => {
     if (!roster) {
@@ -149,6 +155,26 @@ const useQuickActions = () => {
       setStatus('error');
     } finally {
       setIsGeneratingSummary(false);
+    }
+  };
+
+  const handleRefreshInsights = async () => {
+    if (!clanTag) {
+      setMessage('Load a clan first to refresh insights');
+      return;
+    }
+
+    setIsRefreshingInsights(true);
+    try {
+      await loadSmartInsights(clanTag, { force: true });
+      setMessage('Smart insights refreshed');
+      setStatus('success');
+    } catch (error) {
+      console.error('Failed to refresh smart insights:', error);
+      setMessage('Failed to refresh smart insights');
+      setStatus('error');
+    } finally {
+      setIsRefreshingInsights(false);
     }
   };
 
@@ -350,6 +376,7 @@ const useQuickActions = () => {
     handleCopyData,
     handleGenerateInsightsSummary,
     handleRefreshData,
+    handleRefreshInsights,
     handleCopySnapshotSummary,
     handleExportSnapshot,
     isGeneratingSummary,
@@ -357,6 +384,11 @@ const useQuickActions = () => {
     isCopyingSnapshot,
     isExporting,
     isRefreshing,
+    isRefreshingInsights,
+    smartInsightsStatus,
+    smartInsightsError,
+    smartInsightsIsStale,
+    smartInsightsMetadata: smartInsights?.metadata ?? null,
     hasData: !!roster,
     memberCount: selectors.memberCount(useDashboardStore.getState())
   };
@@ -391,6 +423,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     handleCopyData,
     handleGenerateInsightsSummary,
     handleRefreshData,
+    handleRefreshInsights,
     handleCopySnapshotSummary,
     handleExportSnapshot,
     isGeneratingSummary,
@@ -398,6 +431,11 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     isCopyingSnapshot,
     isExporting,
     isRefreshing,
+    isRefreshingInsights,
+    smartInsightsStatus,
+    smartInsightsError,
+    smartInsightsIsStale,
+    smartInsightsMetadata,
     hasData,
     memberCount
   } = useQuickActions();
@@ -446,6 +484,26 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z"></path>
               </svg>
               Refresh Data
+            </span>
+          </Button>
+
+          {/* Refresh Smart Insights Button */}
+          <Button
+            onClick={handleRefreshInsights}
+            disabled={!hasData || isRefreshingInsights || smartInsightsStatus === 'loading'}
+            loading={isRefreshingInsights || smartInsightsStatus === 'loading'}
+            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-purple-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+            title="Refresh Smart Insights payload for this clan"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+            <span className="relative flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 12a7.5 7.5 0 0112.672-5.303l2.131-2.131A.75.75 0 0120.75 5.25v5a.75.75 0 01-.75.75h-5a.75.75 0 01-.53-1.28l1.986-1.986A6 6 0 106.5 12a.75.75 0 11-1.5 0zm15 0a7.5 7.5 0 01-12.672 5.303l-2.131 2.131A.75.75 0 013.25 18.75v-5a.75.75 0 01.75-.75h5a.75.75 0 01.53 1.28l-1.986 1.986A6 6 0 1017.5 12a.75.75 0 111.5 0z"></path>
+              </svg>
+              Refresh Insights
+              {smartInsightsIsStale && (
+                <span className="text-xs bg-white/20 px-2 py-1 rounded">Stale</span>
+              )}
             </span>
           </Button>
 
@@ -537,6 +595,35 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
               Insights Summary
             </span>
           </Button>
+        </div>
+        
+        <div className="rounded-lg border border-purple-100 bg-purple-50/80 px-4 py-3 text-sm text-purple-700 flex flex-col gap-1">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="font-semibold">Smart Insights</div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${smartInsightsStatus === 'loading' ? 'bg-purple-200 text-purple-800' : smartInsightsStatus === 'error' ? 'bg-red-100 text-red-700' : smartInsightsIsStale ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                {smartInsightsStatus === 'loading' ? 'Refreshing' : smartInsightsStatus === 'error' ? 'Error' : smartInsightsIsStale ? 'Stale' : 'Fresh'}
+              </span>
+              {smartInsightsMetadata?.source && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-purple-700">
+                  {smartInsightsMetadata.source.replace('_', ' ')}
+                </span>
+              )}
+            </div>
+          </div>
+          {smartInsightsMetadata ? (
+            <div className="text-xs text-purple-600">
+              Snapshot {safeLocaleDateString(smartInsightsMetadata.snapshotDate, { fallback: smartInsightsMetadata.snapshotDate, context: 'QuickActions smartInsights snapshotDate' })}
+              {smartInsightsMetadata.generatedAt && (
+                <> • Generated {safeLocaleString(smartInsightsMetadata.generatedAt, { fallback: smartInsightsMetadata.generatedAt, context: 'QuickActions smartInsights generatedAt' })}</>
+              )}
+            </div>
+          ) : (
+            <div className="text-xs text-purple-600">Insights will appear after the nightly run or a manual refresh.</div>
+          )}
+          {smartInsightsError && (
+            <div className="text-xs text-red-600">{smartInsightsError}</div>
+          )}
         </div>
         
         {/* Status Message */}

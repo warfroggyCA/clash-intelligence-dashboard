@@ -2,7 +2,7 @@
 // Supabase integration for storing and retrieving smart insights bundles
 
 import { createClient } from '@supabase/supabase-js';
-import { InsightsBundle, PlayerDNAInsights } from './smart-insights';
+import { InsightsBundle, PlayerDNAInsights, SmartInsightsPayload, composeSmartInsightsPayload } from './smart-insights';
 import { calculatePlayerDNA, classifyPlayerArchetype } from './player-dna';
 import { normalizeTag, safeTagForFilename } from './tags';
 import { safeLocaleString } from './date';
@@ -15,10 +15,48 @@ const supabase = supabaseUrl && supabaseKey
   : null;
 
 // Map database field names to frontend field names
+function ensureSmartInsightsPayload(record: StoredInsightsBundle): SmartInsightsPayload | null {
+  if (record.smart_insights_payload) {
+    return record.smart_insights_payload;
+  }
+
+  const normalizedClanTag = normalizeTag(record.clan_tag);
+  const legacyBundle: InsightsBundle = {
+    timestamp: record.timestamp,
+    clanTag: normalizedClanTag || record.clan_tag,
+    date: record.date,
+    changeSummary: record.change_summary || undefined,
+    coachingInsights: record.coaching_insights || undefined,
+    playerDNAInsights: record.player_dna_insights || undefined,
+    clanDNAInsights: record.clan_dna_insights || undefined,
+    gameChatMessages: record.game_chat_messages || undefined,
+    performanceAnalysis: record.performance_analysis || undefined,
+    snapshotSummary: record.snapshot_summary || undefined,
+    error: record.error || undefined,
+  };
+
+  try {
+    return composeSmartInsightsPayload({
+      bundle: legacyBundle,
+      clanTag: legacyBundle.clanTag,
+      snapshotDate: record.date,
+      source: 'unknown',
+      processingTimeMs: 0,
+      snapshotId: record.timestamp,
+      openAIConfigured: true,
+    });
+  } catch (error) {
+    console.error('[Insights Storage] Failed to compose fallback smart insights payload:', error);
+    return null;
+  }
+}
+
 function mapDatabaseToFrontend(record: StoredInsightsBundle): StoredInsightsBundle {
   return {
     ...record,
     coaching_advice: record.coaching_insights, // Map new DB field to old frontend field name for compatibility
+    smart_insights_payload: ensureSmartInsightsPayload(record),
+    smartInsightsPayload: ensureSmartInsightsPayload(record),
   };
 }
 
@@ -34,6 +72,8 @@ export interface StoredInsightsBundle {
   clan_dna_insights: any;
   game_chat_messages: any;
   performance_analysis: any;
+  smart_insights_payload: SmartInsightsPayload | null;
+  smartInsightsPayload?: SmartInsightsPayload | null;
   snapshot_summary: string | null;
   error: string | null;
   created_at: string;
@@ -73,6 +113,7 @@ export async function saveInsightsBundle(results: InsightsBundle): Promise<boole
         clan_dna_insights: results.clanDNAInsights || null,
         game_chat_messages: results.gameChatMessages || null,
         performance_analysis: results.performanceAnalysis || null,
+        smart_insights_payload: results.smartInsightsPayload || null,
         snapshot_summary: results.snapshotSummary || null,
         error: results.error || null,
       }, {
@@ -140,6 +181,15 @@ export async function getLatestInsightsBundle(clanTag: string): Promise<StoredIn
   }
 }
 
+export async function getLatestSmartInsightsPayload(clanTag: string): Promise<SmartInsightsPayload | null> {
+  const bundle = await getLatestInsightsBundle(clanTag);
+  return bundle?.smartInsightsPayload ?? bundle?.smart_insights_payload ?? null;
+}
+
+export async function getSmartInsightsPayloadByDate(clanTag: string, date: string): Promise<SmartInsightsPayload | null> {
+  const bundle = await getInsightsBundleByDate(clanTag, date);
+  return bundle?.smartInsightsPayload ?? bundle?.smart_insights_payload ?? null;
+}
 export async function getInsightsBundleByDate(clanTag: string, date: string): Promise<StoredInsightsBundle | null> {
   if (!supabase) {
     throw new Error('Supabase client not initialized');

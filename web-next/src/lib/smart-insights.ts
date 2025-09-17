@@ -5,6 +5,90 @@ import OpenAI from 'openai';
 import { MemberChange, ChangeSummary } from './snapshots';
 import { calculatePlayerDNA, calculateClanDNA, classifyPlayerArchetype } from './player-dna';
 
+export const SMART_INSIGHTS_SCHEMA_VERSION = '1.0.0';
+
+export type SmartInsightsSource = 'nightly_cron' | 'manual_refresh' | 'adhoc' | 'unknown';
+
+export interface SmartInsightsMetadata {
+  clanTag: string;
+  snapshotDate: string;
+  generatedAt: string;
+  source: SmartInsightsSource;
+  schemaVersion: string;
+  snapshotId?: string;
+}
+
+export interface SmartInsightsHeadline {
+  id: string;
+  title: string;
+  detail?: string;
+  priority: 'high' | 'medium' | 'low';
+  category: 'change' | 'performance' | 'war' | 'donation' | 'spotlight';
+}
+
+export interface SmartInsightsRecommendation {
+  id: string;
+  title: string;
+  description: string;
+  priority: 'high' | 'medium' | 'low';
+  category: string;
+  icon?: string;
+  chatMessage?: string;
+}
+
+export interface SmartInsightsPlayerSpotlight {
+  id: string;
+  playerTag: string;
+  playerName: string;
+  archetype: string;
+  headline: string;
+  strengths: string[];
+  improvementAreas: string[];
+  coachingTips: string[];
+}
+
+export interface SmartInsightsPlayerOfDay {
+  playerTag: string;
+  playerName: string;
+  score: number;
+  highlights: string[];
+}
+
+export interface SmartInsightsDiagnostics {
+  openAIConfigured: boolean;
+  processingTimeMs: number;
+  hasError: boolean;
+  changeSummary: boolean;
+  coaching: boolean;
+  playerDNA: boolean;
+  clanDNA: boolean;
+  gameChat: boolean;
+  performanceAnalysis: boolean;
+  errorMessage?: string;
+}
+
+export interface SmartInsightsContext {
+  changeSummary?: SnapshotSummaryAnalysis;
+  performanceAnalysis?: SnapshotSummaryAnalysis;
+  clanDNAInsights?: ClanDNAInsights;
+  gameChatMessages?: string[];
+}
+
+export interface SmartInsightsPayload {
+  metadata: SmartInsightsMetadata;
+  headlines: SmartInsightsHeadline[];
+  coaching: SmartInsightsRecommendation[];
+  playerSpotlights: SmartInsightsPlayerSpotlight[];
+  playerOfTheDay?: SmartInsightsPlayerOfDay | null;
+  diagnostics: SmartInsightsDiagnostics;
+  context: SmartInsightsContext;
+}
+
+export interface SmartInsightsBuildOptions {
+  source?: SmartInsightsSource;
+  snapshotId?: string;
+}
+
 export interface CoachingInsight {
   category: string;
   title: string;
@@ -55,6 +139,7 @@ export interface InsightsBundle {
   performanceAnalysis?: SnapshotSummaryAnalysis;
   snapshotSummary?: string;
   error?: string;
+  smartInsightsPayload?: SmartInsightsPayload;
 }
 
 export class InsightsEngine {
@@ -122,7 +207,8 @@ export class InsightsEngine {
     clanData: any,
     changes: MemberChange[],
     clanTag: string,
-    date: string
+    date: string,
+    options: SmartInsightsBuildOptions = {}
   ): Promise<InsightsBundle> {
     const startTime = Date.now();
     console.log(`[Insights] Starting batch processing for ${clanTag} at ${new Date().toISOString()}`);
@@ -133,9 +219,22 @@ export class InsightsEngine {
       date,
     };
 
+    const playerOfTheDay = calculatePlayerOfTheDay(changes);
+
     if (!this.isConfigured) {
       results.error = 'Insights engine not configured';
       console.log('[Insights] OpenAI API key not configured, skipping automated insights');
+      const processingTime = Date.now() - startTime;
+      results.smartInsightsPayload = composeSmartInsightsPayload({
+        bundle: results,
+        clanTag,
+        snapshotDate: date,
+        processingTimeMs: processingTime,
+        source: options.source || 'unknown',
+        snapshotId: options.snapshotId,
+        openAIConfigured: this.isConfigured,
+        playerOfTheDay,
+      });
       return results;
     }
 
@@ -179,11 +278,32 @@ export class InsightsEngine {
 
       const processingTime = Date.now() - startTime;
       console.log(`[Insights] Batch processing completed in ${processingTime}ms for ${clanTag}`);
+      results.smartInsightsPayload = composeSmartInsightsPayload({
+        bundle: results,
+        clanTag,
+        snapshotDate: date,
+        processingTimeMs: processingTime,
+        source: options.source || 'unknown',
+        snapshotId: options.snapshotId,
+        openAIConfigured: this.isConfigured,
+        playerOfTheDay,
+      });
 
       return results;
     } catch (error: any) {
       console.error(`[Insights] Batch processing error for ${clanTag}:`, error);
       results.error = error.message;
+      const processingTime = Date.now() - startTime;
+      results.smartInsightsPayload = composeSmartInsightsPayload({
+        bundle: results,
+        clanTag,
+        snapshotDate: date,
+        processingTimeMs: processingTime,
+        source: options.source || 'unknown',
+        snapshotId: options.snapshotId,
+        openAIConfigured: this.isConfigured,
+        playerOfTheDay,
+      });
       return results;
     }
   }
@@ -755,6 +875,252 @@ Provide an engaging, concise summary highlighting the most important changes and
     }
     return caps;
   }
+}
+
+function calculatePlayerOfTheDay(changes: MemberChange[]): SmartInsightsPlayerOfDay | null {
+  const contributions = new Map<string, { name: string; score: number; highlights: string[] }>();
+
+  const addContribution = (tag: string, name: string, points: number, highlight: string) => {
+    if (!tag || points <= 0) return;
+    const entry = contributions.get(tag) || { name, score: 0, highlights: [] };
+    entry.score += points;
+    if (entry.highlights.length < 5) {
+      entry.highlights.push(highlight.trim());
+    }
+    contributions.set(tag, entry);
+  };
+
+  for (const change of changes) {
+    const tag = change.member?.tag;
+    const name = change.member?.name || tag;
+    if (!tag || !name) continue;
+
+    const prev = typeof change.previousValue === 'number' ? change.previousValue : undefined;
+    const curr = typeof change.newValue === 'number' ? change.newValue : undefined;
+    const delta = prev !== undefined && curr !== undefined ? curr - prev : 0;
+
+    switch (change.type) {
+      case 'trophy_change': {
+        const gain = Math.max(delta, 0);
+        if (gain > 0) {
+          addContribution(tag, name, gain * 1.5, `Trophies +${gain}`);
+        }
+        break;
+      }
+      case 'donation_change': {
+        const gain = Math.max(delta, 0);
+        if (gain > 0) {
+          addContribution(tag, name, gain * 0.4, `Donations +${gain}`);
+        }
+        break;
+      }
+      case 'donation_received_change': {
+        const gain = Math.max(delta, 0);
+        if (gain > 0) {
+          addContribution(tag, name, gain * 0.1, `Support +${gain} received`);
+        }
+        break;
+      }
+      case 'attack_wins_change': {
+        const gain = Math.max(delta, 0);
+        if (gain > 0) {
+          addContribution(tag, name, gain * 2, `Attack wins +${gain}`);
+        }
+        break;
+      }
+      case 'capital_contributions_change': {
+        const gain = Math.max(delta, 0);
+        if (gain > 0) {
+          addContribution(tag, name, gain / 200, `Capital loot +${gain.toLocaleString()}`);
+        }
+        break;
+      }
+      case 'hero_upgrade': {
+        addContribution(tag, name, 12, change.description || 'Hero upgrade');
+        break;
+      }
+      case 'town_hall_upgrade': {
+        const prevLevel = typeof change.previousValue === 'number' ? change.previousValue : '?';
+        const newLevel = typeof change.newValue === 'number' ? change.newValue : '?';
+        addContribution(tag, name, 20, `Town Hall ${prevLevel} → ${newLevel}`);
+        break;
+      }
+      case 'role_change': {
+        const prevRole = change.previousValue || 'member';
+        const newRole = change.newValue || 'member';
+        if (prevRole !== newRole) {
+          addContribution(tag, name, 6, `Role ${prevRole} → ${newRole}`);
+        }
+        break;
+      }
+      default:
+        break;
+    }
+  }
+
+  const ranked = Array.from(contributions.entries())
+    .map(([tag, data]) => ({ tag, ...data }))
+    .sort((a, b) => b.score - a.score);
+
+  if (!ranked.length || ranked[0].score < 5) {
+    return null;
+  }
+
+  const top = ranked[0];
+  return {
+    playerTag: top.tag,
+    playerName: top.name,
+    score: Math.round(top.score * 10) / 10,
+    highlights: top.highlights,
+  };
+}
+
+export interface SmartInsightsComposeParams {
+  bundle: InsightsBundle;
+  clanTag: string;
+  snapshotDate: string;
+  source: SmartInsightsSource;
+  processingTimeMs?: number;
+  snapshotId?: string;
+  openAIConfigured?: boolean;
+  playerOfTheDay?: SmartInsightsPlayerOfDay | null;
+}
+
+export function composeSmartInsightsPayload({
+  bundle,
+  clanTag,
+  snapshotDate,
+  source,
+  processingTimeMs = 0,
+  snapshotId,
+  openAIConfigured = true,
+  playerOfTheDay = null,
+}: SmartInsightsComposeParams): SmartInsightsPayload {
+  const truncate = (value?: string, max = 96) => {
+    if (!value) return 'Latest update';
+    const sanitized = value.replace(/^[-•]\s*/, '').trim();
+    return sanitized.length > max ? `${sanitized.slice(0, max - 1).trimEnd()}…` : sanitized;
+  };
+
+  const sanitizeBullet = (value: string) => value.replace(/^[-•]\s*/, '').trim();
+
+  const formatDetail = (items: string[]) => {
+    const clean = items.map(sanitizeBullet).filter((item) => item.length > 0);
+    if (!clean.length) return undefined;
+    return ` - ${clean.join('\n- ')}`;
+  };
+
+  const detectCategory = (text: string, fallback: SmartInsightsHeadline['category']): SmartInsightsHeadline['category'] => {
+    const normalized = text.toLowerCase();
+    if (normalized.includes('war') || normalized.includes('battle') || normalized.includes('attack')) {
+      return 'war';
+    }
+    if (normalized.includes('donation') || normalized.includes('donor')) {
+      return 'donation';
+    }
+    return fallback;
+  };
+
+  const headlines: SmartInsightsHeadline[] = [];
+
+  if (bundle.changeSummary) {
+    const changeBullets = (bundle.changeSummary.insights && bundle.changeSummary.insights.length
+      ? bundle.changeSummary.insights
+      : bundle.changeSummary.recommendations || []).map((item) => item.trim());
+    const changeTitle = truncate(changeBullets[0] || bundle.changeSummary.content || 'Key roster shifts');
+    const changeItems = changeBullets.length ? changeBullets : (bundle.changeSummary.content ? [bundle.changeSummary.content] : []);
+    const changeDetail = formatDetail(changeItems);
+    headlines.push({
+      id: 'headline-change',
+      title: changeTitle,
+      detail: changeDetail,
+      priority: bundle.changeSummary.priority || 'medium',
+      category: detectCategory(`${changeTitle} ${changeDetail ?? ''}`, 'change'),
+    });
+  }
+
+  if (bundle.performanceAnalysis) {
+    const performanceBullets = (bundle.performanceAnalysis.insights && bundle.performanceAnalysis.insights.length
+      ? bundle.performanceAnalysis.insights
+      : bundle.performanceAnalysis.recommendations || []).map((item) => item.trim());
+    const performanceTitle = truncate(performanceBullets[0] || bundle.performanceAnalysis.content || 'Performance highlights');
+    const performanceItems = performanceBullets.length ? performanceBullets : (bundle.performanceAnalysis.content ? [bundle.performanceAnalysis.content] : []);
+    const performanceDetail = formatDetail(performanceItems);
+    headlines.push({
+      id: 'headline-performance',
+      title: performanceTitle,
+      detail: performanceDetail,
+      priority: bundle.performanceAnalysis.priority || 'medium',
+      category: detectCategory(`${performanceTitle} ${performanceDetail ?? ''}`, 'performance'),
+    });
+  }
+
+  if (playerOfTheDay) {
+    const playerDetail = formatDetail(playerOfTheDay.highlights);
+    headlines.push({
+      id: `headline-player-${playerOfTheDay.playerTag}`,
+      title: `Player of the Day: ${playerOfTheDay.playerName}`,
+      detail: playerDetail,
+      priority: 'high',
+      category: 'spotlight',
+    });
+  }
+
+  const coaching = (bundle.coachingInsights || []).map((entry, index) => ({
+    id: `coaching-${entry.category || 'general'}-${index}`,
+    title: entry.title,
+    description: entry.description,
+    priority: entry.priority,
+    category: entry.category,
+    icon: entry.icon,
+    chatMessage: entry.chatMessage,
+  }));
+
+  const playerSpotlights = (bundle.playerDNAInsights || []).map((player, index) => ({
+    id: `player-${player.playerTag || index}`,
+    playerTag: player.playerTag,
+    playerName: player.playerName,
+    archetype: player.archetype,
+    headline: player.personality,
+    strengths: player.strengths,
+    improvementAreas: player.improvementAreas,
+    coachingTips: player.coachingTips,
+  }));
+
+  const diagnostics: SmartInsightsDiagnostics = {
+    openAIConfigured,
+    processingTimeMs,
+    hasError: !!bundle.error,
+    changeSummary: !!bundle.changeSummary,
+    coaching: coaching.length > 0,
+    playerDNA: playerSpotlights.length > 0,
+    clanDNA: !!bundle.clanDNAInsights,
+    gameChat: (bundle.gameChatMessages?.length || 0) > 0,
+    performanceAnalysis: !!bundle.performanceAnalysis,
+    errorMessage: bundle.error,
+  };
+
+  return {
+    metadata: {
+      clanTag,
+      snapshotDate,
+      generatedAt: bundle.timestamp,
+      source,
+      schemaVersion: SMART_INSIGHTS_SCHEMA_VERSION,
+      snapshotId,
+    },
+    headlines,
+    coaching,
+    playerSpotlights,
+    playerOfTheDay,
+    diagnostics,
+    context: {
+      changeSummary: bundle.changeSummary,
+      performanceAnalysis: bundle.performanceAnalysis,
+      clanDNAInsights: bundle.clanDNAInsights,
+      gameChatMessages: bundle.gameChatMessages,
+    },
+  };
 }
 
 // Export singleton instance
