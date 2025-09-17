@@ -163,6 +163,57 @@ If production deployment fails:
 2. Force push to main branch
 3. Vercel will automatically redeploy
 
+## Insights Deployment Troubleshooting
+
+During the AI → Insights terminology migration we uncovered several landmines. Use this section as a pre-flight checklist to keep future promotions painless.
+
+### 1. Date/Time Formatting
+- **Incident**: `date-fns` threw `RangeError: Format string contains an unescaped latin alphabet character 'U'` because `"UTC"` wasn’t escaped.
+- **Prevention**:
+  - Escape literals in `format()` (e.g. `format(date, "HH:mm 'UTC'")`).
+  - Route all `toLocale*` usage through the helpers in `lib/date.ts`.
+  - Run `rg "toLocale" src` before merging to ensure new calls use the helpers.
+
+### 2. Build-Time Environment Variables
+- **Incident**: Vercel builds failed with `supabaseUrl is required` when env vars were absent at compile time.
+- **Prevention**:
+  - Instantiate Supabase/OpenAI clients only when both URL and key exist.
+  - Guard every call with `if (!client) throw new Error('Missing …')` so failures surface fast.
+  - Execute `npm run env:check` locally and in CI before deploying.
+
+### 3. TypeScript Object Spread Bugs
+- **Incident**: Duplicated properties while spreading API responses caused `TS2783` build failures.
+- **Prevention**:
+  - Avoid re-stating keys already included in spread objects; destructure first if needed.
+  - Keep `noDuplicateObjectKeys` enabled and run `npm run lint` prior to push.
+
+### 4. Supabase Schema Drift
+- **Incident**: Missing tables (`clan_snapshots`, `batch_ai_results`, `player_dna_cache`) disabled automated insights with only quiet failures.
+- **Prevention**:
+  - Apply `supabase-schema.sql` (or migrations) before first deploy to any environment.
+  - Add a smoke test that hits `/api/ai/batch-results` and `/api/ai/dna-cache` to confirm tables exist.
+  - Keep schema diffs in PRs; don’t rely on manual UI changes.
+
+### 5. Vercel Project Linking & ESLint
+- **Incident**: `vercel` CLI searched in a non-existent `web-next/web-next` path; ESLint also blocked builds.
+- **Prevention**:
+  - From within `web-next/`, run `vercel link --yes --project clash-intelligence-new` on every fresh workstation.
+  - If ESLint versioning breaks builds, temporarily set `eslint: { ignoreDuringBuilds: true }` but create a follow-up ticket to restore linting.
+
+### 6. Static Asset Case Sensitivity
+- **Incident**: Clan logo requests (e.g. `/clans/2pr8r8v8p.png`) 404’d because macOS ignored case.
+- **Prevention**:
+  - Store assets in lower-case paths (e.g. `public/clans/2pr8r8v8p.png`).
+  - Add a simple CI script that fetches representative assets to catch casing issues early.
+
+### 7. Terminology Consistency
+- **Incident**: UI, permissions, and API payloads still referenced “AI” which confused users and broke lookups.
+- **Prevention**:
+  - After renaming, run `rg "AI" src` to ensure only intended references remain.
+  - Update types/permissions (`canGenerateCoachingInsights`, `InsightsBundle`, etc.) before tweaking UI copy.
+
+Keep this section current—append new lessons learned after each promotion so the next deployment is smoother than the last.
+
 ## Troubleshooting
 
 ### Common Issues

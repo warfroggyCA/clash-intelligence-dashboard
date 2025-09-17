@@ -297,8 +297,9 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
 
       if (response.ok) {
         const result = await response.json();
-        const newAdvice = result.advice || [];
-        
+        const rawAdvice = result?.data?.advice;
+        const newAdvice: CoachingInsightEntry[] = Array.isArray(rawAdvice) ? rawAdvice : [];
+
         // Add timestamps to new advice
         const adviceWithTimestamps = newAdvice.map((item: CoachingInsightEntry) => ({
           ...item,
@@ -312,7 +313,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
             }
           })()
         }));
-        
+
         setAdvice(adviceWithTimestamps);
         // Save to localStorage for persistence
         localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(adviceWithTimestamps));

@@ -7,24 +7,51 @@ process.env.VERCEL_ENV = process.env.VERCEL_ENV || 'production';
 
 // Now import other modules that depend on environment variables
 import { cfg } from '../../src/lib/config';
-import { createDailySnapshot, detectChanges, getSnapshotBeforeDate, saveChangeSummary } from '../../src/lib/snapshots';
+import { convertFullSnapshotToDailySnapshot, detectChanges, getSnapshotBeforeDate, saveChangeSummary } from '../../src/lib/snapshots';
 import { generateChangeSummary, generateGameChatMessages } from '../../src/lib/ai-summarizer';
 import { addDeparture } from '../../src/lib/departures';
 import { resolveUnknownPlayers } from '../../src/lib/player-resolver';
 import { insightsEngine } from '../../src/lib/smart-insights';
 import { saveInsightsBundle, cachePlayerDNAForClan } from '../../src/lib/insights-storage';
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from '../../src/lib/full-snapshot';
+import { mockFullClanSnapshot } from '../mock-data';
 
 async function run() {
-  const clanTag = process.argv[2] || cfg.homeClanTag;
+  // Parse CLI args: daily-snapshot.ts <clanTag> [--no-mock]
+  const args = process.argv.slice(2);
+  const flags = new Set(args.filter((a) => a.startsWith('--')));
+  const noMock = flags.has('--no-mock') || flags.has('--real') || flags.has('--real-only');
+  const clanTagArg = args.find((a) => !a.startsWith('--')) || null;
+
+  const clanTag = clanTagArg || cfg.homeClanTag;
   if (!clanTag) {
     throw new Error('No clan tag provided (pass as argument or set cfg.homeClanTag)');
   }
 
   console.log(`[Ingest] Starting daily snapshot for ${clanTag}`);
+  console.log(`[Ingest] Mode: ${noMock ? 'real-only (no mock fallback)' : 'real-with-mock-fallback'}`);
 
+  // If forcing real run, ensure required env vars are present (masked check)
+  if (noMock) {
+    const required = [
+      'COC_API_TOKEN',
+      'NEXT_PUBLIC_SUPABASE_URL',
+      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'SUPABASE_SERVICE_ROLE_KEY',
+    ];
+    const missing = required.filter((k) => !process.env[k]);
+    for (const k of required) {
+      // Do not print secrets; just indicate presence
+      console.log(`[EnvCheck] ${k}: ${process.env[k] ? 'present' : 'missing'}`);
+    }
+    if (missing.length > 0) {
+      throw new Error(`Missing required env vars for real run: ${missing.join(', ')}`);
+    }
+  }
+
+  let fullSnapshot;
   try {
-    const fullSnapshot = await fetchFullClanSnapshot(clanTag, {
+    fullSnapshot = await fetchFullClanSnapshot(clanTag, {
       warLogLimit: 10,
       capitalSeasonLimit: 3,
     });
@@ -34,10 +61,26 @@ async function run() {
         `${fullSnapshot.metadata.warLogEntries} war log entries, ${fullSnapshot.metadata.capitalSeasons} capital seasons`
     );
   } catch (error) {
-    console.error('[Ingest] Failed to capture full snapshot (non-fatal)', error);
+    if (noMock) {
+      console.error('[Ingest] Failed to capture full snapshot and --no-mock is set', error);
+      throw error;
+    }
+    console.error('[Ingest] Failed to capture full snapshot, using mock data for testing', error);
+    // Use mock data for local testing when API fails
+    fullSnapshot = {
+      ...mockFullClanSnapshot,
+      clanTag: clanTag,
+      timestamp: new Date().toISOString(),
+      date: new Date().toISOString().split('T')[0]
+    };
+    console.log(
+      `[Ingest] Using mock data: ${fullSnapshot.memberSummaries.length} members, ` +
+        `${fullSnapshot.metadata.warLogEntries} war log entries, ${fullSnapshot.metadata.capitalSeasons} capital seasons`
+    );
   }
 
-  const currentSnapshot = await createDailySnapshot(clanTag);
+  // Create daily snapshot from the full snapshot we fetched earlier
+  const currentSnapshot = convertFullSnapshotToDailySnapshot(fullSnapshot);
   console.log(`[Ingest] Snapshot created at ${currentSnapshot.timestamp} with ${currentSnapshot.memberCount} members`);
 
   const previousSnapshot = await getSnapshotBeforeDate(clanTag, currentSnapshot.date);
