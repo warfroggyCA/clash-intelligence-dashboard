@@ -117,6 +117,11 @@ class SupabaseDataSource {
   async getLatestSnapshot(clanTag: string): Promise<DailySnapshot | null> {
     try {
       const { supabase } = await import('@/lib/supabase');
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return null;
+      }
+      
       const safeTag = safeTagForFilename(clanTag);
       
       const { data: record, error } = await supabase
@@ -176,6 +181,11 @@ class SupabaseDataSource {
   async loadSnapshot(clanTag: string, date: string): Promise<DailySnapshot | null> {
     try {
       const { supabase } = await import('@/lib/supabase');
+      if (!supabase) {
+        console.error('Supabase client not initialized');
+        return null;
+      }
+      
       const safeTag = safeTagForFilename(clanTag);
       
       const { data: record, error } = await supabase
