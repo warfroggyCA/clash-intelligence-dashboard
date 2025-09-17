@@ -29,6 +29,10 @@ import { cfg } from '@/lib/config';
 import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 import { showToast } from '@/lib/toast';
 import { safeLocaleDateString, safeLocaleTimeString } from '@/lib/date';
+import { normalizeTag } from '@/lib/tags';
+import type { SmartInsightsPayload } from '@/lib/smart-insights';
+import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
+
 
 // =============================================================================
 // STORE INTERFACES
@@ -128,7 +132,11 @@ interface DashboardState {
   };
   
   // Data freshness info
-  dataFetchedAt?: number; // timestamp when data was last fetched
+  smartInsights: SmartInsightsPayload | null;
+  smartInsightsStatus: 'idle' | 'loading' | 'success' | 'error';
+  smartInsightsError: string | null;
+  smartInsightsClanTag: string | null;
+  smartInsightsFetchedAt?: number;
   
   // Actions
   setRoster: (roster: Roster | null) => void;
@@ -176,10 +184,12 @@ interface DashboardState {
 
   setLastLoadInfo: (info: DashboardState['lastLoadInfo']) => void;
   setDataFetchedAt: (timestamp: number) => void;
+  setSmartInsights: (payload: SmartInsightsPayload | null) => void;
   
   // Complex Actions
   resetDashboard: () => void;
   loadRoster: (clanTag: string) => Promise<void>;
+  loadSmartInsights: (clanTag: string, options?: { force?: boolean }) => Promise<void>;
   refreshData: () => Promise<void>;
   checkDepartureNotifications: () => Promise<void>;
   dismissAllNotifications: () => void;
@@ -243,6 +253,11 @@ const initialState = {
   eventFilterPlayer: '',
   lastLoadInfo: undefined,
   dataFetchedAt: undefined,
+  smartInsights: null,
+  smartInsightsStatus: 'idle' as const,
+  smartInsightsError: null,
+  smartInsightsClanTag: null,
+  smartInsightsFetchedAt: undefined,
 };
 
 // =============================================================================
@@ -325,6 +340,27 @@ export const useDashboardStore = create<DashboardState>()(
 
       setLastLoadInfo: (lastLoadInfo) => set({ lastLoadInfo }),
       setDataFetchedAt: (dataFetchedAt) => set({ dataFetchedAt }),
+      setSmartInsights: (payload) => {
+        if (!payload) {
+          set({
+            smartInsights: null,
+            smartInsightsStatus: 'idle',
+            smartInsightsError: null,
+            smartInsightsClanTag: null,
+            smartInsightsFetchedAt: undefined,
+          });
+          return;
+        }
+        const clan = normalizeTag(payload.metadata.clanTag);
+        set({
+          smartInsights: payload,
+          smartInsightsStatus: 'success',
+          smartInsightsError: null,
+          smartInsightsClanTag: clan,
+          smartInsightsFetchedAt: Date.now(),
+        });
+        saveSmartInsightsPayload(clan, payload);
+      },
       
       // =============================================================================
       // COMPLEX ACTIONS
@@ -334,13 +370,14 @@ export const useDashboardStore = create<DashboardState>()(
       
       loadRoster: async (clanTag: string) => {
         const { setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo, setDataFetchedAt } = get();
+        const normalizedTag = normalizeTag(clanTag) || clanTag;
         
         try {
           setStatus('loading');
           setMessage('');
           const t0 = Date.now();
 
-          const plan = buildRosterFetchPlan(clanTag, selectedSnapshot);
+          const plan = buildRosterFetchPlan(normalizedTag, selectedSnapshot);
           
           const tryFetch = async (url: string) => {
             // Add a safety timeout to avoid indefinite spin
@@ -381,6 +418,71 @@ export const useDashboardStore = create<DashboardState>()(
           setStatus('error');
           setMessage(error.name === 'AbortError' ? 'Roster request timed out' : (error.message || 'Failed to load roster'));
           setLastLoadInfo(undefined);
+        }
+      },
+
+      loadSmartInsights: async (clanTag: string, options: { force?: boolean } = {}) => {
+        const cleanTag = normalizeTag(clanTag);
+        if (!cleanTag) return;
+
+        const { smartInsightsClanTag, smartInsightsFetchedAt, smartInsightsStatus, smartInsights } = get();
+        const now = Date.now();
+        const isRecent = smartInsightsFetchedAt && (now - smartInsightsFetchedAt) < 5 * 60 * 1000; // 5 minutes cache
+        const force = options.force ?? false;
+
+        if (!force && smartInsightsClanTag === cleanTag) {
+          if (smartInsightsStatus === 'loading') {
+            return;
+          }
+          if (smartInsights && isRecent) {
+            return;
+          }
+        }
+
+        set({ smartInsightsStatus: 'loading', smartInsightsError: null });
+
+        try {
+          const cached = loadSmartInsightsPayload(cleanTag);
+          if (cached) {
+            get().setSmartInsights(cached);
+          }
+
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 10000);
+          let res: Response;
+          try {
+            res = await fetch(`/api/ai/batch-results?clanTag=${encodeURIComponent(cleanTag)}`, { signal: controller.signal });
+          } finally {
+            clearTimeout(timer);
+          }
+
+          if (!res.ok) {
+            throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+          }
+
+          const data = await res.json();
+          const payload: SmartInsightsPayload | null = data?.data?.smartInsightsPayload ?? data?.data?.smart_insights_payload ?? null;
+
+          if (payload) {
+            get().setSmartInsights(payload);
+          } else if (!cached) {
+            set({
+              smartInsights: null,
+              smartInsightsStatus: 'success',
+              smartInsightsError: null,
+              smartInsightsClanTag: cleanTag,
+              smartInsightsFetchedAt: Date.now(),
+            });
+          } else {
+            set({ smartInsightsStatus: 'success', smartInsightsError: null, smartInsightsClanTag: cleanTag, smartInsightsFetchedAt: Date.now() });
+          }
+        } catch (error: any) {
+          console.error('[DashboardStore] Failed to load smart insights:', error);
+          set((state) => ({
+            smartInsightsStatus: state.smartInsights && state.smartInsightsClanTag === cleanTag ? 'success' : 'error',
+            smartInsightsError: error?.message || 'Failed to load insights',
+            smartInsightsClanTag: cleanTag,
+          }));
         }
       },
 
@@ -448,6 +550,7 @@ export const useDashboardStore = create<DashboardState>()(
                 setDataFetchedAt(Date.now());
                 setStatus('success');
                 setMessage(`Loaded ${json.members.length} members from snapshot data`);
+                
                 
                 // Show toast notification with snapshot metadata
                 if (json.snapshotMetadata) {
@@ -595,14 +698,19 @@ export const selectors = {
     const hoursDiff = (now.getTime() - fetchedAt.getTime()) / (1000 * 60 * 60);
     return hoursDiff <= 24;
   },
-  dataAge: (state: DashboardState) => {
-    if (!state.snapshotMetadata?.fetchedAt) return null;
-    const fetchedAt = new Date(state.snapshotMetadata.fetchedAt);
+  smartInsights: (state: DashboardState) => state.smartInsights,
+  smartInsightsStatus: (state: DashboardState) => state.smartInsightsStatus,
+  smartInsightsError: (state: DashboardState) => state.smartInsightsError,
+  smartInsightsHeadlines: (state: DashboardState) => state.smartInsights?.headlines ?? [],
+  smartInsightsIsStale: (state: DashboardState) => {
+    if (!state.smartInsights?.metadata.generatedAt) return true;
+    const generatedAt = new Date(state.smartInsights.metadata.generatedAt);
     const now = new Date();
-    const hoursDiff = (now.getTime() - fetchedAt.getTime()) / (1000 * 60 * 60);
-    return hoursDiff;
+    const hoursDiff = (now.getTime() - generatedAt.getTime()) / (1000 * 60 * 60);
+    return hoursDiff > 24;
   },
-  
+  smartInsightsSource: (state: DashboardState) => state.smartInsights?.metadata.source ?? 'unknown',
+
   // Get sorted and filtered members
   sortedMembers: (state: DashboardState) => {
     if (!state.roster?.members) return [];

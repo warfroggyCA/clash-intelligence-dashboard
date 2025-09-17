@@ -23,6 +23,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   const {
     activeTab,
     loadRoster,
+    loadSmartInsights,
     homeClan,
     clanTag,
     roster,
@@ -97,6 +98,11 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   }, []);
 
   const currentClanTag = clanTag || homeClan || initialClanTag || '';
+
+  useEffect(() => {
+    if (!currentClanTag) return;
+    loadSmartInsights(currentClanTag);
+  }, [currentClanTag, loadSmartInsights]);
 
   const renderTabContent = () => {
     switch (activeTab) {

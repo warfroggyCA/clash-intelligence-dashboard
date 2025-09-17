@@ -24,6 +24,7 @@ import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
 import { QuickActions } from './QuickActions';
+import SmartInsightsHeadlines from '@/components/SmartInsightsHeadlines';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
@@ -397,6 +398,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {useDashboardStore.getState().activeTab !== 'roster' && (
           <QuickActions />
         )}
+
+        <SmartInsightsHeadlines />
         
         {/* Page Content */}
         {children}

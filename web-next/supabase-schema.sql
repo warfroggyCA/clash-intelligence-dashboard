@@ -42,10 +42,12 @@ CREATE TABLE batch_ai_results (
   timestamp TEXT NOT NULL,
   change_summary JSONB,
   coaching_advice JSONB,
+  coaching_insights JSONB,
   player_dna_insights JSONB,
   clan_dna_insights JSONB,
   game_chat_messages JSONB,
   performance_analysis JSONB,
+  smart_insights_payload JSONB,
   error TEXT,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
