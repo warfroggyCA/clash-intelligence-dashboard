@@ -111,6 +111,8 @@ const useQuickActions = () => {
     } finally {
       setIsGeneratingSummary(false);
     }
+  };
+
   const handleCopyRosterJson = async () => {
     if (!roster) {
       setMessage('No clan data to copy');
@@ -150,8 +152,6 @@ const useQuickActions = () => {
       setMessage('Failed to copy roster JSON');
       setStatus('error');
     }
-  };
-
   };
 
   const handleRefreshInsights = async () => {
