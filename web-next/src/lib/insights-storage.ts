@@ -7,10 +7,12 @@ import { calculatePlayerDNA, classifyPlayerArchetype } from './player-dna';
 import { normalizeTag, safeTagForFilename } from './tags';
 import { safeLocaleString } from './date';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
 
 // Map database field names to frontend field names
 function mapDatabaseToFrontend(record: StoredInsightsBundle): StoredInsightsBundle {
@@ -48,6 +50,10 @@ export interface StoredPlayerDNA {
 }
 
 export async function saveInsightsBundle(results: InsightsBundle): Promise<boolean> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(results.clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -87,6 +93,10 @@ export async function saveInsightsBundle(results: InsightsBundle): Promise<boole
 }
 
 export async function getLatestInsightsBundle(clanTag: string): Promise<StoredInsightsBundle | null> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -131,6 +141,10 @@ export async function getLatestInsightsBundle(clanTag: string): Promise<StoredIn
 }
 
 export async function getInsightsBundleByDate(clanTag: string, date: string): Promise<StoredInsightsBundle | null> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -177,6 +191,10 @@ export async function savePlayerDNACache(
   dnaProfile: any,
   archetype: string
 ): Promise<boolean> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -206,6 +224,10 @@ export async function savePlayerDNACache(
 }
 
 export async function getPlayerDNACache(clanTag: string, date?: string): Promise<StoredPlayerDNA[]> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -254,6 +276,10 @@ export async function getPlayerDNACache(clanTag: string, date?: string): Promise
 }
 
 export async function getPlayerDNACacheByPlayer(clanTag: string, playerTag: string): Promise<StoredPlayerDNA[]> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -296,6 +322,10 @@ export async function getPlayerDNACacheByPlayer(clanTag: string, playerTag: stri
 }
 
 export async function cachePlayerDNAForClan(clanData: any, clanTag: string, date: string): Promise<void> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     console.log(`[Insights Storage] Caching DNA profiles for ${clanData.members.length} players`);
     
@@ -323,6 +353,10 @@ export async function cachePlayerDNAForClan(clanData: any, clanTag: string, date
 }
 
 export async function getInsightsHistory(clanTag: string, limit: number = 10): Promise<StoredInsightsBundle[]> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -363,6 +397,10 @@ export async function getInsightsHistory(clanTag: string, limit: number = 10): P
 }
 
 export async function deleteOldInsightsBundles(clanTag: string, daysToKeep: number = 30): Promise<number> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
@@ -413,6 +451,10 @@ export async function getInsightsBundleStats(clanTag: string): Promise<{
   totalInsights: number;
   errorRate: number;
 }> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+  
   try {
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);

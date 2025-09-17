@@ -285,7 +285,7 @@ ${member.name} (${member.tag})
 - Donations: ${member.donations} given, ${member.donationsReceived} received (Balance: ${member.donationBalance > 0 ? '+' : ''}${member.donationBalance})
 - Tenure: ${member.tenure || member.tenure_days} days | Last Seen: ${member.lastSeen} days ago
 - Rush Percentage: ${member.rushPercentage}% ${member.isVeryRushed ? '(VERY RUSHED!)' : member.isRushed ? '(rushed)' : '(good)'}
-- Heroes: BK:${member.bk || 'N/A'} AQ:${member.aq || 'N/A'} GW:${member.gw || 'N/A'} RC:${member.rc || 'N/A'} MP:${member.mp || 'N/A'}
+- Heroes: BK:${member.bk || 'N/A'} AQ:${member.aq || 'N/A'} MP:${member.mp || 'N/A'} GW:${member.gw || 'N/A'} RC:${member.rc || 'N/A'}
 - Context: ${member.isNetReceiver ? 'Net receiver' : 'Net giver'}${member.isLowDonator ? ', Low donator' : ''}
 `).join('')}
 
