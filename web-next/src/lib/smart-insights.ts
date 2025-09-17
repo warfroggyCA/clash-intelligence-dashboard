@@ -1,11 +1,11 @@
-// web-next/src/lib/ai-processor.ts
-// Centralized AI processing service for batch operations
+// web-next/src/lib/smart-insights.ts
+// Centralized insights processing service for automated summaries and coaching
 
 import OpenAI from 'openai';
 import { MemberChange, ChangeSummary } from './snapshots';
 import { calculatePlayerDNA, calculateClanDNA, classifyPlayerArchetype } from './player-dna';
 
-export interface AICoachingAdvice {
+export interface CoachingInsight {
   category: string;
   title: string;
   description: string;
@@ -16,7 +16,7 @@ export interface AICoachingAdvice {
   date?: string;
 }
 
-export interface AISummaryAnalysis {
+export interface SnapshotSummaryAnalysis {
   type: 'change_summary' | 'full_analysis' | 'performance_review';
   content: string;
   insights: string[];
@@ -43,21 +43,21 @@ export interface ClanDNAInsights {
   needsAttention: string[];
 }
 
-export interface BatchAIResults {
+export interface InsightsBundle {
   timestamp: string;
   clanTag: string;
   date?: string;
-  changeSummary?: AISummaryAnalysis;
-  coachingAdvice?: AICoachingAdvice[];
+  changeSummary?: SnapshotSummaryAnalysis;
+  coachingInsights?: CoachingInsight[];
   playerDNAInsights?: PlayerDNAInsights[];
   clanDNAInsights?: ClanDNAInsights;
   gameChatMessages?: string[];
-  performanceAnalysis?: AISummaryAnalysis;
+  performanceAnalysis?: SnapshotSummaryAnalysis;
   snapshotSummary?: string;
   error?: string;
 }
 
-export class AIProcessor {
+export class InsightsEngine {
   private openai: OpenAI | null = null;
   private isConfigured: boolean;
 
@@ -70,24 +70,72 @@ export class AIProcessor {
     }
   }
 
-  async processBatchAI(
+  private parseJsonResponse<T>(raw: string, options: { expectArray: boolean; context: string }): T {
+    const { expectArray, context } = options;
+    const trimmed = raw?.trim?.() ?? '';
+
+    if (!trimmed) {
+      throw new Error(`Empty response for ${context}`);
+    }
+
+    const attempts = new Set<string>();
+    attempts.add(trimmed);
+
+    const codeFenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)```/i);
+    if (codeFenceMatch) {
+      attempts.add(codeFenceMatch[1].trim());
+    }
+
+    const bracketOpen = expectArray ? '[' : '{';
+    const bracketClose = expectArray ? ']' : '}';
+
+    const addSlicedAttempt = (candidate: string) => {
+      const start = candidate.indexOf(bracketOpen);
+      const end = candidate.lastIndexOf(bracketClose);
+      if (start !== -1 && end !== -1 && end > start) {
+        const sliced = candidate.slice(start, end + 1).trim();
+        if (sliced) {
+          attempts.add(sliced);
+        }
+      }
+    };
+
+    Array.from(attempts).forEach(addSlicedAttempt);
+
+    for (const attempt of attempts) {
+      try {
+        const parsed = JSON.parse(attempt);
+        const isArray = Array.isArray(parsed);
+        if (expectArray ? isArray : !isArray) {
+          return parsed as T;
+        }
+      } catch (error) {
+        // try the next attempt
+      }
+    }
+
+    console.error(`Failed to parse JSON for ${context}. Raw response:`, raw);
+    throw new Error(`Unable to parse JSON for ${context}`);
+  }
+
+  async processBundle(
     clanData: any,
     changes: MemberChange[],
     clanTag: string,
     date: string
-  ): Promise<BatchAIResults> {
+  ): Promise<InsightsBundle> {
     const startTime = Date.now();
-    console.log(`[AI] Starting batch processing for ${clanTag} at ${new Date().toISOString()}`);
+    console.log(`[Insights] Starting batch processing for ${clanTag} at ${new Date().toISOString()}`);
 
-    const results: BatchAIResults = {
+    const results: InsightsBundle = {
       timestamp: new Date().toISOString(),
       clanTag,
       date,
     };
 
     if (!this.isConfigured) {
-      results.error = 'OpenAI API key not configured';
-      console.log('[AI] OpenAI API key not configured, skipping AI processing');
+      results.error = 'Insights engine not configured';
+      console.log('[Insights] OpenAI API key not configured, skipping automated insights');
       return results;
     }
 
@@ -114,7 +162,7 @@ export class AIProcessor {
         results.changeSummary = changeSummary.value;
       }
       if (coachingAdvice.status === 'fulfilled') {
-        results.coachingAdvice = coachingAdvice.value;
+        results.coachingInsights = coachingAdvice.value;
       }
       if (playerDNAInsights.status === 'fulfilled') {
         results.playerDNAInsights = playerDNAInsights.value;
@@ -130,11 +178,11 @@ export class AIProcessor {
       }
 
       const processingTime = Date.now() - startTime;
-      console.log(`[AI] Batch processing completed in ${processingTime}ms for ${clanTag}`);
+      console.log(`[Insights] Batch processing completed in ${processingTime}ms for ${clanTag}`);
 
       return results;
     } catch (error: any) {
-      console.error(`[AI] Batch processing error for ${clanTag}:`, error);
+      console.error(`[Insights] Batch processing error for ${clanTag}:`, error);
       results.error = error.message;
       return results;
     }
@@ -144,7 +192,7 @@ export class AIProcessor {
     changes: MemberChange[],
     clanTag: string,
     date: string
-  ): Promise<AISummaryAnalysis> {
+  ): Promise<SnapshotSummaryAnalysis> {
     if (changes.length === 0) {
       return {
         type: 'change_summary',
@@ -188,7 +236,7 @@ export class AIProcessor {
     };
   }
 
-  private async generateCoachingAdvice(clanData: any): Promise<AICoachingAdvice[]> {
+  private async generateCoachingAdvice(clanData: any): Promise<CoachingInsight[]> {
     const members = clanData.members;
     const totalDonations = members.reduce((sum: number, m: any) => sum + (m.donations || 0), 0);
     const avgDonations = totalDonations / members.length;
@@ -304,19 +352,22 @@ IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high
     }
 
     try {
-      const advice = JSON.parse(content);
+      const advice = this.parseJsonResponse<CoachingInsight[]>(content, {
+        expectArray: true,
+        context: 'coaching insights payload'
+      });
       // Add timestamps to all advice items
       const timestamp = new Date().toISOString();
       const date = (() => {
         try {
           return new Date().toLocaleDateString();
         } catch (error) {
-          console.error('Date formatting error in ai-processor:', error);
+          console.error('Date formatting error in smart-insights:', error);
           return 'Unknown Date';
         }
       })();
       
-      return advice.map((item: AICoachingAdvice) => ({
+      return advice.map((item: CoachingInsight) => ({
         ...item,
         timestamp,
         date
@@ -325,9 +376,9 @@ IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high
       console.error('Failed to parse coaching advice JSON:', error);
       return [{
         category: "System Error",
-        title: "AI Processing Error",
-        description: "Failed to generate personalized coaching advice. Please try again later.",
-        chatMessage: "AI coaching temporarily unavailable. Manual review recommended.",
+        title: "Insights Processing Error",
+        description: "Failed to generate personalized coaching insights. Please try again later.",
+        chatMessage: "Automated coaching temporarily unavailable. Manual review recommended.",
         priority: "low" as const,
         icon: "⚠️",
         timestamp: new Date().toISOString(),
@@ -335,7 +386,7 @@ IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high
           try {
             return new Date().toLocaleDateString();
           } catch (error) {
-            console.error('Date formatting error in ai-processor fallback:', error);
+            console.error('Date formatting error in smart-insights fallback:', error);
             return 'Unknown Date';
           }
         })()
@@ -406,7 +457,10 @@ Format as JSON:
 
         const content = response.choices[0]?.message?.content;
         if (content) {
-          const parsed = JSON.parse(content);
+          const parsed = this.parseJsonResponse<PlayerDNAInsights>(content, {
+            expectArray: false,
+            context: `Player DNA insights for ${member.name}`
+          });
           insights.push({
             playerTag: member.tag,
             playerName: member.name,
@@ -484,7 +538,10 @@ Format as JSON:
 
     const content = response.choices[0]?.message?.content;
     if (content) {
-      return JSON.parse(content);
+      return this.parseJsonResponse<ClanDNAInsights>(content, {
+        expectArray: false,
+        context: 'Clan DNA insights'
+      });
     }
 
     return {
@@ -546,7 +603,7 @@ Format as JSON:
     return messages;
   }
 
-  private async generatePerformanceAnalysis(clanData: any): Promise<AISummaryAnalysis> {
+  private async generatePerformanceAnalysis(clanData: any): Promise<SnapshotSummaryAnalysis> {
     const prompt = `Analyze this Clash of Clans clan data and provide a comprehensive performance summary:
 
 CLAN OVERVIEW:
@@ -706,4 +763,4 @@ Provide an engaging, concise summary highlighting the most important changes and
 }
 
 // Export singleton instance
-export const aiProcessor = new AIProcessor();
+export const insightsEngine = new InsightsEngine();

@@ -86,7 +86,7 @@ SNAPSHOT CONTEXT:
 - Data Freshness: ${clanData.snapshotMetadata?.fetchedAt
         ? `Fetched ${safeLocaleString(clanData.snapshotMetadata.fetchedAt, {
             fallback: 'Unknown',
-            context: 'AI summary snapshotMetadata.fetchedAt'
+            context: 'Insights summary snapshotMetadata.fetchedAt'
           })}`
         : 'Unknown'}
 
@@ -96,7 +96,7 @@ ${clanData.snapshotDetails?.currentWar ? `
 - War Opponent: ${clanData.snapshotDetails.currentWar.opponent?.name || 'Unknown'}
 - War End Time: ${safeLocaleString(clanData.snapshotDetails.currentWar.endTime, {
         fallback: 'Unknown',
-        context: 'AI summary currentWar.endTime'
+        context: 'Insights summary currentWar.endTime'
       })}
 ` : '- No active war detected'}
 
@@ -104,7 +104,7 @@ RECENT WAR PERFORMANCE:
 ${clanData.snapshotDetails?.warLog?.length ? clanData.snapshotDetails.warLog.slice(0, 3).map((war: any) => `
 - ${safeLocaleDateString(war.endTime, {
           fallback: 'Unknown Date',
-          context: 'AI summary warLog endTime'
+          context: 'Insights summary warLog endTime'
         })}: ${war.result} vs ${war.opponent.name} (${war.teamSize}x${war.attacksPerMember})
 `).join('') : '- No recent war data available'}
 
@@ -112,7 +112,7 @@ CAPITAL RAID ACTIVITY:
 ${clanData.snapshotDetails?.capitalRaidSeasons?.length ? clanData.snapshotDetails.capitalRaidSeasons.slice(0, 2).map((season: any) => `
 - ${safeLocaleDateString(season.endTime, {
           fallback: 'Unknown Date',
-          context: 'AI summary capital season endTime'
+          context: 'Insights summary capital season endTime'
         })}: Hall ${season.capitalHallLevel} - ${season.state} (Off: ${season.offensiveLoot.toLocaleString()}, Def: ${season.defensiveLoot.toLocaleString()})
 `).join('') : '- No capital raid data available'}
 
@@ -152,7 +152,7 @@ Format your response as a clear, actionable summary that would be useful for cla
     });
 
   } catch (error: any) {
-    console.error('Error generating AI summary:', error);
-    return json({ success: false, error: 'Failed to generate AI summary', message: error.message }, { status: 500 });
+    console.error('Error generating insights summary:', error);
+    return json({ success: false, error: 'Failed to generate insights summary', message: error.message }, { status: 500 });
   }
 }

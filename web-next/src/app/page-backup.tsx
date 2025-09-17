@@ -26,7 +26,7 @@ import { safeLocaleDateString, safeLocaleString, safeLocaleTimeString } from "..
 import ChangeDashboard from "../components/ChangeDashboard";
 import DepartureManager from "../components/DepartureManager";
 import PlayerDatabase from "../components/PlayerDatabase";
-import AICoaching from "../components/AICoaching";
+import CoachingInsights from "../components/CoachingInsights";
 import FontSizeControl from "../components/FontSizeControl";
 import PlayerDNADashboard from "../components/PlayerDNADashboard";
 import DiscordPublisher from "../components/DiscordPublisher";
@@ -1716,8 +1716,8 @@ Please analyze this clan data and provide insights on:
     }
   };
 
-  // Generate AI summary of current clan state
-  const generateAISummary = async () => {
+  // Generate automated summary of current clan state
+  const generateInsightsSummary = async () => {
     if (!roster?.members || roster.members.length === 0) {
       setMessage("No roster data available to analyze.");
       setStatus("error");
@@ -1726,7 +1726,7 @@ Please analyze this clan data and provide insights on:
 
     try {
       setStatus("loading");
-      setMessage("🤖 Analyzing clan data with AI...");
+      setMessage("🤖 Generating automated insights from clan data...");
 
       // Create a comprehensive summary of the current clan state
       const clanData = {
@@ -1762,7 +1762,7 @@ Please analyze this clan data and provide insights on:
         }))
       };
 
-      setMessage("🤖 Sending data to OpenAI for analysis...");
+      setMessage("🤖 Sending data to the insights service for analysis...");
       
       console.log('Calling /api/ai-summary/generate with clanData:', clanData);
       const response = await fetch('/api/ai-summary/generate', {
@@ -1778,12 +1778,12 @@ Please analyze this clan data and provide insights on:
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('AI Summary API error:', response.status, errorText);
-        throw new Error(`Failed to generate AI summary: ${response.status} ${errorText}`);
+        console.error('Insights summary API error:', response.status, errorText);
+        throw new Error(`Failed to generate insights summary: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
-      console.log('AI Summary API response:', result);
+      console.log('Insights summary API response:', result);
       
       // Store the summary in Supabase
       const summary = {
@@ -1799,16 +1799,16 @@ Please analyze this clan data and provide insights on:
       try {
         const { saveAISummary } = await import('@/lib/supabase');
         await saveAISummary(summary);
-        console.log('AI summary saved to Supabase');
+        console.log('Insights summary saved to Supabase');
       } catch (supabaseError) {
-        console.warn('Failed to save AI summary to Supabase, falling back to localStorage:', supabaseError);
+        console.warn('Failed to save insights summary to Supabase, falling back to localStorage:', supabaseError);
         // Fallback to localStorage if Supabase fails
         try {
           const existingSummaries = JSON.parse(localStorage.getItem('ai_summaries') || '[]');
           const aiSummary = {
             date: summary.date,
             clanTag: summary.clan_tag,
-            changes: [], // AI summaries don't have specific changes
+            changes: [], // summaries don't have specific changes
             summary: result.summary,
             gameChatMessages: [],
             unread: true,
@@ -1817,18 +1817,18 @@ Please analyze this clan data and provide insights on:
           };
           existingSummaries.unshift(aiSummary);
           localStorage.setItem('ai_summaries', JSON.stringify(existingSummaries));
-          console.log('AI summary saved to localStorage as fallback');
+          console.log('Insights summary saved to localStorage as fallback');
         } catch (localError) {
-          console.warn('Failed to save AI summary to localStorage:', localError);
+          console.warn('Failed to save insights summary to localStorage:', localError);
         }
       }
 
       setStatus("success");
-      setMessage("AI summary generated! Check the Activity Dashboard tab to view it.");
+      setMessage("Insights summary generated! Check the Activity Dashboard tab to view it.");
     } catch (error) {
-      console.error('Failed to generate AI summary:', error);
+      console.error('Failed to generate insights summary:', error);
       setStatus("error");
-      setMessage("Failed to generate AI summary. Make sure OpenAI API key is configured.");
+      setMessage("Failed to generate insights summary. Make sure automation is configured.");
     }
   };
 
@@ -1871,17 +1871,17 @@ Please analyze this clan data and provide insights on:
     }
   };
 
-  // AI Summary generation
+  // Insights summary generation helper
   const generateDailySummary = async () => {
-    console.log('AI Summary generation started');
+    console.log('Insights summary generation started');
     const currentClanTag = clanTag || homeClan;
     if (!currentClanTag) {
       setMessage("Please enter a clan tag first");
       return;
     }
 
-    console.log('Using AI summary generation (no snapshot creation)');
-    await generateAISummary();
+    console.log('Using insights summary generation (no snapshot creation)');
+    await generateInsightsSummary();
   };
 
   // LIVE fetch from server using the typed tag; never hardcoded.
@@ -2269,7 +2269,7 @@ Please analyze this clan data and provide insights on:
               >
                 <span className="flex items-center gap-1 sm:gap-2 justify-center sm:justify-start">
                   <span className="text-base sm:text-lg">🤖</span>
-                  <span className="hidden sm:inline">AI Coaching</span>
+                  <span className="hidden sm:inline">Coaching Insights</span>
                   <span className="text-xs text-yellow-400" title="Leadership Only">👑</span>
                 </span>
                 {activeTab === "coaching" && (
@@ -2373,12 +2373,12 @@ Please analyze this clan data and provide insights on:
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  console.log("🤖 AI SUMMARY BUTTON CLICKED - Should generate AI summary");
+                  console.log("🤖 INSIGHTS SUMMARY BUTTON CLICKED - Should generate insights summary");
                   generateDailySummary();
                 }}
                 disabled={status === "loading"}
                 className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-                title="Generate daily summary with AI analysis of changes since last snapshot"
+                title="Generate daily summary with automated insights of changes since last snapshot"
                 type="button"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
@@ -2393,7 +2393,7 @@ Please analyze this clan data and provide insights on:
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
-                      AI Summary
+                      Insights Summary
                     </>
                   )}
                 </span>
@@ -2925,7 +2925,7 @@ Please analyze this clan data and provide insights on:
         ) : activeTab === "changes" ? (
           <ChangeDashboard 
             clanTag={clanTag || homeClan || ""} 
-            onGenerateAISummary={generateAISummary}
+            onGenerateInsightsSummary={generateInsightsSummary}
           />
         ) : activeTab === "database" ? (
           <PlayerDatabase currentClanMembers={roster?.members?.map(m => m.tag.toUpperCase()) || []} />
@@ -3110,17 +3110,17 @@ Please analyze this clan data and provide insights on:
           />
         ) : activeTab === "coaching" ? (
           <LeadershipGuard 
-            requiredPermission="canGenerateAICoaching"
+            requiredPermission="canGenerateCoachingInsights"
             fallback={
               <div className="text-center py-8">
                 <div className="text-4xl mb-4">🤖</div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">AI Coaching</h3>
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Coaching Insights</h3>
                 <p className="text-gray-600 mb-4">This feature requires leadership access.</p>
                 <p className="text-sm text-gray-500">Use the role selector in the top right to switch to Leader or Co-Leader role.</p>
               </div>
             }
           >
-            <AICoaching clanData={roster} clanTag={clanTag || homeClan || ""} />
+            <CoachingInsights clanData={roster} clanTag={clanTag || homeClan || ""} />
           </LeadershipGuard>
         ) : activeTab === "discord" ? (
           <LeadershipGuard 

@@ -73,7 +73,7 @@ interface Roster {
   meta?: any;
 }
 
-interface CoachingAdvice {
+interface CoachingInsightEntry {
   category: string;
   title: string;
   description: string;
@@ -84,13 +84,13 @@ interface CoachingAdvice {
   date?: string;
 }
 
-interface AICoachingProps {
+interface CoachingInsightsProps {
   clanData: Roster | null;
   clanTag: string;
 }
 
-export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
-  const [advice, setAdvice] = useState<CoachingAdvice[]>([]);
+export default function CoachingInsights({ clanData, clanTag }: CoachingInsightsProps) {
+  const [advice, setAdvice] = useState<CoachingInsightEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [actionedTips, setActionedTips] = useState<Set<string>>(new Set());
@@ -108,7 +108,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     parts.push(`Snapshot date: ${snapshotMetadata.snapshotDate}`);
     parts.push(`Fetched: ${safeLocaleString(snapshotMetadata.fetchedAt, {
       fallback: 'Unknown',
-      context: 'AI Coaching snapshotMetadata.fetchedAt'
+      context: 'CoachingInsights snapshotMetadata.fetchedAt'
     })}`);
     parts.push(`Members: ${snapshotMetadata.memberCount}`);
     if (snapshotAgeHours != null) {
@@ -122,7 +122,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
       if (war.endTime) {
         parts.push(`War ends: ${safeLocaleString(war.endTime, {
           fallback: 'Unknown',
-          context: 'AI Coaching current war endTime'
+          context: 'CoachingInsights current war endTime'
         })}`);
       }
     }
@@ -138,7 +138,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
   }, [snapshotMetadata, snapshotDetails, snapshotAgeHours]);
 
   useEffect(() => {
-    // Load coaching advice from batch AI results or localStorage
+    // Load coaching advice from stored insights or localStorage
     if (clanData?.members) {
       loadCoachingAdvice();
     }
@@ -165,51 +165,51 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
   const loadCoachingAdvice = async () => {
     setLoading(true);
     try {
-      // First, try to load from batch AI results
+      // First, try to load from cached insights bundle
       const response = await fetch(`/api/ai/batch-results?clanTag=${encodeURIComponent(clanTag)}`);
       
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.data?.coaching_advice) {
           setAdvice(result.data.coaching_advice);
-          console.log('[AI Coaching] Loaded advice from batch AI results');
+          console.log('[Coaching Insights] Loaded advice from cached bundle');
           return;
         }
       }
       
-      // Fallback to localStorage if batch AI results not available
+      // Fallback to localStorage if cached bundle not available
       const saved = localStorage.getItem(`coaching_advice_${clanTag}`);
       if (saved) {
         try {
           const parsedAdvice = JSON.parse(saved);
           // Add timestamps to advice that doesn't have them
-          const adviceWithTimestamps = parsedAdvice.map((item: CoachingAdvice) => ({
+          const adviceWithTimestamps = parsedAdvice.map((item: CoachingInsightEntry) => ({
             ...item,
             timestamp: item.timestamp || new Date().toISOString(),
             date: item.date || (() => {
               try {
                 return new Date().toLocaleDateString();
               } catch (error) {
-                console.error('Date formatting error in AICoaching:', error);
+                console.error('Date formatting error in CoachingInsights:', error);
                 return 'Unknown Date';
               }
             })()
           }));
           setAdvice(adviceWithTimestamps);
-          console.log('[AI Coaching] Loaded advice from localStorage');
+          console.log('[Coaching Insights] Loaded advice from localStorage');
         } catch (error) {
           console.error('Failed to load existing coaching advice:', error);
           setAdvice([]);
         }
       } else {
         setAdvice([]);
-        console.log('[AI Coaching] No existing advice found');
+        console.log('[Coaching Insights] No existing advice found');
         
         // Show helpful message for first-time users
         setAdvice([{
           category: "System",
-          title: "AI Coaching Setup",
-          description: "The AI coaching system is being set up. Your first batch of personalized coaching advice will be available after the daily AI processing completes (usually within 24 hours). You can also generate advice manually using the button below.",
+          title: "Coaching Insights Setup",
+          description: "The coaching insights system is being set up. Your first batch of personalized guidance will be available after the nightly processing completes (usually within 24 hours). You can also generate insights manually using the button below.",
           priority: "medium" as const,
           icon: "🤖",
           timestamp: new Date().toISOString(),
@@ -217,14 +217,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
             try {
               return new Date().toLocaleDateString();
             } catch (error) {
-              console.error('Date formatting error in AICoaching setup:', error);
+              console.error('Date formatting error in CoachingInsights setup:', error);
               return 'Unknown Date';
             }
           })()
         }]);
       }
     } catch (error) {
-      console.error('[AI Coaching] Error loading coaching advice:', error);
+      console.error('[Coaching Insights] Error loading coaching advice:', error);
       setAdvice([]);
     } finally {
       setLoading(false);
@@ -238,9 +238,9 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     }
 
     setLoading(true);
-    console.log('[AI Coaching] Generating new coaching advice manually...');
+    console.log('[Coaching Insights] Generating new coaching advice manually...');
     
-    // Calculate contextual data for smarter AI coaching
+    // Calculate contextual data for smarter coaching
     const thCaps = calculateThCaps(clanData.members);
     const totalDonations = clanData.members.reduce((sum, m) => sum + (m.donations || 0), 0);
     const avgDonations = totalDonations / clanData.members.length;
@@ -300,14 +300,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
         const newAdvice = result.advice || [];
         
         // Add timestamps to new advice
-        const adviceWithTimestamps = newAdvice.map((item: CoachingAdvice) => ({
+        const adviceWithTimestamps = newAdvice.map((item: CoachingInsightEntry) => ({
           ...item,
           timestamp: new Date().toISOString(),
           date: (() => {
             try {
               return new Date().toLocaleDateString();
             } catch (error) {
-              console.error('Date formatting error in AICoaching:', error);
+              console.error('Date formatting error in CoachingInsights:', error);
               return 'Unknown Date';
             }
           })()
@@ -320,14 +320,14 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
         // Fallback to local analysis if API fails
         const localAdvice = generateLocalAdvice();
         // Add timestamps to local advice
-        const adviceWithTimestamps = localAdvice.map((item: CoachingAdvice) => ({
+        const adviceWithTimestamps = localAdvice.map((item: CoachingInsightEntry) => ({
           ...item,
           timestamp: new Date().toISOString(),
           date: (() => {
             try {
               return new Date().toLocaleDateString();
             } catch (error) {
-              console.error('Date formatting error in AICoaching:', error);
+              console.error('Date formatting error in CoachingInsights:', error);
               return 'Unknown Date';
             }
           })()
@@ -336,7 +336,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
         localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(adviceWithTimestamps));
       }
     } catch (error) {
-      console.error('Failed to generate AI coaching advice:', error);
+      console.error('Failed to generate coaching insight request:', error);
       const localAdvice = generateLocalAdvice();
       setAdvice(localAdvice);
       localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(localAdvice));
@@ -345,10 +345,10 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     }
   };
 
-  const generateLocalAdvice = (): CoachingAdvice[] => {
+  const generateLocalAdvice = (): CoachingInsightEntry[] => {
     if (!clanData?.members) return [];
 
-    const advice: CoachingAdvice[] = [];
+    const advice: CoachingInsightEntry[] = [];
     const members = clanData.members;
 
     // Analyze donations with specific names
@@ -464,7 +464,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     localStorage.removeItem(`actioned_tips_${clanTag}`);
   };
 
-  const shareToDiscord = async (advice: CoachingAdvice, tipId: string) => {
+  const shareToDiscord = async (advice: CoachingInsightEntry, tipId: string) => {
     if (!discordWebhookUrl) {
       alert("Please configure your Discord webhook URL first! Go to the Discord tab to set it up.");
       return;
@@ -473,7 +473,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     setIsSharingToDiscord(tipId);
     try {
       // Create Discord-friendly message with snapshot context
-      const discordMessage = `🤖 **AI Coaching Advice**\n\n**${advice.title}**\n${advice.description}\n\n**Ready-to-paste message:**\n${advice.chatMessage}\n\n**Context:** ${snapshotSummary || 'No snapshot context available'}`;
+      const discordMessage = `🤖 **Coaching Insight**\n\n**${advice.title}**\n${advice.description}\n\n**Ready-to-paste message:**\n${advice.chatMessage}\n\n**Context:** ${snapshotSummary || 'No snapshot context available'}`;
 
       const response = await fetch('/api/discord/publish', {
         method: 'POST',
@@ -489,7 +489,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
       });
 
       if (response.ok) {
-        alert("AI coaching advice shared to Discord successfully!");
+        alert("coaching insight request shared to Discord successfully!");
       } else {
         const errorData = await response.json();
         alert(`Failed to share to Discord: ${errorData.error || 'Unknown error'}`);
@@ -502,7 +502,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     }
   };
 
-  const generateTipId = (tip: CoachingAdvice, index: number): string => {
+  const generateTipId = (tip: CoachingInsightEntry, index: number): string => {
     // Create a unique ID based on the tip content and clan data
     return `${clanTag}_${tip.category}_${tip.title}_${index}`.replace(/[^a-zA-Z0-9_]/g, '_');
   };
@@ -528,7 +528,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
   if (!clanData) {
     return (
       <div className="text-center py-8 text-gray-500">
-        Load clan data first to get AI coaching advice.
+        Load clan data first to get coaching insight request.
       </div>
     );
   }
@@ -537,7 +537,7 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold">AI Coaching</h2>
+          <h2 className="text-2xl font-bold">Coaching Insights</h2>
           <p className="text-sm text-gray-600 mt-1">Expert Clash of Clans advice and ready-to-paste chat messages</p>
           {advice.length > 0 && (
             <p className="text-xs text-gray-500 mt-1">
@@ -579,13 +579,13 @@ export default function AICoaching({ clanData, clanTag }: AICoachingProps) {
                 : "bg-purple-600 text-white"
             }`}
           >
-            {loading ? "🤖 Generating..." : advice.length === 0 || (advice.length === 1 && advice[0].category === "System") ? "🚀 Generate Your First AI Advice" : "🤖 Generate New Advice"}
+            {loading ? "🤖 Generating..." : advice.length === 0 || (advice.length === 1 && advice[0].category === "System") ? "🚀 Generate Your First Insights" : "🤖 Generate New Insights"}
           </button>
         </div>
       </div>
       {snapshotSummary && (
         <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 shadow-sm">
-          <p className="text-xs uppercase tracking-wide text-indigo-700 font-semibold">Snapshot context used for AI coaching</p>
+          <p className="text-xs uppercase tracking-wide text-indigo-700 font-semibold">Snapshot context used for coaching insights</p>
           <pre className="mt-2 whitespace-pre-wrap text-sm text-indigo-900 font-mono leading-relaxed">
 {snapshotSummary}
           </pre>

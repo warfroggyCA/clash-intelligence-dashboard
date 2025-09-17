@@ -25,11 +25,11 @@ type ChangeSummary = {
 export default function ChangeDashboard({ 
   clanTag, 
   onNotificationChange,
-  onGenerateAISummary
+  onGenerateInsightsSummary
 }: { 
   clanTag: string;
   onNotificationChange?: () => void;
-  onGenerateAISummary?: () => void;
+  onGenerateInsightsSummary?: () => void;
 }) {
   const [changes, setChanges] = useState<ChangeSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,7 +37,7 @@ export default function ChangeDashboard({
   const [showAllChanges, setShowAllChanges] = useState(false);
   const [expandedChanges, setExpandedChanges] = useState<Set<string>>(new Set());
   const [clearedMessages, setClearedMessages] = useState<Set<string>>(new Set());
-  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const [insightsSummaryLoading, setInsightsSummaryLoading] = useState(false);
 
   // Get snapshot metadata from store
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
@@ -68,17 +68,17 @@ export default function ChangeDashboard({
     }
   }, [clanTag]);
 
-  const handleGenerateAISummary = async () => {
-    if (!onGenerateAISummary) return;
+  const handleGenerateInsightsSummary = async () => {
+    if (!onGenerateInsightsSummary) return;
     
-    setAiSummaryLoading(true);
+    setInsightsSummaryLoading(true);
     try {
-      await onGenerateAISummary();
-      // Refresh the activity data after generating AI summary
+      await onGenerateInsightsSummary();
+      // Refresh the activity data after generating the summary
       await loadChanges();
     } finally {
       // Keep loading state for a bit to show completion
-      setTimeout(() => setAiSummaryLoading(false), 1000);
+      setTimeout(() => setInsightsSummaryLoading(false), 1000);
     }
   };
 
@@ -87,41 +87,41 @@ export default function ChangeDashboard({
       setLoading(true);
       setError(null);
       
-      // Load AI summaries from Supabase first
-      let aiSummaries: ChangeSummary[] = [];
+      // Load stored summaries from Supabase first
+      let storedSummaries: ChangeSummary[] = [];
       try {
         const { getAISummaries } = await import('@/lib/supabase');
         const supabaseSummaries = await getAISummaries(clanTag);
-        console.log('Loading AI summaries from Supabase:', supabaseSummaries);
+        console.log('Loading insights summaries from Supabase:', supabaseSummaries);
         
         // Convert Supabase format to ChangeSummary format
-        aiSummaries = supabaseSummaries.map((summary: any) => ({
+        storedSummaries = supabaseSummaries.map((summary: any) => ({
           date: summary.date,
           clanTag: summary.clan_tag,
-          changes: [], // AI summaries don't have specific changes
+          changes: [], // summaries don't have specific changes
           summary: summary.summary,
           gameChatMessages: [],
           unread: summary.unread,
           actioned: summary.actioned,
           createdAt: summary.created_at
         }));
-        console.log('Converted AI summaries for Activity tab:', aiSummaries);
+        console.log('Converted insights summaries for Activity tab:', storedSummaries);
       } catch (supabaseError) {
-        console.warn('Failed to load AI summaries from Supabase, trying localStorage fallback:', supabaseError);
+        console.warn('Failed to load insights summaries from Supabase, trying localStorage fallback:', supabaseError);
         // Fallback to localStorage if Supabase fails
         try {
           const savedSummaries = localStorage.getItem('ai_summaries');
-          console.log('Loading AI summaries from localStorage fallback:', savedSummaries);
+          console.log('Loading insights summaries from localStorage fallback:', savedSummaries);
           if (savedSummaries) {
             const parsed = JSON.parse(savedSummaries);
-            console.log('Parsed AI summaries from localStorage:', parsed);
-            aiSummaries = parsed.filter((summary: ChangeSummary) => 
+            console.log('Parsed insights summaries from localStorage:', parsed);
+            storedSummaries = parsed.filter((summary: ChangeSummary) => 
               summary.clanTag === clanTag
             );
-            console.log('Filtered AI summaries for clan from localStorage:', aiSummaries);
+            console.log('Filtered insights summaries for clan from localStorage:', storedSummaries);
           }
         } catch (localError) {
-          console.warn('Failed to load AI summaries from localStorage:', localError);
+          console.warn('Failed to load insights summaries from localStorage:', localError);
         }
       }
       
@@ -143,11 +143,11 @@ export default function ChangeDashboard({
       console.log('Server response data:', data);
       
       if (data.success) {
-        // Combine server changes with AI summaries
+        // Combine server changes with stored summaries
         const serverChanges = data.changes || [];
         console.log('Server changes:', serverChanges);
-        console.log('AI summaries:', aiSummaries);
-        const allChanges = [...aiSummaries, ...serverChanges];
+        console.log('Insights summaries:', storedSummaries);
+        const allChanges = [...storedSummaries, ...serverChanges];
         console.log('Combined changes:', allChanges);
         
         // Sort by date (newest first)
@@ -330,24 +330,24 @@ export default function ChangeDashboard({
             >
               🔄 Refresh
             </button>
-            {onGenerateAISummary && (
+            {onGenerateInsightsSummary && (
               <button
-                onClick={handleGenerateAISummary}
-                disabled={aiSummaryLoading}
+                onClick={handleGenerateInsightsSummary}
+                disabled={insightsSummaryLoading}
                 className={`rounded-xl px-3 py-2 border shadow-sm transition-colors text-sm ${
-                  aiSummaryLoading 
+                  insightsSummaryLoading 
                     ? 'bg-purple-200 text-purple-500 border-purple-300 cursor-not-allowed' 
                     : 'bg-purple-100 text-purple-700 border-purple-200 hover:shadow hover:bg-purple-200'
                 }`}
-                title={aiSummaryLoading ? "Generating AI summary..." : "Generate an AI-powered summary of current clan state and changes"}
+                title={insightsSummaryLoading ? "Generating insights summary..." : "Generate an automated summary of current clan state and changes"}
               >
-                {aiSummaryLoading ? (
+                {insightsSummaryLoading ? (
                   <span className="flex items-center space-x-2">
                     <span className="animate-spin">⏳</span>
                     <span>Generating...</span>
                   </span>
                 ) : (
-                  "🤖 AI Summary"
+                  "🤖 Insights Summary"
                 )}
               </button>
             )}
@@ -412,12 +412,12 @@ export default function ChangeDashboard({
         </div>
       )}
 
-      {/* AI Summary Status Message */}
-      {aiSummaryLoading && (
+      {/* Insights Summary Status Message */}
+      {insightsSummaryLoading && (
         <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
           <div className="flex items-center space-x-2">
             <span className="animate-spin">⏳</span>
-            <span className="text-blue-700 text-sm">Generating AI summary... This may take a few moments.</span>
+            <span className="text-blue-700 text-sm">Generating insights summary... This may take a few moments.</span>
           </div>
         </div>
       )}

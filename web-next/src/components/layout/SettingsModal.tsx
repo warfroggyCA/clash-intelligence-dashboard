@@ -137,14 +137,14 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         },
         body: JSON.stringify({
           clanTag: clanTag,
-          includeAI: true
+          includeInsights: true
         }),
       });
 
       const result = await response.json();
       
       if (result.success) {
-        setMessage(`Force refresh completed! ${result.data.memberCount} members, ${result.data.changesDetected} changes detected. AI analysis: ${result.data.aiGenerated ? 'Generated' : 'Skipped'}`);
+        setMessage(`Force refresh completed! ${result.data.memberCount} members, ${result.data.changesDetected} changes detected. Insights: ${result.data.insightsGenerated ? 'Generated' : 'Skipped'}`);
         showToast('Force refresh completed successfully!', 'success');
         
         // Refresh the current roster to show new data
@@ -289,7 +289,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                     <ul className="text-xs text-gray-600 space-y-1 mb-4">
                       <li>• Fetch fresh clan data from Clash of Clans API</li>
                       <li>• Create new snapshot in database</li>
-                      <li>• Detect changes and generate AI summaries</li>
+                      <li>• Detect changes and generate insights summaries</li>
                       <li>• Fix 404 errors and greyed-out buttons</li>
                     </ul>
                     <button

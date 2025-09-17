@@ -23,7 +23,7 @@ import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { DashboardLayout, RosterTable } from '@/components';
 import ChangeDashboard from '@/components/ChangeDashboard';
 import PlayerDatabase from '@/components/PlayerDatabase';
-import AICoaching from '@/components/AICoaching';
+import CoachingInsights from '@/components/CoachingInsights';
 import PlayerDNADashboard from '@/components/PlayerDNADashboard';
 import DiscordPublisher from '@/components/DiscordPublisher';
 
@@ -66,7 +66,7 @@ export default function HomePage() {
       
       case 'coaching':
         return (
-          <AICoaching 
+          <CoachingInsights 
             clanData={roster}
             clanTag={currentClanTag}
           />

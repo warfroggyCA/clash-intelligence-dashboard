@@ -1,10 +1,10 @@
 // web-next/src/app/api/ai/batch-results/route.ts
-// API endpoint for retrieving batch AI results
+// API endpoint for retrieving automated insights bundles
 
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getLatestBatchAIResults, getBatchAIResultsByDate } from '@/lib/ai-storage';
+import { getLatestInsightsBundle, getInsightsBundleByDate } from '@/lib/insights-storage';
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
@@ -37,19 +37,19 @@ export async function GET(request: NextRequest) {
 
     let results;
     if (date) {
-      results = await cached(['ai','batch-results', clanTag, date], () => getBatchAIResultsByDate(clanTag, date), 10);
+      results = await cached(['ai','batch-results', clanTag, date], () => getInsightsBundleByDate(clanTag, date), 10);
     } else {
-      results = await cached(['ai','batch-results','latest', clanTag], () => getLatestBatchAIResults(clanTag), 10);
+      results = await cached(['ai','batch-results','latest', clanTag], () => getLatestInsightsBundle(clanTag), 10);
     }
 
     if (!results) {
-      return json({ success: false, error: 'No batch AI results found' }, { status: 404 });
+      return json({ success: false, error: 'No insights bundle found' }, { status: 404 });
     }
 
     return json({ success: true, data: results });
 
   } catch (error: any) {
-    console.error('[API] Error fetching batch AI results:', error);
-    return json({ success: false, error: error.message || 'Failed to fetch batch AI results' }, { status: 500 });
+    console.error('[API] Error fetching insights bundle:', error);
+    return json({ success: false, error: error.message || 'Failed to fetch insights bundle' }, { status: 500 });
   }
 }

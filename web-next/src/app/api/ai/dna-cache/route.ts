@@ -4,7 +4,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getPlayerDNACache, getPlayerDNACacheByPlayer } from '@/lib/ai-storage';
+import { getPlayerDNACache, getPlayerDNACacheByPlayer } from '@/lib/insights-storage';
 import { createApiContext } from '@/lib/api/route-helpers';
 import type { ApiResponse } from '@/types';
 

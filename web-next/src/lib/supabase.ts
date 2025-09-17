@@ -5,7 +5,7 @@ const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
 export const supabase = createClient(supabaseUrl, supabaseKey)
 
-// AI Summary functions
+// Stored summary functions
 export async function saveAISummary(summary: Omit<AISummary, 'id' | 'created_at'>) {
   const { data, error } = await supabase
     .from('ai_summaries')
@@ -14,7 +14,7 @@ export async function saveAISummary(summary: Omit<AISummary, 'id' | 'created_at'
     .single()
   
   if (error) {
-    throw new Error(`Failed to save AI summary: ${error.message}`)
+    throw new Error(`Failed to save insights summary: ${error.message}`)
   }
   
   return data
@@ -28,7 +28,7 @@ export async function getAISummaries(clanTag: string) {
     .order('created_at', { ascending: false })
   
   if (error) {
-    throw new Error(`Failed to fetch AI summaries: ${error.message}`)
+    throw new Error(`Failed to fetch insights summaries: ${error.message}`)
   }
   
   return data || []
@@ -41,7 +41,7 @@ export async function markAISummaryAsRead(id: number) {
     .eq('id', id)
   
   if (error) {
-    throw new Error(`Failed to mark AI summary as read: ${error.message}`)
+    throw new Error(`Failed to mark summary as read: ${error.message}`)
   }
 }
 
@@ -52,7 +52,7 @@ export async function markAISummaryAsActioned(id: number) {
     .eq('id', id)
   
   if (error) {
-    throw new Error(`Failed to mark AI summary as actioned: ${error.message}`)
+    throw new Error(`Failed to mark summary as actioned: ${error.message}`)
   }
 }
 

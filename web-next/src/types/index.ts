@@ -216,7 +216,7 @@ export interface RolePermissions {
   canViewSensitiveData: boolean;
   canModifyClanData: boolean;
   canAccessDiscordPublisher: boolean;
-  canGenerateAICoaching: boolean;
+  canGenerateCoachingInsights: boolean;
   canManageChangeDashboard: boolean;
   canViewLeadershipFeatures: boolean;
   canManageAccess: boolean;
@@ -291,13 +291,13 @@ export interface DepartureNotifications {
 }
 
 // =============================================================================
-// AI & ANALYTICS
+// INSIGHTS & ANALYTICS
 // =============================================================================
 
 /**
- * AI coaching advice structure
- */
-export interface AICoachingAdvice {
+ * Coaching insight structure
+*/
+export interface CoachingInsight {
   category: string;
   title: string;
   description: string;
@@ -308,9 +308,9 @@ export interface AICoachingAdvice {
 }
 
 /**
- * AI summary analysis
- */
-export interface AISummaryAnalysis {
+ * Snapshot summary analysis
+*/
+export interface SnapshotSummaryAnalysis {
   type: 'change_summary' | 'full_analysis' | 'performance_review';
   content: string;
   keyInsights: string[];
@@ -359,13 +359,13 @@ export interface ClanDNAInsights {
 }
 
 /**
- * Batch AI processing results
+ * Cached smart insights payload
  */
-export interface BatchAIResults {
+export interface InsightsBundle {
   timestamp: string;
   clanTag: string;
-  coachingAdvice: AICoachingAdvice[];
-  summaryAnalysis?: AISummaryAnalysis;
+  coachingInsights: CoachingInsight[];
+  summaryAnalysis?: SnapshotSummaryAnalysis;
   playerDNAInsights: PlayerDNAInsights[];
   clanDNAInsights?: ClanDNAInsights;
 }

@@ -268,8 +268,8 @@ class ApiEndpoints {
     return this.client.get('/api/roster', { clanTag });
   }
 
-  // AI endpoints
-  async generateAICoaching(clanTag: string, memberTag: string, clanData: any) {
+  // Insights endpoints
+  async generateCoachingInsights(clanTag: string, memberTag: string, clanData: any) {
     return this.client.post('/api/ai-coaching/generate', {
       clanTag,
       memberTag,
@@ -277,7 +277,7 @@ class ApiEndpoints {
     });
   }
 
-  async generateAISummary(clanTag: string, changes: any[], clanData?: any) {
+  async generateInsightsSummary(clanTag: string, changes: any[], clanData?: any) {
     return this.client.post('/api/ai-summary/generate', {
       type: 'full_analysis',
       clanData: {
@@ -295,7 +295,7 @@ class ApiEndpoints {
     });
   }
 
-  async getBatchAIResults(clanTag: string) {
+  async getInsightsBundle(clanTag: string) {
     return this.client.get('/api/ai/batch-results', { clanTag });
   }
 
