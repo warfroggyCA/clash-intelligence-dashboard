@@ -12,7 +12,7 @@
     "start:alt": "NEXT_PUBLIC_APP_VERSION=$(node -p \"require('./package.json').version\") next start -p 5060",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "next lint --dir src",
+    "lint": "next lint",
     "deploy:staging": "vercel --target preview",
     "deploy:prod": "vercel --target production",
     "env:check": "node scripts/check-env.js",
