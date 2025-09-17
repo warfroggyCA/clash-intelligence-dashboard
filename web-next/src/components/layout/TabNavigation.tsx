@@ -21,7 +21,7 @@ const TAB_CONFIGS: TabConfig[] = [
   { id: "snapshots", label: "Snapshots", icon: "📸", description: "View comprehensive clan snapshots with war and capital data" },
   { id: "analytics", label: "Analytics", icon: "📊", description: "Clan war and capital performance analytics" },
   { id: "database", label: "Player DB", icon: "🗄️", description: "Player database and notes" },
-  { id: "coaching", label: "Coaching", icon: "🤖", description: "AI-powered coaching advice" },
+  { id: "coaching", label: "Insights", icon: "🤖", description: "Automated insights and coaching" },
   { id: "events", label: "Events", icon: "📊", description: "Significant player events and milestones" },
   { id: "applicants", label: "Applicants", icon: "🎯", description: "Evaluate potential clan members" },
   { id: "intelligence", label: "Intelligence", icon: "🔍", description: "Advanced analytics and insights" },

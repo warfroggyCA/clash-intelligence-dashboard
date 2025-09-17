@@ -4,11 +4,11 @@
  * QuickActions Component
  * 
  * Provides quick action buttons for common dashboard operations.
- * Handles data copying, AI summary generation, and other utility functions.
+ * Handles data copying, insights summary generation, and other utility functions.
  * 
  * Features:
  * - Copy clan data to clipboard
- * - Generate AI summaries
+ * - Generate insights summaries
  * - Responsive design
  * - Loading states
  * - Error handling
@@ -96,7 +96,7 @@ const useQuickActions = () => {
     }
   };
 
-  const handleGenerateAISummary = async () => {
+  const handleGenerateInsightsSummary = async () => {
     if (!clanTag) {
       setMessage('Please load a clan first');
       return;
@@ -104,11 +104,11 @@ const useQuickActions = () => {
 
     setIsGeneratingSummary(true);
     try {
-      // Get recent changes for AI summary
+      // Get recent changes for the insights summary
       const changesResponse = await api.getSnapshotChanges(clanTag);
       
       if (changesResponse.success && changesResponse.data?.changes) {
-        // Prepare clan data with snapshot metadata for enhanced AI analysis
+        // Prepare clan data with snapshot metadata for enhanced insights
         const clanData = {
           clanName: roster?.clanName,
           clanTag: roster?.clanTag || clanTag,
@@ -130,13 +130,13 @@ const useQuickActions = () => {
           snapshotDetails,
         };
 
-        const summaryResponse = await api.generateAISummary(clanTag, changesResponse.data.changes, clanData);
+      const summaryResponse = await api.generateInsightsSummary(clanTag, changesResponse.data.changes, clanData);
         
         if (summaryResponse.success) {
-          setMessage('AI summary generated successfully!');
+          setMessage('Insights summary generated successfully!');
           setStatus('success');
         } else {
-          setMessage(summaryResponse.error || 'Failed to generate AI summary');
+          setMessage(summaryResponse.error || 'Failed to generate insights summary');
           setStatus('error');
         }
       } else {
@@ -144,8 +144,8 @@ const useQuickActions = () => {
         setStatus('error');
       }
     } catch (error) {
-      console.error('Failed to generate AI summary:', error);
-      setMessage('Failed to generate AI summary');
+      console.error('Failed to generate insights summary:', error);
+      setMessage('Failed to generate insights summary');
       setStatus('error');
     } finally {
       setIsGeneratingSummary(false);
@@ -348,7 +348,7 @@ const useQuickActions = () => {
 
   return {
     handleCopyData,
-    handleGenerateAISummary,
+    handleGenerateInsightsSummary,
     handleRefreshData,
     handleCopySnapshotSummary,
     handleExportSnapshot,
@@ -367,7 +367,7 @@ const useQuickActions = () => {
 // =============================================================================
 
 export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) => {
-  const aiEnabled = process.env.NEXT_PUBLIC_ENABLE_AI === 'true';
+  const insightsEnabled = process.env.NEXT_PUBLIC_ENABLE_INSIGHTS === 'true';
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
 
@@ -389,7 +389,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
   }, [showExportMenu]);
   const {
     handleCopyData,
-    handleGenerateAISummary,
+    handleGenerateInsightsSummary,
     handleRefreshData,
     handleCopySnapshotSummary,
     handleExportSnapshot,
@@ -521,20 +521,20 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             )}
           </div>
 
-          {/* AI Summary Button */}
+          {/* Insights Summary Button */}
           <Button
-            onClick={handleGenerateAISummary}
-            disabled={!hasData || isGeneratingSummary || !aiEnabled}
+            onClick={handleGenerateInsightsSummary}
+            disabled={!hasData || isGeneratingSummary || !insightsEnabled}
             loading={isGeneratingSummary}
             className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
-            title={aiEnabled ? "Generate daily summary with AI analysis of changes since last snapshot" : "AI disabled in dev (set NEXT_PUBLIC_ENABLE_AI=true)"}
+            title={insightsEnabled ? "Generate daily summary with automated insights of changes since last snapshot" : "Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)"}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
             <span className="relative flex items-center gap-2">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
               </svg>
-              AI Summary
+              Insights Summary
             </span>
           </Button>
         </div>

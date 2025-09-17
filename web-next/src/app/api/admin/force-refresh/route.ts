@@ -5,9 +5,8 @@ import { createApiContext } from '@/lib/api/route-helpers';
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from '@/lib/full-snapshot';
 import { detectChanges, saveChangeSummary, getLatestSnapshot } from '@/lib/snapshots';
 import { generateChangeSummary } from '@/lib/ai-summarizer';
-import { aiProcessor } from '@/lib/ai-processor';
-import { saveBatchAIResults } from '@/lib/ai-storage';
-import { generateSnapshotSummary } from '@/lib/ai-storage';
+import { insightsEngine } from '@/lib/smart-insights';
+import { saveInsightsBundle, generateSnapshotSummary } from '@/lib/insights-storage';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -20,7 +19,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const Schema = z.object({ 
       clanTag: z.string(),
-      includeAI: z.boolean().optional().default(true)
+      includeInsights: z.boolean().optional().default(true)
     });
     const parsed = Schema.safeParse(body);
     
@@ -28,14 +27,14 @@ export async function POST(req: NextRequest) {
       return json({ success: false, error: 'clanTag is required' }, { status: 400 });
     }
     
-    const { clanTag: rawClanTag, includeAI } = parsed.data;
+    const { clanTag: rawClanTag, includeInsights } = parsed.data;
     const clanTag = normalizeTag(rawClanTag);
     
     if (!isValidTag(clanTag)) {
       return json({ success: false, error: 'Provide a valid clanTag like #2PR8R8V8P' }, { status: 400 });
     }
 
-    logger.info('Starting force refresh', { clanTag, includeAI });
+    logger.info('Starting force refresh', { clanTag, includeInsights });
 
     // Step 1: Fetch fresh full snapshot
     logger.info('Fetching full clan snapshot...');
@@ -78,8 +77,8 @@ export async function POST(req: NextRequest) {
       members,
     };
 
-    // Step 4: Detect changes and generate AI summary
-    logger.info('Detecting changes and generating AI summary...');
+    // Step 4: Detect changes and prepare summary metadata
+    logger.info('Detecting changes and generating summary metadata...');
     const previousSnapshot = await getLatestSnapshot(clanTag);
     const changes = previousSnapshot ? await detectChanges(previousSnapshot, currentSnapshot) : [];
     
@@ -100,10 +99,10 @@ export async function POST(req: NextRequest) {
       logger.info('Change summary generated and saved', { changesCount: changes.length });
     }
 
-    // Step 5: Generate AI analysis (if requested)
-    let aiResults = null;
-    if (includeAI) {
-      logger.info('Generating AI analysis...');
+    // Step 5: Generate automated insights (if requested)
+    let insightsResults = null;
+    if (includeInsights) {
+      logger.info('Generating automated insights...');
       try {
         // Generate snapshot summary for context
         const snapshotSummary = generateSnapshotSummary(
@@ -116,24 +115,24 @@ export async function POST(req: NextRequest) {
           0 // Fresh data
         );
         
-        const batchAIResults = await aiProcessor.processBatchAI(
+        const insightsBundle = await insightsEngine.processBundle(
           currentSnapshot,
           changes || [],
           clanTag,
           currentSnapshot.date
         );
-        
+
         // Add snapshot summary to batch results
-        batchAIResults.snapshotSummary = snapshotSummary;
-        
-        // Save batch AI results to Supabase
-        await saveBatchAIResults(batchAIResults);
-        aiResults = batchAIResults;
-        
-        logger.info('AI analysis completed and saved');
+        insightsBundle.snapshotSummary = snapshotSummary;
+
+        // Save bundle to Supabase
+        await saveInsightsBundle(insightsBundle);
+        insightsResults = insightsBundle;
+
+        logger.info('Automated insights completed and saved');
       } catch (aiError) {
-        logger.error('AI analysis failed', { error: aiError });
-        // Continue even if AI fails
+        logger.error('Automated insights failed', { error: aiError });
+        // Continue even if insights generation fails
       }
     }
 
@@ -146,7 +145,7 @@ export async function POST(req: NextRequest) {
         snapshotDate: fullSnapshot.fetchedAt,
         memberCount: fullSnapshot.memberSummaries.length,
         changesDetected: changes?.length || 0,
-        aiGenerated: includeAI && aiResults !== null,
+        insightsGenerated: includeInsights && insightsResults !== null,
         timestamp: new Date().toISOString(),
       }
     };

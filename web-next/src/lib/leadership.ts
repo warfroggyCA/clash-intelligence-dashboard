@@ -72,7 +72,7 @@ export interface RolePermissions {
   canViewSensitiveData: boolean;
   canModifyClanData: boolean;
   canAccessDiscordPublisher: boolean;
-  canGenerateAICoaching: boolean;
+  canGenerateCoachingInsights: boolean;
   canManageChangeDashboard: boolean;
   canViewLeadershipFeatures: boolean;
   canManageAccess: boolean;
@@ -85,7 +85,7 @@ export function getRolePermissions(role: ClanRole): RolePermissions {
     canViewSensitiveData: isLeadership,
     canModifyClanData: isLeadership, // Leaders and co-leaders can modify
     canAccessDiscordPublisher: isLeadership,
-    canGenerateAICoaching: isLeadership,
+    canGenerateCoachingInsights: isLeadership,
     canManageChangeDashboard: isLeadership,
     canViewLeadershipFeatures: isLeadership,
     canManageAccess: role === 'leader' // Only leaders can manage access

@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
       const changes = detectChanges(previousSnapshot, currentSnapshot);
       
       if (changes.length > 0) {
-        // Generate AI summary
+        // Generate automated summary
         const summary = await generateChangeSummary(changes, clanTag, currentSnapshot.date);
         
         changeSummary = {

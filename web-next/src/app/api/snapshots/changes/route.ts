@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       const { saveChangeSummary } = await import('@/lib/snapshots');
       await saveChangeSummary(body.changeSummary);
       
-      return json({ success: true, message: "AI summary saved successfully" });
+      return json({ success: true, message: "Insights summary saved successfully" });
     }
     
     // Handle existing read/actioned actions

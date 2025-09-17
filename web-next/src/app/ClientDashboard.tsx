@@ -7,7 +7,7 @@ import ClanAnalytics from '@/components/ClanAnalytics';
 import ChangeDashboard from '@/components/ChangeDashboard';
 import FullSnapshotDashboard from '@/components/FullSnapshotDashboard';
 import PlayerDatabase from '@/components/PlayerDatabase';
-import AICoaching from '@/components/AICoaching';
+import CoachingInsights from '@/components/CoachingInsights';
 import PlayerDNADashboard from '@/components/PlayerDNADashboard';
 import DiscordPublisher from '@/components/DiscordPublisher';
 import SnapshotInfoBanner from '@/components/SnapshotInfoBanner';
@@ -119,7 +119,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       case 'database':
         return <PlayerDatabase />;
       case 'coaching':
-        return <AICoaching clanData={roster} clanTag={currentClanTag} />;
+        return <CoachingInsights clanData={roster} clanTag={currentClanTag} />;
       case 'events':
         return (
           <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50">

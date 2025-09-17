@@ -11,8 +11,8 @@ import { createDailySnapshot, detectChanges, getSnapshotBeforeDate, saveChangeSu
 import { generateChangeSummary, generateGameChatMessages } from '../../src/lib/ai-summarizer';
 import { addDeparture } from '../../src/lib/departures';
 import { resolveUnknownPlayers } from '../../src/lib/player-resolver';
-import { aiProcessor } from '../../src/lib/ai-processor';
-import { saveBatchAIResults, cachePlayerDNAForClan } from '../../src/lib/ai-storage';
+import { insightsEngine } from '../../src/lib/smart-insights';
+import { saveInsightsBundle, cachePlayerDNAForClan } from '../../src/lib/insights-storage';
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from '../../src/lib/full-snapshot';
 
 async function run() {
@@ -79,17 +79,17 @@ async function run() {
       console.log('[Ingest] Change summary saved');
 
       try {
-        const batchAIResults = await aiProcessor.processBatchAI(
+        const insightsBundle = await insightsEngine.processBundle(
           currentSnapshot,
           changes,
           clanTag,
           currentSnapshot.date
         );
-        await saveBatchAIResults(batchAIResults);
+        await saveInsightsBundle(insightsBundle);
         await cachePlayerDNAForClan(currentSnapshot, clanTag, currentSnapshot.date);
-        console.log('[Ingest] AI batch results stored and DNA cached');
+        console.log('[Ingest] Insights bundle stored and DNA cached');
       } catch (error) {
-        console.error('[Ingest] AI batch processing failed:', error);
+        console.error('[Ingest] Insights bundle processing failed:', error);
       }
     }
   }
