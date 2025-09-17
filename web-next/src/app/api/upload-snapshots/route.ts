@@ -31,6 +31,10 @@ export async function POST(request: NextRequest) {
       });
     }
     
+    if (!supabase) {
+      return json({ success: false, error: 'Database not available' }, { status: 503 });
+    }
+    
     const uploadedSnapshots = [];
     
     // Upload snapshots to Supabase Storage and Database
