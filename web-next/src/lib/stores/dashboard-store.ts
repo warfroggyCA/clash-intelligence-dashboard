@@ -132,6 +132,8 @@ interface DashboardState {
   };
   
   // Data freshness info
+  dataFetchedAt?: string;
+  dataAge?: number;
   smartInsights: SmartInsightsPayload | null;
   smartInsightsStatus: 'idle' | 'loading' | 'success' | 'error';
   smartInsightsError: string | null;
@@ -183,7 +185,8 @@ interface DashboardState {
   setEventFilterPlayer: (player: string) => void;
 
   setLastLoadInfo: (info: DashboardState['lastLoadInfo']) => void;
-  setDataFetchedAt: (timestamp: number) => void;
+  setDataFetchedAt: (timestamp: string) => void;
+  setDataAge: (age: number) => void;
   setSmartInsights: (payload: SmartInsightsPayload | null) => void;
   
   // Complex Actions
@@ -253,6 +256,7 @@ const initialState = {
   eventFilterPlayer: '',
   lastLoadInfo: undefined,
   dataFetchedAt: undefined,
+  dataAge: undefined,
   smartInsights: null,
   smartInsightsStatus: 'idle' as const,
   smartInsightsError: null,
@@ -340,6 +344,7 @@ export const useDashboardStore = create<DashboardState>()(
 
       setLastLoadInfo: (lastLoadInfo) => set({ lastLoadInfo }),
       setDataFetchedAt: (dataFetchedAt) => set({ dataFetchedAt }),
+      setDataAge: (dataAge) => set({ dataAge }),
       setSmartInsights: (payload) => {
         if (!payload) {
           set({
@@ -405,7 +410,7 @@ export const useDashboardStore = create<DashboardState>()(
               // Update dev status badge info
               const tenureMatches = (payload.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
               setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (payload.members || []).length });
-              setDataFetchedAt(Date.now());
+              setDataFetchedAt(new Date().toISOString());
               return;
             }
             lastError = result.json?.error || result.json?.message || 'Failed to load roster';
@@ -547,7 +552,7 @@ export const useDashboardStore = create<DashboardState>()(
                   tenureMatches: (json.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
                   total: (json.members || []).length
                 });
-                setDataFetchedAt(Date.now());
+                setDataFetchedAt(new Date().toISOString());
                 setStatus('success');
                 setMessage(`Loaded ${json.members.length} members from snapshot data`);
                 
@@ -697,6 +702,13 @@ export const selectors = {
     const now = new Date();
     const hoursDiff = (now.getTime() - fetchedAt.getTime()) / (1000 * 60 * 60);
     return hoursDiff <= 24;
+  },
+  dataAge: (state: DashboardState) => {
+    if (!state.snapshotMetadata?.fetchedAt) return undefined;
+    const fetchedAt = new Date(state.snapshotMetadata.fetchedAt);
+    const now = new Date();
+    const hoursDiff = (now.getTime() - fetchedAt.getTime()) / (1000 * 60 * 60);
+    return hoursDiff;
   },
   smartInsights: (state: DashboardState) => state.smartInsights,
   smartInsightsStatus: (state: DashboardState) => state.smartInsightsStatus,
