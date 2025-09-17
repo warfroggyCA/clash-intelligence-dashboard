@@ -52,55 +52,10 @@ const useQuickActions = () => {
   const smartInsightsError = useDashboardStore(selectors.smartInsightsError);
   const smartInsightsIsStale = useDashboardStore(selectors.smartInsightsIsStale);
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
-  const [isCopyingData, setIsCopyingData] = useState(false);
   const [isCopyingSnapshot, setIsCopyingSnapshot] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
-
-  const handleCopyData = async () => {
-    if (!roster) {
-      setMessage('No clan data to copy');
-      return;
-    }
-
-    setIsCopyingData(true);
-    try {
-      const dataToCopy = {
-        clanName: roster.clanName,
-        clanTag: roster.clanTag,
-        memberCount: roster.members.length,
-        members: roster.members.map(member => ({
-          name: member.name,
-          tag: member.tag,
-          townHallLevel: member.townHallLevel,
-          trophies: member.trophies,
-          donations: member.donations,
-          donationsReceived: member.donationsReceived,
-          role: member.role,
-          tenure: member.tenure_days || member.tenure,
-          heroes: {
-            bk: member.bk,
-            aq: member.aq,
-            gw: member.gw,
-            rc: member.rc,
-            mp: member.mp
-          }
-        })),
-        lastUpdated: new Date().toISOString()
-      };
-
-      await navigator.clipboard.writeText(JSON.stringify(dataToCopy, null, 2));
-      setMessage('Clan data copied to clipboard!');
-      setStatus('success');
-    } catch (error) {
-      console.error('Failed to copy data:', error);
-      setMessage('Failed to copy data to clipboard');
-      setStatus('error');
-    } finally {
-      setIsCopyingData(false);
-    }
-  };
 
   const handleGenerateInsightsSummary = async () => {
     if (!clanTag) {
@@ -156,6 +111,47 @@ const useQuickActions = () => {
     } finally {
       setIsGeneratingSummary(false);
     }
+  const handleCopyRosterJson = async () => {
+    if (!roster) {
+      setMessage('No clan data to copy');
+      return;
+    }
+
+    try {
+      const dataToCopy = {
+        clanName: roster.clanName,
+        clanTag: roster.clanTag,
+        memberCount: roster.members.length,
+        members: roster.members.map(member => ({
+          name: member.name,
+          tag: member.tag,
+          townHallLevel: member.townHallLevel,
+          trophies: member.trophies,
+          donations: member.donations,
+          donationsReceived: member.donationsReceived,
+          role: member.role,
+          tenure: member.tenure_days || member.tenure,
+          heroes: {
+            bk: member.bk,
+            aq: member.aq,
+            gw: member.gw,
+            rc: member.rc,
+            mp: member.mp
+          }
+        })),
+        lastUpdated: new Date().toISOString()
+      };
+
+      await navigator.clipboard.writeText(JSON.stringify(dataToCopy, null, 2));
+      setMessage('Roster JSON copied');
+      setStatus('success');
+    } catch (error) {
+      console.error('Failed to copy roster JSON:', error);
+      setMessage('Failed to copy roster JSON');
+      setStatus('error');
+    }
+  };
+
   };
 
   const handleRefreshInsights = async () => {
@@ -373,14 +369,13 @@ const useQuickActions = () => {
   };
 
   return {
-    handleCopyData,
     handleGenerateInsightsSummary,
     handleRefreshData,
     handleRefreshInsights,
     handleCopySnapshotSummary,
+    handleCopyRosterJson,
     handleExportSnapshot,
     isGeneratingSummary,
-    isCopyingData,
     isCopyingSnapshot,
     isExporting,
     isRefreshing,
@@ -390,7 +385,6 @@ const useQuickActions = () => {
     smartInsightsIsStale,
     smartInsightsMetadata: smartInsights?.metadata ?? null,
     hasData: !!roster,
-    memberCount: selectors.memberCount(useDashboardStore.getState())
   };
 };
 
@@ -420,14 +414,13 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     };
   }, [showExportMenu]);
   const {
-    handleCopyData,
     handleGenerateInsightsSummary,
     handleRefreshData,
     handleRefreshInsights,
     handleCopySnapshotSummary,
+    handleCopyRosterJson,
     handleExportSnapshot,
     isGeneratingSummary,
-    isCopyingData,
     isCopyingSnapshot,
     isExporting,
     isRefreshing,
@@ -437,7 +430,6 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     smartInsightsIsStale,
     smartInsightsMetadata,
     hasData,
-    memberCount
   } = useQuickActions();
 
   return (
@@ -448,28 +440,6 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
         </h3>
         
         <div className="flex flex-wrap gap-2">
-          {/* Copy Data Button */}
-          <Button
-            onClick={handleCopyData}
-            disabled={!hasData || isCopyingData}
-            loading={isCopyingData}
-            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-teal-500 to-teal-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-teal-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
-            title="Copy raw member data (JSON format) for analysis"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-teal-400 to-teal-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-            <span className="relative flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
-              </svg>
-              Copy Data
-              {hasData && (
-                <span className="text-xs bg-white/20 px-2 py-1 rounded">
-                  {memberCount} members
-                </span>
-              )}
-            </span>
-          </Button>
-
           {/* Refresh Data Button */}
           <Button
             onClick={handleRefreshData}
@@ -546,7 +516,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
 
             {/* Export Dropdown Menu */}
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+              <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -573,6 +543,18 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     Export War Log CSV
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleCopyRosterJson();
+                      setShowExportMenu(false);
+                    }}
+                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                    </svg>
+                    Copy Roster JSON
                   </button>
                 </div>
               </div>
