@@ -20,11 +20,12 @@ export async function GET(request: NextRequest) {
     };
     
     // Check snapshots in Supabase
-    try {
-      const { data: snapshots, error: snapshotsError } = await supabase
-        .from('clan_snapshots')
-        .select('clan_tag, snapshot_date, fetched_at, metadata, created_at')
-        .order('snapshot_date', { ascending: false });
+    if (supabase) {
+      try {
+        const { data: snapshots, error: snapshotsError } = await supabase
+          .from('clan_snapshots')
+          .select('clan_tag, snapshot_date, fetched_at, metadata, created_at')
+          .order('snapshot_date', { ascending: false });
 
       if (!snapshotsError && snapshots) {
         result.snapshots.count = snapshots.length;
@@ -59,26 +60,29 @@ export async function GET(request: NextRequest) {
           console.error('Error querying legacy snapshots from Supabase:', legacyError);
         }
       }
-    } catch (e) {
-      console.error('Error querying snapshots from Supabase:', e);
+      } catch (e) {
+        console.error('Error querying snapshots from Supabase:', e);
+      }
     }
     
     // Check tenure ledger in Supabase
-    try {
-      const { data: tenureData, error: tenureError } = await supabase
-        .from('tenure_ledger')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      
-      if (!tenureError && tenureData && tenureData.length > 0) {
-        const ledger = tenureData[0];
-        result.tenureLedger.exists = true;
-        result.tenureLedger.size = ledger.size;
-        result.tenureLedger.url = ledger.file_url;
+    if (supabase) {
+      try {
+        const { data: tenureData, error: tenureError } = await supabase
+          .from('tenure_ledger')
+          .select('*')
+          .order('created_at', { ascending: false })
+          .limit(1);
+        
+        if (!tenureError && tenureData && tenureData.length > 0) {
+          const ledger = tenureData[0];
+          result.tenureLedger.exists = true;
+          result.tenureLedger.size = ledger.size;
+          result.tenureLedger.url = ledger.file_url;
+        }
+      } catch (e) {
+        console.error('Error checking tenure ledger from Supabase:', e);
       }
-    } catch (e) {
-      console.error('Error checking tenure ledger from Supabase:', e);
     }
     
     return json({ success: true, data: result });

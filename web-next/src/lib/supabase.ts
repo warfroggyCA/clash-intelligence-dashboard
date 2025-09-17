@@ -1,12 +1,18 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-export const supabase = createClient(supabaseUrl, supabaseKey)
+export const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey)
+  : null
 
 // Stored summary functions
 export async function saveAISummary(summary: Omit<AISummary, 'id' | 'created_at'>) {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+  
   const { data, error } = await supabase
     .from('ai_summaries')
     .insert([summary])
@@ -21,6 +27,10 @@ export async function saveAISummary(summary: Omit<AISummary, 'id' | 'created_at'
 }
 
 export async function getAISummaries(clanTag: string) {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+  
   const { data, error } = await supabase
     .from('ai_summaries')
     .select('*')
@@ -35,6 +45,10 @@ export async function getAISummaries(clanTag: string) {
 }
 
 export async function markAISummaryAsRead(id: number) {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+  
   const { error } = await supabase
     .from('ai_summaries')
     .update({ unread: false })
@@ -46,6 +60,10 @@ export async function markAISummaryAsRead(id: number) {
 }
 
 export async function markAISummaryAsActioned(id: number) {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized')
+  }
+  
   const { error } = await supabase
     .from('ai_summaries')
     .update({ actioned: true, unread: false })
