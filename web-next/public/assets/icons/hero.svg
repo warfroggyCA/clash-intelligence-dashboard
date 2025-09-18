@@ -1,0 +1,15 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="orb" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(40 40) scale(28)">
+      <stop offset="0%" stop-color="#7DF9FF"/>
+      <stop offset="40%" stop-color="#12B5F9"/>
+      <stop offset="100%" stop-color="#041B34"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="20" y1="12" x2="60" y2="68" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8E54E9"/>
+      <stop offset="100%" stop-color="#4776E6"/>
+    </linearGradient>
+  </defs>
+  <circle cx="40" cy="40" r="26" fill="url(#orb)" stroke="url(#ring)" stroke-width="4"/>
+  <path d="M40 22l6 12 12 2-9 9 2 12-11-6-11 6 2-12-9-9 12-2 6-12z" fill="#FFE082"/>
+</svg>

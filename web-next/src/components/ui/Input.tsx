@@ -90,7 +90,7 @@ export const Input: React.FC<InputProps> = ({
   const variantStyles = getVariantStyles(actualVariant);
   const sizeStyles = getSizeStyles(size);
   
-  const baseInputStyles = 'w-full border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-50';
+  const baseInputStyles = 'w-full border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white text-slate-800 placeholder:text-slate-400';
   
   const inputStyles = `${baseInputStyles} ${variantStyles} ${sizeStyles} ${inputClassName} ${className}`.trim();
 

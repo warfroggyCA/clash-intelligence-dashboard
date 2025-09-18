@@ -116,7 +116,7 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
 }
 
 const TableCell: React.FC<TableCellProps> = ({ className = '', children, ...rest }) => (
-  <td className={`py-3 px-4 ${className}`} {...rest}>
+  <td className={`py-3 px-4 text-sm text-slate-800 ${className}`} {...rest}>
     {children}
   </td>
 );
@@ -171,12 +171,12 @@ export const TableRow: React.FC<TableRowProps> = ({
               e.stopPropagation();
               handleOpenProfile();
             }}
-            className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+            className="font-heading font-normal text-blue-700 hover:text-blue-900 transition-colors"
             title="View player profile"
           >
             {member.name}
           </button>
-          <span className="text-xs text-gray-500 font-mono">
+          <span className="text-xs text-slate-500 font-mono">
             {member.tag}
           </span>
         </div>
