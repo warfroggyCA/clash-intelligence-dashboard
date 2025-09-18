@@ -1,0 +1,19 @@
+<svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="14" y1="10" x2="66" y2="70" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#FFD54F"/>
+      <stop offset="100%" stop-color="#FF6B0A"/>
+    </linearGradient>
+    <linearGradient id="base" x1="20" y1="58" x2="60" y2="78" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#352A32"/>
+      <stop offset="100%" stop-color="#140F12"/>
+    </linearGradient>
+  </defs>
+  <rect x="24" y="58" width="32" height="10" rx="4" fill="url(#base)"/>
+  <path d="M28 58h24l-6 12H34l-6-12z" fill="#20161F" opacity="0.65"/>
+  <path d="M30 10h20v15c0 6.627-5.373 12-12 12s-8-5.373-8-12V10z" fill="url(#grad)"/>
+  <path d="M16 14h12v8c0 6.627-3.373 12-10 12h-4v-20l2-0.5z" fill="#FFB300"/>
+  <path d="M64 14H52v8c0 6.627 3.373 12 10 12h4v-20l-2-0.5z" fill="#FFB300"/>
+  <circle cx="40" cy="34" r="8" fill="#FFF1C4"/>
+  <path d="M40 28l1.902 3.855 4.258.619-3.08 3.003.727 4.24L40 37.2l-3.807 2.517.727-4.24-3.08-3.003 4.258-.619L40 28z" fill="#FF6B0A"/>
+</svg>

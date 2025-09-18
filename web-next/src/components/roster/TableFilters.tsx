@@ -42,6 +42,7 @@ export interface TableFiltersProps {
   totalMembers: number;
   filteredCount: number;
   className?: string;
+  onClose?: () => void;
 }
 
 // =============================================================================
@@ -92,13 +93,13 @@ const FilterSelect: React.FC<FilterSelectProps> = ({
 }) => {
   return (
     <div className={`space-y-1 ${className}`}>
-      <label className="block text-sm font-medium text-gray-700">
+      <label className="block text-sm font-medium text-slate-700">
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+        className="w-full p-2 border border-gray-300 rounded-lg bg-white text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
       >
         {Object.entries(options).map(([key, label]) => (
           <option key={key} value={key}>
@@ -122,9 +123,9 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
   uniqueTownHalls,
   totalMembers,
   filteredCount,
-  className = ''
+  className = '',
+  onClose,
 }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const [searchDebounce, setSearchDebounce] = useState(filters.search);
 
   // Debounce search input
@@ -138,8 +139,12 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
     return () => clearTimeout(timer);
   }, [searchDebounce, filters.search, onFilterChange]);
 
+  useEffect(() => {
+    setSearchDebounce(filters.search);
+  }, [filters.search]);
+
   // Check if any filters are active
-  const hasActiveFilters = 
+  const hasActiveFilters =
     filters.search ||
     filters.role !== 'all' ||
     filters.townHall !== 'all' ||
@@ -148,38 +153,40 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
     filters.donationStatus !== 'all';
 
   return (
-    <div className={`bg-white/80 backdrop-blur-sm rounded-xl shadow-lg border border-white/20 p-4 ${className}`}>
+    <div className={`bg-white backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 p-5 text-slate-800 ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center space-x-4">
-          <h3 className="text-lg font-semibold text-gray-800">Filters</h3>
+          <h3 className="text-lg font-semibold text-slate-900">Filters</h3>
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-slate-600">
               {filteredCount} of {totalMembers} members
             </span>
             {hasActiveFilters && (
-              <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+              <span className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded-full">
                 {Object.values(filters).filter(v => v && v !== 'all').length} active
               </span>
             )}
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <Button
-            onClick={() => setIsExpanded(!isExpanded)}
-            variant="outline"
-            size="sm"
-          >
-            {isExpanded ? 'Collapse' : 'Expand'} Filters
-          </Button>
           {hasActiveFilters && (
             <Button
               onClick={onClearFilters}
               variant="outline"
               size="sm"
-              className="text-red-600 border-red-300 hover:bg-red-50"
+              className="text-rose-600 border-rose-300 hover:bg-rose-50"
             >
               Clear All
+            </Button>
+          )}
+          {onClose && (
+            <Button
+              onClick={onClose}
+              variant="outline"
+              size="sm"
+            >
+              Hide
             </Button>
           )}
         </div>
@@ -187,7 +194,7 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
 
       {/* Search Bar */}
       <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-slate-700 mb-2">
           Search Members
         </label>
         <Input
@@ -199,67 +206,64 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
         />
       </div>
 
-      {/* Expanded Filters */}
-      {isExpanded && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {/* Role Filter */}
-          <FilterSelect
-            label="Role"
-            value={filters.role}
-            onChange={(value) => onFilterChange({ role: value })}
-            options={{
-              'all': 'All Roles',
-              ...uniqueRoles.reduce((acc, role) => {
-                acc[role] = role.charAt(0).toUpperCase() + role.slice(1);
-                return acc;
-              }, {} as Record<string, string>)
-            }}
-          />
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Role Filter */}
+        <FilterSelect
+          label="Role"
+          value={filters.role}
+          onChange={(value) => onFilterChange({ role: value })}
+          options={{
+            'all': 'All Roles',
+            ...uniqueRoles.reduce((acc, role) => {
+              acc[role] = role.charAt(0).toUpperCase() + role.slice(1);
+              return acc;
+            }, {} as Record<string, string>)
+          }}
+        />
 
-          {/* Town Hall Filter */}
-          <FilterSelect
-            label="Town Hall Level"
-            value={filters.townHall}
-            onChange={(value) => onFilterChange({ townHall: value })}
-            options={{
-              'all': 'All Town Halls',
-              ...uniqueTownHalls.reduce((acc, th) => {
-                acc[th.toString()] = `TH${th}`;
-                return acc;
-              }, {} as Record<string, string>)
-            }}
-          />
+        {/* Town Hall Filter */}
+        <FilterSelect
+          label="Town Hall Level"
+          value={filters.townHall}
+          onChange={(value) => onFilterChange({ townHall: value })}
+          options={{
+            'all': 'All Town Halls',
+            ...uniqueTownHalls.reduce((acc, th) => {
+              acc[th.toString()] = `TH${th}`;
+              return acc;
+            }, {} as Record<string, string>)
+          }}
+        />
 
-          {/* Rush Level Filter */}
-          <FilterSelect
-            label="Rush Level"
-            value={filters.rushLevel}
-            onChange={(value) => onFilterChange({ rushLevel: value })}
-            options={RUSH_LEVELS}
-          />
+        {/* Rush Level Filter */}
+        <FilterSelect
+          label="Rush Level"
+          value={filters.rushLevel}
+          onChange={(value) => onFilterChange({ rushLevel: value })}
+          options={RUSH_LEVELS}
+        />
 
-          {/* Activity Level Filter */}
-          <FilterSelect
-            label="Activity Level"
-            value={filters.activityLevel}
-            onChange={(value) => onFilterChange({ activityLevel: value })}
-            options={ACTIVITY_LEVELS}
-          />
+        {/* Activity Level Filter */}
+        <FilterSelect
+          label="Activity Level"
+          value={filters.activityLevel}
+          onChange={(value) => onFilterChange({ activityLevel: value })}
+          options={ACTIVITY_LEVELS}
+        />
 
-          {/* Donation Status Filter */}
-          <FilterSelect
-            label="Donation Status"
-            value={filters.donationStatus}
-            onChange={(value) => onFilterChange({ donationStatus: value })}
-            options={DONATION_STATUS}
-          />
-        </div>
-      )}
+        {/* Donation Status Filter */}
+        <FilterSelect
+          label="Donation Status"
+          value={filters.donationStatus}
+          onChange={(value) => onFilterChange({ donationStatus: value })}
+          options={DONATION_STATUS}
+        />
+      </div>
 
       {/* Quick Filter Chips */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
+      <div className="mt-4 pt-4 border-t border-slate-200">
         <div className="flex items-center space-x-2">
-          <span className="text-sm text-gray-600">Quick filters:</span>
+          <span className="text-sm text-slate-600">Quick filters:</span>
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => onFilterChange({ role: filters.role === 'leadership' ? 'all' : 'leadership' })}
@@ -308,37 +312,37 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
 
       {/* Filter Summary */}
       {hasActiveFilters && (
-        <div className="mt-4 pt-4 border-t border-gray-200">
-          <div className="text-sm text-gray-600">
+        <div className="mt-4 pt-4 border-t border-slate-200">
+          <div className="text-sm text-slate-600">
             <strong>Active filters:</strong>
             <div className="mt-1 flex flex-wrap gap-2">
               {filters.search && (
-                <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
                   Search: "{filters.search}"
                 </span>
               )}
               {filters.role !== 'all' && (
-                <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">
+                <span className="px-2 py-1 bg-green-50 text-green-700 rounded-full text-xs">
                   Role: {filters.role}
                 </span>
               )}
               {filters.townHall !== 'all' && (
-                <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs">
+                <span className="px-2 py-1 bg-purple-50 text-purple-700 rounded-full text-xs">
                   TH: {filters.townHall}
                 </span>
               )}
               {filters.rushLevel !== 'all' && (
-                <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded-full text-xs">
+                <span className="px-2 py-1 bg-amber-50 text-amber-700 rounded-full text-xs">
                   Rush: {RUSH_LEVELS[filters.rushLevel as keyof typeof RUSH_LEVELS]}
                 </span>
               )}
               {filters.activityLevel !== 'all' && (
-                <span className="px-2 py-1 bg-indigo-100 text-indigo-800 rounded-full text-xs">
+                <span className="px-2 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs">
                   Activity: {filters.activityLevel}
                 </span>
               )}
               {filters.donationStatus !== 'all' && (
-                <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs">
+                <span className="px-2 py-1 bg-orange-50 text-orange-700 rounded-full text-xs">
                   Donations: {filters.donationStatus}
                 </span>
               )}

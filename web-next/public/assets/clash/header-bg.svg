@@ -1,0 +1,21 @@
+<svg width="1440" height="320" viewBox="0 0 1440 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="1440" height="320" fill="#0E1421"/>
+  <g opacity="0.6">
+    <path d="M0 240L120 210C240 180 480 120 720 138.667C960 157.333 1200 244.667 1320 288L1440 331V0H0V240Z" fill="url(#grad1)"/>
+  </g>
+  <g opacity="0.35">
+    <circle cx="220" cy="260" r="120" fill="#3112A0"/>
+    <circle cx="1220" cy="80" r="160" fill="#3112A0"/>
+  </g>
+  <g opacity="0.55">
+    <path d="M240 220L300 180L360 220L420 180L480 220" stroke="#FF6B0A" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M960 120L1020 80L1080 120L1140 80L1200 120" stroke="#FFC857" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <defs>
+    <linearGradient id="grad1" x1="0" y1="180" x2="1440" y2="320" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#3112A0"/>
+      <stop offset="60%" stop-color="#5227FF"/>
+      <stop offset="100%" stop-color="#FF6B0A"/>
+    </linearGradient>
+  </defs>
+</svg>

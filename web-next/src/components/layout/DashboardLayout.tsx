@@ -31,6 +31,7 @@ import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-manage
 import { safeTagForFilename } from '@/lib/tags';
 import { RosterStatsPanel, RosterHighlightsPanel } from '@/components/roster';
 import { QuickActionsMenu } from './QuickActionsMenu';
+import { Button } from '@/components/ui';
 
 // =============================================================================
 // TYPES
@@ -160,9 +161,9 @@ const DashboardHeader: React.FC = () => {
   const logoSrc = logoCandidates[logoIdx] || '/clan-logo.png';
 
   return (
-    <header className="w-full sticky top-0 z-50 bg-header-gradient text-white shadow-lg/70 backdrop-blur supports-[backdrop-filter]:bg-white/10">
+    <header className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur">
       {/* Unified 2-row grid: left/right controls; name centered across rows */}
-      <div className="w-full px-4 py-2 grid grid-cols-1 sm:grid-cols-[auto,1fr,auto] grid-rows-[auto,auto] items-center gap-x-4 gap-y-1">
+      <div className="relative z-10 w-full px-4 py-2 grid grid-cols-1 sm:grid-cols-[auto,1fr,auto] grid-rows-[auto,auto] items-center gap-x-4 gap-y-1">
         {/* Left badge */}
         <div className="hidden sm:flex flex-col justify-center col-[1] row-[1] row-span-2">
           <span className="text-xl font-semibold tracking-wide text-white/80 uppercase">Clan Dashboard</span>
@@ -198,11 +199,11 @@ const DashboardHeader: React.FC = () => {
             </div>
             <div className="text-center sm:text-left">
               {clanName ? (
-                <div className={`font-extrabold tracking-tight drop-shadow-lg leading-none transition-all duration-200 ${isScrolled ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'}`}>
+                <div className={`font-heading font-extrabold tracking-tight drop-shadow-lg leading-none transition-all duration-200 ${isScrolled ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'}`}>
                   {clanName}
                 </div>
               ) : (
-                <div className="font-extrabold text-3xl sm:text-4xl drop-shadow-lg leading-none">Clash Intelligence</div>
+                <div className="font-heading font-extrabold text-3xl sm:text-4xl drop-shadow-lg leading-none">Clash Intelligence</div>
               )}
             </div>
           </div>
@@ -233,6 +234,11 @@ const DashboardHeader: React.FC = () => {
 
           {/* Refresh */}
           <button onClick={handleRefresh} className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" title="Refresh">🔄</button>
+
+          {/* Quick Actions */}
+          <div className="hidden xl:block">
+            <QuickActionsMenu variant="inline" />
+          </div>
 
           {/* Settings */}
           <button 
@@ -288,6 +294,9 @@ const DashboardHeader: React.FC = () => {
             >
               Manage Clans
             </button>
+            <div className="w-full sm:w-auto xl:hidden">
+              <QuickActionsMenu variant="inline" />
+            </div>
           </div>
         </div>
       </div>
@@ -304,6 +313,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   className = '',
 }) => {
   const activeTab = useDashboardStore((state) => state.activeTab);
+  const [showOverview, setShowOverview] = useState(true);
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
@@ -320,19 +330,35 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
       
       {/* Main Content */}
-      <main className="min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm rounded-b-2xl shadow-xl border border-t-0 border-white/20">
+      <main className="min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-white text-slate-800 rounded-b-3xl shadow-[0_24px_55px_-30px_rgba(15,23,42,0.35)] border border-t-0 border-white/30">
         <ToastHub />
         {/* Dev Status */}
         <DevStatusBadge />
         {activeTab === 'roster' && (
-          <div className="grid gap-4 xl:grid-cols-3 items-start">
-            <SmartInsightsHeadlines className="h-full" />
-            <RosterStatsPanel className="h-full" />
-            <div className="flex flex-col gap-4">
-              <QuickActionsMenu />
-              <RosterHighlightsPanel className="flex-1" />
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-sm font-semibold text-slate-500">Dashboard overview</div>
+              <Button
+                onClick={() => setShowOverview((prev) => !prev)}
+                size="sm"
+                variant="outline"
+                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+              >
+                {showOverview ? 'Hide overview' : 'Show overview'}
+              </Button>
             </div>
-          </div>
+            {showOverview ? (
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] items-start">
+                <SmartInsightsHeadlines className="min-h-[18rem]" />
+                <RosterStatsPanel className="min-h-[18rem]" />
+                <RosterHighlightsPanel className="min-h-[18rem]" />
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                Overview cards hidden. Use the toggle above to show them again.
+              </div>
+            )}
+          </>
         )}
 
         {/* Page Content */}

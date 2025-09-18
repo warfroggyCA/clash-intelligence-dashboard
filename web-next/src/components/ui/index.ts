@@ -22,6 +22,8 @@ export {
   type ButtonSize,
 } from './Button';
 
+export { GlassCard } from './GlassCard';
+
 // Modal components
 export {
   Modal,

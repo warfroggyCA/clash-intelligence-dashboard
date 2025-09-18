@@ -37,7 +37,7 @@ import { TableRow } from './TableRow';
 import { MobileCard } from './MobileCard';
 import { TableFilters } from './TableFilters';
 import { Pagination } from './Pagination';
-import { Button } from '@/components/ui';
+import { Button, Input } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
 
@@ -252,6 +252,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [showFilters, setShowFilters] = useState(false);
 
   // Get members from roster
   const members = roster?.members || [];
@@ -264,6 +265,8 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const filteredMembers = useMemo(() => {
     return filterMembers(sortedMembers, filters);
   }, [sortedMembers, filters]);
+
+  const filteredCount = filteredMembers.length;
 
   // Pagination
   const totalItems = filteredMembers.length;
@@ -320,6 +323,14 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
     return Array.from(ths).sort((a, b) => b - a);
   }, [members]);
 
+  const hasActiveFilters =
+    filters.search ||
+    filters.role !== 'all' ||
+    filters.townHall !== 'all' ||
+    filters.rushLevel !== 'all' ||
+    filters.activityLevel !== 'all' ||
+    filters.donationStatus !== 'all';
+
   if (!roster) {
     return (
       <div className={`text-center py-12 ${className}`}>
@@ -341,39 +352,119 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   }
 
   return (
-    <div className={`space-y-6 ${className}`}>
+    <div className={`space-y-6 text-slate-800 ${className}`}>
       {/* Filters + Quick Actions side-by-side on large screens */}
       <div className="grid grid-cols-1 gap-4 items-start">
-        <TableFilters
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-          uniqueRoles={uniqueRoles}
-          uniqueTownHalls={uniqueTownHalls}
-          totalMembers={members.length}
-          filteredCount={filteredMembers.length}
-        />
+        {showFilters ? (
+          <TableFilters
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+            uniqueRoles={uniqueRoles}
+            uniqueTownHalls={uniqueTownHalls}
+            totalMembers={members.length}
+            filteredCount={filteredCount}
+            onClose={() => setShowFilters(false)}
+          />
+        ) : (
+          <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white/95 p-5 text-slate-800 shadow-xl backdrop-blur-sm">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col">
+                <span className="text-sm font-semibold text-slate-900">Filters</span>
+                <span className="text-xs text-slate-500">
+                  {filteredCount} of {members.length} members
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {hasActiveFilters && (
+                  <Button
+                    onClick={handleClearFilters}
+                    variant="outline"
+                    size="sm"
+                    className="text-rose-600 border-rose-300 hover:bg-rose-50"
+                  >
+                    Clear All
+                  </Button>
+                )}
+                <Button
+                  onClick={() => setShowFilters(true)}
+                  size="sm"
+                  variant="outline"
+                  className="px-4 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                >
+                  Show Filters
+                </Button>
+              </div>
+            </div>
+            <Input
+              type="text"
+              placeholder="Search members by name or tag..."
+              value={filters.search}
+              onChange={(e) => handleFilterChange({ search: e.target.value })}
+              className="mt-1"
+            />
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+              <span className="text-slate-500">Quick filters:</span>
+              <Button
+                onClick={() => handleFilterChange({ role: filters.role === 'leadership' ? 'all' : 'leadership' })}
+                variant={filters.role === 'leadership' ? 'primary' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                Leaders & Co-Leaders
+              </Button>
+              <Button
+                onClick={() => handleFilterChange({ role: filters.role === 'elder' ? 'all' : 'elder' })}
+                variant={filters.role === 'elder' ? 'primary' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                Elders
+              </Button>
+              <Button
+                onClick={() => handleFilterChange({ rushLevel: filters.rushLevel === 'very-rushed' ? 'all' : 'very-rushed' })}
+                variant={filters.rushLevel === 'very-rushed' ? 'primary' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                Very Rushed
+              </Button>
+              <Button
+                onClick={() => handleFilterChange({ activityLevel: filters.activityLevel === 'inactive' ? 'all' : 'inactive' })}
+                variant={filters.activityLevel === 'inactive' ? 'primary' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                Inactive
+              </Button>
+              <Button
+                onClick={() => handleFilterChange({ donationStatus: filters.donationStatus === 'low-donator' ? 'all' : 'low-donator' })}
+                variant={filters.donationStatus === 'low-donator' ? 'primary' : 'outline'}
+                size="sm"
+                className="text-xs"
+              >
+                Low Donators
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Data Source Indicator */}
       {roster && (
-        <div className="bg-gradient-to-r from-green-50 to-blue-50 rounded-lg p-3 border border-green-200 mb-4">
-          <div className="flex items-center justify-between text-sm">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2">
-                <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                <span className="font-medium text-gray-700">
+        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-md mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
+                <span className="font-semibold text-slate-900">
                   Data Source: {roster.source === 'live' ? 'Live API' : 'Snapshot'}
                 </span>
               </div>
-              <div className="text-gray-600">
-                Date: {roster.date}
-              </div>
-              <div className="text-gray-600">
-                Members: {roster.members.length}
-              </div>
+              <div>Date: {roster.date}</div>
+              <div>Members: {roster.members.length}</div>
             </div>
-            <div className="text-gray-500 text-xs">
+            <div className="text-xs text-slate-500">
               Last updated: {safeLocaleTimeString(dataFetchedAt, {
                 fallback: 'Unknown',
                 context: 'RosterTable dataFetchedAt'
@@ -385,8 +476,8 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
 
       {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">
-        <div className="bg-white/90 backdrop-blur-sm rounded-xl shadow-lg overflow-hidden border border-gray-200">
-          <table className="min-w-full text-sm">
+        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
+          <table className="min-w-full text-sm text-slate-800">
             <TableHeader
               sortKey={sortKey}
               sortDirection={sortDir}
