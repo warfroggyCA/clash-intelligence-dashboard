@@ -35,7 +35,7 @@ export interface QuickActionsProps {
 // ACTION HANDLERS
 // =============================================================================
 
-const useQuickActions = () => {
+export const useQuickActions = () => {
   const {
     roster,
     clanTag,
@@ -432,91 +432,87 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     hasData,
   } = useQuickActions();
 
+  const actionButtonClasses = 'w-full sm:w-auto justify-start sm:justify-center gap-2 text-sm font-medium !bg-white !text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-none transform-none hover:!scale-100 active:!scale-100';
+
   return (
-    <section className={`p-4 sm:p-6 rounded-2xl bg-white/80 backdrop-blur-sm shadow-lg border border-white/20 ${className}`}>
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-gray-800 border-b border-gray-200 pb-2">
-          Quick Actions
-        </h3>
-        
+    <section className={`rounded-lg border border-slate-200 bg-white/90 backdrop-blur p-4 shadow-sm ${className}`}>
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Quick Actions</h3>
+          <span className="text-xs text-slate-400">Tools for the current clan</span>
+        </div>
+
         <div className="flex flex-wrap gap-2">
-          {/* Refresh Data Button */}
           <Button
             onClick={handleRefreshData}
             disabled={!hasData || isRefreshing}
             loading={isRefreshing}
-            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-blue-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+            variant="ghost"
+            size="sm"
+            className={`${actionButtonClasses} min-w-[160px]`}
             title="Refresh roster data from the selected source"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-400 to-blue-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-            <span className="relative flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z"></path>
-              </svg>
-              Refresh Data
-            </span>
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z"></path>
+            </svg>
+            <span>Refresh Data</span>
           </Button>
 
-          {/* Refresh Smart Insights Button */}
           <Button
             onClick={handleRefreshInsights}
             disabled={!hasData || isRefreshingInsights || smartInsightsStatus === 'loading'}
             loading={isRefreshingInsights || smartInsightsStatus === 'loading'}
-            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-purple-500 to-purple-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-purple-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+            variant="ghost"
+            size="sm"
+            className={`${actionButtonClasses} min-w-[160px]`}
             title="Refresh Smart Insights payload for this clan"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-400 to-purple-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-            <span className="relative flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 12a7.5 7.5 0 0112.672-5.303l2.131-2.131A.75.75 0 0120.75 5.25v5a.75.75 0 01-.75.75h-5a.75.75 0 01-.53-1.28l1.986-1.986A6 6 0 106.5 12a.75.75 0 11-1.5 0zm15 0a7.5 7.5 0 01-12.672 5.303l-2.131 2.131A.75.75 0 013.25 18.75v-5a.75.75 0 01.75-.75h5a.75.75 0 01.53 1.28l-1.986 1.986A6 6 0 1017.5 12a.75.75 0 111.5 0z"></path>
-              </svg>
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 12a7.5 7.5 0 0112.672-5.303l2.131-2.131A.75.75 0 0120.75 5.25v5a.75.75 0 01-.75.75h-5a.75.75 0 01-.53-1.28l1.986-1.986A6 6 0 106.5 12a.75.75 0 11-1.5 0zm15 0a7.5 7.5 0 01-12.672 5.303l-2.131 2.131A.75.75 0 013.25 18.75v-5a.75.75 0 01.75-.75h5a.75.75 0 01.53 1.28l-1.986 1.986A6 6 0 1017.5 12a.75.75 0 111.5 0z"></path>
+            </svg>
+            <span className="flex items-center gap-2">
               Refresh Insights
               {smartInsightsIsStale && (
-                <span className="text-xs bg-white/20 px-2 py-1 rounded">Stale</span>
+                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">Stale</span>
               )}
             </span>
           </Button>
 
-          {/* Snapshot Summary Button */}
           <Button
             onClick={handleCopySnapshotSummary}
             disabled={!hasData || isCopyingSnapshot}
             loading={isCopyingSnapshot}
-            className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-amber-500 to-amber-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-amber-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+            variant="ghost"
+            size="sm"
+            className={`${actionButtonClasses} min-w-[160px]`}
             title="Copy snapshot summary (war status, capital raids, etc.)"
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-amber-400 to-amber-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-            <span className="relative flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9a2 2 0 012-2h2m3-3h6m-6 0a2 2 0 012-2h2a2 2 0 012 2m-6 0v3m6-3v3"></path>
-              </svg>
-              Copy Summary
-            </span>
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9a2 2 0 012-2h2m3-3h6m-6 0a2 2 0 012-2h2a2 2 0 012 2m-6 0v3m6-3v3"></path>
+            </svg>
+            <span>Copy Summary</span>
           </Button>
 
-          {/* Export Dropdown */}
           <div className="relative" ref={exportMenuRef}>
             <Button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={!hasData || isExporting}
-              className="group relative inline-flex items-center justify-center px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-emerald-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none text-sm"
+              variant="ghost"
+              size="sm"
+              className={`${actionButtonClasses} pr-8`}
               title="Export snapshot data in various formats"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-400 to-emerald-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-              <span className="relative flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Export
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </span>
+              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+              </svg>
+              <span className="flex items-center gap-2">Export</span>
+              <svg className="absolute right-3 w-3 h-3 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"></path>
+              </svg>
             </Button>
 
-            {/* Export Dropdown Menu */}
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
+              <div className="absolute right-0 mt-2 w-48 rounded-md border border-slate-200 bg-white shadow-md z-10">
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -524,9 +520,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                       setShowExportMenu(false);
                     }}
                     disabled={isExporting}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     Export JSON
@@ -537,9 +533,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                       setShowExportMenu(false);
                     }}
                     disabled={isExporting}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     Export War Log CSV
@@ -549,9 +545,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                       handleCopyRosterJson();
                       setShowExportMenu(false);
                     }}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 flex items-center gap-2"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                     </svg>
                     Copy Roster JSON
@@ -561,47 +557,45 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             )}
           </div>
 
-          {/* Insights Summary Button */}
           <Button
             onClick={handleGenerateInsightsSummary}
             disabled={!hasData || isGeneratingSummary || !insightsEnabled}
             loading={isGeneratingSummary}
-            className="group relative inline-flex items-center justify-center px-4 py-2 bg-gradient-to-r from-violet-500 to-violet-600 text-white font-medium rounded-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-200 border border-violet-400/20 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+            variant="ghost"
+            size="sm"
+            className={`${actionButtonClasses} min-w-[180px]`}
             title={insightsEnabled ? "Generate daily summary with automated insights of changes since last snapshot" : "Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)"}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-400 to-violet-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 disabled:opacity-0"></div>
-            <span className="relative flex items-center gap-2">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-              </svg>
-              Insights Summary
-            </span>
+            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <span>Insights Summary</span>
           </Button>
         </div>
         
-        <div className="rounded-lg border border-purple-100 bg-purple-50/80 px-4 py-3 text-sm text-purple-700 flex flex-col gap-1">
+        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 flex flex-col gap-1">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="font-semibold">Smart Insights</div>
             <div className="flex items-center gap-2 text-xs">
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${smartInsightsStatus === 'loading' ? 'bg-purple-200 text-purple-800' : smartInsightsStatus === 'error' ? 'bg-red-100 text-red-700' : smartInsightsIsStale ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${smartInsightsStatus === 'loading' ? 'bg-slate-200 text-slate-700' : smartInsightsStatus === 'error' ? 'bg-red-100 text-red-700' : smartInsightsIsStale ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
                 {smartInsightsStatus === 'loading' ? 'Refreshing' : smartInsightsStatus === 'error' ? 'Error' : smartInsightsIsStale ? 'Stale' : 'Fresh'}
               </span>
               {smartInsightsMetadata?.source && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white/70 px-2 py-0.5 text-purple-700">
+                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-slate-600 border border-slate-200">
                   {smartInsightsMetadata.source.replace('_', ' ')}
                 </span>
               )}
             </div>
           </div>
           {smartInsightsMetadata ? (
-            <div className="text-xs text-purple-600">
+            <div className="text-xs text-slate-500">
               Snapshot {safeLocaleDateString(smartInsightsMetadata.snapshotDate, { fallback: smartInsightsMetadata.snapshotDate, context: 'QuickActions smartInsights snapshotDate' })}
               {smartInsightsMetadata.generatedAt && (
                 <> • Generated {safeLocaleString(smartInsightsMetadata.generatedAt, { fallback: smartInsightsMetadata.generatedAt, context: 'QuickActions smartInsights generatedAt' })}</>
               )}
             </div>
           ) : (
-            <div className="text-xs text-purple-600">Insights will appear after the nightly run or a manual refresh.</div>
+            <div className="text-xs text-slate-500">Insights will appear after the nightly run or a manual refresh.</div>
           )}
           {smartInsightsError && (
             <div className="text-xs text-red-600">{smartInsightsError}</div>

@@ -21,16 +21,27 @@ type ParsedHeadline = {
   bullets: string[];
 };
 
+const MARKDOWN_DECORATION = /\*\*|__|`|~~/g;
+const CLAN_CODE = /#[A-Za-z0-9]+/g;
+
+const stripNoise = (value: string) =>
+  value
+    .replace(MARKDOWN_DECORATION, '')
+    .replace(CLAN_CODE, '')
+    .replace(/[\s]+/g, ' ')
+    .trim();
+
+const normalizeForComparison = (value: string) =>
+  stripNoise(value)
+    .replace(/[.!?:;,]+$/g, '')
+    .toLowerCase();
+
 function normalizeGreeting(content: string): [string | null, string] {
-  const trimmed = content.trim();
+  const trimmed = stripNoise(content);
   const lower = trimmed.toLowerCase();
-  if (lower.startsWith('greetings clan')) {
-    const afterGreeting = trimmed.replace(/^Greetings[^.!?]*[.!?]\s*/, '');
-    return ['Hey clan!', afterGreeting.trim()];
-  }
-  if (lower.startsWith('hello clan') || lower.startsWith('hi clan')) {
-    const afterGreeting = trimmed.replace(/^[^.!?]*[.!?]\s*/, '');
-    return ['Hey clan!', afterGreeting.trim()];
+  if (lower.startsWith('hello clan') || lower.startsWith('hi clan') || lower.startsWith('greetings clan')) {
+    const afterGreeting = trimmed.replace(/^[^.!?]*[.!?]?\s*/, '');
+    return ['Hello clan', afterGreeting.trim()];
   }
   return [null, trimmed];
 }
@@ -102,22 +113,10 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
       .sort((a, b) => priorityRank[a.priority] - priorityRank[b.priority])
       .slice(0, 3);
   }, [headlines]);
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(() => new Set());
+  const [isCollapsed] = useState(false);
 
   const metadata = smartInsights?.metadata;
   const diagnostics = smartInsights?.diagnostics;
-
-  const toggleCard = (id: string) => {
-    setExpandedCards((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
 
   const handleRefresh = async () => {
     if (!clanTag) return;
@@ -209,74 +208,133 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
       );
     }
 
+    const sections = displayedHeadlines
+      .map((headline) => {
+        const parsed = parseHeadlineContent(headline.detail || headline.title);
+        const normalizedTitle = normalizeForComparison(headline.title || '');
+        const greetingText = parsed.greeting ? stripNoise(parsed.greeting) : null;
+        const normalizedGreeting = greetingText ? normalizeForComparison(greetingText) : '';
+        const dedupedBullets: string[] = [];
+        const seen = new Set<string>();
+
+        parsed.bullets.forEach((item) => {
+          const cleanedBullet = stripNoise(item.replace(/^[-•]+\s*/, ''));
+          if (!cleanedBullet) return;
+          const normalized = normalizeForComparison(cleanedBullet);
+          if (normalizedTitle && normalized) {
+            if (
+              normalized === normalizedTitle ||
+              normalized.startsWith(normalizedTitle) ||
+              normalizedTitle.startsWith(normalized)
+            ) {
+              return;
+            }
+          }
+          if (normalizedGreeting && normalized) {
+            if (
+              normalized === normalizedGreeting ||
+              normalized.startsWith(normalizedGreeting) ||
+              normalizedGreeting.startsWith(normalized)
+            ) {
+              return;
+            }
+          }
+          if (seen.has(normalized)) return;
+          seen.add(normalized);
+          dedupedBullets.push(cleanedBullet);
+        });
+
+        const detailText = stripNoise(headline.detail || '');
+        const normalizedDetail = normalizeForComparison(detailText);
+        const showDetailFallback = !dedupedBullets.length
+          && detailText
+          && normalizedDetail !== normalizedTitle
+          && (!normalizedGreeting || normalizedDetail !== normalizedGreeting);
+        const displayTitle = normalizedTitle.startsWith('hello clan') || normalizedTitle.startsWith('greetings clan')
+          ? 'Hello clan'
+          : stripNoise(headline.title || '');
+        const showGreeting = greetingText
+          && normalizedGreeting
+          && normalizedGreeting !== normalizedTitle;
+
+        const hasContent = dedupedBullets.length > 0 || showGreeting || showDetailFallback;
+        if (!hasContent) {
+          return null;
+        }
+
+        return {
+          id: headline.id,
+          category: formatCategoryLabel(headline.category),
+          priority: priorityLabel(headline.priority),
+          priorityColor:
+            headline.priority === 'high'
+              ? 'text-rose-500'
+              : headline.priority === 'medium'
+                ? 'text-amber-500'
+                : 'text-emerald-500',
+          title: displayTitle,
+          greeting: showGreeting ? greetingText : null,
+          bullets: dedupedBullets,
+          detail: showDetailFallback ? detailText : null,
+        };
+      })
+      .filter((section): section is NonNullable<typeof section> => Boolean(section));
+
+    if (!sections.length) {
+      return (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+          No headlines available yet. Refresh data to pull the latest highlights.
+        </div>
+      );
+    }
+
     return (
-      <div className="grid gap-3 md:grid-cols-3">
-        {displayedHeadlines.map((headline) => {
-          const parsed = parseHeadlineContent(headline.detail || headline.title);
-          const isExpanded = expandedCards.has(headline.id);
-          const bullets = parsed.bullets;
-          const teaserCount = isExpanded ? bullets.length : Math.min(2, bullets.length);
-          return (
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="max-h-64 overflow-y-auto pr-2 space-y-4">
+          {sections.map((section, index) => (
             <div
-              key={headline.id}
-              className="flex h-full flex-col rounded-xl border border-indigo-100 bg-white/90 p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+              key={section.id}
+              className={index > 0 ? 'border-t border-slate-200 pt-4' : ''}
             >
-              <div className="mb-2 flex items-center justify-between text-xs font-medium uppercase text-indigo-500">
-                <span>{formatCategoryLabel(headline.category)}</span>
-                <span
-                  className={
-                    headline.priority === 'high'
-                      ? 'text-rose-500'
-                      : headline.priority === 'medium'
-                        ? 'text-amber-500'
-                        : 'text-emerald-500'
-                  }
-                >
-                  {priorityLabel(headline.priority)}
-                </span>
+              <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs font-medium uppercase text-indigo-500">
+                <span>{section.category}</span>
+                <span className={section.priorityColor}>{section.priority}</span>
               </div>
-              <h3 className="mb-1 text-base font-semibold text-indigo-900">{headline.title}</h3>
-              {parsed.greeting && (
-                <p className="mb-2 text-sm font-medium text-indigo-700">{parsed.greeting}</p>
+              <h3 className="mb-1 text-base font-semibold text-indigo-900">{section.title}</h3>
+              {section.greeting && (
+                <p className="text-sm font-medium text-indigo-700">{section.greeting}</p>
               )}
-              {bullets.length > 0 ? (
-                <ul className="mb-3 space-y-1 text-sm text-indigo-700">
-                  {bullets.slice(0, teaserCount).map((item, idx) => (
+              {section.bullets.length > 0 && (
+                <ul className="space-y-1 text-sm text-indigo-700">
+                  {section.bullets.map((item, idx) => (
                     <li key={idx} className="flex items-start gap-2">
                       <span className="mt-1 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-indigo-400"></span>
                       <span>{item}</span>
                     </li>
                   ))}
                 </ul>
-              ) : (
-                <p className="mb-3 text-sm text-indigo-700">{headline.detail || headline.title}</p>
               )}
-              {bullets.length > 2 && (
-                <button
-                  onClick={() => toggleCard(headline.id)}
-                  className="mt-auto w-max text-xs font-medium text-indigo-600 hover:text-indigo-800"
-                >
-                  {isExpanded ? 'Show less' : 'Read more'}
-                </button>
+              {!section.bullets.length && section.detail && (
+                <p className="text-sm text-indigo-700">{section.detail}</p>
               )}
             </div>
-          );
-        })}
+          ))}
+        </div>
       </div>
     );
   };
 
   return (
-    <section className={`rounded-2xl border border-indigo-100 bg-white/80 p-4 shadow-sm backdrop-blur ${className}`}>
+    <section className={`rounded-xl border border-slate-200 bg-white/90 backdrop-blur p-5 shadow-sm ${className}`}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2 text-sm font-semibold text-indigo-900">
+          <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
             <Lightbulb className="h-5 w-5 text-indigo-500" />
             Today’s Headlines
             {renderStatusBadge()}
           </div>
           {metadata && (
-            <p className="text-xs text-indigo-600">
+            <p className="text-xs text-slate-500">
               Snapshot {safeLocaleDateString(metadata.snapshotDate, { fallback: metadata.snapshotDate, context: 'SmartInsightsHeadlines snapshotDate' })}
               {metadata.generatedAt && (
                 <> • Generated {safeLocaleString(metadata.generatedAt, { fallback: metadata.generatedAt, context: 'SmartInsightsHeadlines generatedAt' })}</>
@@ -284,13 +342,15 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
             </p>
           )}
         </div>
-        <button
-          onClick={handleRefresh}
-          className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
-        >
-          <RefreshCcw className={`h-3.5 w-3.5 ${smartInsightsStatus === 'loading' ? 'animate-spin' : ''}`} />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRefresh}
+            className="inline-flex items-center gap-1 rounded-md border border-indigo-200 bg-white px-3 py-1.5 text-xs font-medium text-indigo-600 hover:bg-indigo-50"
+          >
+            <RefreshCcw className={`h-3.5 w-3.5 ${smartInsightsStatus === 'loading' ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
       </div>
       {renderContent()}
       {metadata && diagnostics && (

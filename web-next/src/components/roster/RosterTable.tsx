@@ -343,21 +343,16 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Filters + Quick Actions side-by-side on large screens */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-        <div className="lg:col-span-2">
-          <TableFilters
-            filters={filters}
-            onFilterChange={handleFilterChange}
-            onClearFilters={handleClearFilters}
-            uniqueRoles={uniqueRoles}
-            uniqueTownHalls={uniqueTownHalls}
-            totalMembers={members.length}
-            filteredCount={filteredMembers.length}
-          />
-        </div>
-        <div className="lg:col-span-1">
-          <QuickActions />
-        </div>
+      <div className="grid grid-cols-1 gap-4 items-start">
+        <TableFilters
+          filters={filters}
+          onFilterChange={handleFilterChange}
+          onClearFilters={handleClearFilters}
+          uniqueRoles={uniqueRoles}
+          uniqueTownHalls={uniqueTownHalls}
+          totalMembers={members.length}
+          filteredCount={filteredMembers.length}
+        />
       </div>
 
       {/* Data Source Indicator */}
@@ -435,31 +430,6 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
         />
       )}
 
-      {/* Summary Stats */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-          <div>
-            <div className="text-2xl font-bold text-blue-600">{members.length}</div>
-            <div className="text-sm text-gray-600">Total Members</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-green-600">{filteredMembers.length}</div>
-            <div className="text-sm text-gray-600">Filtered</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-purple-600">
-              {Math.round(members.reduce((sum, m) => sum + getTownHallLevel(m), 0) / members.length)}
-            </div>
-            <div className="text-sm text-gray-600">Avg TH</div>
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-orange-600">
-              {members.reduce((sum, m) => sum + (m.donations || 0), 0).toLocaleString()}
-            </div>
-            <div className="text-sm text-gray-600">Total Donations</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
