@@ -7,7 +7,7 @@
  * Handles the overall structure, header, navigation, and responsive design.
  * 
  * Features:
- * - Responsive header with logo, clan input, and controls
+ * - Responsive header with logo, clan context, and controls
  * - Tab navigation system
  * - Mobile-first responsive design
  * - Accessibility features
@@ -23,13 +23,14 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
-import { QuickActions } from './QuickActions';
 import SmartInsightsHeadlines from '@/components/SmartInsightsHeadlines';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
-import { sanitizeInputTag, normalizeTag, isValidTag, safeTagForFilename } from '@/lib/tags';
+import { safeTagForFilename } from '@/lib/tags';
+import { RosterStatsPanel, RosterHighlightsPanel } from '@/components/roster';
+import { QuickActionsMenu } from './QuickActionsMenu';
 
 // =============================================================================
 // TYPES
@@ -52,13 +53,10 @@ const DashboardHeader: React.FC = () => {
     setMessage,
     loadRoster,
     refreshData,
-    selectedSnapshot,
-    setSelectedSnapshot,
     departureNotifications,
     setShowDepartureManager,
     setShowAccessManager,
     setShowSettings,
-    checkDepartureNotifications,
     currentAccessMember,
     accessPermissions,
   } = useDashboardStore();
@@ -94,7 +92,6 @@ const DashboardHeader: React.FC = () => {
     
     try {
       setClanTag(homeClan);
-      console.log('[DashboardLayout] Loading home clan:', homeClan);
       await loadRoster(homeClan);
       setMessage(`Loaded home clan: ${homeClan}`);
     } catch (error) {
@@ -121,8 +118,7 @@ const DashboardHeader: React.FC = () => {
     
     // Set default home clan if none is set
     if (!homeClan) {
-      console.log('[DashboardHeader] No home clan set, setting default:', '#2PR8R8V8P');
-      setHomeClan('#2PR8R8V8P');
+    setHomeClan('#2PR8R8V8P');
     }
   }, []); // Empty dependency array - runs only once on mount
 
@@ -133,64 +129,9 @@ const DashboardHeader: React.FC = () => {
     
     // Auto-load home clan if no clan is currently loaded and home clan exists
     if (!clanTag && homeClan) {
-      console.log('[DashboardHeader] Auto-loading home clan on initialization:', homeClan);
       handleLoadHome();
     }
   }, [clanTag, homeClan, handleLoadHome]);
-
-  const handleClanTagChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const value = sanitizeInputTag(event.target.value);
-    setClanTag(value);
-  };
-
-  const handleLoadClan = async () => {
-    let cleanTag = normalizeTag(clanTag);
-
-    if (!cleanTag) {
-      setMessage('Please enter a clan tag');
-      return;
-    }
-    
-    if (!isValidTag(cleanTag)) {
-      setMessage('Please enter a valid clan tag (e.g., #2PR8R8V8P)');
-      return;
-    }
-    
-    // Update the state with the clean tag
-    setClanTag(cleanTag);
-    
-    // Add some debugging
-    console.log('[DashboardLayout] Loading clan with tag:', cleanTag);
-    
-    try {
-      await loadRoster(cleanTag);
-    } catch (error) {
-      console.error('[DashboardLayout] Failed to load roster:', error);
-      setMessage('Failed to load clan data. Please try again.');
-    }
-  };
-
-  const handleSetHome = () => {
-    const cleanTag = normalizeTag(clanTag);
-
-    if (!cleanTag) {
-      setHomeClan(null);
-      setMessage('Home clan cleared.');
-      return;
-    }
-    
-    try {
-      if (!isValidTag(cleanTag)) {
-        setMessage('Please enter a valid clan tag');
-        return;
-      }
-      
-      setHomeClan(cleanTag);
-      setMessage(`Home clan set to ${cleanTag}`);
-    } catch (error) {
-      setMessage('Failed to set home clan');
-    }
-  };
 
   const handleRefresh = async () => {
     if (clanTag) {
@@ -296,8 +237,7 @@ const DashboardHeader: React.FC = () => {
           {/* Settings */}
           <button 
             onClick={() => {
-              console.log('[DashboardLayout] Settings button clicked');
-              setShowSettings(true);
+          setShowSettings(true);
             }} 
             className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" 
             title="Settings"
@@ -322,44 +262,32 @@ const DashboardHeader: React.FC = () => {
             )}
           </LeadershipGuard>
         </div>
-        {/* Row 2 (right column): Tag input + actions (right-aligned, compact) */}
+        {/* Row 2 (right column): Clan context chips */}
         <div className="col-[3] row-[2]">
-          <div className="flex flex-col sm:flex-row items-center justify-end gap-2">
-          <div className="h-8 px-3 rounded-md border border-white/30 bg-blue-500/20 text-white text-xs backdrop-blur-sm flex items-center">
-            📸 Snapshot Data
-          </div>
-          <input
-            type="text"
-            value={clanTag}
-            onChange={handleClanTagChange}
-            placeholder="Enter clan tag (e.g., #2PR8R8V8P)"
-            className="h-8 min-w-[260px] border border-white/30 bg-white/10 text-white placeholder-white/70 rounded-md px-2 text-xs focus:outline-none focus:ring-2 focus:ring-white/40 focus:bg-white/20 transition-all backdrop-blur-sm"
-            title="Enter a clan tag to load their roster data"
-            onKeyDown={(e) => e.key === 'Enter' && handleLoadClan()}
-          />
-          <button
-            onClick={handleLoadClan}
-            className="h-8 px-3 bg-white/20 hover:bg-white/30 text-white rounded-md text-xs font-medium transition-all border border-white/30"
-            title="Load clan data and switch to this clan"
-          >
-            Switch
-          </button>
-          <button
-            onClick={handleSetHome}
-            className="h-8 px-2 bg-blue-500/80 hover:bg-blue-500 text-white rounded-md text-xs transition-all"
-            title="Set as home clan"
-          >
-            Set Home
-          </button>
-          {homeClan && (
+          <div className="flex flex-col sm:flex-row items-center justify-end gap-2 text-xs">
+            <div className="h-8 px-3 rounded-md border border-white/30 bg-blue-500/20 text-white backdrop-blur-sm flex items-center gap-2">
+              <span>📸 Snapshot Data</span>
+            </div>
+            {clanTag && (
+              <div className="h-8 px-3 rounded-md border border-white/20 bg-white/10 text-white backdrop-blur-sm flex items-center gap-1">
+                <span className="opacity-70">Current</span>
+                <span className="font-mono">{clanTag}</span>
+              </div>
+            )}
+            {homeClan && (
+              <div className="h-8 px-3 rounded-md border border-white/20 bg-white/10 text-white backdrop-blur-sm flex items-center gap-1">
+                <span className="opacity-70">Home</span>
+                <span className="font-mono">{homeClan}</span>
+              </div>
+            )}
             <button
-              onClick={handleLoadHome}
-              className="h-8 px-2 bg-green-500/80 hover:bg-green-500 text-white rounded-md text-xs transition-all"
-              title={`Load home clan: ${homeClan}`}
+              onClick={() => setShowSettings(true)}
+              className="h-8 px-3 bg-white/15 hover:bg-white/25 text-white rounded-md transition-all border border-white/30"
+              title="Manage clan settings"
+              type="button"
             >
-              Load Home
+              Manage Clans
             </button>
-          )}
           </div>
         </div>
       </div>
@@ -375,6 +303,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   className = '',
 }) => {
+  const activeTab = useDashboardStore((state) => state.activeTab);
+
   return (
     <div className={`min-h-screen w-full ${className}`}>
       {/* Header */}
@@ -394,13 +324,17 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <ToastHub />
         {/* Dev Status */}
         <DevStatusBadge />
-        {/* Quick Actions (hide on Roster; rendered inside roster alongside filters) */}
-        {useDashboardStore.getState().activeTab !== 'roster' && (
-          <QuickActions />
+        {activeTab === 'roster' && (
+          <div className="grid gap-4 xl:grid-cols-3 items-start">
+            <SmartInsightsHeadlines className="h-full" />
+            <RosterStatsPanel className="h-full" />
+            <div className="flex flex-col gap-4">
+              <QuickActionsMenu />
+              <RosterHighlightsPanel className="flex-1" />
+            </div>
+          </div>
         )}
 
-        <SmartInsightsHeadlines />
-        
         {/* Page Content */}
         {children}
       </main>

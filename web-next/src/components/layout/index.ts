@@ -10,6 +10,7 @@
 export { DashboardLayout } from './DashboardLayout';
 export { TabNavigation } from './TabNavigation';
 export { QuickActions } from './QuickActions';
+export { QuickActionsMenu } from './QuickActionsMenu';
 export { ModalsContainer } from './ModalsContainer';
 export { PlayerProfileModal } from './PlayerProfileModal';
 export { QuickDepartureModal } from './QuickDepartureModal';
