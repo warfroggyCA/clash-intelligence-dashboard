@@ -116,7 +116,7 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
 }
 
 const TableCell: React.FC<TableCellProps> = ({ className = '', children, ...rest }) => (
-  <td className={`py-3 px-4 text-sm text-high-contrast ${className}`} {...rest}>
+  <td className={`py-2 px-4 text-sm text-high-contrast ${className}`} {...rest}>
     {children}
   </td>
 );

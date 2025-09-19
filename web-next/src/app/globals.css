@@ -237,7 +237,7 @@ th { @apply text-left font-semibold; }
 }
 
 .clash-table th {
-  @apply text-left font-semibold px-4 py-3;
+  @apply text-left font-semibold px-4 py-2;
   @apply border-b;
   color: var(--clash-gold);
   background-color: rgba(30, 41, 59, 0.5);
@@ -245,7 +245,7 @@ th { @apply text-left font-semibold; }
 }
 
 .clash-table td {
-  @apply px-4 py-3 border-b;
+  @apply px-4 py-2 border-b;
   color: var(--text-primary);
   border-color: rgba(100, 116, 139, 0.5);
 }
