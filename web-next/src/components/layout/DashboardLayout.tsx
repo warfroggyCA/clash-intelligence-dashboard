@@ -333,7 +333,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
       
       {/* Main Content */}
-      <main className="min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)] border border-t-0 border-clash-gold/20">
+      <main className="dashboard-main min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)] border border-t-0 border-clash-gold/20">
         <ToastHub />
         {/* Dev Status */}
         <DevStatusBadge />
