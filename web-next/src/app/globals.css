@@ -95,15 +95,6 @@
   opacity: 0.85;
 }
 
-/* Light theme header hero adjustments for contrast */
-[data-theme="light"] .header-hero {
-  background-image: linear-gradient(120deg, rgba(255,255,255,0.85), rgba(248,250,252,0.85)), url('/assets/clash/header-bg.svg');
-  color: #0F172A;
-}
-
-[data-theme="light"] .header-hero::after {
-  opacity: 0.25;
-}
 
 body {
   @apply font-body antialiased;
@@ -446,12 +437,6 @@ th { @apply text-left font-semibold; }
   border-color: #64748B !important;
 }
 
-/* Light theme: override generic text-white where used inside header and badges */
-[data-theme="light"] .header-hero .text-white,
-[data-theme="light"] .header-hero .text-white\/80,
-[data-theme="light"] .header-hero .text-white\/50 {
-  color: #0F172A !important;
-}
 
 [data-theme="light"] .text-white {
   color: #0F172A !important;
