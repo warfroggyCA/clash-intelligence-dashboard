@@ -1,6 +1,7 @@
 // web-next/src/app/layout.tsx
 // GitHub integration test - $(date)
 import "./globals.css";
+import { ThemeProvider } from '@/lib/contexts/theme-context';
 
 export const metadata = {
   title: "Clash Intelligence Dashboard",
@@ -48,7 +49,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="theme-color" content="#4f46e5" />
         <meta name="msapplication-TileColor" content="#4f46e5" />
       </head>
-      <body>{children}</body>
+      <body>
+        <ThemeProvider defaultTheme="system">
+          {children}
+        </ThemeProvider>
+      </body>
     </html>
   );
 }

@@ -31,7 +31,7 @@ import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-manage
 import { safeTagForFilename } from '@/lib/tags';
 import { RosterStatsPanel, RosterHighlightsPanel } from '@/components/roster';
 import { QuickActionsMenu } from './QuickActionsMenu';
-import { Button } from '@/components/ui';
+import { Button, ThemeToggle } from '@/components/ui';
 
 // =============================================================================
 // TYPES
@@ -239,6 +239,9 @@ const DashboardHeader: React.FC = () => {
           <div className="hidden xl:block">
             <QuickActionsMenu variant="inline" />
           </div>
+
+          {/* Theme Toggle */}
+          <ThemeToggle size="sm" />
 
           {/* Settings */}
           <button 

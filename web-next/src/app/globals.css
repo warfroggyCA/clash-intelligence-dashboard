@@ -49,6 +49,25 @@
   --clash-bg-glass: linear-gradient(150deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86));
 }
 
+/* Light Theme Variables */
+[data-theme="light"] {
+  color-scheme: light;
+  
+  /* Light theme header gradient */
+  --header-gradient: linear-gradient(120deg, #F8FAFC 0%, #E2E8F0 45%, #FF6B0A 100%);
+  
+  /* Light theme text colors */
+  --text-primary: #1E293B;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-accent: #B8860B;
+  
+  /* Light theme background gradients */
+  --clash-bg-primary: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 50%, #F1F5F9 100%);
+  --clash-bg-card: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.86));
+  --clash-bg-glass: linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.86));
+}
+
 /* Utility to apply shared header gradient */
 .bg-header-gradient {
   background-image: var(--header-gradient);
@@ -73,8 +92,15 @@
 }
 
 body {
-  @apply font-body antialiased text-slate-100;
+  @apply font-body antialiased;
   min-height: 100vh;
+  color: var(--text-primary);
+  background: var(--clash-bg-primary);
+  transition: color 0.3s ease, background 0.3s ease;
+}
+
+/* Dark theme body background */
+[data-theme="dark"] body {
   background:
     radial-gradient(circle at top left, rgba(82,39,255,0.45), transparent 45%),
     radial-gradient(circle at top right, rgba(255,107,10,0.35), transparent 40%),
@@ -82,8 +108,19 @@ body {
     #0E1421;
 }
 
+/* Light theme body background */
+[data-theme="light"] body {
+  background:
+    radial-gradient(circle at top left, rgba(82,39,255,0.15), transparent 45%),
+    radial-gradient(circle at top right, rgba(255,107,10,0.15), transparent 40%),
+    radial-gradient(circle at bottom, rgba(37,99,235,0.1), transparent 45%),
+    #F8FAFC;
+}
+
 h1, h2, h3, h4 {
-  @apply font-heading text-slate-900;
+  @apply font-heading;
+  color: var(--text-primary);
+  transition: color 0.3s ease;
 }
 
 a { @apply text-brand-primary; }
@@ -242,16 +279,32 @@ th { @apply text-left font-semibold; }
   color: var(--clash-gold);
   background-color: rgba(30, 41, 59, 0.5);
   border-color: rgba(255, 215, 0, 0.2);
+  transition: all 0.3s ease;
 }
 
 .clash-table td {
   @apply px-4 py-2 border-b;
   color: var(--text-primary);
   border-color: rgba(100, 116, 139, 0.5);
+  transition: all 0.3s ease;
 }
 
 .clash-table tr:hover {
   background-color: rgba(255, 215, 0, 0.05);
+}
+
+/* Light theme table styles */
+[data-theme="light"] .clash-table th {
+  background-color: rgba(248, 250, 252, 0.8);
+  border-color: rgba(184, 134, 11, 0.3);
+}
+
+[data-theme="light"] .clash-table td {
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
+[data-theme="light"] .clash-table tr:hover {
+  background-color: rgba(184, 134, 11, 0.05);
 }
 
 /* Mobile-first responsive utilities */
