@@ -323,8 +323,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Header */}
       <DashboardHeader />
       
-      {/* Tab Navigation (glued under header) */}
-      <div className="w-full px-0 -mt-2">
+      {/* Tab Navigation (sticky under header) */}
+      <div className="w-full px-0 -mt-2 sticky top-[var(--header-height,80px)] z-40">
         <div className="relative bg-white/90 backdrop-blur-sm rounded-b-xl border border-t-0 border-gray-200">
           {/* Thin gradient seam to visually glue to header */}
           <div className="absolute -top-2 left-0 right-0 h-2 bg-header-gradient" />
