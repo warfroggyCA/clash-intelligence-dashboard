@@ -155,10 +155,11 @@ const DashboardHeader: React.FC = () => {
     logoLower ? `/${logoLower}.jpeg` : '',
     logoLower ? `/${logoLower}.webp` : '',
     logoUpper ? `/${logoUpper}.PNG` : '',
+    '/clans/2pr8r8v8p.png', // Fallback to known working logo
   ].filter(Boolean);
   const [logoIdx, setLogoIdx] = useState(0);
   useEffect(() => { setLogoIdx(0); }, [logoSafe, logoLower, logoUpper]);
-  const logoSrc = logoCandidates[logoIdx] || '/clan-logo.png';
+  const logoSrc = logoCandidates[logoIdx] || '/clans/2pr8r8v8p.png';
 
   return (
     <header className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur">
@@ -194,7 +195,7 @@ const DashboardHeader: React.FC = () => {
                   ? `Add clan logo at /public/clans/${logoSafe}.png or /public/${logoLower}.png`
                   : 'Add clan logo at /public/clan-logo.png'}
               >
-                🛡️
+                {logoSafe ? '🏰' : '🛡️'}
               </div>
             </div>
             <div className="text-center sm:text-left">
