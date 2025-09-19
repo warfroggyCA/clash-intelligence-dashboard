@@ -16,6 +16,21 @@ export type Member = {
   donationsReceived?: number;
   warStars?: number;
 
+  // League information
+  league?: {
+    id: number;
+    name: string;
+    iconUrls: {
+      small: string;
+      tiny: string;
+      medium: string;
+    };
+  };
+  builderBaseLeague?: {
+    id: number;
+    name: string;
+  };
+
   tenure_days?: number; // effective tenure for display
   tenure?: number;      // alias accepted
 

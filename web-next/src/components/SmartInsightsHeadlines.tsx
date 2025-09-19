@@ -56,88 +56,88 @@ type AccentStyle = {
 
 const ACCENT_STYLES: Record<string, AccentStyle> = {
   default: {
-    background: 'linear-gradient(135deg, rgba(112, 84, 170, 0.62), rgba(70, 82, 160, 0.58), rgba(46, 60, 120, 0.56))',
-    border: 'rgba(223, 208, 255, 0.45)',
-    glow: '0 30px 68px -30px rgba(148, 125, 224, 0.5)',
-    title: 'rgba(255, 250, 255, 0.98)',
-    badgeGradient: 'linear-gradient(135deg, rgba(210, 185, 255, 0.95), rgba(168, 136, 255, 0.92))',
-    badgeBorder: 'rgba(238, 222, 255, 0.58)',
-    badgeShadow: '0 18px 36px -18px rgba(184, 152, 255, 0.58)',
-    badgeText: 'rgba(253, 246, 255, 0.98)',
-    bullet: 'rgba(216, 199, 255, 0.9)',
-    divider: 'rgba(224, 210, 255, 0.35)',
-    accentText: 'rgba(244, 238, 255, 0.9)',
-    greeting: 'rgba(240, 230, 255, 0.94)',
+    background: 'linear-gradient(135deg, rgba(245, 243, 255, 0.95), rgba(233, 213, 255, 0.92), rgba(221, 214, 254, 0.9))',
+    border: 'rgba(139, 92, 246, 0.3)',
+    glow: '0 30px 68px -30px rgba(139, 92, 246, 0.2)',
+    title: 'rgba(0, 0, 0, 1)',
+    badgeGradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.2))',
+    badgeBorder: 'rgba(139, 92, 246, 0.3)',
+    badgeShadow: '0 18px 36px -18px rgba(139, 92, 246, 0.2)',
+    badgeText: 'rgba(0, 0, 0, 1)',
+    bullet: 'rgba(0, 0, 0, 1)',
+    divider: 'rgba(139, 92, 246, 0.2)',
+    accentText: 'rgba(0, 0, 0, 1)',
+    greeting: 'rgba(0, 0, 0, 1)',
   },
   'Performance Pulse': {
-    background: 'linear-gradient(145deg, rgba(28, 42, 92, 0.95), rgba(18, 30, 70, 0.92), rgba(10, 18, 44, 0.9))',
-    border: 'rgba(142, 178, 255, 0.38)',
-    glow: '0 32px 78px -32px rgba(72, 112, 255, 0.5)',
-    title: 'rgba(234, 242, 255, 0.99)',
-    badgeGradient: 'linear-gradient(135deg, rgba(170, 198, 255, 0.96), rgba(122, 156, 255, 0.9))',
-    badgeBorder: 'rgba(196, 218, 255, 0.52)',
-    badgeShadow: '0 18px 36px -18px rgba(112, 150, 255, 0.52)',
-    badgeText: 'rgba(246, 249, 255, 0.98)',
-    bullet: 'rgba(160, 194, 255, 0.9)',
-    divider: 'rgba(164, 194, 255, 0.32)',
-    accentText: 'rgba(220, 232, 255, 0.9)',
-    greeting: 'rgba(204, 220, 255, 0.94)',
+    background: 'linear-gradient(145deg, rgba(239, 246, 255, 0.95), rgba(219, 234, 254, 0.92), rgba(191, 219, 254, 0.9))',
+    border: 'rgba(59, 130, 246, 0.3)',
+    glow: '0 32px 78px -32px rgba(59, 130, 246, 0.2)',
+    title: 'rgba(0, 0, 0, 1)',
+    badgeGradient: 'linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(37, 99, 235, 0.2))',
+    badgeBorder: 'rgba(59, 130, 246, 0.3)',
+    badgeShadow: '0 18px 36px -18px rgba(59, 130, 246, 0.2)',
+    badgeText: 'rgba(0, 0, 0, 1)',
+    bullet: 'rgba(0, 0, 0, 1)',
+    divider: 'rgba(59, 130, 246, 0.2)',
+    accentText: 'rgba(0, 0, 0, 1)',
+    greeting: 'rgba(0, 0, 0, 1)',
   },
   'War Front': {
-    background: 'linear-gradient(135deg, rgba(255, 150, 170, 0.74), rgba(226, 98, 120, 0.74), rgba(177, 58, 80, 0.72))',
-    border: 'rgba(255, 196, 196, 0.5)',
-    glow: '0 32px 70px -28px rgba(255, 120, 120, 0.55)',
-    title: 'rgba(255, 243, 243, 0.98)',
-    badgeGradient: 'linear-gradient(135deg, rgba(255, 194, 194, 0.95), rgba(255, 142, 142, 0.92))',
-    badgeBorder: 'rgba(255, 210, 210, 0.58)',
-    badgeShadow: '0 18px 36px -18px rgba(255, 144, 144, 0.58)',
-    badgeText: 'rgba(255, 249, 249, 0.98)',
-    bullet: 'rgba(255, 210, 210, 0.92)',
-    divider: 'rgba(255, 201, 201, 0.35)',
-    accentText: 'rgba(255, 236, 236, 0.94)',
-    greeting: 'rgba(255, 224, 224, 0.96)',
+    background: 'linear-gradient(135deg, rgba(254, 242, 242, 0.95), rgba(252, 231, 243, 0.92), rgba(251, 207, 232, 0.9))',
+    border: 'rgba(239, 68, 68, 0.3)',
+    glow: '0 32px 70px -28px rgba(239, 68, 68, 0.2)',
+    title: 'rgba(0, 0, 0, 1)',
+    badgeGradient: 'linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(220, 38, 38, 0.2))',
+    badgeBorder: 'rgba(239, 68, 68, 0.3)',
+    badgeShadow: '0 18px 36px -18px rgba(239, 68, 68, 0.2)',
+    badgeText: 'rgba(0, 0, 0, 1)',
+    bullet: 'rgba(0, 0, 0, 1)',
+    divider: 'rgba(239, 68, 68, 0.2)',
+    accentText: 'rgba(0, 0, 0, 1)',
+    greeting: 'rgba(0, 0, 0, 1)',
   },
   'Donation Watch': {
-    background: 'linear-gradient(135deg, rgba(255, 202, 150, 0.78), rgba(229, 150, 84, 0.76), rgba(182, 102, 42, 0.74))',
-    border: 'rgba(255, 220, 180, 0.5)',
-    glow: '0 32px 70px -28px rgba(255, 188, 110, 0.55)',
-    title: 'rgba(255, 248, 236, 0.98)',
-    badgeGradient: 'linear-gradient(135deg, rgba(255, 220, 174, 0.96), rgba(255, 180, 102, 0.93))',
-    badgeBorder: 'rgba(255, 228, 190, 0.6)',
-    badgeShadow: '0 18px 36px -18px rgba(255, 188, 112, 0.6)',
-    badgeText: 'rgba(255, 250, 240, 0.98)',
-    bullet: 'rgba(255, 220, 180, 0.92)',
-    divider: 'rgba(255, 214, 176, 0.35)',
-    accentText: 'rgba(255, 236, 214, 0.94)',
-    greeting: 'rgba(255, 230, 204, 0.96)',
+    background: 'linear-gradient(135deg, rgba(255, 251, 235, 0.95), rgba(254, 243, 199, 0.92), rgba(253, 230, 138, 0.9))',
+    border: 'rgba(245, 158, 11, 0.3)',
+    glow: '0 32px 70px -28px rgba(245, 158, 11, 0.2)',
+    title: 'rgba(0, 0, 0, 1)',
+    badgeGradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.15), rgba(217, 119, 6, 0.2))',
+    badgeBorder: 'rgba(245, 158, 11, 0.3)',
+    badgeShadow: '0 18px 36px -18px rgba(245, 158, 11, 0.2)',
+    badgeText: 'rgba(0, 0, 0, 1)',
+    bullet: 'rgba(0, 0, 0, 1)',
+    divider: 'rgba(245, 158, 11, 0.2)',
+    accentText: 'rgba(0, 0, 0, 1)',
+    greeting: 'rgba(0, 0, 0, 1)',
   },
   'Player Spotlight': {
-    background: 'linear-gradient(135deg, rgba(166, 238, 214, 0.78), rgba(116, 210, 183, 0.76), rgba(70, 158, 140, 0.74))',
-    border: 'rgba(194, 246, 226, 0.48)',
-    glow: '0 32px 70px -28px rgba(112, 224, 190, 0.55)',
-    title: 'rgba(236, 255, 248, 0.98)',
-    badgeGradient: 'linear-gradient(135deg, rgba(186, 244, 214, 0.95), rgba(126, 226, 184, 0.92))',
-    badgeBorder: 'rgba(206, 248, 228, 0.55)',
-    badgeShadow: '0 18px 36px -18px rgba(118, 228, 190, 0.58)',
-    badgeText: 'rgba(240, 255, 250, 0.98)',
-    bullet: 'rgba(182, 240, 214, 0.92)',
-    divider: 'rgba(190, 242, 220, 0.35)',
-    accentText: 'rgba(214, 246, 232, 0.94)',
-    greeting: 'rgba(198, 240, 220, 0.96)',
+    background: 'linear-gradient(135deg, rgba(240, 253, 244, 0.95), rgba(220, 252, 231, 0.92), rgba(187, 247, 208, 0.9))',
+    border: 'rgba(34, 197, 94, 0.3)',
+    glow: '0 32px 70px -28px rgba(34, 197, 94, 0.2)',
+    title: 'rgba(0, 0, 0, 1)',
+    badgeGradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.15), rgba(22, 163, 74, 0.2))',
+    badgeBorder: 'rgba(34, 197, 94, 0.3)',
+    badgeShadow: '0 18px 36px -18px rgba(34, 197, 94, 0.2)',
+    badgeText: 'rgba(0, 0, 0, 1)',
+    bullet: 'rgba(0, 0, 0, 1)',
+    divider: 'rgba(34, 197, 94, 0.2)',
+    accentText: 'rgba(0, 0, 0, 1)',
+    greeting: 'rgba(0, 0, 0, 1)',
   },
   'Roster Shift': {
-    background: 'linear-gradient(135deg, rgba(176, 140, 230, 0.72), rgba(132, 106, 210, 0.7), rgba(94, 74, 168, 0.68))',
-    border: 'rgba(226, 198, 255, 0.5)',
-    glow: '0 32px 70px -28px rgba(186, 152, 255, 0.55)',
-    title: 'rgba(245, 235, 255, 0.99)',
-    badgeGradient: 'linear-gradient(135deg, rgba(216, 176, 255, 0.95), rgba(172, 122, 255, 0.92))',
-    badgeBorder: 'rgba(234, 204, 255, 0.58)',
-    badgeShadow: '0 18px 36px -18px rgba(194, 148, 255, 0.58)',
-    badgeText: 'rgba(252, 242, 255, 0.98)',
-    bullet: 'rgba(226, 198, 255, 0.92)',
-    divider: 'rgba(224, 206, 255, 0.35)',
-    accentText: 'rgba(236, 222, 255, 0.94)',
-    greeting: 'rgba(228, 210, 255, 0.96)',
+    background: 'linear-gradient(135deg, rgba(250, 245, 255, 0.95), rgba(243, 232, 255, 0.92), rgba(233, 213, 255, 0.9))',
+    border: 'rgba(139, 92, 246, 0.3)',
+    glow: '0 32px 70px -28px rgba(139, 92, 246, 0.2)',
+    title: 'rgba(0, 0, 0, 1)',
+    badgeGradient: 'linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(124, 58, 237, 0.2))',
+    badgeBorder: 'rgba(139, 92, 246, 0.3)',
+    badgeShadow: '0 18px 36px -18px rgba(139, 92, 246, 0.2)',
+    badgeText: 'rgba(0, 0, 0, 1)',
+    bullet: 'rgba(0, 0, 0, 1)',
+    divider: 'rgba(139, 92, 246, 0.2)',
+    accentText: 'rgba(0, 0, 0, 1)',
+    greeting: 'rgba(0, 0, 0, 1)',
   },
 };
 
@@ -381,20 +381,20 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
         const priorityTone =
           headline.priority === 'high'
             ? {
-                text: 'rgba(255, 201, 207, 0.96)',
-                border: 'rgba(255, 122, 140, 0.45)',
-                background: 'rgba(255, 82, 110, 0.16)',
+                text: 'rgba(0, 0, 0, 1)',
+                border: 'rgba(0, 0, 0, 0.3)',
+                background: 'rgba(0, 0, 0, 0.1)',
               }
             : headline.priority === 'medium'
               ? {
-                  text: 'rgba(255, 233, 199, 0.95)',
-                  border: 'rgba(255, 173, 68, 0.45)',
-                  background: 'rgba(255, 173, 68, 0.16)',
+                  text: 'rgba(0, 0, 0, 1)',
+                  border: 'rgba(0, 0, 0, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.1)',
                 }
               : {
-                  text: 'rgba(198, 246, 219, 0.95)',
-                  border: 'rgba(95, 211, 158, 0.42)',
-                  background: 'rgba(77, 190, 135, 0.16)',
+                  text: 'rgba(0, 0, 0, 1)',
+                  border: 'rgba(0, 0, 0, 0.3)',
+                  background: 'rgba(0, 0, 0, 0.1)',
                 };
 
         return {
@@ -578,7 +578,7 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
     <GlassCard
       className={className}
       icon={<Lightbulb className="h-5 w-5" />}
-      title="Today’s Headlines"
+      title="Today's Headlines"
       subtitle={subtitle}
       actions={
         <div className="flex items-center gap-2">
@@ -587,7 +587,7 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
             onClick={handleRefresh}
             size="sm"
             variant="outline"
-            className="border-indigo-500/40 text-indigo-200 hover:bg-indigo-500/20"
+            className="border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 focus-ring"
           >
             <RefreshCcw className={`h-3.5 w-3.5 ${smartInsightsStatus === 'loading' ? 'animate-spin' : ''}`} />
             Refresh
@@ -597,8 +597,8 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
     >
       {renderContent()}
       {metadata && diagnostics && (
-        <div className="mt-4 border-t border-slate-200/70 pt-3 text-xs text-indigo-500">
-          <span className="font-medium">Source:</span> {metadata.source.replace('_', ' ')}
+        <div className="mt-4 border-t border-slate-600/50 pt-3 text-xs text-muted-contrast">
+          <span className="font-medium text-high-contrast">Source:</span> {metadata.source.replace('_', ' ')}
         </div>
       )}
     </GlassCard>

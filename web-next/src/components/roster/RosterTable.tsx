@@ -37,7 +37,7 @@ import { TableRow } from './TableRow';
 import { MobileCard } from './MobileCard';
 import { TableFilters } from './TableFilters';
 import { Pagination } from './Pagination';
-import { Button, Input } from '@/components/ui';
+import { Button, Input, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
 
@@ -367,11 +367,11 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
             onClose={() => setShowFilters(false)}
           />
         ) : (
-          <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 bg-white/95 p-5 text-slate-800 shadow-xl backdrop-blur-sm">
+          <div className="clash-card p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-col">
-                <span className="text-sm font-semibold text-slate-900">Filters</span>
-                <span className="text-xs text-slate-500">
+                <span className="text-sm font-semibold text-high-contrast">Filters</span>
+                <span className="text-xs text-muted-contrast">
                   {filteredCount} of {members.length} members
                 </span>
               </div>
@@ -381,7 +381,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                     onClick={handleClearFilters}
                     variant="outline"
                     size="sm"
-                    className="text-rose-600 border-rose-300 hover:bg-rose-50"
+                    className="text-clash-red border-clash-red/50 hover:bg-clash-red/10 focus-ring"
                   >
                     Clear All
                   </Button>
@@ -390,7 +390,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                   onClick={() => setShowFilters(true)}
                   size="sm"
                   variant="outline"
-                  className="px-4 border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                  className="px-4 border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 focus-ring"
                 >
                   Show Filters
                 </Button>
@@ -403,13 +403,13 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
               onChange={(e) => handleFilterChange({ search: e.target.value })}
               className="mt-1"
             />
-            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
-              <span className="text-slate-500">Quick filters:</span>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-muted-contrast">
+              <span className="text-muted-contrast">Quick filters:</span>
               <Button
                 onClick={() => handleFilterChange({ role: filters.role === 'leadership' ? 'all' : 'leadership' })}
                 variant={filters.role === 'leadership' ? 'primary' : 'outline'}
                 size="sm"
-                className="text-xs"
+                className={`text-xs focus-ring ${filters.role === 'leadership' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
               >
                 Leaders & Co-Leaders
               </Button>
@@ -417,7 +417,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ role: filters.role === 'elder' ? 'all' : 'elder' })}
                 variant={filters.role === 'elder' ? 'primary' : 'outline'}
                 size="sm"
-                className="text-xs"
+                className={`text-xs focus-ring ${filters.role === 'elder' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
               >
                 Elders
               </Button>
@@ -425,7 +425,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ rushLevel: filters.rushLevel === 'very-rushed' ? 'all' : 'very-rushed' })}
                 variant={filters.rushLevel === 'very-rushed' ? 'primary' : 'outline'}
                 size="sm"
-                className="text-xs"
+                className={`text-xs focus-ring ${filters.rushLevel === 'very-rushed' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
               >
                 Very Rushed
               </Button>
@@ -433,7 +433,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ activityLevel: filters.activityLevel === 'inactive' ? 'all' : 'inactive' })}
                 variant={filters.activityLevel === 'inactive' ? 'primary' : 'outline'}
                 size="sm"
-                className="text-xs"
+                className={`text-xs focus-ring ${filters.activityLevel === 'inactive' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
               >
                 Inactive
               </Button>
@@ -441,7 +441,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ donationStatus: filters.donationStatus === 'low-donator' ? 'all' : 'low-donator' })}
                 variant={filters.donationStatus === 'low-donator' ? 'primary' : 'outline'}
                 size="sm"
-                className="text-xs"
+                className={`text-xs focus-ring ${filters.donationStatus === 'low-donator' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
               >
                 Low Donators
               </Button>
@@ -452,19 +452,19 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
 
       {/* Data Source Indicator */}
       {roster && (
-        <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-md mb-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
+        <div className="clash-card p-4 mb-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-medium-contrast">
             <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-emerald-500' : 'bg-indigo-500'}`}></div>
-                <span className="font-semibold text-slate-900">
+                <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-clash-green' : 'bg-clash-blue'}`}></div>
+                <span className="font-semibold text-high-contrast">
                   Data Source: {roster.source === 'live' ? 'Live API' : 'Snapshot'}
                 </span>
               </div>
-              <div>Date: {roster.date}</div>
-              <div>Members: {roster.members.length}</div>
+              <div className="text-muted-contrast">Date: {roster.date}</div>
+              <div className="text-muted-contrast">Members: {roster.members.length}</div>
             </div>
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-muted-contrast">
               Last updated: {safeLocaleTimeString(dataFetchedAt, {
                 fallback: 'Unknown',
                 context: 'RosterTable dataFetchedAt'
@@ -476,8 +476,8 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
 
       {/* Desktop Table */}
       <div className="hidden md:block overflow-x-auto">
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-gray-200">
-          <table className="min-w-full text-sm text-slate-800">
+        <div className="clash-card overflow-hidden">
+          <table className="clash-table" role="table" aria-label="Clan member roster">
             <TableHeader
               sortKey={sortKey}
               sortDirection={sortDir}

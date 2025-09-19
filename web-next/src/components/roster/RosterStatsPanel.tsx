@@ -116,26 +116,26 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
       subtitle={subtitle + (dataFetchedAt ? ` • Updated ${safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}` : '')}
       actions={freshnessBadge}
     >
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900/72 via-slate-900/48 to-slate-800/52 px-4 py-5 shadow-inner text-slate-100">
+      <div className="rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 px-4 py-5 shadow-sm text-slate-800">
         {metricCards.length ? (
           <div className="space-y-4 text-base">
             {metricCards.map((metric) => (
               <div
                 key={metric.label}
-                className={`flex items-center justify-between rounded-2xl bg-gradient-to-r ${metric.gradient} px-4 py-3 shadow-[0_18px_32px_-22px_rgba(0,0,0,0.55)]`}
+                className={`flex items-center justify-between rounded-2xl bg-gradient-to-r ${metric.gradient} px-4 py-3 shadow-sm border border-white/50`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/12">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-sm">
                     <Image src={metric.icon} alt="" width={24} height={24} className="drop-shadow" />
                   </div>
-                  <span className="text-xs uppercase tracking-[0.24em] text-slate-100/80">{metric.label}</span>
+                  <span className="text-xs uppercase tracking-[0.24em] text-slate-800 font-bold">{metric.label}</span>
                 </div>
-                <span className={`text-2xl font-semibold drop-shadow-md ${metric.textClass}`}>{metric.value}</span>
+                <span className={`text-2xl font-bold text-slate-900`}>{metric.value}</span>
               </div>
             ))}
           </div>
         ) : (
-          <div className="rounded-xl bg-white/5 px-3 py-4 text-center text-sm text-slate-200/80">
+          <div className="rounded-xl bg-white/80 px-3 py-4 text-center text-sm text-slate-800 font-medium">
             No roster metrics available yet.
           </div>
         )}

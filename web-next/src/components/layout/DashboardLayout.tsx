@@ -330,28 +330,49 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
       
       {/* Main Content */}
-      <main className="min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-white text-slate-800 rounded-b-3xl shadow-[0_24px_55px_-30px_rgba(15,23,42,0.35)] border border-t-0 border-white/30">
+      <main className="min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)] border border-t-0 border-clash-gold/20">
         <ToastHub />
         {/* Dev Status */}
         <DevStatusBadge />
         {activeTab === 'roster' && (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="text-sm font-semibold text-slate-500">Dashboard overview</div>
+              <div className="flex items-center gap-3">
+                <div className="h-1 w-12 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+                <div className="text-lg font-bold text-high-contrast">Dashboard Overview</div>
+              </div>
               <Button
                 onClick={() => setShowOverview((prev) => !prev)}
                 size="sm"
                 variant="outline"
-                className="border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                className="border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 font-medium shadow-sm focus-ring"
               >
                 {showOverview ? 'Hide overview' : 'Show overview'}
               </Button>
             </div>
             {showOverview ? (
-              <div className="grid gap-4 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] items-start">
-                <SmartInsightsHeadlines className="min-h-[18rem]" />
-                <RosterStatsPanel className="min-h-[18rem]" />
-                <RosterHighlightsPanel className="min-h-[18rem]" />
+              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] items-start">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-high-contrast">Today's Headlines</h3>
+                  </div>
+                  <SmartInsightsHeadlines className="min-h-[18rem]" />
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
+                  </div>
+                  <RosterStatsPanel className="min-h-[18rem]" />
+                </div>
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
+                  </div>
+                  <RosterHighlightsPanel className="min-h-[18rem]" />
+                </div>
               </div>
             ) : (
               <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
@@ -366,17 +387,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </main>
       
       {/* Footer */}
-      <footer className="w-full bg-gradient-to-r from-gray-100 to-gray-200 border-t border-gray-300 mt-8">
-        <div className="w-full px-6 py-3">
-          <div className="flex items-center justify-between text-sm text-gray-600">
+      <footer className="w-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 border-t border-clash-gold/20 mt-12">
+        <div className="w-full px-6 py-4">
+          <div className="flex items-center justify-between text-sm text-medium-contrast">
             <div className="flex items-center space-x-4">
-              <span>Clash Intelligence Dashboard</span>
-              <span className="text-gray-400">•</span>
-              <span className="font-mono bg-gray-200 px-2 py-1 rounded text-xs">v{process.env.NEXT_PUBLIC_APP_VERSION || '0.16.3'}</span>
-              <span className="text-gray-400">•</span>
-              <span className="text-gray-500">A warfroggy project</span>
+              <div className="flex items-center gap-2">
+                <div className="h-2 w-2 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+                <span className="font-semibold text-high-contrast">Clash Intelligence Dashboard</span>
+              </div>
+              <span className="text-muted-contrast">•</span>
+              <span className="font-mono bg-gradient-to-r from-clash-gold/20 to-clash-orange/20 text-clash-gold px-3 py-1 rounded-full text-xs font-semibold border border-clash-gold/30">
+                v{process.env.NEXT_PUBLIC_APP_VERSION || '0.21.0'}
+              </span>
+              <span className="text-muted-contrast">•</span>
+              <span className="text-muted-contrast">A warfroggy project</span>
             </div>
-            <div className="text-xs text-gray-500">Built with Next.js • Clash of Clans API</div>
+            <div className="text-xs text-muted-contrast font-medium">Built with Next.js • Clash of Clans API</div>
           </div>
         </div>
       </footer>
