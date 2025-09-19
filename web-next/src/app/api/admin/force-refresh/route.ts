@@ -16,6 +16,15 @@ export async function POST(req: NextRequest) {
   const { json, logger } = createApiContext(req, '/api/admin/force-refresh');
   
   try {
+    const leadershipToken = process.env.LEADERSHIP_TOKEN;
+    if (leadershipToken) {
+      const provided = req.headers.get('x-leadership-token') || '';
+      if (provided !== leadershipToken) {
+        logger.warn('Rejected force refresh without valid leadership token');
+        return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const body = await req.json();
     const Schema = z.object({ 
       clanTag: z.string(),

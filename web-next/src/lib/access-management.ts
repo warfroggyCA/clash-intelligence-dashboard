@@ -8,11 +8,11 @@ export interface AccessMember {
   cocPlayerTag?: string;
   email?: string;
   accessLevel: AccessLevel;
-  password: string; // Individual access password
+  password?: string; // Individual access password (undefined when not shared)
   createdAt: string;
   lastAccessed?: string;
   isActive: boolean;
-  addedBy: string; // Who granted them access
+  addedBy?: string; // Who granted them access
   notes?: string;
 }
 
@@ -91,21 +91,6 @@ export const ACCESS_LEVEL_PERMISSIONS = {
 
 export function getAccessLevelPermissions(accessLevel: AccessLevel) {
   return ACCESS_LEVEL_PERMISSIONS[accessLevel];
-}
-
-// Generate a secure access password
-export function generateAccessPassword(): string {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  let result = '';
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
-}
-
-// Validate access password format
-export function isValidAccessPassword(password: string): boolean {
-  return /^[A-Z0-9]{8}$/.test(password);
 }
 
 // Get access level display name

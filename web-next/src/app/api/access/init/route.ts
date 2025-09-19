@@ -1,15 +1,20 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { ClanAccessConfig, AccessMember, generateAccessPassword } from '../../../../lib/access-management';
+import { NextRequest } from 'next/server';
+import { createAccessConfig, getAccessConfigSummary } from '@/lib/server/access-service';
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { createApiContext } from '@/lib/api/route-helpers';
 
-// This would be stored in Supabase in production
-let accessConfigs: Map<string, ClanAccessConfig> = new Map();
-
 export async function POST(req: NextRequest) {
   const { json } = createApiContext(req, '/api/access/init');
   try {
+    const leadershipToken = process.env.LEADERSHIP_TOKEN;
+    if (leadershipToken) {
+      const provided = req.headers.get('x-leadership-token') || '';
+      if (provided !== leadershipToken) {
+        return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+
     const body = await req.json();
     const Schema = z.object({ clanTag: z.string(), clanName: z.string(), ownerName: z.string(), ownerCocTag: z.string().optional() });
     const parsed = Schema.safeParse(body);
@@ -18,44 +23,24 @@ export async function POST(req: NextRequest) {
     }
     const { clanTag, clanName, ownerName, ownerCocTag } = parsed.data as any;
 
-    // Check if access config already exists
-    if (accessConfigs.has(clanTag.toUpperCase())) {
-      return json({ success: false, error: 'Access configuration already exists for this clan' }, { status: 409 });
-    }
+    const result = await createAccessConfig({ clanTag, clanName, ownerName, ownerCocTag });
 
-    // Create owner access member
-    const ownerPassword = generateAccessPassword();
-    const ownerMember: AccessMember = {
-      id: `owner_${Date.now()}`,
-      name: ownerName,
-      cocPlayerTag: ownerCocTag,
-      accessLevel: 'leader',
-      password: ownerPassword,
-      createdAt: new Date().toISOString(),
-      isActive: true,
-      addedBy: 'System',
-      notes: 'Clan owner - full access'
-    };
-
-    // Create access configuration
-    const accessConfig: ClanAccessConfig = {
-      clanTag: clanTag.toUpperCase(),
-      clanName,
-      ownerId: ownerMember.id,
-      accessMembers: [ownerMember],
-      settings: {
-        allowSelfRegistration: false,
-        requireEmailVerification: false,
-        defaultAccessLevel: 'member'
+    return json({
+      success: true,
+      data: {
+        message: 'Access configuration created successfully',
+        ownerAccess: {
+          name: result.ownerMember.name,
+          accessLevel: result.ownerMember.accessLevel,
+          password: result.ownerPassword,
+          instructions: `Share this password with clan members: ${result.ownerPassword}`,
+        },
+        clanInfo: {
+          clanTag: result.config.clanTag,
+          clanName: result.config.clanName,
+        },
       },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-
-    // Store the configuration
-    accessConfigs.set(clanTag.toUpperCase(), accessConfig);
-
-    return json({ success: true, data: { message: 'Access configuration created successfully', ownerAccess: { name: ownerName, accessLevel: 'leader', password: ownerPassword, instructions: `Share this password with clan members: ${ownerPassword}` }, clanInfo: { clanTag: accessConfig.clanTag, clanName: accessConfig.clanName } } });
+    });
 
   } catch (error) {
     console.error('Error initializing access:', error);
@@ -74,13 +59,24 @@ export async function GET(req: NextRequest) {
     }
     const clanTag = parsed.data.clanTag;
 
-    const config = accessConfigs.get(clanTag.toUpperCase());
-    if (!config) {
+    const summary = await getAccessConfigSummary(clanTag);
+    if (!summary) {
       return json({ success: false, error: 'No access configuration found for this clan' }, { status: 404 });
     }
 
     // Return basic info (without sensitive data)
-    return json({ success: true, data: { exists: true, clanInfo: { clanTag: config.clanTag, clanName: config.clanName, memberCount: config.accessMembers.filter(m => m.isActive).length, createdAt: config.createdAt } } });
+    return json({
+      success: true,
+      data: {
+        exists: true,
+        clanInfo: {
+          clanTag: summary.clanTag,
+          clanName: summary.clanName,
+          memberCount: summary.memberCount,
+          createdAt: summary.createdAt,
+        },
+      },
+    });
 
   } catch (error) {
     console.error('Error checking access config:', error);
