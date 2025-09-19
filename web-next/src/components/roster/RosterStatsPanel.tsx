@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { safeLocaleTimeString } from '@/lib/date';
@@ -11,13 +11,24 @@ interface RosterStatsPanelProps {
 }
 
 export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = '' }) => {
-  const mergedClassName = ['min-h-[18rem]', className].filter(Boolean).join(' ');
-  const roster = useDashboardStore((state) => state.roster);
-  const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
-  const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt) || snapshotMetadata?.fetchedAt || null;
+    const mergedClassName = ['min-h-[18rem]', className].filter(Boolean).join(' ');
+    const roster = useDashboardStore((state) => state.roster);
+    const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
+    const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt) || snapshotMetadata?.fetchedAt || null;
 
-  console.log('[RosterStatsPanel] Rendering with roster:', roster);
-  console.log('[RosterStatsPanel] Roster members:', roster?.members?.length);
+    console.log('[RosterStatsPanel] Rendering with roster:', roster);
+    console.log('[RosterStatsPanel] Roster members:', roster?.members?.length);
+
+    // Debug: Check DOM after mount
+    useEffect(() => {
+        console.log('[RosterStatsPanel] Component mounted');
+        const panelElement = document.querySelector('[data-panel="roster-stats"]');
+        if (panelElement) {
+            console.log('[RosterStatsPanel] DOM after mount:', panelElement.outerHTML);
+        } else {
+            console.log('[RosterStatsPanel] Panel element not found in DOM');
+        }
+    }, []);
 
   const stats = useMemo(() => {
     if (!roster?.members?.length) return null;
@@ -42,14 +53,15 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     };
   }, [roster]);
 
-  return (
-    <GlassCard className={mergedClassName}>
-      {!stats ? (
-        <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-4 text-center text-sm text-white/80">
-          Loading roster metrics…
-        </div>
-      ) : (
-        <div className="space-y-4">
+    return (
+      <GlassCard className={mergedClassName} data-panel="roster-stats">
+        <div data-debug>{Date.now()}</div>
+        {!stats ? (
+          <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-4 text-center text-sm text-white/80">
+            Loading roster metrics…
+          </div>
+        ) : (
+          <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             {[
               {
