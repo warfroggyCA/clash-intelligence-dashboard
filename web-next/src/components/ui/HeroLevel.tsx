@@ -6,6 +6,7 @@ interface HeroLevelProps {
   maxLevel: number;
   className?: string;
   showProgress?: boolean;
+  showName?: boolean;
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -35,6 +36,7 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   maxLevel,
   className = '',
   showProgress = true,
+  showName = true,
   size = 'md'
 }) => {
   const percentage = maxLevel > 0 ? (level / maxLevel) * 100 : 0;
@@ -43,7 +45,7 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   return (
     <div className={`space-y-1 ${className}`}>
       <div className={`flex justify-between ${sizeClasses[size]}`}>
-        <span className="text-clash-gold font-semibold">{config.name}</span>
+        {showName && <span className="text-clash-gold font-semibold">{config.name}</span>}
         <span className="text-white">{level}/{maxLevel}</span>
       </div>
       {showProgress && (
