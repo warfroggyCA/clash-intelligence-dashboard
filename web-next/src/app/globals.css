@@ -53,19 +53,19 @@
 [data-theme="light"] {
   color-scheme: light;
   
-  /* Light theme header gradient */
-  --header-gradient: linear-gradient(120deg, #F8FAFC 0%, #E2E8F0 45%, #FF6B0A 100%);
+  /* Light theme header gradient - much lighter */
+  --header-gradient: linear-gradient(120deg, #FFFFFF 0%, #F8FAFC 45%, #FF6B0A 100%);
   
-  /* Light theme text colors */
-  --text-primary: #1E293B;
-  --text-secondary: #475569;
-  --text-muted: #64748B;
-  --text-accent: #B8860B;
+  /* Light theme text colors - proper contrast ratios */
+  --text-primary: #0F172A;        /* Very dark for high contrast */
+  --text-secondary: #334155;      /* Dark gray for good contrast */
+  --text-muted: #64748B;          /* Medium gray for secondary text */
+  --text-accent: #B8860B;         /* Gold accent */
   
-  /* Light theme background gradients */
-  --clash-bg-primary: linear-gradient(135deg, #F8FAFC 0%, #E2E8F0 50%, #F1F5F9 100%);
-  --clash-bg-card: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.86));
-  --clash-bg-glass: linear-gradient(150deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.86));
+  /* Light theme background gradients - much lighter */
+  --clash-bg-primary: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%);
+  --clash-bg-card: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+  --clash-bg-glass: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
 }
 
 /* Utility to apply shared header gradient */
@@ -111,10 +111,10 @@ body {
 /* Light theme body background */
 [data-theme="light"] body {
   background:
-    radial-gradient(circle at top left, rgba(82,39,255,0.15), transparent 45%),
-    radial-gradient(circle at top right, rgba(255,107,10,0.15), transparent 40%),
-    radial-gradient(circle at bottom, rgba(37,99,235,0.1), transparent 45%),
-    #F8FAFC;
+    radial-gradient(circle at top left, rgba(82,39,255,0.05), transparent 45%),
+    radial-gradient(circle at top right, rgba(255,107,10,0.05), transparent 40%),
+    radial-gradient(circle at bottom, rgba(37,99,235,0.03), transparent 45%),
+    #FFFFFF;
 }
 
 h1, h2, h3, h4 {
@@ -295,16 +295,88 @@ th { @apply text-left font-semibold; }
 
 /* Light theme table styles */
 [data-theme="light"] .clash-table th {
-  background-color: rgba(248, 250, 252, 0.8);
-  border-color: rgba(184, 134, 11, 0.3);
+  background-color: rgba(248, 250, 252, 0.9);
+  border-color: rgba(184, 134, 11, 0.4);
+  color: #0F172A;
 }
 
 [data-theme="light"] .clash-table td {
-  border-color: rgba(148, 163, 184, 0.3);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #0F172A;
+  background-color: rgba(255, 255, 255, 0.8);
 }
 
 [data-theme="light"] .clash-table tr:hover {
-  background-color: rgba(184, 134, 11, 0.05);
+  background-color: rgba(184, 134, 11, 0.08);
+}
+
+[data-theme="light"] .clash-table tr:nth-child(even) {
+  background-color: rgba(248, 250, 252, 0.5);
+}
+
+/* Light theme general component styles */
+[data-theme="light"] .bg-slate-800 {
+  background-color: #F8FAFC !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .bg-slate-700 {
+  background-color: #E2E8F0 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .bg-slate-600 {
+  background-color: #CBD5E1 !important;
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .text-slate-100 {
+  color: #0F172A !important;
+}
+
+[data-theme="light"] .text-slate-200 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .text-slate-300 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .text-slate-400 {
+  color: #64748B !important;
+}
+
+[data-theme="light"] .text-slate-500 {
+  color: #64748B !important;
+}
+
+[data-theme="light"] .text-slate-600 {
+  color: #475569 !important;
+}
+
+[data-theme="light"] .text-slate-700 {
+  color: #334155 !important;
+}
+
+[data-theme="light"] .text-slate-800 {
+  color: #1E293B !important;
+}
+
+[data-theme="light"] .text-slate-900 {
+  color: #0F172A !important;
+}
+
+/* Light theme border colors */
+[data-theme="light"] .border-slate-600 {
+  border-color: #CBD5E1 !important;
+}
+
+[data-theme="light"] .border-slate-700 {
+  border-color: #94A3B8 !important;
+}
+
+[data-theme="light"] .border-slate-800 {
+  border-color: #64748B !important;
 }
 
 /* Mobile-first responsive utilities */
