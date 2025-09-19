@@ -7,7 +7,7 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
-import SmartInsightsHeadlines from '@/components/SmartInsightsHeadlines';
+// SmartInsightsHeadlines will be dynamically imported
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
@@ -33,6 +33,11 @@ const RosterStatsPanel = dynamic(
 
 const RosterHighlightsPanel = dynamic(
   () => import('@/components/roster/RosterHighlightsPanel'),
+  { ssr: false, loading: LoadingCard }
+);
+
+const SmartInsightsHeadlines = dynamic(
+  () => import('@/components/SmartInsightsHeadlines'),
   { ssr: false, loading: LoadingCard }
 );
 
