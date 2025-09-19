@@ -140,26 +140,8 @@ const DashboardHeader: React.FC = () => {
     }
   };
 
-  // Logo source candidates: try several common paths/extensions before fallback
-  const activeTag = (clanTag || homeClan || '').toString();
-  const logoSafe = activeTag ? safeTagForFilename(activeTag) : '';
-  const logoUpper = activeTag.replace('#', '');
-  const logoLower = logoUpper.toLowerCase();
-  const logoCandidates = [
-    logoSafe ? `/clans/${logoSafe}.png` : '',
-    logoSafe ? `/clans/${logoSafe}.jpg` : '',
-    logoSafe ? `/clans/${logoSafe}.jpeg` : '',
-    logoSafe ? `/clans/${logoSafe}.webp` : '',
-    logoLower ? `/${logoLower}.png` : '',
-    logoLower ? `/${logoLower}.jpg` : '',
-    logoLower ? `/${logoLower}.jpeg` : '',
-    logoLower ? `/${logoLower}.webp` : '',
-    logoUpper ? `/${logoUpper}.PNG` : '',
-    '/clans/2pr8r8v8p.png', // Fallback to known working logo
-  ].filter(Boolean);
-  const [logoIdx, setLogoIdx] = useState(0);
-  useEffect(() => { setLogoIdx(0); }, [logoSafe, logoLower, logoUpper]);
-  const logoSrc = logoCandidates[logoIdx] || '/clans/2pr8r8v8p.png';
+  // Simplified logo loading - use the known working logo
+  const logoSrc = '/clans/2pr8r8v8p.png';
 
   return (
     <header className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur">
@@ -177,26 +159,8 @@ const DashboardHeader: React.FC = () => {
               <img
                 src={logoSrc}
                 alt="Clan Logo"
-                className="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover ring-2 ring-white/30 bg-white/10 absolute inset-0 shadow-lg"
-                onError={(e) => {
-                  setLogoIdx((i) => {
-                    const next = i + 1;
-                    if (next < logoCandidates.length) return next;
-                    if (e.currentTarget) {
-                      (e.currentTarget as HTMLImageElement).style.display = 'none';
-                    }
-                    return i;
-                  });
-                }}
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover ring-2 ring-white/30 bg-white/10 shadow-lg"
               />
-              <div
-                className="h-14 w-14 sm:h-16 sm:w-16 rounded-xl ring-2 ring-white/30 bg-white/10 flex items-center justify-center text-white/80 select-none"
-                title={logoSafe
-                  ? `Add clan logo at /public/clans/${logoSafe}.png or /public/${logoLower}.png`
-                  : 'Add clan logo at /public/clan-logo.png'}
-              >
-                {logoSafe ? '🏰' : '🛡️'}
-              </div>
             </div>
             <div className="text-center sm:text-left">
               {clanName ? (
