@@ -19,6 +19,7 @@ export function middleware(request: Request) {
     '/api/cron',
     '/api/upload-snapshots',
     '/api/migrate-departures',
+    '/api/admin',
   ];
   const needsAuth = protectedPrefixes.some((p) => url.pathname.startsWith(p));
   if (!needsAuth) return NextResponse.next();
@@ -45,5 +46,6 @@ export const config = {
     '/api/cron/:path*',
     '/api/upload-snapshots',
     '/api/migrate-departures',
+    '/api/admin/:path*',
   ],
 };

@@ -33,19 +33,20 @@ export default function AccessSetup({ clanTag, clanName, onAccessCreated, onClos
         })
       });
 
-      const data = await response.json();
+      const payload = await response.json();
       
-      if (data.success) {
-        const ownerPassword = data.ownerAccess.password;
-        
-        // Store the owner password securely (in production, this would be handled differently)
-        localStorage.setItem(`clan_manager_password_${clanTag}`, ownerPassword);
-        
+      if (payload.success) {
+        const ownerPassword = payload.data?.ownerAccess?.password;
+
+        if (!ownerPassword) {
+          alert('Failed to retrieve owner password. Please try again.');
+          return;
+        }
+
         alert(`Access system initialized! Your owner password is: ${ownerPassword}\n\nSave this password - you'll need it to manage access for your clan.`);
-        
         onAccessCreated(ownerPassword);
       } else {
-        alert(`Error initializing access: ${data.error}`);
+        alert(`Error initializing access: ${payload.error}`);
       }
     } catch (error) {
       console.error('Error initializing access:', error);

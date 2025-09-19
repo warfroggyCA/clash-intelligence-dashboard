@@ -26,25 +26,20 @@ export default function AccessLogin({ clanTag, clanName, onAccessGranted, onClos
       setError('');
       
       const response = await fetch(`/api/access/list?clanTag=${encodeURIComponent(clanTag)}&accessPassword=${accessPassword.trim()}`);
-      const data = await response.json();
+      const payload = await response.json();
       
-      if (data.success) {
-        // Store the access info securely
-        const accessInfo = {
-          clanTag,
-          accessPassword: accessPassword.trim(),
-          accessMember: data.accessMember,
-          timestamp: Date.now()
-        };
-        
-        localStorage.setItem(`clan_access_${clanTag}`, JSON.stringify(accessInfo));
-        
-        // Get permissions for this access level
-        const permissions = getAccessLevelPermissions(data.accessMember.accessLevel);
-        
-        onAccessGranted(data.accessMember, permissions);
+      if (payload.success) {
+        const accessMember = payload.data?.accessMember;
+        if (!accessMember) {
+          setError('Failed to load access details.');
+          return;
+        }
+
+        const permissions = payload.data?.permissions || getAccessLevelPermissions(accessMember.accessLevel);
+
+        onAccessGranted(accessMember, permissions);
       } else {
-        setError(data.error || 'Invalid access password');
+        setError(payload.error || 'Invalid access password');
       }
     } catch (error) {
       console.error('Error logging in:', error);

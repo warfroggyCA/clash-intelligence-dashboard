@@ -98,6 +98,37 @@ CREATE INDEX idx_clan_snapshots_clan_tag ON clan_snapshots(clan_tag);
 CREATE INDEX idx_clan_snapshots_snapshot_date ON clan_snapshots(snapshot_date);
 CREATE INDEX idx_clan_snapshots_fetched_at ON clan_snapshots(fetched_at);
 
+-- Clan access management tables
+CREATE TABLE clan_access_configs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  clan_tag TEXT NOT NULL UNIQUE,
+  clan_name TEXT NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE TABLE clan_access_members (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  config_id UUID NOT NULL REFERENCES clan_access_configs(id) ON DELETE CASCADE,
+  clan_tag TEXT NOT NULL,
+  name TEXT NOT NULL,
+  player_tag TEXT,
+  email TEXT,
+  access_level TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  last_accessed TIMESTAMP WITH TIME ZONE,
+  is_active BOOLEAN DEFAULT true,
+  notes TEXT,
+  added_by TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX idx_access_configs_clan_tag ON clan_access_configs(clan_tag);
+CREATE INDEX idx_access_members_clan_tag ON clan_access_members(clan_tag);
+CREATE INDEX idx_access_members_config ON clan_access_members(config_id);
+CREATE INDEX idx_access_members_active ON clan_access_members(is_active);
+
 -- Enable Row Level Security (RLS)
 ALTER TABLE snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenure_ledger ENABLE ROW LEVEL SECURITY;
@@ -105,6 +136,8 @@ ALTER TABLE ai_summaries ENABLE ROW LEVEL SECURITY;
 ALTER TABLE batch_ai_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE player_dna_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clan_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clan_access_configs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE clan_access_members ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all for now, you can restrict later)
 CREATE POLICY "Allow all operations on snapshots" ON snapshots FOR ALL USING (true);
@@ -113,6 +146,8 @@ CREATE POLICY "Allow all operations on ai_summaries" ON ai_summaries FOR ALL USI
 CREATE POLICY "Allow all operations on batch_ai_results" ON batch_ai_results FOR ALL USING (true);
 CREATE POLICY "Allow all operations on player_dna_cache" ON player_dna_cache FOR ALL USING (true);
 CREATE POLICY "Allow all operations on clan_snapshots" ON clan_snapshots FOR ALL USING (true);
+CREATE POLICY "Service role access configs" ON clan_access_configs FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role access members" ON clan_access_members FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Create storage bucket for files
 INSERT INTO storage.buckets (id, name, public) VALUES ('snapshots', 'snapshots', true);

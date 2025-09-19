@@ -24,6 +24,7 @@
     "commit": "npm run release:minor"
   },
   "dependencies": {
+    "@supabase/mcp-server-supabase": "^0.5.5",
     "@supabase/supabase-js": "^2.57.4",
     "@upstash/ratelimit": "^1.2.1",
     "@upstash/redis": "^1.35.3",

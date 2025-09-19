@@ -228,11 +228,13 @@ export interface RolePermissions {
 export interface AccessMember {
   id: string;
   name: string;
-  password: string;
   accessLevel: AccessLevel;
-  permissions: RolePermissions;
+  cocPlayerTag?: string;
+  email?: string;
+  notes?: string;
+  addedBy?: string;
   createdAt: string;
-  lastLogin?: string;
+  lastAccessed?: string;
   isActive: boolean;
 }
 
@@ -242,7 +244,6 @@ export interface AccessMember {
 export interface ClanAccessConfig {
   clanTag: string;
   clanName: string;
-  ownerPassword: string;
   accessMembers: AccessMember[];
   createdAt: string;
   updatedAt: string;
