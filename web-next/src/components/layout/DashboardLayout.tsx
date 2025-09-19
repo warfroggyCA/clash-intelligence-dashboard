@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useEffect, useCallback, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
 import SmartInsightsHeadlines from '@/components/SmartInsightsHeadlines';
-import { RosterStatsPanel } from '@/components/roster/RosterStatsPanel';
-import { RosterHighlightsPanel } from '@/components/roster/RosterHighlightsPanel';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
@@ -16,6 +15,20 @@ import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-manage
 import { safeTagForFilename } from '@/lib/tags';
 import { QuickActionsMenu } from './QuickActionsMenu';
 import { Button, ThemeToggle } from '@/components/ui';
+
+const LoadingCard = () => (
+  <div className="h-[24rem] rounded-3xl border border-white/10 bg-white/5 animate-pulse" />
+);
+
+const RosterStatsPanel = dynamic(
+  () => import('@/components/roster/RosterStatsPanel').then((mod) => mod.RosterStatsPanel),
+  { ssr: false, loading: LoadingCard }
+);
+
+const RosterHighlightsPanel = dynamic(
+  () => import('@/components/roster/RosterHighlightsPanel').then((mod) => mod.RosterHighlightsPanel),
+  { ssr: false, loading: LoadingCard }
+);
 
 // =============================================================================
 // TYPES
