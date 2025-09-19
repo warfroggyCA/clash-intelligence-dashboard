@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import Image from 'next/image';
-import { Award } from 'lucide-react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import {
   calculateRushPercentage,
@@ -18,6 +17,7 @@ interface HighlightEntry {
 
 interface HighlightSection {
   title: string;
+  icon: string;
   entries: HighlightEntry[];
 }
 
@@ -26,7 +26,6 @@ interface RosterHighlightsPanelProps {
 }
 
 export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ className = '' }) => {
-  const mergedClassName = ['min-h-[18rem]', className].filter(Boolean).join(' ');
   const roster = useDashboardStore((state) => state.roster);
 
   const sections = useMemo<HighlightSection[]>(() => {
@@ -37,10 +36,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
     const members = roster.members;
 
     const leastRushed = members
-      .map((member) => ({
-        member,
-        rush: calculateRushPercentage(member),
-      }))
+      .map((member) => ({ member, rush: calculateRushPercentage(member) }))
       .filter((item) => Number.isFinite(item.rush))
       .sort((a, b) => a.rush - b.rush)
       .slice(0, 5)
@@ -51,10 +47,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       }));
 
     const topDonators = members
-      .map((member) => ({
-        member,
-        donations: member.donations || 0,
-      }))
+      .map((member) => ({ member, donations: member.donations || 0 }))
       .filter((item) => item.donations > 0)
       .sort((a, b) => b.donations - a.donations)
       .slice(0, 5)
@@ -86,75 +79,55 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
     return [
       {
         title: 'Least Rushed Bases',
+        icon: '/assets/icons/trophy.svg',
         entries: leastRushed,
       },
       {
         title: 'Top Donators',
+        icon: '/assets/icons/donation.svg',
         entries: topDonators,
       },
       {
         title: 'Hero Power Leaders',
+        icon: '/assets/icons/hero.svg',
         entries: heroLeaders,
       },
     ].filter((section) => section.entries.length > 0);
   }, [roster]);
 
-  if (!roster) {
-    return (
-      <GlassCard className={mergedClassName}>
-        <div className="rounded-xl bg-white/20 px-3 py-4 text-center text-sm text-white font-medium border border-white/30">
-          Loading roster data...
-        </div>
-      </GlassCard>
-    );
-  }
-
-  if (!sections.length) {
-    return (
-      <GlassCard className={mergedClassName}>
-        <div className="rounded-xl bg-white/20 px-3 py-4 text-center text-sm text-white font-medium border border-white/30">
-          No highlight data available yet.
-        </div>
-      </GlassCard>
-    );
-  }
-
   return (
-    <GlassCard className={mergedClassName}>
-      <div className="flex-1 overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[20rem] overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]">
+    <GlassCard className={['min-h-[18rem]', className].filter(Boolean).join(' ')}>
+      {!sections.length ? (
+        <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-4 text-center text-sm text-white/80">
+          No highlights available yet.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 text-sm">
           {sections.map((section) => (
             <div key={section.title} className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-white">
-                <div className="flex h-6 w-6 items-center justify-center rounded-xl bg-white/90 shadow-sm">
-                  <Image
-                    src={section.title.includes('Donator') ? '/assets/icons/donation.svg'
-                      : section.title.includes('Hero') ? '/assets/icons/hero.svg'
-                      : '/assets/icons/trophy.svg'}
-                    alt=""
-                    width={16}
-                    height={16}
-                  />
+              <div className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.24em] text-white/70">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/75 shadow-sm">
+                  <Image src={section.icon} alt="" width={18} height={18} />
                 </div>
-                {section.title}
+                <span>{section.title}</span>
               </div>
               <div className="space-y-2">
                 {section.entries.slice(0, 3).map((entry) => (
                   <div
                     key={`${section.title}-${entry.name}`}
-                    className="rounded-2xl bg-gradient-to-r from-white/20 via-white/10 to-white/20 px-3 py-2 text-xs text-white shadow-sm border border-white/30"
+                    className="rounded-xl border border-white/15 bg-white/10 px-3 py-2"
                   >
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="truncate pr-2 text-white">{entry.name}</span>
-                      <span className="text-white/80 font-bold">{entry.value}</span>
+                    <div className="flex items-center justify-between font-semibold text-white">
+                      <span className="truncate pr-2 text-sm">{entry.name}</span>
+                      <span className="text-xs text-amber-200 font-bold">{entry.value}</span>
                     </div>
                     {entry.subtitle && (
-                      <div className="text-xs text-white/80 font-medium">{entry.subtitle}</div>
+                      <div className="mt-1 text-[11px] text-white/70">{entry.subtitle}</div>
                     )}
                   </div>
                 ))}
                 {section.entries.length > 3 && (
-                  <div className="text-xs text-white/60 font-medium text-center">
+                  <div className="py-1 text-center text-xs text-white/60">
                     +{section.entries.length - 3} more
                   </div>
                 )}
@@ -162,7 +135,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
             </div>
           ))}
         </div>
-      </div>
+      )}
     </GlassCard>
   );
 };
