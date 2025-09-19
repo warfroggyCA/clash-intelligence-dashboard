@@ -5,6 +5,7 @@ interface TownHallBadgeProps {
   level: number;
   className?: string;
   showLevel?: boolean;
+  showBox?: boolean;
   size?: 'sm' | 'md' | 'lg';
 }
 
@@ -24,9 +25,39 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
   level,
   className = '',
   showLevel = true,
+  showBox = true,
   size = 'md'
 }) => {
   const thImage = `/assets/clash/Townhalls/TH${level}.png`;
+  
+  if (!showBox) {
+    return (
+      <div className={`relative ${className}`}>
+        <Image
+          src={thImage}
+          alt={`Town Hall ${level}`}
+          width={size === 'sm' ? 48 : size === 'md' ? 64 : 80}
+          height={size === 'sm' ? 48 : size === 'md' ? 64 : 80}
+          className={`${sizeClasses[size]} object-contain`}
+          onError={(e) => {
+            // Fallback to emoji if image fails to load
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const parent = target.parentElement;
+            if (parent) {
+              parent.innerHTML = `🏰`;
+              parent.className += ' flex items-center justify-center text-clash-gold';
+            }
+          }}
+        />
+        {showLevel && (
+          <span className={`absolute -bottom-1 -right-1 bg-clash-gold text-black ${textSizeClasses[size]} font-bold px-1.5 rounded-full min-w-[1.4em] text-center border border-black/20`}>
+            {level}
+          </span>
+        )}
+      </div>
+    );
+  }
   
   return (
     <div className={`relative ${className}`}>
