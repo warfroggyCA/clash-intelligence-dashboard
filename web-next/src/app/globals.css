@@ -459,6 +459,18 @@ th { @apply text-left font-semibold; }
 [data-theme="light"] .bg-white\/15 { background-color: rgba(255,255,255,0.55) !important; color: #0F172A !important; }
 [data-theme="light"] .bg-white\/10 { background-color: rgba(255,255,255,0.5) !important; color: #0F172A !important; }
 
+/* League and Town Hall image glow effects for dark theme */
+[data-theme="dark"] img[alt*="League"],
+[data-theme="dark"] img[alt*="Town Hall"] {
+  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.3)) drop-shadow(0 0 16px rgba(255, 255, 255, 0.1));
+  transition: filter 0.2s ease-in-out;
+}
+
+[data-theme="dark"] img[alt*="League"]:hover,
+[data-theme="dark"] img[alt*="Town Hall"]:hover {
+  filter: drop-shadow(0 0 12px rgba(255, 255, 255, 0.4)) drop-shadow(0 0 24px rgba(255, 255, 255, 0.15));
+}
+
 /* Mobile-first responsive utilities */
 @media (max-width: 640px) {
   .mobile-stack {
