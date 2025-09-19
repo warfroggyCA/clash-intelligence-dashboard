@@ -274,21 +274,6 @@ const DashboardHeader: React.FC = () => {
         {/* Row 2 (right column): Clan context chips */}
         <div className="col-[3] row-[2]">
           <div className="flex flex-col sm:flex-row items-center justify-end gap-2 text-xs">
-            <div className="h-8 px-3 rounded-md border border-white/30 bg-blue-500/20 text-white backdrop-blur-sm flex items-center gap-2">
-              <span>📸 Snapshot Data</span>
-            </div>
-            {clanTag && (
-              <div className="h-8 px-3 rounded-md border border-white/20 bg-white/10 text-white backdrop-blur-sm flex items-center gap-1">
-                <span className="opacity-70">Current</span>
-                <span className="font-mono">{clanTag}</span>
-              </div>
-            )}
-            {homeClan && (
-              <div className="h-8 px-3 rounded-md border border-white/20 bg-white/10 text-white backdrop-blur-sm flex items-center gap-1">
-                <span className="opacity-70">Home</span>
-                <span className="font-mono">{homeClan}</span>
-              </div>
-            )}
             <button
               onClick={() => setShowSettings(true)}
               className="h-8 px-3 bg-white/15 hover:bg-white/25 text-white rounded-md transition-all border border-white/30"
