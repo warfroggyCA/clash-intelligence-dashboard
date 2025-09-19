@@ -127,6 +127,22 @@ body {
     #FFFFFF;
 }
 
+/* Light theme: main content background should be light */
+[data-theme="light"] .dashboard-main {
+  background: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%) !important;
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+
+/* Light theme: clash gold text on light background should be darker for readability */
+[data-theme="light"] .text-clash-gold {
+  color: #8C6A00 !important; /* darken gold on white */
+}
+
+[data-theme="light"] .border-clash-gold\/30 { border-color: rgba(184, 134, 11, 0.35) !important; }
+[data-theme="light"] .border-clash-gold\/50 { border-color: rgba(184, 134, 11, 0.5) !important; }
+[data-theme="light"] .from-clash-gold\/20 { --tw-gradient-from: rgba(255, 215, 0, 0.18) !important; }
+[data-theme="light"] .to-clash-orange\/20 { --tw-gradient-to: rgba(255, 107, 10, 0.18) !important; }
+
 h1, h2, h3, h4 {
   @apply font-heading;
   color: var(--text-primary);
