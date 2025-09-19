@@ -76,7 +76,9 @@
 }
 
 .header-hero {
-  position: relative;
+  position: sticky;
+  top: 0;
+  z-index: 50;
   background-image: linear-gradient(120deg, rgba(10,12,28,0.6), rgba(27,19,55,0.65)), url('/assets/clash/header-bg.svg');
   background-size: cover;
   background-position: center;
