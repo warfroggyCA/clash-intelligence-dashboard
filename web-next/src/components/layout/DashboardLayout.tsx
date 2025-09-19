@@ -1,22 +1,5 @@
 "use client";
 
-/**
- * DashboardLayout Component
- * 
- * The main layout wrapper for the Clash Intelligence Dashboard.
- * Handles the overall structure, header, navigation, and responsive design.
- * 
- * Features:
- * - Responsive header with logo, clan context, and controls
- * - Tab navigation system
- * - Mobile-first responsive design
- * - Accessibility features
- * - Consistent spacing and styling
- * 
- * Version: 1.0.0
- * Last Updated: January 2025
- */
-
 import React, { useEffect, useCallback, useState } from 'react';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
@@ -24,12 +7,13 @@ import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
 import SmartInsightsHeadlines from '@/components/SmartInsightsHeadlines';
+import { RosterStatsPanel } from '@/components/roster/RosterStatsPanel';
+import { RosterHighlightsPanel } from '@/components/roster/RosterHighlightsPanel';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
 import { safeTagForFilename } from '@/lib/tags';
-import { RosterStatsPanel, RosterHighlightsPanel } from '@/components/roster';
 import { QuickActionsMenu } from './QuickActionsMenu';
 import { Button, ThemeToggle } from '@/components/ui';
 
