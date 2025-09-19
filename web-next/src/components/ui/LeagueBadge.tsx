@@ -6,28 +6,31 @@ interface LeagueBadgeProps {
   trophies?: number;
   className?: string;
   showText?: boolean;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
 }
 
 const sizeClasses = {
   sm: 'w-5 h-5',
   md: 'w-6 h-6',
   lg: 'w-8 h-8',
-  xl: 'w-16 h-16'
+  xl: 'w-24 h-24',
+  xxl: 'w-32 h-32'
 };
 
 const textSizeClasses = {
   sm: 'text-xs',
   md: 'text-sm',
   lg: 'text-base',
-  xl: 'text-lg'
+  xl: 'text-lg',
+  xxl: 'text-xl'
 };
 
 const containerSizeClasses = {
   sm: 'px-2 py-1',
   md: 'px-3 py-1',
   lg: 'px-4 py-2',
-  xl: 'px-6 py-3'
+  xl: 'px-6 py-3',
+  xxl: 'px-8 py-4'
 };
 
 // Helper function to determine league based on trophy count
