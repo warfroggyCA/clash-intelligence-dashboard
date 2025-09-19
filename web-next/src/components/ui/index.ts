@@ -30,6 +30,9 @@ export { LeagueBadge } from './LeagueBadge';
 export { ResourceDisplay } from './ResourceDisplay';
 export { HeroLevel } from './HeroLevel';
 
+// Theme components
+export { ThemeToggle } from './ThemeToggle';
+
 // Modal components
 export {
   Modal,
