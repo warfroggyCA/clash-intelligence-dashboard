@@ -6,14 +6,29 @@ import {
   addAccessMember,
   deactivateAccessMember,
 } from '@/lib/server/access-service';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 beforeEach(() => {
   __resetMemoryAccessStore();
-  process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+  // Only clear Supabase credentials if we're testing memory fallback
+  if (process.env.NODE_ENV === 'test' && process.env.TEST_MEMORY_FALLBACK === 'true') {
+    process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+  }
 });
 
-describe('Access service (memory fallback)', () => {
-  const clanTag = '#TESTCLAN';
+afterEach(async () => {
+  // Clean up test data from Supabase
+  try {
+    const supabase = getSupabaseAdminClient();
+    await supabase.from('clan_access_members').delete().like('clan_tag', '#TESTCLAN%');
+    await supabase.from('clan_access_configs').delete().like('clan_tag', '#TESTCLAN%');
+  } catch (error) {
+    console.warn('Failed to clean up test data:', error);
+  }
+});
+
+describe('Access service (Supabase)', () => {
+  const clanTag = '#TESTCLAN' + Date.now();
   const clanName = 'Test Clan';
 
   it('creates config and authenticates owner', async () => {

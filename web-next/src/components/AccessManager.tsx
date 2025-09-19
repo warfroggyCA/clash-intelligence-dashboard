@@ -19,6 +19,7 @@ export default function AccessManager({ clanTag, clanName, onClose }: AccessMana
   const [showAddForm, setShowAddForm] = useState(false);
   const [managerPassword, setManagerPassword] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [needsSetup, setNeedsSetup] = useState(false);
   const [newMember, setNewMember] = useState({
     name: '',
     cocPlayerTag: '',
@@ -33,6 +34,24 @@ export default function AccessManager({ clanTag, clanName, onClose }: AccessMana
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [clanTag, isUnlocked]);
+
+  // Check if access configuration exists when component mounts
+  useEffect(() => {
+    const checkAccessConfig = async () => {
+      try {
+        const response = await fetch(`/api/access/init?clanTag=${encodeURIComponent(clanTag)}`);
+        const payload = await response.json();
+        if (!payload.success && payload.error === "No access configuration found for this clan") {
+          // No configuration exists, show setup option
+          setNeedsSetup(true);
+        }
+      } catch (error) {
+        console.error('Error checking access configuration:', error);
+      }
+    };
+    
+    checkAccessConfig();
+  }, [clanTag]);
 
   const loadAccessMembers = async (password: string): Promise<boolean> => {
     const trimmed = password.trim();
@@ -192,7 +211,27 @@ export default function AccessManager({ clanTag, clanName, onClose }: AccessMana
           </div>
         </div>
 
-        {!isUnlocked ? (
+        {needsSetup ? (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 text-center">
+            <div className="text-4xl mb-4">🔐</div>
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">Access Control Not Set Up</h3>
+            <p className="text-blue-700 mb-4">
+              This clan doesn't have access control configured yet. Set up access management to control who can view and manage clan data.
+            </p>
+            <button
+              onClick={() => {
+                // Close this modal and open the setup modal
+                onClose();
+                // We need to trigger the setup modal from the parent
+                // For now, we'll show an alert with instructions
+                alert('Access setup functionality will be implemented. For now, you can use the API directly to create an access configuration.');
+              }}
+              className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Set Up Access Control
+            </button>
+          </div>
+        ) : !isUnlocked ? (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
             Unlock the access manager above to review members and manage permissions.
           </div>
