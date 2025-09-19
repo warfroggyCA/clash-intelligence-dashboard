@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import Image from 'next/image';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import {
@@ -27,6 +27,17 @@ interface RosterHighlightsPanelProps {
 
 export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ className = '' }) => {
   const roster = useDashboardStore((state) => state.roster);
+
+  // Debug: Check DOM after mount
+  useEffect(() => {
+    console.log('[RosterHighlightsPanel] Component mounted');
+    const panelElement = document.querySelector('[data-panel="roster-highlights"]');
+    if (panelElement) {
+      console.log('[RosterHighlightsPanel] DOM after mount:', panelElement.outerHTML);
+    } else {
+      console.log('[RosterHighlightsPanel] Panel element not found in DOM');
+    }
+  }, []);
 
   const sections = useMemo<HighlightSection[]>(() => {
     if (!roster?.members?.length) {
@@ -96,7 +107,8 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
   }, [roster]);
 
   return (
-    <GlassCard className={['min-h-[18rem]', className].filter(Boolean).join(' ')}>
+    <GlassCard className={['min-h-[18rem]', className].filter(Boolean).join(' ')} data-panel="roster-highlights">
+      <div data-debug>{Date.now()}</div>
       {!sections.length ? (
         <div className="rounded-xl border border-white/20 bg-white/15 px-4 py-6 text-center text-sm text-white/90 font-medium">
           No highlights available yet.
