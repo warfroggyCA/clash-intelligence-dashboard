@@ -23,6 +23,8 @@
 :root { 
   color-scheme: dark; 
   --font-size-multiplier: 1;
+  /* Header height for sticky positioning */
+  --header-height: 80px;
   /* Shared gradient for header + tabs lip */
   --header-gradient: linear-gradient(120deg, #1E114C 0%, #3F2E90 45%, #FF6B0A 100%);
   
