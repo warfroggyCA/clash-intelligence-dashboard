@@ -25,6 +25,28 @@
   --font-size-multiplier: 1;
   /* Shared gradient for header + tabs lip */
   --header-gradient: linear-gradient(120deg, #1E114C 0%, #3F2E90 45%, #FF6B0A 100%);
+  
+  /* Enhanced Clash of Clans Color Palette */
+  --clash-gold: #FFD700;
+  --clash-gold-dark: #B8860B;
+  --clash-orange: #FF6B0A;
+  --clash-orange-dark: #CC5500;
+  --clash-purple: #5227FF;
+  --clash-purple-dark: #3D1A78;
+  --clash-blue: #4A90E2;
+  --clash-red: #E74C3C;
+  --clash-green: #27AE60;
+  
+  /* High contrast text colors for accessibility */
+  --text-primary: #FFFFFF;
+  --text-secondary: #E2E8F0;
+  --text-muted: #94A3B8;
+  --text-accent: #FFD700;
+  
+  /* Enhanced background gradients */
+  --clash-bg-primary: linear-gradient(135deg, #0E1421 0%, #1A1F3A 50%, #2D1B69 100%);
+  --clash-bg-card: linear-gradient(145deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86));
+  --clash-bg-glass: linear-gradient(150deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86));
 }
 
 /* Utility to apply shared header gradient */
@@ -137,4 +159,116 @@ th { @apply text-left font-semibold; }
   -moz-animation-delay: 0s !important;
   -ms-animation-delay: 0s !important;
   -o-animation-delay: 0s !important;
+}
+
+/* Enhanced Accessibility & Contrast Utilities */
+.text-high-contrast {
+  color: var(--text-primary);
+}
+
+.text-medium-contrast {
+  color: var(--text-secondary);
+}
+
+.text-muted-contrast {
+  color: var(--text-muted);
+}
+
+.text-accent-contrast {
+  color: var(--text-accent);
+}
+
+/* Enhanced focus states for accessibility */
+.focus-ring {
+  @apply focus:outline-none focus:ring-4 focus:ring-offset-2 focus:ring-offset-slate-900;
+  --tw-ring-color: rgba(255, 107, 10, 0.5);
+}
+
+.focus-ring-inset {
+  @apply focus:outline-none focus:ring-2 focus:ring-inset;
+  --tw-ring-color: rgba(255, 107, 10, 0.5);
+}
+
+/* Clash of Clans themed components */
+.clash-button {
+  @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
+  @apply text-white;
+  @apply hover:scale-105 active:scale-95;
+  @apply focus-ring;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100;
+  background-color: var(--clash-orange);
+}
+
+.clash-button:hover {
+  background-color: var(--clash-orange-dark);
+}
+
+.clash-button-outline {
+  @apply px-4 py-2 rounded-lg font-semibold transition-all duration-200;
+  @apply border-2 bg-transparent;
+  @apply hover:text-black;
+  @apply focus-ring;
+  border-color: var(--clash-gold);
+  color: var(--clash-gold);
+}
+
+.clash-button-outline:hover {
+  background-color: var(--clash-gold);
+}
+
+.clash-card {
+  @apply relative overflow-hidden rounded-2xl border;
+  background: var(--clash-bg-glass);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  border-color: rgba(255, 215, 0, 0.2);
+}
+
+.clash-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), transparent 50%);
+  pointer-events: none;
+}
+
+/* Enhanced table styling */
+.clash-table {
+  @apply w-full text-sm;
+}
+
+.clash-table th {
+  @apply text-left font-semibold px-4 py-3;
+  @apply border-b;
+  color: var(--clash-gold);
+  background-color: rgba(30, 41, 59, 0.5);
+  border-color: rgba(255, 215, 0, 0.2);
+}
+
+.clash-table td {
+  @apply px-4 py-3 border-b;
+  color: var(--text-primary);
+  border-color: rgba(100, 116, 139, 0.5);
+}
+
+.clash-table tr:hover {
+  background-color: rgba(255, 215, 0, 0.05);
+}
+
+/* Mobile-first responsive utilities */
+@media (max-width: 640px) {
+  .mobile-stack {
+    @apply flex-col gap-4;
+  }
+  
+  .mobile-full-width {
+    @apply w-full;
+  }
+  
+  .mobile-text-sm {
+    @apply text-sm;
+  }
+  
+  .mobile-p-3 {
+    @apply p-3;
+  }
 }

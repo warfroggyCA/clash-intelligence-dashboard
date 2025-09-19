@@ -119,12 +119,12 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       title="Clan Highlights"
       subtitle="Top performers across rush, donations, and hero power"
     >
-      <div className="rounded-2xl bg-gradient-to-br from-slate-900/70 via-slate-900/48 to-slate-800/52 px-4 py-5 shadow-inner text-slate-100">
+      <div className="rounded-2xl bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 px-4 py-5 shadow-sm text-slate-800">
         <div className="space-y-5">
           {sections.map((section) => (
             <div key={section.title} className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.24em] text-slate-100/75">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/12">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-800">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 shadow-sm">
                   <Image
                     src={section.title.includes('Donator') ? '/assets/icons/donation.svg'
                       : section.title.includes('Hero') ? '/assets/icons/hero.svg'
@@ -140,14 +140,14 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
                 {section.entries.map((entry) => (
                   <div
                     key={`${section.title}-${entry.name}`}
-                    className="rounded-2xl bg-gradient-to-r from-white/12 via-white/6 to-white/8 px-3.5 py-3 text-sm text-slate-100 shadow-[0_12px_28px_-20px_rgba(6,10,30,0.65)]"
+                    className="rounded-2xl bg-gradient-to-r from-white/80 via-white/60 to-white/70 px-3.5 py-3 text-sm text-slate-800 shadow-sm border border-white/50"
                   >
-                    <div className="flex items-center justify-between font-semibold">
-                      <span className="truncate pr-2">{entry.name}</span>
-                      <span className="text-amber-200">{entry.value}</span>
+                    <div className="flex items-center justify-between font-bold">
+                      <span className="truncate pr-2 text-slate-900">{entry.name}</span>
+                      <span className="text-purple-700 font-bold">{entry.value}</span>
                     </div>
                     {entry.subtitle && (
-                      <div className="text-xs text-slate-200/75">{entry.subtitle}</div>
+                      <div className="text-xs text-slate-700 font-medium">{entry.subtitle}</div>
                     )}
                   </div>
                 ))}

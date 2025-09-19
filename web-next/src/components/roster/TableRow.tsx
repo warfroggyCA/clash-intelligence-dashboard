@@ -33,7 +33,7 @@ import {
 } from '@/lib/business/calculations';
 import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
 import { getHeroDisplayValue, isHeroAvailable } from '@/lib/business/calculations';
-import { Button } from '@/components/ui';
+import { Button, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { showToast } from '@/lib/toast';
@@ -116,7 +116,7 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
 }
 
 const TableCell: React.FC<TableCellProps> = ({ className = '', children, ...rest }) => (
-  <td className={`py-3 px-4 text-sm text-slate-800 ${className}`} {...rest}>
+  <td className={`py-3 px-4 text-sm text-high-contrast ${className}`} {...rest}>
     {children}
   </td>
 );
@@ -154,162 +154,209 @@ export const TableRow: React.FC<TableRowProps> = ({
     setShowDepartureModal(true);
   };
 
-  // Row styling
+  // Row styling with enhanced accessibility
   const rowStyles = `
-    border-b border-slate-100 last:border-0 transition-colors duration-150 
-    hover:bg-blue-50/50 cursor-pointer
-    ${index % 2 === 1 ? "bg-slate-50/50" : "bg-white/50"}
+    border-b border-slate-700/50 last:border-0 transition-colors duration-150 
+    hover:bg-clash-gold/5 cursor-pointer focus:bg-clash-gold/10
+    ${index % 2 === 1 ? "bg-slate-800/30" : "bg-slate-800/20"}
   `;
 
   return (
-    <tr className={`${rowStyles} ${className}`} onClick={handleOpenProfile}>
-      {/* Name Column */}
-      <TableCell className="border-r border-slate-300">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleOpenProfile();
-            }}
-            className="font-heading font-normal text-blue-700 hover:text-blue-900 transition-colors"
-            title="View player profile"
-          >
-            {member.name}
-          </button>
-          <span className="text-xs text-slate-500 font-mono">
-            {member.tag}
+    <tr 
+      className={`${rowStyles} ${className}`} 
+      onClick={handleOpenProfile}
+      role="row"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleOpenProfile();
+        }
+      }}
+      aria-label={`View profile for ${member.name}, ${member.role}, Town Hall ${th}`}
+    >
+              {/* Name Column */}
+              <TableCell className="border-r border-slate-600/50">
+                <div className="flex items-center space-x-3">
+                  <div className="flex flex-col">
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenProfile();
+                        }}
+                        className="font-heading font-semibold text-clash-gold hover:text-clash-orange transition-colors focus-ring-inset text-left"
+                        title="View player profile"
+                      >
+                        {member.name}
+                      </button>
+                      {member.league && (
+                        <LeagueBadge league={member.league.name} size="sm" />
+                      )}
+                    </div>
+                    <span className="text-xs text-muted-contrast font-mono">
+                      {member.tag}
+                    </span>
+                  </div>
+                </div>
+              </TableCell>
+
+              {/* Role Column */}
+              <TableCell className="text-center border-r border-slate-600/50">
+                {(() => {
+                  const raw = (member.role || '').toString();
+                  const r = raw.toLowerCase();
+                  let label = 'Member';
+                  let icon = '';
+                  let cls = 'bg-slate-700/50 text-slate-300 border-slate-600/50';
+
+                  if (r === 'leader') {
+                    label = 'Leader';
+                    icon = '👑';
+                    cls = 'bg-clash-gold/20 text-clash-gold border-clash-gold/50';
+                  } else if (r === 'coleader' || raw === 'coLeader') {
+                    label = 'Co-leader';
+                    icon = '💎';
+                    cls = 'bg-clash-purple/20 text-clash-purple border-clash-purple/50';
+                  } else if (r === 'elder' || r === 'admin') {
+                    label = 'Elder';
+                    icon = '⭐';
+                    cls = 'bg-clash-blue/20 text-clash-blue border-clash-blue/50';
+                  }
+
+                  return (
+                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold border ${cls}`}>
+                      {icon && <span aria-hidden>{icon}</span>}
+                      <span>{label}</span>
+                    </span>
+                  );
+                })()}
+              </TableCell>
+
+              {/* Town Hall Column */}
+              <TableCell className="text-center border-r border-slate-600/50">
+                <div className="flex items-center justify-center space-x-2">
+                  <TownHallBadge level={th} size="sm" showLevel={false} />
+                  <span className="text-2xl font-bold text-clash-gold">
+                    {th}
+                  </span>
+                </div>
+              </TableCell>
+
+      {/* Trophies Column */}
+      <TableCell className="text-center border-r border-slate-600/50" title="Current trophies">
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-clash-gold">🏆</span>
+          <span className="font-semibold text-high-contrast">
+            {formatNumber(member.trophies)}
           </span>
-        </div>
-      </TableCell>
-
-      {/* Role Column */}
-      <TableCell className="text-center border-r border-slate-300">
-        {(() => {
-          const raw = (member.role || '').toString();
-          const r = raw.toLowerCase();
-          let label = 'Member';
-          let icon = '';
-          let cls = 'bg-gray-100 text-gray-800';
-
-          if (r === 'leader') {
-            label = 'Leader';
-            icon = '👑';
-            cls = 'bg-yellow-100 text-yellow-800';
-          } else if (r === 'coleader' || raw === 'coLeader') {
-            label = 'Co-leader';
-            icon = '💎';
-            cls = 'bg-purple-100 text-purple-800';
-          } else if (r === 'elder' || r === 'admin') {
-            label = 'Elder';
-            icon = '⭐';
-            cls = 'bg-blue-100 text-blue-800';
-          }
-
-          return (
-            <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold ${cls}`}>
-              {icon && <span aria-hidden>{icon}</span>}
-              <span>{label}</span>
-            </span>
-          );
-        })()}
-      </TableCell>
-
-      {/* Town Hall Column */}
-      <TableCell className="border-r border-slate-400" title={`Town Hall ${th}`}>
-        <div className="flex items-center space-x-1">
-          <span className="font-semibold">TH{th}</span>
           {isRushedPlayer && (
-            <span className="text-xs text-red-600" title={`Rushed: ${rushPercent}%`}>
+            <span className="text-xs text-clash-red" title={`Rushed: ${rushPercent}%`}>
               {isVeryRushedPlayer ? '🔴' : '⚠️'}
             </span>
           )}
         </div>
       </TableCell>
 
-      {/* Trophies Column (after TH) */}
-      <TableCell className="text-center border-r border-slate-400" title="Current trophies">
-        <span className="font-semibold">
-          {formatNumber(member.trophies)}
-        </span>
-      </TableCell>
 
       {/* Hero Columns */}
       <TableCell
-        className="bg-slate-100 text-center border-r border-slate-300"
+        className="bg-slate-800/30 text-center border-r border-slate-600/50"
         title={isHeroAvailable('bk', th)
-          ? `BK at TH${th} (max ${HERO_MAX_LEVELS[th]?.bk ?? 0})`
-          : `BK unlocks at TH${HERO_MIN_TH.bk}`}
+          ? `Barbarian King at TH${th} (max ${HERO_MAX_LEVELS[th]?.bk ?? 0})`
+          : `Barbarian King unlocks at TH${HERO_MIN_TH.bk}`}
       >
-        <span className="font-semibold">
-          {getHeroDisplayValue(member, 'bk', th)}
-        </span>
+        <HeroLevel 
+          hero="BK" 
+          level={member.bk || 0} 
+          maxLevel={HERO_MAX_LEVELS[th]?.bk || 0}
+          size="sm"
+        />
       </TableCell>
 
       <TableCell
-        className="bg-slate-100 text-center border-r border-slate-300"
+        className="bg-slate-800/30 text-center border-r border-slate-600/50"
         title={isHeroAvailable('aq', th)
-          ? `AQ at TH${th} (max ${HERO_MAX_LEVELS[th]?.aq ?? 0})`
-          : `AQ unlocks at TH${HERO_MIN_TH.aq}`}
+          ? `Archer Queen at TH${th} (max ${HERO_MAX_LEVELS[th]?.aq ?? 0})`
+          : `Archer Queen unlocks at TH${HERO_MIN_TH.aq}`}
       >
-        <span className="font-semibold">
-          {getHeroDisplayValue(member, 'aq', th)}
-        </span>
+        <HeroLevel 
+          hero="AQ" 
+          level={member.aq || 0} 
+          maxLevel={HERO_MAX_LEVELS[th]?.aq || 0}
+          size="sm"
+        />
       </TableCell>
 
       <TableCell
-        className="bg-slate-100 text-center border-r border-slate-300"
+        className="bg-slate-800/30 text-center border-r border-slate-600/50"
         title={isHeroAvailable('gw', th)
-          ? `GW at TH${th} (max ${HERO_MAX_LEVELS[th]?.gw ?? 0})`
-          : `GW unlocks at TH${HERO_MIN_TH.gw}`}
+          ? `Grand Warden at TH${th} (max ${HERO_MAX_LEVELS[th]?.gw ?? 0})`
+          : `Grand Warden unlocks at TH${HERO_MIN_TH.gw}`}
       >
-        <span className="font-semibold">
-          {getHeroDisplayValue(member, 'gw', th)}
-        </span>
+        <HeroLevel 
+          hero="GW" 
+          level={member.gw || 0} 
+          maxLevel={HERO_MAX_LEVELS[th]?.gw || 0}
+          size="sm"
+        />
       </TableCell>
 
       <TableCell
-        className="bg-slate-100 text-center border-r border-slate-300"
+        className="bg-slate-800/30 text-center border-r border-slate-600/50"
         title={isHeroAvailable('rc', th)
-          ? `RC at TH${th} (max ${HERO_MAX_LEVELS[th]?.rc ?? 0})`
-          : `RC unlocks at TH${HERO_MIN_TH.rc}`}
+          ? `Royal Champion at TH${th} (max ${HERO_MAX_LEVELS[th]?.rc ?? 0})`
+          : `Royal Champion unlocks at TH${HERO_MIN_TH.rc}`}
       >
-        <span className="font-semibold">
-          {getHeroDisplayValue(member, 'rc', th)}
-        </span>
+        <HeroLevel 
+          hero="RC" 
+          level={member.rc || 0} 
+          maxLevel={HERO_MAX_LEVELS[th]?.rc || 0}
+          size="sm"
+        />
       </TableCell>
 
       <TableCell
-        className="bg-slate-100 text-center border-r border-slate-300"
+        className="bg-slate-800/30 text-center border-r border-slate-600/50"
         title={isHeroAvailable('mp', th)
-          ? `MP at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
-          : `MP unlocks at TH${HERO_MIN_TH.mp}`}
+          ? `Mighty Patroller at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
+          : `Mighty Patroller unlocks at TH${HERO_MIN_TH.mp}`}
       >
-        <span className="font-semibold">
-          {getHeroDisplayValue(member, 'mp', th)}
-        </span>
+        <HeroLevel 
+          hero="MP" 
+          level={member.mp || 0} 
+          maxLevel={HERO_MAX_LEVELS[th]?.mp || 0}
+          size="sm"
+        />
       </TableCell>
 
       {/* Rush Percentage Column */}
-      <TableCell className="text-center border-r border-slate-300"
+      <TableCell className="text-center border-r border-slate-600/50"
         title={`Rush is how far heroes are from TH caps. BK ${member.bk ?? 0}/${HERO_MAX_LEVELS[th]?.bk ?? 0}, AQ ${member.aq ?? 0}/${HERO_MAX_LEVELS[th]?.aq ?? 0}, GW ${member.gw ?? 0}/${HERO_MAX_LEVELS[th]?.gw ?? 0}, RC ${member.rc ?? 0}/${HERO_MAX_LEVELS[th]?.rc ?? 0}.`}
       >
-        <span className={`font-semibold ${getRushClass(rushPercent)}`}>
+        <span className={`font-semibold ${rushPercent >= 70 ? 'text-clash-red' : rushPercent >= 40 ? 'text-clash-orange' : 'text-clash-green'}`}>
           {rushPercent.toFixed(1)}%
         </span>
       </TableCell>
 
       {/* Overall Rush (placeholder) */}
-      <TableCell className="text-center border-r border-slate-300" title="Overall rush (heroes for now; offense/defense later)">
-        <span className={`font-semibold ${getRushClass(overallRush)}`}>
+      <TableCell className="text-center border-r border-slate-600/50" title="Overall rush (heroes for now; offense/defense later)">
+        <span className={`font-semibold ${overallRush >= 70 ? 'text-clash-red' : overallRush >= 40 ? 'text-clash-orange' : 'text-clash-green'}`}>
           {overallRush.toFixed(1)}%
         </span>
       </TableCell>
 
       {/* Activity Column (under Analysis group) */}
-      <TableCell className="text-center border-r border-slate-300">
+      <TableCell className="text-center border-r border-slate-600/50">
         <div className="flex flex-col items-center space-y-1">
           <span
-            className={`px-2 py-1 rounded-full text-xs font-semibold ${getActivityClass(activity.level)}`}
+            className={`px-2 py-1 rounded-full text-xs font-semibold border ${
+              activity.level.toLowerCase() === 'very active' ? 'bg-clash-green/20 text-clash-green border-clash-green/50' :
+              activity.level.toLowerCase() === 'active' ? 'bg-clash-blue/20 text-clash-blue border-clash-blue/50' :
+              activity.level.toLowerCase() === 'moderate' ? 'bg-clash-orange/20 text-clash-orange border-clash-orange/50' :
+              activity.level.toLowerCase() === 'low' ? 'bg-clash-orange/20 text-clash-orange border-clash-orange/50' :
+              'bg-clash-red/20 text-clash-red border-clash-red/50'
+            }`}
             title={
               `Activity rating\n` +
               `High: lots of recent evidence (donations/attacks/etc.)\n` +
@@ -320,18 +367,23 @@ export const TableRow: React.FC<TableRowProps> = ({
           >
             {getActivityShortLabel(activity.level)}
           </span>
-          {/* Removed relative date to avoid always showing Today */}
         </div>
       </TableCell>
 
       {/* Donations Given Column */}
-      <TableCell className="text-center border-r border-slate-300" title={`Donations given/received: ${(donationBalance.given).toLocaleString()} / ${(donationBalance.received).toLocaleString()} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
-        <span className="font-semibold text-green-700">{formatNumber(member.donations)}</span>
+      <TableCell className="text-center border-r border-slate-600/50" title={`Donations given/received: ${(donationBalance.given).toLocaleString()} / ${(donationBalance.received).toLocaleString()} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-clash-green">💝</span>
+          <span className="font-semibold text-clash-green">{formatNumber(member.donations)}</span>
+        </div>
       </TableCell>
 
       {/* Donations Received Column */}
-      <TableCell className="text-center border-r border-slate-300" title={`Donations received: ${formatNumber(member.donationsReceived)} (net ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
-        <span className="font-semibold text-blue-700">{formatNumber(member.donationsReceived)}</span>
+      <TableCell className="text-center border-r border-slate-600/50" title={`Donations received: ${formatNumber(member.donationsReceived)} (net ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
+        <div className="flex items-center justify-center space-x-1">
+          <span className="text-clash-blue">📥</span>
+          <span className="font-semibold text-clash-blue">{formatNumber(member.donationsReceived)}</span>
+        </div>
       </TableCell>
 
       {/* Tenure Column */}

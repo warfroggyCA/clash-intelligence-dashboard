@@ -24,6 +24,12 @@ export {
 
 export { GlassCard } from './GlassCard';
 
+// Clash of Clans themed components
+export { TownHallBadge } from './TownHallBadge';
+export { LeagueBadge } from './LeagueBadge';
+export { ResourceDisplay } from './ResourceDisplay';
+export { HeroLevel } from './HeroLevel';
+
 // Modal components
 export {
   Modal,

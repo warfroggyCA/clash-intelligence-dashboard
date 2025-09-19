@@ -17,6 +17,23 @@ module.exports = {
           glass: 'rgba(18, 24, 40, 0.72)',
           border: 'rgba(255, 255, 255, 0.08)',
         },
+        clash: {
+          gold: '#FFD700',
+          'gold-dark': '#B8860B',
+          orange: '#FF6B0A',
+          'orange-dark': '#CC5500',
+          purple: '#5227FF',
+          'purple-dark': '#3D1A78',
+          blue: '#4A90E2',
+          red: '#E74C3C',
+          green: '#27AE60',
+        },
+        text: {
+          primary: '#FFFFFF',
+          secondary: '#E2E8F0',
+          muted: '#94A3B8',
+          accent: '#FFD700',
+        },
       },
       boxShadow: {
         glow: '0 28px 65px -35px rgba(255, 107, 10, 0.55)',

@@ -252,7 +252,7 @@ interface SortIndicatorProps {
 const SortIndicator: React.FC<SortIndicatorProps> = ({ isActive, direction }) => {
   if (!isActive) {
     return (
-      <span className="text-gray-400 ml-1">
+      <span className="text-slate-400 ml-1">
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
         </svg>
@@ -261,7 +261,7 @@ const SortIndicator: React.FC<SortIndicatorProps> = ({ isActive, direction }) =>
   }
 
   return (
-    <span className="text-blue-600 ml-1">
+    <span className="text-clash-orange ml-1">
       {direction === 'asc' ? (
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -293,9 +293,9 @@ const HeaderCell: React.FC<HeaderCellProps> = ({ config, isActive, direction, on
     }
   };
 
-  const baseStyles = "py-3 px-4 font-semibold text-slate-700 transition-colors";
-  const activeStyles = isActive ? "bg-blue-100 border-blue-300 text-blue-800" : "";
-  const hoverStyles = config.sortable ? "hover:bg-slate-100/50 cursor-pointer" : "cursor-default";
+  const baseStyles = "py-3 px-4 font-semibold text-clash-gold transition-colors";
+  const activeStyles = isActive ? "bg-clash-gold/20 border-clash-gold/50 text-clash-gold" : "";
+  const hoverStyles = config.sortable ? "hover:bg-clash-gold/10 cursor-pointer" : "cursor-default";
   const sortableStyles = config.sortable ? "cursor-pointer" : "cursor-default";
 
   return (
@@ -336,12 +336,12 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   return (
     <thead className={`text-left ${className}`}>
       {/* Grouping Headers Row */}
-      <tr className="bg-gradient-to-r from-slate-100 to-slate-200 border-b border-slate-300">
+      <tr className="bg-gradient-to-r from-slate-800 to-slate-700 border-b border-clash-gold/20">
         {GROUP_CONFIGS.map((group, index) => (
           <th
             key={group.name}
             colSpan={group.columns}
-            className={`py-2 px-4 font-bold text-slate-800 text-center ${group.className}`}
+            className={`py-2 px-4 font-bold text-clash-gold text-center ${group.className}`}
           >
             <div className="flex items-center justify-center gap-2">
               <span className="text-sm">{group.icon}</span>
@@ -352,7 +352,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
       </tr>
       
       {/* Column Headers Row */}
-      <tr className="bg-gradient-to-r from-slate-50 to-blue-50 border-b border-slate-200">
+      <tr className="bg-gradient-to-r from-slate-700/50 to-slate-600/50 border-b border-slate-600/50">
         {COLUMN_CONFIGS.map((config) => (
           <HeaderCell
             key={config.key}
