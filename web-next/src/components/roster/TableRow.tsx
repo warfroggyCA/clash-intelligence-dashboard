@@ -178,20 +178,18 @@ export const TableRow: React.FC<TableRowProps> = ({
               {/* Name Column */}
               <TableCell className="border-r border-slate-600/50">
                 <div className="flex items-center space-x-3">
+                  <LeagueBadge trophies={member.trophies} size="xxl" showText={false} />
                   <div className="flex flex-col">
-                    <div className="flex items-center space-x-2">
-                      <LeagueBadge trophies={member.trophies} size="xxl" showText={false} />
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleOpenProfile();
-                        }}
-                        className="font-heading font-semibold text-clash-gold hover:text-clash-orange transition-colors focus-ring-inset text-left"
-                        title="View player profile"
-                      >
-                        {member.name}
-                      </button>
-                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenProfile();
+                      }}
+                      className="font-heading font-semibold text-clash-gold hover:text-clash-orange transition-colors focus-ring-inset text-left"
+                      title="View player profile"
+                    >
+                      {member.name}
+                    </button>
                     <span className="text-xs text-muted-contrast font-mono">
                       {member.tag}
                     </span>
