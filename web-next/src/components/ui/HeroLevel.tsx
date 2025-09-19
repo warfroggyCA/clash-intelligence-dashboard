@@ -46,7 +46,7 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
     <div className={`space-y-1 ${className}`}>
       <div className={`flex justify-between ${sizeClasses[size]}`}>
         {showName && <span className="text-clash-gold font-semibold">{config.name}</span>}
-        <span className="text-white">{level}/{maxLevel}</span>
+        <span className="text-high-contrast">{level}/{maxLevel}</span>
       </div>
       {showProgress && (
         <div className={`w-full bg-black/30 rounded-full ${progressHeightClasses[size]} border border-clash-gold/30 overflow-hidden`}>
