@@ -99,58 +99,65 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
     ].filter((section) => section.entries.length > 0);
   }, [roster]);
 
+  if (!roster) {
+    return (
+      <GlassCard className={mergedClassName}>
+        <div className="rounded-xl bg-white/20 px-3 py-4 text-center text-sm text-white font-medium border border-white/30">
+          Loading roster data...
+        </div>
+      </GlassCard>
+    );
+  }
+
   if (!sections.length) {
     return (
-      <GlassCard
-        className={mergedClassName}
-        icon={<Award className="h-5 w-5" />}
-        title="Clan Highlights"
-        subtitle="We’ll surface standout performers as data arrives"
-      >
-        <div className="text-xs text-slate-400">No highlight data available yet.</div>
+      <GlassCard className={mergedClassName}>
+        <div className="rounded-xl bg-white/20 px-3 py-4 text-center text-sm text-white font-medium border border-white/30">
+          No highlight data available yet.
+        </div>
       </GlassCard>
     );
   }
 
   return (
-    <GlassCard
-      className={mergedClassName}
-      icon={<Award className="h-5 w-5" />}
-      title="Clan Highlights"
-      subtitle="Top performers across rush, donations, and hero power"
-    >
-      <div className="rounded-2xl bg-gradient-to-br from-purple-50 via-pink-50 to-purple-100 px-4 py-5 shadow-sm text-slate-800">
-        <div className="space-y-5">
+    <GlassCard className={mergedClassName}>
+      <div className="flex-1 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-h-[20rem] overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]">
           {sections.map((section) => (
             <div key={section.title} className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-slate-800">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/80 shadow-sm">
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.24em] text-white">
+                <div className="flex h-6 w-6 items-center justify-center rounded-xl bg-white/90 shadow-sm">
                   <Image
                     src={section.title.includes('Donator') ? '/assets/icons/donation.svg'
                       : section.title.includes('Hero') ? '/assets/icons/hero.svg'
                       : '/assets/icons/trophy.svg'}
                     alt=""
-                    width={22}
-                    height={22}
+                    width={16}
+                    height={16}
                   />
                 </div>
                 {section.title}
               </div>
               <div className="space-y-2">
-                {section.entries.map((entry) => (
+                {section.entries.slice(0, 3).map((entry) => (
                   <div
                     key={`${section.title}-${entry.name}`}
-                    className="rounded-2xl bg-gradient-to-r from-white/80 via-white/60 to-white/70 px-3.5 py-3 text-sm text-slate-800 shadow-sm border border-white/50"
+                    className="rounded-2xl bg-gradient-to-r from-white/20 via-white/10 to-white/20 px-3 py-2 text-xs text-white shadow-sm border border-white/30"
                   >
                     <div className="flex items-center justify-between font-bold">
-                      <span className="truncate pr-2 text-slate-900">{entry.name}</span>
-                      <span className="text-purple-700 font-bold">{entry.value}</span>
+                      <span className="truncate pr-2 text-white">{entry.name}</span>
+                      <span className="text-white/80 font-bold">{entry.value}</span>
                     </div>
                     {entry.subtitle && (
-                      <div className="text-xs text-slate-700 font-medium">{entry.subtitle}</div>
+                      <div className="text-xs text-white/80 font-medium">{entry.subtitle}</div>
                     )}
                   </div>
                 ))}
+                {section.entries.length > 3 && (
+                  <div className="text-xs text-white/60 font-medium text-center">
+                    +{section.entries.length - 3} more
+                  </div>
+                )}
               </div>
             </div>
           ))}

@@ -18,6 +18,8 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   const dataAgeHours = useDashboardStore(selectors.dataAge);
   const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt) || snapshotMetadata?.fetchedAt || null;
 
+  console.log('[RosterStatsPanel] Rendering with roster:', roster);
+
   const stats = useMemo(() => {
     if (!roster || !roster.members?.length) {
       return null;
@@ -43,7 +45,13 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   }, [roster]);
 
   if (!roster) {
-    return null;
+    return (
+      <GlassCard className={mergedClassName}>
+        <div className="rounded-xl bg-white/20 px-3 py-4 text-center text-sm text-white font-medium border border-white/30">
+          Loading roster data...
+        </div>
+      </GlassCard>
+    );
   }
 
   const subtitle = snapshotMetadata?.snapshotDate
@@ -111,35 +119,39 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   return (
     <GlassCard
       className={mergedClassName}
-      icon={<Users className="h-5 w-5" />}
-      title="Roster Snapshot"
-      subtitle={subtitle + (dataFetchedAt ? ` • Updated ${safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}` : '')}
       actions={freshnessBadge}
     >
-      <div className="rounded-2xl bg-gradient-to-br from-blue-50 via-indigo-50 to-blue-100 px-4 py-5 shadow-sm text-slate-800">
-        {metricCards.length ? (
-          <div className="space-y-4 text-base">
+      {metricCards.length ? (
+        <div className="flex-1 overflow-hidden">
+          <div className="grid grid-cols-2 gap-3 text-base max-h-[20rem] overflow-y-auto pr-1 [scrollbar-color:rgba(255,255,255,0.35)_transparent] [scrollbar-width:thin]">
             {metricCards.map((metric) => (
               <div
                 key={metric.label}
-                className={`flex items-center justify-between rounded-2xl bg-gradient-to-r ${metric.gradient} px-4 py-3 shadow-sm border border-white/50`}
+                className={`flex flex-col items-center justify-center rounded-2xl bg-gradient-to-r ${metric.gradient} px-3 py-4 shadow-sm border border-white/30 text-center min-h-[7rem] text-white`}
               >
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/80 shadow-sm">
-                    <Image src={metric.icon} alt="" width={24} height={24} className="drop-shadow" />
-                  </div>
-                  <span className="text-xs uppercase tracking-[0.24em] text-slate-800 font-bold">{metric.label}</span>
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/90 shadow-sm mb-2">
+                  <Image src={metric.icon} alt="" width={20} height={20} className="drop-shadow" />
                 </div>
-                <span className={`text-2xl font-bold text-slate-900`}>{metric.value}</span>
+                <span className="text-[11px] uppercase tracking-[0.24em] text-white font-bold mb-1 whitespace-nowrap drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]">
+                  {metric.label}
+                </span>
+                <span className="text-lg font-extrabold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.4)]">
+                  {metric.value}
+                </span>
               </div>
             ))}
           </div>
-        ) : (
-          <div className="rounded-xl bg-white/80 px-3 py-4 text-center text-sm text-slate-800 font-medium">
-            No roster metrics available yet.
-          </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="rounded-xl bg-white/20 px-3 py-4 text-center text-sm text-white font-medium border border-white/30">
+          No roster metrics available yet.
+        </div>
+      )}
+      {dataFetchedAt && (
+        <div className="mt-4 text-[11px] text-white/80 font-medium">
+          Last fetched {safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}
+        </div>
+      )}
     </GlassCard>
   );
 };

@@ -402,7 +402,7 @@ export async function updateAccessMember(params: UpdateMemberParams) {
   const allowedFields: Array<keyof AddMemberParams> = ['name', 'accessLevel', 'cocPlayerTag', 'email', 'notes'];
   const payload: Record<string, any> = {};
   for (const key of allowedFields) {
-    if (params.updates[key] !== undefined) {
+    if ((params.updates as any)[key] !== undefined) {
       switch (key) {
         case 'cocPlayerTag':
           payload.player_tag = params.updates[key];
