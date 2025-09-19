@@ -321,8 +321,8 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell
         className="bg-slate-800/30 text-center border-r border-slate-600/50"
         title={isHeroAvailable('mp', th)
-          ? `Mighty Patroller at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
-          : `Mighty Patroller unlocks at TH${HERO_MIN_TH.mp}`}
+          ? `Minion Prince at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
+          : `Minion Prince unlocks at TH${HERO_MIN_TH.mp}`}
       >
         <HeroLevel 
           hero="MP" 

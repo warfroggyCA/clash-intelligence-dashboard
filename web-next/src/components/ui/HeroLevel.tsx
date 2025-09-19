@@ -27,7 +27,7 @@ const heroConfig = {
   AQ: { name: 'Archer Queen', color: 'from-green-500 to-green-600' },
   GW: { name: 'Grand Warden', color: 'from-purple-500 to-purple-600' },
   RC: { name: 'Royal Champion', color: 'from-red-500 to-red-600' },
-  MP: { name: 'Mighty Patroller', color: 'from-yellow-500 to-yellow-600' }
+  MP: { name: 'Minion Prince', color: 'from-yellow-500 to-yellow-600' }
 };
 
 export const HeroLevel: React.FC<HeroLevelProps> = ({
