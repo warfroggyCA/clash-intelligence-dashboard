@@ -188,8 +188,6 @@ export async function GET(req: NextRequest) {
           donations: m.donations,
           donationsReceived: m.donationsReceived,
           role: m.role,
-          league: m.league,
-          builderBaseLeague: m.builderBaseLeague,
           bk: typeof heroes.bk === "number" ? heroes.bk : null,
           aq: typeof heroes.aq === "number" ? heroes.aq : null,
           gw: typeof heroes.gw === "number" ? heroes.gw : null,

@@ -2,7 +2,8 @@ import React from 'react';
 import Image from 'next/image';
 
 interface LeagueBadgeProps {
-  league: string;
+  league?: string;
+  trophies?: number;
   className?: string;
   showText?: boolean;
   size?: 'sm' | 'md' | 'lg';
@@ -26,12 +27,28 @@ const containerSizeClasses = {
   lg: 'px-4 py-2'
 };
 
+// Helper function to determine league based on trophy count
+const getLeagueFromTrophies = (trophies: number): string => {
+  if (trophies >= 5000) return 'Legend';
+  if (trophies >= 4000) return 'Titan';
+  if (trophies >= 3000) return 'Champion';
+  if (trophies >= 2000) return 'Master';
+  if (trophies >= 1400) return 'Crystal';
+  if (trophies >= 800) return 'Gold';
+  if (trophies >= 400) return 'Silver';
+  return 'Bronze';
+};
+
 export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
   league,
+  trophies,
   className = '',
   showText = true,
   size = 'md'
 }) => {
+  // Determine league from trophies if not provided
+  const determinedLeague = league || (trophies !== undefined ? getLeagueFromTrophies(trophies) : 'Bronze');
+  
   // Map league names to image filenames
   const leagueImageMap: Record<string, string> = {
     'Bronze': 'Bronze.png',
@@ -77,14 +94,14 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
     'Legend League IV': 'Legend.png',
   };
 
-  const leagueImage = leagueImageMap[league] || 'Bronze.png';
+  const leagueImage = leagueImageMap[determinedLeague] || 'Bronze.png';
   const imagePath = `/assets/clash/Leagues/${leagueImage}`;
   
   return (
     <div className={`flex items-center gap-2 bg-gradient-to-r from-clash-gold/20 to-clash-orange/20 border border-clash-gold/30 rounded-lg ${containerSizeClasses[size]} ${className}`}>
       <Image
         src={imagePath}
-        alt={`${league} League`}
+        alt={`${determinedLeague} League`}
         width={20}
         height={20}
         className={`${sizeClasses[size]} object-contain`}
@@ -101,7 +118,7 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
       />
       {showText && (
         <span className={`text-clash-gold font-semibold ${textSizeClasses[size]}`}>
-          {league}
+          {determinedLeague}
         </span>
       )}
     </div>
