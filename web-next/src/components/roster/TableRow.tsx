@@ -190,9 +190,7 @@ export const TableRow: React.FC<TableRowProps> = ({
                       >
                         {member.name}
                       </button>
-                      {member.league && (
-                        <LeagueBadge league={member.league.name} size="sm" />
-                      )}
+                      <LeagueBadge trophies={member.trophies} size="sm" />
                     </div>
                     <span className="text-xs text-muted-contrast font-mono">
                       {member.tag}
