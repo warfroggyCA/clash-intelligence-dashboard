@@ -180,6 +180,7 @@ export const TableRow: React.FC<TableRowProps> = ({
                 <div className="flex items-center space-x-3">
                   <div className="flex flex-col">
                     <div className="flex items-center space-x-2">
+                      <LeagueBadge trophies={member.trophies} size="sm" showText={false} />
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -190,7 +191,6 @@ export const TableRow: React.FC<TableRowProps> = ({
                       >
                         {member.name}
                       </button>
-                      <LeagueBadge trophies={member.trophies} size="sm" />
                     </div>
                     <span className="text-xs text-muted-contrast font-mono">
                       {member.tag}

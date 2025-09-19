@@ -97,6 +97,29 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
   const leagueImage = leagueImageMap[determinedLeague] || 'Bronze.png';
   const imagePath = `/assets/clash/Leagues/${leagueImage}`;
   
+  if (!showText) {
+    // Just return the image without the background box
+    return (
+      <Image
+        src={imagePath}
+        alt={`${determinedLeague} League`}
+        width={20}
+        height={20}
+        className={`${sizeClasses[size]} object-contain ${className}`}
+        onError={(e) => {
+          // Fallback to trophy emoji if image fails to load
+          const target = e.target as HTMLImageElement;
+          target.style.display = 'none';
+          const parent = target.parentElement;
+          if (parent) {
+            parent.innerHTML = `🏆`;
+            parent.className += ' flex items-center justify-center text-clash-gold';
+          }
+        }}
+      />
+    );
+  }
+
   return (
     <div className={`flex items-center gap-2 bg-gradient-to-r from-clash-gold/20 to-clash-orange/20 border border-clash-gold/30 rounded-lg ${containerSizeClasses[size]} ${className}`}>
       <Image
@@ -116,11 +139,9 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
           }
         }}
       />
-      {showText && (
-        <span className={`text-clash-gold font-semibold ${textSizeClasses[size]}`}>
-          {determinedLeague}
-        </span>
-      )}
+      <span className={`text-clash-gold font-semibold ${textSizeClasses[size]}`}>
+        {determinedLeague}
+      </span>
     </div>
   );
 };
