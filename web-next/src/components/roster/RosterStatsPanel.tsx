@@ -49,50 +49,57 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
           Loading roster metrics…
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 text-base">
-          {[
-            {
-              label: 'Members',
-              value: stats.memberCount.toLocaleString(),
-              icon: '/assets/icons/trophy.svg',
-            },
-            {
-              label: 'Avg Town Hall',
-              value: stats.averageTownHall.toString(),
-              icon: '/assets/icons/hero.svg',
-            },
-            {
-              label: 'Avg Trophies',
-              value: stats.averageTrophies.toLocaleString(),
-              icon: '/assets/icons/trophy.svg',
-            },
-            {
-              label: 'Total Donations',
-              value: stats.totalDonations.toLocaleString(),
-              icon: '/assets/icons/donation.svg',
-            },
-          ].map((metric) => (
-            <div
-              key={metric.label}
-              className="flex flex-col items-center justify-center rounded-2xl bg-white/12 px-3 py-4 text-center"
-            >
-              <div className="mb-2 flex h-9 w-9 items-center justify-center rounded-xl bg-white/75 shadow-sm">
-                <Image src={metric.icon} alt="" width={20} height={20} className="drop-shadow" />
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            {[
+              {
+                label: 'Members',
+                value: stats.memberCount.toLocaleString(),
+                icon: '/assets/icons/trophy.svg',
+                gradient: 'from-blue-400/40 via-blue-300/20 to-blue-500/50',
+              },
+              {
+                label: 'Avg Town Hall',
+                value: stats.averageTownHall.toString(),
+                icon: '/assets/icons/hero.svg',
+                gradient: 'from-indigo-400/40 via-indigo-300/20 to-indigo-500/50',
+              },
+              {
+                label: 'Avg Trophies',
+                value: stats.averageTrophies.toLocaleString(),
+                icon: '/assets/icons/trophy.svg',
+                gradient: 'from-purple-400/40 via-purple-300/20 to-purple-500/50',
+              },
+              {
+                label: 'Total Donations',
+                value: stats.totalDonations.toLocaleString(),
+                icon: '/assets/icons/donation.svg',
+                gradient: 'from-amber-400/40 via-amber-300/20 to-orange-400/50',
+              },
+            ].map((metric) => (
+              <div
+                key={metric.label}
+                className={`flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br ${metric.gradient} px-4 py-6 shadow-lg border border-white/40 text-center min-h-[8rem] text-white backdrop-blur-sm`}
+              >
+                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
+                  <Image src={metric.icon} alt="" width={22} height={22} className="drop-shadow-sm" />
+                </div>
+                <span className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-white drop-shadow-sm">
+                  {metric.label}
+                </span>
+                <span className="text-xl font-bold text-white drop-shadow-sm">
+                  {metric.value}
+                </span>
               </div>
-              <span className="mb-1 text-[11px] font-bold uppercase tracking-[0.24em] text-white/70">
-                {metric.label}
-              </span>
-              <span className="text-lg font-bold text-white">
-                {metric.value}
-              </span>
+            ))}
+          </div>
+          {dataFetchedAt && (
+            <div className="pt-3 border-t border-white/20">
+              <div className="text-xs text-white/70 font-medium text-center">
+                Last fetched {safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}
+              </div>
             </div>
-          ))}
-        </div>
-      )}
-
-      {dataFetchedAt && (
-        <div className="mt-4 text-[11px] font-medium text-white/60">
-          Last fetched {safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}
+          )}
         </div>
       )}
     </GlassCard>

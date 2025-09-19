@@ -14,19 +14,25 @@ import DevStatusBadge from './DevStatusBadge';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
 import { safeTagForFilename } from '@/lib/tags';
 import { QuickActionsMenu } from './QuickActionsMenu';
-import { Button, ThemeToggle } from '@/components/ui';
+import { Button, ThemeToggle, GlassCard } from '@/components/ui';
 
-const LoadingCard = () => (
-  <div className="h-[24rem] rounded-3xl border border-white/10 bg-white/5 animate-pulse" />
+const LoadingCard: React.FC = () => (
+  <GlassCard className="min-h-[18rem] animate-pulse">
+    <div className="grid grid-cols-2 gap-3 text-base">
+      {Array.from({ length: 4 }).map((_, idx) => (
+        <div key={idx} className="h-24 rounded-2xl bg-white/15" />
+      ))}
+    </div>
+  </GlassCard>
 );
 
 const RosterStatsPanel = dynamic(
-  () => import('@/components/roster/RosterStatsPanel').then((mod) => mod.RosterStatsPanel),
+  () => import('@/components/roster/RosterStatsPanel'),
   { ssr: false, loading: LoadingCard }
 );
 
 const RosterHighlightsPanel = dynamic(
-  () => import('@/components/roster/RosterHighlightsPanel').then((mod) => mod.RosterHighlightsPanel),
+  () => import('@/components/roster/RosterHighlightsPanel'),
   { ssr: false, loading: LoadingCard }
 );
 
