@@ -39,7 +39,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
         const baseStyles =
           "relative px-3 sm:px-6 py-1.5 sm:py-2 font-semibold text-base sm:text-lg transition-all duration-300 rounded-lg flex-1 sm:flex-none";
         const activeStyles =
-          "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform scale-105 border-2 border-blue-400 [data-theme='light']:text-blue-900 [data-theme='dark']:text-white";
+          "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform scale-105 border-2 border-blue-400 [data-theme='light']:bg-gradient-to-br [data-theme='light']:from-blue-600 [data-theme='light']:to-blue-700 [data-theme='light']:text-white [data-theme='dark']:text-white";
         const inactiveStyles =
           "bg-gray-100 text-gray-600 hover:text-blue-600 hover:bg-blue-50/80 hover:shadow-md hover:scale-102 border-2 border-gray-200 hover:border-blue-200";
 
