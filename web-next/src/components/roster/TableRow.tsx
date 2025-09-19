@@ -269,6 +269,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           level={member.bk || 0} 
           maxLevel={HERO_MAX_LEVELS[th]?.bk || 0}
           size="sm"
+          showName={false}
         />
       </TableCell>
 
@@ -283,6 +284,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           level={member.aq || 0} 
           maxLevel={HERO_MAX_LEVELS[th]?.aq || 0}
           size="sm"
+          showName={false}
         />
       </TableCell>
 
@@ -297,6 +299,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           level={member.gw || 0} 
           maxLevel={HERO_MAX_LEVELS[th]?.gw || 0}
           size="sm"
+          showName={false}
         />
       </TableCell>
 
@@ -311,6 +314,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           level={member.rc || 0} 
           maxLevel={HERO_MAX_LEVELS[th]?.rc || 0}
           size="sm"
+          showName={false}
         />
       </TableCell>
 
@@ -325,6 +329,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           level={member.mp || 0} 
           maxLevel={HERO_MAX_LEVELS[th]?.mp || 0}
           size="sm"
+          showName={false}
         />
       </TableCell>
 
