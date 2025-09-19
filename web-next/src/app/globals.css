@@ -143,6 +143,33 @@ body {
 [data-theme="light"] .from-clash-gold\/20 { --tw-gradient-from: rgba(255, 215, 0, 0.18) !important; }
 [data-theme="light"] .to-clash-orange\/20 { --tw-gradient-to: rgba(255, 107, 10, 0.18) !important; }
 
+/* Dark theme dropdown hover override for components using hover:bg-slate-50 */
+[data-theme="dark"] .hover\:bg-slate-50:hover {
+  background-color: rgba(51, 65, 85, 0.6) !important; /* slate-700 */
+  color: #E2E8F0 !important;
+}
+
+/* Actions menu theming */
+[data-theme="light"] .actions-menu-panel {
+  background-color: #FFFFFF !important;
+  color: #0F172A !important;
+  border-color: #E2E8F0 !important;
+}
+
+[data-theme="dark"] .actions-menu-panel {
+  background-color: #0F172A !important;
+  color: #E2E8F0 !important;
+  border-color: rgba(148,163,184,0.3) !important;
+}
+
+[data-theme="light"] .actions-menu-item {
+  color: #0F172A !important;
+}
+
+[data-theme="dark"] .actions-menu-item {
+  color: #E2E8F0 !important;
+}
+
 h1, h2, h3, h4 {
   @apply font-heading;
   color: var(--text-primary);

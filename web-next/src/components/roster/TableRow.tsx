@@ -467,7 +467,7 @@ const ActionsMenu: React.FC<{
     <div className="relative" ref={ref} onClick={(e) => e.stopPropagation()}>
       <button
         onClick={() => setOpen(v => !v)}
-        className="px-2 py-1 border border-slate-300 rounded hover:bg-slate-50 focus:outline-none"
+        className="actions-menu-trigger px-2 py-1 border border-slate-300 rounded hover:bg-slate-50 focus:outline-none"
         title="Actions"
         aria-haspopup="menu"
         aria-expanded={open}
@@ -475,12 +475,12 @@ const ActionsMenu: React.FC<{
         ⋯
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 min-w-[12rem] whitespace-nowrap bg-white border border-slate-200 rounded-md shadow-xl ring-1 ring-black/5 z-[1000] overflow-hidden">
-          <button onClick={(e) => { onViewProfile(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">View Profile</button>
-          <button onClick={(e) => { onCopyTag(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Copy Tag</button>
+        <div className="actions-menu-panel absolute right-0 mt-2 min-w-[12rem] whitespace-nowrap bg-white border border-slate-200 rounded-md shadow-xl ring-1 ring-black/5 z-[1000] overflow-hidden">
+          <button onClick={(e) => { onViewProfile(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">View Profile</button>
+          <button onClick={(e) => { onCopyTag(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Copy Tag</button>
           <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
-            <button onClick={(e) => { onDeparture(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Record Departure</button>
-            <button onClick={(e) => { onGrantTenure(e); setOpen(false); }} className="block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Grant Tenure</button>
+            <button onClick={(e) => { onDeparture(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Record Departure</button>
+            <button onClick={(e) => { onGrantTenure(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Grant Tenure</button>
           </LeadershipGuard>
         </div>
       )}
