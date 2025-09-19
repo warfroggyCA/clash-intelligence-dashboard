@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
 
     try {
       // Try new table first
-      const { data: snapshots, error } = await supabase
+      const { data: snapshots, error } = await supabase!
         .from('clan_snapshots')
         .select('snapshot_date, fetched_at, metadata, clan, member_summaries')
         .eq('clan_tag', safeTag)
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
       // Fallback to legacy table if no new snapshots are found
       if (!formattedSnapshots.length) {
-        const { data: legacySnapshots, error: legacyError } = await supabase
+        const { data: legacySnapshots, error: legacyError } = await supabase!
           .from('snapshots')
           .select('*')
           .eq('clan_tag', safeTag)
