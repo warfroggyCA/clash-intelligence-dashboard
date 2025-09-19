@@ -232,7 +232,7 @@ export const TableRow: React.FC<TableRowProps> = ({
               {/* Town Hall Column */}
               <TableCell className="text-center border-r border-slate-600/50">
                 <div className="flex items-center justify-center space-x-2">
-                  <TownHallBadge level={th} size="sm" showLevel={false} />
+                  <TownHallBadge level={th} size="sm" showLevel={false} showBox={false} />
                   <span className="text-2xl font-bold text-clash-gold">
                     {th}
                   </span>
