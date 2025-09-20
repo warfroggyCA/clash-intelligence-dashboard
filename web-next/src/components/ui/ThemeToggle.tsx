@@ -40,7 +40,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   showLabels = false,
   size = 'md'
 }) => {
-  const { theme, setTheme, toggleTheme } = useTheme();
+  const { setTheme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const sizeClasses = {
@@ -61,8 +61,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     { key: 'system' as const, icon: Monitor, label: 'System' }
   ];
 
-  const currentTheme = themes.find(t => t.key === theme);
-  const CurrentIcon = currentTheme?.icon || Moon;
+  // Always use Moon icon for consistency
+  const CurrentIcon = Moon;
 
   return (
     <div className={`relative ${className}`}>
@@ -81,7 +81,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
           focus:outline-none focus:ring-2 focus:ring-clash-gold/50
           shadow-lg hover:shadow-xl
         `}
-        aria-label={`Current theme: ${currentTheme?.label}. Click to change theme.`}
+        aria-label="Theme toggle. Click to change theme."
         aria-expanded={isOpen}
         aria-haspopup="menu"
       >
@@ -120,19 +120,11 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                     setTheme(key);
                     setIsOpen(false);
                   }}
-                  className={`
-                    w-full flex items-center gap-3 px-4 py-3 text-left
-                    transition-colors duration-150
-                    hover:bg-slate-700 focus:outline-none focus:bg-slate-700
-                    ${theme === key ? 'bg-slate-700 text-clash-gold' : 'text-slate-200'}
-                  `}
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-slate-200 transition-colors duration-150 hover:bg-slate-700 focus:outline-none focus:bg-slate-700"
                   aria-label={`Switch to ${label} theme`}
                 >
                   <Icon size={18} className="flex-shrink-0" />
                   <span className="font-medium">{label}</span>
-                  {theme === key && (
-                    <div className="ml-auto w-2 h-2 bg-clash-gold rounded-full" />
-                  )}
                 </button>
               ))}
               
