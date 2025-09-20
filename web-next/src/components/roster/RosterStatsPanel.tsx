@@ -65,9 +65,6 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
         className="glass-card"
         data-panel="roster-stats"
       >
-        <h2 style={{ color: '#FFFFFF', fontSize: '24px', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
-          Roster Stats
-        </h2>
         {!stats ? (
           <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-4 text-center text-sm text-white/80">
             Loading roster metrics…
@@ -117,13 +114,6 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                 </div>
               ))}
             </div>
-            {dataFetchedAt && (
-              <div className="pt-3 border-t border-white/20">
-                <div className="text-xs text-white/70 font-medium text-center">
-                  Last fetched {safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}
-                </div>
-              </div>
-            )}
           </div>
         )}
       </div>

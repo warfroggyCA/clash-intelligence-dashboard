@@ -114,7 +114,6 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       data-panel="roster-highlights"
       style={{ display: 'block', visibility: 'visible', position: 'relative', zIndex: 10 }}
     >
-      <div data-debug style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>Debug timestamp removed to prevent hydration mismatch</div>
       {!sections.length ? (
         <div className="rounded-xl border border-white/20 bg-white/15 px-4 py-6 text-center text-sm text-white/90 font-medium">
           No highlights available yet.
