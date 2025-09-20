@@ -166,7 +166,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       {/* Labels (optional) */}
       {showLabels && (
         <div className="mt-2 text-center">
-          <p className={`text-xs ${resolvedTheme === 'light' ? 'text-slate-500' : 'text-slate-400'} font-medium`}>
+          <p className="text-xs text-slate-400 font-medium">
             {currentTheme?.label}
           </p>
         </div>
