@@ -106,9 +106,22 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
           
           {/* Menu */}
           <div className="absolute right-0 top-full mt-2 w-48 z-20">
-            <div className="bg-slate-800 border-slate-600 text-slate-200 border rounded-lg shadow-xl overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-600">
-                <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+            <div 
+              className="border rounded-lg shadow-xl overflow-hidden"
+              style={{ 
+                backgroundColor: '#1e293b', 
+                borderColor: '#475569', 
+                color: '#e2e8f0' 
+              }}
+            >
+              <div 
+                className="px-3 py-2 border-b"
+                style={{ borderColor: '#475569' }}
+              >
+                <p 
+                  className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: '#cbd5e1' }}
+                >
                   Theme
                 </p>
               </div>
@@ -120,7 +133,23 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                     setTheme(key);
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left text-slate-200 transition-colors duration-150 hover:bg-slate-700 focus:outline-none focus:bg-slate-700"
+                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-150 focus:outline-none"
+                  style={{ 
+                    color: '#e2e8f0',
+                    backgroundColor: 'transparent'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#334155';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.backgroundColor = '#334155';
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.backgroundColor = 'transparent';
+                  }}
                   aria-label={`Switch to ${label} theme`}
                 >
                   <Icon size={18} className="flex-shrink-0" />
@@ -129,13 +158,26 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
               ))}
               
               {/* Quick Toggle */}
-              <div className="border-t border-slate-600 px-4 py-3">
+              <div 
+                className="border-t px-4 py-3"
+                style={{ borderColor: '#475569' }}
+              >
                 <button
                   onClick={() => {
                     toggleTheme();
                     setIsOpen(false);
                   }}
-                  className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-clash-gold/10 hover:bg-clash-gold/20 text-clash-gold rounded-md transition-colors duration-150 font-medium"
+                  className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-md transition-colors duration-150 font-medium"
+                  style={{ 
+                    backgroundColor: 'rgba(251, 191, 36, 0.1)',
+                    color: '#fbbf24'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(251, 191, 36, 0.2)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(251, 191, 36, 0.1)';
+                  }}
                 >
                   <Moon size={16} />
                   Switch to Dark
