@@ -196,6 +196,17 @@ th { @apply text-left font-semibold; }
   color: rgba(244, 248, 255, 0.95);
 }
 
+/* High specificity test for debugging */
+div.glass-card[data-panel="roster-stats"] {
+  color: rgba(244, 248, 255, 0.95) !important;
+  background: linear-gradient(150deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86)) !important;
+  border: 1px solid rgba(255,255,255,0.26) !important;
+  border-radius: 2rem !important;
+  padding: 1.5rem !important;
+  display: block !important;
+  visibility: visible !important;
+}
+
 .glass-card::before {
   content: "";
   position: absolute;

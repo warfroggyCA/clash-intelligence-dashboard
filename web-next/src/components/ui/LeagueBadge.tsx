@@ -17,6 +17,14 @@ const sizeClasses = {
   xxl: 'w-32 h-32'
 };
 
+const imageDimensions = {
+  sm: { width: 20, height: 20 },
+  md: { width: 24, height: 24 },
+  lg: { width: 32, height: 32 },
+  xl: { width: 96, height: 96 },
+  xxl: { width: 128, height: 128 }
+};
+
 const textSizeClasses = {
   sm: 'text-xs',
   md: 'text-sm',
@@ -105,13 +113,16 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
   
   if (!showText) {
     // Just return the image without the background box
+    const dimensions = imageDimensions[size];
     return (
       <Image
         src={imagePath}
         alt={`${determinedLeague} League`}
-        width={20}
-        height={20}
+        width={dimensions.width}
+        height={dimensions.height}
         className={`${sizeClasses[size]} object-contain ${className}`}
+        quality={100}
+        priority={size === 'xxl'}
         onError={(e) => {
           // Fallback to trophy emoji if image fails to load
           const target = e.target as HTMLImageElement;
@@ -126,14 +137,17 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
     );
   }
 
+  const dimensions = imageDimensions[size];
   return (
     <div className={`flex items-center gap-2 bg-gradient-to-r from-clash-gold/20 to-clash-orange/20 border border-clash-gold/30 rounded-lg ${containerSizeClasses[size]} ${className}`}>
       <Image
         src={imagePath}
         alt={`${determinedLeague} League`}
-        width={20}
-        height={20}
+        width={dimensions.width}
+        height={dimensions.height}
         className={`${sizeClasses[size]} object-contain`}
+        quality={100}
+        priority={size === 'xxl'}
         onError={(e) => {
           // Fallback to trophy emoji if image fails to load
           const target = e.target as HTMLImageElement;
