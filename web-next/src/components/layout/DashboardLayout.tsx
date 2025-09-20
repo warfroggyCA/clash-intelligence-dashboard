@@ -16,7 +16,7 @@ import { safeTagForFilename } from '@/lib/tags';
 import { QuickActionsMenu } from './QuickActionsMenu';
 import { Button, ThemeToggle, GlassCard } from '@/components/ui';
 
-const LoadingCard: React.FC = () => (
+const LoadingCard = () => (
   <GlassCard className="min-h-[18rem] animate-pulse">
     <div className="grid grid-cols-2 gap-3 text-base">
       {Array.from({ length: 4 }).map((_, idx) => (
