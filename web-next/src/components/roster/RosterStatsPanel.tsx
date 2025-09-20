@@ -54,7 +54,11 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   }, [roster]);
 
     return (
-      <GlassCard className={mergedClassName} data-panel="roster-stats">
+      <GlassCard 
+        className={`${mergedClassName} !block !visible`} 
+        data-panel="roster-stats"
+        style={{ display: 'block', visibility: 'visible', position: 'relative', zIndex: 10 }}
+      >
         <div data-debug>{Date.now()}</div>
         {!stats ? (
           <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-4 text-center text-sm text-white/80">

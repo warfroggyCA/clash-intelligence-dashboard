@@ -1,6 +1,40 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./src/**/*.{ts,tsx}"],
+  safelist: [
+    // Dynamic gradient classes used in RosterStatsPanel
+    'from-blue-400/40', 'via-blue-300/20', 'to-blue-500/50',
+    'from-indigo-400/40', 'via-indigo-300/20', 'to-indigo-500/50',
+    'from-purple-400/40', 'via-purple-300/20', 'to-purple-500/50',
+    'from-amber-400/40', 'via-amber-300/20', 'to-orange-400/50',
+    // Glass card classes
+    'glass-card', 'backdrop-blur-xl', 'backdrop-blur-sm',
+    // Dynamic gradient classes for highlights
+    'from-white/20', 'via-white/10', 'to-white/20',
+    // Border and shadow classes
+    'border-white/40', 'border-white/30', 'border-white/15',
+    'shadow-lg', 'shadow-md', 'drop-shadow-sm', 'drop-shadow-md',
+    // Text and background classes
+    'text-white', 'text-white/80', 'text-white/90', 'text-amber-100',
+    'bg-white/95', 'bg-white/15', 'bg-white/20', 'bg-white/10',
+    // Layout classes
+    'min-h-[8rem]', 'min-h-[18rem]', 'h-10', 'w-10', 'h-9', 'w-9',
+    'rounded-2xl', 'rounded-xl', 'rounded-4xl',
+    // Spacing classes
+    'px-4', 'py-6', 'py-3', 'px-7', 'py-6',
+    'space-y-4', 'space-y-6', 'gap-4', 'gap-6',
+    // Flexbox classes
+    'flex', 'flex-col', 'items-center', 'justify-center', 'justify-between',
+    // Grid classes
+    'grid', 'grid-cols-2', 'grid-cols-1', 'lg:grid-cols-2',
+    // Typography classes
+    'text-xs', 'text-sm', 'text-xl', 'font-semibold', 'font-bold',
+    'uppercase', 'tracking-[0.2em]', 'truncate', 'pr-3',
+    // Position classes
+    'relative', 'absolute', 'overflow-hidden',
+    // Transition classes
+    'transition', 'duration-300', 'hover:-translate-y-0.5', 'hover:shadow-glow',
+  ],
   theme: {
     extend: {
       fontFamily: {
