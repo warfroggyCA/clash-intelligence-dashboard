@@ -72,9 +72,11 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
         className={`
           ${sizeClasses[size]}
           relative flex items-center justify-center
-          bg-gradient-to-br from-slate-700 to-slate-800
-          hover:from-slate-600 hover:to-slate-700
-          border border-slate-600
+          ${resolvedTheme === 'light' 
+            ? 'bg-gradient-to-br from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 border-slate-300 text-slate-700' 
+            : 'bg-gradient-to-br from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 border-slate-600 text-slate-200'
+          }
+          border
           rounded-lg
           transition-all duration-200
           hover:scale-105 active:scale-95
@@ -87,11 +89,11 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       >
         <CurrentIcon 
           size={iconSizes[size]} 
-          className="text-clash-gold transition-transform duration-200"
+          className={`${resolvedTheme === 'light' ? 'text-slate-600' : 'text-clash-gold'} transition-transform duration-200`}
         />
         
         {/* Active indicator */}
-        <div className="absolute -top-1 -right-1 w-3 h-3 bg-clash-gold rounded-full border-2 border-slate-800" />
+        <div className={`absolute -top-1 -right-1 w-3 h-3 bg-clash-gold rounded-full border-2 ${resolvedTheme === 'light' ? 'border-slate-200' : 'border-slate-800'}`} />
       </button>
 
       {/* Dropdown Menu */}
@@ -106,9 +108,12 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
           
           {/* Menu */}
           <div className="absolute right-0 top-full mt-2 w-48 z-20">
-            <div className="bg-slate-800 border border-slate-600 rounded-lg shadow-xl overflow-hidden">
-              <div className="px-3 py-2 border-b border-slate-600">
-                <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+            <div className={`${resolvedTheme === 'light' 
+              ? 'bg-white border-slate-200 text-slate-800' 
+              : 'bg-slate-800 border-slate-600 text-slate-200'
+            } border rounded-lg shadow-xl overflow-hidden`}>
+              <div className={`px-3 py-2 border-b ${resolvedTheme === 'light' ? 'border-slate-200' : 'border-slate-600'}`}>
+                <p className={`text-xs font-semibold ${resolvedTheme === 'light' ? 'text-slate-600' : 'text-slate-300'} uppercase tracking-wide`}>
                   Theme
                 </p>
               </div>
@@ -123,10 +128,12 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                   className={`
                     w-full flex items-center gap-3 px-4 py-3 text-left
                     transition-colors duration-150
-                    hover:bg-slate-700
-                    focus:outline-none focus:bg-slate-700
-                    ${theme === key ? 'bg-slate-700 text-clash-gold' : 'text-slate-200'}
+                    ${resolvedTheme === 'light' 
+                      ? `hover:bg-slate-100 focus:outline-none focus:bg-slate-100 ${theme === key ? 'bg-slate-100 text-clash-gold' : 'text-slate-700'}` 
+                      : `hover:bg-slate-700 focus:outline-none focus:bg-slate-700 ${theme === key ? 'bg-slate-700 text-clash-gold' : 'text-slate-200'}`
+                    }
                   `}
+                  style={{ color: resolvedTheme === 'light' ? (theme === key ? '#f59e0b' : '#374151') : (theme === key ? '#f59e0b' : '#e5e7eb') }}
                   aria-label={`Switch to ${label} theme`}
                 >
                   <Icon size={18} className="flex-shrink-0" />
@@ -138,7 +145,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
               ))}
               
               {/* Quick Toggle */}
-              <div className="border-t border-slate-600 px-4 py-3">
+              <div className={`border-t ${resolvedTheme === 'light' ? 'border-slate-200' : 'border-slate-600'} px-4 py-3`}>
                 <button
                   onClick={() => {
                     toggleTheme();
@@ -167,7 +174,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       {/* Labels (optional) */}
       {showLabels && (
         <div className="mt-2 text-center">
-          <p className="text-xs text-slate-400 font-medium">
+          <p className={`text-xs ${resolvedTheme === 'light' ? 'text-slate-500' : 'text-slate-400'} font-medium`}>
             {currentTheme?.label}
           </p>
         </div>
