@@ -66,16 +66,14 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
 
   return (
     <div className={`relative ${className}`}>
-      {/* Main Toggle Button */}
+      {/* Main Toggle Button - Always dark themed */}
       <button
         onClick={() => setIsOpen(!isOpen)}
         className={`
           ${sizeClasses[size]}
           relative flex items-center justify-center
-          ${resolvedTheme === 'light' 
-            ? 'bg-gradient-to-br from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 border-slate-300 text-slate-700' 
-            : 'bg-gradient-to-br from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 border-slate-600 text-slate-200'
-          }
+          bg-gradient-to-br from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 
+          border-slate-600 text-slate-200
           border
           rounded-lg
           transition-all duration-200
@@ -89,11 +87,11 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
       >
         <CurrentIcon 
           size={iconSizes[size]} 
-          className={`${resolvedTheme === 'light' ? 'text-slate-600' : 'text-clash-gold'} transition-transform duration-200`}
+          className="text-clash-gold transition-transform duration-200"
         />
         
         {/* Active indicator */}
-        <div className={`absolute -top-1 -right-1 w-3 h-3 bg-clash-gold rounded-full border-2 ${resolvedTheme === 'light' ? 'border-slate-200' : 'border-slate-800'}`} />
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-clash-gold rounded-full border-2 border-slate-800" />
       </button>
 
       {/* Dropdown Menu */}
