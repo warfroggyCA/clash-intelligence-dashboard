@@ -278,7 +278,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   className = '',
 }) => {
   const activeTab = useDashboardStore((state) => state.activeTab);
-  const [showOverview, setShowOverview] = useState(true);
   const [debugKey, setDebugKey] = useState('primary');
   const [ready, setReady] = useState(false);
   const [forceRender, setForceRender] = useState(0);
@@ -317,17 +316,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
                 <div className="h-1 w-12 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                <div className="text-lg font-bold text-high-contrast">Dashboard Overview</div>
               </div>
               <div className="flex gap-2">
-                <Button
-                  onClick={() => setShowOverview((prev) => !prev)}
-                  size="sm"
-                  variant="outline"
-                  className="border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 font-medium shadow-sm focus-ring"
-                >
-                  {showOverview ? 'Hide overview' : 'Show overview'}
-                </Button>
                 <Button
                   onClick={() => setDebugKey(prev => prev === 'primary' ? 'alt' : 'primary')}
                   size="sm"
@@ -338,35 +328,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 </Button>
               </div>
             </div>
-            {showOverview ? (
-              <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] items-start">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                    <h3 className="text-lg font-semibold text-high-contrast">Today's Headlines</h3>
-                  </div>
-                  <SmartInsightsHeadlines className="min-h-[18rem]" />
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] items-start">
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-high-contrast">Today's Headlines</h3>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
-                    <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
-                  </div>
-                    <RosterStatsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
-                </div>
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2">
-                    <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
-                    <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
-                  </div>
-                    <RosterHighlightsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
-                </div>
+                <SmartInsightsHeadlines className="min-h-[18rem]" />
               </div>
-            ) : (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
-                Overview cards hidden. Use the toggle above to show them again.
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
+                </div>
+                  <RosterStatsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
               </div>
-            )}
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
+                  <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
+                </div>
+                  <RosterHighlightsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
+              </div>
+            </div>
           </>
         )}
 
