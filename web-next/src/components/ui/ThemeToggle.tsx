@@ -40,7 +40,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   showLabels = false,
   size = 'md'
 }) => {
-  const { setTheme, toggleTheme } = useTheme();
+  const { theme, setTheme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const sizeClasses = {
@@ -61,8 +61,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
     { key: 'system' as const, icon: Monitor, label: 'System' }
   ];
 
-  // Always use Moon icon for consistency
-  const CurrentIcon = Moon;
+  // Use appropriate icon based on current theme
+  const CurrentIcon = theme === 'light' ? Sun : Moon;
 
   return (
     <div className={`relative ${className}`}>
