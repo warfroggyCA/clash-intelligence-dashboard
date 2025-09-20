@@ -26,6 +26,8 @@ interface RosterHighlightsPanelProps {
 }
 
 export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ className = '' }) => {
+  console.log('🎯 RosterHighlightsPanel mounted - dynamic module executed!');
+  
   const roster = useDashboardStore((state) => state.roster);
 
   // Debug: Check DOM after mount
@@ -112,7 +114,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       data-panel="roster-highlights"
       style={{ display: 'block', visibility: 'visible', position: 'relative', zIndex: 10 }}
     >
-      <div data-debug>{Date.now()}</div>
+      <div data-debug style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>Debug timestamp removed to prevent hydration mismatch</div>
       {!sections.length ? (
         <div className="rounded-xl border border-white/20 bg-white/15 px-4 py-6 text-center text-sm text-white/90 font-medium">
           No highlights available yet.
@@ -134,7 +136,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
                       className="drop-shadow-sm" 
                     />
                   </div>
-                  <span className="drop-shadow-sm">{section.title}</span>
+                  <span className="drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{section.title}</span>
                 </div>
                 <div className="space-y-3">
                   {section.entries.slice(0, 3).map((entry) => (
@@ -143,16 +145,16 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
                       className="rounded-xl border border-white/30 bg-gradient-to-r from-white/20 via-white/10 to-white/20 px-4 py-3 shadow-md backdrop-blur-sm"
                     >
                       <div className="flex items-center justify-between font-semibold text-white">
-                        <span className="truncate pr-3 text-sm drop-shadow-sm">{entry.name}</span>
-                        <span className="text-sm text-amber-100 font-bold drop-shadow-sm">{entry.value}</span>
+                        <span className="truncate pr-3 text-sm drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.name}</span>
+                        <span className="text-sm text-amber-100 font-bold drop-shadow-sm" style={{ color: '#FCD34D', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.value}</span>
                       </div>
                       {entry.subtitle && (
-                        <div className="mt-2 text-xs text-white/80 drop-shadow-sm">{entry.subtitle}</div>
+                        <div className="mt-2 text-xs text-white/80 drop-shadow-sm" style={{ color: '#E2E8F0', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.subtitle}</div>
                       )}
                     </div>
                   ))}
                   {section.entries.length > 3 && (
-                    <div className="py-2 text-center text-xs text-white/60 font-medium">
+                    <div className="py-2 text-center text-xs text-white/60 font-medium" style={{ color: '#94A3B8', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
                       +{section.entries.length - 3} more
                     </div>
                   )}

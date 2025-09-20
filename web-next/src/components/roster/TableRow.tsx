@@ -80,18 +80,15 @@ const getActivityShortLabel = (level: string): string => {
   return level;
 };
 
-// Relative day label for last active
+// Relative day label for last active - hydration-safe version
 const relativeFrom = (iso?: string): string | null => {
   if (!iso) return null;
   const d = new Date(iso);
   if (isNaN(d.getTime())) return null;
-  const now = new Date();
-  const start = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
-  const then = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
-  const days = Math.floor((start - then) / 86400000);
-  if (days <= 0) return 'Today';
-  if (days === 1) return 'Yesterday';
-  return `${days} days ago`;
+  
+  // For hydration safety, return a simple format instead of relative dates
+  // This avoids server/client time differences
+  return d.toLocaleDateString();
 };
 
 const formatNumber = (num: number | undefined): string => {

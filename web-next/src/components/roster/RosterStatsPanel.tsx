@@ -11,6 +11,8 @@ interface RosterStatsPanelProps {
 }
 
 export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = '' }) => {
+    console.log('🎯 RosterStatsPanel mounted - dynamic module executed!');
+    
     const mergedClassName = ['min-h-[18rem]', className].filter(Boolean).join(' ');
     const roster = useDashboardStore((state) => state.roster);
     const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
@@ -29,6 +31,11 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
             console.log('[RosterStatsPanel] Panel element not found in DOM');
         }
     }, []);
+
+    // CRITICAL: Remove dynamic content that causes hydration mismatch
+    // const [mounted, setMounted] = useState(false);
+    // useEffect(() => setMounted(true), []);
+    // if (!mounted) return null;
 
   const stats = useMemo(() => {
     if (!roster?.members?.length) return null;
@@ -53,73 +60,74 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     };
   }, [roster]);
 
-    return (
-      <GlassCard 
-        className={`${mergedClassName} !block !visible`} 
+  return (
+      <div
+        className="glass-card"
         data-panel="roster-stats"
-        style={{ display: 'block', visibility: 'visible', position: 'relative', zIndex: 10 }}
       >
-        <div data-debug>{Date.now()}</div>
+        <h2 style={{ color: '#FFFFFF', fontSize: '24px', marginBottom: '20px', textShadow: '2px 2px 4px rgba(0,0,0,0.8)' }}>
+          Roster Stats
+        </h2>
         {!stats ? (
           <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-4 text-center text-sm text-white/80">
             Loading roster metrics…
           </div>
         ) : (
           <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            {[
-              {
-                label: 'Members',
-                value: stats.memberCount.toLocaleString(),
-                icon: '/assets/icons/trophy.svg',
-                gradient: 'from-blue-400/40 via-blue-300/20 to-blue-500/50',
-              },
-              {
-                label: 'Avg Town Hall',
-                value: stats.averageTownHall.toString(),
-                icon: '/assets/icons/hero.svg',
-                gradient: 'from-indigo-400/40 via-indigo-300/20 to-indigo-500/50',
-              },
-              {
-                label: 'Avg Trophies',
-                value: stats.averageTrophies.toLocaleString(),
-                icon: '/assets/icons/trophy.svg',
-                gradient: 'from-purple-400/40 via-purple-300/20 to-purple-500/50',
-              },
-              {
-                label: 'Total Donations',
-                value: stats.totalDonations.toLocaleString(),
-                icon: '/assets/icons/donation.svg',
-                gradient: 'from-amber-400/40 via-amber-300/20 to-orange-400/50',
-              },
-            ].map((metric) => (
-              <div
-                key={metric.label}
-                className={`flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br ${metric.gradient} px-4 py-6 shadow-lg border border-white/40 text-center min-h-[8rem] text-white backdrop-blur-sm`}
-              >
-                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
-                  <Image src={metric.icon} alt="" width={22} height={22} className="drop-shadow-sm" />
+            <div className="grid grid-cols-2 gap-4">
+              {[
+                {
+                  label: 'Members',
+                  value: stats.memberCount.toLocaleString(),
+                  icon: '/assets/icons/trophy.svg',
+                  gradient: 'from-blue-400/40 via-blue-300/20 to-blue-500/50',
+                },
+                {
+                  label: 'Avg Town Hall',
+                  value: stats.averageTownHall.toString(),
+                  icon: '/assets/icons/hero.svg',
+                  gradient: 'from-indigo-400/40 via-indigo-300/20 to-indigo-500/50',
+                },
+                {
+                  label: 'Avg Trophies',
+                  value: stats.averageTrophies.toLocaleString(),
+                  icon: '/assets/icons/trophy.svg',
+                  gradient: 'from-purple-400/40 via-purple-300/20 to-purple-500/50',
+                },
+                {
+                  label: 'Total Donations',
+                  value: stats.totalDonations.toLocaleString(),
+                  icon: '/assets/icons/donation.svg',
+                  gradient: 'from-amber-400/40 via-amber-300/20 to-orange-400/50',
+                },
+              ].map((metric) => (
+                <div
+                  key={metric.label}
+                  className={`flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br ${metric.gradient} px-4 py-6 shadow-lg border border-white/40 text-center min-h-[8rem] text-white backdrop-blur-sm`}
+                >
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
+                    <Image src={metric.icon} alt="" width={22} height={22} className="drop-shadow-sm" />
+                  </div>
+                  <span className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] drop-shadow-sm" style={{ color: 'white', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
+                    {metric.label}
+                  </span>
+                  <span className="text-xl font-bold drop-shadow-sm" style={{ color: 'white', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
+                    {metric.value}
+                  </span>
                 </div>
-                <span className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-white drop-shadow-sm">
-                  {metric.label}
-                </span>
-                <span className="text-xl font-bold text-white drop-shadow-sm">
-                  {metric.value}
-                </span>
-              </div>
-            ))}
-          </div>
-          {dataFetchedAt && (
-            <div className="pt-3 border-t border-white/20">
-              <div className="text-xs text-white/70 font-medium text-center">
-                Last fetched {safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}
-              </div>
+              ))}
             </div>
-          )}
-        </div>
-      )}
-    </GlassCard>
-  );
+            {dataFetchedAt && (
+              <div className="pt-3 border-t border-white/20">
+                <div className="text-xs text-white/70 font-medium text-center">
+                  Last fetched {safeLocaleTimeString(dataFetchedAt, { fallback: dataFetchedAt, context: 'RosterStatsPanel fetchedAt' })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    );
 };
 
 export default RosterStatsPanel;

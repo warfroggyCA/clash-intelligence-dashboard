@@ -26,15 +26,19 @@ const LoadingCard: React.FC = () => (
   </GlassCard>
 );
 
-const RosterStatsPanel = dynamic(
-  () => import('@/components/roster/RosterStatsPanel'),
-  { ssr: false, loading: LoadingCard }
-);
+// Temporarily use direct imports to test CSS loading
+import { RosterStatsPanel } from '@/components/roster/RosterStatsPanel';
+import { RosterHighlightsPanel } from '@/components/roster/RosterHighlightsPanel';
 
-const RosterHighlightsPanel = dynamic(
-  () => import('@/components/roster/RosterHighlightsPanel'),
-  { ssr: false, loading: LoadingCard }
-);
+// const RosterStatsPanel = dynamic(
+//   () => import('@/components/roster/RosterStatsPanel'),
+//   { ssr: false, loading: LoadingCard }
+// );
+
+// const RosterHighlightsPanel = dynamic(
+//   () => import('@/components/roster/RosterHighlightsPanel'),
+//   { ssr: false, loading: LoadingCard }
+// );
 
 const SmartInsightsHeadlines = dynamic(
   () => import('@/components/SmartInsightsHeadlines'),
@@ -275,6 +279,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const activeTab = useDashboardStore((state) => state.activeTab);
   const [showOverview, setShowOverview] = useState(true);
+  const [debugKey, setDebugKey] = useState('primary');
+  const [ready, setReady] = useState(false);
+  const [forceRender, setForceRender] = useState(0);
+  
+  useEffect(() => {
+    console.log('🎯 DashboardLayout: Setting ready to true');
+    setReady(true);
+    // Force a re-render after hydration
+    setTimeout(() => {
+      console.log('🎯 DashboardLayout: Force re-render after hydration');
+      setForceRender(prev => prev + 1);
+    }, 100);
+  }, []);
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
@@ -302,14 +319,24 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <div className="h-1 w-12 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
                 <div className="text-lg font-bold text-high-contrast">Dashboard Overview</div>
               </div>
-              <Button
-                onClick={() => setShowOverview((prev) => !prev)}
-                size="sm"
-                variant="outline"
-                className="border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 font-medium shadow-sm focus-ring"
-              >
-                {showOverview ? 'Hide overview' : 'Show overview'}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => setShowOverview((prev) => !prev)}
+                  size="sm"
+                  variant="outline"
+                  className="border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 font-medium shadow-sm focus-ring"
+                >
+                  {showOverview ? 'Hide overview' : 'Show overview'}
+                </Button>
+                <Button
+                  onClick={() => setDebugKey(prev => prev === 'primary' ? 'alt' : 'primary')}
+                  size="sm"
+                  variant="outline"
+                  className="border-red-500/50 text-red-500 hover:bg-red-500/10 font-medium shadow-sm focus-ring"
+                >
+                  🔄 Debug Rerender
+                </Button>
+              </div>
             </div>
             {showOverview ? (
               <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] items-start">
@@ -325,14 +352,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                     <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
                     <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
                   </div>
-                  <RosterStatsPanel className="min-h-[18rem]" />
+                    <RosterStatsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
                 </div>
                 <div className="space-y-4">
                   <div className="flex items-center gap-2">
                     <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
                     <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
                   </div>
-                  <RosterHighlightsPanel className="min-h-[18rem]" />
+                    <RosterHighlightsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
                 </div>
               </div>
             ) : (

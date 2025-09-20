@@ -2,11 +2,11 @@
 module.exports = {
   content: ["./src/**/*.{ts,tsx}"],
   safelist: [
-    // Dynamic gradient classes used in RosterStatsPanel
-    'from-blue-400/40', 'via-blue-300/20', 'to-blue-500/50',
-    'from-indigo-400/40', 'via-indigo-300/20', 'to-indigo-500/50',
-    'from-purple-400/40', 'via-purple-300/20', 'to-purple-500/50',
-    'from-amber-400/40', 'via-amber-300/20', 'to-orange-400/50',
+    // Dynamic gradient classes used in RosterStatsPanel - use patterns to catch all variations
+    { pattern: /^from-(blue|indigo|purple|amber|orange)-400\/40$/ },
+    { pattern: /^via-(blue|indigo|purple|amber|orange)-300\/20$/ },
+    { pattern: /^to-(blue|indigo|purple|amber|orange)-500\/50$/ },
+    { pattern: /^to-orange-400\/50$/ },
     // Glass card classes
     'glass-card', 'backdrop-blur-xl', 'backdrop-blur-sm',
     // Dynamic gradient classes for highlights
