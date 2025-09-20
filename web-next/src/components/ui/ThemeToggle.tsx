@@ -40,7 +40,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   showLabels = false,
   size = 'md'
 }) => {
-  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
+  const { theme, setTheme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const sizeClasses = {
@@ -145,17 +145,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                   }}
                   className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-clash-gold/10 hover:bg-clash-gold/20 text-clash-gold rounded-md transition-colors duration-150 font-medium"
                 >
-                  {resolvedTheme === 'light' ? (
-                    <>
-                      <Moon size={16} />
-                      Switch to Dark
-                    </>
-                  ) : (
-                    <>
-                      <Sun size={16} />
-                      Switch to Light
-                    </>
-                  )}
+                  <Moon size={16} />
+                  Switch to Dark
                 </button>
               </div>
             </div>
