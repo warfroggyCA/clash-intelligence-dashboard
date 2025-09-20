@@ -107,7 +107,11 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
   }, [roster]);
 
   return (
-    <GlassCard className={['min-h-[18rem]', className].filter(Boolean).join(' ')} data-panel="roster-highlights">
+    <GlassCard 
+      className={`${['min-h-[18rem]', className].filter(Boolean).join(' ')} !block !visible`} 
+      data-panel="roster-highlights"
+      style={{ display: 'block', visibility: 'visible', position: 'relative', zIndex: 10 }}
+    >
       <div data-debug>{Date.now()}</div>
       {!sections.length ? (
         <div className="rounded-xl border border-white/20 bg-white/15 px-4 py-6 text-center text-sm text-white/90 font-medium">
