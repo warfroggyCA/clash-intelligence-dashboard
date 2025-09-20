@@ -314,9 +314,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {activeTab === 'roster' && (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
-                <div className="h-1 w-12 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-              </div>
               <div className="flex gap-2">
                 <Button
                   onClick={() => setDebugKey(prev => prev === 'primary' ? 'alt' : 'primary')}
