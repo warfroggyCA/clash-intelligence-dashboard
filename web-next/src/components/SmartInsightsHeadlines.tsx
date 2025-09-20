@@ -575,32 +575,8 @@ export default function SmartInsightsHeadlines({ className = '' }: SmartInsights
     : 'AI-powered daily highlights';
 
   return (
-    <GlassCard
-      className={className}
-      icon={<Lightbulb className="h-5 w-5" />}
-      title="Today's Headlines"
-      subtitle={subtitle}
-      actions={
-        <div className="flex items-center gap-2">
-          {statusBadge}
-          <Button
-            onClick={handleRefresh}
-            size="sm"
-            variant="outline"
-            className="border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 focus-ring"
-          >
-            <RefreshCcw className={`h-3.5 w-3.5 ${smartInsightsStatus === 'loading' ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
-        </div>
-      }
-    >
+    <GlassCard className={className}>
       {renderContent()}
-      {metadata && diagnostics && (
-        <div className="mt-4 border-t border-slate-600/50 pt-3 text-xs text-muted-contrast">
-          <span className="font-medium text-high-contrast">Source:</span> {metadata.source.replace('_', ' ')}
-        </div>
-      )}
     </GlassCard>
   );
 }
