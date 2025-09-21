@@ -150,9 +150,9 @@ export default function SmartInsightsHeadlines({
             </span>
           )}
           <Button
-            size="icon"
+            size="sm"
             variant="ghost"
-            className="h-7 w-7 text-white/70 hover:text-white"
+            className="h-7 w-7 p-0 text-white/70 hover:text-white"
             onClick={handleRefresh}
             disabled={isRefreshing || status === 'loading'}
             title="Refresh insights"
