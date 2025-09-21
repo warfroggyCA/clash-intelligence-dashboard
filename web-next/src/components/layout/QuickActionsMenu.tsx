@@ -83,8 +83,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
                 setOpen(false);
               }}
               disabled={isRefreshing}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
               <span>Refresh Data</span>
             </button>
@@ -96,8 +96,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
                 setOpen(false);
               }}
               disabled={isRefreshingInsights || smartInsightsStatus === 'loading'}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
               <span>Refresh Insights</span>
             </button>
@@ -108,8 +108,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
                 handleCopySnapshotSummary();
                 setOpen(false);
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
               <span>Copy Snapshot Summary</span>
             </button>
@@ -120,8 +120,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
                 handleCopyRosterJson();
                 setOpen(false);
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
               <span>Copy Roster JSON</span>
             </button>
@@ -133,8 +133,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
                 setOpen(false);
               }}
               disabled={isExporting}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
               <span>Export Snapshot JSON</span>
             </button>
@@ -146,8 +146,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
                 setOpen(false);
               }}
               disabled={isExporting}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
               <span>Export War Log CSV</span>
             </button>
@@ -159,8 +159,8 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
                 setOpen(false);
               }}
               disabled={isGeneratingSummary}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+              onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+              onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
               <span>Generate Insights Summary</span>
             </button>

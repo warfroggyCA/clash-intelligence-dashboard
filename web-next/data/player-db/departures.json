@@ -1,0 +1,29 @@
+[
+  {
+    "memberTag": "#TEST123",
+    "memberName": "Test Player 1",
+    "departureDate": "2025-09-21",
+    "lastRole": "Leader",
+    "lastTownHall": 15,
+    "addedBy": "System (Auto-detected)",
+    "timestamp": "2025-09-21T16:23:27.095Z"
+  },
+  {
+    "memberTag": "#TEST456",
+    "memberName": "Test Player 2",
+    "departureDate": "2025-09-21",
+    "lastRole": "Co-Leader",
+    "lastTownHall": 14,
+    "addedBy": "System (Auto-detected)",
+    "timestamp": "2025-09-21T16:23:27.097Z"
+  },
+  {
+    "memberTag": "#TEST789",
+    "memberName": "Test Player 3",
+    "departureDate": "2025-09-21",
+    "lastRole": "Member",
+    "lastTownHall": 13,
+    "addedBy": "System (Auto-detected)",
+    "timestamp": "2025-09-21T16:23:27.098Z"
+  }
+]

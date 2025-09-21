@@ -196,5 +196,29 @@
     "notes": "",
     "departureReason": "Inactive",
     "addedBy": "User"
+  },
+  {
+    "memberTag": "#TEST123",
+    "memberName": "Test Player 1",
+    "departureDate": "2025-09-21",
+    "lastSeen": "2025-09-21T16:23:27.094Z",
+    "lastRole": "Leader",
+    "lastTownHall": 15
+  },
+  {
+    "memberTag": "#TEST456",
+    "memberName": "Test Player 2",
+    "departureDate": "2025-09-21",
+    "lastSeen": "2025-09-21T16:23:27.096Z",
+    "lastRole": "Co-Leader",
+    "lastTownHall": 14
+  },
+  {
+    "memberTag": "#TEST789",
+    "memberName": "Test Player 3",
+    "departureDate": "2025-09-21",
+    "lastSeen": "2025-09-21T16:23:27.098Z",
+    "lastRole": "Member",
+    "lastTownHall": 13
   }
 ]

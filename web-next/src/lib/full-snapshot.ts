@@ -12,6 +12,7 @@ import {
 } from './coc';
 import { rateLimiter } from './rate-limiter';
 import { getSupabaseAdminClient } from './supabase-admin';
+import { loadPlayerDetailFromCache, savePlayerDetailToCache } from './player-cache';
 
 const SNAPSHOT_VERSION = '2025-09-15';
 
@@ -79,13 +80,26 @@ export async function fetchFullClanSnapshot(
 
   const playerDetails: Record<string, any> = {};
   if (fetchPlayers) {
+    let cacheHits = 0;
+    let cacheMisses = 0;
+
     await Promise.all(
       members.map(async (member: any) => {
         const tag = normalizeTag(member.tag);
+
+        const cachedDetail = await loadPlayerDetailFromCache(tag);
+        if (cachedDetail) {
+          playerDetails[tag] = cachedDetail;
+          cacheHits += 1;
+          return;
+        }
+
         await rateLimiter.acquire();
         try {
           const detail = await getPlayer(tag);
           playerDetails[tag] = detail;
+          cacheMisses += 1;
+          await savePlayerDetailToCache(tag, detail);
         } catch (error) {
           console.error('[FullSnapshot] Failed to fetch player detail', member.tag, error);
         } finally {
@@ -93,6 +107,10 @@ export async function fetchFullClanSnapshot(
         }
       })
     );
+
+    if (cacheHits || cacheMisses) {
+      console.log(`[FullSnapshot] Player detail cache stats — hits: ${cacheHits}, misses: ${cacheMisses}`);
+    }
   }
 
   const memberSummaries: MemberSummary[] = members.map((member: any) => {

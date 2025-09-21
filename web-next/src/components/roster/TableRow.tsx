@@ -153,9 +153,9 @@ export const TableRow: React.FC<TableRowProps> = ({
 
   // Row styling with enhanced accessibility
   const rowStyles = `
-    border-b border-slate-700/50 last:border-0 transition-colors duration-150 
-    hover:bg-clash-gold/5 cursor-pointer focus:bg-clash-gold/10
-    ${index % 2 === 1 ? "bg-slate-800/30" : "bg-slate-800/20"}
+    border-b border-gray-300 last:border-0 transition-colors duration-150 
+    hover:bg-gray-50 cursor-pointer focus:bg-gray-100
+    ${index % 2 === 1 ? "bg-gray-50" : "bg-white"}
   `;
 
   return (
@@ -173,7 +173,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       aria-label={`View profile for ${member.name}, ${member.role}, Town Hall ${th}`}
     >
               {/* Name Column */}
-              <TableCell className="border-r border-slate-600/50">
+              <TableCell className="border-r border-gray-300">
                 <div className="flex items-center space-x-3">
                   <LeagueBadge trophies={member.trophies} size="xxl" showText={false} />
                   <div className="flex flex-col">
@@ -182,14 +182,11 @@ export const TableRow: React.FC<TableRowProps> = ({
                         e.stopPropagation();
                         handleOpenProfile();
                       }}
-                      className="font-heading font-semibold text-clash-gold hover:text-clash-orange transition-colors focus-ring-inset text-left"
+                      className="font-heading font-semibold text-blue-800 hover:text-blue-600 transition-colors focus-ring-inset text-left"
                       title="View player profile"
                     >
                       {member.name}
                     </button>
-                    <span className="text-xs text-muted-contrast font-mono">
-                      {member.tag}
-                    </span>
                   </div>
                 </div>
               </TableCell>
@@ -201,26 +198,41 @@ export const TableRow: React.FC<TableRowProps> = ({
                   const r = raw.toLowerCase();
                   let label = 'Member';
                   let icon = '';
-                  let cls = 'bg-slate-700/50 text-slate-300 border-slate-600/50';
+                  let bgCls = 'bg-gray-800';
+                  let textCls = '!text-white';
+                  let borderCls = 'border-gray-700';
 
                   if (r === 'leader') {
                     label = 'Leader';
                     icon = '👑';
-                    cls = 'bg-clash-gold/20 text-clash-gold border-clash-gold/50';
+                    bgCls = 'bg-white';
+                    textCls = '!text-black';
+                    borderCls = 'border-gray-400';
                   } else if (r === 'coleader' || raw === 'coLeader') {
                     label = 'Co-leader';
                     icon = '💎';
-                    cls = 'bg-clash-purple/20 text-clash-purple border-clash-purple/50';
+                    bgCls = 'bg-purple-700';
+                    textCls = '!text-white';
+                    borderCls = 'border-purple-800';
                   } else if (r === 'elder' || r === 'admin') {
                     label = 'Elder';
                     icon = '⭐';
-                    cls = 'bg-clash-blue/20 text-clash-blue border-clash-blue/50';
+                    bgCls = 'bg-blue-700';
+                    textCls = '!text-white';
+                    borderCls = 'border-blue-800';
                   }
 
                   return (
-                    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full font-semibold border ${cls}`}>
-                      {icon && <span aria-hidden>{icon}</span>}
-                      <span>{label}</span>
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${bgCls} ${borderCls}`}>
+                      {icon && <span aria-hidden className="text-xs">{icon}</span>}
+                      <span 
+                        className={textCls}
+                        style={{
+                          color: r === 'leader' ? '#000000' : '#ffffff'
+                        }}
+                      >
+                        {label}
+                      </span>
                     </span>
                   );
                 })()}
@@ -229,8 +241,8 @@ export const TableRow: React.FC<TableRowProps> = ({
               {/* Town Hall Column */}
               <TableCell className="text-center border-r border-slate-600/50">
                 <div className="flex items-center justify-center space-x-2">
-                  <TownHallBadge level={th} size="sm" showLevel={false} showBox={false} />
-                  <span className="text-2xl font-bold text-clash-gold">
+                  <TownHallBadge level={th} size="md" showLevel={false} showBox={false} />
+                  <span className="text-sm font-bold text-clash-gold">
                     {th}
                   </span>
                 </div>
@@ -254,7 +266,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Hero Columns */}
       <TableCell
-        className="bg-slate-800/30 text-center border-r border-slate-600/50"
+        className="bg-gray-100 text-center border-r border-gray-300"
         title={isHeroAvailable('bk', th)
           ? `Barbarian King at TH${th} (max ${HERO_MAX_LEVELS[th]?.bk ?? 0})`
           : `Barbarian King unlocks at TH${HERO_MIN_TH.bk}`}
@@ -269,7 +281,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-slate-800/30 text-center border-r border-slate-600/50"
+        className="bg-gray-100 text-center border-r border-gray-300"
         title={isHeroAvailable('aq', th)
           ? `Archer Queen at TH${th} (max ${HERO_MAX_LEVELS[th]?.aq ?? 0})`
           : `Archer Queen unlocks at TH${HERO_MIN_TH.aq}`}
@@ -284,7 +296,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-slate-800/30 text-center border-r border-slate-600/50"
+        className="bg-gray-100 text-center border-r border-gray-300"
         title={isHeroAvailable('gw', th)
           ? `Grand Warden at TH${th} (max ${HERO_MAX_LEVELS[th]?.gw ?? 0})`
           : `Grand Warden unlocks at TH${HERO_MIN_TH.gw}`}
@@ -299,7 +311,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-slate-800/30 text-center border-r border-slate-600/50"
+        className="bg-gray-100 text-center border-r border-gray-300"
         title={isHeroAvailable('rc', th)
           ? `Royal Champion at TH${th} (max ${HERO_MAX_LEVELS[th]?.rc ?? 0})`
           : `Royal Champion unlocks at TH${HERO_MIN_TH.rc}`}
@@ -314,7 +326,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-slate-800/30 text-center border-r border-slate-600/50"
+        className="bg-gray-100 text-center border-r border-gray-300"
         title={isHeroAvailable('mp', th)
           ? `Minion Prince at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
           : `Minion Prince unlocks at TH${HERO_MIN_TH.mp}`}

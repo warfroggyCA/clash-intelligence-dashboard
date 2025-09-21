@@ -108,6 +108,8 @@ interface DashboardState {
   showDepartureModal: boolean;
   showPlayerProfile: boolean;
   showSettings: boolean;
+  showIngestionMonitor: boolean;
+  ingestionJobId: string | null;
   selectedMember: Member | null;
   selectedPlayer: Member | null;
   
@@ -171,6 +173,8 @@ interface DashboardState {
   setShowDepartureModal: (show: boolean) => void;
   setShowPlayerProfile: (show: boolean) => void;
   setShowSettings: (show: boolean) => void;
+  setShowIngestionMonitor: (show: boolean, options?: { jobId?: string | null }) => void;
+  setIngestionJobId: (jobId: string | null) => void;
   setSelectedMember: (member: Member | null) => void;
   setSelectedPlayer: (member: Member | null) => void;
   
@@ -240,6 +244,8 @@ const initialState = {
   showDepartureModal: false,
   showPlayerProfile: false,
   showSettings: false,
+  showIngestionMonitor: false,
+  ingestionJobId: null,
   selectedMember: null,
   selectedPlayer: null,
   
@@ -329,6 +335,11 @@ export const useDashboardStore = create<DashboardState>()(
       setShowDepartureModal: (showDepartureModal) => set({ showDepartureModal }),
       setShowPlayerProfile: (showPlayerProfile) => set({ showPlayerProfile }),
       setShowSettings: (showSettings) => set({ showSettings }),
+      setShowIngestionMonitor: (showIngestionMonitor, options = {}) => set((state) => ({
+        showIngestionMonitor,
+        ingestionJobId: options.jobId !== undefined ? options.jobId : state.ingestionJobId,
+      })),
+      setIngestionJobId: (ingestionJobId) => set({ ingestionJobId }),
       setSelectedMember: (selectedMember) => set({ selectedMember }),
       setSelectedPlayer: (selectedPlayer) => set({ selectedPlayer }),
       

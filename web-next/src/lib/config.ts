@@ -76,5 +76,9 @@ export const cfg = {
     enableDebugLogging: process.env.ENABLE_DEBUG_LOGGING === "true",
     mockApiCalls: process.env.MOCK_API_CALLS === "true",
     useTestData: process.env.USE_TEST_DATA === "true",
+  },
+
+  ingestion: {
+    maxConcurrentJobs: Number(process.env.INGESTION_MAX_CONCURRENT || 1),
   }
 } as const;

@@ -221,3 +221,8 @@
 2. Access control refinements
 3. Data clarification
 4. Future feature planning
+
+## Future Deliverables
+- [ ] Onboarding wizard: guided setup for clan tag, CoC API key, optional proxy/OpenAI keys, Supabase linkage, and health check
+- [ ] Credential storage improvements: secure Supabase secrets, admin UI to rotate keys
+- [ ] Optional AI tier toggle with fallback heuristics
