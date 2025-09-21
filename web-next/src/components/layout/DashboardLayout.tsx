@@ -210,13 +210,23 @@ const DashboardHeader: React.FC = () => {
             >
               ⋯
             </button>
-            <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            <div 
+              className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
+              style={{ 
+                backgroundColor: '#1e293b', 
+                border: '1px solid #475569',
+                color: '#e2e8f0'
+              }}
+            >
               <div className="py-2">
                 {/* Access Management */}
                 <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
                   <button
                     onClick={() => setShowAccessManager(true)}
-                    className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
+                    style={{ color: '#e2e8f0' }}
+                    onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
+                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                   >
                     👥 Manage Access
                   </button>
@@ -225,7 +235,10 @@ const DashboardHeader: React.FC = () => {
                 {/* Settings */}
                 <button 
                   onClick={() => setShowSettings(true)}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
+                  style={{ color: '#e2e8f0' }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                 >
                   ⚙️ Settings
                 </button>
@@ -233,7 +246,10 @@ const DashboardHeader: React.FC = () => {
                 {/* Manage Clans */}
                 <button
                   onClick={() => setShowSettings(true)}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
+                  style={{ color: '#e2e8f0' }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                 >
                   🏰 Manage Clans
                 </button>
@@ -241,7 +257,10 @@ const DashboardHeader: React.FC = () => {
                 {/* FAQ */}
                 <a 
                   href="/faq" 
-                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
+                  style={{ color: '#e2e8f0' }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                 >
                   ❓ FAQ
                 </a>
@@ -249,7 +268,10 @@ const DashboardHeader: React.FC = () => {
                 {/* Refresh */}
                 <button 
                   onClick={handleRefresh}
-                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
+                  style={{ color: '#e2e8f0' }}
+                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                 >
                   🔄 Refresh
                 </button>
@@ -266,10 +288,16 @@ const DashboardHeader: React.FC = () => {
                   {departureNotifications > 0 && (
                     <button
                       onClick={() => setShowDepartureManager(true)}
-                      className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2 relative"
+                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 relative transition-colors duration-150"
+                      style={{ color: '#e2e8f0' }}
+                      onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
+                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
                     >
                       🔔 Departures
-                      <span className="ml-auto bg-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                      <span 
+                        className="ml-auto text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center"
+                        style={{ backgroundColor: '#ef4444' }}
+                      >
                         {departureNotifications}
                       </span>
                     </button>
