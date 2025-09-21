@@ -81,6 +81,18 @@ CREATE TABLE clan_snapshots (
   UNIQUE(clan_tag, snapshot_date)
 );
 
+-- Ingestion job tracking table
+CREATE TABLE ingestion_jobs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  clan_tag TEXT NOT NULL,
+  status TEXT NOT NULL,
+  steps JSONB NOT NULL DEFAULT '[]',
+  logs JSONB NOT NULL DEFAULT '[]',
+  result JSONB,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Create indexes for better performance
 CREATE INDEX idx_snapshots_clan_tag ON snapshots(clan_tag);
 CREATE INDEX idx_snapshots_date ON snapshots(date);
@@ -97,6 +109,9 @@ CREATE INDEX idx_player_dna_cache_date ON player_dna_cache(date);
 CREATE INDEX idx_clan_snapshots_clan_tag ON clan_snapshots(clan_tag);
 CREATE INDEX idx_clan_snapshots_snapshot_date ON clan_snapshots(snapshot_date);
 CREATE INDEX idx_clan_snapshots_fetched_at ON clan_snapshots(fetched_at);
+CREATE INDEX idx_ingestion_jobs_clan_tag ON ingestion_jobs(clan_tag);
+CREATE INDEX idx_ingestion_jobs_status ON ingestion_jobs(status);
+CREATE INDEX idx_ingestion_jobs_created_at ON ingestion_jobs(created_at);
 
 -- Clan access management tables
 CREATE TABLE clan_access_configs (
@@ -138,6 +153,7 @@ ALTER TABLE player_dna_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clan_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clan_access_configs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clan_access_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ingestion_jobs ENABLE ROW LEVEL SECURITY;
 
 -- Create policies (allow all for now, you can restrict later)
 CREATE POLICY "Allow all operations on snapshots" ON snapshots FOR ALL USING (true);
@@ -148,6 +164,7 @@ CREATE POLICY "Allow all operations on player_dna_cache" ON player_dna_cache FOR
 CREATE POLICY "Allow all operations on clan_snapshots" ON clan_snapshots FOR ALL USING (true);
 CREATE POLICY "Service role access configs" ON clan_access_configs FOR ALL TO service_role USING (true) WITH CHECK (true);
 CREATE POLICY "Service role access members" ON clan_access_members FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Service role ingestion jobs" ON ingestion_jobs FOR ALL TO service_role USING (true) WITH CHECK (true);
 
 -- Create storage bucket for files
 INSERT INTO storage.buckets (id, name, public) VALUES ('snapshots', 'snapshots', true);

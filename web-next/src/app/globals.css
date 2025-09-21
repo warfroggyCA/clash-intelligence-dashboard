@@ -196,17 +196,6 @@ th { @apply text-left font-semibold; }
   color: rgba(244, 248, 255, 0.95);
 }
 
-/* High specificity test for debugging */
-div.glass-card[data-panel="roster-stats"] {
-  color: rgba(244, 248, 255, 0.95) !important;
-  background: linear-gradient(150deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86)) !important;
-  border: 1px solid rgba(255,255,255,0.26) !important;
-  border-radius: 2rem !important;
-  padding: 1.5rem !important;
-  display: block !important;
-  visibility: visible !important;
-}
-
 .glass-card::before {
   content: "";
   position: absolute;
@@ -314,16 +303,16 @@ div.glass-card[data-panel="roster-stats"] {
 
 .clash-card {
   @apply relative overflow-hidden rounded-2xl border;
-  background: var(--clash-bg-glass);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  border-color: rgba(255, 215, 0, 0.2);
+  background: white;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  border-color: rgba(0, 0, 0, 0.1);
 }
 
 .clash-card::before {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), transparent 50%);
+  background: transparent;
   pointer-events: none;
 }
 
@@ -354,23 +343,23 @@ div.glass-card[data-panel="roster-stats"] {
 
 /* Light theme table styles */
 [data-theme="light"] .clash-table th {
-  background-color: rgba(248, 250, 252, 0.9);
-  border-color: rgba(184, 134, 11, 0.4);
-  color: #0F172A;
+  background-color: white;
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #1e3a8a;
 }
 
 [data-theme="light"] .clash-table td {
   border-color: rgba(148, 163, 184, 0.4);
   color: #0F172A;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: white;
 }
 
 [data-theme="light"] .clash-table tr:hover {
-  background-color: rgba(184, 134, 11, 0.08);
+  background-color: rgba(0, 0, 0, 0.02);
 }
 
 [data-theme="light"] .clash-table tr:nth-child(even) {
-  background-color: rgba(248, 250, 252, 0.5);
+  background-color: white;
 }
 
 /* Light theme general component styles */

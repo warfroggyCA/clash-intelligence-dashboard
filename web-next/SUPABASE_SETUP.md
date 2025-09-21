@@ -19,10 +19,11 @@
 3. Copy and paste the contents of `supabase-schema.sql` into the editor
 4. Click "Run" to execute the schema
 
-This will create:
-- `snapshots` table for storing snapshot metadata
-- `tenure_ledger` table for tenure data
-- Storage buckets for files
+This will create (among other tables):
+- `snapshots`, `clan_snapshots`, and related indexes for snapshot storage
+- `batch_ai_results`, `player_dna_cache`, `ai_summaries` for AI output
+- `ingestion_jobs` for tracking ingestion worker runs (required for the new ingestion pipeline)
+- Storage buckets and access tables for access management
 - Proper indexes and security policies
 
 ## 3. Configure Environment Variables
@@ -37,6 +38,7 @@ This will create:
    - Add these variables:
      - `NEXT_PUBLIC_SUPABASE_URL` = your project URL
      - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = your anon key
+     - `SUPABASE_SERVICE_ROLE_KEY` = service role key (required for ingestion job tracking)
 
 ## 4. Deploy to Vercel
 
@@ -97,7 +99,8 @@ If you get authentication errors:
 2. Ensure the anon key has the right permissions
 3. Verify the project URL is correct
 
-If uploads fail:
+If uploads or ingestion jobs fail:
 1. Check Supabase logs in the dashboard
 2. Verify storage buckets exist
-3. Check file size limits
+3. Ensure the `ingestion_jobs` table exists (re-run the schema SQL if needed)
+4. Check file size limits

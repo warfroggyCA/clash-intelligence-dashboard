@@ -27,6 +27,7 @@ import { PlayerProfileModal } from './PlayerProfileModal';
 import SettingsModal from './SettingsModal';
 import { showToast } from '@/lib/toast';
 import { QuickDepartureModal } from './QuickDepartureModal';
+import IngestionMonitor from './IngestionMonitor';
 
 // =============================================================================
 // TYPES
@@ -239,6 +240,21 @@ const PlayerProfileModals: React.FC = () => {
   );
 };
 
+const IngestionMonitorModal: React.FC = () => {
+  const { showIngestionMonitor, setShowIngestionMonitor, ingestionJobId } = useDashboardStore();
+
+  if (!showIngestionMonitor) return null;
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-900/60">
+      <IngestionMonitor
+        jobId={ingestionJobId || undefined}
+        onClose={() => setShowIngestionMonitor(false)}
+      />
+    </div>
+  );
+};
+
 // =============================================================================
 // MAIN COMPONENT
 // =============================================================================
@@ -257,6 +273,9 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({ className = ''
       
       {/* Player Profile Modals */}
       <PlayerProfileModals />
+
+      {/* Ingestion Monitor */}
+      <IngestionMonitorModal />
     </div>
   );
 };

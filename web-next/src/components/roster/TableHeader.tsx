@@ -59,7 +59,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Role',
     group: 'Basic Info',
     sortable: true,
-    className: 'text-center border-r border-slate-300',
+    className: 'text-center border-r border-gray-300',
     description: 'Clan role (Leader, Co-Leader, Elder, Member)'
   },
   {
@@ -77,7 +77,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Trophies',
     group: 'Basic Info',
     sortable: true,
-    className: 'text-center border-r border-slate-400',
+    className: 'text-center border-r border-gray-400',
     description: 'Current trophy count'
   },
   {
@@ -86,7 +86,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'BK',
     group: 'Heroes',
     sortable: true,
-    className: 'bg-slate-100 text-center border-r border-slate-300',
+    className: 'bg-gray-100 text-center border-r border-gray-300',
     description: 'Barbarian King level'
   },
   {
@@ -95,7 +95,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'AQ',
     group: 'Heroes',
     sortable: true,
-    className: 'bg-slate-100 text-center border-r border-slate-300',
+    className: 'bg-gray-100 text-center border-r border-gray-300',
     description: 'Archer Queen level'
   },
   {
@@ -104,7 +104,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'GW',
     group: 'Heroes',
     sortable: true,
-    className: 'bg-slate-100 text-center border-r border-slate-300',
+    className: 'bg-gray-100 text-center border-r border-gray-300',
     description: 'Grand Warden level'
   },
   {
@@ -113,7 +113,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'RC',
     group: 'Heroes',
     sortable: true,
-    className: 'bg-slate-100 text-center border-r border-slate-300',
+    className: 'bg-gray-100 text-center border-r border-gray-300',
     description: 'Royal Champion level'
   },
   {
@@ -122,7 +122,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'MP',
     group: 'Heroes',
     sortable: true,
-    className: 'bg-slate-100 text-center border-r border-slate-300',
+    className: 'bg-gray-100 text-center border-r border-gray-300',
     description: 'Master Builder level'
   },
   {
@@ -131,7 +131,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Hero %',
     group: 'Analysis',
     sortable: true,
-    className: 'text-center border-r border-slate-300',
+    className: 'text-center border-r border-gray-300',
     description: 'Hero Rush includes BK, AQ, GW, RC, MP'
   },
   {
@@ -140,7 +140,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Overall %',
     group: 'Analysis',
     sortable: true,
-    className: 'text-center border-r border-slate-300',
+    className: 'text-center border-r border-gray-300',
     description: 'Overall rush (heroes only for now)'
   },
   {
@@ -149,7 +149,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Activity',
     group: 'Analysis',
     sortable: true,
-    className: 'text-center border-r border-slate-300',
+    className: 'text-center border-r border-gray-300',
     description: 'Activity level based on recent changes'
   },
   {
@@ -158,7 +158,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Given',
     group: 'Donations',
     sortable: true,
-    className: 'text-center border-r border-slate-300',
+    className: 'text-center border-r border-gray-300',
     description: 'Donations given this season'
   },
   {
@@ -167,7 +167,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Received',
     group: 'Donations',
     sortable: true,
-    className: 'text-center border-r border-slate-300',
+    className: 'text-center border-r border-gray-300',
     description: 'Donations received this season'
   },
   {
@@ -176,7 +176,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     shortLabel: 'Tenure',
     group: 'Stats',
     sortable: true,
-    className: 'text-center border-r border-slate-300',
+    className: 'text-center border-r border-gray-300',
     description: 'Days in clan'
   },
   {
@@ -252,7 +252,7 @@ interface SortIndicatorProps {
 const SortIndicator: React.FC<SortIndicatorProps> = ({ isActive, direction }) => {
   if (!isActive) {
     return (
-      <span className="text-slate-400 ml-1">
+      <span className="text-gray-400 ml-1">
         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
         </svg>
@@ -261,14 +261,14 @@ const SortIndicator: React.FC<SortIndicatorProps> = ({ isActive, direction }) =>
   }
 
   return (
-    <span className="text-clash-orange ml-1">
+    <span className={`${isActive ? '!text-white' : 'text-blue-600'} ml-1`}>
       {direction === 'asc' ? (
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" />
         </svg>
       ) : (
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
         </svg>
       )}
     </span>
@@ -293,14 +293,15 @@ const HeaderCell: React.FC<HeaderCellProps> = ({ config, isActive, direction, on
     }
   };
 
-  const baseStyles = "py-3 px-4 font-semibold text-clash-gold transition-colors";
-  const activeStyles = isActive ? "bg-clash-gold/20 border-clash-gold/50 text-clash-gold" : "";
-  const hoverStyles = config.sortable ? "hover:bg-clash-gold/10 cursor-pointer" : "cursor-default";
+  const baseStyles = "py-3 px-4 font-semibold text-blue-800 transition-colors";
+  const activeStyles = isActive ? "!bg-blue-800 !border-blue-600 !text-white" : "";
+  const hoverStyles = config.sortable ? "hover:bg-blue-50 cursor-pointer" : "cursor-default";
   const sortableStyles = config.sortable ? "cursor-pointer" : "cursor-default";
 
   return (
     <th
       className={`${baseStyles} ${activeStyles} ${hoverStyles} ${config.className || ''}`}
+      style={isActive ? { backgroundColor: '#1e40af', color: '#ffffff', borderColor: '#1d4ed8' } : {}}
       onClick={handleClick}
       title={config.description}
       aria-sort={isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
@@ -336,12 +337,12 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
   return (
     <thead className={`text-left ${className}`}>
       {/* Grouping Headers Row */}
-      <tr className="bg-gradient-to-r from-slate-800 to-slate-700 border-b border-clash-gold/20">
+      <tr className="bg-gradient-to-r from-gray-100 to-gray-200 border-b border-gray-400">
         {GROUP_CONFIGS.map((group, index) => (
           <th
             key={group.name}
             colSpan={group.columns}
-            className={`py-2 px-4 font-bold text-clash-gold text-center ${group.className}`}
+            className={`py-2 px-4 font-bold text-blue-800 text-center ${group.className}`}
           >
             <div className="flex items-center justify-center gap-2">
               <span className="text-sm">{group.icon}</span>
@@ -352,7 +353,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
       </tr>
       
       {/* Column Headers Row */}
-      <tr className="bg-gradient-to-r from-slate-700/50 to-slate-600/50 border-b border-slate-600/50">
+      <tr className="bg-gradient-to-r from-gray-200 to-gray-300 border-b border-gray-400">
         {COLUMN_CONFIGS.map((config) => (
           <HeaderCell
             key={config.key}

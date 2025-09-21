@@ -4,6 +4,7 @@
 import OpenAI from 'openai';
 import { MemberChange, ChangeSummary } from './snapshots';
 import { calculatePlayerDNA, calculateClanDNA, classifyPlayerArchetype } from './player-dna';
+import { groupMemberChanges, formatAggregatedChange } from './insights-utils';
 
 export const SMART_INSIGHTS_SCHEMA_VERSION = '1.0.0';
 
@@ -131,6 +132,7 @@ export interface InsightsBundle {
   timestamp: string;
   clanTag: string;
   date?: string;
+  changes?: MemberChange[];
   changeSummary?: SnapshotSummaryAnalysis;
   coachingInsights?: CoachingInsight[];
   playerDNAInsights?: PlayerDNAInsights[];
@@ -217,6 +219,7 @@ export class InsightsEngine {
       timestamp: new Date().toISOString(),
       clanTag,
       date,
+      changes,
     };
 
     const playerOfTheDay = calculatePlayerOfTheDay(changes);
@@ -1023,12 +1026,16 @@ export function composeSmartInsightsPayload({
 
   const headlines: SmartInsightsHeadline[] = [];
 
+  const aggregatedChanges = bundle.changes ? groupMemberChanges(bundle.changes) : [];
+
   if (bundle.changeSummary) {
-    const changeBullets = (bundle.changeSummary.insights && bundle.changeSummary.insights.length
-      ? bundle.changeSummary.insights
-      : bundle.changeSummary.recommendations || []).map((item) => item.trim());
-    const changeTitle = truncate(changeBullets[0] || bundle.changeSummary.content || 'Key roster shifts');
-    const changeItems = changeBullets.length ? changeBullets : (bundle.changeSummary.content ? [bundle.changeSummary.content] : []);
+    const mergedInsights = aggregatedChanges.length
+      ? aggregatedChanges.map(formatAggregatedChange)
+      : (bundle.changeSummary.insights && bundle.changeSummary.insights.length
+        ? bundle.changeSummary.insights
+        : bundle.changeSummary.recommendations || []).map((item) => item.trim());
+    const changeTitle = truncate(mergedInsights[0] || bundle.changeSummary.content || 'Key activity');
+    const changeItems = mergedInsights.length ? mergedInsights : (bundle.changeSummary.content ? [bundle.changeSummary.content] : []);
     const changeDetail = formatDetail(changeItems);
     headlines.push({
       id: 'headline-change',
