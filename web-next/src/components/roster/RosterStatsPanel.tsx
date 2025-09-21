@@ -61,8 +61,8 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   }, [roster]);
 
   return (
-      <div
-        className="glass-card"
+      <GlassCard
+        className={mergedClassName}
         data-panel="roster-stats"
       >
         {!stats ? (
@@ -116,7 +116,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
             </div>
           </div>
         )}
-      </div>
+      </GlassCard>
     );
 };
 
