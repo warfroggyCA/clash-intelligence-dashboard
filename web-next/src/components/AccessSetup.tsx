@@ -73,7 +73,7 @@ export default function AccessSetup({ clanTag, clanName, onAccessCreated, onClos
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
             <h3 className="font-semibold text-blue-900 mb-2">How it works:</h3>
             <ul className="text-sm text-blue-800 space-y-1">
-              <li>• You'll get a unique password as the clan owner</li>
+              <li>• You&apos;ll get a unique password as the clan owner</li>
               <li>• You can add clan members and assign them individual passwords</li>
               <li>• Each member gets their own access level (viewer, member, elder, etc.)</li>
               <li>• You can revoke access instantly when someone leaves</li>
@@ -126,7 +126,7 @@ export default function AccessSetup({ clanTag, clanName, onAccessCreated, onClos
         </div>
 
         <div className="mt-4 text-xs text-gray-500">
-          <p><strong>Note:</strong> This will create a secure access system for your clan. You'll receive a password that you must save to manage access for your members.</p>
+          <p><strong>Note:</strong> This will create a secure access system for your clan. You&apos;ll receive a password that you must save to manage access for your members.</p>
         </div>
       </div>
     </div>

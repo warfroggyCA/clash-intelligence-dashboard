@@ -255,7 +255,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const [showFilters, setShowFilters] = useState(false);
 
   // Get members from roster
-  const members = roster?.members || [];
+  const members = useMemo(() => roster?.members ?? [], [roster?.members]);
 
   // Apply sorting and filtering
   const sortedMembers = useMemo(() => {

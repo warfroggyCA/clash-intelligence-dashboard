@@ -216,7 +216,7 @@ export default function AccessManager({ clanTag, clanName, onClose }: AccessMana
             <div className="text-4xl mb-4">🔐</div>
             <h3 className="text-lg font-semibold text-blue-800 mb-2">Access Control Not Set Up</h3>
             <p className="text-blue-700 mb-4">
-              This clan doesn't have access control configured yet. Set up access management to control who can view and manage clan data.
+              This clan doesn&apos;t have access control configured yet. Set up access management to control who can view and manage clan data.
             </p>
             <button
               onClick={() => {

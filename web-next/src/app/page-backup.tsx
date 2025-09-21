@@ -1,3 +1,5 @@
+/* eslint-disable */
+
 /**
  * Clash Intelligence Dashboard - Main Dashboard
  * 

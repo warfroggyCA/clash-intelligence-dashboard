@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Image from 'next/image';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
@@ -131,9 +132,9 @@ const DashboardHeader: React.FC = () => {
     
     // Set default home clan if none is set
     if (!homeClan) {
-    setHomeClan('#2PR8R8V8P');
+      setHomeClan('#2PR8R8V8P');
     }
-  }, []); // Empty dependency array - runs only once on mount
+  }, [homeClan, setHomeClan]); // Runs when homeClan context changes
 
   // Separate effect for auto-loading home clan
   useEffect(() => {
@@ -168,10 +169,13 @@ const DashboardHeader: React.FC = () => {
         <div className="col-[1] sm:col-[2] row-[1] row-span-2 flex justify-center">
           <div className="flex items-center gap-3 sm:gap-4">
             <div className="relative h-14 w-14 sm:h-16 sm:w-16">
-              <img
+              <Image
                 src={logoSrc}
                 alt="Clan Logo"
-                className="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover ring-2 ring-white/30 bg-white/10 shadow-lg"
+                fill
+                sizes="(max-width: 640px) 3.5rem, 4rem"
+                className="rounded-xl object-cover ring-2 ring-white/30 bg-white/10 shadow-lg"
+                priority
               />
             </div>
             <div className="text-center sm:text-left">
@@ -372,7 +376,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
                   <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-high-contrast">Today's Headlines</h3>
+                  <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
                 </div>
                 <SmartInsightsHeadlines className="min-h-[18rem]" />
               </div>

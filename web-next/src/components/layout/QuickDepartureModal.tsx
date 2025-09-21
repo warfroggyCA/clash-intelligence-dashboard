@@ -204,7 +204,7 @@ export const QuickDepartureModal: React.FC<QuickDepartureModalProps> = ({
             <div className="flex items-start">
               <div className="text-yellow-600 mr-2">⚠️</div>
               <div className="text-sm text-yellow-800">
-                <strong>Note:</strong> This action will record the member's departure and may affect 
+                <strong>Note:</strong> This action will record the member&apos;s departure and may affect 
                 clan statistics and analytics. This action cannot be undone.
               </div>
             </div>

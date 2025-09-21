@@ -4,10 +4,8 @@ import React from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 
 export default function DevStatusBadge() {
-  if (process.env.NODE_ENV !== 'development') return null;
   const { lastLoadInfo, status } = useDashboardStore();
-
-  if (!lastLoadInfo) return null;
+  if (process.env.NODE_ENV !== 'development' || !lastLoadInfo) return null;
   const { source, ms, tenureMatches, total } = lastLoadInfo;
 
   const color = source === 'live' ? 'bg-emerald-600' : source === 'snapshot' ? 'bg-sky-600' : 'bg-gray-600';
@@ -25,4 +23,3 @@ export default function DevStatusBadge() {
     </div>
   );
 }
-

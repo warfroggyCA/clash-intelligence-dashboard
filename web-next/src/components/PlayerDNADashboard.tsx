@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   PlayerDNA, 
   PlayerArchetype, 
@@ -36,13 +36,7 @@ export default function PlayerDNADashboard({ members, clanTag }: PlayerDNADashbo
   const [cachedDNAs, setCachedDNAs] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Load cached DNA profiles from stored insights results
-  useEffect(() => {
-    if (!insightsEnabled) return; // Skip in dev unless explicitly enabled
-    loadCachedDNAs();
-  }, [clanTag, insightsEnabled]);
-
-  const loadCachedDNAs = async () => {
+  const loadCachedDNAs = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/ai/dna-cache?clanTag=${encodeURIComponent(clanTag)}`);
@@ -58,7 +52,13 @@ export default function PlayerDNADashboard({ members, clanTag }: PlayerDNADashbo
     } finally {
       setLoading(false);
     }
-  };
+  }, [clanTag]);
+
+  // Load cached DNA profiles from stored insights results
+  useEffect(() => {
+    if (!insightsEnabled) return; // Skip in dev unless explicitly enabled
+    loadCachedDNAs();
+  }, [insightsEnabled, loadCachedDNAs]);
 
   // Calculate DNA for all members (with fallback to real-time calculation)
   const memberDNAs = useMemo(() => {

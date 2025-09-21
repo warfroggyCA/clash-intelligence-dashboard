@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AlertCircle, UserX, UserCheck, Clock, MessageSquare, X } from "lucide-react";
 import { safeLocaleDateString } from '@/lib/date';
 
@@ -47,18 +47,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
 
-  useEffect(() => {
-    // Use cached data immediately for instant loading
-    if (cachedNotifications) {
-      setNotifications(cachedNotifications);
-      setLoading(false);
-    } else {
-      // Only load if no cached data is available
-      loadNotifications();
-    }
-  }, [clanTag, cachedNotifications]);
-
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     try {
       setRefreshing(true);
       const response = await fetch(`/api/departures/notifications?clanTag=${encodeURIComponent(clanTag)}`);
@@ -73,7 +62,18 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [clanTag]);
+
+  useEffect(() => {
+    // Use cached data immediately for instant loading
+    if (cachedNotifications) {
+      setNotifications(cachedNotifications);
+      setLoading(false);
+    } else {
+      // Only load if no cached data is available
+      loadNotifications();
+    }
+  }, [cachedNotifications, loadNotifications]);
 
   const updateDeparture = async (departure: DepartureRecord) => {
     try {

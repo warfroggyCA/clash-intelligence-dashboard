@@ -318,7 +318,7 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
             <div className="mt-1 flex flex-wrap gap-2">
               {filters.search && (
                 <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
-                  Search: "{filters.search}"
+                  Search: &quot;{filters.search}&quot;
                 </span>
               )}
               {filters.role !== 'all' && (

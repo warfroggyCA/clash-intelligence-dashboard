@@ -18,8 +18,11 @@ export default function ClanAnalytics() {
 
   const memberCount = snapshotMetadata?.memberCount ?? roster?.members?.length ?? 0;
 
-  const warLog = snapshotDetails?.warLog ?? [];
-  const capitalSeasons = snapshotDetails?.capitalRaidSeasons ?? [];
+  const warLog = useMemo(() => snapshotDetails?.warLog ?? [], [snapshotDetails?.warLog]);
+  const capitalSeasons = useMemo(
+    () => snapshotDetails?.capitalRaidSeasons ?? [],
+    [snapshotDetails?.capitalRaidSeasons]
+  );
 
   const { winRate, lastWars } = useMemo(() => {
     if (!warLog.length) {

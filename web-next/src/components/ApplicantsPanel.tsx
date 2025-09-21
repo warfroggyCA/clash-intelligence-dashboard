@@ -523,7 +523,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             <h2 className="text-xl font-semibold text-gray-900">Scan External Clan</h2>
           </div>
           
-          <p className="text-gray-600 mb-6">Fetch a clan roster by tag, score all members against your clan's profile, and return the top N. Apply the same filters.</p>
+          <p className="text-gray-600 mb-6">Fetch a clan roster by tag, score all members against your clan&apos;s profile, and return the top N. Apply the same filters.</p>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Clan Tag Input */}

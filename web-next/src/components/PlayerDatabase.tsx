@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { X, Plus } from "lucide-react";
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import CreatePlayerNoteModal from "./CreatePlayerNoteModal";
@@ -31,22 +31,78 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [showCreatePlayerNote, setShowCreatePlayerNote] = useState(false);
 
-  useEffect(() => {
-    loadPlayerDatabase();
-    applyPlayerNameResolutions();
-    // Note: syncDepartureData() removed from automatic execution to prevent duplicates
-    // Users can manually sync using the "Sync Departures" button
+  // Function to load player database from localStorage
+  const loadPlayerDatabase = useCallback(() => {
+    try {
+      setLoading(true);
+      const playerRecords: PlayerRecord[] = [];
+
+      // Get all localStorage keys at once to avoid repeated key() calls
+      const allKeys = Object.keys(localStorage);
+      const noteKeys = allKeys.filter(key => key.startsWith('player_notes_'));
+
+      // Process in batches to avoid blocking the UI
+      const processBatch = (keys: string[], startIndex: number = 0) => {
+        const batchSize = 10; // Process 10 at a time
+        const batch = keys.slice(startIndex, startIndex + batchSize);
+
+        batch.forEach(key => {
+          const playerTag = key.replace('player_notes_', '');
+          const notes = JSON.parse(localStorage.getItem(key) || '[]');
+
+          if (notes.length > 0) {
+            // Get player name if stored
+            const nameKey = `player_name_${playerTag}`;
+            const playerName = localStorage.getItem(nameKey) || 'Unknown Player';
+
+            // Find most recent note timestamp
+            const lastUpdated = notes.reduce((latest: string, note: PlayerNote) => {
+              return note.timestamp > latest ? note.timestamp : latest;
+            }, notes[0]?.timestamp || '');
+
+            // Only include players who are NOT currently in the clan
+            if (!currentClanMembers.includes(playerTag)) {
+              playerRecords.push({
+                tag: playerTag,
+                name: playerName,
+                notes,
+                lastUpdated
+              });
+            }
+          }
+        });
+
+        // Continue with next batch if there are more keys
+        if (startIndex + batchSize < keys.length) {
+          setTimeout(() => processBatch(keys, startIndex + batchSize), 0);
+        } else {
+          // All batches processed, sort and update state
+          playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
+          setPlayers(playerRecords);
+          setLoading(false);
+        }
+      };
+
+      if (noteKeys.length === 0) {
+        setLoading(false);
+      } else {
+        processBatch(noteKeys);
+      }
+    } catch (error) {
+      console.error('Failed to load player database:', error);
+      setLoading(false);
+    }
   }, [currentClanMembers]);
 
   // Function to apply player name resolutions from the cron job
-  const applyPlayerNameResolutions = async () => {
+  const applyPlayerNameResolutions = useCallback(async () => {
     try {
       const response = await fetch('/api/player-resolver');
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.playerNames) {
           let resolved = 0;
-          
+
           // Update localStorage with resolved names
           Object.entries(data.playerNames).forEach(([playerTag, playerName]) => {
             const nameKey = `player_name_${playerTag}`;
@@ -58,7 +114,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
               resolved++;
             }
           });
-          
+
           if (resolved > 0) {
             console.log(`[PlayerDatabase] Resolved ${resolved} unknown player names`);
             // Reload data to show updated names
@@ -69,7 +125,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
     } catch (error) {
       console.error('[PlayerDatabase] Error applying player name resolutions:', error);
     }
-  };
+  }, [loadPlayerDatabase]);
 
   // Function to sync departure data and create player notes
   const syncDepartureData = async () => {
@@ -219,67 +275,13 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
     }
   };
 
-  const loadPlayerDatabase = () => {
-    try {
-      setLoading(true);
-      const playerRecords: PlayerRecord[] = [];
-      
-      // Get all localStorage keys at once to avoid repeated key() calls
-      const allKeys = Object.keys(localStorage);
-      const noteKeys = allKeys.filter(key => key.startsWith('player_notes_'));
-      
-      // Process in batches to avoid blocking the UI
-      const processBatch = (keys: string[], startIndex: number = 0) => {
-        const batchSize = 10; // Process 10 at a time
-        const batch = keys.slice(startIndex, startIndex + batchSize);
-        
-        batch.forEach(key => {
-          const playerTag = key.replace('player_notes_', '');
-          const notes = JSON.parse(localStorage.getItem(key) || '[]');
-          
-          if (notes.length > 0) {
-            // Get player name if stored
-            const nameKey = `player_name_${playerTag}`;
-            const playerName = localStorage.getItem(nameKey) || 'Unknown Player';
-            
-            // Find most recent note timestamp
-            const lastUpdated = notes.reduce((latest: string, note: PlayerNote) => {
-              return note.timestamp > latest ? note.timestamp : latest;
-            }, notes[0]?.timestamp || '');
-            
-            // Only include players who are NOT currently in the clan
-            if (!currentClanMembers.includes(playerTag)) {
-              playerRecords.push({
-                tag: playerTag,
-                name: playerName,
-                notes,
-                lastUpdated
-              });
-            }
-          }
-        });
-        
-        // Continue with next batch if there are more keys
-        if (startIndex + batchSize < keys.length) {
-          setTimeout(() => processBatch(keys, startIndex + batchSize), 0);
-        } else {
-          // All batches processed, sort and update state
-          playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
-          setPlayers(playerRecords);
-          setLoading(false);
-        }
-      };
-      
-      if (noteKeys.length === 0) {
-        setLoading(false);
-      } else {
-        processBatch(noteKeys);
-      }
-    } catch (error) {
-      console.error('Failed to load player database:', error);
-      setLoading(false);
-    }
-  };
+  // Initial load on mount and when dependencies change
+  useEffect(() => {
+    loadPlayerDatabase();
+    applyPlayerNameResolutions();
+    // Note: syncDepartureData() removed from automatic execution to prevent duplicates
+    // Users can manually sync using the "Sync Departures" button
+  }, [loadPlayerDatabase, applyPlayerNameResolutions]);
 
   const filteredPlayers = players.filter(player =>
     player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -491,10 +493,10 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
               </div>
               
               {selectedPlayer.notes.length === 0 ? (
-                <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
+            <div className="text-center py-12 text-gray-500 bg-gray-50 rounded-lg">
                   <div className="text-4xl mb-3">📝</div>
                   <p className="text-lg mb-2">No notes added yet</p>
-                  <p className="text-sm">Click "Add Note" to create your first note for this player</p>
+                  <p className="text-sm">Click &quot;Add Note&quot; to create your first note for this player</p>
                 </div>
               ) : (
                 <div className="space-y-3">

@@ -72,7 +72,7 @@ export default function AccessLogin({ clanTag, clanName, onAccessGranted, onClos
               <div>
                 <h3 className="font-semibold text-yellow-900">Clan Access Required</h3>
                 <p className="text-sm text-yellow-800 mt-1">
-                  Enter your individual access password to view this clan's dashboard.
+                Enter your individual access password to view this clan&apos;s dashboard.
                 </p>
               </div>
             </div>
