@@ -186,81 +186,96 @@ const DashboardHeader: React.FC = () => {
           </div>
         </div>
 
-        {/* Right (row 1): Access level + tiny controls */}
-        <div className="flex items-center justify-end gap-2 col-[3] row-[1]">
+        {/* Right: Clean, organized controls */}
+        <div className="flex items-center justify-end gap-3 col-[3] row-[1] row-span-2">
+          {/* Access Level Badge */}
           <span className="hidden md:inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-md">
             {accessLevelLabel}
           </span>
 
-          {/* Access Management */}
-          <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
-            <button
-              onClick={() => setShowAccessManager(true)}
-              className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm"
-              title="Manage clan access"
-            >
-              👥
-            </button>
-          </LeadershipGuard>
-
-          {/* Font Size Control */}
-          <div className="hidden md:block scale-90 origin-right"><FontSizeControl /></div>
-
-          {/* FAQ */}
-          <a href="/faq" className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm inline-flex items-center" title="FAQ">❓</a>
-
-          {/* Refresh */}
-          <button onClick={handleRefresh} className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" title="Refresh">🔄</button>
-
-          {/* Quick Actions */}
-          <div className="hidden xl:block">
+          {/* Primary Actions Group */}
+          <div className="flex items-center gap-2">
+            {/* Quick Actions - Always visible */}
             <QuickActionsMenu variant="inline" />
+            
+            {/* Theme Toggle */}
+            <ThemeToggle size="sm" />
           </div>
 
-          {/* Theme Toggle */}
-          <ThemeToggle size="sm" />
-
-          {/* Settings */}
-          <button 
-            onClick={() => {
-          setShowSettings(true);
-            }} 
-            className="h-8 px-2 hover:bg-indigo-600 rounded-md text-sm" 
-            title="Settings"
-            type="button"
-          >
-            ⚙️
-          </button>
-
-          {/* Departure Notifications */}
-          <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
-            {departureNotifications > 0 && (
-              <button
-                onClick={() => setShowDepartureManager(true)}
-                className="relative h-8 px-2 hover:bg-indigo-600 rounded-md text-sm"
-                title="Member departure notifications"
-              >
-                🔔
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] rounded-full h-5 w-5 flex items-center justify-center">
-                  {departureNotifications}
-                </span>
-              </button>
-            )}
-          </LeadershipGuard>
-        </div>
-        {/* Row 2 (right column): Clan context chips */}
-        <div className="col-[3] row-[2]">
-          <div className="flex flex-col sm:flex-row items-center justify-end gap-2 text-xs">
-            <button
-              onClick={() => setShowSettings(true)}
-              className="h-8 px-3 bg-white/15 hover:bg-white/25 text-white rounded-md transition-all border border-white/30"
-              title="Manage clan settings"
-              type="button"
+          {/* Secondary Actions Dropdown */}
+          <div className="relative group">
+            <button 
+              className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-md transition-colors"
+              title="More options"
             >
-              Manage Clans
+              ⋯
             </button>
-            <div className="w-full sm:w-auto xl:hidden">
-              <QuickActionsMenu variant="inline" />
+            <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-slate-600 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+              <div className="py-2">
+                {/* Access Management */}
+                <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
+                  <button
+                    onClick={() => setShowAccessManager(true)}
+                    className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                  >
+                    👥 Manage Access
+                  </button>
+                </LeadershipGuard>
+
+                {/* Settings */}
+                <button 
+                  onClick={() => setShowSettings(true)}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  ⚙️ Settings
+                </button>
+
+                {/* Manage Clans */}
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  🏰 Manage Clans
+                </button>
+
+                {/* FAQ */}
+                <a 
+                  href="/faq" 
+                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  ❓ FAQ
+                </a>
+
+                {/* Refresh */}
+                <button 
+                  onClick={handleRefresh}
+                  className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2"
+                >
+                  🔄 Refresh
+                </button>
+
+                {/* Font Size Control */}
+                <div className="px-4 py-2">
+                  <div className="scale-90 origin-left">
+                    <FontSizeControl />
+                  </div>
+                </div>
+
+                {/* Departure Notifications */}
+                <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
+                  {departureNotifications > 0 && (
+                    <button
+                      onClick={() => setShowDepartureManager(true)}
+                      className="w-full px-4 py-2 text-left text-sm text-slate-200 hover:bg-slate-700 flex items-center gap-2 relative"
+                    >
+                      🔔 Departures
+                      <span className="ml-auto bg-red-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center">
+                        {departureNotifications}
+                      </span>
+                    </button>
+                  )}
+                </LeadershipGuard>
+              </div>
             </div>
           </div>
         </div>
