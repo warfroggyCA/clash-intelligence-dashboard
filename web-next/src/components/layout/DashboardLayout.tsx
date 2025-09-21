@@ -15,7 +15,7 @@ import DevStatusBadge from './DevStatusBadge';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
 import { safeTagForFilename } from '@/lib/tags';
 import { QuickActionsMenu } from './QuickActionsMenu';
-import { Button, ThemeToggle, GlassCard } from '@/components/ui';
+import { ThemeToggle, GlassCard } from '@/components/ui';
 
 const LoadingCard = () => (
   <GlassCard className="min-h-[18rem] animate-pulse">
@@ -27,19 +27,15 @@ const LoadingCard = () => (
   </GlassCard>
 );
 
-// Temporarily use direct imports to test CSS loading
-import { RosterStatsPanel } from '@/components/roster/RosterStatsPanel';
-import { RosterHighlightsPanel } from '@/components/roster/RosterHighlightsPanel';
+const RosterStatsPanel = dynamic(
+  () => import('@/components/roster/RosterStatsPanel'),
+  { ssr: false, loading: LoadingCard }
+);
 
-// const RosterStatsPanel = dynamic(
-//   () => import('@/components/roster/RosterStatsPanel'),
-//   { ssr: false, loading: LoadingCard }
-// );
-
-// const RosterHighlightsPanel = dynamic(
-//   () => import('@/components/roster/RosterHighlightsPanel'),
-//   { ssr: false, loading: LoadingCard }
-// );
+const RosterHighlightsPanel = dynamic(
+  () => import('@/components/roster/RosterHighlightsPanel'),
+  { ssr: false, loading: LoadingCard }
+);
 
 const SmartInsightsHeadlines = dynamic(
   () => import('@/components/SmartInsightsHeadlines'),
@@ -71,6 +67,7 @@ const DashboardHeader: React.FC = () => {
     setShowDepartureManager,
     setShowAccessManager,
     setShowSettings,
+    setShowIngestionMonitor,
     currentAccessMember,
     accessPermissions,
   } = useDashboardStore();
@@ -229,8 +226,8 @@ const DashboardHeader: React.FC = () => {
                     onClick={() => setShowAccessManager(true)}
                     className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
                     style={{ color: '#e2e8f0' }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                   >
                     👥 Manage Access
                   </button>
@@ -241,8 +238,8 @@ const DashboardHeader: React.FC = () => {
                   onClick={() => setShowSettings(true)}
                   className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
                   style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                 >
                   ⚙️ Settings
                 </button>
@@ -252,8 +249,8 @@ const DashboardHeader: React.FC = () => {
                   onClick={() => setShowSettings(true)}
                   className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
                   style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                 >
                   🏰 Manage Clans
                 </button>
@@ -263,8 +260,8 @@ const DashboardHeader: React.FC = () => {
                   href="/faq" 
                   className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
                   style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                 >
                   ❓ FAQ
                 </a>
@@ -274,10 +271,23 @@ const DashboardHeader: React.FC = () => {
                   onClick={handleRefresh}
                   className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
                   style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                 >
                   🔄 Refresh
+                </button>
+
+                {/* Ingestion Monitor */}
+                <button
+                  onClick={() => {
+                    setShowIngestionMonitor(true);
+                  }}
+                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
+                  style={{ color: '#e2e8f0' }}
+                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
+                >
+                  🧭 Ingestion Monitor
                 </button>
 
                 {/* Font Size Control */}
@@ -294,8 +304,8 @@ const DashboardHeader: React.FC = () => {
                       onClick={() => setShowDepartureManager(true)}
                       className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 relative transition-colors duration-150"
                       style={{ color: '#e2e8f0' }}
-                      onMouseEnter={(e) => e.target.style.backgroundColor = '#334155'}
-                      onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                      onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
+                      onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
                     >
                       🔔 Departures
                       <span 
@@ -325,19 +335,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   className = '',
 }) => {
   const activeTab = useDashboardStore((state) => state.activeTab);
-  const [debugKey, setDebugKey] = useState('primary');
-  const [ready, setReady] = useState(false);
-  const [forceRender, setForceRender] = useState(0);
-  
-  useEffect(() => {
-    console.log('🎯 DashboardLayout: Setting ready to true');
-    setReady(true);
-    // Force a re-render after hydration
-    setTimeout(() => {
-      console.log('🎯 DashboardLayout: Force re-render after hydration');
-      setForceRender(prev => prev + 1);
-    }, 100);
-  }, []);
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
@@ -359,43 +356,29 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         {/* Dev Status */}
         <DevStatusBadge />
         {activeTab === 'roster' && (
-          <>
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-2">
-                <Button
-                  onClick={() => setDebugKey(prev => prev === 'primary' ? 'alt' : 'primary')}
-                  size="sm"
-                  variant="outline"
-                  className="border-red-500/50 text-red-500 hover:bg-red-500/10 font-medium shadow-sm focus-ring"
-                >
-                  🔄 Debug Rerender
-                </Button>
+          <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)]">
+            <div className="flex h-full flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+                <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
               </div>
+              <SmartInsightsHeadlines className="min-h-[18rem] flex-1" />
             </div>
-            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] items-start">
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
-                </div>
-                <SmartInsightsHeadlines className="min-h-[18rem]" />
+            <div className="flex h-full flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
+                <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
               </div>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
-                </div>
-                  <RosterStatsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
-                  <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
-                </div>
-                  <RosterHighlightsPanel key={`${debugKey}-${forceRender}`} className="min-h-[18rem]" />
-              </div>
+              <RosterStatsPanel className="min-h-[18rem] flex-1" />
             </div>
-          </>
+            <div className="flex h-full flex-col gap-4">
+              <div className="flex items-center gap-2">
+                <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
+                <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
+              </div>
+              <RosterHighlightsPanel className="min-h-[18rem] flex-1" />
+            </div>
+          </div>
         )}
 
         {/* Page Content */}

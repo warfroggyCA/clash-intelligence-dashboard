@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useEffect } from 'react';
+import { useMemo } from 'react';
 import Image from 'next/image';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import {
@@ -26,20 +26,7 @@ interface RosterHighlightsPanelProps {
 }
 
 export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ className = '' }) => {
-  console.log('🎯 RosterHighlightsPanel mounted - dynamic module executed!');
-  
   const roster = useDashboardStore((state) => state.roster);
-
-  // Debug: Check DOM after mount
-  useEffect(() => {
-    console.log('[RosterHighlightsPanel] Component mounted');
-    const panelElement = document.querySelector('[data-panel="roster-highlights"]');
-    if (panelElement) {
-      console.log('[RosterHighlightsPanel] DOM after mount:', panelElement.outerHTML);
-    } else {
-      console.log('[RosterHighlightsPanel] Panel element not found in DOM');
-    }
-  }, []);
 
   const sections = useMemo<HighlightSection[]>(() => {
     if (!roster?.members?.length) {
@@ -108,61 +95,63 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
     ].filter((section) => section.entries.length > 0);
   }, [roster]);
 
-  return (
-    <GlassCard 
-      className={`${['min-h-[18rem]', className].filter(Boolean).join(' ')} !block !visible`} 
-      data-panel="roster-highlights"
-      style={{ display: 'block', visibility: 'visible', position: 'relative', zIndex: 10 }}
-    >
-      {!sections.length ? (
-        <div className="rounded-xl border border-white/20 bg-white/15 px-4 py-6 text-center text-sm text-white/90 font-medium">
+  const panelClassName = ['min-h-[18rem]', className].filter(Boolean).join(' ');
+
+  if (!sections.length) {
+    return (
+      <GlassCard className={`${panelClassName} flex`}>
+        <div className="flex-1 rounded-xl border border-white/20 bg-white/15 px-4 py-6 text-center text-sm text-white/90 font-medium">
           No highlights available yet.
         </div>
-      ) : (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {sections.map((section) => (
-              <div key={section.title} className="space-y-4">
-                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-white">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
-                    <Image 
-                      src={section.title.includes('Donator') ? '/assets/icons/donation.svg'
-                        : section.title.includes('Hero') ? '/assets/icons/hero.svg'
-                        : '/assets/icons/trophy.svg'} 
-                      alt="" 
-                      width={20} 
-                      height={20} 
-                      className="drop-shadow-sm" 
-                    />
-                  </div>
-                  <span className="drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{section.title}</span>
+      </GlassCard>
+    );
+  }
+
+  return (
+    <GlassCard className={`${panelClassName} flex flex-col`}>
+      <div className="max-h-72 flex-1 space-y-6 overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          {sections.map((section) => (
+            <div key={section.title} className="space-y-4">
+              <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-white">
+                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
+                  <Image
+                    src={section.title.includes('Donator') ? '/assets/icons/donation.svg'
+                      : section.title.includes('Hero') ? '/assets/icons/hero.svg'
+                      : '/assets/icons/trophy.svg'}
+                    alt=""
+                    width={20}
+                    height={20}
+                    className="drop-shadow-sm"
+                  />
                 </div>
-                <div className="space-y-3">
-                  {section.entries.slice(0, 3).map((entry) => (
-                    <div
-                      key={`${section.title}-${entry.name}`}
-                      className="rounded-xl border border-white/30 bg-gradient-to-r from-white/20 via-white/10 to-white/20 px-4 py-3 shadow-md backdrop-blur-sm"
-                    >
-                      <div className="flex items-center justify-between font-semibold text-white">
-                        <span className="truncate pr-3 text-sm drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.name}</span>
-                        <span className="text-sm text-amber-100 font-bold drop-shadow-sm" style={{ color: '#FCD34D', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.value}</span>
-                      </div>
-                      {entry.subtitle && (
-                        <div className="mt-2 text-xs text-white/80 drop-shadow-sm" style={{ color: '#E2E8F0', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.subtitle}</div>
-                      )}
-                    </div>
-                  ))}
-                  {section.entries.length > 3 && (
-                    <div className="py-2 text-center text-xs text-white/60 font-medium" style={{ color: '#94A3B8', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
-                      +{section.entries.length - 3} more
-                    </div>
-                  )}
-                </div>
+                <span className="drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{section.title}</span>
               </div>
-            ))}
-          </div>
+              <div className="space-y-3">
+                {section.entries.slice(0, 3).map((entry) => (
+                  <div
+                    key={`${section.title}-${entry.name}`}
+                    className="rounded-xl border border-white/30 bg-gradient-to-r from-white/20 via-white/10 to-white/20 px-4 py-3 shadow-md backdrop-blur-sm"
+                  >
+                    <div className="flex items-center justify-between font-semibold text-white">
+                      <span className="truncate pr-3 text-sm drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.name}</span>
+                      <span className="text-sm text-amber-100 font-bold drop-shadow-sm" style={{ color: '#FCD34D', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.value}</span>
+                    </div>
+                    {entry.subtitle && (
+                      <div className="mt-2 text-xs text-white/80 drop-shadow-sm" style={{ color: '#E2E8F0', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.subtitle}</div>
+                    )}
+                  </div>
+                ))}
+                {section.entries.length > 3 && (
+                  <div className="py-2 text-center text-xs text-white/60 font-medium" style={{ color: '#94A3B8', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
+                    +{section.entries.length - 3} more
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
     </GlassCard>
   );
 };
