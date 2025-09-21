@@ -1,3 +1,6 @@
+import Image from 'next/image';
+import Link from 'next/link';
+
 export default function FAQPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
@@ -6,22 +9,25 @@ export default function FAQPage() {
         <div className="max-w-7xl mx-auto px-6 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <img 
+              <Image 
                 src="https://cdn-assets-eu.frontify.com/s3/frontify-enterprise-files-eu/eyJwYXhoIjoic3VwZXJjZWxsXC9maWxlXC91OGFIS25ZUkpQaXlvVHh5a1Q0OC5wbmcifQ:supercell:8_pSWOLovwldaAWJu_t2Q6C91k6oc7p_mY0m9yar7G0?width=1218&format=webp&quality=100"
                 alt="Clash of Clans Logo"
+                width={180}
+                height={64}
                 className="h-16 w-auto object-contain"
+                priority
               />
               <div>
                 <h1 className="text-3xl font-bold">Clash Intelligence Dashboard</h1>
                 <p className="text-indigo-200">Frequently Asked Questions</p>
               </div>
             </div>
-            <a 
+            <Link 
               href="/"
               className="bg-white/20 hover:bg-white/30 px-4 py-2 rounded-lg transition-colors"
             >
               ← Back to Dashboard
-            </a>
+            </Link>
           </div>
         </div>
       </header>
@@ -62,7 +68,7 @@ export default function FAQPage() {
                 <p>
                   The <strong>Clash Intelligence Dashboard</strong> is a comprehensive clan management tool that provides 
                   data-driven insights to help clan leaders make informed decisions. It tracks member activity, 
-                  performance metrics, and provides strategic recommendations to improve your clan's success.
+                  performance metrics, and provides strategic recommendations to improve your clan&apos;s success.
                 </p>
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
                   <h4 className="font-semibold text-green-800 mb-2">🎯 Key Benefits:</h4>
@@ -124,7 +130,7 @@ export default function FAQPage() {
                       </li>
                       <li className="flex items-start">
                         <span className="text-green-600 mr-2">✓</span>
-                        <span><strong>Donations Given:</strong> Can't donate while offline</span>
+                        <span><strong>Donations Given:</strong> Can&apos;t donate while offline</span>
                       </li>
                       <li className="flex items-start">
                         <span className="text-green-600 mr-2">✓</span>
@@ -224,7 +230,7 @@ export default function FAQPage() {
 
                 <div className="bg-gray-50 rounded-lg p-4">
                   <h4 className="font-semibold text-gray-900 mb-3">📊 Contribution Consistency</h4>
-                  <p className="text-sm mb-2">How steady a player's performance is over time:</p>
+                  <p className="text-sm mb-2">How steady a player&apos;s performance is over time:</p>
                   <ul className="list-disc list-inside text-sm space-y-1">
                     <li><strong>Excellent (80%+):</strong> Very reliable performer</li>
                     <li><strong>Good (60-79%):</strong> Generally consistent</li>
@@ -304,7 +310,7 @@ export default function FAQPage() {
               <h3 className="text-2xl font-bold text-gray-900 mb-4">⚔️ War analytics guide</h3>
               <div className="space-y-4 text-gray-700">
                 <p>
-                  The war analytics feature provides comprehensive insights into your clan's war performance 
+                  The war analytics feature provides comprehensive insights into your clan&apos;s war performance 
                   and helps identify areas for improvement.
                 </p>
                 
@@ -337,7 +343,7 @@ export default function FAQPage() {
                     <li>• <strong>Top Performers:</strong> Identify your war MVPs for leadership roles</li>
                     <li>• <strong>Improving Trends:</strong> Members showing growth - invest in their development</li>
                     <li>• <strong>Declining Trends:</strong> Members who need attention or may need to sit out</li>
-                    <li>• <strong>Cleanup Efficiency:</strong> Who's good at securing remaining stars on second attempts</li>
+                    <li>• <strong>Cleanup Efficiency:</strong> Who&apos;s good at securing remaining stars on second attempts</li>
                     <li>• <strong>Defensive Hold Rate:</strong> How often bases avoid being 3-starred</li>
                   </ul>
                 </div>
@@ -350,33 +356,33 @@ export default function FAQPage() {
               <div className="space-y-4 text-gray-700">
                 
                 <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-green-800 mb-2">✅ Do's</h4>
+                  <h4 className="font-semibold text-green-800 mb-2">✅ Do&apos;s</h4>
                   <ul className="space-y-2 text-sm text-green-700">
-                    <li>• Use data to support decisions, but don't ignore context and member circumstances</li>
+                    <li>• Use data to support decisions, but don&apos;t ignore context and member circumstances</li>
                     <li>• Give members a chance to improve before taking action based on low scores</li>
                     <li>• Celebrate improvements and positive trends publicly</li>
                     <li>• Use insights to provide targeted help and training</li>
-                    <li>• Regularly review and adjust your clan's expectations based on data</li>
+                    <li>• Regularly review and adjust your clan&apos;s expectations based on data</li>
                     <li>• Share positive metrics with the clan to motivate improvement</li>
                   </ul>
                 </div>
 
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-                  <h4 className="font-semibold text-red-800 mb-2">❌ Don'ts</h4>
+                  <h4 className="font-semibold text-red-800 mb-2">❌ Don&apos;ts</h4>
                   <ul className="space-y-2 text-sm text-red-700">
-                    <li>• Don't make snap decisions based on single data points</li>
-                    <li>• Don't use data to embarrass or shame members publicly</li>
-                    <li>• Don't ignore personal circumstances (vacation, illness, etc.)</li>
-                    <li>• Don't set unrealistic expectations based on top performers</li>
-                    <li>• Don't forget that this is a game - fun should come first</li>
-                    <li>• Don't rely solely on data - communication and relationships matter</li>
+                    <li>• Don&apos;t make snap decisions based on single data points</li>
+                    <li>• Don&apos;t use data to embarrass or shame members publicly</li>
+                    <li>• Don&apos;t ignore personal circumstances (vacation, illness, etc.)</li>
+                    <li>• Don&apos;t set unrealistic expectations based on top performers</li>
+                    <li>• Don&apos;t forget that this is a game - fun should come first</li>
+                    <li>• Don&apos;t rely solely on data - communication and relationships matter</li>
                   </ul>
                 </div>
 
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                   <h4 className="font-semibold text-blue-800 mb-2">🎯 Pro Tips</h4>
                   <ul className="space-y-2 text-sm text-blue-700">
-                    <li>• Set up regular "data review" sessions with co-leaders</li>
+                    <li>• Set up regular &quot;data review&quot; sessions with co-leaders</li>
                     <li>• Create clan challenges based on metrics (donation goals, activity streaks)</li>
                     <li>• Use the departure tracking to understand why members leave</li>
                     <li>• Track improvement over time, not just current performance</li>
@@ -396,15 +402,15 @@ export default function FAQPage() {
                   <h4 className="font-semibold text-yellow-800 mb-2">❓ Common Issues</h4>
                   <div className="space-y-3 text-sm">
                     <div>
-                      <strong>Q: Why does a member show as inactive when I know they're playing?</strong>
-                      <p className="text-yellow-700 mt-1">A: The activity score is based on specific signals that only change with active play. If they're only doing single-player content or not engaging in multiplayer activities, they may not trigger these signals.</p>
+                      <strong>Q: Why does a member show as inactive when I know they&apos;re playing?</strong>
+                      <p className="text-yellow-700 mt-1">A: The activity score is based on specific signals that only change with active play. If they&apos;re only doing single-player content or not engaging in multiplayer activities, they may not trigger these signals.</p>
                     </div>
                     <div>
                       <strong>Q: Why are donation balances sometimes negative?</strong>
-                      <p className="text-yellow-700 mt-1">A: This means they've received more donations than they've given. This is normal for newer members or those upgrading heroes, but should be monitored for long-term patterns.</p>
+                      <p className="text-yellow-700 mt-1">A: This means they&apos;ve received more donations than they&apos;ve given. This is normal for newer members or those upgrading heroes, but should be monitored for long-term patterns.</p>
                     </div>
                     <div>
-                      <strong>Q: Why don't I see war data for some members?</strong>
+                      <strong>Q: Why don&apos;t I see war data for some members?</strong>
                       <p className="text-yellow-700 mt-1">A: War analytics use mock data for development. Real war data will be connected when historical war data is available from the API.</p>
                     </div>
                     <div>
@@ -420,7 +426,7 @@ export default function FAQPage() {
             <section id="future-features" className="pb-8">
               <h3 className="text-2xl font-bold text-gray-900 mb-4">🚀 Future features</h3>
               <div className="space-y-4 text-gray-700">
-                <p>We're constantly working to improve the dashboard. Here's what's coming:</p>
+                <p>We&apos;re constantly working to improve the dashboard. Here&apos;s what&apos;s coming:</p>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
@@ -450,12 +456,12 @@ export default function FAQPage() {
             <p className="text-gray-600 mb-4">
               Need help or have suggestions? The dashboard is designed to make clan management easier and more effective.
             </p>
-            <a 
+            <Link 
               href="/"
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:from-indigo-700 hover:to-purple-700 transition-all duration-200"
             >
               ← Back to Dashboard
-            </a>
+            </Link>
           </div>
         </div>
       </div>

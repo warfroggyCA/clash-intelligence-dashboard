@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle, Send } from "lucide-react";
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { safeLocaleString } from '@/lib/date';
@@ -135,25 +135,25 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     return parts.join('\n');
   }, [snapshotMetadata, snapshotDetails, snapshotAgeHours]);
 
-  const mapPayloadToAdvice = (payload: SmartInsightsPayload): CoachingCard[] => {
+  const mapPayloadToAdvice = useCallback((payload: SmartInsightsPayload): CoachingCard[] => {
     const generatedAt = payload.metadata.generatedAt;
     return (payload.coaching || []).map((entry) => ({
       ...entry,
       timestamp: generatedAt,
       date: payload.metadata.snapshotDate,
     }));
-  };
+  }, []);
 
-  const persistSmartInsightsPayload = (payload: SmartInsightsPayload, recommendations: CoachingCard[]) => {
+  const persistSmartInsightsPayload = useCallback((payload: SmartInsightsPayload, recommendations: CoachingCard[]) => {
     setSmartInsights(payload);
     try {
       localStorage.setItem(`coaching_advice_${clanTag}`, JSON.stringify(recommendations));
     } catch (storageError) {
       console.error('[Coaching Insights] Failed to persist coaching advice cache:', storageError);
     }
-  };
+  }, [clanTag, setSmartInsights]);
 
-  const createPayloadFromRecommendations = (
+  const createPayloadFromRecommendations = useCallback((
     recommendations: CoachingCard[],
     source: SmartInsightsSource,
     diagnosticsOverrides: Partial<SmartInsightsDiagnostics> = {}
@@ -193,9 +193,9 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
         gameChatMessages: undefined,
       },
     };
-  };
+  }, [clanTag, snapshotMetadata?.snapshotDate, snapshotMetadata?.fetchedAt]);
 
-  const attachTimestamps = (items: CoachingCard[]): CoachingCard[] => {
+  const attachTimestamps = useCallback((items: CoachingCard[]): CoachingCard[] => {
     const nowIso = new Date().toISOString();
     let today = 'Unknown Date';
     try {
@@ -208,34 +208,9 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
       timestamp: item.timestamp || nowIso,
       date: item.date || today,
     }));
-  };
+  }, []);
 
-  useEffect(() => {
-    // Load coaching advice from stored insights or localStorage
-    if (clanData?.members) {
-      loadCoachingAdvice();
-    }
-  }, [clanData, clanTag]);
-
-  useEffect(() => {
-    // Load actioned tips from localStorage
-    const saved = localStorage.getItem(`actioned_tips_${clanTag}`);
-    if (saved) {
-      try {
-        setActionedTips(new Set(JSON.parse(saved)));
-      } catch (error) {
-        console.error('Failed to load actioned tips:', error);
-      }
-    }
-
-    // Load Discord webhook URL from localStorage
-    const savedWebhook = localStorage.getItem(`discord_webhook_${clanTag}`);
-    if (savedWebhook) {
-      setDiscordWebhookUrl(savedWebhook);
-    }
-  }, [clanTag]);
-
-  const loadCoachingAdvice = async () => {
+  const loadCoachingAdvice = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetch(`/api/ai/batch-results?clanTag=${encodeURIComponent(clanTag)}`);
@@ -310,7 +285,32 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     } finally {
       setLoading(false);
     }
-  };
+  }, [attachTimestamps, clanTag, createPayloadFromRecommendations, mapPayloadToAdvice, persistSmartInsightsPayload]);
+
+  useEffect(() => {
+    // Load coaching advice from stored insights or localStorage
+    if (clanData?.members) {
+      loadCoachingAdvice();
+    }
+  }, [clanData, loadCoachingAdvice]);
+
+  useEffect(() => {
+    // Load actioned tips from localStorage
+    const saved = localStorage.getItem(`actioned_tips_${clanTag}`);
+    if (saved) {
+      try {
+        setActionedTips(new Set(JSON.parse(saved)));
+      } catch (error) {
+        console.error('Failed to load actioned tips:', error);
+      }
+    }
+
+    // Load Discord webhook URL from localStorage
+    const savedWebhook = localStorage.getItem(`discord_webhook_${clanTag}`);
+    if (savedWebhook) {
+      setDiscordWebhookUrl(savedWebhook);
+    }
+  }, [clanTag]);
 
   const generateCoachingAdvice = async () => {
     if (!clanData?.members || clanData.members.length === 0) {
@@ -699,7 +699,7 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
         <div className="text-center py-8 text-gray-500">
           <Shield className="w-12 h-12 mx-auto mb-4 text-gray-400" />
           <p>No coaching advice generated yet.</p>
-          <p className="text-sm">Click "Generate New Advice" to get personalized coaching tips for your clan!</p>
+          <p className="text-sm">Click &quot;Generate New Advice&quot; to get personalized coaching tips for your clan!</p>
         </div>
       ) : (
         <div className="space-y-4">

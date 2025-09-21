@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { AlertCircle, CheckCircle, Clock, Users, TrendingUp, Shield, Trophy, Calendar, Sword, Castle } from "lucide-react";
 import { safeLocaleDateString } from '@/lib/date';
 import type { FullClanSnapshot } from "@/lib/full-snapshot";
@@ -17,12 +17,7 @@ export default function FullSnapshotDashboard({ clanTag, onNotificationChange }:
   const [availableDates, setAvailableDates] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  useEffect(() => {
-    loadLatestSnapshot();
-    loadAvailableDates();
-  }, [clanTag]);
-
-  const loadLatestSnapshot = async () => {
+  const loadLatestSnapshot = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -46,9 +41,9 @@ export default function FullSnapshotDashboard({ clanTag, onNotificationChange }:
     } finally {
       setLoading(false);
     }
-  };
+  }, [clanTag]);
 
-  const loadAvailableDates = async () => {
+  const loadAvailableDates = useCallback(async () => {
     try {
       const response = await fetch(`/api/full-snapshots?clanTag=${encodeURIComponent(clanTag)}`);
       
@@ -61,7 +56,12 @@ export default function FullSnapshotDashboard({ clanTag, onNotificationChange }:
     } catch (err) {
       console.error('Failed to load available dates:', err);
     }
-  };
+  }, [clanTag]);
+
+  useEffect(() => {
+    loadLatestSnapshot();
+    loadAvailableDates();
+  }, [loadAvailableDates, loadLatestSnapshot]);
 
   const loadSnapshotByDate = async (date: string) => {
     try {

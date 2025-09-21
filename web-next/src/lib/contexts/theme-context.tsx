@@ -17,7 +17,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 // =============================================================================
 // TYPES
@@ -69,18 +69,18 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
 
   // Get system theme preference
-  const getSystemTheme = (): 'light' | 'dark' => {
+  const getSystemTheme = useCallback((): 'light' | 'dark' => {
     if (typeof window === 'undefined') return 'dark';
     return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
-  };
+  }, []);
 
   // Resolve theme based on current setting
-  const resolveTheme = (currentTheme: Theme): 'light' | 'dark' => {
+  const resolveTheme = useCallback((currentTheme: Theme): 'light' | 'dark' => {
     if (currentTheme === 'system') {
       return getSystemTheme();
     }
     return currentTheme;
-  };
+  }, [getSystemTheme]);
 
   // Set theme and persist to localStorage
   const setTheme = (newTheme: Theme) => {
@@ -127,7 +127,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [defaultTheme, storageKey, theme]);
+  }, [defaultTheme, storageKey, theme, resolveTheme, getSystemTheme]);
 
   const value: ThemeContextType = {
     theme,
