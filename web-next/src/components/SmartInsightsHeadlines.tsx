@@ -134,8 +134,8 @@ export default function SmartInsightsHeadlines({
   const renderHeader = () => {
     const generatedAt = metadata?.generatedAt ? new Date(metadata.generatedAt) : null;
     return (
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-white">
-        <div className="flex items-center gap-2 text-xs text-white/70">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-slate-800 dark:text-white">
+        <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-white/70">
           {metadata?.snapshotDate && (
             <span>
               Snapshot {safeLocaleDateString(metadata.snapshotDate, {
@@ -152,7 +152,7 @@ export default function SmartInsightsHeadlines({
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 w-7 p-0 text-white/70 hover:text-white"
+            className="h-7 w-7 p-0 text-slate-600 hover:text-slate-800 dark:text-white/70 dark:hover:text-white"
             onClick={handleRefresh}
             disabled={isRefreshing || status === 'loading'}
             title="Refresh insights"
@@ -166,23 +166,32 @@ export default function SmartInsightsHeadlines({
 
   const renderBody = () => {
     if (status === 'loading' && !bulletins.length) {
-      return <p className="text-sm text-white/70">Loading fresh highlights…</p>;
+      return (
+        <div className="flex items-center justify-center py-8">
+          <div className="flex items-center gap-3 text-slate-600 dark:text-slate-300">
+            <RefreshCcw className="h-5 w-5 animate-spin" />
+            <span className="text-sm font-medium">Loading fresh highlights…</span>
+          </div>
+        </div>
+      );
     }
 
     if (error) {
       return (
-        <div className="flex items-start gap-2 rounded-lg border border-amber-400/40 bg-amber-500/10 p-3 text-sm text-amber-100">
-          <AlertTriangle className="mt-0.5 h-4 w-4" />
-          <div>
-            <p className="font-medium">Unable to load daily highlights.</p>
-            <p className="text-xs text-amber-200/90">{error}</p>
-            <Button
-              variant="ghost"
-              className="px-0 text-amber-200 hover:text-amber-100"
-              onClick={() => setShowIngestionMonitor(true)}
-            >
-              Open ingestion monitor
-            </Button>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600 dark:text-amber-400" />
+            <div className="flex-1">
+              <p className="font-semibold text-amber-800 dark:text-amber-200">Unable to load daily highlights</p>
+              <p className="mt-1 text-sm text-amber-700 dark:text-amber-300">{error}</p>
+              <Button
+                variant="ghost"
+                className="mt-2 px-0 text-amber-700 hover:text-amber-800 dark:text-amber-300 dark:hover:text-amber-200"
+                onClick={() => setShowIngestionMonitor(true)}
+              >
+                Open ingestion monitor
+              </Button>
+            </div>
           </div>
         </div>
       );
@@ -191,49 +200,75 @@ export default function SmartInsightsHeadlines({
     if (!bulletins.length) {
       const message = diagnostics?.openAIConfigured === false
         ? 'Smart insights are disabled. Add an OpenAI key to enable automated headlines.'
-        : 'No automated highlights yet. Run an ingestion job to generate today’s summary.';
+        : 'No automated highlights yet. Run an ingestion job to generate today\'s summary.';
       return (
-        <div className="flex flex-col gap-2 rounded-lg border border-white/15 bg-white/5 p-4 text-sm text-white/80">
-          <span>{message}</span>
-          <div className="flex gap-2">
-            <Button size="sm" onClick={() => setShowIngestionMonitor(true)}>
-              Open Ingestion Monitor
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="border-white/30 text-white hover:bg-white/10"
-              onClick={handleRefresh}
-              disabled={isRefreshing}
-            >
-              Refresh
-            </Button>
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-slate-800/50">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+              <Shield className="h-6 w-6 text-slate-400 dark:text-slate-500" />
+            </div>
+            <p className="text-sm text-slate-600 dark:text-slate-300 mb-4">{message}</p>
+            <div className="flex gap-2 justify-center">
+              <Button size="sm" onClick={() => setShowIngestionMonitor(true)}>
+                Open Ingestion Monitor
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
+                onClick={handleRefresh}
+                disabled={isRefreshing}
+              >
+                Refresh
+              </Button>
+            </div>
           </div>
         </div>
       );
     }
 
     return (
-      <div className="rounded-xl border border-white/10 bg-slate-950/30 p-3 shadow-sm xl:max-h-72 xl:overflow-y-auto">
-        <ul className="space-y-2">
-          {bulletins.map((item) => (
-            <li
-              key={item.key}
-              className="flex items-start gap-3 text-sm text-white/90"
-            >
-              <Shield
-                className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
+      <div className="space-y-3 xl:max-h-72 xl:overflow-y-auto xl:pr-2">
+        {bulletins.map((item) => (
+          <div
+            key={item.key}
+            className="group rounded-lg border border-slate-200 bg-white p-4 transition-all hover:shadow-md hover:shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:shadow-slate-900/50"
+          >
+            <div className="flex items-start gap-3">
+              <div className={`rounded-full p-2 ${
+                item.priority === 'high'
+                  ? 'bg-amber-100 dark:bg-amber-900/30'
+                  : item.priority === 'medium'
+                  ? 'bg-blue-100 dark:bg-blue-900/30'
+                  : 'bg-slate-100 dark:bg-slate-700'
+              }`}>
+                <Shield
+                  className={`h-4 w-4 ${
+                    item.priority === 'high'
+                      ? 'text-amber-600 dark:text-amber-400'
+                      : item.priority === 'medium'
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                />
+              </div>
+              <div className="flex-1">
+                <p className="text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+                  {item.text}
+                </p>
+                <div className={`mt-2 inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
                   item.priority === 'high'
-                    ? 'text-amber-300'
+                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
                     : item.priority === 'medium'
-                    ? 'text-sky-300'
-                    : 'text-slate-400'
-                }`}
-              />
-              <span className="leading-relaxed font-normal">{item.text}</span>
-            </li>
-          ))}
-        </ul>
+                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                    : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                }`}>
+                  {item.priority} priority
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
       </div>
     );
   };

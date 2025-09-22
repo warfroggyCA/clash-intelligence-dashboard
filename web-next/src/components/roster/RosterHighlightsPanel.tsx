@@ -100,8 +100,13 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
   if (!sections.length) {
     return (
       <GlassCard className={`${panelClassName} flex`}>
-        <div className="flex-1 rounded-xl border border-white/20 bg-white/15 px-4 py-6 text-center text-sm text-white/90 font-medium">
-          No highlights available yet.
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+              <span className="text-xl">⭐</span>
+            </div>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No highlights available yet</p>
+          </div>
         </div>
       </GlassCard>
     );
@@ -111,45 +116,83 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
     <GlassCard className={`${panelClassName} flex flex-col`}>
       <div className="flex-1 space-y-6 overflow-visible pr-0 md:pr-1 xl:max-h-72 xl:overflow-y-auto">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          {sections.map((section) => (
-            <div key={section.title} className="space-y-4">
-              <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-white">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
-                  <Image
-                    src={section.title.includes('Donator') ? '/assets/icons/donation.svg'
-                      : section.title.includes('Hero') ? '/assets/icons/hero.svg'
-                      : '/assets/icons/trophy.svg'}
-                    alt=""
-                    width={20}
-                    height={20}
-                    className="drop-shadow-sm"
-                  />
+          {sections.map((section) => {
+            const getSectionIcon = () => {
+              if (section.title.includes('Donator')) return '💝';
+              if (section.title.includes('Hero')) return '🦸';
+              return '🏆';
+            };
+
+            const getSectionColor = () => {
+              if (section.title.includes('Donator')) return {
+                bg: 'bg-emerald-50 dark:bg-emerald-950/20',
+                border: 'border-emerald-200 dark:border-emerald-800',
+                icon: 'bg-emerald-100 dark:bg-emerald-900/30',
+                text: 'text-emerald-600 dark:text-emerald-400'
+              };
+              if (section.title.includes('Hero')) return {
+                bg: 'bg-purple-50 dark:bg-purple-950/20',
+                border: 'border-purple-200 dark:border-purple-800',
+                icon: 'bg-purple-100 dark:bg-purple-900/30',
+                text: 'text-purple-600 dark:text-purple-400'
+              };
+              return {
+                bg: 'bg-amber-50 dark:bg-amber-950/20',
+                border: 'border-amber-200 dark:border-amber-800',
+                icon: 'bg-amber-100 dark:bg-amber-900/30',
+                text: 'text-amber-600 dark:text-amber-400'
+              };
+            };
+
+            const colors = getSectionColor();
+
+            return (
+              <div key={section.title} className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colors.icon}`}>
+                    <span className="text-lg">{getSectionIcon()}</span>
+                  </div>
+                  <h3 className={`font-semibold ${colors.text}`}>{section.title}</h3>
                 </div>
-                <span className="drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{section.title}</span>
-              </div>
-              <div className="space-y-3">
-                {section.entries.slice(0, 3).map((entry) => (
-                  <div
-                    key={`${section.title}-${entry.name}`}
-                    className="rounded-xl border border-white/30 bg-gradient-to-r from-white/20 via-white/10 to-white/20 px-4 py-3 shadow-md backdrop-blur-sm"
-                  >
-                    <div className="flex items-center justify-between font-semibold text-white">
-                      <span className="truncate pr-3 text-sm drop-shadow-sm" style={{ color: '#FFFFFF', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.name}</span>
-                      <span className="text-sm text-amber-100 font-bold drop-shadow-sm" style={{ color: '#FCD34D', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.value}</span>
+                <div className="space-y-3">
+                  {section.entries.slice(0, 3).map((entry, index) => (
+                    <div
+                      key={`${section.title}-${entry.name}`}
+                      className="group rounded-lg border border-slate-200 bg-white p-3 transition-all hover:shadow-md hover:shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:shadow-slate-900/50"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300`}>
+                            {index + 1}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                              {entry.name}
+                            </p>
+                            {entry.subtitle && (
+                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                                {entry.subtitle}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className={`px-2 py-1 rounded-full text-xs font-bold ${colors.bg} ${colors.text}`}>
+                          {entry.value}
+                        </div>
+                      </div>
                     </div>
-                    {entry.subtitle && (
-                      <div className="mt-2 text-xs text-white/80 drop-shadow-sm" style={{ color: '#E2E8F0', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>{entry.subtitle}</div>
-                    )}
-                  </div>
-                ))}
-                {section.entries.length > 3 && (
-                  <div className="py-2 text-center text-xs text-white/60 font-medium" style={{ color: '#94A3B8', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
-                    +{section.entries.length - 3} more
-                  </div>
-                )}
+                  ))}
+                  {section.entries.length > 3 && (
+                    <div className="py-2 text-center">
+                      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-400">
+                        +{section.entries.length - 3} more
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </GlassCard>
