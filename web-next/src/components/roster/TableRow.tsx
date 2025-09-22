@@ -114,7 +114,7 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
 }
 
 const TableCell: React.FC<TableCellProps> = ({ className = '', children, ...rest }) => (
-  <td className={`py-2 px-4 text-sm text-high-contrast ${className}`} {...rest}>
+  <td className={`py-2 px-4 text-sm ${className}`} {...rest}>
     {children}
   </td>
 );
@@ -263,7 +263,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell className="text-center border-r border-slate-600/50" title="Current trophies">
         <div className="flex items-center justify-center space-x-1">
           <span className="text-clash-gold">🏆</span>
-          <span className="font-semibold text-high-contrast">
+          <span className="font-semibold">
             {formatNumber(member.trophies)}
           </span>
           {isRushedPlayer && (
@@ -277,7 +277,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Hero Columns */}
       <TableCell
-        className="bg-gray-100 text-center border-r border-gray-300"
+        className="text-center border-r border-gray-300"
         title={isHeroAvailable('bk', th)
           ? `Barbarian King at TH${th} (max ${HERO_MAX_LEVELS[th]?.bk ?? 0})`
           : `Barbarian King unlocks at TH${HERO_MIN_TH.bk}`}
@@ -292,7 +292,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-gray-100 text-center border-r border-gray-300"
+        className="text-center border-r border-gray-300"
         title={isHeroAvailable('aq', th)
           ? `Archer Queen at TH${th} (max ${HERO_MAX_LEVELS[th]?.aq ?? 0})`
           : `Archer Queen unlocks at TH${HERO_MIN_TH.aq}`}
@@ -307,7 +307,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-gray-100 text-center border-r border-gray-300"
+        className="text-center border-r border-gray-300"
         title={isHeroAvailable('gw', th)
           ? `Grand Warden at TH${th} (max ${HERO_MAX_LEVELS[th]?.gw ?? 0})`
           : `Grand Warden unlocks at TH${HERO_MIN_TH.gw}`}
@@ -322,7 +322,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-gray-100 text-center border-r border-gray-300"
+        className="text-center border-r border-gray-300"
         title={isHeroAvailable('rc', th)
           ? `Royal Champion at TH${th} (max ${HERO_MAX_LEVELS[th]?.rc ?? 0})`
           : `Royal Champion unlocks at TH${HERO_MIN_TH.rc}`}
@@ -337,7 +337,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       <TableCell
-        className="bg-gray-100 text-center border-r border-gray-300"
+        className="text-center border-r border-gray-300"
         title={isHeroAvailable('mp', th)
           ? `Minion Prince at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
           : `Minion Prince unlocks at TH${HERO_MIN_TH.mp}`}
