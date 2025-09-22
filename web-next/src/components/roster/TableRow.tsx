@@ -88,12 +88,13 @@ const relativeFrom = (iso?: string): string | null => {
   
   // For hydration safety, return a simple format instead of relative dates
   // This avoids server/client time differences
-  return d.toLocaleDateString();
+  return d.toISOString().slice(0, 10); // Use ISO format for consistency
 };
 
 const formatNumber = (num: number | undefined): string => {
   if (num === undefined || num === null) return 'N/A';
-  return num.toLocaleString();
+  // Use simple number formatting to avoid locale differences
+  return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 };
 
 const formatDays = (days: number | undefined): string => {
@@ -381,7 +382,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       {/* Donations Given Column */}
-      <TableCell className="text-center border-r border-slate-600/50" title={`Donations given/received: ${(donationBalance.given).toLocaleString()} / ${(donationBalance.received).toLocaleString()} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
+      <TableCell className="text-center border-r border-slate-600/50" title={`Donations given/received: ${formatNumber(donationBalance.given)} / ${formatNumber(donationBalance.received)} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
         <div className="flex items-center justify-center space-x-1">
           <span className="text-clash-green">💝</span>
           <span className="font-semibold text-clash-green">{formatNumber(member.donations)}</span>

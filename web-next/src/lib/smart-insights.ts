@@ -483,7 +483,7 @@ IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high
       const timestamp = new Date().toISOString();
       const date = (() => {
         try {
-          return new Date().toLocaleDateString();
+          return new Date().toISOString().slice(0, 10); // Use ISO format for consistency
         } catch (error) {
           console.error('Date formatting error in smart-insights:', error);
           return 'Unknown Date';
@@ -507,7 +507,7 @@ IMPORTANT: Be contextually aware! If a player is upgrading heroes but has a high
         timestamp: new Date().toISOString(),
         date: (() => {
           try {
-            return new Date().toLocaleDateString();
+            return new Date().toISOString().slice(0, 10); // Use ISO format for consistency
           } catch (error) {
             console.error('Date formatting error in smart-insights fallback:', error);
             return 'Unknown Date';
@@ -934,7 +934,7 @@ function calculatePlayerOfTheDay(changes: MemberChange[]): SmartInsightsPlayerOf
       case 'capital_contributions_change': {
         const gain = Math.max(delta, 0);
         if (gain > 0) {
-          addContribution(tag, name, gain / 200, `Capital loot +${gain.toLocaleString()}`);
+          addContribution(tag, name, gain / 200, `Capital loot +${gain.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`);
         }
         break;
       }
