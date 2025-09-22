@@ -152,25 +152,47 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
                   <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colors.icon}`}>
                     <span className="text-lg">{getSectionIcon()}</span>
                   </div>
-                  <h3 className={`font-semibold ${colors.text}`}>{section.title}</h3>
+                        <h3 
+                          className={`font-semibold ${colors.text} dark:!text-white`}
+                          style={{
+                            color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                          }}
+                        >
+                          {section.title}
+                        </h3>
                 </div>
                 <div className="space-y-3">
                   {section.entries.slice(0, 3).map((entry, index) => (
                     <div
                       key={`${section.title}-${entry.name}`}
-                      className="group rounded-lg border border-slate-200 bg-white p-3 transition-all hover:shadow-md hover:shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:shadow-slate-900/50"
+                      className="group p-3"
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className={`flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300`}>
+                          <div 
+                            className={`flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:!text-white`}
+                            style={{
+                              color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                            }}
+                          >
                             {index + 1}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
-                              {entry.name}
-                            </p>
+                                  <p 
+                                    className="text-sm font-medium text-slate-800 dark:!text-white truncate"
+                                    style={{
+                                      color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                                    }}
+                                  >
+                                    {entry.name}
+                                  </p>
                             {entry.subtitle && (
-                              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                              <p 
+                                className="text-xs text-slate-500 dark:!text-white truncate"
+                                style={{
+                                  color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                                }}
+                              >
                                 {entry.subtitle}
                               </p>
                             )}
