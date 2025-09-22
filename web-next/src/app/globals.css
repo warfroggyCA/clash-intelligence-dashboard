@@ -364,23 +364,45 @@ th { @apply text-left font-semibold; }
 
 /* Dark theme table styles */
 [data-theme="dark"] .clash-table th {
-  background-color: rgba(30, 41, 59, 0.8);
+  background-color: rgba(30, 41, 59, 0.9);
   border-color: rgba(255, 215, 0, 0.3);
-  color: #F59E0B;
+  color: #FBBF24;
 }
 
 [data-theme="dark"] .clash-table td {
-  background-color: rgba(15, 23, 42, 0.6);
-  border-color: rgba(100, 116, 139, 0.4);
-  color: #E2E8F0;
+  background-color: transparent;
+  border-color: rgba(100, 116, 139, 0.3);
+  color: #F1F5F9;
 }
 
 [data-theme="dark"] .clash-table tr:hover {
-  background-color: rgba(255, 215, 0, 0.08);
+  background-color: rgba(255, 215, 0, 0.1);
 }
 
 [data-theme="dark"] .clash-table tr:nth-child(even) {
-  background-color: rgba(15, 23, 42, 0.4);
+  background-color: transparent;
+}
+
+/* Dark theme tab navigation */
+[data-theme="dark"] .tab-navigation button {
+  color: #E2E8F0 !important;
+}
+
+[data-theme="dark"] .tab-navigation button:not(.active) {
+  background-color: rgba(30, 41, 59, 0.6) !important;
+  border-color: rgba(100, 116, 139, 0.4) !important;
+  color: #CBD5E1 !important;
+}
+
+[data-theme="dark"] .tab-navigation button:not(.active):hover {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+  color: #F1F5F9 !important;
+}
+
+[data-theme="dark"] .tab-navigation button.active {
+  background: linear-gradient(135deg, #3B82F6, #6366F1) !important;
+  color: #FFFFFF !important;
+  border-color: #60A5FA !important;
 }
 
 /* Light theme general component styles */
