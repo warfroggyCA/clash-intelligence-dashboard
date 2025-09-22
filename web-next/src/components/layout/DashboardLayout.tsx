@@ -390,22 +390,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </main>
       
       {/* Footer */}
-      <footer className="w-full bg-gradient-to-r from-slate-800 via-slate-700 to-slate-800 border-t border-clash-gold/20 mt-12">
+      <footer className="w-full bg-gray-800 border-t border-gray-600 mt-12">
         <div className="w-full px-6 py-4">
-          <div className="flex items-center justify-between text-sm text-medium-contrast">
+          <div className="flex items-center justify-between text-sm text-gray-200">
             <div className="flex items-center space-x-4">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                <span className="font-semibold text-high-contrast">Clash Intelligence Dashboard</span>
+                <span className="font-semibold text-white">Clash Intelligence Dashboard</span>
               </div>
-              <span className="text-muted-contrast">•</span>
-              <span className="font-mono bg-gradient-to-r from-clash-gold/20 to-clash-orange/20 text-clash-gold px-3 py-1 rounded-full text-xs font-semibold border border-clash-gold/30">
+              <span className="text-gray-400">•</span>
+              <span className="font-mono bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-xs font-semibold border border-gray-600">
                 v{process.env.NEXT_PUBLIC_APP_VERSION || '0.21.0'}
               </span>
-              <span className="text-muted-contrast">•</span>
-              <span className="text-muted-contrast">A warfroggy project</span>
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-400">A warfroggy project</span>
             </div>
-            <div className="text-xs text-muted-contrast font-medium">Built with Next.js • Clash of Clans API</div>
+            <div className="text-xs text-gray-400 font-medium">Built with Next.js • Clash of Clans API</div>
           </div>
         </div>
       </footer>
