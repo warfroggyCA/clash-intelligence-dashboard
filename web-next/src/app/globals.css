@@ -187,12 +187,9 @@ th { @apply text-left font-semibold; }
 
 .glass-card {
   position: relative;
-  background:
-    radial-gradient(140% 130% at 85% -20%, rgba(112, 164, 255, 0.2), transparent 68%),
-    radial-gradient(140% 130% at -10% 30%, rgba(255, 132, 92, 0.14), transparent 70%),
-    linear-gradient(150deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86));
+  background: transparent;
   border: 1px solid rgba(255,255,255,0.26);
-  box-shadow: 0 40px 78px -36px rgba(8, 16, 40, 0.78);
+  box-shadow: none;
   color: rgba(244, 248, 255, 0.95);
 }
 
@@ -201,9 +198,9 @@ th { @apply text-left font-semibold; }
   position: absolute;
   inset: 1px;
   border-radius: inherit;
-  background: linear-gradient(150deg, rgba(255,255,255,0.36), rgba(255,255,255,0.08));
-  opacity: 0.42;
-  mix-blend-mode: screen;
+  background: transparent;
+  opacity: 1;
+  mix-blend-mode: normal;
   pointer-events: none;
 }
 
@@ -212,10 +209,8 @@ th { @apply text-left font-semibold; }
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background:
-    radial-gradient(75% 70% at 20% 10%, rgba(255,255,255,0.26), transparent 68%),
-    linear-gradient(170deg, rgba(255,255,255,0.2), transparent 48%);
-  opacity: 0.3;
+  background: transparent;
+  opacity: 1;
   pointer-events: none;
 }
 
