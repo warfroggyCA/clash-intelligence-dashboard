@@ -40,10 +40,10 @@ export interface InputProps extends Omit<React.InputHTMLAttributes<HTMLInputElem
 
 const getVariantStyles = (variant: InputVariant): string => {
   const variants = {
-    default: 'border-gray-300 focus:border-blue-500 focus:ring-blue-500',
-    error: 'border-red-300 focus:border-red-500 focus:ring-red-500',
-    success: 'border-green-300 focus:border-green-500 focus:ring-green-500',
-    warning: 'border-yellow-300 focus:border-yellow-500 focus:ring-yellow-500',
+    default: 'border-gray-300 focus:border-blue-500 focus:ring-blue-500 dark:border-slate-700 dark:focus:border-blue-400 dark:focus:ring-blue-400',
+    error: 'border-red-300 focus:border-red-500 focus:ring-red-500 dark:border-red-600/70 dark:focus:border-red-500 dark:focus:ring-red-500',
+    success: 'border-green-300 focus:border-green-500 focus:ring-green-500 dark:border-emerald-600/70 dark:focus:border-emerald-500 dark:focus:ring-emerald-500',
+    warning: 'border-yellow-300 focus:border-yellow-500 focus:ring-yellow-500 dark:border-amber-500/70 dark:focus:border-amber-400 dark:focus:ring-amber-400',
   };
   
   return variants[variant];
@@ -90,7 +90,7 @@ export const Input: React.FC<InputProps> = ({
   const variantStyles = getVariantStyles(actualVariant);
   const sizeStyles = getSizeStyles(size);
   
-  const baseInputStyles = 'w-full border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white text-slate-800 placeholder:text-slate-400';
+  const baseInputStyles = 'w-full border rounded-lg transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed bg-white text-slate-800 placeholder:text-slate-400 theme-input';
   
   const inputStyles = `${baseInputStyles} ${variantStyles} ${sizeStyles} ${inputClassName} ${className}`.trim();
 

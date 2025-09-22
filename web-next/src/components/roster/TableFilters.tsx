@@ -267,42 +267,62 @@ export const TableFilters: React.FC<TableFiltersProps> = ({
           <div className="flex flex-wrap gap-2">
             <Button
               onClick={() => onFilterChange({ role: filters.role === 'leadership' ? 'all' : 'leadership' })}
-              variant={filters.role === 'leadership' ? 'primary' : 'outline'}
+              variant="outline"
               size="sm"
-              className="text-xs"
+              className={`text-xs transition-colors ${
+                filters.role === 'leadership'
+                  ? 'border-amber-400 bg-amber-100/60 text-amber-700 dark:border-amber-300/60 dark:bg-amber-400/15 dark:text-amber-200'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5'
+              }`}
               title="Leaders & Co-Leaders"
             >
               Leaders & Co-Leaders
             </Button>
             <Button
               onClick={() => onFilterChange({ role: filters.role === 'elder' ? 'all' : 'elder' })}
-              variant={filters.role === 'elder' ? 'primary' : 'outline'}
+              variant="outline"
               size="sm"
-              className="text-xs"
+              className={`text-xs transition-colors ${
+                filters.role === 'elder'
+                  ? 'border-amber-400 bg-amber-100/60 text-amber-700 dark:border-amber-300/60 dark:bg-amber-400/15 dark:text-amber-200'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5'
+              }`}
             >
               Elders
             </Button>
             <Button
               onClick={() => onFilterChange({ rushLevel: filters.rushLevel === 'very-rushed' ? 'all' : 'very-rushed' })}
-              variant={filters.rushLevel === 'very-rushed' ? 'primary' : 'outline'}
+              variant="outline"
               size="sm"
-              className="text-xs"
+              className={`text-xs transition-colors ${
+                filters.rushLevel === 'very-rushed'
+                  ? 'border-amber-400 bg-amber-100/60 text-amber-700 dark:border-amber-300/60 dark:bg-amber-400/15 dark:text-amber-200'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5'
+              }`}
             >
               Very Rushed
             </Button>
             <Button
               onClick={() => onFilterChange({ activityLevel: filters.activityLevel === 'inactive' ? 'all' : 'inactive' })}
-              variant={filters.activityLevel === 'inactive' ? 'primary' : 'outline'}
+              variant="outline"
               size="sm"
-              className="text-xs"
+              className={`text-xs transition-colors ${
+                filters.activityLevel === 'inactive'
+                  ? 'border-amber-400 bg-amber-100/60 text-amber-700 dark:border-amber-300/60 dark:bg-amber-400/15 dark:text-amber-200'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5'
+              }`}
             >
               Inactive
             </Button>
             <Button
               onClick={() => onFilterChange({ donationStatus: filters.donationStatus === 'low-donator' ? 'all' : 'low-donator' })}
-              variant={filters.donationStatus === 'low-donator' ? 'primary' : 'outline'}
+              variant="outline"
               size="sm"
-              className="text-xs"
+              className={`text-xs transition-colors ${
+                filters.donationStatus === 'low-donator'
+                  ? 'border-amber-400 bg-amber-100/60 text-amber-700 dark:border-amber-300/60 dark:bg-amber-400/15 dark:text-amber-200'
+                  : 'border-slate-300 text-slate-600 hover:bg-slate-100 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5'
+              }`}
             >
               Low Donators
             </Button>

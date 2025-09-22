@@ -193,10 +193,8 @@ export const TableRow: React.FC<TableRowProps> = ({
                         e.stopPropagation();
                         handleOpenProfile();
                       }}
-                      className="font-heading font-semibold text-blue-800 dark:!text-white hover:text-blue-600 dark:hover:!text-gray-200 transition-colors focus-ring-inset text-left"
-                      style={{
-                        color: 'var(--player-name-color, #1e40af)'
-                      }}
+                      className="player-name-link font-heading font-semibold text-left transition-colors focus-ring-inset"
+                      style={{ color: 'var(--player-name-color, #1e40af)' }}
                       title="View player profile"
                     >
                       {member.name}
