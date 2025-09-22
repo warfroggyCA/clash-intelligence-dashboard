@@ -70,8 +70,13 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   if (!stats) {
     return (
       <GlassCard className={panelClassName}>
-        <div className="rounded-xl border border-white/10 bg-white/10 px-3 py-4 text-center text-sm text-white/80">
-          Loading roster metrics…
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="mx-auto mb-4 h-12 w-12 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center">
+              <div className="h-6 w-6 animate-pulse rounded bg-slate-300 dark:bg-slate-500"></div>
+            </div>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">Loading roster metrics…</p>
+          </div>
         </div>
       </GlassCard>
     );
@@ -81,26 +86,38 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     {
       label: 'Members',
       value: stats.memberCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
-      icon: '/assets/icons/trophy.svg',
-      gradient: 'from-blue-400/40 via-blue-300/20 to-blue-500/50',
+      icon: '👥',
+      color: 'blue',
+      bgColor: 'bg-blue-50 dark:bg-blue-950/20',
+      textColor: 'text-blue-600 dark:text-blue-400',
+      borderColor: 'border-blue-200 dark:border-blue-800',
     },
     {
       label: 'Avg Town Hall',
       value: stats.averageTownHall.toString(),
-      icon: '/assets/icons/hero.svg',
-      gradient: 'from-indigo-400/40 via-indigo-300/20 to-indigo-500/50',
+      icon: '🏰',
+      color: 'purple',
+      bgColor: 'bg-purple-50 dark:bg-purple-950/20',
+      textColor: 'text-purple-600 dark:text-purple-400',
+      borderColor: 'border-purple-200 dark:border-purple-800',
     },
     {
       label: 'Avg Trophies',
       value: stats.averageTrophies.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
-      icon: '/assets/icons/trophy.svg',
-      gradient: 'from-purple-400/40 via-purple-300/20 to-purple-500/50',
+      icon: '🏆',
+      color: 'amber',
+      bgColor: 'bg-amber-50 dark:bg-amber-950/20',
+      textColor: 'text-amber-600 dark:text-amber-400',
+      borderColor: 'border-amber-200 dark:border-amber-800',
     },
     {
       label: 'Total Donations',
       value: stats.totalDonations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
-      icon: '/assets/icons/donation.svg',
-      gradient: 'from-amber-400/40 via-amber-300/20 to-orange-400/50',
+      icon: '💝',
+      color: 'emerald',
+      bgColor: 'bg-emerald-50 dark:bg-emerald-950/20',
+      textColor: 'text-emerald-600 dark:text-emerald-400',
+      borderColor: 'border-emerald-200 dark:border-emerald-800',
     },
   ];
 
@@ -108,63 +125,87 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     metrics.push({
       label: 'War Win Rate',
       value: `${warWinRate}%`,
-      icon: '/assets/icons/trophy.svg',
-      gradient: 'from-rose-400/40 via-rose-300/20 to-rose-500/50',
+      icon: '⚔️',
+      color: 'rose',
+      bgColor: 'bg-rose-50 dark:bg-rose-950/20',
+      textColor: 'text-rose-600 dark:text-rose-400',
+      borderColor: 'border-rose-200 dark:border-rose-800',
     });
   }
 
   return (
     <GlassCard className={panelClassName}>
-      <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-2">
+      <div className="space-y-6">
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-2">
           {metrics.map((metric) => (
             <div
               key={metric.label}
-              className={`flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br ${metric.gradient} px-4 py-5 shadow-lg border border-white/40 text-center text-white backdrop-blur-sm`}
+              className={`group relative overflow-hidden rounded-xl border ${metric.borderColor} ${metric.bgColor} p-4 transition-all hover:shadow-lg hover:shadow-${metric.color}-200/25 dark:hover:shadow-${metric.color}-900/25`}
             >
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
-                <Image src={metric.icon} alt="" width={22} height={22} className="drop-shadow-sm" />
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-slate-800 shadow-sm`}>
+                  <span className="text-lg">{metric.icon}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                    {metric.label}
+                  </p>
+                  <p className={`text-lg font-bold ${metric.textColor}`}>
+                    {metric.value}
+                  </p>
+                </div>
               </div>
-              <span className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] drop-shadow-sm" style={{ color: 'white', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
-                {metric.label}
-              </span>
-              <span className="text-xl font-bold drop-shadow-sm" style={{ color: 'white', textShadow: '1px 1px 2px rgba(0,0,0,0.8)' }}>
-                {metric.value}
-              </span>
             </div>
           ))}
         </div>
 
+        {/* Updated timestamp */}
         {updatedAtLabel && (
-          <p className="text-xs text-white/70">Updated {updatedAtLabel}</p>
+          <div className="flex items-center justify-center">
+            <p className="text-xs text-slate-500 dark:text-slate-400">Updated {updatedAtLabel}</p>
+          </div>
         )}
 
+        {/* War Information */}
         {(currentWar || recentWars.length) && (
-          <div className="rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white/90 space-y-4">
+          <div className="space-y-4">
             {currentWar && (
-              <div className="space-y-1">
-                <p className="text-xs uppercase tracking-[0.2em] text-white/70">Current War</p>
-                <p className="text-base font-semibold text-white">
-                  {currentWar.opponent?.name ?? 'Unknown Opponent'}
-                </p>
-                <p className="text-white/80">
-                  State: {currentWar.state ?? 'Unknown'}
-                </p>
-                {currentWar.teamSize && (
-                  <p className="text-white/80">Size: {currentWar.teamSize}v{currentWar.teamSize}</p>
-                )}
-                {currentWar.endTime && (
-                  <p className="text-white/70 text-xs">
-                    Ends {formatDistanceToNow(new Date(currentWar.endTime), { addSuffix: true })}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">⚔️</span>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">Current War</h3>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                    {currentWar.opponent?.name ?? 'Unknown Opponent'}
                   </p>
-                )}
+                  <div className="flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full bg-slate-200 px-2 py-1 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                      {currentWar.state ?? 'Unknown'}
+                    </span>
+                    {currentWar.teamSize && (
+                      <span className="rounded-full bg-slate-200 px-2 py-1 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
+                        {currentWar.teamSize}v{currentWar.teamSize}
+                      </span>
+                    )}
+                  </div>
+                  {currentWar.endTime && (
+                    <p className="text-xs text-slate-600 dark:text-slate-400">
+                      Ends {formatDistanceToNow(new Date(currentWar.endTime), { addSuffix: true })}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
             {recentWars.length > 0 && (
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-white/70 mb-2">Recent Wars</p>
-                <div className="space-y-3">
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-lg">📊</span>
+                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">Recent Wars</h3>
+                </div>
+                <div className="space-y-2">
                   {recentWars.map((war, index) => {
                     const endDate = war.endTime ? new Date(war.endTime) : null;
                     const hasValidEnd = !!endDate && !Number.isNaN(endDate.getTime());
@@ -173,17 +214,25 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                       : 'end time unavailable';
 
                     return (
-                    <div key={war.endTime || `${war.opponent?.tag || 'war'}-${index}`} className="rounded-xl border border-white/15 bg-white/5 px-3 py-2">
-                      <div className="flex items-center justify-between text-sm font-semibold text-white">
-                        <span className="truncate pr-3">{war.opponent?.name ?? 'Unknown Opponent'}</span>
-                        <span className={war.result === 'WIN' ? 'text-emerald-300' : war.result === 'LOSE' ? 'text-rose-300' : 'text-white/70'}>
-                          {war.result ?? 'N/A'}
-                        </span>
+                      <div key={war.endTime || `${war.opponent?.tag || 'war'}-${index}`} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-800">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                            {war.opponent?.name ?? 'Unknown Opponent'}
+                          </span>
+                          <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
+                            war.result === 'WIN' 
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' 
+                              : war.result === 'LOSE' 
+                              ? 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300' 
+                              : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
+                          }`}>
+                            {war.result ?? 'N/A'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                          {war.teamSize}v{war.teamSize} • {endedLabel}
+                        </p>
                       </div>
-                      <p className="mt-1 text-xs text-white/70">
-                        {war.teamSize}v{war.teamSize} • {endedLabel}
-                      </p>
-                    </div>
                     );
                   })}
                 </div>
