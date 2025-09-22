@@ -29,7 +29,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
   const setActiveTab = useDashboardStore((state) => state.setActiveTab);
 
   return (
-    <nav className={`-mx-2 overflow-x-auto px-2 pb-1 ${className}`} aria-label="Main navigation tabs">
+    <nav className={`tab-navigation -mx-2 overflow-x-auto px-2 pb-1 ${className}`} aria-label="Main navigation tabs">
       <div className="flex min-w-max gap-2">
         {TAB_CONFIGS.map((tab) => {
         const isActive = activeTab === tab.id;
@@ -44,7 +44,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`${baseStyles} ${isActive ? activeStyles : inactiveStyles}`}
+            className={`${baseStyles} ${isActive ? activeStyles : inactiveStyles} ${isActive ? 'active' : ''}`}
             title={tab.description}
             aria-label={tab.description}
           >
