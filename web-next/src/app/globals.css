@@ -341,6 +341,11 @@ th { @apply text-left font-semibold; }
   background-color: rgba(255, 215, 0, 0.05);
 }
 
+/* Ensure no default alternating row colors */
+.clash-table tr {
+  background-color: transparent;
+}
+
 /* Light theme table styles */
 [data-theme="light"] .clash-table th {
   background-color: white;
@@ -364,23 +369,31 @@ th { @apply text-left font-semibold; }
 
 /* Dark theme table styles */
 [data-theme="dark"] .clash-table th {
-  background-color: rgba(30, 41, 59, 0.9);
-  border-color: rgba(255, 215, 0, 0.3);
-  color: #FBBF24;
+  background-color: rgba(30, 41, 59, 0.9) !important;
+  border-color: rgba(255, 215, 0, 0.3) !important;
+  color: #FBBF24 !important;
 }
 
 [data-theme="dark"] .clash-table td {
-  background-color: transparent;
-  border-color: rgba(100, 116, 139, 0.3);
-  color: #F1F5F9;
+  background-color: transparent !important;
+  border-color: rgba(100, 116, 139, 0.3) !important;
+  color: #F1F5F9 !important;
 }
 
-[data-theme="dark"] .clash-table tr:hover {
-  background-color: rgba(255, 215, 0, 0.1);
+[data-theme="dark"] .clash-table tr {
+  background-color: transparent !important;
 }
 
 [data-theme="dark"] .clash-table tr:nth-child(even) {
-  background-color: transparent;
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .clash-table tr:nth-child(odd) {
+  background-color: transparent !important;
+}
+
+[data-theme="dark"] .clash-table tr:hover {
+  background-color: rgba(255, 215, 0, 0.1) !important;
 }
 
 /* Dark theme clash-card */
