@@ -53,8 +53,8 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       .slice(0, 5)
       .map((item) => ({
         name: item.member.name,
-        value: item.donations.toLocaleString('en-US'),
-        subtitle: `Received ${(item.member.donationsReceived || 0).toLocaleString('en-US')}`,
+        value: item.donations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
+        subtitle: `Received ${(item.member.donationsReceived || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`,
       }));
 
     const heroLeaders = members
@@ -72,7 +72,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       .slice(0, 5)
       .map((item) => ({
         name: item.member.name,
-        value: item.totalHeroes.toLocaleString('en-US'),
+        value: item.totalHeroes.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
         subtitle: `BK ${item.member.bk || 0} • AQ ${item.member.aq || 0} • GW ${item.member.gw || 0}`,
       }));
 

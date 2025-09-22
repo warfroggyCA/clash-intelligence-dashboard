@@ -164,7 +164,7 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
       <div className="space-y-2 max-h-64 overflow-y-auto bg-slate-900 text-slate-100 rounded-lg p-3 text-xs">
         {logs.map((log) => (
           <div key={`${log.timestamp}-${log.message}`}>
-            <span className="text-slate-400">{new Date(log.timestamp).toLocaleTimeString()} •</span>{' '}
+            <span className="text-slate-400">{new Date(log.timestamp).toISOString().slice(11, 19)} •</span>{' '}
             <span className={
               log.level === 'error'
                 ? 'text-red-300'

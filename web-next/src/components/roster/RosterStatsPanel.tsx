@@ -80,7 +80,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   const metrics = [
     {
       label: 'Members',
-      value: stats.memberCount.toLocaleString(),
+      value: stats.memberCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
       icon: '/assets/icons/trophy.svg',
       gradient: 'from-blue-400/40 via-blue-300/20 to-blue-500/50',
     },
@@ -92,13 +92,13 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     },
     {
       label: 'Avg Trophies',
-      value: stats.averageTrophies.toLocaleString(),
+      value: stats.averageTrophies.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
       icon: '/assets/icons/trophy.svg',
       gradient: 'from-purple-400/40 via-purple-300/20 to-purple-500/50',
     },
     {
       label: 'Total Donations',
-      value: stats.totalDonations.toLocaleString(),
+      value: stats.totalDonations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
       icon: '/assets/icons/donation.svg',
       gradient: 'from-amber-400/40 via-amber-300/20 to-orange-400/50',
     },
