@@ -403,6 +403,15 @@ th { @apply text-left font-semibold; }
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
 }
 
+/* Player name color variables */
+:root {
+  --player-name-color: #1e40af; /* Dark blue for light mode */
+}
+
+[data-theme="dark"] {
+  --player-name-color: #ffffff; /* White for dark mode */
+}
+
 
 /* Dark theme tab navigation */
 [data-theme="dark"] .tab-navigation button {
