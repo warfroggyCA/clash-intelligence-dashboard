@@ -452,9 +452,9 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
 
       {/* Data Source Indicator */}
       {roster && (
-        <div className="clash-card p-4 mb-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-medium-contrast">
-            <div className="flex flex-wrap items-center gap-4">
+        <div className="clash-card mb-4 p-4 md:p-5">
+          <div className="flex flex-col gap-3 text-sm text-medium-contrast sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
               <div className="flex items-center gap-2">
                 <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-clash-green' : 'bg-clash-blue'}`}></div>
                 <span className="font-semibold text-high-contrast">
@@ -464,7 +464,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
               <div className="text-muted-contrast">Date: {roster.date}</div>
               <div className="text-muted-contrast">Members: {roster.members.length}</div>
             </div>
-            <div className="text-xs text-muted-contrast">
+            <div className="text-xs text-muted-contrast sm:text-right">
               Last updated: {safeLocaleTimeString(dataFetchedAt, {
                 fallback: 'Unknown',
                 context: 'RosterTable dataFetchedAt'
@@ -475,7 +475,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
       )}
 
       {/* Desktop Table */}
-      <div className="hidden md:block overflow-x-auto">
+      <div className="hidden lg:block overflow-x-auto">
         <div className="clash-card overflow-hidden">
           <table className="clash-table" role="table" aria-label="Clan member roster">
             <TableHeader
@@ -498,7 +498,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
       </div>
 
       {/* Mobile Cards */}
-      <div className="block md:hidden space-y-3">
+      <div className="block lg:hidden space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
         {paginatedMembers.map((member, index) => (
           <MobileCard
             key={`${member.tag}-${index}`}

@@ -95,7 +95,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
     ].filter((section) => section.entries.length > 0);
   }, [roster]);
 
-  const panelClassName = ['min-h-[18rem]', className].filter(Boolean).join(' ');
+  const panelClassName = ['xl:min-h-[18rem]', className].filter(Boolean).join(' ');
 
   if (!sections.length) {
     return (
@@ -109,8 +109,8 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
 
   return (
     <GlassCard className={`${panelClassName} flex flex-col`}>
-      <div className="max-h-72 flex-1 space-y-6 overflow-y-auto pr-1">
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      <div className="flex-1 space-y-6 overflow-visible pr-0 md:pr-1 xl:max-h-72 xl:overflow-y-auto">
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {sections.map((section) => (
             <div key={section.title} className="space-y-4">
               <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.2em] text-white">
