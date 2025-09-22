@@ -396,7 +396,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             <div className="flex items-center space-x-4">
               <div className="flex items-center gap-2">
                 <div className="h-2 w-2 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                <span className="font-semibold text-white">Clash Intelligence Dashboard</span>
+                <span className="font-semibold !text-white" style={{ color: '#ffffff' }}>Clash Intelligence Dashboard</span>
               </div>
               <span className="text-gray-400">•</span>
               <span className="font-mono bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-xs font-semibold border border-gray-600">
