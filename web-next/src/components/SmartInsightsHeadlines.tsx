@@ -214,25 +214,27 @@ export default function SmartInsightsHeadlines({
     }
 
     return (
-      <ul className="max-h-72 space-y-2 overflow-y-auto pr-1">
-        {bulletins.map((item) => (
-          <li
-            key={item.key}
-            className="flex items-start gap-3 rounded-lg border border-white/10 bg-slate-950/30 p-3 text-sm text-white/90 shadow-sm"
-          >
-            <Shield
-              className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
-                item.priority === 'high'
-                  ? 'text-amber-300'
-                  : item.priority === 'medium'
-                  ? 'text-sky-300'
-                  : 'text-slate-400'
-              }`}
-            />
-            <span className="leading-relaxed">{item.text}</span>
-          </li>
-        ))}
-      </ul>
+      <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/30 p-3 shadow-sm">
+        <ul className="space-y-2">
+          {bulletins.map((item) => (
+            <li
+              key={item.key}
+              className="flex items-start gap-3 text-sm text-white/90"
+            >
+              <Shield
+                className={`mt-0.5 h-4 w-4 flex-shrink-0 ${
+                  item.priority === 'high'
+                    ? 'text-amber-300'
+                    : item.priority === 'medium'
+                    ? 'text-sky-300'
+                    : 'text-slate-400'
+                }`}
+              />
+              <span className="leading-relaxed">{item.text}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     );
   };
 
