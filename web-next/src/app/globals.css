@@ -196,7 +196,29 @@ th { @apply text-left font-semibold; }
 /* Light theme glass-card styling */
 [data-theme="light"] .glass-card {
   border: 1px solid rgba(0,0,0,0.4);
-  color: rgba(15, 23, 42, 1);
+  color: var(--text-primary) !important;
+}
+
+/* Force text colors in light theme glass cards */
+[data-theme="light"] .glass-card .text-high-contrast,
+[data-theme="light"] .glass-card .text-medium-contrast,
+[data-theme="light"] .glass-card .text-muted-contrast {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .glass-card h1,
+[data-theme="light"] .glass-card h2,
+[data-theme="light"] .glass-card h3,
+[data-theme="light"] .glass-card h4,
+[data-theme="light"] .glass-card h5,
+[data-theme="light"] .glass-card h6 {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="light"] .glass-card p,
+[data-theme="light"] .glass-card span,
+[data-theme="light"] .glass-card div {
+  color: var(--text-primary) !important;
 }
 
 .glass-card::before {
@@ -407,10 +429,16 @@ th { @apply text-left font-semibold; }
 /* Player name color variables */
 :root {
   --player-name-color: #1e40af; /* Dark blue for light mode */
+  --text-primary: #1e40af; /* Default dark blue text for light mode */
+  --text-secondary: #374151; /* Secondary text color for light mode */
+  --text-muted: #6b7280; /* Muted text color for light mode */
 }
 
 [data-theme="dark"] {
   --player-name-color: #ffffff; /* White for dark mode */
+  --text-primary: #f1f5f9; /* Default light text for dark mode */
+  --text-secondary: #cbd5e1; /* Secondary text color for dark mode */
+  --text-muted: #94a3b8; /* Muted text color for dark mode */
 }
 
 
