@@ -195,7 +195,7 @@ export const TableRow: React.FC<TableRowProps> = ({
                       }}
                       className="font-heading font-semibold text-blue-800 dark:!text-white hover:text-blue-600 dark:hover:!text-gray-200 transition-colors focus-ring-inset text-left"
                       style={{
-                        color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                        color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : '#1e40af'
                       }}
                       title="View player profile"
                     >
