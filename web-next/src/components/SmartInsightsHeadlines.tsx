@@ -132,36 +132,7 @@ export default function SmartInsightsHeadlines({
   };
 
   const renderHeader = () => {
-    const generatedAt = metadata?.generatedAt ? new Date(metadata.generatedAt) : null;
-    return (
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-slate-800 dark:text-white">
-        <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-white/70">
-          {metadata?.snapshotDate && (
-            <span>
-              Snapshot {safeLocaleDateString(metadata.snapshotDate, {
-                fallback: metadata.snapshotDate,
-                context: 'SmartInsightsHeadlines snapshotDate',
-              })}
-            </span>
-          )}
-          {generatedAt && (
-            <span>
-              Generated {formatDistanceToNow(generatedAt, { addSuffix: true })}
-            </span>
-          )}
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 w-7 p-0 text-slate-600 hover:text-slate-800 dark:text-white/70 dark:hover:text-white"
-            onClick={handleRefresh}
-            disabled={isRefreshing || status === 'loading'}
-            title="Refresh insights"
-          >
-            <RefreshCcw className={`h-4 w-4 ${isRefreshing || status === 'loading' ? 'animate-spin' : ''}`} />
-          </Button>
-        </div>
-      </div>
-    );
+    return null;
   };
 
   const renderBody = () => {
@@ -227,55 +198,69 @@ export default function SmartInsightsHeadlines({
       );
     }
 
+    // Group bulletins by priority
+    const groupedBulletins = bulletins.reduce((acc, item) => {
+      if (!acc[item.priority]) {
+        acc[item.priority] = [];
+      }
+      acc[item.priority].push(item);
+      return acc;
+    }, {} as Record<string, typeof bulletins>);
+
+    const priorityOrder = ['high', 'medium', 'low'];
+    const priorityLabels = {
+      high: 'High Priority',
+      medium: 'Medium Priority', 
+      low: 'Low Priority'
+    };
+    const priorityColors = {
+      high: 'text-amber-600 dark:text-amber-400',
+      medium: 'text-blue-600 dark:text-blue-400',
+      low: 'text-slate-500 dark:text-slate-400'
+    };
+
     return (
-      <div className="space-y-3 xl:max-h-72 xl:overflow-y-auto xl:pr-2">
-        {bulletins.map((item) => (
-          <div
-            key={item.key}
-            className="group rounded-lg border border-slate-200 bg-white p-4 transition-all hover:shadow-md hover:shadow-slate-200/50 dark:border-slate-700 dark:bg-slate-800/50 dark:hover:shadow-slate-900/50"
-          >
-            <div className="flex items-start gap-3">
-              <div className={`rounded-full p-2 ${
-                item.priority === 'high'
-                  ? 'bg-amber-100 dark:bg-amber-900/30'
-                  : item.priority === 'medium'
-                  ? 'bg-blue-100 dark:bg-blue-900/30'
-                  : 'bg-slate-100 dark:bg-slate-700'
-              }`}>
-                <Shield
-                  className={`h-4 w-4 ${
-                    item.priority === 'high'
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : item.priority === 'medium'
-                      ? 'text-blue-600 dark:text-blue-400'
-                      : 'text-slate-500 dark:text-slate-400'
-                  }`}
-                />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm leading-relaxed text-slate-800 dark:text-slate-200">
-                  {item.text}
-                </p>
-                <div className={`mt-2 inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ${
-                  item.priority === 'high'
-                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300'
-                    : item.priority === 'medium'
-                    ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                    : 'bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-400'
-                }`}>
-                  {item.priority} priority
-                </div>
+      <div className="space-y-4 xl:max-h-72 xl:overflow-y-auto xl:pr-2">
+        {priorityOrder.map((priority) => {
+          const items = groupedBulletins[priority];
+          if (!items || items.length === 0) return null;
+
+          return (
+            <div key={priority} className="space-y-2">
+              <h4 className={`text-xs font-semibold uppercase tracking-wide ${priorityColors[priority as keyof typeof priorityColors]}`}>
+                {priorityLabels[priority as keyof typeof priorityLabels]} ({items.length})
+              </h4>
+              <div className="space-y-2">
+                {items.map((item) => (
+                  <div key={item.key} className="group py-1">
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 pt-0.5">
+                        <Shield className={`h-4 w-4 ${priorityColors[priority as keyof typeof priorityColors]}`} />
+                      </div>
+                      <div className="flex-1">
+                        <p 
+                          className="text-sm leading-relaxed text-slate-800 dark:!text-white"
+                          style={{
+                            color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                          }}
+                        >
+                          {item.text}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
 
   return (
     <GlassCard className={className}>
-      <div className="space-y-4">
+      <div className="space-y-2">
         {renderHeader()}
         {renderBody()}
       </div>

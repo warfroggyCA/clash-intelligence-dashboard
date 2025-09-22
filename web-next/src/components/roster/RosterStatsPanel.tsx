@@ -34,12 +34,18 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
         memberCount
     );
     const totalDonations = members.reduce((sum, member) => sum + (member.donations || 0), 0);
+    const averageDonations = Math.round(totalDonations / memberCount);
+    const averageBuilderTrophies = Math.round(
+      members.reduce((sum, member) => sum + (member.versusTrophies || 0), 0) / memberCount
+    );
 
     return {
       memberCount,
       averageTownHall,
       averageTrophies,
       totalDonations,
+      averageDonations,
+      averageBuilderTrophies,
     };
   }, [roster]);
 
@@ -85,7 +91,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   const metrics = [
     {
       label: 'Members',
-      value: stats.memberCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
+      value: stats.memberCount != null ? stats.memberCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : 'No data',
       icon: '👥',
       color: 'blue',
       bgColor: 'bg-blue-50 dark:bg-blue-950/20',
@@ -94,7 +100,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     },
     {
       label: 'Avg Town Hall',
-      value: stats.averageTownHall.toString(),
+      value: stats.averageTownHall != null ? stats.averageTownHall.toString() : 'No data',
       icon: '🏰',
       color: 'purple',
       bgColor: 'bg-purple-50 dark:bg-purple-950/20',
@@ -103,7 +109,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     },
     {
       label: 'Avg Trophies',
-      value: stats.averageTrophies.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
+      value: stats.averageTrophies != null ? stats.averageTrophies.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : 'No data',
       icon: '🏆',
       color: 'amber',
       bgColor: 'bg-amber-50 dark:bg-amber-950/20',
@@ -112,46 +118,72 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     },
     {
       label: 'Total Donations',
-      value: stats.totalDonations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
+      value: stats.totalDonations != null ? stats.totalDonations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : 'No data',
       icon: '💝',
       color: 'emerald',
       bgColor: 'bg-emerald-50 dark:bg-emerald-950/20',
       textColor: 'text-emerald-600 dark:text-emerald-400',
       borderColor: 'border-emerald-200 dark:border-emerald-800',
     },
+    {
+      label: 'Avg Donations',
+      value: stats.averageDonations != null ? stats.averageDonations.toString() : 'No data',
+      icon: '📊',
+      color: 'cyan',
+      bgColor: 'bg-cyan-50 dark:bg-cyan-950/20',
+      textColor: 'text-cyan-600 dark:text-cyan-400',
+      borderColor: 'border-cyan-200 dark:border-cyan-800',
+    },
+    {
+      label: 'Avg Builder Base',
+      value: stats.averageBuilderTrophies != null && stats.averageBuilderTrophies > 0 ? stats.averageBuilderTrophies.toString() : 'No data',
+      icon: '🏗️',
+      color: 'orange',
+      bgColor: 'bg-orange-50 dark:bg-orange-950/20',
+      textColor: 'text-orange-600 dark:text-orange-400',
+      borderColor: 'border-orange-200 dark:border-orange-800',
+    },
   ];
 
-  if (warWinRate != null) {
-    metrics.push({
-      label: 'War Win Rate',
-      value: `${warWinRate}%`,
-      icon: '⚔️',
-      color: 'rose',
-      bgColor: 'bg-rose-50 dark:bg-rose-950/20',
-      textColor: 'text-rose-600 dark:text-rose-400',
-      borderColor: 'border-rose-200 dark:border-rose-800',
-    });
-  }
+  metrics.push({
+    label: 'War Win Rate',
+    value: warWinRate != null && warWinRate >= 0 ? `${warWinRate}%` : 'No data',
+    icon: '⚔️',
+    color: 'rose',
+    bgColor: 'bg-rose-50 dark:bg-rose-950/20',
+    textColor: 'text-rose-600 dark:text-rose-400',
+    borderColor: 'border-rose-200 dark:border-rose-800',
+  });
 
   return (
     <GlassCard className={panelClassName}>
       <div className="space-y-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3 xl:grid-cols-2">
+        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-3">
           {metrics.map((metric) => (
             <div
               key={metric.label}
-              className={`group relative overflow-hidden rounded-xl border ${metric.borderColor} ${metric.bgColor} p-4 transition-all hover:shadow-lg hover:shadow-${metric.color}-200/25 dark:hover:shadow-${metric.color}-900/25`}
+              className="group relative p-2"
             >
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-slate-800 shadow-sm`}>
-                  <span className="text-lg">{metric.icon}</span>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center">
+                  <span className="text-base">{metric.icon}</span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                  <p 
+                    className="text-xs font-medium text-slate-500 dark:!text-white uppercase tracking-wide"
+                    style={{
+                      color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                    }}
+                  >
                     {metric.label}
                   </p>
-                  <p className={`text-lg font-bold ${metric.textColor}`}>
+                  <p 
+                    className={`text-base font-bold ${metric.textColor} dark:!text-white`}
+                    style={{
+                      color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
+                    }}
+                  >
                     {metric.value}
                   </p>
                 </div>
@@ -168,23 +200,23 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
         )}
 
         {/* War Information */}
-        {(currentWar || recentWars.length) && (
-          <div className="space-y-4">
+        {(Boolean(currentWar) || recentWars.length > 0) && (
+          <div className="space-y-4" style={{ position: 'relative', overflow: 'hidden' }}>
             {currentWar && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-lg">⚔️</span>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">Current War</h3>
+                  <h3 className="font-semibold text-slate-800 dark:text-white">Current War</h3>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-200">
+                  <p className="text-sm font-medium text-slate-800 dark:text-white">
                     {currentWar.opponent?.name ?? 'Unknown Opponent'}
                   </p>
                   <div className="flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full bg-slate-200 px-2 py-1 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                       {currentWar.state ?? 'Unknown'}
                     </span>
-                    {currentWar.teamSize && (
+                    {currentWar.teamSize && currentWar.teamSize > 0 && (
                       <span className="rounded-full bg-slate-200 px-2 py-1 text-slate-700 dark:bg-slate-700 dark:text-slate-300">
                         {currentWar.teamSize}v{currentWar.teamSize}
                       </span>
@@ -200,10 +232,10 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
             )}
 
             {recentWars.length > 0 && (
-              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/50">
+              <div className="p-4">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-lg">📊</span>
-                  <h3 className="font-semibold text-slate-800 dark:text-slate-200">Recent Wars</h3>
+                  <h3 className="font-semibold text-slate-800 dark:text-white">Recent Wars</h3>
                 </div>
                 <div className="space-y-2">
                   {recentWars.map((war, index) => {
@@ -214,9 +246,9 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                       : 'end time unavailable';
 
                     return (
-                      <div key={war.endTime || `${war.opponent?.tag || 'war'}-${index}`} className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-800">
+                      <div key={war.endTime || `${war.opponent?.tag || 'war'}-${index}`} className="p-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">
+                          <span className="text-sm font-medium text-slate-800 dark:text-white truncate">
                             {war.opponent?.name ?? 'Unknown Opponent'}
                           </span>
                           <span className={`text-xs font-semibold px-2 py-1 rounded-full ${
@@ -229,9 +261,9 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                             {war.result ?? 'N/A'}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
-                          {war.teamSize}v{war.teamSize} • {endedLabel}
-                        </p>
+                          <p className="text-xs text-slate-600 dark:text-gray-300 mt-1">
+                            {war.teamSize && war.teamSize > 0 ? `${war.teamSize}v${war.teamSize}` : 'Unknown size'} • {endedLabel}
+                          </p>
                       </div>
                     );
                   })}
