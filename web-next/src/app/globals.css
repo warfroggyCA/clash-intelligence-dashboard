@@ -303,9 +303,9 @@ th { @apply text-left font-semibold; }
 
 .clash-card {
   @apply relative overflow-hidden rounded-2xl border;
-  background: white;
+  background: var(--clash-bg-card);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-  border-color: rgba(0, 0, 0, 0.1);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .clash-card::before {
@@ -381,6 +381,13 @@ th { @apply text-left font-semibold; }
 
 [data-theme="dark"] .clash-table tr:nth-child(even) {
   background-color: transparent;
+}
+
+/* Dark theme clash-card */
+[data-theme="dark"] .clash-card {
+  background: linear-gradient(145deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86)) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
 }
 
 /* Dark theme tab navigation */
