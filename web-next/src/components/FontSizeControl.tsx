@@ -58,9 +58,9 @@ export default function FontSizeControl() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-40 bg-white/95 backdrop-blur-sm border border-white/20 rounded-lg shadow-xl z-50">
+        <div className="absolute right-0 top-full mt-2 w-40 bg-white dark:bg-gray-800 backdrop-blur-sm border border-gray-200 dark:border-gray-600 rounded-lg shadow-xl z-50">
           <div className="p-2">
-            <div className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2 px-2">
+            <div className="text-xs font-semibold text-gray-600 dark:text-gray-300 uppercase tracking-wide mb-2 px-2">
               Font Size
             </div>
             {FONT_SIZES.map((size) => (
@@ -69,12 +69,12 @@ export default function FontSizeControl() {
                 onClick={() => handleSizeChange(size.multiplier)}
                 className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between ${
                   currentSize === size.multiplier
-                    ? 'bg-indigo-100 text-indigo-700 font-medium'
-                    : 'hover:bg-gray-100 text-gray-700'
+                    ? 'bg-indigo-100 dark:bg-indigo-900 text-indigo-700 dark:text-indigo-300 font-medium'
+                    : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200'
                 }`}
               >
                 <span>{size.label}</span>
-                <span className="text-xs text-gray-500">{size.description}</span>
+                <span className="text-xs text-gray-500 dark:text-gray-400">{size.description}</span>
               </button>
             ))}
           </div>
