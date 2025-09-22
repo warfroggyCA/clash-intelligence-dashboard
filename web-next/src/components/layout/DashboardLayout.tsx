@@ -351,32 +351,32 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
       
       {/* Main Content */}
-      <main className="dashboard-main min-h-screen px-4 pb-6 pt-4 flex flex-col gap-6 w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)] border border-t-0 border-clash-gold/20">
+      <main className="dashboard-main min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl border border-t-0 border-clash-gold/20 px-3 pb-6 pt-4 sm:px-4 flex flex-col gap-6 shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
         <ToastHub />
         {/* Dev Status */}
         <DevStatusBadge />
         {activeTab === 'roster' && (
-          <div className="grid items-stretch gap-6 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)]">
-            <div className="flex h-full flex-col gap-4">
+          <div className="grid items-stretch gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)]">
+            <div className="flex h-full flex-col gap-4 lg:col-span-2 xl:col-span-1">
               <div className="flex items-center gap-2">
                 <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
                 <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
               </div>
-              <SmartInsightsHeadlines className="min-h-[18rem] flex-1" />
+              <SmartInsightsHeadlines className="flex-1" />
             </div>
             <div className="flex h-full flex-col gap-4">
               <div className="flex items-center gap-2">
                 <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
                 <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
               </div>
-              <RosterStatsPanel className="min-h-[18rem] flex-1" />
+              <RosterStatsPanel className="flex-1" />
             </div>
             <div className="flex h-full flex-col gap-4">
               <div className="flex items-center gap-2">
                 <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
                 <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
               </div>
-              <RosterHighlightsPanel className="min-h-[18rem] flex-1" />
+              <RosterHighlightsPanel className="flex-1" />
             </div>
           </div>
         )}

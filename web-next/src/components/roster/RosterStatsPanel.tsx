@@ -16,7 +16,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   const snapshotDetails = useDashboardStore((state) => state.snapshotDetails);
   const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt) || snapshotMetadata?.fetchedAt || null;
 
-  const panelClassName = ['min-h-[18rem]', className].filter(Boolean).join(' ');
+  const panelClassName = ['xl:min-h-[18rem]', className].filter(Boolean).join(' ');
 
   const stats = useMemo(() => {
     if (!roster?.members?.length) {
@@ -116,11 +116,11 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   return (
     <GlassCard className={panelClassName}>
       <div className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-2">
           {metrics.map((metric) => (
             <div
               key={metric.label}
-              className={`flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br ${metric.gradient} px-4 py-6 shadow-lg border border-white/40 text-center min-h-[8rem] text-white backdrop-blur-sm`}
+              className={`flex flex-col items-center justify-center rounded-2xl bg-gradient-to-br ${metric.gradient} px-4 py-5 shadow-lg border border-white/40 text-center text-white backdrop-blur-sm`}
             >
               <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-white/95 shadow-lg drop-shadow-md">
                 <Image src={metric.icon} alt="" width={22} height={22} className="drop-shadow-sm" />
@@ -136,7 +136,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
         </div>
 
         {updatedAtLabel && (
-          <p className="text-xs text-white/75">Updated {updatedAtLabel}</p>
+          <p className="text-xs text-white/70">Updated {updatedAtLabel}</p>
         )}
 
         {(currentWar || recentWars.length) && (
@@ -164,7 +164,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
             {recentWars.length > 0 && (
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-white/70 mb-2">Recent Wars</p>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {recentWars.map((war, index) => {
                     const endDate = war.endTime ? new Date(war.endTime) : null;
                     const hasValidEnd = !!endDate && !Number.isNaN(endDate.getTime());

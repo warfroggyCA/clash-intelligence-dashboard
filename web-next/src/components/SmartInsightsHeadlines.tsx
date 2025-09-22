@@ -214,7 +214,7 @@ export default function SmartInsightsHeadlines({
     }
 
     return (
-      <div className="max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-slate-950/30 p-3 shadow-sm">
+      <div className="rounded-xl border border-white/10 bg-slate-950/30 p-3 shadow-sm xl:max-h-72 xl:overflow-y-auto">
         <ul className="space-y-2">
           {bulletins.map((item) => (
             <li

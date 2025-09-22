@@ -1,40 +1,26 @@
 /**
  * MobileCard Component
- * 
- * Mobile-optimized card layout for displaying member data on small screens.
- * Provides a compact, touch-friendly interface with all essential information.
- * 
- * Features:
- * - Compact card layout for mobile devices
- * - Touch-friendly interactions
- * - Essential member information display
- * - Status indicators and badges
- * - Responsive design
- * - Accessibility features
- * 
- * Version: 1.0.0
- * Last Updated: January 2025
+ *
+ * Responsive roster card optimized for small and medium screens.
  */
 
 import React from 'react';
 import { Member, Roster } from '@/types';
 import { safeLocaleDateString } from '@/lib/date';
-import { 
-  calculateRushPercentage, 
-  calculateDonationBalance, 
+import {
+  calculateRushPercentage,
+  calculateDonationBalance,
   calculateActivityScore,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
   isNetReceiver,
-  isLowDonator
+  isLowDonator,
 } from '@/lib/business/calculations';
 import { Button } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
-
-// =============================================================================
-// TYPES
-// =============================================================================
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { showToast } from '@/lib/toast';
 
 export interface MobileCardProps {
   member: Member;
@@ -43,250 +29,313 @@ export interface MobileCardProps {
   className?: string;
 }
 
-// =============================================================================
-// UTILITY FUNCTIONS
-// =============================================================================
-
-const getRushClass = (rushPercent: number): string => {
-  if (rushPercent >= 70) return "text-red-700 font-semibold";
-  if (rushPercent >= 40) return "text-amber-600";
-  return "text-green-700";
-};
-
-const getActivityClass = (level: string): string => {
-  switch (level.toLowerCase()) {
-    case 'very active':
-      return 'bg-green-100 text-green-800';
-    case 'active':
-      return 'bg-blue-100 text-blue-800';
-    case 'moderate':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'low':
-      return 'bg-orange-100 text-orange-800';
-    case 'inactive':
-      return 'bg-red-100 text-red-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
 const formatNumber = (num: number | undefined): string => {
-  if (num === undefined || num === null) return 'N/A';
+  if (num === undefined || num === null) return '—';
   return num.toLocaleString();
 };
 
 const formatDays = (days: number | undefined): string => {
-  if (days === undefined || days === null) return 'N/A';
+  if (days === undefined || days === null) return '—';
   if (days === 0) return 'New';
   if (days === 1) return '1 day';
   return `${days} days`;
 };
 
-// =============================================================================
-// MAIN COMPONENT
-// =============================================================================
+const activityBadgeClass = (level: string): string => {
+  switch (level.toLowerCase()) {
+    case 'very active':
+      return 'bg-emerald-400/20 text-emerald-200 border-emerald-300/40';
+    case 'active':
+      return 'bg-sky-400/20 text-sky-200 border-sky-300/40';
+    case 'moderate':
+      return 'bg-amber-400/20 text-amber-100 border-amber-300/40';
+    case 'low':
+      return 'bg-orange-400/25 text-orange-100 border-orange-300/40';
+    case 'inactive':
+      return 'bg-rose-500/20 text-rose-100 border-rose-300/40';
+    default:
+      return 'bg-white/10 text-white/70 border-white/20';
+  }
+};
 
 export const MobileCard: React.FC<MobileCardProps> = ({
   member,
-  index,
   roster,
-  className = ''
+  className = '',
 }) => {
-  // Calculate member metrics
+  const {
+    setSelectedPlayer,
+    setShowPlayerProfile,
+    setSelectedMember,
+    setShowDepartureModal,
+    loadRoster,
+    clanTag: storeClanTag,
+    homeClan,
+  } = useDashboardStore();
+
+  const clanTagForActions = roster.clanTag || storeClanTag || homeClan || '';
+
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
   const activity = calculateActivityScore(member);
-  const isRushedPlayer = isRushed(member);
-  const isVeryRushedPlayer = isVeryRushed(member);
-  const isNetReceiverPlayer = isNetReceiver(member);
-  const isLowDonatorPlayer = isLowDonator(member);
+  const rushWarning = isRushed(member);
+  const rushSevere = isVeryRushed(member);
+  const netReceiver = isNetReceiver(member);
+  const lowDonator = isLowDonator(member);
+  const lastActiveDisplay = activity.last_active_at
+    ? safeLocaleDateString(activity.last_active_at, {
+        fallback: 'Unknown',
+        context: 'MobileCard activity.last_active_at',
+      })
+    : 'Unknown';
 
-  // Handle member actions
-  const handleOpenProfile = () => {
-    console.log('Open profile for:', member.name);
+  const openProfile = () => {
+    setSelectedPlayer(member);
+    setShowPlayerProfile(true);
   };
 
-  const handleQuickDeparture = () => {
-    console.log('Quick departure for:', member.name);
+  const openDepartureModal = () => {
+    setSelectedMember(member);
+    setShowDepartureModal(true);
+  };
+
+  const handleEditTenure = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const current = Number(member.tenure_days ?? member.tenure ?? 0) || 0;
+    const input = typeof window !== 'undefined'
+      ? window.prompt(`Set tenure for ${member.name}`, String(current))
+      : null;
+    if (input === null) return;
+    const trimmed = input.trim();
+    const match = trimmed.match(/\d+/);
+    if (!match) {
+      showToast('Please enter a valid number of days', 'error');
+      return;
+    }
+    const days = Math.max(0, Math.min(20000, Number.parseInt(match[0], 10)));
+    try {
+      const res = await fetch('/api/tenure/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(payload?.error || payload?.message || 'Failed to update tenure');
+      }
+      showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
+      if (clanTagForActions) {
+        await loadRoster(clanTagForActions);
+      }
+    } catch (error: any) {
+      showToast(error?.message || 'Failed to update tenure', 'error');
+    }
   };
 
   return (
-    <div 
-      className={`bg-white rounded-xl border border-gray-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 ${className}`}
-      onClick={handleOpenProfile}
+    <div
+      className={`rounded-2xl border border-white/12 bg-slate-900/80 p-4 text-white shadow-lg shadow-black/25 backdrop-blur-sm transition-transform duration-200 hover:-translate-y-0.5 md:p-5 ${className}`}
+      onClick={openProfile}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openProfile();
+        }
+      }}
     >
-      {/* Header with Name and Role */}
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 text-lg">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <h3 className="truncate text-base font-semibold leading-tight md:text-lg">
             {member.name}
           </h3>
-          <p className="text-sm text-gray-500 font-mono">
+          <p className="truncate font-mono text-xs text-white/60 md:text-sm">
             {member.tag}
           </p>
         </div>
-        <div className="flex items-center space-x-2">
-          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-            member.role === 'leader' ? 'bg-purple-100 text-purple-800' :
-            member.role === 'coleader' ? 'bg-blue-100 text-blue-800' :
-            member.role === 'elder' ? 'bg-green-100 text-green-800' :
-            'bg-gray-100 text-gray-800'
-          }`}>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <span
+            className={`rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide md:text-xs ${
+              member.role === 'leader'
+                ? 'bg-amber-300 text-gray-900'
+                : member.role === 'coleader'
+                ? 'bg-purple-400/90 text-white'
+                : member.role === 'elder'
+                ? 'bg-sky-400/90 text-white'
+                : 'bg-white/15 text-white'
+            }`}
+          >
             {member.role ? member.role.charAt(0).toUpperCase() + member.role.slice(1) : 'Member'}
           </span>
-          <LeadershipGuard
-            requiredPermission="canModifyClanData"
-            fallback={null}
-          >
-            <Button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleQuickDeparture();
-              }}
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-300 hover:bg-red-50"
-              title="Record departure"
-            >
-              📤
-            </Button>
+          <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 px-0 border-white/30 text-white hover:bg-white/10"
+                title="Edit tenure"
+                onClick={handleEditTenure}
+              >
+                ⏱️
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 px-0 border-rose-400/40 text-rose-200 hover:bg-rose-500/10"
+                title="Record departure"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openDepartureModal();
+                }}
+              >
+                📤
+              </Button>
+            </div>
           </LeadershipGuard>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-2 gap-3 text-sm">
-        {/* Town Hall */}
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-600">TH:</span>
-          <span className="font-semibold">TH{th}</span>
-          {isRushedPlayer && (
-            <span className="text-xs" title={`Rushed: ${rushPercent}%`}>
-              {isVeryRushedPlayer ? '🔴' : '🟡'}
+      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs text-white/80 md:text-sm">
+        <div className="flex items-center gap-2">
+          <span className="text-white/50">Town Hall</span>
+          <span className="font-semibold text-white">{th}</span>
+          {rushWarning && (
+            <span className="text-xs" title={`Rushed ${rushPercent.toFixed(1)}%`}>
+              {rushSevere ? '🔴' : '🟡'}
             </span>
           )}
         </div>
-
-        {/* Trophies */}
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-600">Trophies:</span>
-          <span className="font-semibold">{formatNumber(member.trophies)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-white/50">Trophies</span>
+          <span className="font-semibold text-white">{formatNumber(member.trophies)}</span>
         </div>
-
-        {/* Donations Given */}
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-600">Given:</span>
-          <span className="font-semibold text-green-700">
-            {formatNumber(member.donations)}
-          </span>
-          {isLowDonatorPlayer && (
-            <span className="text-xs text-red-600" title="Low donator">
-              ⚠️
-            </span>
-          )}
+        <div className="flex items-center gap-2">
+          <span className="text-white/50">Donated</span>
+          <span className="font-semibold text-emerald-300">{formatNumber(member.donations)}</span>
+          {lowDonator && <span className="text-xs text-rose-200" title="Low donator">⚠️</span>}
         </div>
-
-        {/* Donations Received */}
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-600">Received:</span>
-          <span className="font-semibold text-blue-700">
-            {formatNumber(member.donationsReceived)}
-          </span>
-          {isNetReceiverPlayer && (
-            <span className="text-xs text-orange-600" title="Net receiver">
-              📥
-            </span>
-          )}
+        <div className="flex items-center gap-2">
+          <span className="text-white/50">Received</span>
+          <span className="font-semibold text-sky-300">{formatNumber(member.donationsReceived)}</span>
+          {netReceiver && <span className="text-xs text-amber-200" title="Net receiver">📥</span>}
         </div>
-
-        {/* Tenure */}
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-600">Tenure:</span>
-          <span className="font-semibold">
-            {formatDays(member.tenure_days || member.tenure)}
-          </span>
+        <div className="flex items-center gap-2">
+          <span className="text-white/50">Tenure</span>
+          <span className="font-semibold text-white">{formatDays(member.tenure_days || member.tenure)}</span>
         </div>
-
-        {/* Activity */}
-        <div className="flex items-center space-x-2">
-          <span className="text-gray-600">Activity:</span>
-          <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getActivityClass(activity.level)}`}>
+        <div className="flex items-center gap-2">
+          <span className="text-white/50">Activity</span>
+          <span className={`border px-2 py-1 text-[11px] font-semibold md:text-xs ${activityBadgeClass(activity.level)}`}>
             {activity.level}
           </span>
         </div>
       </div>
 
-      {/* Hero Levels */}
-      <div className="mt-3 pt-3 border-t border-gray-200">
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-gray-600">Heroes:</span>
-          <div className="flex items-center space-x-3 text-sm">
+      <div className="mt-4 flex flex-wrap gap-2 text-[11px] md:text-xs">
+        {rushWarning && (
+          <span className={`rounded-full px-3 py-1 font-semibold ${rushSevere ? 'bg-rose-500/20 text-rose-100' : 'bg-amber-400/20 text-amber-100'}`}>
+            {rushSevere ? 'Very Rushed' : 'Rushed'} • {rushPercent.toFixed(1)}%
+          </span>
+        )}
+        {netReceiver && (
+          <span className="rounded-full bg-orange-400/20 px-3 py-1 font-semibold text-orange-100">
+            Net Receiver
+          </span>
+        )}
+        {lowDonator && (
+          <span className="rounded-full bg-white/10 px-3 py-1 font-semibold text-white/70">
+            Low Donator
+          </span>
+        )}
+        {donationBalance.balance < 0 && (
+          <span className="rounded-full bg-emerald-500/15 px-3 py-1 font-semibold text-emerald-100">
+            Net +{Math.abs(donationBalance.balance).toLocaleString()}
+          </span>
+        )}
+      </div>
+
+      <div className="mt-4 border-t border-white/10 pt-4">
+        <div className="flex items-start justify-between gap-3">
+          <span className="text-xs uppercase tracking-[0.28em] text-white/50">Heroes</span>
+          <div className="flex flex-wrap gap-3 text-sm text-white">
             {member.bk && (
               <div className="text-center">
-                <div className="font-semibold">BK</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">BK</div>
                 <div>{member.bk}</div>
               </div>
             )}
             {member.aq && (
               <div className="text-center">
-                <div className="font-semibold">AQ</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">AQ</div>
                 <div>{member.aq}</div>
               </div>
             )}
             {member.gw && (
               <div className="text-center">
-                <div className="font-semibold">GW</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">GW</div>
                 <div>{member.gw}</div>
               </div>
             )}
             {member.rc && (
               <div className="text-center">
-                <div className="font-semibold">RC</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">RC</div>
                 <div>{member.rc}</div>
               </div>
             )}
             {member.mp && (
               <div className="text-center">
-                <div className="font-semibold">MP</div>
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">MB</div>
                 <div>{member.mp}</div>
               </div>
             )}
           </div>
         </div>
+        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-white/70 md:text-sm">
+          <div>
+            <p className="text-white/50">Last Active</p>
+            <p className="font-medium text-white/80">{lastActiveDisplay}</p>
+          </div>
+          <div>
+            <p className="text-white/50">Last Seen</p>
+            <p className="font-medium text-white/80">
+              {member.lastSeen
+                ? safeLocaleDateString(member.lastSeen, {
+                    fallback: 'Unknown',
+                    context: 'MobileCard lastSeen',
+                  })
+                : 'Unknown'}
+            </p>
+          </div>
+        </div>
       </div>
 
-      {/* Status Indicators */}
-      <div className="mt-3 pt-3 border-t border-gray-200">
-        <div className="flex flex-wrap gap-2">
-          {isRushedPlayer && (
-            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-              isVeryRushedPlayer 
-                ? 'bg-red-100 text-red-800' 
-                : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {isVeryRushedPlayer ? 'Very Rushed' : 'Rushed'} ({rushPercent.toFixed(1)}%)
-            </span>
-          )}
-          {isNetReceiverPlayer && (
-            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-800">
-              Net Receiver
-            </span>
-          )}
-          {isLowDonatorPlayer && (
-            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-800">
-              Low Donator
-            </span>
-          )}
-          {activity.last_active_at && (
-            <span className="px-2 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-              Last: {safeLocaleDateString(activity.last_active_at, {
-                fallback: 'Unknown',
-                context: 'MobileCard activity.last_active_at'
-              })}
-            </span>
-          )}
-        </div>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <Button
+          onClick={(e) => {
+            e.stopPropagation();
+            openProfile();
+          }}
+          variant="primary"
+          size="sm"
+          className="flex-1 min-w-[7.5rem]"
+        >
+          View Profile
+        </Button>
+        <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+          <Button
+            onClick={(e) => {
+              e.stopPropagation();
+              openDepartureModal();
+            }}
+            variant="outline"
+            size="sm"
+            className="flex-1 min-w-[7.5rem] border-white/30 text-white hover:bg-white/10"
+          >
+            Departure
+          </Button>
+        </LeadershipGuard>
       </div>
     </div>
   );

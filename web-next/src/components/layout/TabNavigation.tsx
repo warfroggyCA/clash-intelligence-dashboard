@@ -29,15 +29,16 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
   const setActiveTab = useDashboardStore((state) => state.setActiveTab);
 
   return (
-    <nav className={`flex flex-wrap gap-1 p-2 sm:flex-nowrap ${className}`}>
-      {TAB_CONFIGS.map((tab) => {
+    <nav className={`-mx-2 overflow-x-auto px-2 pb-1 ${className}`} aria-label="Main navigation tabs">
+      <div className="flex min-w-max gap-2">
+        {TAB_CONFIGS.map((tab) => {
         const isActive = activeTab === tab.id;
         const baseStyles =
-          "relative px-3 sm:px-6 py-1.5 sm:py-2 font-semibold text-base sm:text-lg transition-all duration-300 rounded-lg flex-1 sm:flex-none";
+          "relative flex-shrink-0 px-3 py-1.5 text-sm font-semibold transition-all duration-300 rounded-xl shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400";
         const activeStyles =
-          "bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg transform scale-105 border-2 border-blue-400 [data-theme='light']:bg-gradient-to-br [data-theme='light']:from-blue-600 [data-theme='light']:to-blue-700 [data-theme='light']:text-white [data-theme='dark']:text-white";
+          "bg-gradient-to-br from-blue-500 to-indigo-600 text-white shadow-lg border border-blue-300 scale-[1.02]";
         const inactiveStyles =
-          "bg-gray-100 text-gray-600 hover:text-blue-600 hover:bg-blue-50/80 hover:shadow-md hover:scale-102 border-2 border-gray-200 hover:border-blue-200";
+          "bg-white/10 text-white/70 hover:text-white hover:bg-white/20 border border-white/15";
 
         return (
           <button
@@ -47,16 +48,17 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
             title={tab.description}
             aria-label={tab.description}
           >
-            <span className="flex items-center gap-1.5 sm:gap-3 justify-center sm:justify-start">
-              <span className="text-lg sm:text-xl">{tab.icon}</span>
-              <span className="hidden sm:inline">{tab.label}</span>
+            <span className="flex items-center gap-2">
+              <span className="text-base">{tab.icon}</span>
+              <span className="text-sm sm:text-base">{tab.label}</span>
             </span>
             {isActive && (
-              <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-1 bg-white rounded-full" />
+              <div className="absolute -bottom-1 left-1/2 h-1 w-8 -translate-x-1/2 transform rounded-full bg-white" />
             )}
           </button>
         );
       })}
+      </div>
     </nav>
   );
 };
