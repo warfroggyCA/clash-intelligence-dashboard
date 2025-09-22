@@ -165,8 +165,15 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-white/70 mb-2">Recent Wars</p>
                 <div className="space-y-2">
-                  {recentWars.map((war) => (
-                    <div key={war.endTime} className="rounded-xl border border-white/15 bg-white/5 px-3 py-2">
+                  {recentWars.map((war, index) => {
+                    const endDate = war.endTime ? new Date(war.endTime) : null;
+                    const hasValidEnd = !!endDate && !Number.isNaN(endDate.getTime());
+                    const endedLabel = hasValidEnd
+                      ? `ended ${formatDistanceToNow(endDate, { addSuffix: true })}`
+                      : 'end time unavailable';
+
+                    return (
+                    <div key={war.endTime || `${war.opponent?.tag || 'war'}-${index}`} className="rounded-xl border border-white/15 bg-white/5 px-3 py-2">
                       <div className="flex items-center justify-between text-sm font-semibold text-white">
                         <span className="truncate pr-3">{war.opponent?.name ?? 'Unknown Opponent'}</span>
                         <span className={war.result === 'WIN' ? 'text-emerald-300' : war.result === 'LOSE' ? 'text-rose-300' : 'text-white/70'}>
@@ -174,10 +181,11 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                         </span>
                       </div>
                       <p className="mt-1 text-xs text-white/70">
-                        {war.teamSize}v{war.teamSize} • ended {formatDistanceToNow(new Date(war.endTime), { addSuffix: true })}
+                        {war.teamSize}v{war.teamSize} • {endedLabel}
                       </p>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
