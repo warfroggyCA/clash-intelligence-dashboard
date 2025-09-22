@@ -450,29 +450,6 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
         )}
       </div>
 
-      {/* Data Source Indicator */}
-      {roster && (
-        <div className="clash-card mb-4 p-4 md:p-5">
-          <div className="flex flex-col gap-3 text-sm text-medium-contrast sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-clash-green' : 'bg-clash-blue'}`}></div>
-                <span className="font-semibold text-high-contrast">
-                  Data Source: {roster.source === 'live' ? 'Live API' : 'Snapshot'}
-                </span>
-              </div>
-              <div className="text-muted-contrast">Date: {roster.date}</div>
-              <div className="text-muted-contrast">Members: {roster.members.length}</div>
-            </div>
-            <div className="text-xs text-muted-contrast sm:text-right">
-              Last updated: {safeLocaleTimeString(dataFetchedAt, {
-                fallback: 'Unknown',
-                context: 'RosterTable dataFetchedAt'
-              })}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Desktop Table */}
       <div className="hidden lg:block overflow-x-auto">
@@ -519,6 +496,30 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
         />
+      )}
+
+      {/* Data Source Indicator - Footer */}
+      {roster && (
+        <div className="clash-card mt-4 p-4 md:p-5">
+          <div className="flex flex-col gap-3 text-sm text-medium-contrast sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
+              <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${roster.source === 'live' ? 'bg-clash-green' : 'bg-clash-blue'}`}></div>
+                <span className="font-semibold text-high-contrast">
+                  Data Source: {roster.source === 'live' ? 'Live API' : 'Snapshot'}
+                </span>
+              </div>
+              <div className="text-muted-contrast">Date: {roster.date}</div>
+              <div className="text-muted-contrast">Members: {roster.members.length}</div>
+            </div>
+            <div className="text-xs text-muted-contrast sm:text-right">
+              Last updated: {safeLocaleTimeString(dataFetchedAt, {
+                fallback: 'Unknown',
+                context: 'RosterTable dataFetchedAt'
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
     </div>
