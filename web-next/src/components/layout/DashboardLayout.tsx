@@ -188,7 +188,7 @@ const DashboardHeader: React.FC = () => {
         </div>
 
         {/* Right: Clean, organized controls */}
-        <div className="flex items-center justify-end gap-3 col-[3] row-[1] row-span-2">
+        <div className="flex items-center justify-end gap-2 sm:gap-3 col-[3] row-[1] row-span-2">
           {/* Access Level Badge */}
           <span className="hidden md:inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-md">
             {accessLevelLabel}
@@ -196,12 +196,16 @@ const DashboardHeader: React.FC = () => {
 
           {/* Primary Actions Group */}
           <div className="flex items-center gap-2">
-            {/* Quick Actions - Always visible */}
-            <QuickActionsMenu variant="inline" />
-            
-            {/* Theme Toggle */}
-            <ThemeToggle size="sm" />
+            <div className="hidden sm:block">
+              <QuickActionsMenu variant="inline" />
+            </div>
+            <div className="sm:hidden">
+              <QuickActionsMenu variant="inline" trigger="icon" />
+            </div>
+            <ThemeToggle size="sm" className="hidden sm:block" />
           </div>
+
+          <ThemeToggle size="sm" className="sm:hidden" />
 
           {/* Secondary Actions Dropdown */}
           <div className="relative group">

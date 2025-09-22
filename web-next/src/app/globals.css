@@ -362,6 +362,27 @@ th { @apply text-left font-semibold; }
   background-color: white;
 }
 
+/* Dark theme table styles */
+[data-theme="dark"] .clash-table th {
+  background-color: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 215, 0, 0.3);
+  color: #F59E0B;
+}
+
+[data-theme="dark"] .clash-table td {
+  background-color: rgba(15, 23, 42, 0.6);
+  border-color: rgba(100, 116, 139, 0.4);
+  color: #E2E8F0;
+}
+
+[data-theme="dark"] .clash-table tr:hover {
+  background-color: rgba(255, 215, 0, 0.08);
+}
+
+[data-theme="dark"] .clash-table tr:nth-child(even) {
+  background-color: rgba(15, 23, 42, 0.4);
+}
+
 /* Light theme general component styles */
 [data-theme="light"] .bg-slate-800 {
   background-color: #F8FAFC !important;

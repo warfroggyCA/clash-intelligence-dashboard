@@ -8,12 +8,17 @@ import { Button, GlassCard } from '@/components/ui';
 interface QuickActionsMenuProps {
   className?: string;
   variant?: 'card' | 'inline';
+  trigger?: 'label' | 'icon';
 }
 
 const menuItemClass =
   'flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-slate-100 transition disabled:opacity-50 disabled:cursor-not-allowed';
 
-export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = '', variant = 'card' }) => {
+export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
+  className = '',
+  variant = 'card',
+  trigger = 'label',
+}) => {
   const {
     handleGenerateInsightsSummary,
     handleRefreshData,
@@ -47,22 +52,45 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({ className = 
   const disabledText = !hasData ? 'Load a clan to enable actions' : '';
   const subtitle = hasData ? 'One-click refreshes and exports' : 'Load a clan to enable actions';
 
+  const isIconTrigger = trigger === 'icon';
+
   const dropdown = (
-    <div className={`relative ${variant === 'inline' ? 'min-w-[220px]' : ''}`} ref={menuRef}>
+    <div
+      className={`relative ${
+        variant === 'inline' && !isIconTrigger ? 'w-full sm:w-auto sm:min-w-[200px]' : ''
+      }`}
+      ref={menuRef}
+    >
       <Button
         variant="outline"
         size="sm"
         onClick={() => setOpen((prev) => !prev)}
-        className={`w-full justify-between ${variant === 'inline'
-          ? 'border-indigo-200 text-indigo-100/90 hover:bg-indigo-500/25'
-          : 'border-indigo-300 text-indigo-100 hover:bg-indigo-500/25'}`}
+        className={`${
+          isIconTrigger
+            ? 'h-9 w-9 p-0 border-indigo-200 text-indigo-100/90 hover:bg-indigo-500/25 rounded-full flex items-center justify-center'
+            : 'w-full justify-between border-indigo-200 text-indigo-100/90 hover:bg-indigo-500/25 sm:w-auto'
+        }`}
         title={disabledText || 'Open quick actions menu'}
+        aria-label={disabledText || 'Open quick actions menu'}
         disabled={!hasData}
       >
-        <span>{open ? 'Hide Actions' : 'Launch Actions'}</span>
-        <svg className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
+        {isIconTrigger ? (
+          <span className="flex items-center justify-center">
+            <Wand2 className="h-4 w-4" />
+          </span>
+        ) : (
+          <>
+            <span>{open ? 'Hide Actions' : 'Launch Actions'}</span>
+            <svg
+              className={`h-4 w-4 transition ${open ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </>
+        )}
       </Button>
 
       {open && hasData && (

@@ -230,7 +230,7 @@ export default function SmartInsightsHeadlines({
                     : 'text-slate-400'
                 }`}
               />
-              <span className="leading-relaxed">{item.text}</span>
+              <span className="leading-relaxed font-normal">{item.text}</span>
             </li>
           ))}
         </ul>
