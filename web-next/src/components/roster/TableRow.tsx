@@ -129,7 +129,17 @@ export const TableRow: React.FC<TableRowProps> = ({
   roster,
   className = ''
 }) => {
-  const { setShowPlayerProfile, setSelectedPlayer, setShowDepartureModal, setSelectedMember } = useDashboardStore();
+  const store = useDashboardStore();
+  const {
+    setShowPlayerProfile,
+    setSelectedPlayer,
+    setShowDepartureModal,
+    setSelectedMember,
+    loadRoster,
+    clanTag: storeClanTag,
+    homeClan,
+  } = store;
+  const clanTagForActions = roster.clanTag || storeClanTag || homeClan || '';
   // Calculate member metrics
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
@@ -426,11 +436,54 @@ export const TableRow: React.FC<TableRowProps> = ({
                 const res = await fetch('/api/tenure/update', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ clanTag: roster.clanTag || '', memberTag: member.tag, mode: 'grant-existing' })
+                  body: JSON.stringify({ clanTag: clanTagForActions, memberTag: member.tag, mode: 'grant-existing' })
                 });
-                if (res.ok) showToast('Granted prior tenure','success'); else showToast('Failed to grant tenure','error');
-              } catch {
-                showToast('Failed to grant tenure','error');
+                const payload = await res.json().catch(() => null);
+                if (!res.ok) {
+                  const message = payload?.error || payload?.message || 'Failed to grant tenure';
+                  throw new Error(message);
+                }
+                showToast('Granted prior tenure', 'success');
+                if (clanTagForActions) {
+                  await loadRoster(clanTagForActions);
+                }
+              } catch (error: any) {
+                const message = error?.message || 'Failed to grant tenure';
+                showToast(message, 'error');
+              }
+            }}
+            onEditTenure={async (e) => {
+              e.stopPropagation();
+              const current = Number(member.tenure_days ?? member.tenure ?? 0) || 0;
+              const input = typeof window !== 'undefined'
+                ? window.prompt('Set tenure in days (0-20000)', String(current))
+                : null;
+              if (input === null) return;
+              const trimmed = input.trim();
+              const match = trimmed.match(/\d+/);
+              if (!match) {
+                showToast('Please enter a valid number of days', 'error');
+                return;
+              }
+              const days = Math.max(0, Math.min(20000, Number.parseInt(match[0], 10)));
+              try {
+                const res = await fetch('/api/tenure/save', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
+                });
+                const payload = await res.json().catch(() => null);
+                if (!res.ok) {
+                  const message = payload?.error || payload?.message || 'Failed to update tenure';
+                  throw new Error(message);
+                }
+                showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
+                if (clanTagForActions) {
+                  await loadRoster(clanTagForActions);
+                }
+              } catch (error: any) {
+                const message = error?.message || 'Failed to update tenure';
+                showToast(message, 'error');
               }
             }}
           />
@@ -446,7 +499,8 @@ const ActionsMenu: React.FC<{
   onCopyTag: (e: React.MouseEvent) => void;
   onDeparture: (e: React.MouseEvent) => void;
   onGrantTenure: (e: React.MouseEvent) => void;
-}> = ({ onViewProfile, onCopyTag, onDeparture, onGrantTenure }) => {
+  onEditTenure: (e: React.MouseEvent) => void;
+}> = ({ onViewProfile, onCopyTag, onDeparture, onGrantTenure, onEditTenure }) => {
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
@@ -491,6 +545,7 @@ const ActionsMenu: React.FC<{
           <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
             <button onClick={(e) => { onDeparture(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Record Departure</button>
             <button onClick={(e) => { onGrantTenure(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Grant Tenure</button>
+            <button onClick={(e) => { onEditTenure(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Edit Tenure</button>
           </LeadershipGuard>
         </div>
       )}
