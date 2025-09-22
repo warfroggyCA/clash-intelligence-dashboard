@@ -390,6 +390,7 @@ th { @apply text-left font-semibold; }
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
 }
 
+
 /* Dark theme tab navigation */
 [data-theme="dark"] .tab-navigation button {
   color: #E2E8F0 !important;
