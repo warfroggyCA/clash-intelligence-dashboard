@@ -33,6 +33,11 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
   // Function to load player database from localStorage
   const loadPlayerDatabase = useCallback(() => {
+    // Only run on client-side to avoid hydration mismatch
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       setLoading(true);
       const playerRecords: PlayerRecord[] = [];
@@ -96,6 +101,11 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
   // Function to apply player name resolutions from the cron job
   const applyPlayerNameResolutions = useCallback(async () => {
+    // Only run on client-side to avoid hydration mismatch
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       const response = await fetch('/api/player-resolver');
       if (response.ok) {
@@ -129,6 +139,11 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
   // Function to sync departure data and create player notes
   const syncDepartureData = async () => {
+    // Only run on client-side to avoid hydration mismatch
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       const response = await fetch('/api/player-db/sync-departures', {
         method: 'POST'
@@ -196,6 +211,11 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
   // Function to clean up duplicate notes
   const cleanupDuplicateNotes = () => {
+    // Only run on client-side to avoid hydration mismatch
+    if (typeof window === 'undefined') {
+      return;
+    }
+
     try {
       let cleanedCount = 0;
       const keys = Object.keys(localStorage).filter(key => key.startsWith('player_notes_'));
