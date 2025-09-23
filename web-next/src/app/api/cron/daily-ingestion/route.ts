@@ -15,8 +15,7 @@ export async function GET(request: NextRequest) {
     console.log('[Cron] Starting daily ingestion job');
     
     const results = await runIngestionJob({ 
-      clanTag: '#2PR8R8V8P',
-      source: 'vercel-cron'
+      clanTag: '#2PR8R8V8P'
     });
     
     console.log('[Cron] Daily ingestion completed:', results);
