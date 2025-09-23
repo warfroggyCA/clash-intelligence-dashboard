@@ -17,6 +17,7 @@
     "deploy:prod": "vercel --target production",
     "env:check": "node scripts/check-env.js",
     "ingest:daily": "tsx scripts/ingest/daily-snapshot.ts",
+    "ingest:run": "tsx scripts/ingest/run.ts",
     "setup:storage": "tsx scripts/setup-supabase-storage.ts",
     "release:patch": "npm version patch && git push && git push --tags",
     "release:minor": "npm version minor && git push && git push --tags",
@@ -26,6 +27,7 @@
   "dependencies": {
     "@supabase/mcp-server-supabase": "^0.5.5",
     "@supabase/supabase-js": "^2.57.4",
+    "@types/node-cron": "^3.0.11",
     "@upstash/ratelimit": "^1.2.1",
     "@upstash/redis": "^1.35.3",
     "@vercel/blob": "^1.1.1",
@@ -38,6 +40,7 @@
     "https-proxy-agent": "^7.0.6",
     "lucide-react": "^0.452.0",
     "next": "14.2.5",
+    "node-cron": "^4.2.1",
     "node-fetch": "^2.7.0",
     "nodemon": "^3.1.10",
     "openai": "^5.19.1",

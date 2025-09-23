@@ -99,6 +99,15 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Archer Queen level'
   },
   {
+    key: 'mp',
+    label: 'MP',
+    shortLabel: 'MP',
+    group: 'Heroes',
+    sortable: true,
+    className: 'bg-gray-100 text-center border-r border-gray-300',
+    description: 'Master Builder level'
+  },
+  {
     key: 'gw',
     label: 'GW',
     shortLabel: 'GW',
@@ -117,31 +126,13 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Royal Champion level'
   },
   {
-    key: 'mp',
-    label: 'MP',
-    shortLabel: 'MP',
-    group: 'Heroes',
-    sortable: true,
-    className: 'bg-gray-100 text-center border-r border-gray-300',
-    description: 'Master Builder level'
-  },
-  {
     key: 'rush',
     label: 'Hero Rush %',
     shortLabel: 'Hero %',
     group: 'Analysis',
     sortable: true,
     className: 'text-center border-r border-gray-300',
-    description: 'Hero Rush includes BK, AQ, GW, RC, MP'
-  },
-  {
-    key: 'overallRush',
-    label: 'Overall Rush %',
-    shortLabel: 'Overall %',
-    group: 'Analysis',
-    sortable: true,
-    className: 'text-center border-r border-gray-300',
-    description: 'Overall rush (heroes only for now)'
+    description: 'Hero Rush % = average hero shortfall vs Town Hall cap across unlocked heroes (BK/AQ/GW/RC plus MP if available)'
   },
   {
     key: 'activity',
@@ -217,7 +208,7 @@ const GROUP_CONFIGS: GroupConfig[] = [
   {
     name: 'Analysis',
     icon: '📊',
-    columns: 3,
+    columns: 2,
     className: 'border-r border-slate-400'
   },
   {

@@ -16,7 +16,7 @@
  * Last Updated: January 2025
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Member, Roster } from '@/types';
 import { Modal } from '@/components/ui';
 import { Button, SuccessButton, DangerButton } from '@/components/ui';
@@ -31,6 +31,7 @@ import {
   isNetReceiver,
   isLowDonator
 } from '@/lib/business/calculations';
+import { HERO_MAX_LEVELS, HeroCaps } from '@/types';
 
 // =============================================================================
 // TYPES
@@ -48,6 +49,38 @@ interface PlayerNote {
   note: string;
   addedBy?: string;
 }
+
+const HERO_KEY_ORDER: Array<keyof HeroCaps> = ['bk', 'aq', 'gw', 'rc', 'mp'];
+const HERO_LABELS: Record<keyof HeroCaps, string> = {
+  bk: 'Barbarian King',
+  aq: 'Archer Queen',
+  gw: 'Grand Warden',
+  rc: 'Royal Champion',
+  mp: 'Minion Prince',
+};
+const HERO_SHORT_LABELS: Record<keyof HeroCaps, string> = {
+  bk: 'BK',
+  aq: 'AQ',
+  gw: 'GW',
+  rc: 'RC',
+  mp: 'MP',
+};
+
+interface ModalHeroBreakdownRow {
+  hero: keyof HeroCaps;
+  label: string;
+  shortLabel: string;
+  current: number;
+  cap: number;
+  deficit: number;
+  deficitPct: number;
+}
+
+const getRushBadgeClass = (value: number): string => {
+  if (value >= 70) return 'bg-red-100 text-red-800';
+  if (value >= 40) return 'bg-yellow-100 text-yellow-800';
+  return 'bg-green-100 text-green-800';
+};
 
 // =============================================================================
 // COMPONENT
@@ -73,6 +106,33 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
   const isLowDonatorPlayer = isLowDonator(member);
+
+  const heroBreakdown = useMemo<ModalHeroBreakdownRow[]>(() => {
+    const caps = HERO_MAX_LEVELS[th] || {};
+    return HERO_KEY_ORDER
+      .map((hero) => {
+        const cap = caps?.[hero] ?? 0;
+        if (!cap) return null;
+        const current = member[hero] ?? 0;
+        const deficit = Math.max(0, cap - current);
+        const deficitPct = cap > 0 ? (deficit / cap) * 100 : 0;
+        return {
+          hero,
+          label: HERO_LABELS[hero],
+          shortLabel: HERO_SHORT_LABELS[hero],
+          current,
+          cap,
+          deficit,
+          deficitPct,
+        };
+      })
+      .filter((row): row is ModalHeroBreakdownRow => row !== null);
+  }, [member, th]);
+
+  const heroShortList = heroBreakdown.map((row) => row.shortLabel).join(', ');
+  const heroRushDisplay = Number.isFinite(rushPercent)
+    ? rushPercent.toFixed(1)
+    : '0.0';
 
   // Load player notes and custom fields
   useEffect(() => {
@@ -233,13 +293,16 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
 
           {/* Player Status Indicators */}
           <div className="mt-4 flex flex-wrap gap-2">
+            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getRushBadgeClass(rushPercent)}`}>
+              Hero Rush: {heroRushDisplay}%
+            </span>
             {isRushedPlayer && (
               <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                isVeryRushedPlayer 
-                  ? 'bg-red-100 text-red-800' 
+                isVeryRushedPlayer
+                  ? 'bg-red-100 text-red-800'
                   : 'bg-yellow-100 text-yellow-800'
               }`}>
-                {isVeryRushedPlayer ? 'Very Rushed' : 'Rushed'} ({rushPercent}%)
+                {isVeryRushedPlayer ? 'Very Rushed' : 'Rushed'}
               </span>
             )}
             {isNetReceiverPlayer && (
@@ -261,6 +324,51 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
             }`}>
               {activity.level}
             </span>
+          </div>
+        </div>
+
+        {/* Rush Analysis */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Hero Rush Breakdown</h3>
+          <div>
+            <div className="text-sm text-gray-500">Hero Rush %</div>
+            <div className={`text-2xl font-bold ${rushPercent >= 70 ? 'text-red-600' : rushPercent >= 40 ? 'text-orange-500' : 'text-green-600'}`}>
+              {heroRushDisplay}%
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Average shortfall across unlocked heroes ({heroShortList || 'none yet'}). Lower is better.
+            </p>
+          </div>
+
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-xs">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-600">Hero</th>
+                  <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-600">Level / Cap</th>
+                  <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-600">Levels Behind</th>
+                  <th scope="col" className="px-3 py-2 text-left font-semibold text-gray-600">Gap %</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {heroBreakdown.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-3 text-center text-gray-500">
+                      No hero data available for this player yet.
+                    </td>
+                  </tr>
+                ) : (
+                  heroBreakdown.map((row) => (
+                    <tr key={row.hero}>
+                      <td className="px-3 py-2 font-medium text-gray-700">{row.label}</td>
+                      <td className="px-3 py-2 text-gray-600">{row.current}/{row.cap}</td>
+                      <td className="px-3 py-2 text-gray-600">{row.deficit}</td>
+                      <td className="px-3 py-2 text-gray-600">{row.deficitPct.toFixed(1)}%</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 

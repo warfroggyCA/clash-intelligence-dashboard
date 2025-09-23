@@ -23,7 +23,6 @@ import { Member, Roster, SortKey, SortDirection } from '@/types';
 import { safeLocaleTimeString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
-  calculateOverallRush,
   calculateDonationBalance, 
   calculateActivityScore,
   getTownHallLevel,
@@ -128,10 +127,6 @@ const sortMembers = (members: Member[], sortKey: SortKey, sortDirection: SortDir
       case 'rush':
         aValue = calculateRushPercentage(a);
         bValue = calculateRushPercentage(b);
-        break;
-      case 'overallRush':
-        aValue = calculateOverallRush(a);
-        bValue = calculateOverallRush(b);
         break;
       case 'trophies':
         aValue = a.trophies || 0;
