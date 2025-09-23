@@ -39,14 +39,16 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   showName = true,
   size = 'md'
 }) => {
-  const percentage = maxLevel > 0 ? (level / maxLevel) * 100 : 0;
+  const safeLevel = Number.isFinite(level) ? Math.max(level, 0) : 0;
+  const safeMax = Number.isFinite(maxLevel) ? Math.max(maxLevel, 0) : 0;
+  const percentage = safeMax > 0 ? (safeLevel / safeMax) * 100 : 0;
   const config = heroConfig[hero];
   
   return (
     <div className={`space-y-1 ${className}`}>
       <div className={`flex justify-between ${sizeClasses[size]}`}>
         {showName && <span className="text-clash-gold font-semibold">{config.name}</span>}
-        <span className="text-high-contrast">{level}/{maxLevel}</span>
+        <span className="text-high-contrast">{safeLevel}/{safeMax}</span>
       </div>
       {showProgress && (
         <div className={`w-full bg-black/30 rounded-full ${progressHeightClasses[size]} border border-clash-gold/30 overflow-hidden`}>

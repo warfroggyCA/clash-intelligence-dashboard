@@ -482,9 +482,9 @@ export default function ChangeDashboard({
                     <div key={index} className="flex items-center space-x-2 text-sm">
                       {getChangeIcon(change.type)}
                       <span className="text-gray-600">{change.description}</span>
-                      {change.previousValue !== undefined && change.newValue !== undefined && (
+                      {change.member.previousValue !== undefined && change.member.newValue !== undefined && (
                         <span className="text-gray-400">
-                          ({change.previousValue} → {change.newValue})
+                          ({change.member.previousValue} → {change.member.newValue})
                         </span>
                       )}
                     </div>

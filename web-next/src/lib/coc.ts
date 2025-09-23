@@ -368,6 +368,7 @@ export function extractHeroLevels(p: CoCPlayer) {
 
     // Ensure non-negative
     if (typeof lvl === 'number' && lvl < 0) lvl = 0;
+
     out[k] = lvl;
   }
 

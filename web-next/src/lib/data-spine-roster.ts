@@ -1,0 +1,116 @@
+import type { Roster, Member } from '@/types';
+
+interface ApiRosterMember {
+  id: string;
+  tag: string | null;
+  name: string | null;
+  townHallLevel: number | null;
+  role: string | null;
+  trophies: number | null;
+  donations: number | null;
+  donationsReceived: number | null;
+  heroLevels: Record<string, number | null> | null;
+  activityScore: number | null;
+  rushPercent: number | null;
+  extras: Record<string, any> | null;
+  league?: any;
+  builderLeague?: any;
+}
+
+interface ApiRosterResponse {
+  success: boolean;
+  data?: {
+    clan: {
+      id: string;
+      tag: string;
+      name: string | null;
+      logo_url?: string | null;
+      created_at?: string;
+      updated_at?: string;
+    } | null;
+    snapshot: {
+      id: string;
+      fetchedAt: string;
+      memberCount: number;
+      totalTrophies: number | null;
+      totalDonations: number | null;
+      metadata: Record<string, any> | null;
+    } | null;
+    members: ApiRosterMember[];
+  };
+  error?: string;
+}
+
+function mapMember(apiMember: ApiRosterMember): Member {
+  const heroLevels = apiMember.heroLevels || {};
+  return {
+    tag: apiMember.tag || undefined,
+    name: apiMember.name || apiMember.tag || 'Unknown',
+    townHallLevel: apiMember.townHallLevel ?? undefined,
+    role: apiMember.role ?? undefined,
+    trophies: apiMember.trophies ?? undefined,
+    donations: apiMember.donations ?? undefined,
+    donationsReceived: apiMember.donationsReceived ?? undefined,
+    bk: heroLevels.bk ?? undefined,
+    aq: heroLevels.aq ?? undefined,
+    gw: heroLevels.gw ?? undefined,
+    rc: heroLevels.rc ?? undefined,
+    mp: heroLevels.mp ?? undefined,
+    league: apiMember.league ?? undefined,
+    builderLeague: apiMember.builderLeague ?? undefined,
+    extras: apiMember.extras ?? undefined,
+  } as Member;
+}
+
+function transformResponse(body: ApiRosterResponse): Roster | null {
+  if (!body.success || !body.data) return null;
+
+  const { clan, snapshot, members } = body.data;
+  if (!clan || !snapshot) {
+    return null;
+  }
+
+  const mappedMembers = (members || []).map(mapMember);
+  const metadata = snapshot.metadata || {};
+
+  return {
+    source: 'snapshot',
+    date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined,
+    clanName: clan.name ?? undefined,
+    clanTag: clan.tag,
+    members: mappedMembers,
+    meta: {
+      clanName: clan.name ?? undefined,
+      memberCount: snapshot.memberCount,
+    },
+    snapshotMetadata: {
+      snapshotDate: metadata.snapshotDate || (snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : ''),
+      fetchedAt: snapshot.fetchedAt,
+      memberCount: snapshot.memberCount,
+      warLogEntries: metadata.warLogEntries ?? metadata.war_log_entries ?? 0,
+      capitalSeasons: metadata.capitalSeasons ?? metadata.capital_seasons ?? 0,
+      version: metadata.version ?? 'data-spine',
+    },
+    snapshotDetails: metadata.snapshotDetails ?? undefined,
+  } satisfies Roster;
+}
+
+export async function fetchRosterFromDataSpine(clanTag: string): Promise<Roster | null> {
+  try {
+    const params = new URLSearchParams();
+    if (clanTag) params.set('clanTag', clanTag);
+    const res = await fetch(`/api/v2/roster?${params.toString()}`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+    });
+    if (!res.ok) {
+      return null;
+    }
+    const body = (await res.json()) as ApiRosterResponse;
+    return transformResponse(body);
+  } catch (error) {
+    console.error('[fetchRosterFromDataSpine] Failed', error);
+    return null;
+  }
+}
+

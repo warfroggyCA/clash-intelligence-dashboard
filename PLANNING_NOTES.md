@@ -1,5 +1,16 @@
 # Clash Intelligence Dashboard - Planning Notes
 
+## Execution Status
+- [x] Sprint 0 – Data spine schema in Supabase (clans, members, snapshots, wars, raids, metrics, alerts, tasks, notes, roles, settings, ingest logs)
+- [ ] Sprint 1 – Roster pipeline
+  - [x] `/api/v2/roster` backed by Supabase snapshots
+  - [x] Ingestion persistence into `roster_snapshots` + `member_snapshot_stats`
+  - [ ] Nightly job / automation to run ingestion
+  - [x] Dashboard store hydration from new endpoint
+- [ ] Sprint 2 – Auth & role gating via Supabase
+- [ ] Sprint 3 – Historical metrics + trend surfaces
+- [ ] Sprint 4 – Command center UX & automation
+
 ## UI/UX Changes (Immediate Priority)
 
 ### Tab Visibility & Access Control
@@ -342,6 +353,141 @@ This transforms the dashboard from a data viewer into an indispensable command c
 - **Actionability**: Insights lead to measurable clan performance improvements
 - **Competitive Edge**: Features unavailable in native Clash of Clans experience
 - **Retention**: Daily usage patterns indicating indispensable tool status
+
+## Monetization & Productionization Strategy
+
+### Premium Intelligence Tiers
+
+#### Free Tier
+- [ ] **Limited war/capital dashboards** - Basic metrics and historical data
+- [ ] **Delayed Smart Insights** - 24-48 hour processing delays
+- [ ] **Basic export capabilities** - Limited CSV downloads
+- [ ] **Community features** - Access to public insights and tips
+
+#### Pro Tier ($19-29/month per clan)
+- [ ] **Real-time "What matters now" briefings** - Instant intelligence updates
+- [ ] **Trend alerts and notifications** - Proactive clan management
+- [ ] **Player DNA profiles** - Advanced member analytics and archetypes
+- [ ] **Recruiting AI assistance** - Automated candidate evaluation
+- [ ] **Full CSV/Excel export** - Complete data portability
+- [ ] **Slack/Discord notifications** - Integration with communication tools
+- [ ] **Priority support** - Faster response times for issues
+
+#### Elite Clan Tier ($99-199/month per clan)
+- [ ] **Multi-clan portfolio management** - Manage multiple clans from one dashboard
+- [ ] **Comparative benchmarking** - Cross-clan performance analysis
+- [ ] **White-label branding** - Custom logos and color schemes
+- [ ] **Custom Smart Insight models** - Tailored AI recommendations
+- [ ] **Advanced analytics** - Predictive modeling and forecasting
+- [ ] **API access** - Programmatic data access
+- [ ] **Dedicated success manager** - Personal onboarding and support
+
+#### Add-on Services
+- [ ] **Coach/Analyst seats** - Additional user licenses for team members
+- [ ] **Season passes** - Discounted annual subscriptions
+- [ ] **Custom integrations** - Specialized API connections
+
+### Data-as-a-Service & API
+
+#### Core API Endpoints
+- [ ] **War history API** - Complete war performance data
+- [ ] **Capital ROI metrics** - Raid efficiency and optimization data
+- [ ] **Player DNA metrics** - Member analytics and archetype data
+- [ ] **Clan momentum tracking** - Performance trend analysis
+- [ ] **Real-time webhooks** - Live data streaming for partners
+
+#### Billing Models
+- [ ] **Usage-based pricing** - Per-request or per-seat billing
+- [ ] **Webhook-driven alerts** - Partner app integrations
+- [ ] **Tiered API limits** - Different access levels based on subscription
+
+### Marketplace & Affiliate Plays
+
+#### Partner Integrations
+- [ ] **Base-building partners** - Curated base design services
+- [ ] **Coaching services** - Professional coaching referrals
+- [ ] **Gem deals and promotions** - In-game currency partnerships
+- [ ] **Revenue sharing** - Commission-based affiliate model
+
+#### API Marketplace
+- [ ] **Featured tool placement** - High-value integrations
+- [ ] **Developer ecosystem** - Third-party app marketplace
+- [ ] **Integration marketplace** - Curated partner tools
+
+### Insights Studio & Reports
+
+#### Custom Reports
+- [ ] **Monthly war debriefs** - Comprehensive war analysis
+- [ ] **Recruiting dossiers** - Member evaluation reports
+- [ ] **Performance reviews** - Individual and clan assessments
+- [ ] **Strategic planning documents** - Long-term clan development
+
+#### Premium Services
+- [ ] **Concierge onboarding** - Personal setup and training
+- [ ] **Quarterly strategy workshops** - Professional consulting
+- [ ] **Custom analytics** - Tailored metric development
+- [ ] **Priority feature requests** - Influence product roadmap
+
+## Production Readiness Roadmap
+
+### Data Pipeline Infrastructure
+- [ ] **Automated Clash API ingestion** - Scheduled data collection
+- [ ] **ETL workflows with retries** - Robust data processing
+- [ ] **Historical snapshot maintenance** - Long-term data retention
+- [ ] **Data quality monitoring** - Automated validation and alerts
+- [ ] **Backup and disaster recovery** - Data protection and restoration
+
+### Processing & Analytics
+- [ ] **Managed workflow orchestration** - Airflow/Prefect integration
+- [ ] **Unit and integration testing** - Comprehensive test coverage
+- [ ] **CI/CD pipelines** - Automated deployment and testing
+- [ ] **Infrastructure as Code** - Terraform for reproducible deployments
+- [ ] **Performance monitoring** - Real-time system health tracking
+
+### Platform & Infrastructure
+- [ ] **Scalable cloud deployment** - Vercel/Netlify frontend + AWS/GCP backend
+- [ ] **CDN integration** - Global content delivery optimization
+- [ ] **Caching strategies** - Redis/Memcached for performance
+- [ ] **Application monitoring** - APM, logs, and error tracking
+- [ ] **Load balancing** - High availability and scalability
+
+### Security & Compliance
+- [ ] **OAuth for clan leader accounts** - Secure authentication
+- [ ] **Granular RBAC** - Role-based access control
+- [ ] **Encrypted storage** - Data protection at rest and in transit
+- [ ] **GDPR-ready data retention** - Privacy compliance policies
+- [ ] **Security auditing** - Regular vulnerability assessments
+
+### Operations & Customer Success
+- [ ] **Customer success CRM** - Relationship management system
+- [ ] **Billing integration** - Stripe payment processing
+- [ ] **Feature flagging** - Gradual feature rollouts
+- [ ] **In-app feedback loops** - User experience optimization
+- [ ] **NPS tracking** - Customer satisfaction measurement
+- [ ] **Roadmap telemetry** - Usage analytics for product decisions
+
+### AI Lifecycle Management
+- [ ] **Versioned models** - Model tracking and rollback capabilities
+- [ ] **Explainability summaries** - Transparent AI decision-making
+- [ ] **Feedback-driven retraining** - Continuous model improvement
+- [ ] **A/B testing framework** - Model performance comparison
+- [ ] **Model monitoring** - Performance drift detection
+
+## Growth Loop Instrumentation
+
+### Viral Mechanics
+- [ ] **Shareable spotlight cards** - Social media integration
+- [ ] **Weekly email digests** - Automated engagement campaigns
+- [ ] **Discord bot integration** - Community engagement tools
+- [ ] **Referral programs** - User acquisition incentives
+- [ ] **Public leaderboards** - Competitive social features
+
+### Analytics & Optimization
+- [ ] **Activation/retention cohorts** - User behavior analysis
+- [ ] **Pricing experiments** - Paywall analytics and optimization
+- [ ] **Conversion funnel tracking** - User journey optimization
+- [ ] **Feature usage analytics** - Product adoption measurement
+- [ ] **Churn prediction models** - Proactive retention strategies
 
 ## Future Deliverables
 - [ ] Onboarding wizard: guided setup for clan tag, CoC API key, optional proxy/OpenAI keys, Supabase linkage, and health check

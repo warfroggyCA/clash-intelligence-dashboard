@@ -446,7 +446,6 @@ export type SortKey =
   | "rc"
   | "mp"
   | "rush"
-  | "overallRush"
   | "trophies"
   | "donations"
   | "donationsReceived"

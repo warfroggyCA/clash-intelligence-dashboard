@@ -7,6 +7,7 @@ import { insightsEngine } from '@/lib/smart-insights';
 import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from '@/lib/insights-storage';
 import { saveAISummary } from '@/lib/supabase';
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from '@/lib/full-snapshot';
+import { persistRosterSnapshotToDataSpine } from './persist-roster';
 import {
   appendJobLog,
   createJobRecord,
@@ -99,6 +100,15 @@ export async function runIngestionJob(options: RunIngestionOptions = {}): Promis
       capitalSeasonLimit: 3,
     });
     await persistFullClanSnapshot(fullSnapshot);
+
+    if (cfg.useSupabase) {
+      try {
+        await persistRosterSnapshotToDataSpine(fullSnapshot);
+        await log(jobId, 'info', 'Roster snapshot persisted to Supabase data spine');
+      } catch (persistError: any) {
+        await log(jobId, 'warn', 'Failed to persist roster snapshot to Supabase', { error: persistError?.message || persistError });
+      }
+    }
     await markStep(jobId, 'fetch-snapshot', 'completed', {
       members: fullSnapshot.memberSummaries.length,
       warLogEntries: fullSnapshot.metadata.warLogEntries,

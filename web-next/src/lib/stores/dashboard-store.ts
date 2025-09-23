@@ -33,6 +33,7 @@ import { safeLocaleDateString, safeLocaleTimeString } from '@/lib/date';
 import { normalizeTag } from '@/lib/tags';
 import type { SmartInsightsPayload } from '@/lib/smart-insights';
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
+import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
 
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -409,6 +410,29 @@ export const useDashboardStore = create<DashboardState>()(
           setStatus('loading');
           setMessage('');
           const t0 = Date.now();
+
+          if (cfg.useSupabase) {
+            try {
+              const snapshotRoster = await fetchRosterFromDataSpine(normalizedTag);
+              if (snapshotRoster) {
+                setRoster(snapshotRoster);
+                setStatus('success');
+                const memberCount = snapshotRoster.members?.length ?? 0;
+                setMessage(`Loaded ${memberCount} members (snapshot)`);
+                setLastLoadInfo({
+                  source: snapshotRoster.source || 'snapshot',
+                  ms: Date.now() - t0,
+                  tenureMatches: (snapshotRoster.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
+                  total: memberCount,
+                });
+                const fetchedAt = snapshotRoster.snapshotMetadata?.fetchedAt ?? new Date().toISOString();
+                setDataFetchedAt(fetchedAt);
+                return;
+              }
+            } catch (supabaseError) {
+              console.warn('[loadRoster] Failed to load roster from data spine, falling back', supabaseError);
+            }
+          }
 
           const plan = buildRosterFetchPlan(normalizedTag, selectedSnapshot);
           

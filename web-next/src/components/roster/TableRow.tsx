@@ -22,7 +22,6 @@ import { Member, Roster } from '@/types';
 import { safeLocaleDateString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
-  calculateOverallRush,
   calculateDonationBalance, 
   calculateActivityScore,
   getTownHallLevel,
@@ -52,12 +51,6 @@ export interface TableRowProps {
 // =============================================================================
 // UTILITY FUNCTIONS
 // =============================================================================
-
-const getRushClass = (rushPercent: number): string => {
-  if (rushPercent >= 70) return "text-red-700 font-semibold";
-  if (rushPercent >= 40) return "text-amber-600";
-  return "text-green-700";
-};
 
 const getActivityClass = (level: string): string => {
   const l = level.toLowerCase();
@@ -104,6 +97,42 @@ const formatDays = (days: number | undefined): string => {
   return `${days} days`;
 };
 
+const HERO_LABELS: Record<keyof HeroCaps, string> = {
+  bk: 'Barbarian King',
+  aq: 'Archer Queen',
+  gw: 'Grand Warden',
+  rc: 'Royal Champion',
+  mp: 'Minion Prince',
+};
+
+const HERO_SHORT_LABELS: Record<keyof HeroCaps, string> = {
+  bk: 'BK',
+  aq: 'AQ',
+  gw: 'GW',
+  rc: 'RC',
+  mp: 'MP',
+};
+
+interface HeroBreakdownRow {
+  hero: keyof HeroCaps;
+  current: number;
+  cap: number;
+  deficit: number;
+  deficitPct: number;
+}
+
+const formatHeroLine = (
+  hero: keyof HeroCaps,
+  current: number,
+  cap: number
+): string => {
+  const deficit = Math.max(0, cap - current);
+  const deficitPct = cap > 0 ? (deficit / cap) * 100 : 0;
+  const shortLabel = HERO_SHORT_LABELS[hero];
+  const deficitLabel = deficit === 1 ? '1 level' : `${deficit} levels`;
+  return `${shortLabel}: ${current}/${cap} (behind ${deficitLabel}, ${deficitPct.toFixed(1)}%)`;
+};
+
 // =============================================================================
 // CELL COMPONENTS
 // =============================================================================
@@ -144,12 +173,58 @@ export const TableRow: React.FC<TableRowProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const overallRush = calculateOverallRush(member);
   const activity = calculateActivityScore(member);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
   const isLowDonatorPlayer = isLowDonator(member);
+
+  const heroCaps = HERO_MAX_LEVELS[th] || {};
+  const getDisplayMax = (hero: keyof HeroCaps) => {
+    const baseCap = heroCaps?.[hero] ?? 0;
+    const raw = member[hero];
+    const value = typeof raw === 'number' ? Math.max(raw, 0) : 0;
+    return Math.max(baseCap || 0, value);
+  };
+
+  const heroOrder: Array<keyof HeroCaps> = ['bk', 'aq', 'mp', 'gw', 'rc'];
+  const heroBreakdown: HeroBreakdownRow[] = heroOrder
+    .map((hero) => {
+      const rawLevel = member[hero] ?? 0;
+      const current = typeof rawLevel === 'number' ? Math.max(rawLevel, 0) : 0;
+      const cap = Math.max(heroCaps?.[hero] ?? 0, current);
+      if (!cap && !current) return null;
+      const deficit = Math.max(0, cap - current);
+      const deficitPct = cap > 0 ? (deficit / cap) * 100 : 0;
+      return { hero, current, cap, deficit, deficitPct };
+    })
+    .filter((value): value is HeroBreakdownRow => value !== null);
+
+  const heroRushTooltip = (() => {
+    const lines = [
+      'Hero Rush % = average hero shortfall vs Town Hall caps across unlocked heroes.',
+    ];
+
+    if (heroBreakdown.length) {
+      lines.push(`Included: ${heroBreakdown.map((row) => HERO_SHORT_LABELS[row.hero]).join(', ')}`);
+    } else {
+      lines.push('No heroes unlocked yet for this Town Hall.');
+    }
+
+    if (Number.isFinite(rushPercent)) {
+      lines.push(`Current score: ${rushPercent.toFixed(1)}%`);
+    }
+
+    if (heroBreakdown.length) {
+      lines.push('');
+      heroBreakdown.forEach((row) => {
+        lines.push(formatHeroLine(row.hero, row.current, row.cap));
+      });
+    }
+
+    return lines.join('\n');
+  })();
+
 
   // Handle member actions
   const handleOpenProfile = () => {
@@ -280,13 +355,13 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell
         className="text-center border-r border-gray-300"
         title={isHeroAvailable('bk', th)
-          ? `Barbarian King at TH${th} (max ${HERO_MAX_LEVELS[th]?.bk ?? 0})`
+          ? `Barbarian King at TH${th} (max ${getDisplayMax('bk')})`
           : `Barbarian King unlocks at TH${HERO_MIN_TH.bk}`}
       >
         <HeroLevel 
           hero="BK" 
           level={member.bk || 0} 
-          maxLevel={HERO_MAX_LEVELS[th]?.bk || 0}
+          maxLevel={getDisplayMax('bk')}
           size="sm"
           showName={false}
         />
@@ -295,43 +370,13 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell
         className="text-center border-r border-gray-300"
         title={isHeroAvailable('aq', th)
-          ? `Archer Queen at TH${th} (max ${HERO_MAX_LEVELS[th]?.aq ?? 0})`
+          ? `Archer Queen at TH${th} (max ${getDisplayMax('aq')})`
           : `Archer Queen unlocks at TH${HERO_MIN_TH.aq}`}
       >
         <HeroLevel 
           hero="AQ" 
           level={member.aq || 0} 
-          maxLevel={HERO_MAX_LEVELS[th]?.aq || 0}
-          size="sm"
-          showName={false}
-        />
-      </TableCell>
-
-      <TableCell
-        className="text-center border-r border-gray-300"
-        title={isHeroAvailable('gw', th)
-          ? `Grand Warden at TH${th} (max ${HERO_MAX_LEVELS[th]?.gw ?? 0})`
-          : `Grand Warden unlocks at TH${HERO_MIN_TH.gw}`}
-      >
-        <HeroLevel 
-          hero="GW" 
-          level={member.gw || 0} 
-          maxLevel={HERO_MAX_LEVELS[th]?.gw || 0}
-          size="sm"
-          showName={false}
-        />
-      </TableCell>
-
-      <TableCell
-        className="text-center border-r border-gray-300"
-        title={isHeroAvailable('rc', th)
-          ? `Royal Champion at TH${th} (max ${HERO_MAX_LEVELS[th]?.rc ?? 0})`
-          : `Royal Champion unlocks at TH${HERO_MIN_TH.rc}`}
-      >
-        <HeroLevel 
-          hero="RC" 
-          level={member.rc || 0} 
-          maxLevel={HERO_MAX_LEVELS[th]?.rc || 0}
+          maxLevel={getDisplayMax('aq')}
           size="sm"
           showName={false}
         />
@@ -340,34 +385,54 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell
         className="text-center border-r border-gray-300"
         title={isHeroAvailable('mp', th)
-          ? `Minion Prince at TH${th} (max ${HERO_MAX_LEVELS[th]?.mp ?? 0})`
+          ? `Minion Prince at TH${th} (max ${getDisplayMax('mp')})`
           : `Minion Prince unlocks at TH${HERO_MIN_TH.mp}`}
       >
         <HeroLevel 
           hero="MP" 
           level={member.mp || 0} 
-          maxLevel={HERO_MAX_LEVELS[th]?.mp || 0}
+          maxLevel={getDisplayMax('mp')}
+          size="sm"
+          showName={false}
+        />
+      </TableCell>
+
+      <TableCell
+        className="text-center border-r border-gray-300"
+        title={isHeroAvailable('gw', th)
+          ? `Grand Warden at TH${th} (max ${getDisplayMax('gw')})`
+          : `Grand Warden unlocks at TH${HERO_MIN_TH.gw}`}
+      >
+        <HeroLevel 
+          hero="GW" 
+          level={member.gw || 0} 
+          maxLevel={getDisplayMax('gw')}
+          size="sm"
+          showName={false}
+        />
+      </TableCell>
+
+      <TableCell
+        className="text-center border-r border-gray-300"
+        title={isHeroAvailable('rc', th)
+          ? `Royal Champion at TH${th} (max ${getDisplayMax('rc')})`
+          : `Royal Champion unlocks at TH${HERO_MIN_TH.rc}`}
+      >
+        <HeroLevel 
+          hero="RC" 
+          level={member.rc || 0} 
+          maxLevel={getDisplayMax('rc')}
           size="sm"
           showName={false}
         />
       </TableCell>
 
       {/* Rush Percentage Column */}
-      <TableCell className="text-center border-r border-slate-600/50"
-        title={`Rush is how far heroes are from TH caps. BK ${member.bk ?? 0}/${HERO_MAX_LEVELS[th]?.bk ?? 0}, AQ ${member.aq ?? 0}/${HERO_MAX_LEVELS[th]?.aq ?? 0}, GW ${member.gw ?? 0}/${HERO_MAX_LEVELS[th]?.gw ?? 0}, RC ${member.rc ?? 0}/${HERO_MAX_LEVELS[th]?.rc ?? 0}.`}
-      >
+      <TableCell className="text-center border-r border-slate-600/50" title={heroRushTooltip}>
         <span className={`font-semibold ${rushPercent >= 70 ? 'text-clash-red' : rushPercent >= 40 ? 'text-clash-orange' : 'text-clash-green'}`}>
           {rushPercent.toFixed(1)}%
         </span>
       </TableCell>
-
-      {/* Overall Rush (placeholder) */}
-      <TableCell className="text-center border-r border-slate-600/50" title="Overall rush (heroes for now; offense/defense later)">
-        <span className={`font-semibold ${overallRush >= 70 ? 'text-clash-red' : overallRush >= 40 ? 'text-clash-orange' : 'text-clash-green'}`}>
-          {overallRush.toFixed(1)}%
-        </span>
-      </TableCell>
-
       {/* Activity Column (under Analysis group) */}
       <TableCell className="text-center border-r border-slate-600/50">
         <div className="flex flex-col items-center space-y-1">
