@@ -1,0 +1,18 @@
+name: Daily Ingestion
+
+on:
+  schedule:
+    # Run daily at 6:00 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Daily Ingestion
+        run: |
+          curl -s -X POST "${{ secrets.INGESTION_CRON_URL }}" \
+            -H "x-api-key: ${{ secrets.ADMIN_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"clanTag":"#2PR8R8V8P"}'
