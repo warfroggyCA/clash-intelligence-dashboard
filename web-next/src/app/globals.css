@@ -609,3 +609,30 @@ th { @apply text-left font-semibold; }
     @apply p-3;
   }
 }
+.metric-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(71, 85, 105, 0.85);
+}
+
+[data-theme="dark"] .metric-label {
+  color: rgba(241, 245, 249, 0.65);
+}
+
+.metric-value {
+  color: #0f172a;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+[data-theme="dark"] .metric-value {
+  color: #f8fafc;
+  text-shadow: 0 0 12px rgba(251, 191, 36, 0.35);
+}
+.clash-highlight-entry {
+  color: #1f2937;
+}
+
+[data-theme="dark"] .clash-highlight-entry {
+  color: #f8fafc;
+}

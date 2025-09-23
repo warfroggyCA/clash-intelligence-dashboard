@@ -1,12 +1,12 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle, Send } from "lucide-react";
+import { Copy, MessageSquare, TrendingUp, Users, Shield, Trophy, Star, AlertTriangle, Send, RefreshCcw } from "lucide-react";
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { safeLocaleString } from '@/lib/date';
 import type { SmartInsightsPayload, SmartInsightsRecommendation, SmartInsightsDiagnostics, SmartInsightsSource } from '@/lib/smart-insights';
 import { SMART_INSIGHTS_SCHEMA_VERSION } from '@/lib/smart-insights';
-import { loadSmartInsightsPayload } from '@/lib/smart-insights-cache';
+import { normalizeTag } from '@/lib/tags';
 
 // Import rush percentage calculation (simplified version)
 const getTH = (m: any): number => m.townHallLevel ?? m.th ?? 0;
@@ -87,8 +87,7 @@ interface CoachingInsightsProps {
 }
 
 export default function CoachingInsights({ clanData, clanTag }: CoachingInsightsProps) {
-  const [advice, setAdvice] = useState<CoachingCard[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const setSmartInsights = useDashboardStore((state) => state.setSmartInsights);
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
   const [actionedTips, setActionedTips] = useState<Set<string>>(new Set());
@@ -99,6 +98,10 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
   const snapshotAgeHours = useDashboardStore(selectors.dataAge);
+  const smartInsights = useDashboardStore(selectors.smartInsights);
+  const smartInsightsStatus = useDashboardStore(selectors.smartInsightsStatus);
+  const smartInsightsError = useDashboardStore(selectors.smartInsightsError);
+  const loadSmartInsights = useDashboardStore((state) => state.loadSmartInsights);
 
   const snapshotSummary = useMemo(() => {
     if (!snapshotMetadata) return '';
@@ -210,89 +213,38 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     }));
   }, []);
 
-  const loadCoachingAdvice = useCallback(async () => {
-    setLoading(true);
-    try {
-      const response = await fetch(`/api/ai/batch-results?clanTag=${encodeURIComponent(clanTag)}`);
+  const normalizedClanTag = useMemo(() => normalizeTag(clanTag) || clanTag, [clanTag]);
+  const adviceFromInsights = useMemo(() => {
+    if (!smartInsights) return [] as CoachingCard[];
+    const payloadTag = normalizeTag(smartInsights.metadata.clanTag) || smartInsights.metadata.clanTag;
+    if (payloadTag !== normalizedClanTag) return [] as CoachingCard[];
+    return mapPayloadToAdvice(smartInsights);
+  }, [mapPayloadToAdvice, normalizedClanTag, smartInsights]);
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
-          const payload: SmartInsightsPayload | null =
-            result.data?.smartInsightsPayload || result.data?.smart_insights_payload || null;
+  const fallbackAdvice = useMemo(() => attachTimestamps([
+    {
+      id: 'setup-message',
+      category: 'System',
+      title: 'Coaching Insights Setup',
+      description:
+        'The coaching insights system is being set up. Your first batch of personalized guidance will be available after the nightly processing completes (usually within 24 hours). You can also generate insights manually using the button below.',
+      priority: 'medium',
+      icon: '🤖',
+    },
+  ]), [attachTimestamps]);
 
-          if (payload) {
-            const normalized = mapPayloadToAdvice(payload);
-            setAdvice(normalized);
-            persistSmartInsightsPayload(payload, normalized);
-            console.log('[Coaching Insights] Loaded advice from Smart Insights payload');
-            return;
-          }
-
-          if (result.data?.coaching_advice) {
-            const legacyAdvice = attachTimestamps(result.data.coaching_advice as CoachingCard[]);
-            setAdvice(legacyAdvice);
-            const legacyPayload = createPayloadFromRecommendations(legacyAdvice, 'unknown', {
-              openAIConfigured: true,
-            });
-            persistSmartInsightsPayload(legacyPayload, legacyAdvice);
-            console.log('[Coaching Insights] Loaded advice from legacy coaching_advice field');
-            return;
-          }
-        }
-      }
-
-      const cachedPayload = loadSmartInsightsPayload(clanTag);
-      if (cachedPayload) {
-        const normalized = mapPayloadToAdvice(cachedPayload);
-        setAdvice(normalized);
-        persistSmartInsightsPayload(cachedPayload, normalized);
-        console.log('[Coaching Insights] Loaded advice from stored Smart Insights payload');
-        return;
-      }
-
-      const savedLegacy = localStorage.getItem(`coaching_advice_${clanTag}`);
-      if (savedLegacy) {
-        try {
-          const parsedAdvice = attachTimestamps(JSON.parse(savedLegacy));
-          setAdvice(parsedAdvice);
-          const payload = createPayloadFromRecommendations(parsedAdvice, 'unknown', {
-            openAIConfigured: false,
-          });
-          persistSmartInsightsPayload(payload, parsedAdvice);
-          console.log('[Coaching Insights] Loaded advice from legacy localStorage');
-          return;
-        } catch (error) {
-          console.error('Failed to load existing coaching advice:', error);
-        }
-      }
-
-      const setupMessage: CoachingCard = {
-        id: 'setup-message',
-        category: 'System',
-        title: 'Coaching Insights Setup',
-        description:
-          'The coaching insights system is being set up. Your first batch of personalized guidance will be available after the nightly processing completes (usually within 24 hours). You can also generate insights manually using the button below.',
-        priority: 'medium',
-        icon: '🤖',
-      };
-      const initialAdvice = attachTimestamps([setupMessage]);
-      setAdvice(initialAdvice);
-      console.log('[Coaching Insights] No existing advice found; showing setup message');
-    } catch (error) {
-      console.error('[Coaching Insights] Error loading coaching advice:', error);
-      setAdvice([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [attachTimestamps, clanTag, createPayloadFromRecommendations, mapPayloadToAdvice, persistSmartInsightsPayload]);
+  const hasAdvice = adviceFromInsights.length > 0;
+  const advice = hasAdvice ? adviceFromInsights : fallbackAdvice;
+  const hasSmartInsightsError = Boolean(smartInsightsError);
+  const isInitialLoading = smartInsightsStatus === 'loading' && !hasAdvice && !hasSmartInsightsError && !isGenerating;
+  const isRefreshing = smartInsightsStatus === 'loading' && hasAdvice;
+  const showSpinner = isGenerating || isInitialLoading;
+  const isSetupMessage = !hasAdvice;
 
   useEffect(() => {
-    // Load coaching advice from stored insights or localStorage
-    if (clanData?.members) {
-      loadCoachingAdvice();
-    }
-  }, [clanData, loadCoachingAdvice]);
+    if (!clanTag) return;
+    loadSmartInsights(clanTag);
+  }, [clanTag, loadSmartInsights]);
 
   useEffect(() => {
     // Load actioned tips from localStorage
@@ -314,11 +266,10 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
 
   const generateCoachingAdvice = async () => {
     if (!clanData?.members || clanData.members.length === 0) {
-      setAdvice([]);
       return;
     }
 
-    setLoading(true);
+    setIsGenerating(true);
     console.log('[Coaching Insights] Generating new coaching advice manually...');
     
     // Calculate contextual data for smarter coaching
@@ -395,7 +346,6 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
           })()
         }));
 
-        setAdvice(adviceWithTimestamps);
         const payload = createPayloadFromRecommendations(adviceWithTimestamps, 'adhoc', {
           openAIConfigured: true,
         });
@@ -416,7 +366,6 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
             }
           })()
         }));
-        setAdvice(adviceWithTimestamps);
         const payload = createPayloadFromRecommendations(adviceWithTimestamps, 'adhoc', {
           openAIConfigured: false,
           errorMessage: 'Fallback local advice',
@@ -426,14 +375,13 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
     } catch (error) {
       console.error('Failed to generate coaching insight request:', error);
       const localAdvice = attachTimestamps(generateLocalAdvice());
-      setAdvice(localAdvice);
       const payload = createPayloadFromRecommendations(localAdvice, 'adhoc', {
         openAIConfigured: false,
         errorMessage: 'Local fallback after error',
       });
       persistSmartInsightsPayload(payload, localAdvice);
     } finally {
-      setLoading(false);
+      setIsGenerating(false);
     }
   };
 
@@ -670,14 +618,14 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
           )}
           <button
             onClick={generateCoachingAdvice}
-            disabled={loading}
+            disabled={isGenerating || isInitialLoading}
             className={`px-4 py-2 rounded-lg hover:opacity-90 disabled:opacity-50 transition-all ${
-              advice.length === 0 || (advice.length === 1 && advice[0].category === "System")
+              isSetupMessage
                 ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white text-lg font-semibold shadow-lg"
                 : "bg-purple-600 text-white"
             }`}
           >
-            {loading ? "🤖 Generating..." : advice.length === 0 || (advice.length === 1 && advice[0].category === "System") ? "🚀 Generate Your First Insights" : "🤖 Generate New Insights"}
+            {isGenerating ? "🤖 Generating..." : isSetupMessage ? "🚀 Generate Your First Insights" : "🤖 Generate New Insights"}
           </button>
         </div>
       </div>
@@ -690,7 +638,24 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
         </div>
       )}
 
-      {loading ? (
+      {isRefreshing && (
+        <div className="flex items-center gap-2 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2 text-sm text-purple-700">
+          <RefreshCcw className="h-4 w-4 animate-spin" />
+          <span>Refreshing latest coaching insights…</span>
+        </div>
+      )}
+
+      {hasSmartInsightsError && !showSpinner && (
+        <div className={`rounded-lg px-3 py-2 text-sm ${
+          hasAdvice ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-red-200 bg-red-50 text-red-700'
+        }`}>
+          {hasAdvice
+            ? `Showing cached coaching insights. Latest refresh failed: ${smartInsightsError}`
+            : `Unable to load coaching insights: ${smartInsightsError}`}
+        </div>
+      )}
+
+      {showSpinner ? (
         <div className="flex items-center justify-center py-8">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
           <span className="ml-3 text-gray-600">Analyzing clan data...</span>
