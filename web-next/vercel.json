@@ -5,7 +5,7 @@
   "framework": "nextjs",
   "crons": [
     {
-      "path": "/api/cron/daily-ingestion",
+      "path": "/api/health?cron=true",
       "schedule": "0 6 * * *"
     }
   ]
