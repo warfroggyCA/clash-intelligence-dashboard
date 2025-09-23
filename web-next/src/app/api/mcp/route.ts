@@ -1,9 +1,9 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import { NextRequest } from 'next/server';
+import { Request } from 'next/server';
 import { createApiContext } from "@/lib/api/route-helpers";
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     const { json } = createApiContext(request, '/api/mcp');
     return json({
@@ -99,7 +99,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const { json } = createApiContext(request, '/api/mcp');
     const body = await request.json();
