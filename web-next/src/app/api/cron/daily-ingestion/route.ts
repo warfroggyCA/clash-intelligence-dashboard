@@ -4,10 +4,14 @@ import { runIngestionJob } from '@/lib/ingestion/run-ingestion';
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   // Verify this is coming from Vercel's cron service
   const authHeader = request.headers.get('authorization');
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  const cronSecret = process.env.CRON_SECRET;
+  
+  // Vercel cron jobs send a Bearer token in the Authorization header
+  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+    console.log('[Cron] Unauthorized access attempt');
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
