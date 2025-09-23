@@ -3,9 +3,10 @@
   "outputDirectory": ".next",
   "installCommand": "npm install",
   "framework": "nextjs",
+  "rootDirectory": ".",
   "crons": [
     {
-      "path": "/api/health?cron=true",
+      "path": "/api/cron/daily-ingestion",
       "schedule": "0 6 * * *"
     }
   ]
