@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
-import { GlassCard } from '@/components/ui';
+import { GlassCard, TownHallBadge, LeagueBadge } from '@/components/ui';
 
 interface RosterStatsPanelProps {
   className?: string;
@@ -88,104 +88,81 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     );
   }
 
+  const formatNumber = (value: number | null | undefined): string => {
+    if (value === null || value === undefined) return 'No data';
+    return value.toLocaleString();
+  };
+
+  const averageTownHall = stats.averageTownHall ?? 0;
+  const averageTrophies = stats.averageTrophies ?? 0;
+
   const metrics = [
     {
       label: 'Members',
-      value: stats.memberCount != null ? stats.memberCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : 'No data',
-      icon: '👥',
-      color: 'blue',
-      bgColor: 'bg-blue-50 dark:bg-blue-950/20',
-      textColor: 'text-blue-600 dark:text-blue-400',
-      borderColor: 'border-blue-200 dark:border-blue-800',
+      value: formatNumber(stats.memberCount),
+      icon: <span className="text-3xl">👥</span>,
     },
     {
       label: 'Avg Town Hall',
-      value: stats.averageTownHall != null ? stats.averageTownHall.toString() : 'No data',
-      icon: '🏰',
-      color: 'purple',
-      bgColor: 'bg-purple-50 dark:bg-purple-950/20',
-      textColor: 'text-purple-600 dark:text-purple-400',
-      borderColor: 'border-purple-200 dark:border-purple-800',
+      value: averageTownHall > 0 ? `${averageTownHall}` : '—',
+      icon:
+        averageTownHall > 0 ? (
+          <TownHallBadge level={averageTownHall} size="lg" showLevel={false} showBox={false} className="h-14 w-14" />
+        ) : (
+          <span className="text-3xl">🏰</span>
+        ),
     },
     {
       label: 'Avg Trophies',
-      value: stats.averageTrophies != null ? stats.averageTrophies.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : 'No data',
-      icon: '🏆',
-      color: 'amber',
-      bgColor: 'bg-amber-50 dark:bg-amber-950/20',
-      textColor: 'text-amber-600 dark:text-amber-400',
-      borderColor: 'border-amber-200 dark:border-amber-800',
+      value: averageTrophies > 0 ? formatNumber(averageTrophies) : '—',
+      icon:
+        averageTrophies > 0 ? (
+          <LeagueBadge trophies={averageTrophies} showText={false} size="xxl" className="h-28 w-28 max-w-[5.5rem]" />
+        ) : (
+          <span className="text-3xl">🏆</span>
+        ),
     },
     {
       label: 'Total Donations',
-      value: stats.totalDonations != null ? stats.totalDonations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',') : 'No data',
-      icon: '💝',
-      color: 'emerald',
-      bgColor: 'bg-emerald-50 dark:bg-emerald-950/20',
-      textColor: 'text-emerald-600 dark:text-emerald-400',
-      borderColor: 'border-emerald-200 dark:border-emerald-800',
+      value: formatNumber(stats.totalDonations),
+      icon: <span className="text-3xl">💝</span>,
     },
     {
       label: 'Avg Donations',
-      value: stats.averageDonations != null ? stats.averageDonations.toString() : 'No data',
-      icon: '📊',
-      color: 'cyan',
-      bgColor: 'bg-cyan-50 dark:bg-cyan-950/20',
-      textColor: 'text-cyan-600 dark:text-cyan-400',
-      borderColor: 'border-cyan-200 dark:border-cyan-800',
+      value: stats.averageDonations != null ? formatNumber(stats.averageDonations) : '—',
+      icon: <span className="text-3xl">📊</span>,
     },
     {
       label: 'Avg Builder Base',
-      value: stats.averageBuilderTrophies != null && stats.averageBuilderTrophies > 0 ? stats.averageBuilderTrophies.toString() : 'No data',
-      icon: '🏗️',
-      color: 'orange',
-      bgColor: 'bg-orange-50 dark:bg-orange-950/20',
-      textColor: 'text-orange-600 dark:text-orange-400',
-      borderColor: 'border-orange-200 dark:border-orange-800',
+      value:
+        stats.averageBuilderTrophies != null && stats.averageBuilderTrophies > 0
+          ? formatNumber(stats.averageBuilderTrophies)
+          : '—',
+      icon: <span className="text-3xl">🏗️</span>,
+    },
+    {
+      label: 'War Win Rate',
+      value: warWinRate != null && warWinRate >= 0 ? `${warWinRate}%` : '—',
+      icon: <span className="text-3xl">⚔️</span>,
     },
   ];
-
-  metrics.push({
-    label: 'War Win Rate',
-    value: warWinRate != null && warWinRate >= 0 ? `${warWinRate}%` : 'No data',
-    icon: '⚔️',
-    color: 'rose',
-    bgColor: 'bg-rose-50 dark:bg-rose-950/20',
-    textColor: 'text-rose-600 dark:text-rose-400',
-    borderColor: 'border-rose-200 dark:border-rose-800',
-  });
 
   return (
     <GlassCard className={panelClassName}>
       <div className="space-y-6">
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {metrics.map((metric) => (
-            <div
-              key={metric.label}
-              className="group relative p-2"
-            >
-              <div className="flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center">
-                  <span className="text-base">{metric.icon}</span>
+            <div key={metric.label} className="flex items-center gap-4 text-slate-900 dark:text-white">
+              <div className="flex h-14 w-14 flex-shrink-0 items-center justify-center text-3xl">
+                {metric.icon}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="metric-value text-2xl font-extrabold leading-tight sm:text-[26px]">
+                  {metric.value}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p 
-                    className="text-xs font-medium text-slate-500 dark:!text-white uppercase tracking-wide"
-                    style={{
-                      color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
-                    }}
-                  >
-                    {metric.label}
-                  </p>
-                  <p 
-                    className={`text-base font-bold ${metric.textColor} dark:!text-white`}
-                    style={{
-                      color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
-                    }}
-                  >
-                    {metric.value}
-                  </p>
+                <div className="metric-label mt-1">
+                  {metric.label}
                 </div>
               </div>
             </div>

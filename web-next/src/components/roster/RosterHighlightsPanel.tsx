@@ -43,7 +43,6 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       .map((item) => ({
         name: item.member.name,
         value: `${Math.round(item.rush)}% rush`,
-        subtitle: `TH ${getTownHallLevel(item.member)}`,
       }));
 
     const topDonators = members
@@ -54,7 +53,6 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       .map((item) => ({
         name: item.member.name,
         value: item.donations.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ','),
-        subtitle: `Received ${(item.member.donationsReceived || 0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`,
       }));
 
     const heroLeaders = members
@@ -117,100 +115,47 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
       <div className="flex-1 space-y-6 overflow-visible pr-0 md:pr-1 xl:max-h-72 xl:overflow-y-auto">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {sections.map((section) => {
-            const getSectionIcon = () => {
-              if (section.title.includes('Donator')) return '💝';
-              if (section.title.includes('Hero')) return '🦸';
-              return '🏆';
-            };
-
-            const getSectionColor = () => {
+            const colors = (() => {
               if (section.title.includes('Donator')) return {
-                bg: 'bg-emerald-50 dark:bg-emerald-950/20',
-                border: 'border-emerald-200 dark:border-emerald-800',
-                icon: 'bg-emerald-100 dark:bg-emerald-900/30',
-                text: 'text-emerald-600 dark:text-emerald-400'
+                bg: 'bg-emerald-50 dark:bg-emerald-950/15',
+                border: 'border-emerald-200 dark:border-emerald-800/40',
+                text: 'text-emerald-600 dark:text-emerald-300'
               };
               if (section.title.includes('Hero')) return {
-                bg: 'bg-purple-50 dark:bg-purple-950/20',
-                border: 'border-purple-200 dark:border-purple-800',
-                icon: 'bg-purple-100 dark:bg-purple-900/30',
-                text: 'text-purple-600 dark:text-purple-400'
+                bg: 'bg-purple-50 dark:bg-purple-950/15',
+                border: 'border-purple-200 dark:border-purple-800/40',
+                text: 'text-purple-600 dark:text-purple-300'
               };
               return {
-                bg: 'bg-amber-50 dark:bg-amber-950/20',
-                border: 'border-amber-200 dark:border-amber-800',
-                icon: 'bg-amber-100 dark:bg-amber-900/30',
-                text: 'text-amber-600 dark:text-amber-400'
+                bg: 'bg-amber-50 dark:bg-amber-950/15',
+                border: 'border-amber-200 dark:border-amber-800/40',
+                text: 'text-amber-600 dark:text-amber-300'
               };
-            };
-
-            const colors = getSectionColor();
+            })();
 
             return (
               <div key={section.title} className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${colors.icon}`}>
-                    <span className="text-lg">{getSectionIcon()}</span>
-                  </div>
-                        <h3 
-                          className={`font-semibold ${colors.text} dark:!text-white`}
-                          style={{
-                            color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
-                          }}
-                        >
-                          {section.title}
-                        </h3>
-                </div>
-                <div className="space-y-3">
-                  {section.entries.slice(0, 3).map((entry, index) => (
+                <h3
+                  className={`text-sm font-semibold uppercase tracking-[0.2em] ${colors.text}`}
+                >
+                  {section.title}
+                </h3>
+                <div className="space-y-2">
+                  {section.entries.map((entry, index) => (
                     <div
                       key={`${section.title}-${entry.name}`}
-                      className="group p-3"
+                      className="clash-highlight-entry flex items-center justify-between gap-4"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div 
-                            className={`flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700 text-xs font-bold text-slate-600 dark:!text-white`}
-                            style={{
-                              color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
-                            }}
-                          >
-                            {index + 1}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                                  <p 
-                                    className="text-sm font-medium text-slate-800 dark:!text-white truncate"
-                                    style={{
-                                      color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
-                                    }}
-                                  >
-                                    {entry.name}
-                                  </p>
-                            {entry.subtitle && (
-                              <p 
-                                className="text-xs text-slate-500 dark:!text-white truncate"
-                                style={{
-                                  color: typeof window !== 'undefined' && document.documentElement.getAttribute('data-theme') === 'dark' ? '#ffffff' : undefined
-                                }}
-                              >
-                                {entry.subtitle}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        <div className={`px-2 py-1 rounded-full text-xs font-bold ${colors.bg} ${colors.text}`}>
-                          {entry.value}
-                        </div>
+                      <div className="flex items-center gap-2 min-w-0 flex-1 text-sm">
+                        <span className="text-xs font-semibold text-slate-500 dark:text-white/50">{index + 1}.</span>
+                        <span className="truncate font-medium">{entry.name}</span>
                       </div>
-                    </div>
-                  ))}
-                  {section.entries.length > 3 && (
-                    <div className="py-2 text-center">
-                      <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600 dark:bg-slate-700 dark:text-slate-400">
-                        +{section.entries.length - 3} more
+                      <span className={`${colors.text} text-xs font-semibold`}
+                      >
+                        {entry.value}
                       </span>
                     </div>
-                  )}
+                  ))}
                 </div>
               </div>
             );

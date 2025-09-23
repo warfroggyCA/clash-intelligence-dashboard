@@ -21,7 +21,8 @@ import {
   AccessMember,
   DepartureNotifications,
   EventHistory,
-  PlayerEvent
+  PlayerEvent,
+  ChangeSummary,
 } from '@/types';
 import type { RolePermissions } from '@/lib/leadership';
 import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-management';
@@ -32,6 +33,16 @@ import { safeLocaleDateString, safeLocaleTimeString } from '@/lib/date';
 import { normalizeTag } from '@/lib/tags';
 import type { SmartInsightsPayload } from '@/lib/smart-insights';
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
+
+export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export interface HistoryCacheEntry {
+  items: ChangeSummary[];
+  status: HistoryStatus;
+  error?: string | null;
+  lastFetched?: number;
+  isRefreshing?: boolean;
+}
 
 
 // =============================================================================
@@ -119,6 +130,7 @@ interface DashboardState {
   dismissedNotifications: Set<string>;
   
   // Snapshots & History
+  historyByClan: Record<string, HistoryCacheEntry>;
   availableSnapshots: Array<{ date: string; memberCount: number }>;
   selectedSnapshot: string;
   playerNameHistory: Record<string, Array<{ name: string; timestamp: string }>>;
@@ -187,6 +199,8 @@ interface DashboardState {
   setPlayerNameHistory: (history: Record<string, Array<{ name: string; timestamp: string }>>) => void;
   setEventHistory: (history: EventHistory) => void;
   setEventFilterPlayer: (player: string) => void;
+  loadHistory: (clanTag: string, options?: { force?: boolean; ttlMs?: number }) => Promise<void>;
+  mutateHistoryItems: (clanTag: string, mutator: (items: ChangeSummary[]) => ChangeSummary[]) => void;
 
   setLastLoadInfo: (info: DashboardState['lastLoadInfo']) => void;
   setDataFetchedAt: (timestamp: string) => void;
@@ -196,7 +210,7 @@ interface DashboardState {
   // Complex Actions
   resetDashboard: () => void;
   loadRoster: (clanTag: string) => Promise<void>;
-  loadSmartInsights: (clanTag: string, options?: { force?: boolean }) => Promise<void>;
+  loadSmartInsights: (clanTag: string, options?: { force?: boolean; ttlMs?: number }) => Promise<void>;
   refreshData: () => Promise<void>;
   checkDepartureNotifications: () => Promise<void>;
   dismissAllNotifications: () => void;
@@ -209,6 +223,8 @@ interface DashboardState {
 
 const DEFAULT_ACCESS_LEVEL: AccessLevel = 'leader';
 const DEFAULT_CLAN_TAG = cfg.homeClanTag;
+const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change history
+const SMART_INSIGHTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for smart insights
 
 const initialState = {
   // Core Data
@@ -255,6 +271,7 @@ const initialState = {
   dismissedNotifications: new Set<string>(),
   
   // Snapshots & History
+  historyByClan: {} as Record<string, HistoryCacheEntry>,
   availableSnapshots: [],
   selectedSnapshot: 'latest', // Always use snapshot data for roster
   playerNameHistory: {},
@@ -437,20 +454,23 @@ export const useDashboardStore = create<DashboardState>()(
         }
       },
 
-      loadSmartInsights: async (clanTag: string, options: { force?: boolean } = {}) => {
+      loadSmartInsights: async (clanTag: string, options: { force?: boolean; ttlMs?: number } = {}) => {
         const cleanTag = normalizeTag(clanTag);
         if (!cleanTag) return;
 
         const { smartInsightsClanTag, smartInsightsFetchedAt, smartInsightsStatus, smartInsights } = get();
         const now = Date.now();
-        const isRecent = smartInsightsFetchedAt && (now - smartInsightsFetchedAt) < 5 * 60 * 1000; // 5 minutes cache
+        const ttlMs = options.ttlMs ?? SMART_INSIGHTS_CACHE_TTL_MS;
+        const isRecent = smartInsightsFetchedAt ? (now - smartInsightsFetchedAt) < ttlMs : false;
+        const generatedAtMs = smartInsights?.metadata?.generatedAt ? new Date(smartInsights.metadata.generatedAt).getTime() : null;
+        const isGeneratedFresh = generatedAtMs ? (now - generatedAtMs) < ttlMs : false;
         const force = options.force ?? false;
 
         if (!force && smartInsightsClanTag === cleanTag) {
           if (smartInsightsStatus === 'loading') {
             return;
           }
-          if (smartInsights && isRecent) {
+          if (smartInsights && (isRecent || isGeneratedFresh)) {
             return;
           }
         }
@@ -461,6 +481,13 @@ export const useDashboardStore = create<DashboardState>()(
           const cached = loadSmartInsightsPayload(cleanTag);
           if (cached) {
             get().setSmartInsights(cached);
+          }
+          
+          // If we already have fresh insights from cache and not forcing, skip fetch
+          const hasFreshCached = !force && cached && (isRecent || isGeneratedFresh);
+          if (hasFreshCached) {
+            set({ smartInsightsStatus: 'success', smartInsightsError: null, smartInsightsClanTag: cleanTag, smartInsightsFetchedAt: Date.now() });
+            return;
           }
 
           const controller = new AbortController();
@@ -500,6 +527,167 @@ export const useDashboardStore = create<DashboardState>()(
             smartInsightsClanTag: cleanTag,
           }));
         }
+      },
+
+      loadHistory: async (clanTag: string, options: { force?: boolean; ttlMs?: number } = {}) => {
+        const normalizedTag = normalizeTag(clanTag) || clanTag;
+        if (!normalizedTag) return;
+
+        const force = options.force ?? false;
+        const ttlMs = options.ttlMs ?? HISTORY_CACHE_TTL_MS;
+        const now = Date.now();
+
+        const currentEntry = get().historyByClan[normalizedTag];
+        if (!force && currentEntry?.lastFetched && now - currentEntry.lastFetched < ttlMs) {
+          if (currentEntry.status === 'idle') {
+            set((state) => ({
+              historyByClan: {
+                ...state.historyByClan,
+                [normalizedTag]: { ...currentEntry, status: 'ready', error: null },
+              },
+            }));
+          }
+          return;
+        }
+
+        if (!force && (currentEntry?.status === 'loading' || currentEntry?.isRefreshing)) {
+          return;
+        }
+
+        const previousItems = currentEntry?.items ?? [];
+        const previousLastFetched = currentEntry?.lastFetched;
+
+        set((state) => ({
+          historyByClan: {
+            ...state.historyByClan,
+            [normalizedTag]: {
+              items: previousItems,
+              status: previousItems.length ? 'ready' : 'loading',
+              error: null,
+              lastFetched: previousLastFetched,
+              isRefreshing: previousItems.length > 0,
+            },
+          },
+        }));
+
+        let storedSummaries: ChangeSummary[] = [];
+        try {
+          const { getAISummaries } = await import('@/lib/supabase');
+          const supabaseSummaries = await getAISummaries(normalizedTag);
+
+          storedSummaries = supabaseSummaries.map((summary: any) => ({
+            date: summary.date,
+            clanTag: summary.clan_tag,
+            changes: [],
+            summary: summary.summary,
+            gameChatMessages: [],
+            unread: summary.unread,
+            actioned: summary.actioned,
+            createdAt: summary.created_at,
+          }));
+        } catch (supabaseError) {
+          console.warn('[DashboardStore] Failed to load insights summaries from Supabase, trying localStorage fallback:', supabaseError);
+          if (typeof window !== 'undefined') {
+            try {
+              const savedSummaries = localStorage.getItem('ai_summaries');
+              if (savedSummaries) {
+                const parsed = JSON.parse(savedSummaries);
+                storedSummaries = parsed
+                  .filter((summary: ChangeSummary) => (normalizeTag(summary.clanTag) || summary.clanTag) === normalizedTag)
+                  .map((summary: ChangeSummary) => ({
+                    ...summary,
+                    clanTag: normalizeTag(summary.clanTag) || summary.clanTag,
+                  }));
+              }
+            } catch (localError) {
+              console.warn('[DashboardStore] Failed to load insights summaries from localStorage:', localError);
+            }
+          }
+        }
+
+        let combinedChanges: ChangeSummary[] = [...storedSummaries];
+        let fetchError: Error | null = null;
+
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
+          let response: Response;
+          try {
+            response = await fetch(`/api/snapshots/changes?clanTag=${encodeURIComponent(normalizedTag)}`, {
+              signal: controller.signal,
+            });
+          } finally {
+            clearTimeout(timeoutId);
+          }
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          if (data?.success) {
+            const serverChanges: ChangeSummary[] = Array.isArray(data.changes) ? data.changes : [];
+            combinedChanges = [...combinedChanges, ...serverChanges];
+          } else {
+            throw new Error(data?.error || 'Failed to load changes');
+          }
+        } catch (error: any) {
+          fetchError = error instanceof Error ? error : new Error(String(error));
+        }
+
+        if (!combinedChanges.length) {
+          combinedChanges = previousItems;
+        }
+
+        combinedChanges.sort((a, b) => {
+          const aDate = a.createdAt || a.date;
+          const bDate = b.createdAt || b.date;
+          return new Date(bDate).getTime() - new Date(aDate).getTime();
+        });
+
+        const hasData = combinedChanges.length > 0;
+        const errorMessage = fetchError ? (fetchError.message || 'Failed to load changes') : null;
+
+        set((state) => ({
+          historyByClan: {
+            ...state.historyByClan,
+            [normalizedTag]: {
+              items: combinedChanges,
+              status: hasData ? 'ready' : 'error',
+              error: hasData ? errorMessage : (errorMessage ?? 'Failed to load changes'),
+              lastFetched: hasData ? now : previousLastFetched,
+              isRefreshing: false,
+            },
+          },
+        }));
+      },
+
+      mutateHistoryItems: (clanTag: string, mutator: (items: ChangeSummary[]) => ChangeSummary[]) => {
+        const normalizedTag = normalizeTag(clanTag) || clanTag;
+        if (!normalizedTag) return;
+
+        set((state) => {
+          const entry = state.historyByClan[normalizedTag];
+          const nextItems = mutator(entry?.items ?? []);
+          const nextStatus: HistoryStatus = nextItems.length
+            ? 'ready'
+            : entry?.status === 'error'
+              ? 'error'
+              : 'idle';
+          return {
+            historyByClan: {
+              ...state.historyByClan,
+              [normalizedTag]: {
+                items: nextItems,
+                status: nextStatus,
+                error: entry?.error ?? null,
+                lastFetched: entry?.lastFetched,
+                isRefreshing: false,
+              },
+            },
+          };
+        });
       },
 
       // Hydrate roster from local cache for instant paint
