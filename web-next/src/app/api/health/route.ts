@@ -55,4 +55,44 @@ export async function GET(request: Request) {
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   return json({ success: true, data: { hasCoC, hasOpenAI } });
 }
+
+export async function POST(request: Request) {
+  const { json } = createApiContext(request, '/api/health');
+  
+  // Check if this is a cron ingestion request
+  const url = new URL(request.url);
+  if (url.searchParams.get('cron') === 'true') {
+    try {
+      // Import the ingestion function
+      const { runIngestionJob } = await import('@/lib/ingestion/run-ingestion');
+      
+      console.log('[Health/Cron] Starting daily ingestion job');
+      
+      const results = await runIngestionJob({
+        clanTag: '#2PR8R8V8P'
+      });
+      
+      console.log('[Health/Cron] Daily ingestion completed:', results);
+      
+      return json({
+        success: true,
+        data: results,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error: any) {
+      console.error('[Health/Cron] Daily ingestion failed:', error);
+      return json(
+        {
+          success: false,
+          error: error?.message || 'Internal Server Error',
+          timestamp: new Date().toISOString()
+        },
+        { status: 500 }
+      );
+    }
+  }
+  
+  // Default POST response
+  return json({ success: true, message: 'Health endpoint POST' });
+}
 // Trigger deployment Tue Sep 23 15:58:59 EDT 2025
