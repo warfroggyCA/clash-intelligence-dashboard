@@ -76,16 +76,14 @@ export async function POST(request: Request) {
       
       return json({
         success: true,
-        data: results,
-        timestamp: new Date().toISOString()
+        data: results
       });
     } catch (error: any) {
       console.error('[Health/Cron] Daily ingestion failed:', error);
       return json(
         {
           success: false,
-          error: error?.message || 'Internal Server Error',
-          timestamp: new Date().toISOString()
+          error: error?.message || 'Internal Server Error'
         },
         { status: 500 }
       );
