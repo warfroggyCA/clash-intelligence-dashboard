@@ -58,7 +58,7 @@
 - [ ] **Player "Carry" Score** - Quantify individual contribution
 - [ ] **Raid Participation Rate** - Proportion of eligible attacks used
 
-## Player Engagement Metrics
+## Player Engagement Metrics201
 - [ ] **Attack Participation Rate** - Combine war and capital participation
 - [ ] **Builder Base vs Main Base Activity Skew** - Ratio analysis
 - [ ] **Hero Upgrade Downtime** - Track hero availability in wars
@@ -121,6 +121,101 @@
 - [ ] **Author tags** (e.g., "Note by Tigress #ABC123")
 - [ ] **Role-Based Permissions** - Granular access control
 - [ ] **Invite code authentication** - Simple access management
+
+## Strategic Dashboard Vision: The Indispensable War Room
+
+### Core Mission: Transform Data into Actionable Intelligence
+The dashboard must evolve beyond data display into a command center that provides insights the native Clash of Clans experience never will. This strategic vision encompasses five critical intelligence domains:
+
+### 1. War Performance Intelligence Engine
+**Goal**: Turn war performance into actionable intelligence that reveals strategy failures
+- [ ] **Attack Efficiency Tracking** - Stars per attack with context (TH difference, base strength)
+- [ ] **Contribution Consistency Scoring** - Measure steadiness vs. one-hit wonders
+- [ ] **Stars-per-Differential Analysis** - Performance when hitting up vs. down
+- [ ] **Cleanup Efficiency Metrics** - Second-attempt success rates
+- [ ] **Defensive Hold Rate** - Base design effectiveness tracking
+- [ ] **Strategy Failure Detection** - AI-powered insights on where war strategy breaks down
+- [ ] **Target Selection Optimization** - Data-driven recommendations for attack assignments
+
+### 2. Capital Raid Economy Mastery
+**Goal**: Own the capital-raid economy with precision metrics
+- [ ] **Capital Loot per Attack** - Individual and clan-wide efficiency
+- [ ] **One-Hit District Clear Rates** - Destruction efficiency tracking
+- [ ] **Carry Score Quantification** - Individual contribution measurement
+- [ ] **Raid Participation Analytics** - Attack utilization vs. eligibility
+- [ ] **District Performance Heatmaps** - Visual identification of weak spots
+- [ ] **Weekend Reward Optimization** - Predictive modeling for maximum returns
+- [ ] **Capital ROI Matrices** - Investment vs. return analysis
+
+### 3. Engagement & Readiness Quantification
+**Goal**: Flag burnout risks and underdeveloped bases before they become liabilities
+- [ ] **Donation Balance/Ratio Trends** - Long-term engagement patterns
+- [ ] **Combined Attack Participation** - War + Capital activity synthesis
+- [ ] **Builder vs. Main Base Activity** - Development balance analysis
+- [ ] **Town Hall Progress Efficiency** - Rush detection and optimization
+- [ ] **Hero Downtime Tracking** - War readiness assessment
+- [ ] **Burnout Risk Prediction** - Early warning system for inactive members
+- [ ] **Base Development Scoring** - War readiness assessment
+
+### 4. Momentum & Trend Intelligence
+**Goal**: Show momentum, not just snapshots - prove improvement or regression
+- [ ] **Rolling War Performance Trends** - 30/60/90 day performance windows
+- [ ] **Donation Trend Analysis** - Seasonal patterns and anomalies
+- [ ] **Capital Progress Tracking** - Long-term raid performance evolution
+- [ ] **Membership Evolution Analytics** - Clan composition changes over time
+- [ ] **Opponent Strength Comparisons** - Performance vs. relative competition
+- [ ] **Clan Momentum Quadrants** - Visual positioning of improvement/decline
+- [ ] **Predictive Performance Modeling** - Future outcome forecasting
+
+### 5. Recruitment Crystal Ball
+**Goal**: Perfect recruitment decisions with data-driven insights
+- [ ] **Town Hall Spread Analysis** - Optimal clan composition modeling
+- [ ] **Role Coverage Assessment** - Leadership gap identification
+- [ ] **Sandbagger/Rush Alert System** - Quality control for new members
+- [ ] **Composite Contribution Scoring** - Multi-dimensional member evaluation
+- [ ] **AI-Assisted Applicant Scoring** - Automated candidate assessment
+- [ ] **Recruitment ROI Analysis** - Success rate of different recruitment strategies
+- [ ] **Cultural Fit Prediction** - Social dynamics and clan chemistry analysis
+
+### 6. Signature Smart Insights Engine
+**Goal**: Deliver "What matters now" intelligence that stays resilient to failures
+- [ ] **Curated Daily Briefing** - AI-powered "What matters now" feed
+- [ ] **Resilient Intelligence Architecture** - Fallback systems for AI failures
+- [ ] **Living Briefing System** - Real-time updates, not static reports
+- [ ] **Priority-Based Insight Ranking** - Most critical information first
+- [ ] **Context-Aware Recommendations** - Insights tailored to current clan state
+- [ ] **Automated Alert Triggers** - Proactive notification system
+- [ ] **Insight Confidence Scoring** - Reliability indicators for recommendations
+
+### 7. Revolutionary Perspective Unlocking
+**Goal**: Reveal hidden economies, archetypes, and future outcomes competitors can't see
+- [ ] **Player DNA Radar Profiles** - Multi-dimensional player classification
+- [ ] **Clan Momentum Quadrants** - Performance DNA analysis
+- [ ] **Social Ecosystem Flow Maps** - Donation economy visualization
+- [ ] **Capital ROI Matrices** - Investment vs. return heatmaps
+- [ ] **Predictive Outcome Widgets** - Future scenario modeling
+- [ ] **Hidden Economy Detection** - Uncover non-obvious performance patterns
+- [ ] **Competitive Advantage Analytics** - What makes this clan unique
+
+### 8. Leadership Alignment & Proactivity System
+**Goal**: Keep leaders aligned and proactive with instant reaction capabilities
+- [ ] **Automated Alert System** - Instant notifications for critical changes
+- [ ] **Collaborative Notes with Authorship** - Shared intelligence gathering
+- [ ] **Invite-Based Access Control** - Secure, role-based information sharing
+- [ ] **Real-Time Collaboration Tools** - Leadership team coordination
+- [ ] **Action Item Tracking** - Follow-through on coaching assignments
+- [ ] **Decision Audit Trail** - Track leadership decisions and outcomes
+- [ ] **Performance Accountability Metrics** - Leadership effectiveness measurement
+
+### The Ultimate Deliverable: Command Center Integration
+**Result**: Bundle all intelligence domains into a single curated daily briefing that delivers:
+- **Why the clan is winning or struggling** - Root cause analysis
+- **Who deserves recognition or support** - Performance-based insights
+- **What to do next** - Actionable recommendations
+- **Competitive advantage visibility** - Insights competitors can't see
+- **Proactive leadership tools** - Stay ahead of problems
+
+This transforms the dashboard from a data viewer into an indispensable command center that every serious clan leader must use.
 
 ## Future Vision & Wish List
 
@@ -216,11 +311,37 @@
 - **Sticky header**: Improve navigation experience
 - **Mouseover details**: Reduce visual clutter while maintaining functionality
 
-## Priority Order
-1. UI/UX immediate changes (tabs, icons, layout)
-2. Access control refinements
-3. Data clarification
-4. Future feature planning
+## Strategic Implementation Priority
+
+### Phase 1: Foundation (Current - Q1 2025)
+1. **UI/UX immediate changes** (tabs, icons, layout)
+2. **Access control refinements** (role inheritance, security)
+3. **Data clarification** (war consistency, metrics validation)
+4. **Smart Insights consolidation** (unified intelligence service)
+
+### Phase 2: Core Intelligence (Q2 2025)
+1. **War Performance Intelligence Engine** - Attack efficiency, consistency scoring
+2. **Engagement & Readiness Quantification** - Burnout prediction, readiness assessment
+3. **Momentum & Trend Intelligence** - Rolling performance analysis
+4. **Enhanced Smart Insights** - Curated daily briefing system
+
+### Phase 3: Advanced Analytics (Q3 2025)
+1. **Capital Raid Economy Mastery** - Comprehensive capital analytics
+2. **Recruitment Crystal Ball** - AI-assisted applicant scoring
+3. **Revolutionary Perspective Unlocking** - Player DNA, clan momentum analysis
+4. **Leadership Alignment System** - Collaborative tools, automated alerts
+
+### Phase 4: Command Center Integration (Q4 2025)
+1. **Unified Intelligence Dashboard** - Single curated briefing
+2. **Predictive Analytics** - Future outcome modeling
+3. **Competitive Advantage Tools** - Hidden economy detection
+4. **Multi-Tenant SaaS Platform** - Scalable infrastructure
+
+### Success Metrics
+- **Adoption**: Dashboard becomes "must-open tab" for clan leaders
+- **Actionability**: Insights lead to measurable clan performance improvements
+- **Competitive Edge**: Features unavailable in native Clash of Clans experience
+- **Retention**: Daily usage patterns indicating indispensable tool status
 
 ## Future Deliverables
 - [ ] Onboarding wizard: guided setup for clan tag, CoC API key, optional proxy/OpenAI keys, Supabase linkage, and health check
