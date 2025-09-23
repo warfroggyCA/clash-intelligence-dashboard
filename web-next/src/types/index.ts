@@ -31,6 +31,7 @@ export interface Member {
   
   // Stats
   trophies?: number;
+  versusTrophies?: number;
   donations?: number;
   donationsReceived?: number;
   warStars?: number;
