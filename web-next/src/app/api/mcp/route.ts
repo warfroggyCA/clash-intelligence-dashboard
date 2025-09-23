@@ -1,0 +1,168 @@
+import { NextRequest, NextResponse } from 'next/server';
+
+export async function GET(request: NextRequest) {
+  try {
+    return NextResponse.json({
+      name: "Clash Intelligence MCP Server",
+      version: "1.0.0",
+      description: "MCP server for Clash Intelligence dashboard tools and data access",
+      tools: [
+        {
+          name: "get-clan-data",
+          description: "Retrieve current clan information and statistics",
+          parameters: [
+            {
+              name: "clanTag",
+              type: "string",
+              description: "Clan tag to retrieve data for",
+              required: true
+            }
+          ]
+        },
+        {
+          name: "get-member-data",
+          description: "Retrieve member information and statistics",
+          parameters: [
+            {
+              name: "playerTag",
+              type: "string", 
+              description: "Player tag to retrieve data for",
+              required: true
+            }
+          ]
+        },
+        {
+          name: "get-war-data",
+          description: "Retrieve current and recent war information",
+          parameters: [
+            {
+              name: "clanTag",
+              type: "string",
+              description: "Clan tag to retrieve war data for",
+              required: true
+            }
+          ]
+        },
+        {
+          name: "get-snapshot-data",
+          description: "Retrieve roster snapshot data for analysis",
+          parameters: [
+            {
+              name: "clanTag",
+              type: "string",
+              description: "Clan tag to retrieve snapshot data for",
+              required: true
+            },
+            {
+              name: "date",
+              type: "string",
+              description: "Date of snapshot (optional, defaults to latest)",
+              required: false
+            }
+          ]
+        },
+        {
+          name: "trigger-ingestion",
+          description: "Trigger a new data ingestion job for the clan",
+          parameters: [
+            {
+              name: "clanTag",
+              type: "string",
+              description: "Clan tag to ingest data for",
+              required: true
+            }
+          ]
+        }
+      ],
+      capabilities: [
+        "clan-data-access",
+        "member-analytics", 
+        "war-intelligence",
+        "snapshot-management",
+        "ingestion-control"
+      ]
+    });
+  } catch (error) {
+    console.error('MCP server error:', error);
+    return NextResponse.json(
+      { 
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const body = await request.json();
+    
+    // Handle MCP tool execution requests
+    if (body.tool && body.parameters) {
+      const { tool, parameters } = body;
+      
+      switch (tool) {
+        case 'get-clan-data':
+          // TODO: Implement clan data retrieval
+          return NextResponse.json({
+            success: true,
+            tool: 'get-clan-data',
+            data: { message: 'Clan data retrieval not yet implemented' }
+          });
+          
+        case 'get-member-data':
+          // TODO: Implement member data retrieval
+          return NextResponse.json({
+            success: true,
+            tool: 'get-member-data', 
+            data: { message: 'Member data retrieval not yet implemented' }
+          });
+          
+        case 'get-war-data':
+          // TODO: Implement war data retrieval
+          return NextResponse.json({
+            success: true,
+            tool: 'get-war-data',
+            data: { message: 'War data retrieval not yet implemented' }
+          });
+          
+        case 'get-snapshot-data':
+          // TODO: Implement snapshot data retrieval
+          return NextResponse.json({
+            success: true,
+            tool: 'get-snapshot-data',
+            data: { message: 'Snapshot data retrieval not yet implemented' }
+          });
+          
+        case 'trigger-ingestion':
+          // TODO: Implement ingestion trigger
+          return NextResponse.json({
+            success: true,
+            tool: 'trigger-ingestion',
+            data: { message: 'Ingestion trigger not yet implemented' }
+          });
+          
+        default:
+          return NextResponse.json(
+            { error: 'Unknown tool', tool },
+            { status: 400 }
+          );
+      }
+    }
+    
+    return NextResponse.json(
+      { error: 'Invalid request format' },
+      { status: 400 }
+    );
+  } catch (error) {
+    console.error('MCP POST error:', error);
+    return NextResponse.json(
+      { 
+        error: "Internal server error",
+        message: error instanceof Error ? error.message : "Unknown error"
+      },
+      { status: 500 }
+    );
+  }
+}
