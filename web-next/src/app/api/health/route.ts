@@ -55,3 +55,4 @@ export async function GET(request: Request) {
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   return json({ success: true, data: { hasCoC, hasOpenAI } });
 }
+// Trigger deployment Tue Sep 23 15:58:59 EDT 2025
