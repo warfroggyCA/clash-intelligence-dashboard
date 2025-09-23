@@ -16,7 +16,6 @@
     "deploy:staging": "vercel --target preview",
     "deploy:prod": "vercel --target production",
     "env:check": "node scripts/check-env.js",
-    "ingest:daily": "tsx scripts/ingest/daily-snapshot.ts",
     "ingest:run": "tsx scripts/ingest/run.ts",
     "setup:storage": "tsx scripts/setup-supabase-storage.ts",
     "release:patch": "npm version patch && git push && git push --tags",
