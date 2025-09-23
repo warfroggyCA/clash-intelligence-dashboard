@@ -7,49 +7,8 @@ import { createApiContext } from "@/lib/api/route-helpers";
 export async function GET(request: Request) {
   const { json } = createApiContext(request, '/api/health');
   
-  // Check if this is a cron request (temporary workaround)
-  const url = new URL(request.url);
-  if (url.searchParams.get('cron') === 'true') {
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    
-    // Verify this is coming from Vercel's cron service
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      console.log('[Cron] Unauthorized access attempt via health endpoint');
-      return json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
-    try {
-      console.log('[Cron] Starting daily ingestion job via health endpoint');
-      const { runIngestionJob } = await import('@/lib/ingestion/run-ingestion');
-      
-      const results = await runIngestionJob({ 
-        clanTag: '#2PR8R8V8P'
-      });
-      
-      console.log('[Cron] Daily ingestion completed via health endpoint:', results);
-      
-      return json({ 
-        success: true, 
-        data: results,
-        timestamp: new Date().toISOString(),
-        source: 'health-endpoint-workaround'
-      });
-    } catch (error: any) {
-      console.error('[Cron] Daily ingestion failed via health endpoint:', error);
-      return json(
-        { 
-          success: false, 
-          error: error?.message || 'Internal Server Error',
-          timestamp: new Date().toISOString(),
-          source: 'health-endpoint-workaround'
-        }, 
-        { status: 500 }
-      );
-    }
-  }
-  
   // Check if this is an MCP request
+  const url = new URL(request.url);
   if (url.searchParams.get('mcp') === 'true') {
     return json({
       success: true,
