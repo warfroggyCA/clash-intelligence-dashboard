@@ -1,10 +1,12 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest } from 'next/server';
+import { createApiContext } from "@/lib/api/route-helpers";
 
 export async function GET(request: NextRequest) {
   try {
-    return NextResponse.json({
+    const { json } = createApiContext(request, '/api/mcp');
+    return json({
       name: "Clash Intelligence MCP Server",
       version: "1.0.0",
       description: "MCP server for Clash Intelligence dashboard tools and data access",
@@ -86,18 +88,20 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('MCP server error:', error);
-    return NextResponse.json(
+    const { json } = createApiContext(request, '/api/mcp');
+    return json(
       { 
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error"
       },
-      { status: 500 }
+      500
     );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const { json } = createApiContext(request, '/api/mcp');
     const body = await request.json();
     
     // Handle MCP tool execution requests
@@ -107,7 +111,7 @@ export async function POST(request: NextRequest) {
       switch (tool) {
         case 'get-clan-data':
           // TODO: Implement clan data retrieval
-          return NextResponse.json({
+          return json({
             success: true,
             tool: 'get-clan-data',
             data: { message: 'Clan data retrieval not yet implemented' }
@@ -115,7 +119,7 @@ export async function POST(request: NextRequest) {
           
         case 'get-member-data':
           // TODO: Implement member data retrieval
-          return NextResponse.json({
+          return json({
             success: true,
             tool: 'get-member-data', 
             data: { message: 'Member data retrieval not yet implemented' }
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
           
         case 'get-war-data':
           // TODO: Implement war data retrieval
-          return NextResponse.json({
+          return json({
             success: true,
             tool: 'get-war-data',
             data: { message: 'War data retrieval not yet implemented' }
@@ -131,7 +135,7 @@ export async function POST(request: NextRequest) {
           
         case 'get-snapshot-data':
           // TODO: Implement snapshot data retrieval
-          return NextResponse.json({
+          return json({
             success: true,
             tool: 'get-snapshot-data',
             data: { message: 'Snapshot data retrieval not yet implemented' }
@@ -139,32 +143,33 @@ export async function POST(request: NextRequest) {
           
         case 'trigger-ingestion':
           // TODO: Implement ingestion trigger
-          return NextResponse.json({
+          return json({
             success: true,
             tool: 'trigger-ingestion',
             data: { message: 'Ingestion trigger not yet implemented' }
           });
           
         default:
-          return NextResponse.json(
+          return json(
             { error: 'Unknown tool', tool },
-            { status: 400 }
+            400
           );
       }
     }
     
-    return NextResponse.json(
+    return json(
       { error: 'Invalid request format' },
-      { status: 400 }
+      400
     );
   } catch (error) {
     console.error('MCP POST error:', error);
-    return NextResponse.json(
+    const { json } = createApiContext(request, '/api/mcp');
+    return json(
       { 
         error: "Internal server error",
         message: error instanceof Error ? error.message : "Unknown error"
       },
-      { status: 500 }
+      500
     );
   }
 }
