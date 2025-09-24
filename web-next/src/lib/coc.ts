@@ -245,7 +245,7 @@ async function api<T>(path: string): Promise<T> {
   // Re-enable Fixie proxy for IP whitelisting
   console.log('[DEBUG] FIXIE_URL from env:', !!FIXIE_URL);
   console.log('[DEBUG] Using Fixie proxy:', FIXIE_URL ? 'YES' : 'NO');
-  console.log('[DEBUG] Fixie proxy re-enabled for IP whitelisting');
+  console.log('[DEBUG] Fixie proxy re-enabled for IP whitelisting - FORCE DEPLOY');
 
   if (FIXIE_URL) {
     const axiosConfig: any = {
