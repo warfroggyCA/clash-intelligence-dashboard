@@ -242,11 +242,11 @@ async function api<T>(path: string): Promise<T> {
   console.log('[DEBUG] FIXIE_URL value:', FIXIE_URL ? FIXIE_URL.replace(/:[^:]*@/, ':****@') : 'undefined');
   console.log('[DEBUG] Force fresh deployment - testing Fixie proxy');
   
-  // TEMPORARY FIX: Force Fixie URL for Vercel - try different format
-  const forceFixieUrl = process.env.NODE_ENV === 'production' ? 'http://fixie:yKsCDXXq9TfKuCA@criterium.usefixie.com:80' : FIXIE_URL;
+  // TEMPORARY FIX: Disable proxy completely to test direct API calls
+  const forceFixieUrl = null; // Disable proxy for testing
   console.log('[DEBUG] Using Fixie URL:', forceFixieUrl ? 'YES' : 'NO');
   
-  if (forceFixieUrl) {
+  if (false && forceFixieUrl) {
     const axiosConfig: any = {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       timeout: 10000,
