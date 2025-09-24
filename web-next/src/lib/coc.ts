@@ -242,19 +242,20 @@ async function api<T>(path: string): Promise<T> {
   console.log('[DEBUG] FIXIE_URL value:', FIXIE_URL ? FIXIE_URL.replace(/:[^:]*@/, ':****@') : 'undefined');
   console.log('[DEBUG] Force fresh deployment - testing Fixie proxy');
   
-  // Use environment variable for Fixie URL (credentials removed for security)
+  // TEMPORARILY DISABLE PROXY TO TEST DIRECT API CALLS
   console.log('[DEBUG] FIXIE_URL from env:', !!FIXIE_URL);
-  console.log('[DEBUG] Using Fixie proxy:', FIXIE_URL ? 'YES' : 'NO');
-  console.log('[DEBUG] Triggering fresh deployment with Fixie integration');
-  console.log('[DEBUG] Force clear environment variable cache');
-  
-  if (FIXIE_URL) {
+  console.log('[DEBUG] Using Fixie proxy: NO (TEMPORARILY DISABLED)');
+  console.log('[DEBUG] Testing direct API calls without proxy');
+
+  if (false && FIXIE_URL) {
     const axiosConfig: any = {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       timeout: 10000,
     };
     console.log('Using Fixie proxy with axios:', FIXIE_URL.replace(/:[^:]*@/, ':****@'));
+    console.log('[DEBUG] Proxy URL being used:', FIXIE_URL.replace(/:[^:]*@/, ':****@'));
     const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
+    console.log('[DEBUG] Proxy agent created successfully');
     axiosConfig.httpsAgent = proxyAgent;
     axiosConfig.httpAgent = proxyAgent;
     try {
