@@ -242,10 +242,10 @@ async function api<T>(path: string): Promise<T> {
   console.log('[DEBUG] FIXIE_URL value:', FIXIE_URL ? FIXIE_URL.replace(/:[^:]*@/, ':****@') : 'undefined');
   console.log('[DEBUG] Force fresh deployment - testing Fixie proxy');
   
-  // Re-enable Fixie proxy for IP whitelisting
+  // FORCE DEPLOY: Fixie proxy is NOW ENABLED
   console.log('[DEBUG] FIXIE_URL from env:', !!FIXIE_URL);
   console.log('[DEBUG] Using Fixie proxy:', FIXIE_URL ? 'YES' : 'NO');
-  console.log('[DEBUG] Fixie proxy re-enabled for IP whitelisting - FORCE DEPLOY');
+  console.log('[DEBUG] *** PROXY IS NOW ENABLED *** - This should work!');
 
   if (FIXIE_URL) {
     const axiosConfig: any = {
