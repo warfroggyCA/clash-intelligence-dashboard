@@ -251,8 +251,8 @@ async function api<T>(path: string): Promise<T> {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       timeout: 10000,
     };
-    console.log('Using Fixie proxy with axios:', FIXIE_URL);
-    const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
+    console.log('Using Fixie proxy with axios:', forceFixieUrl);
+    const proxyAgent = new HttpsProxyAgent(forceFixieUrl);
     axiosConfig.httpsAgent = proxyAgent;
     axiosConfig.httpAgent = proxyAgent;
     try {
