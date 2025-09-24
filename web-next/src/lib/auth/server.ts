@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { createServerClient } from '@supabase/auth-helpers-nextjs';
+import { createServerClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 let cachedClient: SupabaseClient | null = null;
