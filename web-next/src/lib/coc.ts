@@ -246,6 +246,7 @@ async function api<T>(path: string): Promise<T> {
   console.log('[DEBUG] FIXIE_URL from env:', !!FIXIE_URL);
   console.log('[DEBUG] Using Fixie proxy:', FIXIE_URL ? 'YES' : 'NO');
   console.log('[DEBUG] *** NUCLEAR TEST - IF YOU SEE THIS, VERCEL IS WORKING! ***');
+  console.log('[DEBUG] *** FORCE DEPLOY - VERCEL SHOULD USE FIXIE PROXY NOW ***');
 
   if (FIXIE_URL) {
     const axiosConfig: any = {
