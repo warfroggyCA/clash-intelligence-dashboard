@@ -16,6 +16,7 @@ import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-manage
 import { safeTagForFilename } from '@/lib/tags';
 import { QuickActionsMenu } from './QuickActionsMenu';
 import { ThemeToggle, GlassCard } from '@/components/ui';
+import { AuthGate } from './AuthGuard';
 
 const LoadingCard = () => (
   <GlassCard className="min-h-[18rem] animate-pulse">

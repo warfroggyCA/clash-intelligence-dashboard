@@ -8,6 +8,7 @@ import PlayerDatabase from '@/components/PlayerDatabase';
 import CoachingInsights from '@/components/CoachingInsights';
 import DiscordPublisher from '@/components/DiscordPublisher';
 import SnapshotInfoBanner from '@/components/SnapshotInfoBanner';
+import { AuthGate } from '@/components/layout/AuthGuard';
 import type { Roster } from '@/types';
 
 type Props = {
@@ -124,5 +125,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     }
   };
 
-  return <DashboardLayout>{renderTabContent()}</DashboardLayout>;
+  return (
+    <AuthGate>
+      <DashboardLayout>{renderTabContent()}</DashboardLayout>
+    </AuthGate>
+  );
 }
