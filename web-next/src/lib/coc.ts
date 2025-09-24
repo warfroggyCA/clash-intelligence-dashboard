@@ -238,14 +238,7 @@ async function api<T>(path: string): Promise<T> {
   }
   
   // If a proxy URL is provided, use axios + https-proxy-agent (fetch proxy dispatcher not installed)
-  // DEBUG: Log environment variables to understand the issue
-  console.log('[DEBUG] FIXIE_URL:', process.env.FIXIE_URL);
-  console.log('[DEBUG] COC_API_TOKEN exists:', !!process.env.COC_API_TOKEN);
-  console.log('[DEBUG] NODE_ENV:', process.env.NODE_ENV);
-  
-  // TEMPORARY FIX: Force direct API calls to bypass proxy issues
-  // Force fresh deployment - disable proxy completely
-  if (false && FIXIE_URL) {
+  if (FIXIE_URL) {
     const axiosConfig: any = {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       timeout: 10000,
