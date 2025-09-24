@@ -242,12 +242,12 @@ async function api<T>(path: string): Promise<T> {
   console.log('[DEBUG] FIXIE_URL value:', FIXIE_URL ? FIXIE_URL.replace(/:[^:]*@/, ':****@') : 'undefined');
   console.log('[DEBUG] Force fresh deployment - testing Fixie proxy');
   
-  // TEMPORARILY DISABLE PROXY TO TEST DIRECT API CALLS
+  // Re-enable Fixie proxy for IP whitelisting
   console.log('[DEBUG] FIXIE_URL from env:', !!FIXIE_URL);
-  console.log('[DEBUG] Using Fixie proxy: NO (TEMPORARILY DISABLED)');
-  console.log('[DEBUG] Testing direct API calls without proxy');
+  console.log('[DEBUG] Using Fixie proxy:', FIXIE_URL ? 'YES' : 'NO');
+  console.log('[DEBUG] Fixie proxy re-enabled for IP whitelisting');
 
-  if (false && FIXIE_URL) {
+  if (FIXIE_URL) {
     const axiosConfig: any = {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       timeout: 10000,
