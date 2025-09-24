@@ -240,6 +240,7 @@ async function api<T>(path: string): Promise<T> {
   // If a proxy URL is provided, use axios + https-proxy-agent (fetch proxy dispatcher not installed)
   console.log('[DEBUG] FIXIE_URL present:', !!FIXIE_URL);
   console.log('[DEBUG] FIXIE_URL value:', FIXIE_URL ? FIXIE_URL.replace(/:[^:]*@/, ':****@') : 'undefined');
+  console.log('[DEBUG] Force fresh deployment - testing Fixie proxy');
   
   if (FIXIE_URL) {
     const axiosConfig: any = {
