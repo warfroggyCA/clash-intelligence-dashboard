@@ -238,6 +238,9 @@ async function api<T>(path: string): Promise<T> {
   }
   
   // If a proxy URL is provided, use axios + https-proxy-agent (fetch proxy dispatcher not installed)
+  console.log('[DEBUG] FIXIE_URL present:', !!FIXIE_URL);
+  console.log('[DEBUG] FIXIE_URL value:', FIXIE_URL ? FIXIE_URL.replace(/:[^:]*@/, ':****@') : 'undefined');
+  
   if (FIXIE_URL) {
     const axiosConfig: any = {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
