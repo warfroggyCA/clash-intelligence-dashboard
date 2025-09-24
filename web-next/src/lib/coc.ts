@@ -245,6 +245,7 @@ async function api<T>(path: string): Promise<T> {
   // Use environment variable for Fixie URL (credentials removed for security)
   console.log('[DEBUG] FIXIE_URL from env:', !!FIXIE_URL);
   console.log('[DEBUG] Using Fixie proxy:', FIXIE_URL ? 'YES' : 'NO');
+  console.log('[DEBUG] Triggering fresh deployment with Fixie integration');
   
   if (FIXIE_URL) {
     const axiosConfig: any = {
