@@ -239,6 +239,7 @@ async function api<T>(path: string): Promise<T> {
   
   // If a proxy URL is provided, use axios + https-proxy-agent (fetch proxy dispatcher not installed)
   // TEMPORARY FIX: Force direct API calls to bypass proxy issues
+  // Force fresh deployment - disable proxy completely
   if (false && FIXIE_URL) {
     const axiosConfig: any = {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
