@@ -252,9 +252,9 @@ async function api<T>(path: string): Promise<T> {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       timeout: 10000,
     };
-    console.log('Using Fixie proxy with axios:', FIXIE_URL.replace(/:[^:]*@/, ':****@'));
-    console.log('[DEBUG] Proxy URL being used:', FIXIE_URL.replace(/:[^:]*@/, ':****@'));
-    const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
+    console.log('Using Fixie proxy with axios:', FIXIE_URL?.replace(/:[^:]*@/, ':****@'));
+    console.log('[DEBUG] Proxy URL being used:', FIXIE_URL?.replace(/:[^:]*@/, ':****@'));
+    const proxyAgent = new HttpsProxyAgent(FIXIE_URL!);
     console.log('[DEBUG] Proxy agent created successfully');
     axiosConfig.httpsAgent = proxyAgent;
     axiosConfig.httpAgent = proxyAgent;
