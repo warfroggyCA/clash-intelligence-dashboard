@@ -34,6 +34,7 @@ import { normalizeTag } from '@/lib/tags';
 import type { SmartInsightsPayload } from '@/lib/smart-insights';
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
+import type { UserRoleRecord } from '@/lib/auth/roles';
 
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -154,7 +155,10 @@ interface DashboardState {
   smartInsightsError: string | null;
   smartInsightsClanTag: string | null;
   smartInsightsFetchedAt?: number;
-  
+
+  currentUser: { id: string; email?: string | null } | null;
+  userRoles: UserRoleRecord[];
+
   // Actions
   setRoster: (roster: Roster | null) => void;
   setClanTag: (tag: string) => void;
@@ -207,7 +211,9 @@ interface DashboardState {
   setDataFetchedAt: (timestamp: string) => void;
   setDataAge: (age: number) => void;
   setSmartInsights: (payload: SmartInsightsPayload | null) => void;
-  
+  setCurrentUser: (user: DashboardState['currentUser']) => void;
+  setUserRoles: (roles: UserRoleRecord[]) => void;
+
   // Complex Actions
   resetDashboard: () => void;
   loadRoster: (clanTag: string) => Promise<void>;
@@ -216,6 +222,7 @@ interface DashboardState {
   checkDepartureNotifications: () => Promise<void>;
   dismissAllNotifications: () => void;
   hydrateRosterFromCache: () => boolean;
+  hydrateSession: () => Promise<void>;
 }
 
 // =============================================================================
@@ -286,6 +293,8 @@ const initialState = {
   smartInsightsError: null,
   smartInsightsClanTag: null,
   smartInsightsFetchedAt: undefined,
+  currentUser: null,
+  userRoles: [],
 };
 
 // =============================================================================
@@ -395,6 +404,8 @@ export const useDashboardStore = create<DashboardState>()(
         });
         saveSmartInsightsPayload(clan, payload);
       },
+      setCurrentUser: (currentUser) => set({ currentUser }),
+      setUserRoles: (userRoles) => set({ userRoles }),
       
       // =============================================================================
       // COMPLEX ACTIONS
@@ -730,6 +741,25 @@ export const useDashboardStore = create<DashboardState>()(
           }
         } catch {}
         return false;
+      },
+
+      hydrateSession: async () => {
+        try {
+          const res = await fetch('/api/session', { cache: 'no-store' });
+          if (!res.ok) {
+            set({ currentUser: null, userRoles: [] });
+            return;
+          }
+          const body = await res.json();
+          if (!body?.success) {
+            set({ currentUser: null, userRoles: [] });
+            return;
+          }
+          set({ currentUser: body.data?.user ?? null, userRoles: body.data?.roles ?? [] });
+        } catch (error) {
+          console.warn('[hydrateSession] Failed', error);
+          set({ currentUser: null, userRoles: [] });
+        }
       },
       
       refreshData: async () => {

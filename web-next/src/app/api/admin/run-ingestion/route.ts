@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { runIngestionJob } from '@/lib/ingestion/run-ingestion';
+import { requireRole } from '@/lib/auth/guards';
 
 const bodySchema = z.object({
   clanTag: z.string().optional(),
@@ -17,11 +18,8 @@ function isAuthorized(req: NextRequest): boolean {
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
+    const { user } = await requireRole(req, ['leader', 'coleader']);
     const json = await req.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
