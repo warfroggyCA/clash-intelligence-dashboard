@@ -1,6 +1,13 @@
 // Leadership access control utilities
 
 export type ClanRole = 'leader' | 'coLeader' | 'elder' | 'member';
+export function clanRoleFromName(role: string): ClanRole {
+  const value = role.toLowerCase();
+  if (value === 'leader') return 'leader';
+  if (value === 'coleader' || value === 'co-leader') return 'coLeader';
+  if (value === 'elder') return 'elder';
+  return 'member';
+}
 
 export interface LeadershipCheck {
   isLeader: boolean;

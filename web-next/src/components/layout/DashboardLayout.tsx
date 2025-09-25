@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { ComponentWithChildren } from '@/types';
@@ -13,10 +13,13 @@ import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
-import { safeTagForFilename } from '@/lib/tags';
-import { QuickActionsMenu } from './QuickActionsMenu';
+import { cfg } from '@/lib/config';
+import { normalizeTag } from '@/lib/tags';
 import { ThemeToggle, GlassCard } from '@/components/ui';
 import { AuthGate } from './AuthGuard';
+import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
+import type { ClanRoleName } from '@/lib/auth/roles';
+import CommandRail from './CommandRail';
 
 const LoadingCard = () => (
   <GlassCard className="min-h-[18rem] animate-pulse">
@@ -55,7 +58,12 @@ export interface DashboardLayoutProps extends ComponentWithChildren {
 // HEADER COMPONENT
 // =============================================================================
 
-const DashboardHeader: React.FC = () => {
+interface DashboardHeaderProps {
+  onToggleCommandRail: () => void;
+  isCommandRailOpen: boolean;
+}
+
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen }) => {
   const {
     clanTag,
     homeClan,
@@ -75,6 +83,19 @@ const DashboardHeader: React.FC = () => {
 
   const clanName = useDashboardStore(selectors.clanName);
   const hasLeadershipAccess = useDashboardStore(selectors.hasLeadershipAccess);
+  const userRoles = useDashboardStore((state) => state.userRoles);
+  const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
+  const setImpersonatedRole = useDashboardStore((state) => state.setImpersonatedRole);
+  const normalizedClanTagValue = normalizeTag(clanTag || homeClan || cfg.homeClanTag || '');
+  const matchedRole = userRoles.find((entry) => entry.clan_tag === normalizedClanTagValue);
+  const actualRoleName: ClanRoleName = matchedRole?.role || 'viewer';
+  const viewingRoleName: ClanRoleName = impersonatedRole || actualRoleName;
+  const hasLeadershipRole = userRoles.some(
+    (entry) => entry.clan_tag === normalizedClanTagValue && (entry.role === 'leader' || entry.role === 'coleader')
+  );
+  const actualRoleLabel = getRoleDisplayName(clanRoleFromName(actualRoleName));
+  const viewingRoleLabel = getRoleDisplayName(clanRoleFromName(viewingRoleName));
+  const isImpersonating = Boolean(impersonatedRole);
   const inferredAccessLevel: AccessLevel = currentAccessMember?.accessLevel
     || (accessPermissions.canManageAccess
       ? 'leader'
@@ -86,6 +107,8 @@ const DashboardHeader: React.FC = () => {
 
   // Shrink-on-scroll state
   const [isScrolled, setIsScrolled] = useState(false);
+  const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const roleMenuRef = useRef<HTMLDivElement>(null);
   
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -94,6 +117,17 @@ const DashboardHeader: React.FC = () => {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
+
+  useEffect(() => {
+    if (!roleMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (roleMenuRef.current && !roleMenuRef.current.contains(event.target as Node)) {
+        setRoleMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [roleMenuOpen]);
 
   // Define handleLoadHome first before using it in useEffect
   const handleLoadHome = useCallback(async () => {
@@ -156,172 +190,175 @@ const DashboardHeader: React.FC = () => {
 
   return (
     <header className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur">
-      {/* Unified 2-row grid: left/right controls; name centered across rows */}
-      <div className="relative z-10 w-full px-4 py-2 grid grid-cols-1 sm:grid-cols-[auto,1fr,auto] grid-rows-[auto,auto] items-center gap-x-4 gap-y-1">
-        {/* Left badge */}
-        <div className="hidden sm:flex flex-col justify-center col-[1] row-[1] row-span-2">
-          <span className="text-xl font-semibold tracking-wide text-white/80 uppercase">Clan Dashboard</span>
-        </div>
-
-        {/* Logo + clan name */}
-        <div className="col-[1] sm:col-[2] row-[1] row-span-2 flex justify-center">
-          <div className="flex items-center gap-3 sm:gap-4">
-            <div className="relative h-14 w-14 sm:h-16 sm:w-16">
+      <div className="relative z-10 w-full px-4 py-3 lg:px-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className={`relative hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-border/80 bg-brand-surfaceRaised/80 text-brand-primary ${isScrolled ? 'shadow-none' : 'shadow-[0_16px_32px_-20px_rgba(8,15,31,0.7)]'}`}>
               <Image
                 src={logoSrc}
                 alt="Clan Logo"
                 fill
-                sizes="(max-width: 640px) 3.5rem, 4rem"
-                className="rounded-xl object-cover ring-2 ring-white/30 bg-white/10 shadow-lg"
+                sizes="(max-width: 640px) 3rem, 3rem"
+                className="rounded-2xl object-cover"
                 priority
               />
             </div>
-            <div className="text-center sm:text-left">
-              {clanName ? (
-                <div className={`font-heading font-extrabold tracking-tight drop-shadow-lg leading-none transition-all duration-200 ${isScrolled ? 'text-3xl sm:text-4xl' : 'text-4xl sm:text-5xl'}`}>
-                  {clanName}
-                </div>
-              ) : (
-                <div className="font-heading font-extrabold text-3xl sm:text-4xl drop-shadow-lg leading-none">Clash Intelligence</div>
-              )}
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Clan dashboard</p>
+              <div
+                className={`font-semibold leading-tight text-slate-100 transition-all duration-200 ${isScrolled ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}
+                style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
+              >
+                {clanName || 'Clash Intelligence'}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right: Clean, organized controls */}
-        <div className="flex items-center justify-end gap-2 sm:gap-3 col-[3] row-[1] row-span-2">
-          {/* Access Level Badge */}
-          <span className="hidden md:inline-flex items-center px-3 py-1 bg-white/20 text-white text-xs font-semibold rounded-md">
-            {accessLevelLabel}
-          </span>
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
+              <span className="h-2 w-2 rounded-full bg-brand-primary" />
+              {accessLevelLabel}
+            </span>
 
-          {/* Primary Actions Group */}
-          <div className="flex items-center gap-2">
-            <div className="hidden sm:block">
-              <QuickActionsMenu variant="inline" />
+            <div className={`inline-flex items-center gap-2 rounded-full border border-brand-border/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ${
+              actualRoleName === 'leader'
+                ? 'text-amber-200'
+                : actualRoleName === 'coleader'
+                  ? 'text-indigo-200'
+                  : actualRoleName === 'elder'
+                    ? 'text-emerald-200'
+                    : 'text-slate-200'
+            }`}>
+              <span className="h-2 w-2 rounded-full bg-current" />
+              <span>{actualRoleLabel}</span>
             </div>
-            <div className="sm:hidden">
-              <QuickActionsMenu variant="inline" trigger="icon" />
-            </div>
-            <ThemeToggle size="sm" className="hidden sm:block" />
-          </div>
 
-          <ThemeToggle size="sm" className="sm:hidden" />
-
-          {/* Secondary Actions Dropdown */}
-          <div className="relative group">
-            <button 
-              className="h-8 w-8 flex items-center justify-center hover:bg-white/20 rounded-md transition-colors"
-              title="More options"
-            >
-              ⋯
-            </button>
-            <div 
-              className="absolute right-0 top-full mt-1 w-48 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50"
-              style={{ 
-                backgroundColor: '#1e293b', 
-                border: '1px solid #475569',
-                color: '#e2e8f0'
-              }}
-            >
-              <div className="py-2">
-                {/* Access Management */}
-                <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
-                  <button
-                    onClick={() => setShowAccessManager(true)}
-                    className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
-                    style={{ color: '#e2e8f0' }}
-                    onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
-                    onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
+            {hasLeadershipRole && (
+              <div className="relative" ref={roleMenuRef}>
+                <button
+                  onClick={() => setRoleMenuOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-100 transition-colors hover:bg-brand-surfaceRaised"
+                >
+                  View as: {viewingRoleLabel}
+                  {isImpersonating && <span className="text-[10px] uppercase text-amber-300">Impersonating</span>}
+                </button>
+                {roleMenuOpen && (
+                  <div
+                    className="absolute right-0 top-full z-50 mt-2 w-48 rounded-2xl border border-brand-border/80 bg-brand-surfaceRaised/95 p-2 text-xs shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)]"
                   >
-                    👥 Manage Access
+                    {[
+                      { label: 'Actual role', value: null },
+                      { label: 'Leader', value: 'leader' },
+                      { label: 'Co-Leader', value: 'coleader' },
+                      { label: 'Elder', value: 'elder' },
+                      { label: 'Member', value: 'member' },
+                      { label: 'Viewer', value: 'viewer' },
+                    ].map((option) => (
+                      <button
+                        key={option.label}
+                        onClick={() => {
+                          setImpersonatedRole(option.value as ClanRoleName | null);
+                          setRoleMenuOpen(false);
+                        }}
+                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors ${
+                          viewingRoleName === (option.value ?? actualRoleName)
+                            ? 'bg-brand-surfaceSubtle text-white'
+                            : 'text-slate-300 hover:bg-brand-surfaceSubtle/70 hover:text-white'
+                        }`}
+                      >
+                        <span>{option.label}</span>
+                        {viewingRoleName === (option.value ?? actualRoleName) && <span>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <ThemeToggle size="sm" />
+
+            <button
+              onClick={onToggleCommandRail}
+              className="hidden lg:inline-flex h-9 items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
+            >
+              {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
+              <span className={`h-2 w-2 rounded-full ${isCommandRailOpen ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+            </button>
+
+            <div className="relative group">
+              <button 
+                className="h-8 w-8 flex items-center justify-center rounded-md border border-brand-border/70 bg-brand-surfaceRaised/80 text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
+                title="More options"
+              >
+                ⋯
+              </button>
+              <div 
+                className="absolute right-0 top-full mt-1 w-52 rounded-2xl border border-brand-border/70 bg-brand-surfaceRaised/95 p-2 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)] opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100"
+              >
+                <div className="space-y-1">
+                  <button
+                    onClick={onToggleCommandRail}
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                  >
+                    🧰 {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
                   </button>
-                </LeadershipGuard>
-
-                {/* Settings */}
-                <button 
-                  onClick={() => setShowSettings(true)}
-                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
-                  style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-                >
-                  ⚙️ Settings
-                </button>
-
-                {/* Manage Clans */}
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
-                  style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-                >
-                  🏰 Manage Clans
-                </button>
-
-                {/* FAQ */}
-                <a 
-                  href="/faq" 
-                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
-                  style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-                >
-                  ❓ FAQ
-                </a>
-
-                {/* Refresh */}
-                <button 
-                  onClick={handleRefresh}
-                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
-                  style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-                >
-                  🔄 Refresh
-                </button>
-
-                {/* Ingestion Monitor */}
-                <button
-                  onClick={() => {
-                    setShowIngestionMonitor(true);
-                  }}
-                  className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors duration-150"
-                  style={{ color: '#e2e8f0' }}
-                  onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
-                  onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-                >
-                  🧭 Ingestion Monitor
-                </button>
-
-                {/* Font Size Control */}
-                <div className="px-4 py-2">
-                  <div className="scale-90 origin-left">
+                  <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
+                    <button
+                      onClick={() => setShowAccessManager(true)}
+                      className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                    >
+                      👥 Manage Access
+                    </button>
+                  </LeadershipGuard>
+                  <button 
+                    onClick={() => setShowSettings(true)}
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                  >
+                    ⚙️ Settings
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                  >
+                    🏰 Manage Clans
+                  </button>
+                  <a 
+                    href="/faq" 
+                    className="block rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                  >
+                    ❓ FAQ
+                  </a>
+                  <button 
+                    onClick={handleRefresh}
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                  >
+                    🔄 Refresh
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowIngestionMonitor(true);
+                    }}
+                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                  >
+                    🧭 Ingestion Monitor
+                  </button>
+                  <div className="rounded-xl bg-brand-surfaceSubtle/80 px-3 py-2">
                     <FontSizeControl />
                   </div>
-                </div>
-
-                {/* Departure Notifications */}
-                <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
-                  {departureNotifications > 0 && (
-                    <button
-                      onClick={() => setShowDepartureManager(true)}
-                      className="w-full px-4 py-2 text-left text-sm flex items-center gap-2 relative transition-colors duration-150"
-                      style={{ color: '#e2e8f0' }}
-                      onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
-                      onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
-                    >
-                      🔔 Departures
-                      <span 
-                        className="ml-auto text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center"
-                        style={{ backgroundColor: '#ef4444' }}
+                  <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
+                    {departureNotifications > 0 && (
+                      <button
+                        onClick={() => setShowDepartureManager(true)}
+                        className="relative flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
                       >
-                        {departureNotifications}
-                      </span>
-                    </button>
-                  )}
-                </LeadershipGuard>
+                        🔔 Departures
+                        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-semibold text-white">
+                          {departureNotifications}
+                        </span>
+                      </button>
+                    )}
+                  </LeadershipGuard>
+                </div>
               </div>
             </div>
           </div>
@@ -340,15 +377,31 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   className = '',
 }) => {
   const activeTab = useDashboardStore((state) => state.activeTab);
+  const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleResize = () => {
+      if (window.innerWidth >= 1280) {
+        setIsCommandRailOpen(true);
+      }
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
       {/* Header */}
-      <DashboardHeader />
+      <DashboardHeader
+        onToggleCommandRail={() => setIsCommandRailOpen((prev) => !prev)}
+        isCommandRailOpen={isCommandRailOpen}
+      />
       
       {/* Tab Navigation (sticky under header) */}
-      <div className="w-full px-0 sticky top-[var(--header-height,80px)] z-40">
-        <div className="relative overflow-hidden rounded-b-xl border border-t-0 border-slate-800 bg-slate-900/95 backdrop-blur">
+      <div className="w-full px-0 sticky top-[calc(var(--header-height,80px)+16px)] z-40">
+        <div className="relative mt-4 overflow-hidden rounded-b-xl border border-t-0 border-slate-800 bg-slate-900/95 backdrop-blur">
           {/* Thin gradient seam to visually glue to header */}
           <div className="absolute -top-2 left-0 right-0 h-2 bg-header-gradient" />
           <TabNavigation />
@@ -356,38 +409,44 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </div>
       
       {/* Main Content */}
-      <main className="dashboard-main min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl border border-t-0 border-clash-gold/20 px-3 pb-6 pt-4 sm:px-4 flex flex-col gap-6 shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
-        {/* <ToastHub /> */}
-        {/* Dev Status */}
-        {/* <DevStatusBadge /> */}
-        {activeTab === 'roster' && (
-          <div className="grid items-stretch gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)]">
-            <div className="flex h-full flex-col gap-4 lg:col-span-2 xl:col-span-1">
-              <div className="flex items-center gap-2 mt-6">
-                <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
+      <main className="dashboard-main min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl border border-t-0 border-clash-gold/20 px-3 pb-6 pt-4 sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
+        <div className="flex flex-col gap-6 xl:flex-row">
+          <div className="flex-1 space-y-6">
+            {activeTab === 'roster' && (
+              <div className="grid items-stretch gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)]">
+                <div className="flex h-full flex-col gap-4 lg:col-span-2 xl:col-span-1">
+                  <div className="flex items-center gap-2 mt-6">
+                    <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
+                  </div>
+                  <SmartInsightsHeadlines className="flex-1" />
+                </div>
+                <div className="flex h-full flex-col gap-4">
+                  <div className="flex items-center gap-2 mt-6">
+                    <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
+                  </div>
+                  <RosterStatsPanel className="flex-1" />
+                </div>
+                <div className="flex h-full flex-col gap-4">
+                  <div className="flex items-center gap-2 mt-6">
+                    <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
+                    <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
+                  </div>
+                  <RosterHighlightsPanel className="flex-1" />
+                </div>
               </div>
-              <SmartInsightsHeadlines className="flex-1" />
-            </div>
-            <div className="flex h-full flex-col gap-4">
-              <div className="flex items-center gap-2 mt-6">
-                <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
-                <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
-              </div>
-              <RosterStatsPanel className="flex-1" />
-            </div>
-            <div className="flex h-full flex-col gap-4">
-              <div className="flex items-center gap-2 mt-6">
-                <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
-                <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
-              </div>
-              <RosterHighlightsPanel className="flex-1" />
-            </div>
-          </div>
-        )}
+            )}
 
-        {/* Page Content */}
-        {children}
+            {/* Page Content */}
+            {children}
+          </div>
+
+          <CommandRail
+            isOpen={isCommandRailOpen}
+            onToggle={() => setIsCommandRailOpen((prev) => !prev)}
+          />
+        </div>
       </main>
       
       {/* Footer */}

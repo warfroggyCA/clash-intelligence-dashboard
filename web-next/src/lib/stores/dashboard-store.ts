@@ -34,7 +34,7 @@ import { normalizeTag } from '@/lib/tags';
 import type { SmartInsightsPayload } from '@/lib/smart-insights';
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
-import type { UserRoleRecord } from '@/lib/auth/roles';
+import type { UserRoleRecord, ClanRoleName } from '@/lib/auth/roles';
 
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -158,6 +158,13 @@ interface DashboardState {
 
   currentUser: { id: string; email?: string | null } | null;
   userRoles: UserRoleRecord[];
+  impersonatedRole?: ClanRoleName | null;
+  rosterViewMode: 'table' | 'cards';
+
+  canManageAccess: () => boolean;
+  canManageClanData: () => boolean;
+  canSeeLeadershipFeatures: () => boolean;
+  canPublishDiscord: () => boolean;
 
   // Actions
   setRoster: (roster: Roster | null) => void;
@@ -213,7 +220,7 @@ interface DashboardState {
   setSmartInsights: (payload: SmartInsightsPayload | null) => void;
   setCurrentUser: (user: DashboardState['currentUser']) => void;
   setUserRoles: (roles: UserRoleRecord[]) => void;
-
+  
   // Complex Actions
   resetDashboard: () => void;
   loadRoster: (clanTag: string) => Promise<void>;
@@ -223,6 +230,8 @@ interface DashboardState {
   dismissAllNotifications: () => void;
   hydrateRosterFromCache: () => boolean;
   hydrateSession: () => Promise<void>;
+  setImpersonatedRole: (role: ClanRoleName | null) => void;
+  setRosterViewMode: (mode: 'table' | 'cards') => void;
 }
 
 // =============================================================================
@@ -295,6 +304,8 @@ const initialState = {
   smartInsightsFetchedAt: undefined,
   currentUser: null,
   userRoles: [],
+  impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' : null,
+  rosterViewMode: 'table',
 };
 
 // =============================================================================
@@ -406,7 +417,9 @@ export const useDashboardStore = create<DashboardState>()(
       },
       setCurrentUser: (currentUser) => set({ currentUser }),
       setUserRoles: (userRoles) => set({ userRoles }),
-      
+      setImpersonatedRole: (impersonatedRole) => set({ impersonatedRole }),
+      setRosterViewMode: (mode) => set({ rosterViewMode: mode }),
+
       // =============================================================================
       // COMPLEX ACTIONS
       // =============================================================================
@@ -747,19 +760,57 @@ export const useDashboardStore = create<DashboardState>()(
         try {
           const res = await fetch('/api/session', { cache: 'no-store' });
           if (!res.ok) {
-            set({ currentUser: null, userRoles: [] });
+            set({ currentUser: null, userRoles: [], impersonatedRole: null });
             return;
           }
           const body = await res.json();
           if (!body?.success) {
-            set({ currentUser: null, userRoles: [] });
+            set({ currentUser: null, userRoles: [], impersonatedRole: null });
             return;
           }
           set({ currentUser: body.data?.user ?? null, userRoles: body.data?.roles ?? [] });
         } catch (error) {
           console.warn('[hydrateSession] Failed', error);
-          set({ currentUser: null, userRoles: [] });
+          set({ currentUser: null, userRoles: [], impersonatedRole: null });
         }
+      },
+
+      canManageAccess: () => {
+        const state = get();
+        const clanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
+        const roles = state.userRoles;
+        const effectiveRole = state.impersonatedRole;
+        if (effectiveRole) {
+          return effectiveRole === 'leader';
+        }
+        return roles.some((role) => role.clan_tag === clanTag && role.role === 'leader');
+      },
+      canManageClanData: () => {
+        const state = get();
+        const clanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
+        const effectiveRole = state.impersonatedRole;
+        if (effectiveRole) {
+          return effectiveRole === 'leader' || effectiveRole === 'coleader';
+        }
+        return state.userRoles.some((role) => role.clan_tag === clanTag && (role.role === 'leader' || role.role === 'coleader'));
+      },
+      canSeeLeadershipFeatures: () => {
+        const state = get();
+        const clanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
+        const effectiveRole = state.impersonatedRole;
+        if (effectiveRole) {
+          return effectiveRole === 'leader' || effectiveRole === 'coleader';
+        }
+        return state.userRoles.some((role) => role.clan_tag === clanTag && (role.role === 'leader' || role.role === 'coleader'));
+      },
+      canPublishDiscord: () => {
+        const state = get();
+        const clanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
+        const effectiveRole = state.impersonatedRole;
+        if (effectiveRole) {
+          return effectiveRole === 'leader' || effectiveRole === 'coleader';
+        }
+        return state.userRoles.some((role) => role.clan_tag === clanTag && (role.role === 'leader' || role.role === 'coleader'));
       },
       
       refreshData: async () => {
@@ -967,6 +1018,7 @@ export const selectors = {
   smartInsightsStatus: (state: DashboardState) => state.smartInsightsStatus,
   smartInsightsError: (state: DashboardState) => state.smartInsightsError,
   smartInsightsHeadlines: (state: DashboardState) => state.smartInsights?.headlines ?? [],
+  rosterViewMode: (state: DashboardState) => state.rosterViewMode,
   smartInsightsIsStale: (state: DashboardState) => {
     if (!state.smartInsights?.metadata.generatedAt) return true;
     const generatedAt = new Date(state.smartInsights.metadata.generatedAt);

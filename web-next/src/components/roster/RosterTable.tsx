@@ -34,6 +34,8 @@ import {
 import { TableHeader } from './TableHeader';
 import { TableRow } from './TableRow';
 import { MobileCard } from './MobileCard';
+import { PlayerCard } from './PlayerCard';
+import { PlayerDetailDrawer } from './PlayerDetailDrawer';
 import { TableFilters } from './TableFilters';
 import { Pagination } from './Pagination';
 import { Button, Input, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
@@ -237,6 +239,8 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 
 export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const { roster, sortKey, sortDir, setSortKey, setSortDir, dataFetchedAt } = useDashboardStore();
+  const rosterViewMode = useDashboardStore((state) => state.rosterViewMode);
+  const setRosterViewMode = useDashboardStore((state) => state.setRosterViewMode);
   const [filters, setFilters] = useState<TableFilters>({
     search: '',
     role: 'all',
@@ -248,6 +252,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   // Get members from roster
   const members = useMemo(() => roster?.members ?? [], [roster?.members]);
@@ -292,6 +297,10 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const handlePageSizeChange = useCallback((size: number) => {
     setPageSize(size);
     setCurrentPage(1);
+  }, []);
+
+  const handleSelectMember = useCallback((member: Member) => {
+    setSelectedMember(member);
   }, []);
 
   // Clear filters
@@ -385,7 +394,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                   onClick={() => setShowFilters(true)}
                   size="sm"
                   variant="outline"
-                  className="px-4 border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10 focus-ring"
+                  className="px-4 border border-brand-border text-slate-200 hover:bg-brand-surfaceSubtle focus-ring"
                 >
                   Show Filters
                 </Button>
@@ -404,7 +413,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ role: filters.role === 'leadership' ? 'all' : 'leadership' })}
                 variant={filters.role === 'leadership' ? 'primary' : 'outline'}
                 size="sm"
-                className={`text-xs focus-ring ${filters.role === 'leadership' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
+                className={`text-xs focus-ring ${filters.role === 'leadership' ? 'border border-brand-primary/40 bg-brand-primary text-white' : 'border border-brand-border text-slate-200 hover:bg-brand-surfaceSubtle'}`}
               >
                 Leaders & Co-Leaders
               </Button>
@@ -412,7 +421,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ role: filters.role === 'elder' ? 'all' : 'elder' })}
                 variant={filters.role === 'elder' ? 'primary' : 'outline'}
                 size="sm"
-                className={`text-xs focus-ring ${filters.role === 'elder' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
+                className={`text-xs focus-ring ${filters.role === 'elder' ? 'border border-brand-primary/40 bg-brand-primary text-white' : 'border border-brand-border text-slate-200 hover:bg-brand-surfaceSubtle'}`}
               >
                 Elders
               </Button>
@@ -420,7 +429,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ rushLevel: filters.rushLevel === 'very-rushed' ? 'all' : 'very-rushed' })}
                 variant={filters.rushLevel === 'very-rushed' ? 'primary' : 'outline'}
                 size="sm"
-                className={`text-xs focus-ring ${filters.rushLevel === 'very-rushed' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
+                className={`text-xs focus-ring ${filters.rushLevel === 'very-rushed' ? 'border border-brand-primary/40 bg-brand-primary text-white' : 'border border-brand-border text-slate-200 hover:bg-brand-surfaceSubtle'}`}
               >
                 Very Rushed
               </Button>
@@ -428,7 +437,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ activityLevel: filters.activityLevel === 'inactive' ? 'all' : 'inactive' })}
                 variant={filters.activityLevel === 'inactive' ? 'primary' : 'outline'}
                 size="sm"
-                className={`text-xs focus-ring ${filters.activityLevel === 'inactive' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
+                className={`text-xs focus-ring ${filters.activityLevel === 'inactive' ? 'border border-brand-primary/40 bg-brand-primary text-white' : 'border border-brand-border text-slate-200 hover:bg-brand-surfaceSubtle'}`}
               >
                 Inactive
               </Button>
@@ -436,50 +445,77 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 onClick={() => handleFilterChange({ donationStatus: filters.donationStatus === 'low-donator' ? 'all' : 'low-donator' })}
                 variant={filters.donationStatus === 'low-donator' ? 'primary' : 'outline'}
                 size="sm"
-                className={`text-xs focus-ring ${filters.donationStatus === 'low-donator' ? 'bg-clash-gold text-black' : 'border-clash-gold/50 text-clash-gold hover:bg-clash-gold/10'}`}
+                className={`text-xs focus-ring ${filters.donationStatus === 'low-donator' ? 'border border-brand-primary/40 bg-brand-primary text-white' : 'border border-brand-border text-slate-200 hover:bg-brand-surfaceSubtle'}`}
               >
                 Low Donators
               </Button>
             </div>
           </div>
         )}
-      </div>
 
-
-      {/* Desktop Table */}
-      <div className="hidden lg:block overflow-x-auto">
-        <div className="clash-card overflow-hidden">
-          <table className="clash-table" role="table" aria-label="Clan member roster">
-            <TableHeader
-              sortKey={sortKey}
-              sortDirection={sortDir}
-              onSort={handleSort}
-            />
-            <tbody>
-              {paginatedMembers.map((member, index) => (
-                <TableRow
-                  key={`${member.tag}-${index}`}
-                  member={member}
-                  index={index}
-                  roster={roster}
-                />
-              ))}
-            </tbody>
-          </table>
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            size="sm"
+            variant={rosterViewMode === 'table' ? 'primary' : 'ghost'}
+            onClick={() => setRosterViewMode('table')}
+            className="text-xs"
+          >
+            Table View
+          </Button>
+          <Button
+            size="sm"
+            variant={rosterViewMode === 'cards' ? 'primary' : 'ghost'}
+            onClick={() => setRosterViewMode('cards')}
+            className="text-xs"
+          >
+            Card View
+          </Button>
         </div>
       </div>
 
-      {/* Mobile Cards */}
-      <div className="block lg:hidden space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
-        {paginatedMembers.map((member, index) => (
-          <MobileCard
-            key={`${member.tag}-${index}`}
-            member={member}
-            index={index}
-            roster={roster}
-          />
-        ))}
-      </div>
+
+      {rosterViewMode === 'cards' ? (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {paginatedMembers.map((member) => (
+            <PlayerCard key={member.tag} member={member} onSelect={handleSelectMember} />
+          ))}
+        </div>
+      ) : (
+        <>
+          <div className="hidden lg:block overflow-x-auto">
+            <div className="clash-card overflow-hidden">
+              <table className="clash-table" role="table" aria-label="Clan member roster">
+                <TableHeader
+                  sortKey={sortKey}
+                  sortDirection={sortDir}
+                  onSort={handleSort}
+                />
+                <tbody>
+                  {paginatedMembers.map((member, index) => (
+                    <TableRow
+                      key={`${member.tag}-${index}`}
+                      member={member}
+                      index={index}
+                      roster={roster}
+                    />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="block lg:hidden space-y-3 md:space-y-0 md:grid md:grid-cols-2 md:gap-3">
+            {paginatedMembers.map((member, index) => (
+              <MobileCard
+                key={`${member.tag}-${index}`}
+                member={member}
+                index={index}
+                roster={roster}
+              />
+            ))}
+          </div>
+        </>
+      )}
 
       {/* Pagination */}
       {totalPages > 1 && (
@@ -516,6 +552,8 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
           </div>
         </div>
       )}
+
+      <PlayerDetailDrawer member={selectedMember} onClose={() => setSelectedMember(null)} />
 
     </div>
   );
