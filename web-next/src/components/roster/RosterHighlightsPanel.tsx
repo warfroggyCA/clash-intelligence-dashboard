@@ -112,48 +112,45 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
 
   return (
     <GlassCard className={`${panelClassName} flex flex-col`}>
-      <div className="flex-1 space-y-6 overflow-visible pr-0 md:pr-1 xl:max-h-72 xl:overflow-y-auto">
+      <div className="flex-1 space-y-6 overflow-visible pr-0 md:pr-1">
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
           {sections.map((section) => {
             const colors = (() => {
-              if (section.title.includes('Donator')) return {
-                bg: 'bg-emerald-50 dark:bg-emerald-950/15',
-                border: 'border-emerald-200 dark:border-emerald-800/40',
-                text: 'text-emerald-600 dark:text-emerald-300'
-              };
-              if (section.title.includes('Hero')) return {
-                bg: 'bg-purple-50 dark:bg-purple-950/15',
-                border: 'border-purple-200 dark:border-purple-800/40',
-                text: 'text-purple-600 dark:text-purple-300'
-              };
+              if (section.title.includes('Donator')) {
+                return {
+                  badge: 'bg-emerald-400/15 text-emerald-200',
+                  accent: 'text-emerald-200',
+                };
+              }
+              if (section.title.includes('Hero')) {
+                return {
+                  badge: 'bg-brand-primary/15 text-brand-primary',
+                  accent: 'text-brand-primary',
+                };
+              }
               return {
-                bg: 'bg-amber-50 dark:bg-amber-950/15',
-                border: 'border-amber-200 dark:border-amber-800/40',
-                text: 'text-amber-600 dark:text-amber-300'
+                badge: 'bg-amber-400/15 text-amber-200',
+                accent: 'text-amber-200',
               };
             })();
 
             return (
               <div key={section.title} className="space-y-4">
-                <h3
-                  className={`text-sm font-semibold uppercase tracking-[0.2em] ${colors.text}`}
-                >
-                  {section.title}
-                </h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-medium uppercase tracking-[0.24em] text-slate-400">{section.title}</span>
+                  <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.2em] ${colors.badge}`}>Top 5</span>
+                </div>
                 <div className="space-y-2">
                   {section.entries.map((entry, index) => (
                     <div
                       key={`${section.title}-${entry.name}`}
-                      className="clash-highlight-entry flex items-center justify-between gap-4"
+                      className="flex items-center justify-between gap-4 rounded-2xl bg-brand-surfaceSubtle/60 px-3 py-2"
                     >
                       <div className="flex items-center gap-2 min-w-0 flex-1 text-sm">
-                        <span className="text-xs font-semibold text-slate-500 dark:text-white/50">{index + 1}.</span>
-                        <span className="truncate font-medium">{entry.name}</span>
+                        <span className="text-xs font-semibold text-slate-500">{index + 1}.</span>
+                        <span className="truncate font-medium text-slate-100">{entry.name}</span>
                       </div>
-                      <span className={`${colors.text} text-xs font-semibold`}
-                      >
-                        {entry.value}
-                      </span>
+                      <span className={`${colors.accent} text-xs font-semibold`}>{entry.value}</span>
                     </div>
                   ))}
                 </div>

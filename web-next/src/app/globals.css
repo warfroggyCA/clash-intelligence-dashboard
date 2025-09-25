@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
 @font-face {
   font-family: 'Clash Display';
@@ -26,7 +26,7 @@
   /* Header height for sticky positioning */
   --header-height: 80px;
   /* Shared gradient for header + tabs lip */
-  --header-gradient: linear-gradient(120deg, #1E114C 0%, #3F2E90 45%, #FF6B0A 100%);
+  --header-gradient: linear-gradient(130deg, #151C2C 0%, #1E293E 55%, #283654 100%);
   
   /* Enhanced Clash of Clans Color Palette */
   --clash-gold: #FFD700;
@@ -46,9 +46,9 @@
   --text-accent: #FFD700;
   
   /* Enhanced background gradients */
-  --clash-bg-primary: linear-gradient(135deg, #0E1421 0%, #1A1F3A 50%, #2D1B69 100%);
-  --clash-bg-card: linear-gradient(145deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86));
-  --clash-bg-glass: linear-gradient(150deg, rgba(18, 27, 54, 0.95), rgba(12, 18, 38, 0.86));
+  --clash-bg-primary: linear-gradient(155deg, #0B1220 0%, #10192A 50%, #131E31 100%);
+  --clash-bg-card: linear-gradient(140deg, rgba(18, 25, 40, 0.92), rgba(15, 22, 36, 0.9));
+  --clash-bg-glass: linear-gradient(145deg, rgba(18, 25, 40, 0.85), rgba(15, 22, 36, 0.88));
 }
 
 /* Light Theme Variables */
@@ -79,20 +79,18 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background-image: linear-gradient(120deg, rgba(10,12,28,0.6), rgba(27,19,55,0.65)), url('/assets/clash/header-bg.svg');
-  background-size: cover;
-  background-position: center;
-  box-shadow: inset 0 -1px 0 rgba(255,255,255,0.04);
+  background: linear-gradient(135deg, rgba(14, 20, 33, 0.92), rgba(19, 28, 47, 0.94));
+  box-shadow: inset 0 -1px 0 rgba(148, 163, 184, 0.05);
 }
 
 .header-hero::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at top right, rgba(255,107,10,0.35), transparent 55%),
-              radial-gradient(ellipse at bottom left, rgba(82,39,255,0.4), transparent 60%);
+  background: radial-gradient(ellipse at top right, rgba(123, 91, 255, 0.22), transparent 55%),
+              radial-gradient(ellipse at bottom left, rgba(91, 127, 255, 0.28), transparent 60%);
   pointer-events: none;
-  opacity: 0.85;
+  opacity: 0.75;
 }
 
 
@@ -106,11 +104,7 @@ body {
 
 /* Dark theme body background */
 [data-theme="dark"] body {
-  background:
-    radial-gradient(circle at top left, rgba(82,39,255,0.45), transparent 45%),
-    radial-gradient(circle at top right, rgba(255,107,10,0.35), transparent 40%),
-    radial-gradient(circle at bottom, rgba(37,99,235,0.25), transparent 45%),
-    #0E1421;
+  background: linear-gradient(155deg, #0B1220 0%, #10192A 48%, #131E31 100%);
 }
 
 /* Light theme body background */
@@ -187,15 +181,16 @@ th { @apply text-left font-semibold; }
 
 .glass-card {
   position: relative;
-  background: transparent;
-  border: 1px solid rgba(255,255,255,0.26);
-  box-shadow: none;
-  color: rgba(244, 248, 255, 0.95);
+  background: linear-gradient(160deg, rgba(17, 24, 39, 0.92), rgba(13, 19, 33, 0.88));
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  box-shadow: 0 24px 48px -28px rgba(8, 15, 31, 0.75);
+  color: rgba(226, 232, 240, 0.95);
 }
 
 /* Light theme glass-card styling */
 [data-theme="light"] .glass-card {
-  border: 1px solid rgba(0,0,0,0.4);
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.2);
   color: var(--text-primary) !important;
 }
 

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
-import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-management';
-import { checkLeadershipAccess, getRolePermissions, type LeadershipCheck, type RolePermissions, type ClanRole } from '../lib/leadership';
+import { checkLeadershipAccess, getRolePermissions, type LeadershipCheck, type RolePermissions, type ClanRole, clanRoleFromName } from '../lib/leadership';
 
 export interface UseLeadershipResult {
   check: LeadershipCheck;
@@ -15,27 +14,34 @@ export interface UseLeadershipResult {
  * Uses localStorage for role persistence during development
  */
 export function useLeadership(): UseLeadershipResult {
-  const accessPermissions = useDashboardStore((state) => state.accessPermissions) || ACCESS_LEVEL_PERMISSIONS.member;
-  const currentAccessMember = useDashboardStore((state) => state.currentAccessMember);
+  const userRoles = useDashboardStore((state) => state.userRoles);
+  const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
+  const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
 
   const derived = useMemo(() => {
-    const accessLevel: AccessLevel = currentAccessMember?.accessLevel || 'member';
-    const normalizedRole: ClanRole = accessLevel === 'coleader'
-      ? 'coLeader'
-      : accessLevel === 'viewer'
-        ? 'member'
-        : (accessLevel as ClanRole);
+    let role: ClanRole = 'member';
+    if (impersonatedRole) {
+      if (impersonatedRole === 'coleader') {
+        role = 'coLeader';
+      } else if (impersonatedRole === 'leader') {
+        role = 'leader';
+      } else if (impersonatedRole === 'elder') {
+        role = 'elder';
+      } else {
+        role = 'member';
+      }
+    } else {
+      const normalized = clanTag.trim().toUpperCase();
+      const match = userRoles.find((r) => r.clan_tag === normalized);
+      if (match) {
+        role = clanRoleFromName(match.role);
+      }
+    }
 
-    const check = {
-      isLeader: normalizedRole === 'leader',
-      isCoLeader: normalizedRole === 'coLeader',
-      isElder: normalizedRole === 'elder',
-      hasLeadershipAccess: Boolean(accessPermissions?.canViewLeadershipFeatures),
-      role: normalizedRole,
-    } satisfies LeadershipCheck;
-
-    return { check, permissions: accessPermissions as RolePermissions };
-  }, [accessPermissions, currentAccessMember]);
+    const check = checkLeadershipAccess(role);
+    const permissions = getRolePermissions(check.role);
+    return { check, permissions };
+  }, [userRoles, clanTag, impersonatedRole]);
 
   return {
     check: derived.check,

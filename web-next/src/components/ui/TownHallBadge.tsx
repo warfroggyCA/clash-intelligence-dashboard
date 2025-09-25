@@ -6,19 +6,21 @@ interface TownHallBadgeProps {
   className?: string;
   showLevel?: boolean;
   showBox?: boolean;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const sizeClasses = {
+const sizeClasses: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
   sm: 'w-12 h-12',
   md: 'w-16 h-16',
-  lg: 'w-20 h-20'
+  lg: 'w-20 h-20',
+  xl: 'w-24 h-24',
 };
 
-const textSizeClasses = {
+const textSizeClasses: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
   sm: 'text-sm',
   md: 'text-base',
-  lg: 'text-lg'
+  lg: 'text-lg',
+  xl: 'text-xl',
 };
 
 export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
@@ -36,8 +38,8 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
         <Image
           src={thImage}
           alt={`Town Hall ${level}`}
-          width={size === 'sm' ? 48 : size === 'md' ? 64 : 80}
-          height={size === 'sm' ? 48 : size === 'md' ? 64 : 80}
+          width={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
+          height={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
           className={`${sizeClasses[size]} object-contain`}
           onError={(e) => {
             // Fallback to emoji if image fails to load
@@ -51,7 +53,10 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
           }}
         />
         {showLevel && (
-          <span className={`absolute -bottom-1 -right-1 bg-clash-gold text-black ${textSizeClasses[size]} font-bold px-1.5 rounded-full min-w-[1.4em] text-center border border-black/20`}>
+          <span
+            className={`absolute -bottom-1 -right-1 rounded-full border border-brand-border/70 bg-brand-accent px-1.5 text-center font-semibold text-brand-surface ${textSizeClasses[size]} shadow-md`}
+            style={{ minWidth: '1.4em' }}
+          >
             {level}
           </span>
         )}
@@ -65,8 +70,8 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
         <Image
           src={thImage}
           alt={`Town Hall ${level}`}
-          width={size === 'sm' ? 48 : size === 'md' ? 64 : 80}
-          height={size === 'sm' ? 48 : size === 'md' ? 64 : 80}
+          width={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
+          height={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
           className="object-cover"
           onError={(e) => {
             // Fallback to emoji if image fails to load
@@ -81,7 +86,10 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
         />
       </div>
       {showLevel && (
-        <span className={`absolute -bottom-1 -right-1 bg-clash-gold text-black ${textSizeClasses[size]} font-bold px-1.5 rounded-full min-w-[1.4em] text-center border border-black/20`}>
+        <span
+          className={`absolute -bottom-1 -right-1 rounded-full border border-brand-border/70 bg-brand-accent px-1.5 text-center font-semibold text-brand-surface ${textSizeClasses[size]} shadow-md`}
+          style={{ minWidth: '1.4em' }}
+        >
           {level}
         </span>
       )}

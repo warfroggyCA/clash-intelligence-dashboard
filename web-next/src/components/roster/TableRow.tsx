@@ -261,7 +261,7 @@ export const TableRow: React.FC<TableRowProps> = ({
               {/* Name Column */}
               <TableCell className="border-r border-gray-300">
                 <div className="flex items-center space-x-3">
-                  <LeagueBadge trophies={member.trophies} size="xxl" showText={false} />
+                  <LeagueBadge trophies={member.trophies} size="lg" showText={false} />
                   <div className="flex flex-col">
                     <button
                       onClick={(e) => {
@@ -326,17 +326,20 @@ export const TableRow: React.FC<TableRowProps> = ({
               </TableCell>
 
               {/* Town Hall Column */}
-              <TableCell className="text-center border-r border-slate-600/50">
-                <div className="flex items-center justify-center space-x-2">
-                  <TownHallBadge level={th} size="md" showLevel={false} showBox={false} />
-                  <span className="text-sm font-bold text-clash-gold">
-                    {th}
-                  </span>
+              <TableCell className="text-center border-r border-slate-700/40">
+                <div className="flex items-center justify-center">
+                  <TownHallBadge
+                    level={th}
+                    size="sm"
+                    showLevel={true}
+                    showBox={false}
+                    className="drop-shadow-md"
+                  />
                 </div>
               </TableCell>
 
       {/* Trophies Column */}
-      <TableCell className="text-center border-r border-slate-600/50" title="Current trophies">
+      <TableCell className="text-center border-r border-slate-700/40" title="Current trophies">
         <div className="flex items-center justify-center space-x-1">
           <span className="text-clash-gold">🏆</span>
           <span className="font-semibold">

@@ -38,18 +38,19 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        heading: ['"Clash Display"', '"Space Grotesk"', 'ui-sans-serif', 'system-ui'],
-        display: ['"Clash Display"', '"Space Grotesk"', 'ui-sans-serif', 'system-ui'],
-        body: ['"Plus Jakarta Sans"', '"Clash Display"', 'ui-sans-serif', 'system-ui'],
+        heading: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
+        display: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
+        body: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
       },
       colors: {
         brand: {
-          primary: '#FF6B0A',
-          secondary: '#5227FF',
-          accent: '#FACC15',
-          surface: '#0E1421',
-          glass: 'rgba(18, 24, 40, 0.72)',
-          border: 'rgba(255, 255, 255, 0.08)',
+          primary: '#5B7FFF',
+          secondary: '#7A5BFF',
+          accent: '#F2B35E',
+          surface: '#101728',
+          surfaceRaised: '#151F32',
+          surfaceSubtle: '#19243A',
+          border: 'rgba(148, 163, 184, 0.14)',
         },
         clash: {
           gold: '#FFD700',
@@ -70,8 +71,8 @@ module.exports = {
         },
       },
       boxShadow: {
-        glow: '0 28px 65px -35px rgba(255, 107, 10, 0.55)',
-        card: '0 24px 55px -35px rgba(15, 23, 42, 0.65)',
+        glow: '0 22px 45px -28px rgba(91, 127, 255, 0.45)',
+        card: '0 24px 48px -30px rgba(8, 15, 31, 0.65)',
       },
       backdropBlur: {
         xs: '3px',

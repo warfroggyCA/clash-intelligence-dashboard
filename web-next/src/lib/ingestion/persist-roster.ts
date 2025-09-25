@@ -4,8 +4,49 @@ import type { FullClanSnapshot, MemberSummary } from '@/lib/full-snapshot';
 import { extractHeroLevels } from '@/lib/coc';
 import { calculateRushPercentage } from '@/lib/business/calculations';
 import type { HeroCaps } from '@/types';
+import type { ClanRoleName } from '@/lib/auth/roles';
 
 type HeroLevels = Partial<Record<keyof HeroCaps, number | null>>;
+
+function normalizeClanRole(role?: string | null): ClanRoleName {
+  const value = (role || '').toLowerCase();
+  if (value === 'leader') return 'leader';
+  if (value === 'coleader' || value === 'co-leader' || value === 'co_leader') return 'coleader';
+  if (value === 'elder' || value === 'admin') return 'elder';
+  if (value === 'member') return 'member';
+  return 'viewer';
+}
+
+async function syncUserRolesForClan(clanId: string, tagRoleMap: Map<string, ClanRoleName>) {
+  const supabase = getSupabaseServerClient();
+  const { data: existing, error } = await supabase
+    .from('user_roles')
+    .select('id, player_tag')
+    .eq('clan_id', clanId);
+
+  if (error) {
+    console.warn('[persist-roster] Failed to load user roles for sync', error);
+    return;
+  }
+
+  const updates: Array<{ id: string; role: ClanRoleName }> = [];
+
+  for (const row of existing ?? []) {
+    const tag = normalizeTag(row.player_tag || '');
+    const role = tag ? tagRoleMap.get(tag) ?? 'viewer' : 'viewer';
+    updates.push({ id: row.id, role });
+  }
+
+  if (!updates.length) return;
+
+  const { error: updateError } = await supabase
+    .from('user_roles')
+    .upsert(updates, { onConflict: 'id', ignoreDuplicates: false });
+
+  if (updateError) {
+    console.warn('[persist-roster] Failed to sync user roles', updateError);
+  }
+}
 
 function pickLargestBadge(clan: any): string | null {
   const badgeUrls = clan?.badgeUrls ?? {};
@@ -173,5 +214,13 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       throw new Error(`[persist-roster] Failed to insert member snapshot stats: ${statsError.message}`);
     }
   }
-}
 
+  const tagRoleMap = new Map<string, ClanRoleName>();
+  snapshot.memberSummaries.forEach((summary) => {
+    const tag = normalizeTag(summary.tag);
+    if (tag) {
+      tagRoleMap.set(tag, normalizeClanRole(summary.role));
+    }
+  });
+  await syncUserRolesForClan(clanRow.id, tagRoleMap);
+}
