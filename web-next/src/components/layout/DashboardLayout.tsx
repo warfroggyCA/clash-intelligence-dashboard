@@ -119,6 +119,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   }, []);
 
   useEffect(() => {
+    const targetHeight = isScrolled ? 88 : 112;
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--header-height', `${targetHeight}px`);
+    }
+  }, [isScrolled]);
+
+  useEffect(() => {
     if (!roleMenuOpen) return;
     const handleClickOutside = (event: MouseEvent) => {
       if (roleMenuRef.current && !roleMenuRef.current.contains(event.target as Node)) {
@@ -190,7 +197,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
 
   return (
     <header className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur">
-      <div className="relative z-10 w-full px-4 py-3 lg:px-6">
+      <div className={`relative z-10 w-full px-4 lg:px-6 ${isScrolled ? 'py-3' : 'py-6'}`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <div className={`relative hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-border/80 bg-brand-surfaceRaised/80 text-brand-primary ${isScrolled ? 'shadow-none' : 'shadow-[0_16px_32px_-20px_rgba(8,15,31,0.7)]'}`}>
@@ -400,17 +407,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       />
       
       {/* Tab Navigation (sticky under header) */}
-      <div className="w-full px-0 sticky top-[calc(var(--header-height,80px)+16px)] z-40">
-        <div className="relative mt-4 overflow-hidden rounded-b-xl border border-t-0 border-slate-800 bg-slate-900/95 backdrop-blur">
-          {/* Thin gradient seam to visually glue to header */}
-          <div className="absolute -top-2 left-0 right-0 h-2 bg-header-gradient" />
-          <TabNavigation />
+      <div className="w-full px-0 sticky top-[calc(var(--header-height,80px)-12px)] z-40">
+        <div className="border border-t-0 border-slate-800 bg-slate-900 backdrop-blur">
+          <div className="relative overflow-hidden">
+            <div className="absolute inset-0 bg-slate-900" />
+            <TabNavigation />
+          </div>
+          <div className="h-8 border-t border-slate-800 bg-slate-900" />
         </div>
       </div>
       
       {/* Main Content */}
       <main className="dashboard-main min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl border border-t-0 border-clash-gold/20 px-3 pb-6 pt-4 sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
-        <div className="flex flex-col gap-6 xl:flex-row">
+        <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex-1 space-y-6">
             {activeTab === 'roster' && (
               <div className="grid items-stretch gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)]">

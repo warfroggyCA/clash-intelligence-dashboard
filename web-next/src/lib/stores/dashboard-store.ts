@@ -304,8 +304,8 @@ const initialState = {
   smartInsightsFetchedAt: undefined,
   currentUser: null,
   userRoles: [],
-  impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' : null,
-  rosterViewMode: 'table',
+  impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' as ClanRoleName : null,
+  rosterViewMode: 'table' as const,
 };
 
 // =============================================================================

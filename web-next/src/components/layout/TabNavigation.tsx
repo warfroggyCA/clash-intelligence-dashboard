@@ -34,11 +34,11 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
         {TAB_CONFIGS.map((tab) => {
         const isActive = activeTab === tab.id;
         const baseStyles =
-          "relative flex-shrink-0 px-3.5 py-2 text-sm font-semibold transition-all duration-200 rounded-t-xl rounded-b-none border focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/60";
+          "relative flex-shrink-0 px-3.5 py-2 text-sm font-semibold transition-all duration-200 rounded-b-xl rounded-t-none border focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/60";
         const activeStyles =
-          "border-brand-border/80 border-b-transparent bg-brand-surfaceRaised text-white shadow-[0_12px_24px_-16px_rgba(8,15,31,0.6)]";
+          "border-brand-border/80 border-t-transparent bg-brand-surfaceRaised text-white shadow-[0_12px_24px_-16px_rgba(8,15,31,0.6)]";
         const inactiveStyles =
-          "border-transparent border-b-brand-border/40 text-slate-400 hover:border-brand-border/60 hover:bg-brand-surfaceSubtle/60 hover:text-slate-100";
+          "border-transparent border-t-brand-border/40 text-slate-400 hover:border-brand-border/60 hover:bg-brand-surfaceSubtle/60 hover:text-slate-100";
 
         return (
           <button
@@ -53,7 +53,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
               <span className="text-sm sm:text-base">{tab.label}</span>
             </span>
             {isActive && (
-              <div className="absolute inset-x-6 -bottom-[2px] h-0.5 rounded-full bg-brand-primary" />
+              <div className="absolute inset-x-6 bottom-0 h-0.5 rounded-full bg-brand-primary" />
             )}
           </button>
         );
