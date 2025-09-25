@@ -84,8 +84,8 @@ export function PlayerDetailDrawer({ member, onClose }: PlayerDetailDrawerProps)
               {activity.level}
               <span className="text-xs font-normal text-white/60">Score {activity.score?.toFixed?.(1) ?? activity.score}</span>
             </p>
-            {activity.description && (
-              <p className="mt-2 text-white/60 text-xs leading-relaxed">{activity.description}</p>
+            {activity.indicators && activity.indicators.length > 0 && (
+              <p className="mt-2 text-white/60 text-xs leading-relaxed">{activity.indicators.join(', ')}</p>
             )}
           </div>
 

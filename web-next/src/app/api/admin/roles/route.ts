@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseServerClient();
     const clan = await getClanId(supabase, payload.clanTag || cfg.homeClanTag);
 
-    const userResponse = await supabase.auth.admin.getUserByEmail(payload.email);
-    const user = userResponse?.data?.user;
+    const userResponse = await supabase.auth.admin.listUsers();
+    const user = userResponse?.data?.users?.find(u => u.email === payload.email);
     if (!user) {
       return NextResponse.json({ success: false, error: 'User not found for provided email' }, { status: 404 });
     }

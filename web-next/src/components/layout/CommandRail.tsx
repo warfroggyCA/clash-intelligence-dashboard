@@ -156,7 +156,7 @@ export const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) =>
 
           <div className="flex items-center justify-end gap-2 text-xs">
             <Button
-              size="xs"
+              size="sm"
               variant="ghost"
               className="text-slate-300 hover:text-white"
               onClick={() => handleRefreshInsights()}
@@ -165,7 +165,7 @@ export const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) =>
               Refresh
             </Button>
             <Button
-              size="xs"
+              size="sm"
               variant="ghost"
               className="text-slate-300 hover:text-white"
               onClick={() => setShowIngestionMonitor(true)}
