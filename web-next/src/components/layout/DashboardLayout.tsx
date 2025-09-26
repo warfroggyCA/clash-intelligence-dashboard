@@ -7,7 +7,7 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
-import ClientOnlyDashboard from './ClientOnlyDashboard';
+import SSRSafeDashboard from './SSRSafeDashboard';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
@@ -397,7 +397,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex-1 space-y-6">
             {activeTab === 'roster' && (
-              <ClientOnlyDashboard />
+              <SSRSafeDashboard />
             )}
 
             {/* Page Content */}
