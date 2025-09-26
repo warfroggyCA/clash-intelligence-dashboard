@@ -1,2 +1,1 @@
-Force deployment - timestamp: 2025-09-24T13:40:00Z
-This file forces Vercel to rebuild and deploy our latest code changes.
+FORCE_DEPLOY_1758847838
