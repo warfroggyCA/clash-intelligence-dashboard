@@ -49,4 +49,4 @@ const nextConfig = {
 
 export default nextConfig;
 
-// Force deployment refresh - Sat Sep 13 18:58:26 EDT 2025
+// Force deployment refresh - Wed Jan 22 10:45:00 EST 2025 - Fix React re-render issues
