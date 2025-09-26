@@ -34,7 +34,10 @@ const LoadingCard = () => (
 // TEMPORARY: Disable problematic components to fix SSR issues
 const RosterStatsPanel = (props: any) => <LoadingCard {...props} />;
 const RosterHighlightsPanel = (props: any) => <LoadingCard {...props} />;
-const SmartInsightsHeadlines = (props: any) => <LoadingCard {...props} />;
+const SmartInsightsHeadlines = dynamic(
+  () => import('@/components/SmartInsightsHeadlines'),
+  { ssr: false, loading: LoadingCard }
+);
 
 // =============================================================================
 // TYPES
