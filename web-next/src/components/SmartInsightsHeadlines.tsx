@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { AlertTriangle, RefreshCcw, Shield } from 'lucide-react';
 import { Button, GlassCard } from '@/components/ui';
@@ -55,7 +55,12 @@ export default function SmartInsightsHeadlines({
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   const setShowIngestionMonitor = useDashboardStore((state) => state.setShowIngestionMonitor);
 
+  const [mounted, setMounted] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const bulletins = useMemo(() => {
     if (!headlines?.length) {
@@ -250,6 +255,17 @@ export default function SmartInsightsHeadlines({
       </div>
     );
   };
+
+  if (!mounted) {
+    return (
+      <GlassCard className={`flex h-full flex-col items-center justify-center ${className}`}>
+        <div className="flex items-center gap-3 text-slate-400">
+          <RefreshCcw className="h-5 w-5 animate-spin" />
+          <span className="text-sm font-medium tracking-wide">Loading headlines…</span>
+        </div>
+      </GlassCard>
+    );
+  }
 
   return (
     <GlassCard className={`flex h-full flex-col ${className}`}>
