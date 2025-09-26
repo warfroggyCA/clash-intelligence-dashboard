@@ -493,3 +493,74 @@ This transforms the dashboard from a data viewer into an indispensable command c
 - [ ] Onboarding wizard: guided setup for clan tag, CoC API key, optional proxy/OpenAI keys, Supabase linkage, and health check
 - [ ] Credential storage improvements: secure Supabase secrets, admin UI to rotate keys
 - [ ] Optional AI tier toggle with fallback heuristics
+
+## TypeScript Build Issues & Fixes (Expert Coder Notes)
+
+**Date**: 2025-09-25  
+**Context**: Authentication system implementation required several TypeScript fixes before successful build/deployment
+
+### Issues Encountered & Solutions:
+
+#### 1. **Supabase Admin API Method Changes**
+- **Issue**: `supabase.auth.admin.getUserByEmail()` method doesn't exist
+- **Error**: `Property 'getUserByEmail' does not exist on type 'GoTrueAdminApi'`
+- **Fix**: Use `supabase.auth.admin.listUsers()` and filter client-side:
+  ```typescript
+  // ❌ Old (broken)
+  const userResponse = await supabase.auth.admin.getUserByEmail(payload.email);
+  const user = userResponse?.data?.user;
+  
+  // ✅ New (working)
+  const userResponse = await supabase.auth.admin.listUsers();
+  const user = userResponse?.data?.users?.find(u => u.email === payload.email);
+  ```
+
+#### 2. **Button Component Size Props**
+- **Issue**: `size="xs"` not supported in Button component
+- **Error**: `Type '"xs"' is not assignable to type 'ButtonSize | undefined'`
+- **Fix**: Use supported sizes only (`'sm' | 'md' | 'lg' | 'xl'`):
+  ```typescript
+  // ❌ Old (broken)
+  <Button size="xs" />
+  
+  // ✅ New (working)
+  <Button size="sm" />
+  ```
+
+#### 3. **Type Property Mismatches**
+- **Issue**: Accessing non-existent properties on TypeScript interfaces
+- **Error**: `Property 'description' does not exist on type 'ActivityEvidence'`
+- **Fix**: Use correct property names from interface:
+  ```typescript
+  // ❌ Old (broken)
+  {activity.description && <p>{activity.description}</p>}
+  
+  // ✅ New (working)
+  {activity.indicators && activity.indicators.length > 0 && 
+    <p>{activity.indicators.join(', ')}</p>}
+  ```
+
+#### 4. **Store Type Inference Issues**
+- **Issue**: TypeScript can't infer proper types in Zustand store initialization
+- **Error**: `Type 'string' is not assignable to type '"table" | "cards"'`
+- **Fix**: Use explicit type assertions:
+  ```typescript
+  // ❌ Old (broken)
+  rosterViewMode: 'table',
+  impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' : null,
+  
+  // ✅ New (working)
+  rosterViewMode: 'table' as const,
+  impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' as ClanRoleName : null,
+  ```
+
+### Prevention Strategies:
+
+1. **API Method Validation**: Always check current Supabase documentation for admin API methods
+2. **Component Prop Types**: Verify all component props match their TypeScript interfaces
+3. **Type Safety**: Use `as const` assertions for literal types in stores
+4. **Interface Compliance**: Ensure all property accesses match actual interface definitions
+5. **Build Testing**: Run `npm run build` locally before committing to catch TypeScript errors early
+
+### Key Takeaway:
+The authentication system implementation was solid, but several TypeScript strictness issues required fixes. Always test builds locally before deployment to catch these issues early.
