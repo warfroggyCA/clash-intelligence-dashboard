@@ -13,5 +13,3 @@ export { TableRow } from './TableRow';
 export { MobileCard } from './MobileCard';
 export { TableFilters } from './TableFilters';
 export { Pagination } from './Pagination';
-export { RosterStatsPanel } from './RosterStatsPanel';
-export { RosterHighlightsPanel } from './RosterHighlightsPanel';
