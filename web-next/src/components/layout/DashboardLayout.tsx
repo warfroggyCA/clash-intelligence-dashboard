@@ -1,14 +1,13 @@
 "use client";
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
-import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
-// SmartInsightsHeadlines will be dynamically imported
+import ClientOnlyDashboard from './ClientOnlyDashboard';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
@@ -21,28 +20,6 @@ import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import CommandRail from './CommandRail';
 
-const LoadingCard = () => (
-  <GlassCard className="min-h-[18rem] animate-pulse">
-    <div className="grid grid-cols-2 gap-3 text-base">
-      {Array.from({ length: 4 }).map((_, idx) => (
-        <div key={idx} className="h-24 rounded-2xl bg-white/15" />
-      ))}
-    </div>
-  </GlassCard>
-);
-
-const RosterStatsPanel = dynamic(
-  () => import('@/components/roster/RosterStatsPanel'),
-  { ssr: false, loading: LoadingCard }
-);
-const RosterHighlightsPanel = dynamic(
-  () => import('@/components/roster/RosterHighlightsPanel'),
-  { ssr: false, loading: LoadingCard }
-);
-const SmartInsightsHeadlines = dynamic(
-  () => import('@/components/SmartInsightsHeadlines'),
-  { ssr: false, loading: LoadingCard }
-);
 
 // =============================================================================
 // TYPES
@@ -420,29 +397,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex-1 space-y-6">
             {activeTab === 'roster' && (
-              <div className="grid items-stretch gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)]">
-                <div className="flex h-full flex-col gap-4 lg:col-span-2 xl:col-span-1">
-                  <div className="flex items-center gap-2 mt-6">
-                    <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                    <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
-                  </div>
-                  <SmartInsightsHeadlines className="flex-1" />
-                </div>
-                <div className="flex h-full flex-col gap-4">
-                  <div className="flex items-center gap-2 mt-6">
-                    <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
-                    <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
-                  </div>
-                  <RosterStatsPanel className="flex-1" />
-                </div>
-                <div className="flex h-full flex-col gap-4">
-                  <div className="flex items-center gap-2 mt-6">
-                    <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
-                    <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
-                  </div>
-                  <RosterHighlightsPanel className="flex-1" />
-                </div>
-              </div>
+              <ClientOnlyDashboard />
             )}
 
             {/* Page Content */}
