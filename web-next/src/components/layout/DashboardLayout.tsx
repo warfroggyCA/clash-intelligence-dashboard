@@ -31,20 +31,10 @@ const LoadingCard = () => (
   </GlassCard>
 );
 
-const RosterStatsPanel = dynamic(
-  () => import('@/components/roster/RosterStatsPanel'),
-  { ssr: false, loading: LoadingCard }
-);
-
-const RosterHighlightsPanel = dynamic(
-  () => import('@/components/roster/RosterHighlightsPanel'),
-  { ssr: false, loading: LoadingCard }
-);
-
-const SmartInsightsHeadlines = dynamic(
-  () => import('@/components/SmartInsightsHeadlines'),
-  { ssr: false, loading: LoadingCard }
-);
+// TEMPORARY: Disable problematic components to fix SSR issues
+const RosterStatsPanel = () => <LoadingCard />;
+const RosterHighlightsPanel = () => <LoadingCard />;
+const SmartInsightsHeadlines = () => <LoadingCard />;
 
 // =============================================================================
 // TYPES
