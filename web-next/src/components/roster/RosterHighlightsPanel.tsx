@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import {
@@ -26,6 +26,7 @@ interface RosterHighlightsPanelProps {
 }
 
 export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ className = '' }) => {
+  const [mounted, setMounted] = useState(false);
   const roster = useDashboardStore((state) => state.roster);
 
   const sections = useMemo<HighlightSection[]>(() => {
@@ -95,7 +96,11 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
 
   const panelClassName = ['xl:min-h-[18rem]', className].filter(Boolean).join(' ');
 
-  if (!sections.length) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !sections.length) {
     return (
       <GlassCard className={`${panelClassName} flex`}>
         <div className="flex items-center justify-center py-12">

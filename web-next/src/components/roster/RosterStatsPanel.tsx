@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
@@ -11,6 +11,7 @@ interface RosterStatsPanelProps {
 }
 
 export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = '' }) => {
+  const [mounted, setMounted] = useState(false);
   const roster = useDashboardStore((state) => state.roster);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const snapshotDetails = useDashboardStore((state) => state.snapshotDetails);
@@ -73,7 +74,11 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     return formatDistanceToNow(parsed, { addSuffix: true });
   }, [dataFetchedAt]);
 
-  if (!stats) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || !stats) {
     return (
       <GlassCard className={panelClassName}>
         <div className="flex items-center justify-center py-12">
