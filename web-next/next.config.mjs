@@ -16,8 +16,8 @@ const securityHeaders = [
     value: [
       "default-src 'self'",
       "img-src 'self' data: https:",
-      "style-src 'self' 'unsafe-inline'", // allow inline styles for Tailwind runtime
-      "font-src 'self' data:",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com", // allow inline styles for Tailwind runtime and Google Fonts
+      "font-src 'self' data: https://fonts.gstatic.com", // allow Google Fonts
       "script-src 'self' 'unsafe-eval' 'unsafe-inline'", // Next dev/webpack needs eval; fine in prod for Next runtime
       "connect-src 'self' https:",
       "frame-ancestors 'none'",
