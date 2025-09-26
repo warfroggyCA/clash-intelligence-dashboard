@@ -73,7 +73,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
       // Only load if no cached data is available
       loadNotifications();
     }
-  }, [cachedNotifications, loadNotifications]);
+  }, [cachedNotifications]); // Removed loadNotifications from dependencies to prevent loop
 
   const updateDeparture = async (departure: DepartureRecord) => {
     try {
