@@ -470,7 +470,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 v{process.env.NEXT_PUBLIC_APP_VERSION || '0.21.0'}
               </span>
               <span className="text-gray-400">•</span>
-              <span className="text-gray-400">A warfroggy project</span>
+              <span className="text-gray-400">a warfroggy project</span>
             </div>
             <div className="text-xs text-gray-400 font-medium">Built with Next.js • Clash of Clans API</div>
           </div>
