@@ -334,14 +334,15 @@ export const useDashboardStore = create<DashboardState>()(
           snapshotMetadata: roster?.snapshotMetadata || null,
           snapshotDetails: roster?.snapshotDetails || null,
         });
-        try {
-          if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
-            const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
-            if (tag) {
-              localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(roster));
-            }
-          }
-        } catch {}
+        // TEMPORARILY DISABLED: localStorage cache might be causing React Error #185
+        // try {
+        //   if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
+        //     const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
+        //     if (tag) {
+        //       localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(roster));
+        //     }
+        //   }
+        // } catch {}
       },
       setClanTag: (clanTag) => set({ clanTag }),
       setHomeClan: (homeClan) => set({ homeClan }),
