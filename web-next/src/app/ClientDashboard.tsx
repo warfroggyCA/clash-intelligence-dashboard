@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { DashboardLayout, RosterTable, ApplicantsPanel } from '@/components';
 import ChangeDashboard from '@/components/ChangeDashboard';
@@ -10,6 +10,8 @@ import DiscordPublisher from '@/components/DiscordPublisher';
 import SnapshotInfoBanner from '@/components/SnapshotInfoBanner';
 import { AuthGate } from '@/components/layout/AuthGuard';
 import type { Roster } from '@/types';
+import { useLeadership } from '@/hooks/useLeadership';
+import { getVisibleTabs } from '@/lib/tab-config';
 
 type Props = {
   initialRoster?: Roster | null;
@@ -28,7 +30,29 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     setHomeClan,
     setRoster,
     hydrateRosterFromCache,
+    setActiveTab,
   } = useDashboardStore();
+  const { permissions, check } = useLeadership();
+
+  const visibleTabs = useMemo(
+    () => getVisibleTabs({ permissions, check }),
+    [permissions, check]
+  );
+
+  const safeActiveTab = useMemo(() => {
+    if (visibleTabs.length === 0) {
+      return 'roster' as const;
+    }
+    return visibleTabs.some((tab) => tab.id === activeTab)
+      ? activeTab
+      : visibleTabs[0].id;
+  }, [visibleTabs, activeTab]);
+
+  useEffect(() => {
+    if (safeActiveTab !== activeTab) {
+      setActiveTab(safeActiveTab);
+    }
+  }, [safeActiveTab, activeTab, setActiveTab]);
 
   // Debug: Log roster changes and add global error handler
   useEffect(() => {
@@ -102,7 +126,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   }, [currentClanTag, loadSmartInsights]);
 
   const renderTabContent = () => {
-    switch (activeTab) {
+    switch (safeActiveTab) {
       case 'roster':
         return (
           <div className="space-y-6">

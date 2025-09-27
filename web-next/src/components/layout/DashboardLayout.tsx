@@ -19,6 +19,8 @@ import { AuthGate } from './AuthGuard';
 import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import CommandRail from './CommandRail';
+import { QuickActions } from './QuickActions';
+import { useLeadership } from '@/hooks/useLeadership';
 
 
 // =============================================================================
@@ -36,9 +38,10 @@ export interface DashboardLayoutProps extends ComponentWithChildren {
 interface DashboardHeaderProps {
   onToggleCommandRail: () => void;
   isCommandRailOpen: boolean;
+  canUseCommandRail: boolean;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen, canUseCommandRail }) => {
   const {
     clanTag,
     homeClan,
@@ -57,7 +60,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   } = useDashboardStore();
 
   const clanName = useDashboardStore(selectors.clanName);
-  const hasLeadershipAccess = useDashboardStore(selectors.hasLeadershipAccess);
   const userRoles = useDashboardStore((state) => state.userRoles);
   const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
   const setImpersonatedRole = useDashboardStore((state) => state.setImpersonatedRole);
@@ -68,6 +70,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   const hasLeadershipRole = userRoles.some(
     (entry) => entry.clan_tag === normalizedClanTagValue && (entry.role === 'leader' || entry.role === 'coleader')
   );
+  const canShowRoleMenu = cfg.isDevelopment || hasLeadershipRole;
   const actualRoleLabel = getRoleDisplayName(clanRoleFromName(actualRoleName));
   const viewingRoleLabel = getRoleDisplayName(clanRoleFromName(viewingRoleName));
   const isImpersonating = Boolean(impersonatedRole);
@@ -84,6 +87,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   const [isScrolled, setIsScrolled] = useState(false);
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const roleMenuRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLElement | null>(null);
+
+  const updateHeaderMetrics = useCallback((height: number) => {
+    if (typeof document === 'undefined') return;
+    const roundedHeight = Math.ceil(height);
+    document.documentElement.style.setProperty('--header-height', `${roundedHeight}px`);
+    document.documentElement.style.setProperty('--toolbar-offset', `calc(${roundedHeight}px - 1px)`);
+    document.documentElement.style.setProperty('--command-rail-top', `calc(${roundedHeight}px + 320px)`);
+  }, []);
   
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -94,11 +106,27 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   }, []);
 
   useEffect(() => {
-    const targetHeight = isScrolled ? 88 : 112;
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--header-height', `${targetHeight}px`);
-    }
-  }, [isScrolled]);
+    if (typeof window === 'undefined') return;
+    const node = headerRef.current;
+    if (!node) return;
+
+    const measure = () => updateHeaderMetrics(node.offsetHeight);
+    measure();
+
+    const observer = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (!entry) return;
+      updateHeaderMetrics(entry.contentRect.height);
+    });
+
+    observer.observe(node);
+    window.addEventListener('resize', measure);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [updateHeaderMetrics]);
 
   useEffect(() => {
     if (!roleMenuOpen) return;
@@ -171,7 +199,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   const logoSrc = '/clans/2pr8r8v8p.png';
 
   return (
-    <header className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur">
+    <header
+      ref={headerRef}
+      className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur"
+    >
       <div className={`relative z-10 w-full px-4 lg:px-6 ${isScrolled ? 'py-3' : 'py-6'}`}>
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -215,7 +246,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
               <span>{actualRoleLabel}</span>
             </div>
 
-            {hasLeadershipRole && (
+            {canShowRoleMenu && (
               <div className="relative" ref={roleMenuRef}>
                 <button
                   onClick={() => setRoleMenuOpen((prev) => !prev)}
@@ -259,13 +290,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
 
             <ThemeToggle size="sm" />
 
-            <button
-              onClick={onToggleCommandRail}
-              className="hidden lg:inline-flex h-9 items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
-            >
-              {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
-              <span className={`h-2 w-2 rounded-full ${isCommandRailOpen ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-            </button>
+            {canUseCommandRail && (
+              <button
+                onClick={onToggleCommandRail}
+                className="hidden lg:inline-flex h-9 items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
+              >
+                {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
+                <span className={`h-2 w-2 rounded-full ${isCommandRailOpen ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+              </button>
+            )}
 
             <div className="relative group">
               <button 
@@ -278,12 +311,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
                 className="absolute right-0 top-full mt-1 w-52 rounded-2xl border border-brand-border/70 bg-brand-surfaceRaised/95 p-2 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)] opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100"
               >
                 <div className="space-y-1">
-                  <button
-                    onClick={onToggleCommandRail}
-                    className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
-                  >
-                    🧰 {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
-                  </button>
+                  {canUseCommandRail && (
+                    <button
+                      onClick={onToggleCommandRail}
+                      className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                    >
+                      🧰 {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
+                    </button>
+                  )}
                   <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
                     <button
                       onClick={() => setShowAccessManager(true)}
@@ -360,6 +395,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const activeTab = useDashboardStore((state) => state.activeTab);
   const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
+  const { permissions } = useLeadership();
+  const canAccessLeadershipTools = permissions.canViewLeadershipFeatures;
+  const showCommandRail = canAccessLeadershipTools;
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -379,21 +417,23 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <DashboardHeader
         onToggleCommandRail={() => setIsCommandRailOpen((prev) => !prev)}
         isCommandRailOpen={isCommandRailOpen}
+        canUseCommandRail={showCommandRail}
       />
       
-      {/* Tab Navigation (sticky under header) */}
-      <div className="w-full px-0 sticky top-[calc(var(--header-height,80px)-12px)] z-40">
-        <div className="border border-t-0 border-slate-800 bg-slate-900 backdrop-blur">
-          <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-slate-900" />
-            <TabNavigation />
+      {/* Command Toolbar */}
+      <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-3 pb-2 pt-2 sm:px-4">
+        <div className="flex flex-col gap-2">
+          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/90">
+            <TabNavigation className="px-2" />
           </div>
-          <div className="h-8 border-t border-slate-800 bg-slate-900" />
+          {canAccessLeadershipTools && (
+            <QuickActions className="!border-brand-border/60 !bg-brand-surfaceRaised/90 !text-slate-100 shadow-[0_12px_30px_-20px_rgba(8,15,31,0.6)]" />
+          )}
         </div>
       </div>
       
       {/* Main Content */}
-      <main className="dashboard-main min-h-screen w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-high-contrast rounded-b-3xl border border-t-0 border-clash-gold/20 px-3 pb-6 pt-4 sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
+      <main className="dashboard-main min-h-screen w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex-1 space-y-6">
             {activeTab === 'roster' && (
@@ -404,10 +444,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {children}
           </div>
 
-          <CommandRail
-            isOpen={isCommandRailOpen}
-            onToggle={() => setIsCommandRailOpen((prev) => !prev)}
-          />
+          {showCommandRail && (
+            <CommandRail
+              isOpen={isCommandRailOpen}
+              onToggle={() => setIsCommandRailOpen((prev) => !prev)}
+            />
+          )}
         </div>
       </main>
       

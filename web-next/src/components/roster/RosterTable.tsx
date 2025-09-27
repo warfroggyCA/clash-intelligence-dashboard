@@ -40,7 +40,6 @@ import { TableFilters } from './TableFilters';
 import { Pagination } from './Pagination';
 import { Button, Input, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
-import { QuickActions } from '@/components/layout/QuickActions';
 
 // =============================================================================
 // TYPES

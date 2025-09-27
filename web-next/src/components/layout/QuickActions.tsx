@@ -19,7 +19,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
-import { Button, SuccessButton, WarningButton } from '@/components/ui';
+import { Button } from '@/components/ui';
 import { api } from '@/lib/api/client';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 
@@ -432,14 +432,58 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     hasData,
   } = useQuickActions();
 
-  const actionButtonClasses = 'w-full sm:w-auto justify-start sm:justify-center gap-2 text-sm font-medium !bg-white !text-slate-700 border border-slate-200 hover:bg-slate-100 shadow-none transform-none hover:!scale-100 active:!scale-100';
+  const actionButtonClasses = 'inline-flex items-center justify-center gap-2 rounded-full border border-brand-border/60 !bg-brand-surfaceRaised/80 !text-slate-100 px-3 py-2 text-xs font-semibold shadow-none transition-colors duration-150 hover:!bg-brand-surfaceSubtle/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40';
+
+  const statusLabel = smartInsightsStatus === 'loading'
+    ? 'Refreshing'
+    : smartInsightsStatus === 'error'
+      ? 'Error'
+      : smartInsightsIsStale
+        ? 'Stale'
+        : 'Fresh';
+
+  const statusTone = smartInsightsStatus === 'loading'
+    ? 'bg-brand-surfaceRaised/60 text-slate-200'
+    : smartInsightsStatus === 'error'
+      ? 'bg-rose-500/20 text-rose-200'
+      : smartInsightsIsStale
+        ? 'bg-amber-400/20 text-amber-200'
+        : 'bg-emerald-400/20 text-emerald-200';
+
+  const snapshotSummary = smartInsightsMetadata
+    ? `${'Snapshot '}${safeLocaleDateString(smartInsightsMetadata.snapshotDate, {
+        fallback: smartInsightsMetadata.snapshotDate,
+        context: 'QuickActions snapshotSummary'
+      })}${smartInsightsMetadata.generatedAt ? ` • Generated ${safeLocaleString(smartInsightsMetadata.generatedAt, {
+        fallback: smartInsightsMetadata.generatedAt,
+        context: 'QuickActions snapshotGeneratedAt'
+      })}` : ''}`
+    : 'Snapshot timing unavailable';
 
   return (
-    <section className={`rounded-lg border border-slate-200 bg-white/90 backdrop-blur p-4 shadow-sm ${className}`}>
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Quick Actions</h3>
-          <span className="text-xs text-slate-400">Tools for the current clan</span>
+    <section className={`rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/90 px-4 py-3 text-slate-100 shadow-[0_12px_30px_-24px_rgba(8,15,31,0.68)] ${className}`}>
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3 text-[11px]">
+          <div className="flex flex-col gap-1 text-slate-300">
+            <div className="flex flex-wrap items-center gap-2">
+              <h3 className="text-[11px] font-semibold uppercase tracking-[0.28em] text-slate-200">Quick Actions</h3>
+              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold uppercase tracking-[0.18em] ${statusTone}`}>
+                <span className="h-1.5 w-1.5 rounded-full bg-current"></span>
+                {statusLabel}
+              </span>
+              {smartInsightsMetadata?.source && (
+                <span className="inline-flex items-center gap-1 rounded-full border border-brand-border/50 bg-brand-surfaceSubtle/70 px-2 py-0.5 text-slate-200 capitalize">
+                  {smartInsightsMetadata.source.replace('_', ' ')}
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-400">
+              <span>{snapshotSummary}</span>
+            </div>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Applies to the active clan snapshot
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -449,10 +493,10 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             loading={isRefreshing}
             variant="ghost"
             size="sm"
-            className={`${actionButtonClasses} min-w-[160px]`}
+            className={`${actionButtonClasses} w-full sm:w-auto`}
             title="Refresh roster data from the selected source"
           >
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z"></path>
             </svg>
             <span>Refresh Data</span>
@@ -464,16 +508,16 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             loading={isRefreshingInsights || smartInsightsStatus === 'loading'}
             variant="ghost"
             size="sm"
-            className={`${actionButtonClasses} min-w-[160px]`}
+            className={`${actionButtonClasses} w-full sm:w-auto`}
             title="Refresh Smart Insights payload for this clan"
           >
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 12a7.5 7.5 0 0112.672-5.303l2.131-2.131A.75.75 0 0120.75 5.25v5a.75.75 0 01-.75.75h-5a.75.75 0 01-.53-1.28l1.986-1.986A6 6 0 106.5 12a.75.75 0 11-1.5 0zm15 0a7.5 7.5 0 01-12.672 5.303l-2.131 2.131A.75.75 0 013.25 18.75v-5a.75.75 0 01.75-.75h5a.75.75 0 01.53 1.28l-1.986 1.986A6 6 0 1017.5 12a.75.75 0 111.5 0z"></path>
             </svg>
             <span className="flex items-center gap-2">
               Refresh Insights
               {smartInsightsIsStale && (
-                <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-medium text-amber-700">Stale</span>
+                <span className="rounded-full bg-amber-300/15 px-2 py-0.5 text-[10px] font-medium text-amber-200">Stale</span>
               )}
             </span>
           </Button>
@@ -484,10 +528,10 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             loading={isCopyingSnapshot}
             variant="ghost"
             size="sm"
-            className={`${actionButtonClasses} min-w-[160px]`}
+            className={`${actionButtonClasses} w-full sm:w-auto`}
             title="Copy snapshot summary (war status, capital raids, etc.)"
           >
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2v-9a2 2 0 012-2h2m3-3h6m-6 0a2 2 0 012-2h2a2 2 0 012 2m-6 0v3m6-3v3"></path>
             </svg>
             <span>Copy Summary</span>
@@ -499,10 +543,10 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
               disabled={!hasData || isExporting}
               variant="ghost"
               size="sm"
-              className={`${actionButtonClasses} pr-8`}
+              className={`${actionButtonClasses} w-full pr-8 sm:w-auto`}
               title="Export snapshot data in various formats"
             >
-              <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
               </svg>
               <span className="flex items-center gap-2">Export</span>
@@ -512,7 +556,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             </Button>
 
             {showExportMenu && (
-              <div className="absolute right-0 mt-2 w-48 rounded-md border border-slate-200 bg-white shadow-md z-10">
+              <div className="absolute right-0 mt-2 w-48 rounded-2xl border border-brand-border/80 bg-brand-surfaceRaised/95 shadow-[0_18px_38px_-28px_rgba(8,15,31,0.72)] backdrop-blur-lg z-10">
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -520,9 +564,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                       setShowExportMenu(false);
                     }}
                     disabled={isExporting}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceSubtle"
                   >
-                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     Export JSON
@@ -533,9 +577,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                       setShowExportMenu(false);
                     }}
                     disabled={isExporting}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceSubtle"
                   >
-                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                     </svg>
                     Export War Log CSV
@@ -545,9 +589,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
                       handleCopyRosterJson();
                       setShowExportMenu(false);
                     }}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceSubtle"
                   >
-                    <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
                     </svg>
                     Copy Roster JSON
@@ -563,50 +607,23 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             loading={isGeneratingSummary}
             variant="ghost"
             size="sm"
-            className={`${actionButtonClasses} min-w-[180px]`}
+            className={`${actionButtonClasses} w-full sm:w-auto`}
             title={insightsEnabled ? "Generate daily summary with automated insights of changes since last snapshot" : "Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)"}
           >
-            <svg className="w-4 h-4 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
             </svg>
             <span>Insights Summary</span>
           </Button>
         </div>
-        
-        <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700 flex flex-col gap-1">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="font-semibold">Smart Insights</div>
-            <div className="flex items-center gap-2 text-xs">
-              <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${smartInsightsStatus === 'loading' ? 'bg-slate-200 text-slate-700' : smartInsightsStatus === 'error' ? 'bg-red-100 text-red-700' : smartInsightsIsStale ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                {smartInsightsStatus === 'loading' ? 'Refreshing' : smartInsightsStatus === 'error' ? 'Error' : smartInsightsIsStale ? 'Stale' : 'Fresh'}
-              </span>
-              {smartInsightsMetadata?.source && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-white px-2 py-0.5 text-slate-600 border border-slate-200">
-                  {smartInsightsMetadata.source.replace('_', ' ')}
-                </span>
-              )}
-            </div>
+        {smartInsightsError && (
+          <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
+            {smartInsightsError}
           </div>
-          {smartInsightsMetadata ? (
-            <div className="text-xs text-slate-500">
-              Snapshot {safeLocaleDateString(smartInsightsMetadata.snapshotDate, { fallback: smartInsightsMetadata.snapshotDate, context: 'QuickActions smartInsights snapshotDate' })}
-              {smartInsightsMetadata.generatedAt && (
-                <> • Generated {safeLocaleString(smartInsightsMetadata.generatedAt, { fallback: smartInsightsMetadata.generatedAt, context: 'QuickActions smartInsights generatedAt' })}</>
-              )}
-            </div>
-          ) : (
-            <div className="text-xs text-slate-500">Insights will appear after the nightly run or a manual refresh.</div>
-          )}
-          {smartInsightsError && (
-            <div className="text-xs text-red-600">{smartInsightsError}</div>
-          )}
-        </div>
-        
-        {/* Status Message */}
+        )}
+
         {!hasData && (
-          <p className="text-sm text-gray-500 italic">
-            Load a clan to enable quick actions
-          </p>
+          <p className="text-sm text-slate-400 italic">Load a clan to enable quick actions</p>
         )}
       </div>
     </section>

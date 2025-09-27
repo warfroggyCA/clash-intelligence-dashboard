@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
-import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { GlassCard, TownHallBadge, LeagueBadge } from '@/components/ui';
@@ -118,17 +117,14 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     {
       label: 'Members',
       value: formatNumber(stats.memberCount),
-      icon: <span className="text-3xl">👥</span>,
     },
     {
       label: 'Total Donations',
       value: formatNumber(stats.totalDonations),
-      icon: <span className="text-3xl">💝</span>,
     },
     {
       label: 'Avg Donations',
       value: stats.averageDonations != null ? formatNumber(stats.averageDonations) : '—',
-      icon: <span className="text-3xl">📊</span>,
     },
     {
       label: 'Avg Builder Base',
@@ -136,12 +132,10 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
         stats.averageBuilderTrophies != null && stats.averageBuilderTrophies > 0
           ? formatNumber(stats.averageBuilderTrophies)
           : '—',
-      icon: <span className="text-3xl">🏗️</span>,
     },
     {
       label: 'War Win Rate',
       value: warWinRate != null && warWinRate >= 0 ? `${warWinRate}%` : '—',
-      icon: <span className="text-3xl">⚔️</span>,
     },
   ];
 
@@ -159,18 +153,18 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                 <div>
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
                 </div>
-                <div className="relative flex h-24 w-24 items-center justify-center rounded-3xl bg-brand-surfaceRaised/80">
+                <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-surfaceRaised/80">
                   {metric.townHallLevel && metric.townHallLevel > 0 ? (
                     <TownHallBadge
                       level={metric.townHallLevel}
-                      size="xl"
+                      size="lg"
                       showLevel={false}
                       showBox={false}
                     />
                   ) : metric.trophies && metric.trophies > 0 ? (
                     <LeagueBadge
                       trophies={metric.trophies}
-                      size="xl"
+                      size="lg"
                       showText={false}
                     />
                   ) : (
@@ -183,20 +177,13 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
           ))}
         </div>
 
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
           {secondaryMetrics.map((metric) => (
-            <div key={metric.label} className="flex items-center gap-4 rounded-2xl bg-brand-surfaceSubtle/40 px-3 py-2 text-slate-100">
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-brand-surfaceRaised/60 text-xl">
-                {metric.icon}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="text-2xl font-semibold leading-tight sm:text-[26px]">
-                  {metric.value}
-                </div>
-                <div className="mt-1 text-[11px] uppercase tracking-[0.22em] text-slate-400">
-                  {metric.label}
-                </div>
-              </div>
+            <div key={metric.label} className="flex flex-col rounded-2xl bg-brand-surfaceSubtle/40 px-4 py-3 text-slate-100 shadow-[0_12px_28px_-26px_rgba(8,15,31,0.65)]">
+              <span className="text-[11px] uppercase tracking-[0.22em] text-slate-400">{metric.label}</span>
+              <span className="mt-1 text-2xl font-semibold leading-tight sm:text-[26px]">
+                {metric.value}
+              </span>
             </div>
           ))}
         </div>
