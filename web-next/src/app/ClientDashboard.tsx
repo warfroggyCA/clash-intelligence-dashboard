@@ -55,15 +55,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     }
   }, [safeActiveTab, activeTab, setActiveTab]);
 
-  // Debug: Log roster changes and add global error handler
+  // Add global error handler for date formatting errors (without roster dependency)
   useEffect(() => {
-    console.log('[ClientDashboard] Roster changed:', {
-      hasRoster: !!roster,
-      memberCount: roster?.members?.length,
-      clanTag: roster?.clanTag
-    });
-
-    // Add global error handler for date formatting errors
     const handleError = (event: ErrorEvent) => {
       if (event.message?.includes('Format string contains an unescaped latin alphabet character')) {
         console.error('=== DATE FORMATTING ERROR CAUGHT ===');
@@ -71,7 +64,6 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
         console.error('Error filename:', event.filename);
         console.error('Error line:', event.lineno);
         console.error('Error column:', event.colno);
-        console.error('Current roster:', roster);
         console.error('Stack trace:', event.error?.stack);
         console.error('=====================================');
       }
@@ -79,7 +71,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
 
     window.addEventListener('error', handleError);
     return () => window.removeEventListener('error', handleError);
-  }, [roster]);
+  }, []); // No dependencies - only run once on mount
 
   // Hydrate store on first mount only
   useEffect(() => {
