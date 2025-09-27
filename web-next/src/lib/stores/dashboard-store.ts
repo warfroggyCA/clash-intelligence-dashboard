@@ -976,11 +976,11 @@ export const useDashboardStore = create<DashboardState>()(
     //   }),
     //   // Prevent hydration mismatch by using onRehydrateStorage
     //   onRehydrateStorage: () => (state: DashboardState | undefined) => {
-        // This runs after rehydration completes
-        if (state) {
-          console.log('[DashboardStore] Rehydrated successfully');
-        }
-      },
+    //     // This runs after rehydration completes
+    //     if (state) {
+    //       console.log('[DashboardStore] Rehydrated successfully');
+    //     }
+    //   },
     // }
   // )
 );
