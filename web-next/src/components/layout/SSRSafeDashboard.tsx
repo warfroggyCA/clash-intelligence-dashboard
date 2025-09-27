@@ -15,32 +15,36 @@ export const SSRSafeDashboard: React.FC<SSRSafeDashboardProps> = ({ className = 
   }>({});
 
   useEffect(() => {
+    // TEMPORARILY DISABLED: Don't load any components to test if they're causing the re-render loop
+    console.log('[SSRSafeDashboard] Components temporarily disabled to test re-render issue');
+    setMounted(true);
+    
     // Only load components after mount
-    const loadComponents = async () => {
-      try {
-        const [
-          { default: SmartInsightsHeadlines },
-          { RosterStatsPanel },
-          { RosterHighlightsPanel }
-        ] = await Promise.all([
-          import('@/components/SmartInsightsHeadlines'),
-          import('@/components/roster/RosterStatsPanel'),
-          import('@/components/roster/RosterHighlightsPanel')
-        ]);
+    // const loadComponents = async () => {
+    //   try {
+    //     const [
+    //       { default: SmartInsightsHeadlines },
+    //       { RosterStatsPanel },
+    //       { RosterHighlightsPanel }
+    //     ] = await Promise.all([
+    //       import('@/components/SmartInsightsHeadlines'),
+    //       import('@/components/roster/RosterStatsPanel'),
+    //       import('@/components/roster/RosterHighlightsPanel')
+    //     ]);
 
-        setComponents({
-          SmartInsightsHeadlines,
-          RosterStatsPanel,
-          RosterHighlightsPanel
-        });
-        setMounted(true);
-      } catch (error) {
-        console.error('Failed to load dashboard components:', error);
-        setMounted(true); // Still set mounted to show error state
-      }
-    };
+    //     setComponents({
+    //       SmartInsightsHeadlines,
+    //       RosterStatsPanel,
+    //       RosterHighlightsPanel
+    //     });
+    //     setMounted(true);
+    //   } catch (error) {
+    //     console.error('Failed to load dashboard components:', error);
+    //     setMounted(true); // Still set mounted to show error state
+    //   }
+    // };
 
-    loadComponents();
+    // loadComponents();
   }, []);
 
   const LoadingCard = () => (
