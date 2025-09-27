@@ -1,37 +1,36 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDashboardStore } from "@/lib/stores/dashboard-store";
-import { TabType } from "@/types";
+import { useLeadership } from "@/hooks/useLeadership";
+import { getVisibleTabs } from "@/lib/tab-config";
 
 interface TabNavigationProps {
   className?: string;
 }
 
-interface TabConfig {
-  id: TabType;
-  label: string;
-  icon: string;
-  description: string;
-}
-
-const TAB_CONFIGS: TabConfig[] = [
-  { id: "roster", label: "Dashboard", icon: "🛡️", description: "Daily overview and roster" },
-  { id: "changes", label: "History", icon: "📜", description: "Track roster changes and departures" },
-  { id: "coaching", label: "Insights", icon: "💡", description: "Recommendations, spotlights, and coaching" },
-  { id: "database", label: "Player DB", icon: "🗄️", description: "Player notes and archives" },
-  { id: "applicants", label: "Applicants", icon: "🎯", description: "Evaluate potential clan members" },
-  { id: "discord", label: "Discord", icon: "📢", description: "Publish reports to Discord" },
-];
-
 export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) => {
   const activeTab = useDashboardStore((state) => state.activeTab);
   const setActiveTab = useDashboardStore((state) => state.setActiveTab);
+  const { permissions, check } = useLeadership();
+
+  const visibleTabs = useMemo(
+    () => getVisibleTabs({ permissions, check }),
+    [permissions, check]
+  );
+
+  useEffect(() => {
+    if (!visibleTabs.length) return;
+    const isActiveVisible = visibleTabs.some((tab) => tab.id === activeTab);
+    if (!isActiveVisible) {
+      setActiveTab(visibleTabs[0].id);
+    }
+  }, [visibleTabs, activeTab, setActiveTab]);
 
   return (
     <nav className={`tab-navigation -mx-2 overflow-x-auto px-2 pb-1 ${className}`} aria-label="Main navigation tabs">
       <div className="flex min-w-max gap-2">
-        {TAB_CONFIGS.map((tab) => {
+        {visibleTabs.map((tab) => {
         const isActive = activeTab === tab.id;
         const baseStyles =
           "relative flex-shrink-0 px-3.5 py-2 text-sm font-semibold transition-all duration-200 rounded-b-xl rounded-t-none border focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/60";

@@ -18,8 +18,8 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   useEffect(() => {
     const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
     if (allowAnon) {
-      // Only set impersonated role if it's not already set to 'leader'
-      if (!impersonatedRole || impersonatedRole !== 'leader') {
+      // Default to leader for anon development, but allow manual overrides
+      if (!impersonatedRole) {
         setImpersonatedRole('leader');
       }
       return;

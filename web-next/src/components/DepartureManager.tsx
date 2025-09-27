@@ -65,15 +65,14 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
   }, [clanTag]);
 
   useEffect(() => {
-    // Use cached data immediately for instant loading
     if (cachedNotifications) {
       setNotifications(cachedNotifications);
       setLoading(false);
-    } else {
-      // Only load if no cached data is available
-      loadNotifications();
+      return;
     }
-  }, [cachedNotifications]); // Removed loadNotifications from dependencies to prevent loop
+
+    void loadNotifications();
+  }, [cachedNotifications, loadNotifications]);
 
   const updateDeparture = async (departure: DepartureRecord) => {
     try {
