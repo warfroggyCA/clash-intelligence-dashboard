@@ -10,6 +10,7 @@
 
 import { create } from 'zustand';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
+import { flushSync } from 'react-dom';
 import {
   Member,
   Roster,
@@ -329,8 +330,15 @@ export const useDashboardStore = create<DashboardState>()(
           clanTag: roster?.clanTag,
           source: roster?.source
         });
-        // TEMPORARILY SIMPLIFIED: Only set roster, no metadata or cache
-        set({ roster });
+        // TEMPORARILY TESTING: Use flushSync to prevent React Error #185
+        try {
+          flushSync(() => {
+            set({ roster });
+          });
+        } catch (error) {
+          console.error('[DashboardStore] flushSync failed, falling back to normal set:', error);
+          set({ roster });
+        }
         // TEMPORARILY DISABLED: All other logic might be causing React Error #185
         // set({ 
         //   roster,
