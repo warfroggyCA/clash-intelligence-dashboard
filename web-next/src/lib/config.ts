@@ -4,7 +4,7 @@ import { z } from 'zod';
 // Environment detection
 const isDevelopment = process.env.NODE_ENV === "development" || process.env.VERCEL_ENV === "development";
 const isStaging = process.env.VERCEL_ENV === "preview";
-const isProduction = process.env.NODE_ENV === "production" && process.env.VERCEL_ENV === "production";
+const isProduction = process.env.NODE_ENV === "production" && (process.env.VERCEL_ENV === "production" || !process.env.VERCEL_ENV);
 
 // Fail-fast env validation in production. In development, warn but do not crash.
 const REQUIRED_IN_PROD = [
@@ -15,6 +15,12 @@ const REQUIRED_IN_PROD = [
 ];
 
 function validateEnv() {
+  // Check if we're in a browser environment where env vars might not be available yet
+  if (typeof window !== 'undefined') {
+    // In browser, skip validation as env vars are injected at build time
+    return;
+  }
+  
   if (!isProduction) {
     const missing = REQUIRED_IN_PROD.filter((k) => !process.env[k]);
     if (missing.length) {
