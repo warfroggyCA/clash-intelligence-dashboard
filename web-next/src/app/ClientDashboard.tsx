@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { DashboardLayout, RosterTable, ApplicantsPanel } from '@/components';
 import ChangeDashboard from '@/components/ChangeDashboard';
@@ -33,6 +33,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     setActiveTab,
   } = useDashboardStore();
   const { permissions, check } = useLeadership();
+  const hasInitialized = useRef(false);
 
   const visibleTabs = useMemo(
     () => getVisibleTabs({ permissions, check }),
@@ -80,8 +81,12 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     return () => window.removeEventListener('error', handleError);
   }, [roster]);
 
-  // Hydrate store on first mount
+  // Hydrate store on first mount only
   useEffect(() => {
+    if (hasInitialized.current) {
+      return; // Already initialized, don't run again
+    }
+    
     console.log('[ClientDashboard] useEffect running with:', {
       initialClanTag,
       initialRoster: !!initialRoster,
@@ -91,10 +96,13 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       currentRoster: !!roster
     });
     
+    hasInitialized.current = true;
+    
     if (initialClanTag) {
       setHomeClan(initialClanTag);
       if (!clanTag) setClanTag(initialClanTag);
     }
+    
     let had = false;
     try {
       had = hydrateRosterFromCache();
@@ -102,6 +110,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     } catch (error) {
       console.error('[ClientDashboard] Cache hydration error:', error);
     }
+    
     // Prioritize initialRoster from server-side rendering
     if (initialRoster) {
       console.log('[ClientDashboard] Setting initial roster from server');
@@ -116,7 +125,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, []); // Empty dependency array - only run once on mount
 
   const currentClanTag = clanTag || homeClan || initialClanTag || '';
 
