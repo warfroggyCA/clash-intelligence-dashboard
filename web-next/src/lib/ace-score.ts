@@ -236,14 +236,14 @@ export function calculateAceScores(
     };
 
     const core =
-      config.weights.ova * ova.shrunk +
-      config.weights.dva * dva.shrunk +
-      config.weights.par * par.shrunk +
-      config.weights.cap * capComponent.shrunk +
-      config.weights.don * don.shrunk;
+      config.weights.ova! * ova.shrunk +
+      config.weights.dva! * dva.shrunk +
+      config.weights.par! * par.shrunk +
+      config.weights.cap! * capComponent.shrunk +
+      config.weights.don! * don.shrunk;
 
-    const logistic = logisticScaled(core, config.logisticAlpha);
-    const availability = clamp(player.availability ?? config.defaultAvailability, 0.7, 1.05);
+    const logistic = logisticScaled(core, config.logisticAlpha!);
+    const availability = clamp(player.availability ?? config.defaultAvailability!, 0.7, 1.05);
     const ace = logistic * 100 * availability;
 
     return {
