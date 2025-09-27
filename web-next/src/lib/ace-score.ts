@@ -206,19 +206,19 @@ export function calculateAceScores(
 
   // Finalise per-player component scores.
   const results: AceScoreResult[] = intermediate.map((player) => {
-    const ova = finaliseComponent(player.ova, ovaStats, config.shrinkage.ova);
-    const dva = finaliseComponent(player.dva, dvaStats, config.shrinkage.dva);
+    const ova = finaliseComponent(player.ova, ovaStats, config.shrinkage.ova!);
+    const dva = finaliseComponent(player.dva, dvaStats, config.shrinkage.dva!);
 
     const par = finaliseComponent(
       player.par,
       parStats,
-      config.shrinkage.par
+      config.shrinkage.par!
     );
 
     const capComponent = finaliseComponent(
       player.cap,
       capStats,
-      config.shrinkage.cap
+      config.shrinkage.cap!
     );
 
     const clippedRatio = clamp(player.don.ratio ?? 0, -Infinity, ratioPercentile99 || 0);
