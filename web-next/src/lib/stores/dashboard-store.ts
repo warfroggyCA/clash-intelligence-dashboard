@@ -1090,34 +1090,35 @@ export const selectors = {
 
 // Subscribe to localStorage changes for persistence
 if (typeof window !== 'undefined') {
-  useDashboardStore.subscribe(
-    (state) => state.clanTag,
-    (clanTag) => {
-      if (clanTag) {
-        localStorage.setItem('currentClanTag', clanTag);
-      } else {
-        localStorage.removeItem('currentClanTag');
-      }
-    }
-  );
+  // TEMPORARILY DISABLED: Store subscriptions might be causing React Error #185 re-render loop
+  // useDashboardStore.subscribe(
+  //   (state) => state.clanTag,
+  //   (clanTag) => {
+  //     if (clanTag) {
+  //       localStorage.setItem('currentClanTag', clanTag);
+  //     } else {
+  //       localStorage.removeItem('currentClanTag');
+  //     }
+  //   }
+  // );
   
-  useDashboardStore.subscribe(
-    (state) => state.homeClan,
-    (homeClan) => {
-      if (homeClan) {
-        localStorage.setItem('homeClanTag', homeClan);
-      } else {
-        localStorage.removeItem('homeClanTag');
-      }
-    }
-  );
+  // useDashboardStore.subscribe(
+  //   (state) => state.homeClan,
+  //   (homeClan) => {
+  //     if (homeClan) {
+  //       localStorage.setItem('homeClanTag', homeClan);
+  //     } else {
+  //       localStorage.removeItem('homeClanTag');
+  //     }
+  //   }
+  // );
   
-  useDashboardStore.subscribe(
-    (state) => state.userRole,
-    (userRole) => {
-      localStorage.setItem('userRole', userRole);
-    }
-  );
+  // useDashboardStore.subscribe(
+  //   (state) => state.userRole,
+  //   (userRole) => {
+  //     localStorage.setItem('userRole', userRole);
+  //   }
+  // );
 }
 
 // =============================================================================
