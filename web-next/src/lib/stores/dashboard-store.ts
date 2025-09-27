@@ -313,7 +313,8 @@ const initialState = {
 // =============================================================================
 
 export const useDashboardStore = create<DashboardState>()(
-  devtools(
+  // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
+  // devtools(
     subscribeWithSelector((set, get) => ({
       ...initialState,
       
@@ -959,28 +960,29 @@ export const useDashboardStore = create<DashboardState>()(
           setDismissedNotifications(newDismissed);
         }
       },
-    })),
-    {
-      name: 'dashboard-store',
-      partialize: (state: DashboardState) => ({
-        // Only persist certain state to localStorage
-        clanTag: state.clanTag,
-        homeClan: state.homeClan,
-        activeTab: state.activeTab,
-        sortKey: state.sortKey,
-        sortDir: state.sortDir,
-        pageSize: state.pageSize,
-        userRole: state.userRole,
-      }),
-      // Prevent hydration mismatch by using onRehydrateStorage
-      onRehydrateStorage: () => (state: DashboardState | undefined) => {
+    }))
+    // TEMPORARILY DISABLED: devtools options might be causing React Error #185
+    // , {
+    //   name: 'dashboard-store',
+    //   partialize: (state: DashboardState) => ({
+    //     // Only persist certain state to localStorage
+    //     clanTag: state.clanTag,
+    //     homeClan: state.homeClan,
+    //     activeTab: state.activeTab,
+    //     sortKey: state.sortKey,
+    //     sortDir: state.sortDir,
+    //     pageSize: state.pageSize,
+    //     userRole: state.userRole,
+    //   }),
+    //   // Prevent hydration mismatch by using onRehydrateStorage
+    //   onRehydrateStorage: () => (state: DashboardState | undefined) => {
         // This runs after rehydration completes
         if (state) {
           console.log('[DashboardStore] Rehydrated successfully');
         }
       },
-    }
-  )
+    // }
+  // )
 );
 
 // =============================================================================
