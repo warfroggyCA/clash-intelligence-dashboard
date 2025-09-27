@@ -315,7 +315,9 @@ const initialState = {
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
-    subscribeWithSelector((set, get) => ({
+  // TEMPORARILY DISABLED: subscribeWithSelector middleware might be causing React Error #185
+  // subscribeWithSelector(
+    (set, get) => ({
       ...initialState,
       
       // =============================================================================
@@ -960,7 +962,9 @@ export const useDashboardStore = create<DashboardState>()(
           setDismissedNotifications(newDismissed);
         }
       },
-    }))
+    })
+    // TEMPORARILY DISABLED: subscribeWithSelector middleware might be causing React Error #185
+    // )
     // TEMPORARILY DISABLED: devtools options might be causing React Error #185
     // , {
     //   name: 'dashboard-store',
