@@ -79,7 +79,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       return; // Already initialized, don't run again
     }
     
-    console.log('[ClientDashboard] useEffect running with:', {
+    console.log('[ClientDashboard] useEffect running with (FIXED VERSION):', {
       initialClanTag,
       initialRoster: !!initialRoster,
       initialRosterMembers: initialRoster?.members?.length,
