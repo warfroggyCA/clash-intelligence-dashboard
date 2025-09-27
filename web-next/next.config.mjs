@@ -33,6 +33,18 @@ const nextConfig = {
     // Temporarily disable ESLint during builds due to version compatibility issues
     ignoreDuringBuilds: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api-assets.clashofclans.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cdn-assets-eu.frontify.com',
+      },
+    ],
+  },
   async headers() {
     if (!isProd) return [];
     return [

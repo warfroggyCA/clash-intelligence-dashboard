@@ -7,7 +7,8 @@
  * Last Updated: January 2025
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { ComponentWithChildrenAndClassName } from '@/types';
 
@@ -64,6 +65,12 @@ export const Modal: React.FC<ModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const previousActiveElement = useRef<HTMLElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    return () => setMounted(false);
+  }, []);
 
   // Handle escape key
   useEffect(() => {
@@ -99,18 +106,18 @@ export const Modal: React.FC<ModalProps> = ({
 
   // Handle body scroll lock
   useEffect(() => {
+    if (typeof document === 'undefined') return;
     if (isOpen) {
+      const previous = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
+      return () => {
+        document.body.style.overflow = previous;
+      };
     }
-
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
+    return undefined;
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted || typeof document === 'undefined') return null;
 
   const handleOverlayClick = (event: React.MouseEvent<HTMLDivElement>) => {
     if (closeOnOverlayClick && event.target === event.currentTarget) {
@@ -119,9 +126,9 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const sizeStyles = getSizeStyles(size);
-  const modalStyles = `relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 w-full ${sizeStyles} ${className}`.trim();
+  const modalStyles = `relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 w-full max-h-[85vh] overflow-y-auto ${sizeStyles} ${className}`.trim();
 
-  return (
+  const modalTree = (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gradient-to-br from-black/20 via-purple-900/20 to-blue-900/30 backdrop-blur-md"
       onClick={handleOverlayClick}
@@ -163,6 +170,8 @@ export const Modal: React.FC<ModalProps> = ({
       </div>
     </div>
   );
+
+  return createPortal(modalTree, document.body);
 };
 
 // =============================================================================

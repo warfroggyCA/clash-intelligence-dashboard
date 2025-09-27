@@ -123,6 +123,3 @@ export const SSRSafeDashboard: React.FC<SSRSafeDashboardProps> = ({ className = 
 };
 
 export default SSRSafeDashboard;
-
-
-
