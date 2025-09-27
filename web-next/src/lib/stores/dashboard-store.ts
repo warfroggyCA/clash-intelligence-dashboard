@@ -329,11 +329,14 @@ export const useDashboardStore = create<DashboardState>()(
           clanTag: roster?.clanTag,
           source: roster?.source
         });
-        set({ 
-          roster,
-          snapshotMetadata: roster?.snapshotMetadata || null,
-          snapshotDetails: roster?.snapshotDetails || null,
-        });
+        // TEMPORARILY SIMPLIFIED: Only set roster, no metadata or cache
+        set({ roster });
+        // TEMPORARILY DISABLED: All other logic might be causing React Error #185
+        // set({ 
+        //   roster,
+        //   snapshotMetadata: roster?.snapshotMetadata || null,
+        //   snapshotDetails: roster?.snapshotDetails || null,
+        // });
         // TEMPORARILY DISABLED: localStorage cache might be causing React Error #185
         // try {
         //   if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
