@@ -745,7 +745,13 @@ function playerValue(value: number | undefined): number {
 function mergeOptions(options: AceCalculationOptions): Required<AceCalculationOptions> {
   return {
     weights: { ...DEFAULT_WEIGHTS, ...options.weights },
-    shrinkage: { ...DEFAULT_SHRINKAGE, ...options.shrinkage },
+    shrinkage: { 
+      ova: options.shrinkage?.ova ?? DEFAULT_SHRINKAGE.ova,
+      dva: options.shrinkage?.dva ?? DEFAULT_SHRINKAGE.dva,
+      par: options.shrinkage?.par ?? DEFAULT_SHRINKAGE.par,
+      cap: options.shrinkage?.cap ?? DEFAULT_SHRINKAGE.cap,
+      don: options.shrinkage?.don ?? DEFAULT_SHRINKAGE.don,
+    },
     logisticAlpha: options.logisticAlpha ?? DEFAULT_OPTIONS.logisticAlpha,
     defaultAvailability: options.defaultAvailability ?? DEFAULT_OPTIONS.defaultAvailability,
   };
