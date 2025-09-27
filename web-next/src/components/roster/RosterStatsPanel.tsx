@@ -1,22 +1,49 @@
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
+import type { ReactNode, CSSProperties } from 'react';
+import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
-import { GlassCard, TownHallBadge, LeagueBadge } from '@/components/ui';
+import { GlassCard, TownHallBadge, LeagueBadge, Modal } from '@/components/ui';
+import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
+import type { AceScoreResult } from '@/lib/ace-score';
+import AceLeaderboardCard from './AceLeaderboardCard';
 
 interface RosterStatsPanelProps {
   className?: string;
 }
 
+interface HighlightMetric {
+  label: string;
+  value: string;
+  subtitle?: string;
+  badge?: ReactNode;
+  townHallLevel?: number;
+  trophies?: number;
+  onClick?: () => void;
+  fullWidth?: boolean;
+}
+
 export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = '' }) => {
   const [mounted, setMounted] = useState(false);
+  const [showAceModal, setShowAceModal] = useState(false);
   const roster = useDashboardStore((state) => state.roster);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const snapshotDetails = useDashboardStore((state) => state.snapshotDetails);
   const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt) || snapshotMetadata?.fetchedAt || null;
 
   const panelClassName = ['xl:min-h-[18rem]', className].filter(Boolean).join(' ');
+
+  const aceScores = useMemo<AceScoreResult[]>(() => {
+    if (!roster?.members?.length) {
+      return [];
+    }
+    const inputs = createAceInputsFromRoster(roster);
+    return calculateAceScores(inputs);
+  }, [roster]);
+
+  const aceLeader = aceScores[0];
 
   const stats = useMemo(() => {
     if (!roster?.members?.length) {
@@ -100,18 +127,38 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
   const averageTownHall = stats.averageTownHall ?? 0;
   const averageTrophies = stats.averageTrophies ?? 0;
 
-  const highlightMetrics = [
+  const highlightMetrics: HighlightMetric[] = [
     {
       label: 'Avg Town Hall',
       value: averageTownHall > 0 ? `TH${averageTownHall}` : 'No data',
-      townHallLevel: averageTownHall,
+      townHallLevel: averageTownHall > 0 ? averageTownHall : undefined,
     },
     {
       label: 'Avg Trophies',
       value: averageTrophies > 0 ? formatNumber(averageTrophies) : 'No data',
-      trophies: averageTrophies,
+      trophies: averageTrophies > 0 ? averageTrophies : undefined,
     },
   ];
+
+  if (aceLeader) {
+    const availabilityPercent = Math.round((aceLeader.availability ?? 0) * 100);
+    highlightMetrics.push({
+      label: 'Current top player (ACE)',
+      value: aceLeader.name,
+      badge: (
+        <Image
+          src="/King_champ.WEBP"
+          alt="ACE champion badge"
+          width={96}
+          height={96}
+          className="h-full w-full object-contain"
+          priority
+        />
+      ),
+      onClick: () => setShowAceModal(true),
+      fullWidth: true,
+    });
+  }
 
   const secondaryMetrics = [
     {
@@ -144,17 +191,36 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
       <div className="space-y-6">
         {/* Stats Grid */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {highlightMetrics.map((metric) => (
-            <div
-              key={metric.label}
-              className="flex flex-col gap-4 overflow-hidden rounded-3xl bg-brand-surfaceSubtle/70 px-5 py-5 text-slate-100 shadow-[0_18px_32px_-28px_rgba(8,15,31,0.7)]"
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div>
+          {highlightMetrics.map((metric) => {
+            const containerBase = "overflow-hidden rounded-3xl bg-brand-surfaceSubtle/70 px-5 py-5 text-slate-100 shadow-[0_18px_32px_-28px_rgba(8,15,31,0.7)] transition hover:shadow-[0_18px_32px_-24px_rgba(8,15,31,0.7)]";
+            const containerClass = metric.fullWidth
+              ? `${containerBase} sm:col-span-2`
+              : containerBase;
+            const valueStyle: CSSProperties | undefined = metric.fullWidth
+              ? { fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }
+              : undefined;
+            const badgeWrapper = metric.fullWidth
+              ? 'flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-surfaceRaised/70 sm:h-20 sm:w-20'
+              : 'flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-surfaceRaised/70 sm:h-16 sm:w-16';
+
+            const content = (
+              <div className="flex items-center justify-between gap-6">
+                <div className="flex flex-col gap-2">
                   <p className="text-[11px] uppercase tracking-[0.24em] text-slate-400">{metric.label}</p>
+                  {metric.subtitle && (
+                    <p className="text-xs font-medium text-slate-300">{metric.subtitle}</p>
+                  )}
+                  <p
+                    className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl"
+                    style={valueStyle}
+                  >
+                    {metric.value}
+                  </p>
                 </div>
-                <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-brand-surfaceRaised/80">
-                  {metric.townHallLevel && metric.townHallLevel > 0 ? (
+                <div className={badgeWrapper}>
+                  {metric.badge ? (
+                    metric.badge
+                  ) : metric.townHallLevel && metric.townHallLevel > 0 ? (
                     <TownHallBadge
                       level={metric.townHallLevel}
                       size="lg"
@@ -164,7 +230,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                   ) : metric.trophies && metric.trophies > 0 ? (
                     <LeagueBadge
                       trophies={metric.trophies}
-                      size="lg"
+                      size="xl"
                       showText={false}
                     />
                   ) : (
@@ -172,9 +238,27 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
                   )}
                 </div>
               </div>
-              <p className="text-3xl font-semibold tracking-tight text-slate-100">{metric.value}</p>
-            </div>
-          ))}
+            );
+
+            if (metric.onClick) {
+              return (
+                <button
+                  key={metric.label}
+                  type="button"
+                  onClick={metric.onClick}
+                  className={`${containerClass} text-left hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/70`}
+                >
+                  {content}
+                </button>
+              );
+            }
+
+            return (
+              <div key={metric.label} className={containerClass}>
+                {content}
+              </div>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3">
@@ -272,6 +356,15 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
           </div>
         )}
       </div>
+
+      <Modal
+        isOpen={showAceModal}
+        onClose={() => setShowAceModal(false)}
+        title="ACE Leaderboard"
+        size="xl"
+      >
+        <AceLeaderboardCard className="shadow-none hover:translate-y-0" />
+      </Modal>
     </GlassCard>
   );
 };
