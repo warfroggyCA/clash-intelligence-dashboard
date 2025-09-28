@@ -112,13 +112,14 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       console.log('[ClientDashboard] Setting initial roster from server (DISABLED FOR TESTING)');
       // setRoster(initialRoster);
     } else if (!had) {
-      // Only load from API if we don't have cached data and no initial roster
-      const tag = clanTag || initialClanTag || homeClan || '';
-      console.log('[ClientDashboard] Checking load conditions:', { had, tag, hasRoster: !!roster });
-      if (tag && !roster) {
-        console.log('[ClientDashboard] Loading roster for tag:', tag);
-        loadRoster(tag);
-      }
+      // TEMPORARILY DISABLED: loadRoster call might be causing React Error #185
+      // const tag = clanTag || initialClanTag || homeClan || '';
+      // console.log('[ClientDashboard] Checking load conditions:', { had, tag, hasRoster: !!roster });
+      // if (tag && !roster) {
+      //   console.log('[ClientDashboard] Loading roster for tag:', tag);
+      //   loadRoster(tag);
+      // }
+      console.log('[ClientDashboard] loadRoster call disabled for testing React Error #185');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run once on mount
