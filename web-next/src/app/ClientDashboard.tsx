@@ -88,11 +88,17 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   const currentClanTag = clanTag || homeClan || initialClanTag || '';
 
   const renderTabContent = () => {
-    // SIMPLIFIED: Just show roster content for testing
+    // Expert Coder Fix: COMPLETELY DISABLE all roster components to test
     return (
       <div className="space-y-6">
-        <div className="text-white p-4 bg-slate-800 rounded">SnapshotInfoBanner PLACEHOLDER</div>
-        <div className="text-white p-4 bg-slate-800 rounded">RosterTable PLACEHOLDER</div>
+        <div className="text-white p-4 bg-slate-800 rounded">ALL COMPONENTS DISABLED FOR TESTING</div>
+        <div className="text-white p-4 bg-slate-800 rounded">No SnapshotInfoBanner</div>
+        <div className="text-white p-4 bg-slate-800 rounded">No RosterTable</div>
+        <div className="text-white p-4 bg-slate-800 rounded">No ChangeDashboard</div>
+        <div className="text-white p-4 bg-slate-800 rounded">No PlayerDatabase</div>
+        <div className="text-white p-4 bg-slate-800 rounded">No CoachingInsights</div>
+        <div className="text-white p-4 bg-slate-800 rounded">No ApplicantsPanel</div>
+        <div className="text-white p-4 bg-slate-800 rounded">No DiscordPublisher</div>
       </div>
     );
   };
