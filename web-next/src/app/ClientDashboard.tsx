@@ -2,13 +2,13 @@
 
 import React, { useEffect, useMemo, useRef } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
-import { useLeadership } from '@/lib/hooks/useLeadership';
-import { getVisibleTabs } from '@/lib/utils';
+// import { useLeadership } from '@/lib/hooks/useLeadership';
+// import { getVisibleTabs } from '@/lib/utils';
 import { Roster } from '@/types';
 import AuthGate from '@/components/layout/AuthGuard';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { SnapshotInfoBanner } from '@/components/roster/SnapshotInfoBanner';
-import { RosterTable } from '@/components/roster/RosterTable';
+// import { SnapshotInfoBanner } from '@/components/roster/SnapshotInfoBanner';
+// import { RosterTable } from '@/components/roster/RosterTable';
 import ChangeDashboard from '@/components/ChangeDashboard';
 import PlayerDatabase from '@/components/PlayerDatabase';
 import CoachingInsights from '@/components/CoachingInsights';
@@ -31,28 +31,28 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     hydrateRosterFromCache,
     setActiveTab,
   } = useDashboardStore();
-  const { permissions, check } = useLeadership();
+  // const { permissions, check } = useLeadership();
   const hasInitialized = useRef(false);
 
-  const visibleTabs = useMemo(
-    () => getVisibleTabs({ permissions, check }),
-    [permissions, check]
-  );
+  // const visibleTabs = useMemo(
+  //   () => getVisibleTabs({ permissions, check }),
+  //   [permissions, check]
+  // );
 
-  const safeActiveTab = useMemo(() => {
-    if (visibleTabs.length === 0) {
-      return 'roster' as const;
-    }
-    return visibleTabs.some((tab) => tab.id === activeTab)
-      ? activeTab
-      : visibleTabs[0].id;
-  }, [visibleTabs, activeTab]);
+  // const safeActiveTab = useMemo(() => {
+  //   if (visibleTabs.length === 0) {
+  //     return 'roster' as const;
+  //   }
+  //   return visibleTabs.some((tab) => tab.id === activeTab)
+  //     ? activeTab
+  //     : visibleTabs[0].id;
+  // }, [visibleTabs, activeTab]);
 
-  useEffect(() => {
-    if (safeActiveTab !== activeTab) {
-      setActiveTab(safeActiveTab);
-    }
-  }, [safeActiveTab, activeTab, setActiveTab]);
+  // useEffect(() => {
+  //   if (safeActiveTab !== activeTab) {
+  //     setActiveTab(safeActiveTab);
+  //   }
+  // }, [safeActiveTab, activeTab, setActiveTab]);
 
   // MINIMAL INITIALIZATION - NO COMPLEX LOGIC
   useEffect(() => {
@@ -84,27 +84,13 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   const currentClanTag = clanTag || homeClan || initialClanTag || '';
 
   const renderTabContent = () => {
-    switch (safeActiveTab) {
-      case 'roster':
-        return (
-          <div className="space-y-6">
-            <SnapshotInfoBanner />
-            <RosterTable />
-          </div>
-        );
-      case 'changes':
-        return <ChangeDashboard clanTag={currentClanTag} />;
-      case 'database':
-        return <PlayerDatabase />;
-      case 'coaching':
-        return <CoachingInsights clanData={initialRoster} clanTag={currentClanTag} />;
-      case 'applicants':
-        return <ApplicantsPanel defaultClanTag={currentClanTag} />;
-      case 'discord':
-        return <DiscordPublisher clanData={initialRoster} clanTag={currentClanTag} />;
-      default:
-        return <RosterTable />;
-    }
+    // SIMPLIFIED: Just show roster content for testing
+    return (
+      <div className="space-y-6">
+        <div className="text-white p-4 bg-slate-800 rounded">SnapshotInfoBanner PLACEHOLDER</div>
+        <div className="text-white p-4 bg-slate-800 rounded">RosterTable PLACEHOLDER</div>
+      </div>
+    );
   };
 
   return (
