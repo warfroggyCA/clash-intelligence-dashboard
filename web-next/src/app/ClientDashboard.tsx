@@ -54,13 +54,13 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   //   }
   // }, [safeActiveTab, activeTab, setActiveTab]);
 
-  // MINIMAL INITIALIZATION - NO COMPLEX LOGIC
+  // Expert Coder Fix: Proper initialization pattern to prevent conflicts with DashboardHeader
   useEffect(() => {
     if (hasInitialized.current) {
       return;
     }
     
-    console.log('[ClientDashboard] MINIMAL INITIALIZATION:', {
+    console.log('[ClientDashboard] EXPERT CODER INITIALIZATION:', {
       initialClanTag,
       initialRoster: !!initialRoster,
       initialRosterMembers: initialRoster?.members?.length,
@@ -68,11 +68,15 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     
     hasInitialized.current = true;
     
-    // Only set basic values, no complex operations
-    if (initialClanTag) {
-      setHomeClan(initialClanTag);
-      if (!clanTag) setClanTag(initialClanTag);
+    // Expert Coder Fix: Only set values if they don't already exist to prevent conflicts
+    if (initialClanTag && !clanTag) {
+      setClanTag(initialClanTag);
     }
+    
+    // Don't set homeClan here - let DashboardHeader handle it to avoid conflicts
+    // if (initialClanTag) {
+    //   setHomeClan(initialClanTag);
+    // }
     
     // Only set roster if we have it, no cache operations
     if (initialRoster) {
