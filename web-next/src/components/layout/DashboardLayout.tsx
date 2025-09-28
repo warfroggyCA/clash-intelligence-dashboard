@@ -156,29 +156,34 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
     }
   }, [homeClan, setClanTag, loadRoster, setMessage]);
 
-  // TEMPORARILY DISABLED: This useEffect might be causing React Error #185
-  // Clean up corrupted clan tag data on mount and auto-load home clan
-  // useEffect(() => {
-  //   // Only run on client side after hydration
-  //   if (typeof window === 'undefined') return;
+  // Expert coder guidance: Re-enable with proper guards to prevent duplicate normalization
+  useEffect(() => {
+    // Only run on client side after hydration
+    if (typeof window === 'undefined') return;
     
-  //   if (clanTag && (clanTag.includes('232') || clanTag.length > 15)) {
-  //     console.log('[DashboardHeader] Detected corrupted clan tag, clearing:', clanTag);
-  //     setClanTag('');
-  //   }
-  // }, [clanTag, setClanTag]);
+    // Guard: Only clear if we don't already have a clean tag
+    if (clanTag && (clanTag.includes('232') || clanTag.length > 15)) {
+      console.log('[DashboardHeader] Detected corrupted clan tag, clearing:', clanTag);
+      // Only set if it's different from what we want to set
+      if (clanTag !== '') {
+        setClanTag('');
+      }
+    }
+  }, [clanTag, setClanTag]);
 
-  // TEMPORARILY DISABLED: This useEffect might be causing React Error #185
-  // Separate effect for home clan initialization (runs only once)
-  // useEffect(() => {
-  //   // Only run on client side after hydration
-  //   if (typeof window === 'undefined') return;
+  // Expert coder guidance: Re-enable with proper guards to prevent duplicate normalization
+  useEffect(() => {
+    // Only run on client side after hydration
+    if (typeof window === 'undefined') return;
     
-  //   // Set default home clan if none is set
-  //   if (!homeClan) {
-  //     setHomeClan('#2PR8R8V8P');
-  //   }
-  // }, [homeClan, setHomeClan]); // Runs when homeClan context changes
+    // Guard: Only set if we don't already have the desired home clan
+    if (!homeClan) {
+      setHomeClan('#2PR8R8V8P');
+    } else if (homeClan !== '#2PR8R8V8P') {
+      // Only update if it's different from what we want to set
+      setHomeClan('#2PR8R8V8P');
+    }
+  }, [homeClan, setHomeClan]); // Runs when homeClan context changes
 
   // TEMPORARILY DISABLED: Separate effect for auto-loading home clan
   // This might be causing the React Error #185 re-render loop

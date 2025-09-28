@@ -324,12 +324,29 @@ export const useDashboardStore = create<DashboardState>()(
       // =============================================================================
       
       setRoster: (roster) => {
+        // Expert coder guidance: Add guard logs and stack trace
+        const stack = new Error().stack;
         console.log('[DashboardStore] setRoster called with:', {
           hasRoster: !!roster,
           memberCount: roster?.members?.length,
           clanTag: roster?.clanTag,
-          source: roster?.source
+          source: roster?.source,
+          stack: stack?.split('\n').slice(1, 4).join('\n') // Show first 3 stack frames
         });
+        
+        // Check if this is a re-entrant call
+        if (typeof window !== 'undefined') {
+          const lastCall = (window as any).__lastSetRosterCall;
+          if (lastCall && Date.now() - lastCall < 100) {
+            console.error('[DashboardStore] setRoster re-entrant call detected within 100ms!');
+            console.error('[DashboardStore] Previous call stack:', (window as any).__lastSetRosterStack);
+            console.error('[DashboardStore] Current call stack:', stack);
+            return; // Prevent re-entrant call
+          }
+          (window as any).__lastSetRosterCall = Date.now();
+          (window as any).__lastSetRosterStack = stack;
+        }
+        
         set({ 
           roster,
           snapshotMetadata: roster?.snapshotMetadata || null,
