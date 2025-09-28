@@ -5,7 +5,7 @@ import { useDashboardStore } from '@/lib/stores/dashboard-store';
 // import { useLeadership } from '@/lib/hooks/useLeadership';
 // import { getVisibleTabs } from '@/lib/utils';
 import { Roster } from '@/types';
-import AuthGate from '@/components/layout/AuthGuard';
+import { AuthGate } from '@/components/layout/AuthGuard';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 // import { SnapshotInfoBanner } from '@/components/roster/SnapshotInfoBanner';
 // import { RosterTable } from '@/components/roster/RosterTable';
