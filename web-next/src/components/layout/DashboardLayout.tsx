@@ -156,34 +156,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
     }
   }, [homeClan, setClanTag, loadRoster, setMessage]);
 
-  // Expert coder guidance: Re-enable with proper guards to prevent duplicate normalization
-  useEffect(() => {
-    // Only run on client side after hydration
-    if (typeof window === 'undefined') return;
-    
-    // Guard: Only clear if we don't already have a clean tag
-    if (clanTag && (clanTag.includes('232') || clanTag.length > 15)) {
-      console.log('[DashboardHeader] Detected corrupted clan tag, clearing:', clanTag);
-      // Only set if it's different from what we want to set
-      if (clanTag !== '') {
-        setClanTag('');
-      }
-    }
-  }, [clanTag, setClanTag]);
-
-  // Expert coder guidance: Re-enable with proper guards to prevent duplicate normalization
-  useEffect(() => {
-    // Only run on client side after hydration
-    if (typeof window === 'undefined') return;
-    
-    // Guard: Only set if we don't already have the desired home clan
-    if (!homeClan) {
-      setHomeClan('#2PR8R8V8P');
-    } else if (homeClan !== '#2PR8R8V8P') {
-      // Only update if it's different from what we want to set
-      setHomeClan('#2PR8R8V8P');
-    }
-  }, [homeClan, setHomeClan]); // Runs when homeClan context changes
+  // Expert Coder Fix: REMOVED these two useEffect hooks that were causing infinite loops
+  // The corrupted clan tag cleanup and home clan normalization are now handled in initialization
+  // instead of on every render to prevent React Error #185
 
   // TEMPORARILY DISABLED: Separate effect for auto-loading home clan
   // This might be causing the React Error #185 re-render loop

@@ -12,7 +12,12 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const setImpersonatedRole = useDashboardStore((state) => state.setImpersonatedRole);
 
   useEffect(() => {
-    hydrateSession();
+    // Expert Coder Fix: Don't call hydrateSession when anon access is allowed
+    // This prevents the impersonatedRole ping-pong loop
+    const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
+    if (!allowAnon) {
+      hydrateSession();
+    }
   }, [hydrateSession]);
 
   useEffect(() => {
