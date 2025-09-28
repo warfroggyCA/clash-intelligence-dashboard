@@ -103,10 +103,14 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       console.error('[ClientDashboard] Cache hydration error:', error);
     }
     
-    // Prioritize initialRoster from server-side rendering
-    if (initialRoster) {
-      console.log('[ClientDashboard] Setting initial roster from server');
-      setRoster(initialRoster);
+    // TEMPORARILY DISABLED: setRoster call might be causing React Error #185
+    // if (initialRoster) {
+    //   console.log('[ClientDashboard] Setting initial roster from server');
+    //   setRoster(initialRoster);
+    // } else if (!had) {
+    if (false) {
+      console.log('[ClientDashboard] Setting initial roster from server (DISABLED FOR TESTING)');
+      // setRoster(initialRoster);
     } else if (!had) {
       // Only load from API if we don't have cached data and no initial roster
       const tag = clanTag || initialClanTag || homeClan || '';
