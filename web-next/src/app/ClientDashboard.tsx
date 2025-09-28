@@ -13,49 +13,49 @@ type Props = {
 
 // FINAL TEST: Full ClientDashboard with AuthGuard infinite loop fix
 export default function ClientDashboard({ initialRoster, initialClanTag }: Props) {
-  const { roster, setRoster } = useDashboardStore((state) => ({
-    roster: state.roster,
-    setRoster: state.setRoster,
-  }));
-  const hasInitialized = useRef(false);
+  const roster = useDashboardStore((state) => state.roster);
+  const setRoster = useDashboardStore((state) => state.setRoster);
+  const setHomeClan = useDashboardStore((state) => state.setHomeClan);
+  const setClanTag = useDashboardStore((state) => state.setClanTag);
+  const initialized = useRef(false);
 
-  console.log('[ClientDashboard] FINAL TEST - AUTHGUARD LOOP FIX:', {
+  console.log('[ClientDashboard] EXPERT CODER FIX - STABLE SELECTORS:', {
     initialClanTag,
     initialRoster: !!initialRoster,
     initialRosterMembers: initialRoster?.members?.length,
     storeRoster: !!roster,
   });
 
-  // FINAL TEST: Full initialization with AuthGuard fix
+  // Expert Coder Fix: Move initialization logic here with proper guards
   useEffect(() => {
-    if (hasInitialized.current) {
-      return;
-    }
+    if (initialized.current) return;
+    initialized.current = true;
+
+    console.log('[ClientDashboard] EXPERT CODER INITIALIZATION');
     
-    console.log('[ClientDashboard] FINAL TEST - FULL INITIALIZATION');
-    hasInitialized.current = true;
-    
-    // Set initial roster if available
+    const targetClan = initialClanTag || '2PR8R8V8P'; // Use actual home clan tag
+    setHomeClan((prev) => prev ?? targetClan);
+    setClanTag((prev) => prev || targetClan);
+
     if (initialRoster) {
-      console.log('[ClientDashboard] FINAL TEST - CALLING SETROSTER');
+      console.log('[ClientDashboard] EXPERT CODER - CALLING SETROSTER');
       setRoster(initialRoster);
-      console.log('[ClientDashboard] FINAL TEST - SETROSTER CALLED');
     }
-  }, [initialRoster, setRoster]);
+  }, [initialClanTag, initialRoster, setHomeClan, setClanTag, setRoster]);
   
   const renderTabContent = () => {
     return (
       <div className="space-y-6">
         <div className="text-white p-4 bg-slate-800 rounded">
-          <h2 className="text-xl font-semibold mb-4">FINAL TEST - AUTHGUARD LOOP FIX</h2>
+          <h2 className="text-xl font-semibold mb-4">EXPERT CODER COMPREHENSIVE FIX</h2>
           <div className="space-y-2 text-sm">
             <p><strong>Initial Clan Tag:</strong> {initialClanTag || 'Not set'}</p>
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> FINAL TEST - AUTHGUARD INFINITE LOOP FIXED</p>
+            <p><strong>Status:</strong> EXPERT CODER FIX - STABLE SELECTORS + INITIALIZATION</p>
             <p><strong>Components:</strong> AuthGate + DashboardLayout</p>
-            <p><strong>Store Operations:</strong> FULL STORE USAGE</p>
+            <p><strong>Store Operations:</strong> FULL STORE USAGE WITH PROPER GUARDS</p>
           </div>
         </div>
       </div>
