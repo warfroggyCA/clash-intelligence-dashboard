@@ -1152,37 +1152,38 @@ export const selectors = {
 // SUBSCRIPTIONS
 // =============================================================================
 
+// TEMPORARILY DISABLED: These subscriptions are causing React Error #185 infinite loop
 // Subscribe to localStorage changes for persistence
-if (typeof window !== 'undefined') {
-  useDashboardStore.subscribe(
-    (state) => state.clanTag,
-    (clanTag) => {
-      if (clanTag) {
-        localStorage.setItem('currentClanTag', clanTag);
-      } else {
-        localStorage.removeItem('currentClanTag');
-      }
-    }
-  );
-  
-  useDashboardStore.subscribe(
-    (state) => state.homeClan,
-    (homeClan) => {
-      if (homeClan) {
-        localStorage.setItem('homeClanTag', homeClan);
-      } else {
-        localStorage.removeItem('homeClanTag');
-      }
-    }
-  );
-  
-  useDashboardStore.subscribe(
-    (state) => state.userRole,
-    (userRole) => {
-      localStorage.setItem('userRole', userRole);
-    }
-  );
-}
+// if (typeof window !== 'undefined') {
+//   useDashboardStore.subscribe(
+//     (state) => state.clanTag,
+//     (clanTag) => {
+//       if (clanTag) {
+//         localStorage.setItem('currentClanTag', clanTag);
+//       } else {
+//         localStorage.removeItem('currentClanTag');
+//       }
+//     }
+//   );
+//   
+//   useDashboardStore.subscribe(
+//     (state) => state.homeClan,
+//     (homeClan) => {
+//       if (homeClan) {
+//         localStorage.setItem('homeClanTag', homeClan);
+//       } else {
+//         localStorage.removeItem('homeClanTag');
+//       }
+//     }
+//   );
+//   
+//   useDashboardStore.subscribe(
+//     (state) => state.userRole,
+//     (userRole) => {
+//       localStorage.setItem('userRole', userRole);
+//     }
+//   );
+// }
 
 // =============================================================================
 // INITIALIZATION
