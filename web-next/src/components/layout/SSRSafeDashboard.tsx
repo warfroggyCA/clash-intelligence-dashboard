@@ -101,11 +101,13 @@ export const SSRSafeDashboard: React.FC<SSRSafeDashboardProps> = ({ className = 
           <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
           <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
         </div>
-        {RosterStatsPanel ? (
+        {/* TEMPORARILY DISABLED: Testing if RosterStatsPanel causes React Error #185 */}
+        <LoadingCard />
+        {/* {RosterStatsPanel ? (
           <RosterStatsPanel className="flex-1" />
         ) : (
           <LoadingCard />
-        )}
+        )} */}
       </div>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-center gap-2 mt-6">
