@@ -164,7 +164,22 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   return (
     // TEMPORARILY DISABLED: AuthGate might be causing React Error #185
     // <AuthGate>
-      <DashboardLayout>{renderTabContent()}</DashboardLayout>
+    // TEMPORARILY DISABLED: DashboardLayout might be causing React Error #185
+    // <DashboardLayout>{renderTabContent()}</DashboardLayout>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Clash Intelligence Dashboard</h1>
+        <div className="bg-slate-800 rounded-lg p-6">
+          <h2 className="text-xl font-semibold mb-4">Debug Information</h2>
+          <div className="space-y-2 text-sm">
+            <p><strong>DashboardLayout Disabled:</strong> Testing React Error #185</p>
+            <p><strong>Active Tab:</strong> {safeActiveTab}</p>
+            <p><strong>Clan Tag:</strong> {currentClanTag || 'Not set'}</p>
+            <p><strong>Roster:</strong> {roster ? 'Yes' : 'No'}</p>
+          </div>
+        </div>
+      </div>
+    </div>
     // </AuthGate>
   );
 }
