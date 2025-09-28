@@ -156,16 +156,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
     }
   }, [homeClan, setClanTag, loadRoster, setMessage]);
 
+  // TEMPORARILY DISABLED: This useEffect might be causing React Error #185
   // Clean up corrupted clan tag data on mount and auto-load home clan
-  useEffect(() => {
-    // Only run on client side after hydration
-    if (typeof window === 'undefined') return;
+  // useEffect(() => {
+  //   // Only run on client side after hydration
+  //   if (typeof window === 'undefined') return;
     
-    if (clanTag && (clanTag.includes('232') || clanTag.length > 15)) {
-      console.log('[DashboardHeader] Detected corrupted clan tag, clearing:', clanTag);
-      setClanTag('');
-    }
-  }, [clanTag, setClanTag]);
+  //   if (clanTag && (clanTag.includes('232') || clanTag.length > 15)) {
+  //     console.log('[DashboardHeader] Detected corrupted clan tag, clearing:', clanTag);
+  //     setClanTag('');
+  //   }
+  // }, [clanTag, setClanTag]);
 
   // Separate effect for home clan initialization (runs only once)
   useEffect(() => {
