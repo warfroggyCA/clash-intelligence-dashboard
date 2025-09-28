@@ -132,8 +132,13 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       case 'roster':
         return (
           <div className="space-y-6">
-            <SnapshotInfoBanner />
-            <RosterTable />
+            {/* TEMPORARILY DISABLED: These components might be causing React Error #185 */}
+            {/* <SnapshotInfoBanner /> */}
+            {/* <RosterTable /> */}
+            <div className="p-4 bg-slate-800 rounded-lg">
+              <h3 className="text-lg font-semibold text-white">Roster Tab (Components Disabled for Testing)</h3>
+              <p className="text-gray-300">SnapshotInfoBanner and RosterTable are temporarily disabled to test React Error #185</p>
+            </div>
           </div>
         );
       case 'changes':
