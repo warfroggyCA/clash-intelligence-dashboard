@@ -151,8 +151,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   };
 
   return (
-    <AuthGate>
+    // TEMPORARILY DISABLED: AuthGate might still be causing React Error #185
+    // <AuthGate>
       <DashboardLayout>{renderTabContent()}</DashboardLayout>
-    </AuthGate>
+    // </AuthGate>
   );
 }
