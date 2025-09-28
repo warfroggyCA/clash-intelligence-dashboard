@@ -34,8 +34,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     console.log('[ClientDashboard] EXPERT CODER INITIALIZATION');
     
     const targetClan = initialClanTag || '2PR8R8V8P'; // Use actual home clan tag
-    setHomeClan((prev) => prev ?? targetClan);
-    setClanTag((prev) => prev || targetClan);
+    setHomeClan(targetClan);
+    setClanTag(targetClan);
 
     if (initialRoster) {
       console.log('[ClientDashboard] EXPERT CODER - CALLING SETROSTER');

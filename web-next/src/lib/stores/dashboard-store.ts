@@ -327,15 +327,7 @@ if (typeof window !== 'undefined') {
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
-    subscribeWithSelector((set, get) => {
-      // Expert Coder Fix: Add store write monitoring to verify no infinite loops
-      const originalSet = set;
-      set = (partial, replace) => {
-        console.log('[store write]', partial);
-        originalSet(partial, replace);
-      };
-      
-      return {
+    subscribeWithSelector((set, get) => ({
       ...initialState,
       
       // =============================================================================
