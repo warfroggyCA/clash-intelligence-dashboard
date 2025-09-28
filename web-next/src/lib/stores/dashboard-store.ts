@@ -330,30 +330,19 @@ export const useDashboardStore = create<DashboardState>()(
           clanTag: roster?.clanTag,
           source: roster?.source
         });
-        // TEMPORARILY TESTING: Use flushSync to prevent React Error #185
+        set({ 
+          roster,
+          snapshotMetadata: roster?.snapshotMetadata || null,
+          snapshotDetails: roster?.snapshotDetails || null,
+        });
         try {
-          flushSync(() => {
-            set({ roster });
-          });
-        } catch (error) {
-          console.error('[DashboardStore] flushSync failed, falling back to normal set:', error);
-          set({ roster });
-        }
-        // TEMPORARILY DISABLED: All other logic might be causing React Error #185
-        // set({ 
-        //   roster,
-        //   snapshotMetadata: roster?.snapshotMetadata || null,
-        //   snapshotDetails: roster?.snapshotDetails || null,
-        // });
-        // TEMPORARILY DISABLED: localStorage cache might be causing React Error #185
-        // try {
-        //   if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
-        //     const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
-        //     if (tag) {
-        //       localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(roster));
-        //     }
-        //   }
-        // } catch {}
+          if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
+            const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
+            if (tag) {
+              localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(roster));
+            }
+          }
+        } catch {}
       },
       setClanTag: (clanTag) => set({ clanTag }),
       setHomeClan: (homeClan) => set({ homeClan }),
@@ -1102,35 +1091,34 @@ export const selectors = {
 
 // Subscribe to localStorage changes for persistence
 if (typeof window !== 'undefined') {
-  // TEMPORARILY DISABLED: Store subscriptions might be causing React Error #185 re-render loop
-  // useDashboardStore.subscribe(
-  //   (state) => state.clanTag,
-  //   (clanTag) => {
-  //     if (clanTag) {
-  //       localStorage.setItem('currentClanTag', clanTag);
-  //     } else {
-  //       localStorage.removeItem('currentClanTag');
-  //     }
-  //   }
-  // );
+  useDashboardStore.subscribe(
+    (state) => state.clanTag,
+    (clanTag) => {
+      if (clanTag) {
+        localStorage.setItem('currentClanTag', clanTag);
+      } else {
+        localStorage.removeItem('currentClanTag');
+      }
+    }
+  );
   
-  // useDashboardStore.subscribe(
-  //   (state) => state.homeClan,
-  //   (homeClan) => {
-  //     if (homeClan) {
-  //       localStorage.setItem('homeClanTag', homeClan);
-  //     } else {
-  //       localStorage.removeItem('homeClanTag');
-  //     }
-  //   }
-  // );
+  useDashboardStore.subscribe(
+    (state) => state.homeClan,
+    (homeClan) => {
+      if (homeClan) {
+        localStorage.setItem('homeClanTag', homeClan);
+      } else {
+        localStorage.removeItem('homeClanTag');
+      }
+    }
+  );
   
-  // useDashboardStore.subscribe(
-  //   (state) => state.userRole,
-  //   (userRole) => {
-  //     localStorage.setItem('userRole', userRole);
-  //   }
-  // );
+  useDashboardStore.subscribe(
+    (state) => state.userRole,
+    (userRole) => {
+      localStorage.setItem('userRole', userRole);
+    }
+  );
 }
 
 // =============================================================================
