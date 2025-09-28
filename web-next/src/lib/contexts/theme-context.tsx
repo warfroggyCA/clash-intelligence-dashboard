@@ -66,11 +66,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   storageKey = 'clash-intelligence-theme'
 }) => {
   const [theme, setThemeState] = useState<Theme>(defaultTheme);
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('dark');
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>('light');
 
   // Get system theme preference
   const getSystemTheme = useCallback((): 'light' | 'dark' => {
-    if (typeof window === 'undefined') return 'dark';
+    if (typeof window === 'undefined') return 'light'; // Match SSR default
     return window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
   }, []);
 
