@@ -12,28 +12,18 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const setImpersonatedRole = useDashboardStore((state) => state.setImpersonatedRole);
 
   useEffect(() => {
-    // Expert Coder Fix: Don't call hydrateSession when anon access is allowed
-    // This prevents the impersonatedRole ping-pong loop
-    const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
-    if (!allowAnon) {
-      hydrateSession();
-    }
+    hydrateSession();
   }, [hydrateSession]);
 
   useEffect(() => {
     const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
-    if (allowAnon) {
-      // Default to leader for anon development, but allow manual overrides
-      if (!impersonatedRole) {
-        setImpersonatedRole('leader');
-      }
-      return;
+    if (!allowAnon) return;
+    // only set default impersonation one time
+    const state = useDashboardStore.getState();
+    if (!state.impersonatedRole) {
+      setImpersonatedRole('leader');
     }
-    // Only clear impersonated role if user is authenticated and we have an impersonated role
-    if (currentUser && impersonatedRole) {
-      setImpersonatedRole(null);
-    }
-  }, [currentUser, setImpersonatedRole]); // FIXED: Removed impersonatedRole from dependencies to break infinite loop
+  }, [setImpersonatedRole]);
 
   if (!currentUser) {
     if (process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true') {

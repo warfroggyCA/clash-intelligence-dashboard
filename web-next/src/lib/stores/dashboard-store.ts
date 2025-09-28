@@ -327,7 +327,15 @@ if (typeof window !== 'undefined') {
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
-    subscribeWithSelector((set, get) => ({
+    subscribeWithSelector((set, get) => {
+      // Expert Coder Fix: Add store write monitoring to verify no infinite loops
+      const originalSet = set;
+      set = (partial, replace) => {
+        console.log('[store write]', partial);
+        originalSet(partial, replace);
+      };
+      
+      return {
       ...initialState,
       
       // =============================================================================
@@ -825,18 +833,21 @@ export const useDashboardStore = create<DashboardState>()(
         try {
           const res = await fetch('/api/session', { cache: 'no-store' });
           if (!res.ok) {
-            set({ currentUser: null, userRoles: [], impersonatedRole: null });
+            set({ currentUser: null, userRoles: [] });
             return;
           }
           const body = await res.json();
           if (!body?.success) {
-            set({ currentUser: null, userRoles: [], impersonatedRole: null });
+            set({ currentUser: null, userRoles: [] });
             return;
           }
-          set({ currentUser: body.data?.user ?? null, userRoles: body.data?.roles ?? [] });
+          set({
+            currentUser: body.data?.user ?? null,
+            userRoles: body.data?.roles ?? [],
+          });
         } catch (error) {
           console.warn('[hydrateSession] Failed', error);
-          set({ currentUser: null, userRoles: [], impersonatedRole: null });
+          set({ currentUser: null, userRoles: [] });
         }
       },
 
