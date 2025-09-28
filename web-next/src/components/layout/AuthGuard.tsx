@@ -33,7 +33,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     if (currentUser && impersonatedRole) {
       setImpersonatedRole(null);
     }
-  }, [currentUser, impersonatedRole, setImpersonatedRole]);
+  }, [currentUser, setImpersonatedRole]); // FIXED: Removed impersonatedRole from dependencies to break infinite loop
 
   if (!currentUser) {
     if (process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true') {
