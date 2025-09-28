@@ -128,13 +128,17 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
 
   const renderTabContent = () => {
     switch (safeActiveTab) {
-      case 'roster':
-        return (
-          <div className="space-y-6">
-            <SnapshotInfoBanner />
-            <RosterTable />
-          </div>
-        );
+             case 'roster':
+               return (
+                 <div className="space-y-6">
+                   {/* TEST 4: Disable SnapshotInfoBanner */}
+                   <div className="text-white p-4 bg-slate-800 rounded">SnapshotInfoBanner DISABLED</div>
+                   {/* <SnapshotInfoBanner /> */}
+                   {/* TEST 5: Disable RosterTable */}
+                   <div className="text-white p-4 bg-slate-800 rounded">RosterTable DISABLED</div>
+                   {/* <RosterTable /> */}
+                 </div>
+               );
       case 'changes':
         return <ChangeDashboard clanTag={currentClanTag} />;
       case 'database':
