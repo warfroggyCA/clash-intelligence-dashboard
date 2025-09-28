@@ -345,14 +345,17 @@ export const useDashboardStore = create<DashboardState>()(
         const stack = new Error().stack;
         const timestamp = Date.now();
         
-        console.log('[DashboardStore] setRoster called with:', {
-          hasRoster: !!roster,
-          memberCount: roster?.members?.length,
-          clanTag: roster?.clanTag,
-          source: roster?.source,
-          timestamp,
-          stack: stack?.split('\n').slice(1, 4).join('\n') // Show first 3 stack frames
-        });
+         console.log('[DashboardStore] setRoster called with:', {
+           hasRoster: !!roster,
+           memberCount: roster?.members?.length,
+           clanTag: roster?.clanTag,
+           source: roster?.source,
+           timestamp,
+           stack: stack?.split('\n').slice(1, 8).join('\n') // Show more stack frames for debugging
+         });
+         
+         // 🚨 CRITICAL DEBUG: Log the FULL stack trace
+         console.log('🚨 FULL STACK TRACE:', stack);
         
         // Expert guidance: Global dev flag for stack comparison
         if (typeof window !== 'undefined') {
@@ -386,11 +389,15 @@ export const useDashboardStore = create<DashboardState>()(
           }
         }
         
-        set({ 
-          roster,
-          snapshotMetadata: roster?.snapshotMetadata || null,
-          snapshotDetails: roster?.snapshotDetails || null,
-        });
+         console.log('🚨 ABOUT TO CALL set() with roster:', !!roster);
+         
+         set({ 
+           roster,
+           snapshotMetadata: roster?.snapshotMetadata || null,
+           snapshotDetails: roster?.snapshotDetails || null,
+         });
+         
+         console.log('🚨 set() CALLED SUCCESSFULLY');
         try {
           if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
             const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
