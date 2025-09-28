@@ -313,6 +313,17 @@ const initialState = {
 // STORE CREATION
 // =============================================================================
 
+// 🚨 GLOBAL DEBUG: Hook into ANY setRoster calls
+if (typeof window !== 'undefined') {
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    if (args[0]?.includes?.('setRoster') || args[0]?.includes?.('DashboardStore')) {
+      originalConsoleLog('🔍 GLOBAL DEBUG CAUGHT:', ...args);
+    }
+    originalConsoleLog(...args);
+  };
+}
+
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
@@ -325,9 +336,10 @@ export const useDashboardStore = create<DashboardState>()(
       
       setRoster: (roster) => {
         // 🚨 CRITICAL DEBUG: This should be visible if our code is running
-        console.log('🚨🚨🚨 ENHANCED DEBUGGING ACTIVE - COMMIT 4bb6a2e 🚨🚨🚨');
+        console.log('🚨🚨🚨 ENHANCED DEBUGGING ACTIVE - COMMIT 0076e9e 🚨🚨🚨');
         console.log('🚨🚨🚨 TIMESTAMP:', new Date().toISOString());
         console.log('🚨🚨🚨 ROSTER CLAN TAG:', roster?.clanTag);
+        console.log('🚨🚨🚨 SETROSTER FUNCTION CALLED - THIS IS THE REAL ONE! 🚨🚨🚨');
         
         // Expert coder guidance: Add guard logs and stack trace
         const stack = new Error().stack;
