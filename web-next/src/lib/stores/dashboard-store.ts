@@ -326,25 +326,47 @@ export const useDashboardStore = create<DashboardState>()(
       setRoster: (roster) => {
         // Expert coder guidance: Add guard logs and stack trace
         const stack = new Error().stack;
+        const timestamp = Date.now();
+        
         console.log('[DashboardStore] setRoster called with:', {
           hasRoster: !!roster,
           memberCount: roster?.members?.length,
           clanTag: roster?.clanTag,
           source: roster?.source,
+          timestamp,
           stack: stack?.split('\n').slice(1, 4).join('\n') // Show first 3 stack frames
         });
         
-        // Check if this is a re-entrant call
+        // Expert guidance: Global dev flag for stack comparison
         if (typeof window !== 'undefined') {
-          const lastCall = (window as any).__lastSetRosterCall;
-          if (lastCall && Date.now() - lastCall < 100) {
-            console.error('[DashboardStore] setRoster re-entrant call detected within 100ms!');
-            console.error('[DashboardStore] Previous call stack:', (window as any).__lastSetRosterStack);
-            console.error('[DashboardStore] Current call stack:', stack);
-            return; // Prevent re-entrant call
+          const global = window as any;
+          if (!global.__setRosterStacks) {
+            global.__setRosterStacks = [];
           }
-          (window as any).__lastSetRosterCall = Date.now();
-          (window as any).__lastSetRosterStack = stack;
+          
+          // Store first few calls for comparison
+          global.__setRosterStacks.push({
+            timestamp,
+            stack: stack?.split('\n').slice(1, 6), // More stack frames
+            roster: !!roster,
+            clanTag: roster?.clanTag
+          });
+          
+          // Keep only last 5 calls
+          if (global.__setRosterStacks.length > 5) {
+            global.__setRosterStacks = global.__setRosterStacks.slice(-5);
+          }
+          
+          // Check for rapid successive calls
+          const recentCalls = global.__setRosterStacks.filter((call: any) => timestamp - call.timestamp < 500);
+          if (recentCalls.length > 1) {
+            console.error('[DashboardStore] RAPID SUCCESSIVE setRoster CALLS DETECTED!');
+            console.error('[DashboardStore] Recent calls:', recentCalls.map((call: any) => ({
+              timestamp: call.timestamp,
+              clanTag: call.clanTag,
+              stack: call.stack.slice(0, 3).join('\n')
+            })));
+          }
         }
         
         set({ 
