@@ -105,8 +105,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     
     // Re-enabled: setRoster and loadRoster calls after fixing DashboardLayout useEffect
     if (initialRoster) {
-      console.log('[ClientDashboard] Setting initial roster from server');
-      setRoster(initialRoster);
+      console.log('[ClientDashboard] Setting initial roster from server - DISABLED FOR TESTING');
+      // setRoster(initialRoster); // TEST: Disable setRoster call
     } else if (!had) {
       // Only load from API if we don't have cached data and no initial roster
       const tag = clanTag || initialClanTag || homeClan || '';
