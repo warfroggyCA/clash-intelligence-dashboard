@@ -168,16 +168,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   //   }
   // }, [clanTag, setClanTag]);
 
+  // TEMPORARILY DISABLED: This useEffect might be causing React Error #185
   // Separate effect for home clan initialization (runs only once)
-  useEffect(() => {
-    // Only run on client side after hydration
-    if (typeof window === 'undefined') return;
+  // useEffect(() => {
+  //   // Only run on client side after hydration
+  //   if (typeof window === 'undefined') return;
     
-    // Set default home clan if none is set
-    if (!homeClan) {
-      setHomeClan('#2PR8R8V8P');
-    }
-  }, [homeClan, setHomeClan]); // Runs when homeClan context changes
+  //   // Set default home clan if none is set
+  //   if (!homeClan) {
+  //     setHomeClan('#2PR8R8V8P');
+  //   }
+  // }, [homeClan, setHomeClan]); // Runs when homeClan context changes
 
   // TEMPORARILY DISABLED: Separate effect for auto-loading home clan
   // This might be causing the React Error #185 re-render loop
