@@ -3,13 +3,15 @@
 import React, { useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Roster } from '@/types';
+import { AuthGate } from '@/components/layout/AuthGuard';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 type Props = {
   initialRoster?: Roster | null;
   initialClanTag: string;
 };
 
-// STEP 2: Test setRoster operation specifically
+// FINAL TEST: Full ClientDashboard with AuthGuard infinite loop fix
 export default function ClientDashboard({ initialRoster, initialClanTag }: Props) {
   const { roster, setRoster } = useDashboardStore((state) => ({
     roster: state.roster,
@@ -17,47 +19,52 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   }));
   const hasInitialized = useRef(false);
 
-  console.log('[ClientDashboard] STEP 2 - TEST SETROSTER:', {
+  console.log('[ClientDashboard] FINAL TEST - AUTHGUARD LOOP FIX:', {
     initialClanTag,
     initialRoster: !!initialRoster,
     initialRosterMembers: initialRoster?.members?.length,
     storeRoster: !!roster,
   });
 
-  // STEP 2: Test setRoster operation with guard
+  // FINAL TEST: Full initialization with AuthGuard fix
   useEffect(() => {
     if (hasInitialized.current) {
       return;
     }
     
-    console.log('[ClientDashboard] STEP 2 - TESTING SETROSTER OPERATION');
+    console.log('[ClientDashboard] FINAL TEST - FULL INITIALIZATION');
     hasInitialized.current = true;
     
-    // Test setRoster operation with initial data
+    // Set initial roster if available
     if (initialRoster) {
-      console.log('[ClientDashboard] STEP 2 - CALLING SETROSTER');
+      console.log('[ClientDashboard] FINAL TEST - CALLING SETROSTER');
       setRoster(initialRoster);
-      console.log('[ClientDashboard] STEP 2 - SETROSTER CALLED');
+      console.log('[ClientDashboard] FINAL TEST - SETROSTER CALLED');
     }
   }, [initialRoster, setRoster]);
   
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Clash Intelligence Dashboard - STEP 2: TEST SETROSTER</h1>
-        <div className="bg-slate-800 rounded-lg p-6">
-          <h2 className="text-xl font-semibold mb-4">Debug Information</h2>
+  const renderTabContent = () => {
+    return (
+      <div className="space-y-6">
+        <div className="text-white p-4 bg-slate-800 rounded">
+          <h2 className="text-xl font-semibold mb-4">FINAL TEST - AUTHGUARD LOOP FIX</h2>
           <div className="space-y-2 text-sm">
             <p><strong>Initial Clan Tag:</strong> {initialClanTag || 'Not set'}</p>
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> STEP 2 - TESTING SETROSTER OPERATION</p>
-            <p><strong>Components:</strong> ALL DISABLED</p>
-            <p><strong>Store Operations:</strong> SETROSTER ONLY</p>
+            <p><strong>Status:</strong> FINAL TEST - AUTHGUARD INFINITE LOOP FIXED</p>
+            <p><strong>Components:</strong> AuthGate + DashboardLayout</p>
+            <p><strong>Store Operations:</strong> FULL STORE USAGE</p>
           </div>
         </div>
       </div>
-    </div>
+    );
+  };
+
+  return (
+    <AuthGate>
+      <DashboardLayout>{renderTabContent()}</DashboardLayout>
+    </AuthGate>
   );
 }
