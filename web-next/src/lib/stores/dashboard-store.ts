@@ -324,6 +324,11 @@ export const useDashboardStore = create<DashboardState>()(
       // =============================================================================
       
       setRoster: (roster) => {
+        // 🚨 CRITICAL DEBUG: This should be visible if our code is running
+        console.log('🚨🚨🚨 ENHANCED DEBUGGING ACTIVE - COMMIT 4bb6a2e 🚨🚨🚨');
+        console.log('🚨🚨🚨 TIMESTAMP:', new Date().toISOString());
+        console.log('🚨🚨🚨 ROSTER CLAN TAG:', roster?.clanTag);
+        
         // Expert coder guidance: Add guard logs and stack trace
         const stack = new Error().stack;
         const timestamp = Date.now();
