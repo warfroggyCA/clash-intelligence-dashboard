@@ -57,7 +57,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   const renderTabContent = () => {
     switch (activeTab) {
       case 'roster':
-        return <div>Roster Table Component</div>;
+        return null; // Roster content is handled by SSRSafeDashboard in DashboardLayout
       
       case 'changes':
         return <div>Changes Dashboard Component</div>;
