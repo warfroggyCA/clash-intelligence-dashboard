@@ -37,10 +37,11 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     setHomeClan(targetClan);
     setClanTag(targetClan);
 
-    if (initialRoster) {
-      console.log('[ClientDashboard] EXPERT CODER - CALLING SETROSTER');
-      setRoster(initialRoster);
-    }
+    // TEST 6: Disable setRoster call
+    // if (initialRoster) {
+    //   console.log('[ClientDashboard] EXPERT CODER - CALLING SETROSTER');
+    //   setRoster(initialRoster);
+    // }
   }, [initialClanTag, initialRoster, setHomeClan, setClanTag, setRoster]);
   
   const renderTabContent = () => {
@@ -53,9 +54,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> TEST 5 - AUTHGATE COMPLETELY REMOVED</p>
+            <p><strong>Status:</strong> TEST 6 - AUTHGATE REMOVED + setRoster DISABLED</p>
             <p><strong>Components:</strong> AuthGate COMPLETELY REMOVED</p>
-            <p><strong>Store Operations:</strong> FULL STORE USAGE WITH PROPER GUARDS</p>
+            <p><strong>Store Operations:</strong> setRoster DISABLED (setHomeClan + setClanTag active)</p>
           </div>
         </div>
       </div>
