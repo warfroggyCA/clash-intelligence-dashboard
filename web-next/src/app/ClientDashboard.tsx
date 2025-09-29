@@ -53,8 +53,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> EXPERT CODER FIX - STABLE SELECTORS + INITIALIZATION</p>
-            <p><strong>Components:</strong> AuthGate + DashboardLayout</p>
+            <p><strong>Status:</strong> TEST 1 - AUTHGATE ONLY (DashboardLayout Removed)</p>
+            <p><strong>Components:</strong> AuthGate ONLY (DashboardLayout Removed)</p>
             <p><strong>Store Operations:</strong> FULL STORE USAGE WITH PROPER GUARDS</p>
           </div>
         </div>
@@ -64,7 +64,12 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
 
   return (
     <AuthGate>
-      <DashboardLayout>{renderTabContent()}</DashboardLayout>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold mb-6">TEST: AuthGate Only (DashboardLayout Removed)</h1>
+          {renderTabContent()}
+        </div>
+      </div>
     </AuthGate>
   );
 }
