@@ -12,9 +12,10 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const impersonatedRole = 'leader'; // Hard-coded
   const setImpersonatedRole = (role?: any) => {}; // Stub function with optional parameter
 
-  useEffect(() => {
-    hydrateSession();
-  }, [hydrateSession]);
+  // TEST 4: Disable first useEffect that calls hydrateSession
+  // useEffect(() => {
+  //   hydrateSession();
+  // }, [hydrateSession]);
 
   // TEST 3: Disable second useEffect that calls useDashboardStore.getState()
   // useEffect(() => {

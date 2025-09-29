@@ -161,6 +161,29 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - React Error #185 STILL OCCURS
 - **Conclusion**: The issue is in AuthGate's internal useEffect effects, not store subscriptions
 
+#### Test 3: AuthGate Second useEffect Disabled
+**Goal**: Identify which specific useEffect is causing the infinite loop
+
+**Root Cause Identified**:
+- Second useEffect calls `useDashboardStore.getState()` and `setImpersonatedRole`
+- This creates direct store interaction even with stubbed selectors
+
+**Test Setup**:
+- AuthGate store selectors remain stubbed
+- Second useEffect DISABLED (calls useDashboardStore.getState())
+- First useEffect still active (calls hydrateSession stub)
+
+**Expected Results**:
+- If React Error #185 vanishes → **Second useEffect is the culprit**
+- If React Error #185 persists → **First useEffect is the culprit**
+
+**Test 3 Results**: ❌ **FIRST useEffect IS THE CULPRIT**
+- AuthGate store selectors remain stubbed
+- Second useEffect DISABLED (calls useDashboardStore.getState())
+- First useEffect still active (calls hydrateSession stub)
+- React Error #185 STILL OCCURS
+- **Conclusion**: The issue is in AuthGate's first useEffect, not the second useEffect
+
 #### Fixes Applied:
 
 1. **AuthGuard Loop Fix**:

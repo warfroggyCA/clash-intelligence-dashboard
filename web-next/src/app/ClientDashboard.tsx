@@ -53,8 +53,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> TEST 3 - AUTHGATE SECOND useEffect DISABLED</p>
-            <p><strong>Components:</strong> AuthGate with SECOND useEffect DISABLED</p>
+            <p><strong>Status:</strong> TEST 4 - AUTHGATE BOTH useEffects DISABLED</p>
+            <p><strong>Components:</strong> AuthGate with BOTH useEffects DISABLED</p>
             <p><strong>Store Operations:</strong> FULL STORE USAGE WITH PROPER GUARDS</p>
           </div>
         </div>
