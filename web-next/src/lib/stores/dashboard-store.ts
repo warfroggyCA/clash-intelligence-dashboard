@@ -322,6 +322,31 @@ if (typeof window !== 'undefined') {
     }
     originalConsoleLog(...args);
   };
+
+  const originalConsoleError = console.error;
+  console.error = (...args) => {
+    try {
+      const [first, second] = args;
+      const looksLikeReactError =
+        first instanceof Error || (typeof first === 'string' && first.includes('React error #'));
+      if (looksLikeReactError) {
+        let stack: string | null = null;
+        if (first instanceof Error) {
+          stack = first.stack ?? null;
+        } else if (typeof second === 'object' && second && 'componentStack' in (second as Record<string, unknown>)) {
+          stack = (second as { componentStack?: string }).componentStack ?? null;
+        }
+        originalConsoleLog('🛑 CAPTURED console.error', {
+          message: first instanceof Error ? first.message : first,
+          stack,
+          raw: args,
+        });
+      }
+    } catch (error) {
+      originalConsoleLog('🛑 console.error hook failed', error);
+    }
+    originalConsoleError(...args);
+  };
 }
 
 let debugSetCounter = 0;
