@@ -39,7 +39,7 @@ import type { UserRoleRecord, ClanRoleName } from '@/lib/auth/roles';
 
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
-const EMPTY_HEADLINES: SmartInsightsHeadline[] = Object.freeze([] as SmartInsightsHeadline[]);
+const EMPTY_HEADLINES: readonly SmartInsightsHeadline[] = Object.freeze([] as SmartInsightsHeadline[]);
 
 export interface HistoryCacheEntry {
   items: ChangeSummary[];
