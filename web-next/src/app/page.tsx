@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { HelloWorld } from './HelloWorld';
+import ClientDashboard from './ClientDashboard';
 import { cfg } from '@/lib/config';
 import type { Roster } from '@/types';
 import { buildRosterSnapshotFirst } from '@/lib/roster';
@@ -156,5 +156,10 @@ export default async function HomePage() {
     console.error('[Page] Failed to build initial roster:', error);
   }
 
-  return <HelloWorld />;
+  return (
+    <ClientDashboard 
+      initialRoster={initialRoster}
+      initialClanTag={initialClanTag}
+    />
+  );
 }
