@@ -295,6 +295,50 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - React Error #185 STILL OCCURS
 - **Conclusion**: useEffect is NOT the cause - issue is in store selectors or component rendering
 
+#### Test 9: All Store Selectors Disabled
+**Goal**: Test if store selectors are causing the infinite loop
+
+**Test Setup**:
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED (confirmed not the cause)
+- setHomeClan call DISABLED (confirmed not the cause)
+- ENTIRE useEffect DISABLED (confirmed not the cause)
+- ALL store selectors DISABLED (hard-coded values)
+- Testing if store selectors are causing the infinite loop
+
+**Expected Results**:
+- If React Error #185 vanishes → **Store selectors are the culprit**
+- If React Error #185 persists → **Issue is in component rendering logic**
+
+**Test 9 Results**: ❌ **COMPONENT RENDERING LOGIC IS THE CULPRIT**
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED (confirmed not the cause)
+- setHomeClan call DISABLED (confirmed not the cause)
+- ENTIRE useEffect DISABLED (confirmed not the cause)
+- ALL store selectors DISABLED (hard-coded values)
+- Store Roster: No (confirmed setRoster is disabled)
+- React Error #185 STILL OCCURS
+- **Conclusion**: Store selectors are NOT the cause - issue is in component rendering logic
+
+#### Test 10: Minimal Component Test
+**Goal**: Test if the issue is in the component rendering logic itself
+
+**Test Setup**:
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED (confirmed not the cause)
+- setHomeClan call DISABLED (confirmed not the cause)
+- ENTIRE useEffect DISABLED (confirmed not the cause)
+- ALL store selectors DISABLED (confirmed not the cause)
+- MINIMAL component with NO imports, NO logic, NO store operations
+- Testing if the issue is in the component rendering logic itself
+
+**Expected Results**:
+- If React Error #185 vanishes → **Component rendering logic is the culprit**
+- If React Error #185 persists → **Issue is in the component itself or React rendering**
+
 #### Fixes Applied:
 
 1. **AuthGuard Loop Fix**:
