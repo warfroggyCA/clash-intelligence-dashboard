@@ -16,15 +16,16 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     hydrateSession();
   }, [hydrateSession]);
 
-  useEffect(() => {
-    const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
-    if (!allowAnon) return;
-    // only set default impersonation one time
-    const state = useDashboardStore.getState();
-    if (!state.impersonatedRole) {
-      setImpersonatedRole('leader');
-    }
-  }, [setImpersonatedRole]);
+  // TEST 3: Disable second useEffect that calls useDashboardStore.getState()
+  // useEffect(() => {
+  //   const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
+  //   if (!allowAnon) return;
+  //   // only set default impersonation one time
+  //   const state = useDashboardStore.getState();
+  //   if (!state.impersonatedRole) {
+  //     setImpersonatedRole('leader');
+  //   }
+  // }, [setImpersonatedRole]);
 
   if (!currentUser) {
     if (process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true') {

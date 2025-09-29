@@ -155,6 +155,12 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Store subscription causes the loop**
 - If React Error #185 persists → **Internal useEffect effects cause the loop**
 
+**Test 2 Results**: ❌ **INTERNAL useEffect EFFECTS CAUSE THE LOOP**
+- AuthGate store selectors stubbed with hard-coded values
+- All store subscriptions eliminated
+- React Error #185 STILL OCCURS
+- **Conclusion**: The issue is in AuthGate's internal useEffect effects, not store subscriptions
+
 #### Fixes Applied:
 
 1. **AuthGuard Loop Fix**:
