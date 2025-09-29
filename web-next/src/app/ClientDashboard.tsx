@@ -1,4 +1,4 @@
-// TEST 12: Absolute minimal component with no React imports, no JSX
-export default function ClientDashboard() {
-  return "TEST 12: ABSOLUTE MINIMAL COMPONENT - NO REACT IMPORTS, NO JSX";
+// TEST 13: Component Name Test - different component name
+export default function TestComponent() {
+  return "TEST 13: COMPONENT NAME TEST - DIFFERENT COMPONENT NAME";
 }
