@@ -324,6 +324,8 @@ if (typeof window !== 'undefined') {
   };
 }
 
+let debugSetCounter = 0;
+
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
@@ -331,12 +333,25 @@ export const useDashboardStore = create<DashboardState>()(
       const originalSet = set;
       const debugSet: typeof set = (partial, replace = false) => {
         try {
-          const nextState = typeof partial === 'function' ? partial(get()) : partial;
           if (typeof window !== 'undefined') {
-            const keys = nextState && typeof nextState === 'object'
-              ? Object.keys(nextState as Record<string, unknown>)
-              : ['(functional update)'];
-            console.log('[DashboardStore#set]', { keys, nextState });
+            debugSetCounter += 1;
+            const snapshot = typeof partial === 'function' ? partial(get()) : partial;
+            const keys = snapshot && typeof snapshot === 'object'
+              ? Object.keys(snapshot as Record<string, unknown>)
+              : ['(fn)'];
+            const preview: Record<string, unknown> = {};
+            if (snapshot && typeof snapshot === 'object') {
+              keys.slice(0, 5).forEach((key) => {
+                preview[key] = (snapshot as Record<string, unknown>)[key];
+              });
+            }
+            const stack = new Error().stack?.split('\n').slice(1, 6).map((line) => line.trim());
+            console.log(`[DashboardStore#set#${debugSetCounter}]`, {
+              replace,
+              keys,
+              preview,
+              stack,
+            });
           }
         } catch (error) {
           console.warn('[DashboardStore#set] logging failed', error);
