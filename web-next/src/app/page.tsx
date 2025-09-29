@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { TestComponent } from './TestComponent.js';
+import { TestComponent } from './TestComponent.jsx';
 import { cfg } from '@/lib/config';
 import type { Roster } from '@/types';
 import { buildRosterSnapshotFirst } from '@/lib/roster';
