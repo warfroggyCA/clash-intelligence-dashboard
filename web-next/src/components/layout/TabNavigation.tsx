@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useDashboardStore } from "@/lib/stores/dashboard-store";
 import { useLeadership } from "@/hooks/useLeadership";
 import { getVisibleTabs } from "@/lib/tab-config";
@@ -10,6 +10,11 @@ interface TabNavigationProps {
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) => {
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  if (typeof window !== 'undefined') {
+    console.log(`[RenderTrace] TabNavigation#${renderCountRef.current}`);
+  }
   const activeTab = useDashboardStore((state) => state.activeTab);
   const setActiveTab = useDashboardStore((state) => state.setActiveTab);
   const { permissions, check } = useLeadership();

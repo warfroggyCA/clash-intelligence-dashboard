@@ -396,6 +396,11 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
   const insightsEnabled = process.env.NEXT_PUBLIC_ENABLE_INSIGHTS === 'true';
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  if (typeof window !== 'undefined') {
+    console.log(`[RenderTrace] QuickActions#${renderCountRef.current}`);
+  }
 
   // Close dropdown when clicking outside
   useEffect(() => {
