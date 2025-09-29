@@ -437,12 +437,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {children}
           </div>
 
-          {showCommandRail && (
+          {/* TEMPORARILY BYPASSED TO TEST REACT ERROR #185 ROOT CAUSE */}
+          {/* {showCommandRail && (
             <CommandRail
               isOpen={isCommandRailOpen}
               onToggle={() => setIsCommandRailOpen((prev) => !prev)}
             />
-          )}
+          )} */}
         </div>
       </main>
       
