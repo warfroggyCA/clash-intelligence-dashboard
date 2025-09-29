@@ -61,12 +61,29 @@ async function triggerNewJob() {
   return payload.data.jobId as string;
 }
 
+async function triggerDirectIngestion() {
+  const res = await fetch('/api/health?cron=true', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  if (!res.ok) {
+    const errorPayload = await res.json().catch(() => ({}));
+    throw new Error(errorPayload.error || 'Failed to trigger direct ingestion');
+  }
+
+  const payload = await res.json();
+  return payload.data;
+}
+
 export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs = 2000, onClose, onJobIdChange }: IngestionMonitorProps) {
   const [jobId, setJobId] = useState<string | undefined>(initialJobId);
   const [job, setJob] = useState<IngestionJobRecord | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [triggering, setTriggering] = useState(false);
+  const [directTriggering, setDirectTriggering] = useState(false);
+  const [directResult, setDirectResult] = useState<any>(null);
 
   useEffect(() => {
     if (initialJobId) {
@@ -126,6 +143,19 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
       setError(err.message || 'Failed to trigger ingestion');
     } finally {
       setTriggering(false);
+    }
+  };
+
+  const handleDirectIngestion = async () => {
+    try {
+      setDirectTriggering(true);
+      setError(null);
+      const result = await triggerDirectIngestion();
+      setDirectResult(result);
+    } catch (err: any) {
+      setError(err.message || 'Failed to trigger direct ingestion');
+    } finally {
+      setDirectTriggering(false);
     }
   };
 
@@ -208,7 +238,14 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
           disabled={triggering}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {triggering ? 'Triggering…' : 'Trigger Ingestion' }
+          {triggering ? 'Triggering…' : 'Queue Ingestion' }
+        </button>
+        <button
+          onClick={handleDirectIngestion}
+          disabled={directTriggering}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {directTriggering ? 'Running…' : 'Direct Ingestion' }
         </button>
         {jobId && (
           <span className="text-sm font-mono text-slate-500">Job ID: {jobId}</span>
@@ -218,6 +255,27 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
       {error && (
         <div className="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           {error}
+        </div>
+      )}
+
+      {directResult && (
+        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
+          <h3 className="text-sm font-semibold text-green-800 mb-2">✅ Direct Ingestion Successful!</h3>
+          <div className="text-xs text-green-700 space-y-1">
+            {directResult.map((result: any, index: number) => (
+              <div key={index} className="border-b border-green-200 pb-2 last:border-b-0">
+                <div><strong>Clan:</strong> {result.clanTag}</div>
+                <div><strong>Members:</strong> {result.memberCount}</div>
+                <div><strong>Changes:</strong> {result.changesDetected}</div>
+                <div><strong>Players Resolved:</strong> {result.playersResolved}</div>
+                {result.summary && (
+                  <div className="mt-2 p-2 bg-green-100 rounded text-xs">
+                    <strong>Summary:</strong> {result.summary}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
