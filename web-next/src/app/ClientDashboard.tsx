@@ -5,6 +5,7 @@ import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Roster } from '@/types';
 import { AuthGate } from '@/components/layout/AuthGuard';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { RosterTable } from '@/components/roster/RosterTable';
 
 type Props = {
   initialRoster?: Roster | null;
@@ -24,6 +25,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     setClanTag,
     setHomeClan,
     setRoster,
+    loadRoster,
+    roster,
+    status,
   } = useDashboardStore();
   const hasInitialized = useRef(false);
 
@@ -54,10 +58,27 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     }
   }, []);
 
+  // Auto-load data if we don't have initial data from server
+  useEffect(() => {
+    if (!hasInitialized.current) return;
+
+    // If we have initial data from server, we're done
+    if (initialRoster && initialClanTag) {
+      return;
+    }
+
+    // If no initial data, try to load from store or auto-load
+    const currentClanTag = clanTag || homeClan || initialClanTag;
+    if (currentClanTag && !roster && status === 'idle') {
+      console.log('[ClientDashboard] Auto-loading roster for:', currentClanTag);
+      loadRoster(currentClanTag);
+    }
+  }, [initialRoster, initialClanTag, clanTag, homeClan, roster, status, loadRoster]);
+
   const renderTabContent = () => {
     switch (activeTab) {
       case 'roster':
-        return null; // Roster content is handled by SSRSafeDashboard in DashboardLayout
+        return <RosterTable />;
       
       case 'changes':
         return <div>Changes Dashboard Component</div>;

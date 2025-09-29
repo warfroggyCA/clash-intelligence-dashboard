@@ -165,17 +165,16 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   // The corrupted clan tag cleanup and home clan normalization are now handled in initialization
   // instead of on every render to prevent React Error #185
 
-  // TEMPORARILY DISABLED: Separate effect for auto-loading home clan
-  // This might be causing the React Error #185 re-render loop
-  // useEffect(() => {
-  //   // Only run on client side after hydration
-  //   if (typeof window === 'undefined') return;
+  // Auto-load home clan if no clan is currently loaded and home clan exists
+  useEffect(() => {
+    // Only run on client side after hydration
+    if (typeof window === 'undefined') return;
     
-  //   // Auto-load home clan if no clan is currently loaded and home clan exists
-  //   if (!clanTag && homeClan) {
-  //     handleLoadHome();
-  //   }
-  // }, [clanTag, homeClan, handleLoadHome]);
+    // Auto-load home clan if no clan is currently loaded and home clan exists
+    if (!clanTag && homeClan) {
+      handleLoadHome();
+    }
+  }, [clanTag, homeClan, handleLoadHome]);
 
   const handleRefresh = async () => {
     if (clanTag) {
