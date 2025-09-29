@@ -1,6 +1,2 @@
-// TEST 15: Component File Content Test - completely different content
-const TestComponent = () => {
-  return "TEST 15: COMPONENT FILE CONTENT TEST - COMPLETELY DIFFERENT CONTENT";
-};
-
-export default TestComponent;
+// TEST 16: Component File Structure Test - completely different file structure
+export const TestComponent = () => "TEST 16: COMPONENT FILE STRUCTURE TEST - COMPLETELY DIFFERENT FILE STRUCTURE";
