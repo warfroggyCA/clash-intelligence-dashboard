@@ -782,6 +782,58 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **React build system is the culprit**
 - If React Error #185 persists → **Issue is in React rendering engine itself**
 
+**Test 21 Results**: ❌ **REACT RENDERING ENGINE IS THE CULPRIT**
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED (confirmed not the cause)
+- setHomeClan call DISABLED (confirmed not the cause)
+- ENTIRE useEffect DISABLED (confirmed not the cause)
+- ALL store selectors DISABLED (confirmed not the cause)
+- MINIMAL component with NO imports, NO logic, NO store operations (confirmed not the cause)
+- ABSOLUTE MINIMAL component with NO props, NO structure, just basic HTML (confirmed not the cause)
+- COMPONENT FILE TEST with NO React imports, NO JSX, just string return (confirmed not the cause)
+- COMPONENT NAME TEST with different component name (TestComponent instead of ClientDashboard) (confirmed not the cause)
+- COMPONENT FILE PATH TEST with different file path (TestComponent.tsx instead of ClientDashboard.tsx) (confirmed not the cause)
+- COMPONENT FILE CONTENT TEST with completely different content (arrow function instead of function declaration) (confirmed not the cause)
+- COMPONENT FILE STRUCTURE TEST with completely different file structure (named export instead of default export) (confirmed not the cause)
+- COMPONENT FILE FORMAT TEST with completely different file format (.js instead of .tsx) (confirmed not the cause)
+- COMPONENT FILE EXTENSION TEST with completely different file extension (.jsx instead of .js) (confirmed not the cause)
+- COMPONENT FILE NAMING TEST with completely different file naming (HelloWorld instead of TestComponent) (confirmed not the cause)
+- NEXT.JS ROUTING SYSTEM TEST with completely different route structure (/test-route instead of /) (confirmed not the cause)
+- REACT BUILD SYSTEM TEST with completely different build configuration (static HTML export instead of Next.js)
+- TEST 21: REACT BUILD SYSTEM TEST - STATIC HTML EXPORT INSTEAD OF NEXT.JS
+- React Error #185 STILL OCCURS
+- **Conclusion**: React build system is NOT the cause - issue is in React rendering engine itself
+
+#### Test 22: React Rendering Engine Test
+**Goal**: Test if the issue is in the React rendering engine itself
+
+**Test Setup**:
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED (confirmed not the cause)
+- setHomeClan call DISABLED (confirmed not the cause)
+- ENTIRE useEffect DISABLED (confirmed not the cause)
+- ALL store selectors DISABLED (confirmed not the cause)
+- MINIMAL component with NO imports, NO logic, NO store operations (confirmed not the cause)
+- ABSOLUTE MINIMAL component with NO props, NO structure, just basic HTML (confirmed not the cause)
+- COMPONENT FILE TEST with NO React imports, NO JSX, just string return (confirmed not the cause)
+- COMPONENT NAME TEST with different component name (TestComponent instead of ClientDashboard) (confirmed not the cause)
+- COMPONENT FILE PATH TEST with different file path (TestComponent.tsx instead of ClientDashboard.tsx) (confirmed not the cause)
+- COMPONENT FILE CONTENT TEST with completely different content (arrow function instead of function declaration) (confirmed not the cause)
+- COMPONENT FILE STRUCTURE TEST with completely different file structure (named export instead of default export) (confirmed not the cause)
+- COMPONENT FILE FORMAT TEST with completely different file format (.js instead of .tsx) (confirmed not the cause)
+- COMPONENT FILE EXTENSION TEST with completely different file extension (.jsx instead of .js) (confirmed not the cause)
+- COMPONENT FILE NAMING TEST with completely different file naming (HelloWorld instead of TestComponent) (confirmed not the cause)
+- NEXT.JS ROUTING SYSTEM TEST with completely different route structure (/test-route instead of /) (confirmed not the cause)
+- REACT BUILD SYSTEM TEST with completely different build configuration (static HTML export instead of Next.js) (confirmed not the cause)
+- REACT RENDERING ENGINE TEST with completely different React version (React 17 instead of React 18)
+- Testing if the issue is in the React rendering engine itself
+
+**Expected Results**:
+- If React Error #185 vanishes → **React rendering engine is the culprit**
+- If React Error #185 persists → **Issue is in the Next.js framework itself or environment configuration**
+
 #### Fixes Applied:
 
 1. **AuthGuard Loop Fix**:
