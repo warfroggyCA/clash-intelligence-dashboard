@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, useRef } from 'react';
 import {
   AlertTriangle,
   BellRing,
@@ -28,6 +28,11 @@ const cardClass =
   'rounded-3xl border border-brand-border/80 bg-brand-surfaceRaised/90 shadow-[0_20px_42px_-28px_rgba(8,15,31,0.78)] backdrop-blur-lg px-5 py-5 flex flex-col gap-3';
 
 export const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  if (typeof window !== 'undefined') {
+    console.log(`[RenderTrace] CommandRail#${renderCountRef.current}`);
+  }
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   const normalizedTag = normalizeTag(clanTag);
   const smartInsights = useDashboardStore(selectors.smartInsights);

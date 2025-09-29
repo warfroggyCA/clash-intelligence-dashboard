@@ -42,6 +42,11 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen, canUseCommandRail }) => {
+  const renderCountRef = useRef(0);
+  renderCountRef.current += 1;
+  if (typeof window !== 'undefined') {
+    console.log(`[RenderTrace] DashboardHeader#${renderCountRef.current}`);
+  }
   const {
     clanTag,
     homeClan,
