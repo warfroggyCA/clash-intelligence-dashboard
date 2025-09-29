@@ -6,10 +6,11 @@ import { Button } from '@/components/ui';
 import type { ClanRoleName } from '@/lib/auth/roles';
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const currentUser = useDashboardStore((state) => state.currentUser);
-  const hydrateSession = useDashboardStore((state) => state.hydrateSession);
-  const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
-  const setImpersonatedRole = useDashboardStore((state) => state.setImpersonatedRole);
+  // TEST 2: Stub out all store selectors with hard-coded values
+  const currentUser = null; // Hard-coded to test if store subscription causes loop
+  const hydrateSession = () => {}; // Stub function
+  const impersonatedRole = 'leader'; // Hard-coded
+  const setImpersonatedRole = () => {}; // Stub function
 
   useEffect(() => {
     hydrateSession();

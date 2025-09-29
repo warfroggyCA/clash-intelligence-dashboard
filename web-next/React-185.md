@@ -113,11 +113,33 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 4. **Middleware or devtools** - Despite being disabled, there might be remnants causing issues
 
 #### Next Investigation Steps:
-1. **Go back to minimal ClientDashboard** - Test without any store operations
-2. **Test AuthGate alone** - Remove DashboardLayout wrapper
-3. **Test DashboardLayout alone** - Remove AuthGate wrapper
-4. **Check for other useEffect dependencies** - Look for remaining problematic dependencies
-5. **Consider React 18 concurrent rendering** - Might be a React version issue
+1. ✅ **Test AuthGate alone** - Remove DashboardLayout wrapper (IN PROGRESS)
+2. **Test DashboardLayout alone** - Remove AuthGate wrapper
+3. **Stub out store selectors** - Replace with hard-coded values to isolate store vs effects
+4. **Audit remaining useEffect blocks** - Look for store mutations in wrappers
+5. **Install useRenderCount hook** - Instrument React re-renders to find exploding counter
+
+### Phase 9: Systematic Wrapper Isolation
+**Date**: 2025-09-28
+**Status**: 🔍 TESTING
+
+#### Test 1: AuthGate Only (DashboardLayout Removed)
+**Goal**: Identify if AuthGate or DashboardLayout is causing the infinite loop
+
+**Test Setup**: 
+- Remove DashboardLayout wrapper completely
+- Keep AuthGate wrapper only
+- Test if React Error #185 persists
+
+**Expected Results**:
+- If React Error #185 vanishes → **DashboardLayout is the culprit**
+- If React Error #185 persists → **AuthGate is the culprit**
+
+**Test 1 Results**: ❌ **AUTHGATE IS THE CULPRIT**
+- DashboardLayout removed completely
+- AuthGate kept as only wrapper  
+- React Error #185 STILL OCCURS
+- **Conclusion**: AuthGate is causing the infinite loop, not DashboardLayout
 
 #### Fixes Applied:
 
