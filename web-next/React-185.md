@@ -270,6 +270,31 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - React Error #185 STILL OCCURS
 - **Conclusion**: setHomeClan is also NOT the cause - none of the store operations are the culprit
 
+#### Test 8: Entire useEffect Disabled
+**Goal**: Ultimate test - no store operations at all
+
+**Test Setup**:
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED (confirmed not the cause)
+- setHomeClan call DISABLED (confirmed not the cause)
+- ENTIRE useEffect DISABLED
+- Testing if the useEffect itself is causing the infinite loop
+
+**Expected Results**:
+- If React Error #185 vanishes → **useEffect is the culprit**
+- If React Error #185 persists → **Issue is in store selectors or component rendering**
+
+**Test 8 Results**: ❌ **STORE SELECTORS OR COMPONENT RENDERING IS THE CULPRIT**
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED (confirmed not the cause)
+- setHomeClan call DISABLED (confirmed not the cause)
+- ENTIRE useEffect DISABLED
+- Store Roster: No (confirmed setRoster is disabled)
+- React Error #185 STILL OCCURS
+- **Conclusion**: useEffect is NOT the cause - issue is in store selectors or component rendering
+
 #### Fixes Applied:
 
 1. **AuthGuard Loop Fix**:

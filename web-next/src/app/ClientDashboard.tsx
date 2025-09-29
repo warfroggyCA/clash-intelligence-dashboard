@@ -13,10 +13,15 @@ type Props = {
 
 // FINAL TEST: Full ClientDashboard with AuthGuard infinite loop fix
 export default function ClientDashboard({ initialRoster, initialClanTag }: Props) {
-  const roster = useDashboardStore((state) => state.roster);
-  const setRoster = useDashboardStore((state) => state.setRoster);
-  const setHomeClan = useDashboardStore((state) => state.setHomeClan);
-  const setClanTag = useDashboardStore((state) => state.setClanTag);
+  // TEST 9: Disable all store selectors
+  // const roster = useDashboardStore((state) => state.roster);
+  // const setRoster = useDashboardStore((state) => state.setRoster);
+  // const setHomeClan = useDashboardStore((state) => state.setHomeClan);
+  // const setClanTag = useDashboardStore((state) => state.setClanTag);
+  const roster = null; // Hard-coded to test if store selectors cause the loop
+  const setRoster = () => {}; // Stub function
+  const setHomeClan = () => {}; // Stub function
+  const setClanTag = () => {}; // Stub function
   const initialized = useRef(false);
 
   console.log('[ClientDashboard] EXPERT CODER FIX - STABLE SELECTORS:', {
@@ -55,9 +60,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> TEST 8 - ENTIRE useEffect DISABLED</p>
+            <p><strong>Status:</strong> TEST 9 - ALL STORE SELECTORS DISABLED</p>
             <p><strong>Components:</strong> AuthGate COMPLETELY REMOVED</p>
-            <p><strong>Store Operations:</strong> ALL STORE OPERATIONS DISABLED (useEffect disabled)</p>
+            <p><strong>Store Operations:</strong> ALL STORE SELECTORS DISABLED (hard-coded values)</p>
           </div>
         </div>
       </div>
