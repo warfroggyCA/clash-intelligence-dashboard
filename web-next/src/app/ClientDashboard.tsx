@@ -1,13 +1,4 @@
-"use client";
-
-// TEST 11: Absolute minimal component with no props, no logic, no structure
+// TEST 12: Absolute minimal component with no React imports, no JSX
 export default function ClientDashboard() {
-  console.log('[ClientDashboard] TEST 11 - ABSOLUTE MINIMAL COMPONENT');
-
-  return (
-    <div>
-      <h1>TEST 11: ABSOLUTE MINIMAL COMPONENT</h1>
-      <p>No props, no logic, no structure - just basic HTML</p>
-    </div>
-  );
+  return "TEST 12: ABSOLUTE MINIMAL COMPONENT - NO REACT IMPORTS, NO JSX";
 }
