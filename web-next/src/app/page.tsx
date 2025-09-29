@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { HelloWorld } from './HelloWorld.tsx';
+import { HelloWorld } from './HelloWorld';
 import { cfg } from '@/lib/config';
 import type { Roster } from '@/types';
 import { buildRosterSnapshotFirst } from '@/lib/roster';
