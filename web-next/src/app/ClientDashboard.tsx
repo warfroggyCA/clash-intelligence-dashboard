@@ -26,24 +26,24 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     storeRoster: !!roster,
   });
 
-  // Expert Coder Fix: Move initialization logic here with proper guards
-  useEffect(() => {
-    if (initialized.current) return;
-    initialized.current = true;
+  // TEST 8: Disable entire useEffect
+  // useEffect(() => {
+  //   if (initialized.current) return;
+  //   initialized.current = true;
 
-    console.log('[ClientDashboard] EXPERT CODER INITIALIZATION');
+  //   console.log('[ClientDashboard] EXPERT CODER INITIALIZATION');
     
-    const targetClan = initialClanTag || '2PR8R8V8P'; // Use actual home clan tag
-    setHomeClan(targetClan);
-    // TEST 7: Disable setClanTag call
-    // setClanTag(targetClan);
+  //   const targetClan = initialClanTag || '2PR8R8V8P'; // Use actual home clan tag
+  //   setHomeClan(targetClan);
+  //   // TEST 7: Disable setClanTag call
+  //   // setClanTag(targetClan);
 
-    // TEST 6: Disable setRoster call
-    // if (initialRoster) {
-    //   console.log('[ClientDashboard] EXPERT CODER - CALLING SETROSTER');
-    //   setRoster(initialRoster);
-    // }
-  }, [initialClanTag, initialRoster, setHomeClan, setClanTag, setRoster]);
+  //   // TEST 6: Disable setRoster call
+  //   // if (initialRoster) {
+  //   //   console.log('[ClientDashboard] EXPERT CODER - CALLING SETROSTER');
+  //   //   setRoster(initialRoster);
+  //   // }
+  // }, [initialClanTag, initialRoster, setHomeClan, setClanTag, setRoster]);
   
   const renderTabContent = () => {
     return (
@@ -55,9 +55,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> TEST 7 - setRoster + setClanTag DISABLED</p>
+            <p><strong>Status:</strong> TEST 8 - ENTIRE useEffect DISABLED</p>
             <p><strong>Components:</strong> AuthGate COMPLETELY REMOVED</p>
-            <p><strong>Store Operations:</strong> setRoster + setClanTag DISABLED (setHomeClan active)</p>
+            <p><strong>Store Operations:</strong> ALL STORE OPERATIONS DISABLED (useEffect disabled)</p>
           </div>
         </div>
       </div>
