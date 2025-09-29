@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Roster } from '@/types';
-import { AuthGate } from '@/components/layout/AuthGuard';
+// import { AuthGate } from '@/components/layout/AuthGuard'; // Removed for Test 5
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 type Props = {
@@ -53,8 +53,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> TEST 4 - AUTHGATE BOTH useEffects DISABLED</p>
-            <p><strong>Components:</strong> AuthGate with BOTH useEffects DISABLED</p>
+            <p><strong>Status:</strong> TEST 5 - AUTHGATE COMPLETELY REMOVED</p>
+            <p><strong>Components:</strong> AuthGate COMPLETELY REMOVED</p>
             <p><strong>Store Operations:</strong> FULL STORE USAGE WITH PROPER GUARDS</p>
           </div>
         </div>
@@ -63,13 +63,11 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   };
 
   return (
-    <AuthGate>
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-3xl font-bold mb-6">TEST: AuthGate Only (DashboardLayout Removed)</h1>
-          {renderTabContent()}
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white p-8">
+      <div className="max-w-4xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">TEST 5: AuthGate COMPLETELY REMOVED</h1>
+        {renderTabContent()}
       </div>
-    </AuthGate>
+    </div>
   );
 }
