@@ -17,7 +17,7 @@
  */
 
 import React from 'react';
-import { TestComponent } from './TestComponent.jsx';
+import { HelloWorld } from './HelloWorld.jsx';
 import { cfg } from '@/lib/config';
 import type { Roster } from '@/types';
 import { buildRosterSnapshotFirst } from '@/lib/roster';
@@ -156,5 +156,5 @@ export default async function HomePage() {
     console.error('[Page] Failed to build initial roster:', error);
   }
 
-  return <TestComponent />;
+  return <HelloWorld />;
 }
