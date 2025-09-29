@@ -376,6 +376,11 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   className = '',
 }) => {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (typeof window !== 'undefined') {
+    console.log(`[RenderTrace] DashboardLayout#${renderCount.current}`);
+  }
   const activeTab = useDashboardStore((state) => state.activeTab);
   const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
   const { permissions } = useLeadership();
