@@ -32,12 +32,14 @@ import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 import { showToast } from '@/lib/toast';
 import { safeLocaleDateString, safeLocaleTimeString } from '@/lib/date';
 import { normalizeTag } from '@/lib/tags';
-import type { SmartInsightsPayload } from '@/lib/smart-insights';
+import type { SmartInsightsPayload, SmartInsightsHeadline } from '@/lib/smart-insights';
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
 import type { UserRoleRecord, ClanRoleName } from '@/lib/auth/roles';
 
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+const EMPTY_HEADLINES: SmartInsightsHeadline[] = Object.freeze([] as SmartInsightsHeadline[]);
 
 export interface HistoryCacheEntry {
   items: ChangeSummary[];
@@ -1145,7 +1147,7 @@ export const selectors = {
   smartInsights: (state: DashboardState) => state.smartInsights,
   smartInsightsStatus: (state: DashboardState) => state.smartInsightsStatus,
   smartInsightsError: (state: DashboardState) => state.smartInsightsError,
-  smartInsightsHeadlines: (state: DashboardState) => state.smartInsights?.headlines ?? [],
+  smartInsightsHeadlines: (state: DashboardState) => state.smartInsights?.headlines ?? EMPTY_HEADLINES,
   rosterViewMode: (state: DashboardState) => state.rosterViewMode,
   smartInsightsIsStale: (state: DashboardState) => {
     if (!state.smartInsights?.metadata.generatedAt) return true;
