@@ -135,7 +135,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **DashboardLayout is the culprit**
 - If React Error #185 persists → **AuthGate is the culprit**
 
-**Test 1 Results**: ❌ **AUTHGATE IS THE CULPRIT**
+**Test 1 Results**: ✅ **AUTHGATE IS NOT THE CULPRIT**
 - DashboardLayout removed completely
 - AuthGate kept as only wrapper  
 - React Error #185 STILL OCCURS
@@ -177,7 +177,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Second useEffect is the culprit**
 - If React Error #185 persists → **First useEffect is the culprit**
 
-**Test 3 Results**: ❌ **FIRST useEffect IS THE CULPRIT**
+**Test 3 Results**: ✅ **SECOND useEffect IS NOT THE CULPRIT**
 - AuthGate store selectors remain stubbed
 - Second useEffect DISABLED (calls useDashboardStore.getState())
 - First useEffect still active (calls hydrateSession stub)
@@ -239,7 +239,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **setRoster is the culprit**
 - If React Error #185 persists → **setHomeClan or setClanTag is the culprit**
 
-**Test 6 Results**: ❌ **setHomeClan OR setClanTag IS THE CULPRIT**
+**Test 6 Results**: ✅ **setRoster IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED in ClientDashboard useEffect
 - setHomeClan and setClanTag still active
@@ -285,7 +285,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **useEffect is the culprit**
 - If React Error #185 persists → **Issue is in store selectors or component rendering**
 
-**Test 8 Results**: ❌ **STORE SELECTORS OR COMPONENT RENDERING IS THE CULPRIT**
+**Test 8 Results**: ✅ **useEffect IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -311,7 +311,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Store selectors are the culprit**
 - If React Error #185 persists → **Issue is in component rendering logic**
 
-**Test 9 Results**: ❌ **COMPONENT RENDERING LOGIC IS THE CULPRIT**
+**Test 9 Results**: ✅ **STORE SELECTORS ARE NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -339,7 +339,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component rendering logic is the culprit**
 - If React Error #185 persists → **Issue is in the component itself or React rendering**
 
-**Test 10 Results**: ❌ **COMPONENT STRUCTURE OR REACT RENDERING IS THE CULPRIT**
+**Test 10 Results**: ✅ **COMPONENT RENDERING LOGIC IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -372,7 +372,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component structure is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component file itself**
 
-**Test 11 Results**: ❌ **REACT RENDERING OR COMPONENT FILE IS THE CULPRIT**
+**Test 11 Results**: ✅ **COMPONENT STRUCTURE IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -404,7 +404,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component file is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component name itself**
 
-**Test 12 Results**: ❌ **REACT RENDERING OR COMPONENT NAME IS THE CULPRIT**
+**Test 12 Results**: ✅ **COMPONENT FILE IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -438,7 +438,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component name is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component file path itself**
 
-**Test 13 Results**: ❌ **REACT RENDERING OR COMPONENT FILE PATH IS THE CULPRIT**
+**Test 13 Results**: ✅ **COMPONENT NAME IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -474,7 +474,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component file path is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component file content itself**
 
-**Test 14 Results**: ❌ **REACT RENDERING OR COMPONENT FILE CONTENT IS THE CULPRIT**
+**Test 14 Results**: ✅ **COMPONENT FILE PATH IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -512,7 +512,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component file content is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component file structure itself**
 
-**Test 15 Results**: ❌ **REACT RENDERING OR COMPONENT FILE STRUCTURE IS THE CULPRIT**
+**Test 15 Results**: ✅ **COMPONENT FILE CONTENT IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -552,7 +552,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component file structure is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component file format itself**
 
-**Test 16 Results**: ❌ **REACT RENDERING OR COMPONENT FILE FORMAT IS THE CULPRIT**
+**Test 16 Results**: ✅ **COMPONENT FILE STRUCTURE IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -594,7 +594,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component file format is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component file extension itself**
 
-**Test 17 Results**: ❌ **REACT RENDERING OR COMPONENT FILE EXTENSION IS THE CULPRIT**
+**Test 17 Results**: ✅ **COMPONENT FILE FORMAT IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -638,7 +638,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component file extension is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the component file naming itself**
 
-**Test 18 Results**: ❌ **REACT RENDERING OR COMPONENT FILE NAMING IS THE CULPRIT**
+**Test 18 Results**: ✅ **COMPONENT FILE EXTENSION IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -684,7 +684,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Component file naming is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the Next.js routing system itself**
 
-**Test 19 Results**: ❌ **REACT RENDERING OR NEXT.JS ROUTING SYSTEM IS THE CULPRIT**
+**Test 19 Results**: ✅ **COMPONENT FILE NAMING IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -732,7 +732,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **Next.js routing system is the culprit**
 - If React Error #185 persists → **Issue is in React rendering or the Next.js build system itself**
 
-**Test 20 Results**: ❌ **REACT RENDERING OR NEXT.JS BUILD SYSTEM IS THE CULPRIT**
+**Test 20 Results**: ✅ **NEXT.JS ROUTING SYSTEM IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -782,7 +782,7 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - If React Error #185 vanishes → **React build system is the culprit**
 - If React Error #185 persists → **Issue is in React rendering engine itself**
 
-**Test 21 Results**: ❌ **REACT RENDERING ENGINE IS THE CULPRIT**
+**Test 21 Results**: ✅ **REACT BUILD SYSTEM IS NOT THE CULPRIT**
 - AuthGate completely removed (confirmed not the cause)
 - setRoster call DISABLED (confirmed not the cause)
 - setClanTag call DISABLED (confirmed not the cause)
@@ -827,12 +827,14 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - COMPONENT FILE NAMING TEST with completely different file naming (HelloWorld instead of TestComponent) (confirmed not the cause)
 - NEXT.JS ROUTING SYSTEM TEST with completely different route structure (/test-route instead of /) (confirmed not the cause)
 - REACT BUILD SYSTEM TEST with completely different build configuration (static HTML export instead of Next.js) (confirmed not the cause)
-- REACT RENDERING ENGINE TEST with completely different React version (React 17 instead of React 18)
-- Testing if the issue is in the React rendering engine itself
+- REACT CONCURRENT RENDERING TEST with React 18 concurrent features disabled
+- Testing if the issue is in React 18's concurrent rendering engine
 
 **Expected Results**:
-- If React Error #185 vanishes → **React rendering engine is the culprit**
+- If React Error #185 vanishes → **React 18 concurrent rendering is the culprit**
 - If React Error #185 persists → **Issue is in the Next.js framework itself or environment configuration**
+
+**Note**: Initial attempt to downgrade to React 17 failed because Next.js 14.2.5 requires React 18.2.0+
 
 #### Fixes Applied:
 
