@@ -35,7 +35,8 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     
     const targetClan = initialClanTag || '2PR8R8V8P'; // Use actual home clan tag
     setHomeClan(targetClan);
-    setClanTag(targetClan);
+    // TEST 7: Disable setClanTag call
+    // setClanTag(targetClan);
 
     // TEST 6: Disable setRoster call
     // if (initialRoster) {
@@ -54,9 +55,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
             <p><strong>Has Initial Roster:</strong> {initialRoster ? 'Yes' : 'No'}</p>
             <p><strong>Roster Members:</strong> {initialRoster?.members?.length || 0}</p>
             <p><strong>Store Roster:</strong> {roster ? 'Yes' : 'No'}</p>
-            <p><strong>Status:</strong> TEST 6 - AUTHGATE REMOVED + setRoster DISABLED</p>
+            <p><strong>Status:</strong> TEST 7 - setRoster + setClanTag DISABLED</p>
             <p><strong>Components:</strong> AuthGate COMPLETELY REMOVED</p>
-            <p><strong>Store Operations:</strong> setRoster DISABLED (setHomeClan + setClanTag active)</p>
+            <p><strong>Store Operations:</strong> setRoster + setClanTag DISABLED (setHomeClan active)</p>
           </div>
         </div>
       </div>
