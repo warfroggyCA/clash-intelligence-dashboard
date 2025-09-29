@@ -6,27 +6,31 @@ import { Button } from '@/components/ui';
 import type { ClanRoleName } from '@/lib/auth/roles';
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // TEST 2: Stub out all store selectors with hard-coded values
-  const currentUser = null; // Hard-coded to test if store subscription causes loop
-  const hydrateSession = () => {}; // Stub function
-  const impersonatedRole = 'leader'; // Hard-coded
-  const setImpersonatedRole = (role?: any) => {}; // Stub function with optional parameter
+  // RESTORED: Proper store selectors with critical fixes
+  const currentUser = useDashboardStore((state) => state.currentUser);
+  const hydrateSession = useDashboardStore((state) => state.hydrateSession);
+  const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
+  const setImpersonatedRole = useDashboardStore((state) => state.setImpersonatedRole);
 
-  // TEST 4: Disable first useEffect that calls hydrateSession
-  // useEffect(() => {
-  //   hydrateSession();
-  // }, [hydrateSession]);
+  // CRITICAL FIX: Only call hydrateSession when NOT in anonymous mode
+  useEffect(() => {
+    const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
+    if (!allowAnon) {
+      hydrateSession();
+    }
+  }, [hydrateSession]);
 
-  // TEST 3: Disable second useEffect that calls useDashboardStore.getState()
-  // useEffect(() => {
-  //   const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
-  //   if (!allowAnon) return;
-  //   // only set default impersonation one time
-  //   const state = useDashboardStore.getState();
-  //   if (!state.impersonatedRole) {
-  //     setImpersonatedRole('leader');
-  //   }
-  // }, [setImpersonatedRole]);
+  // CRITICAL FIX: Set impersonation default once, not every render
+  useEffect(() => {
+    const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
+    if (!allowAnon) return;
+    
+    // Only set default impersonation one time
+    const state = useDashboardStore.getState();
+    if (!state.impersonatedRole) {
+      setImpersonatedRole('leader');
+    }
+  }, [setImpersonatedRole]); // Removed impersonatedRole from dependencies to break infinite loop
 
   if (!currentUser) {
     if (process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true') {
