@@ -90,39 +90,33 @@ export const SSRSafeDashboard: React.FC<SSRSafeDashboardProps> = ({ className = 
           <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
           <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
         </div>
-        {/* TEST 1: Disable SmartInsightsHeadlines */}
-        <LoadingCard />
-        {/* {SmartInsightsHeadlines ? (
+        {SmartInsightsHeadlines ? (
           <SmartInsightsHeadlines className="flex-1" />
         ) : (
           <LoadingCard />
-        )} */}
+        )}
       </div>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-center gap-2 mt-6">
           <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
           <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
         </div>
-        {/* TEST 2: Disable RosterStatsPanel */}
-        <LoadingCard />
-        {/* {RosterStatsPanel ? (
+        {RosterStatsPanel ? (
           <RosterStatsPanel className="flex-1" />
         ) : (
           <LoadingCard />
-        )} */}
+        )}
       </div>
       <div className="flex h-full flex-col gap-4">
         <div className="flex items-center gap-2 mt-6">
           <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
           <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
         </div>
-        {/* TEST 3: Disable RosterHighlightsPanel */}
-        <LoadingCard />
-        {/* {RosterHighlightsPanel ? (
+        {RosterHighlightsPanel ? (
           <RosterHighlightsPanel className="flex-1" />
         ) : (
           <LoadingCard />
-        )} */}
+        )}
       </div>
     </div>
   );
