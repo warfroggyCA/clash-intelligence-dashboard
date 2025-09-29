@@ -18,6 +18,7 @@
 - [ ] **Hide AI/API-dependent tabs** from everyone except owner
 - [ ] **Hide Discord tab** from non-leaders  
 - [ ] **Rename "AI Coaching"** → **"Coaching"**
+- [ ] **Upgrade Smart Insights quality** – rework AI summaries for deeper, high-value analysis
 
 ### Layout Improvements
 - [ ] **Move tabs below Quick Actions** (instead of above)
@@ -564,3 +565,13 @@ This transforms the dashboard from a data viewer into an indispensable command c
 
 ### Key Takeaway:
 The authentication system implementation was solid, but several TypeScript strictness issues required fixes. Always test builds locally before deployment to catch these issues early.
+
+- [ ] Explore blurring sensitive clan metrics in any publicly shared dashboard views to protect roster privacy.
+
+## Clan Player Scoring Framework (Future Idea)
+- Track ACE (clan contribution) alongside Hero Momentum (self progression).
+- Hero Momentum: weekly snapshots + 4-week rolling window, compute ΔBK/ΔAQ/ΔGW/ΔRC, EMA trend, idle week streaks, upgrade streaks.
+- Engagement Index = 100 - (idleWeeks*12) + (upgradeStreak*4) + (EMA*6) to penalize inactivity and reward streaks.
+- ACE inputs: donations, war stars/consistency, CWL participation, general activity normalized per season; scale 0–2000.
+- Optional Combined Clan Score = 0.65*ACE + 0.35*EI for all-rounder ranking.
+- Dashboard hooks: ACE leaderboard, hero heatmap, momentum streaks, watchlist (EI drop/idle weeks), recovery highlights, all-rounders, Discord challenges (longest upgrade streak, most improved ACE, highest EI gain, weekly top builders/needs a nudge).

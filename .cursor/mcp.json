@@ -13,6 +13,13 @@
       "env": {
         "SUPABASE_ACCESS_TOKEN": "sb_secret_YQwoqOG14VUvwa8NVT1oQw_uV-73lID"
       }
+    },
+    "vercel": {
+      "url": "https://mcp.vercel.com"
+    },
+    "chrome-devtools": {
+      "command": "npx",
+      "args": ["chrome-devtools-mcp@latest"]
     }
   }
 }
