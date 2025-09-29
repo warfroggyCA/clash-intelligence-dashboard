@@ -156,5 +156,5 @@ export default async function HomePage() {
     console.error('[Page] Failed to build initial roster:', error);
   }
 
-  return <ClientDashboard initialRoster={initialRoster} initialClanTag={initialClanTag} />;
+  return <ClientDashboard />;
 }
