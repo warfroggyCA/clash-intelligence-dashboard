@@ -247,6 +247,29 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - React Error #185 STILL OCCURS
 - **Conclusion**: setRoster is NOT the cause - it's setHomeClan or setClanTag
 
+#### Test 7: setRoster + setClanTag Disabled
+**Goal**: Test if setHomeClan is the specific store operation causing the infinite loop
+
+**Test Setup**:
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED
+- setHomeClan still active
+- Testing if setHomeClan is the specific store operation causing the loop
+
+**Expected Results**:
+- If React Error #185 vanishes → **setHomeClan is the culprit**
+- If React Error #185 persists → **setHomeClan is also not the cause (need deeper investigation)**
+
+**Test 7 Results**: ❌ **setHomeClan IS ALSO NOT THE CAUSE**
+- AuthGate completely removed (confirmed not the cause)
+- setRoster call DISABLED (confirmed not the cause)
+- setClanTag call DISABLED
+- setHomeClan still active
+- Store Roster: No (confirmed setRoster is disabled)
+- React Error #185 STILL OCCURS
+- **Conclusion**: setHomeClan is also NOT the cause - none of the store operations are the culprit
+
 #### Fixes Applied:
 
 1. **AuthGuard Loop Fix**:
