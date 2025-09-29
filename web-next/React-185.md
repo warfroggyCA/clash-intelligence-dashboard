@@ -141,6 +141,20 @@ Despite fixing AuthGuard and store selectors, there's still something causing in
 - React Error #185 STILL OCCURS
 - **Conclusion**: AuthGate is causing the infinite loop, not DashboardLayout
 
+#### Test 2: AuthGate Store Selectors Stubbed
+**Goal**: Isolate if the issue is store subscription or internal useEffect effects
+
+**Test Setup**:
+- AuthGate store selectors replaced with hard-coded values
+- currentUser = null (hard-coded)
+- hydrateSession = () => {} (stub function)
+- impersonatedRole = 'leader' (hard-coded)
+- setImpersonatedRole = () => {} (stub function)
+
+**Expected Results**:
+- If React Error #185 vanishes → **Store subscription causes the loop**
+- If React Error #185 persists → **Internal useEffect effects cause the loop**
+
 #### Fixes Applied:
 
 1. **AuthGuard Loop Fix**:

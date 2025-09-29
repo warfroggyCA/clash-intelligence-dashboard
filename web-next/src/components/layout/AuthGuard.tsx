@@ -10,7 +10,7 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const currentUser = null; // Hard-coded to test if store subscription causes loop
   const hydrateSession = () => {}; // Stub function
   const impersonatedRole = 'leader'; // Hard-coded
-  const setImpersonatedRole = () => {}; // Stub function
+  const setImpersonatedRole = (role?: any) => {}; // Stub function with optional parameter
 
   useEffect(() => {
     hydrateSession();
