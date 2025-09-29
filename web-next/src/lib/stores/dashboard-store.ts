@@ -327,12 +327,30 @@ if (typeof window !== 'undefined') {
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
-    subscribeWithSelector((set, get) => ({
-      ...initialState,
-      
-      // =============================================================================
-      // BASIC SETTERS
-      // =============================================================================
+    subscribeWithSelector((set, get) => {
+      const originalSet = set;
+      const debugSet: typeof set = (partial, replace = false) => {
+        try {
+          const nextState = typeof partial === 'function' ? partial(get()) : partial;
+          if (typeof window !== 'undefined') {
+            const keys = nextState && typeof nextState === 'object'
+              ? Object.keys(nextState as Record<string, unknown>)
+              : ['(functional update)'];
+            console.log('[DashboardStore#set]', { keys, nextState });
+          }
+        } catch (error) {
+          console.warn('[DashboardStore#set] logging failed', error);
+        }
+        return originalSet(partial as any, replace as any);
+      };
+      // eslint-disable-next-line no-param-reassign
+      set = debugSet;
+      return {
+        ...initialState,
+
+        // =============================================================================
+        // BASIC SETTERS
+        // =============================================================================
       
       setRoster: (roster) => {
         // 🚨 CRITICAL DEBUG: This should be visible if our code is running
@@ -1026,8 +1044,9 @@ export const useDashboardStore = create<DashboardState>()(
           });
           setDismissedNotifications(newDismissed);
         }
-      },
-    }))
+      }
+    };
+    })
     // TEMPORARILY DISABLED: devtools options might be causing React Error #185
     // , {
     //   name: 'dashboard-store',
