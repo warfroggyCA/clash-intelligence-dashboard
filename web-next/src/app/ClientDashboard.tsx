@@ -12,6 +12,11 @@ type Props = {
 };
 
 export default function ClientDashboard({ initialRoster, initialClanTag }: Props) {
+  const renderCount = useRef(0);
+  renderCount.current += 1;
+  if (typeof window !== 'undefined') {
+    console.log(`[RenderTrace] ClientDashboard#${renderCount.current}`);
+  }
   const {
     activeTab,
     homeClan,
