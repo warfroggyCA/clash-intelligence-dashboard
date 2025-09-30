@@ -131,7 +131,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   }
 
   const normalizedPlayerTag = normalizeTag(playerTagWithHash);
-  const snapshots = await loadRecentFullSnapshots(clanTag, 8);
+  const snapshots = await loadRecentFullSnapshots(clanTag, 4);
   if (!snapshots.length) {
     return null;
   }
@@ -224,10 +224,11 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
     
     const { data, error } = await supabase
       .from('clan_snapshots')
-      .select('*')
+      .select('clan_tag, fetched_at, clan, member_summaries, player_details, war_log, capital_seasons')
       .eq('clan_tag', safeTag)
       .order('snapshot_date', { ascending: false })
-      .limit(limit);
+      .limit(limit)
+      .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
 
     if (error) {
       console.warn('[PlayerProfile] Failed to load snapshots from Supabase:', error);
