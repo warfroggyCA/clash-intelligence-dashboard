@@ -33,6 +33,7 @@ import {
 import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
 import { getHeroDisplayValue, isHeroAvailable } from '@/lib/business/calculations';
 import { Button, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
+import { getRoleBadgeVariant } from '@/lib/leadership';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { showToast } from '@/lib/toast';
@@ -281,45 +282,14 @@ export const TableRow: React.FC<TableRowProps> = ({
               {/* Role Column */}
               <TableCell className="text-center border-r border-slate-600/50">
                 {(() => {
-                  const raw = (member.role || '').toString();
-                  const r = raw.toLowerCase();
-                  let label = 'Member';
-                  let icon = '';
-                  let bgCls = 'bg-gray-800';
-                  let textCls = '!text-white';
-                  let borderCls = 'border-gray-700';
-
-                  if (r === 'leader') {
-                    label = 'Leader';
-                    icon = '👑';
-                    bgCls = 'bg-white';
-                    textCls = '!text-black';
-                    borderCls = 'border-gray-400';
-                  } else if (r === 'coleader' || raw === 'coLeader') {
-                    label = 'Co-leader';
-                    icon = '💎';
-                    bgCls = 'bg-purple-700';
-                    textCls = '!text-white';
-                    borderCls = 'border-purple-800';
-                  } else if (r === 'elder' || r === 'admin') {
-                    label = 'Elder';
-                    icon = '⭐';
-                    bgCls = 'bg-blue-700';
-                    textCls = '!text-white';
-                    borderCls = 'border-blue-800';
-                  }
-
+                  const variant = getRoleBadgeVariant(member.role);
                   return (
-                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium border ${bgCls} ${borderCls}`}>
-                      {icon && <span aria-hidden className="text-xs">{icon}</span>}
-                      <span 
-                        className={textCls}
-                        style={{
-                          color: r === 'leader' ? '#000000' : '#ffffff'
-                        }}
-                      >
-                        {label}
-                      </span>
+                    <span
+                      className={`role-badge role-badge--${variant.tone} inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold`}
+                      title={variant.label}
+                    >
+                      {variant.icon && <span aria-hidden className="text-xs">{variant.icon}</span>}
+                      <span className="role-badge__label">{variant.label}</span>
                     </span>
                   );
                 })()}
@@ -462,18 +432,12 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Donations Given Column */}
       <TableCell className="text-center border-r border-slate-600/50" title={`Donations given/received: ${formatNumber(donationBalance.given)} / ${formatNumber(donationBalance.received)} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
-        <div className="flex items-center justify-center space-x-1">
-          <span className="text-clash-green">💝</span>
-          <span className="font-semibold text-clash-green">{formatNumber(member.donations)}</span>
-        </div>
+        <span className="font-semibold text-clash-green">{formatNumber(member.donations)}</span>
       </TableCell>
 
       {/* Donations Received Column */}
       <TableCell className="text-center border-r border-slate-600/50" title={`Donations received: ${formatNumber(member.donationsReceived)} (net ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
-        <div className="flex items-center justify-center space-x-1">
-          <span className="text-clash-blue">📥</span>
-          <span className="font-semibold text-clash-blue">{formatNumber(member.donationsReceived)}</span>
-        </div>
+        <span className="font-semibold text-clash-blue">{formatNumber(member.donationsReceived)}</span>
       </TableCell>
 
       {/* Tenure Column */}

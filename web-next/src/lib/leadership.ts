@@ -5,7 +5,7 @@ export function clanRoleFromName(role: string): ClanRole {
   const value = role.toLowerCase();
   if (value === 'leader') return 'leader';
   if (value === 'coleader' || value === 'co-leader') return 'coLeader';
-  if (value === 'elder') return 'elder';
+  if (value === 'elder' || value === 'admin') return 'elder';
   return 'member';
 }
 
@@ -30,9 +30,9 @@ export function parseRole(roleString?: string): ClanRole {
       return 'leader';
     case 'coleader':
     case 'co-leader':
-    case 'coleader':
       return 'coLeader';
     case 'elder':
+    case 'admin':
       return 'elder';
     default:
       return 'member';
@@ -70,6 +70,26 @@ export function getRoleDisplayName(role: ClanRole): string {
     default:
       return 'Member';
   }
+}
+
+export type RoleBadgeTone = 'leader' | 'coleader' | 'elder' | 'member';
+
+export interface RoleBadgeVariant {
+  label: string;
+  icon: string;
+  tone: RoleBadgeTone;
+}
+
+const ROLE_BADGE_VARIANTS: Record<ClanRole, RoleBadgeVariant> = {
+  leader: { label: 'Leader', icon: '👑', tone: 'leader' },
+  coLeader: { label: 'Co-Leader', icon: '💎', tone: 'coleader' },
+  elder: { label: 'Elder', icon: '⭐', tone: 'elder' },
+  member: { label: 'Member', icon: '', tone: 'member' },
+};
+
+export function getRoleBadgeVariant(roleString?: string | null): RoleBadgeVariant {
+  const role = parseRole(roleString || undefined);
+  return ROLE_BADGE_VARIANTS[role];
 }
 
 /**

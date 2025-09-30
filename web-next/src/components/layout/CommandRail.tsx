@@ -14,7 +14,7 @@ interface CommandRailProps {
 }
 
 const cardClass =
-  'rounded-3xl border border-brand-border/80 bg-brand-surfaceRaised/90 shadow-[0_20px_42px_-28px_rgba(8,15,31,0.78)] backdrop-blur-lg px-5 py-5 flex flex-col gap-3';
+  'command-rail-card rounded-3xl border border-brand-border/80 bg-brand-surfaceRaised/90 shadow-[0_20px_42px_-28px_rgba(8,15,31,0.78)] backdrop-blur-lg px-5 py-5 flex flex-col gap-3';
 
 const formatSnapshotFreshness = (hours: number | undefined) => {
   if (hours == null) return 'Unknown';
@@ -93,7 +93,7 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
   return (
     <aside className="fixed right-0 top-[var(--command-rail-top,120px)] z-40 w-full max-w-md px-4 lg:relative lg:top-0 lg:z-auto lg:h-full lg:w-80 lg:max-w-none lg:px-0">
       <div className={`flex h-full flex-col gap-4 ${isOpen ? '' : 'lg:opacity-60'}`}>
-        <div className="flex items-center justify-between rounded-3xl border border-brand-border/80 bg-brand-surfaceRaised/95 px-5 py-4 shadow-[0_20px_42px_-28px_rgba(8,15,31,0.78)] backdrop-blur-lg">
+        <div className="command-rail-header flex items-center justify-between rounded-3xl border border-brand-border/80 bg-brand-surfaceRaised/95 px-5 py-4 shadow-[0_20px_42px_-28px_rgba(8,15,31,0.78)] backdrop-blur-lg">
           <div className="flex items-center gap-3 text-slate-100">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-brand-surfaceSubtle text-brand-primary">
               <ShieldCheck className="h-5 w-5" />

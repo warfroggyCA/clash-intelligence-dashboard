@@ -18,6 +18,7 @@
  */
 
 import React, { useMemo, useState, useCallback, useRef } from 'react';
+import { LayoutGrid, List } from 'lucide-react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Member, Roster, SortKey, SortDirection } from '@/types';
 import { safeLocaleTimeString } from '@/lib/date';
@@ -462,17 +463,19 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
             size="sm"
             variant={rosterViewMode === 'table' ? 'primary' : 'ghost'}
             onClick={() => setRosterViewMode('table')}
-            className="text-xs"
+            className={`view-toggle-btn ${rosterViewMode === 'table' ? 'view-toggle-btn--active' : ''}`}
           >
-            Table View
+            <List className="h-4 w-4" aria-hidden />
+            <span>Table View</span>
           </Button>
           <Button
             size="sm"
             variant={rosterViewMode === 'cards' ? 'primary' : 'ghost'}
             onClick={() => setRosterViewMode('cards')}
-            className="text-xs"
+            className={`view-toggle-btn ${rosterViewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
           >
-            Card View
+            <LayoutGrid className="h-4 w-4" aria-hidden />
+            <span>Card View</span>
           </Button>
         </div>
       </div>

@@ -437,7 +437,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     hasData,
   } = useQuickActions();
 
-  const actionButtonClasses = 'inline-flex items-center justify-center gap-2 rounded-full border border-brand-border/60 !bg-brand-surfaceRaised/80 !text-slate-100 px-3 py-2 text-xs font-semibold shadow-none transition-colors duration-150 hover:!bg-brand-surfaceSubtle/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40';
+  const actionButtonClasses = 'quick-action-btn inline-flex items-center justify-center gap-2 rounded-full border border-brand-border/60 !bg-brand-surfaceRaised/80 !text-slate-100 px-3 py-2 text-xs font-semibold shadow-none transition-colors duration-150 hover:!bg-brand-surfaceSubtle/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40';
 
   const statusLabel = smartInsightsStatus === 'loading'
     ? 'Refreshing'
@@ -466,7 +466,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     : 'Snapshot timing unavailable';
 
   return (
-    <section className={`rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/90 px-4 py-3 text-slate-100 shadow-[0_12px_30px_-24px_rgba(8,15,31,0.68)] ${className}`}>
+    <section className={`quick-actions-card rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/90 px-4 py-3 text-slate-100 shadow-[0_12px_30px_-24px_rgba(8,15,31,0.68)] ${className}`}>
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3 text-[11px]">
           <div className="flex flex-col gap-1 text-slate-300">
