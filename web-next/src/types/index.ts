@@ -35,6 +35,7 @@ export interface Member {
   donations?: number;
   donationsReceived?: number;
   warStars?: number;
+  clanCapitalContributions?: number;
   
   // Activity & Tenure
   tenure_days?: number; // Effective tenure for display
