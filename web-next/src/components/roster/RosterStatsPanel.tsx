@@ -146,14 +146,17 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
       label: 'Current top player (ACE)',
       value: aceLeader.name,
       badge: (
-        <Image
-          src="/King_champ.WEBP"
-          alt="ACE champion badge"
-          width={96}
-          height={96}
-          className="h-full w-full object-contain"
-          priority
-        />
+        <div style={{ width: '72px', height: '72px' }}>
+          <Image
+            src="/King_champ.WEBP"
+            alt="ACE champion badge"
+            width={72}
+            height={72}
+            className="object-contain"
+            style={{ width: '72px', height: '72px' }}
+            priority
+          />
+        </div>
       ),
       onClick: () => setShowAceModal(true),
       fullWidth: true,

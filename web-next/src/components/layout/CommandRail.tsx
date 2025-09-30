@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { Loader2, PanelRightClose, PanelRightOpen, ShieldCheck } from 'lucide-react';
 import { Button, GlassCard } from '@/components/ui';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
@@ -31,12 +31,6 @@ const smartInsightsState = (status: ReturnType<typeof selectors.smartInsightsSta
 };
 
 const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  if (typeof window !== 'undefined') {
-    console.log(`[RenderTrace] CommandRail#${renderCountRef.current}`);
-  }
-
   const roster = useDashboardStore((state) => state.roster);
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);

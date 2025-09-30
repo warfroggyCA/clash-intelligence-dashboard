@@ -552,13 +552,17 @@ export const RosterSummary = () => {
         {aceLeader && (
           <div className="flex flex-col gap-4 rounded-2xl bg-brand-surfaceSubtle/60 px-4 py-4 sm:flex-row sm:items-center sm:gap-6">
             <div className="flex items-center gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-surfaceRaised/70">
+              <div
+                className="flex items-center justify-center rounded-2xl bg-brand-surfaceRaised/70"
+                style={{ width: '64px', height: '64px' }}
+              >
                 <Image
                   src="/King_champ.WEBP"
                   alt="ACE champion badge"
-                  width={96}
-                  height={96}
-                  className="h-16 w-16 object-contain"
+                  width={64}
+                  height={64}
+                  className="object-contain"
+                  style={{ width: '64px', height: '64px' }}
                   priority={false}
                 />
               </div>

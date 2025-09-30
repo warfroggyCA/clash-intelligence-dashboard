@@ -9,14 +9,6 @@ interface LeagueBadgeProps {
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
 }
 
-const sizeClasses = {
-  sm: 'w-5 h-5',
-  md: 'w-6 h-6',
-  lg: 'w-8 h-8',
-  xl: 'w-24 h-24',
-  xxl: 'w-32 h-32'
-};
-
 const imageDimensions = {
   sm: { width: 20, height: 20 },
   md: { width: 24, height: 24 },
@@ -115,50 +107,62 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
     // Just return the image without the background box
     const dimensions = imageDimensions[size];
     return (
-      <Image
-        src={imagePath}
-        alt={`${determinedLeague} League`}
-        width={dimensions.width}
-        height={dimensions.height}
-        className={`${sizeClasses[size]} object-contain ${className}`}
-        quality={100}
-        priority={size === 'xxl'}
-        onError={(e) => {
-          // Fallback to trophy emoji if image fails to load
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          const parent = target.parentElement;
-          if (parent) {
-            parent.innerHTML = `🏆`;
-            parent.className += ' flex items-center justify-center text-clash-gold';
-          }
-        }}
-      />
+      <div
+        className={`relative inline-block ${className}`}
+        style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
+      >
+        <Image
+          src={imagePath}
+          alt={`${determinedLeague} League`}
+          width={dimensions.width}
+          height={dimensions.height}
+          className="object-contain"
+          style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
+          quality={100}
+          priority={size === 'xxl'}
+          onError={(e) => {
+            // Fallback to trophy emoji if image fails to load
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const parent = target.parentElement;
+            if (parent) {
+              parent.innerHTML = `🏆`;
+              parent.className += ' flex items-center justify-center text-clash-gold';
+            }
+          }}
+        />
+      </div>
     );
   }
 
   const dimensions = imageDimensions[size];
   return (
     <div className={`flex items-center gap-2 bg-gradient-to-r from-clash-gold/20 to-clash-orange/20 border border-clash-gold/30 rounded-lg ${containerSizeClasses[size]} ${className}`}>
-      <Image
-        src={imagePath}
-        alt={`${determinedLeague} League`}
-        width={dimensions.width}
-        height={dimensions.height}
-        className={`${sizeClasses[size]} object-contain`}
-        quality={100}
-        priority={size === 'xxl'}
-        onError={(e) => {
-          // Fallback to trophy emoji if image fails to load
-          const target = e.target as HTMLImageElement;
-          target.style.display = 'none';
-          const parent = target.parentElement;
-          if (parent) {
-            parent.innerHTML = `🏆`;
-            parent.className += ' flex items-center justify-center text-clash-gold';
-          }
-        }}
-      />
+      <div
+        className="relative flex items-center justify-center"
+        style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
+      >
+        <Image
+          src={imagePath}
+          alt={`${determinedLeague} League`}
+          width={dimensions.width}
+          height={dimensions.height}
+          className="object-contain"
+          style={{ width: `${dimensions.width}px`, height: `${dimensions.height}px` }}
+          quality={100}
+          priority={size === 'xxl'}
+          onError={(e) => {
+            // Fallback to trophy emoji if image fails to load
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const parent = target.parentElement;
+            if (parent) {
+              parent.innerHTML = `🏆`;
+              parent.className += ' flex items-center justify-center text-clash-gold';
+            }
+          }}
+        />
+      </div>
       <span className={`text-clash-gold font-semibold ${textSizeClasses[size]}`}>
         {determinedLeague}
       </span>

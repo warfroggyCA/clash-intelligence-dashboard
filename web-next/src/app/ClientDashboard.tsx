@@ -15,11 +15,6 @@ type Props = {
 };
 
 export default function ClientDashboard({ initialRoster, initialClanTag }: Props) {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  if (typeof window !== 'undefined') {
-    console.log(`[RenderTrace] ClientDashboard#${renderCount.current}`);
-  }
   const {
     activeTab,
     homeClan,
@@ -45,22 +40,13 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     if (hasInitialized.current) {
       return;
     }
-    console.log('[ClientDashboard] EXPERT CODER INITIALIZATION:', {
-      initialClanTag,
-      initialRoster: !!initialRoster,
-      initialRosterMembers: initialRoster?.members?.length,
-      currentClanTag: clanTag,
-      currentRoster: !!roster,
-    });
     hasInitialized.current = true;
     
     // Force set initial data regardless of current store state
     if (initialClanTag) {
-      console.log('[ClientDashboard] Setting clan tag from initial:', initialClanTag);
       setClanTag(initialClanTag);
     }
     if (initialRoster) {
-      console.log('[ClientDashboard] Setting initial roster from server with', initialRoster.members?.length, 'members');
       setRoster(initialRoster);
     }
   }, [initialClanTag, initialRoster, setClanTag, setRoster]);
@@ -68,26 +54,15 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   // Auto-load data if we don't have initial data from server
   useEffect(() => {
     if (!hasInitialized.current) return;
-
-    console.log('[ClientDashboard] Auto-load check:', {
-      hasInitialRoster: !!initialRoster,
-      hasInitialClanTag: !!initialClanTag,
-      currentClanTag: clanTag,
-      currentRoster: !!roster,
-      status,
-    });
-
     // If we have initial data from server, we're done
     if (initialRoster && initialClanTag) {
-      console.log('[ClientDashboard] Has initial data, skipping auto-load');
       return;
     }
 
     // If no initial data, try to load from store or auto-load
     const currentClanTag = clanTag || homeClan || initialClanTag;
     if (currentClanTag && !roster && status === 'idle') {
-      console.log('[ClientDashboard] Auto-loading roster for:', currentClanTag);
-      loadRoster(currentClanTag);
+      void loadRoster(currentClanTag);
     }
   }, [initialRoster, initialClanTag, clanTag, homeClan, roster, status, loadRoster]);
 
