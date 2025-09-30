@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Member, Roster } from '@/types';
 import { safeLocaleDateString } from '@/lib/date';
 import {
@@ -64,14 +65,13 @@ export const MobileCard: React.FC<MobileCardProps> = ({
   className = '',
 }) => {
   const {
-    setSelectedPlayer,
-    setShowPlayerProfile,
     setSelectedMember,
     setShowDepartureModal,
     loadRoster,
     clanTag: storeClanTag,
     homeClan,
   } = useDashboardStore();
+  const router = useRouter();
 
   const clanTagForActions = roster.clanTag || storeClanTag || homeClan || '';
 
@@ -91,8 +91,8 @@ export const MobileCard: React.FC<MobileCardProps> = ({
     : 'Unknown';
 
   const openProfile = () => {
-    setSelectedPlayer(member);
-    setShowPlayerProfile(true);
+    const normalizedTag = member.tag.startsWith('#') ? member.tag.slice(1) : member.tag;
+    router.push(`/player/${normalizedTag}`);
   };
 
   const openDepartureModal = () => {

@@ -18,6 +18,7 @@
  */
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Member, Roster } from '@/types';
 import { safeLocaleDateString } from '@/lib/date';
 import { 
@@ -161,14 +162,13 @@ export const TableRow: React.FC<TableRowProps> = ({
 }) => {
   const store = useDashboardStore();
   const {
-    setShowPlayerProfile,
-    setSelectedPlayer,
     setShowDepartureModal,
     setSelectedMember,
     loadRoster,
     clanTag: storeClanTag,
     homeClan,
   } = store;
+  const router = useRouter();
   const clanTagForActions = roster.clanTag || storeClanTag || homeClan || '';
   // Calculate member metrics
   const th = getTownHallLevel(member);
@@ -229,8 +229,8 @@ export const TableRow: React.FC<TableRowProps> = ({
 
   // Handle member actions
   const handleOpenProfile = () => {
-    setSelectedPlayer(member);
-    setShowPlayerProfile(true);
+    const normalizedTag = member.tag.startsWith('#') ? member.tag.slice(1) : member.tag;
+    router.push(`/player/${normalizedTag}`);
   };
 
   const handleQuickDeparture = () => {

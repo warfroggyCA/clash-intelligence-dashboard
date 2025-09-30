@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import { useRouter } from 'next/navigation';
 import { Member } from '@/types';
 import { TownHallBadge, LeagueBadge, HeroLevel, Button, GlassCard } from '@/components/ui';
 import {
@@ -25,9 +26,15 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const roleVariant = getRoleBadgeVariant(member.role);
   const showRoleBadge = roleVariant.tone !== 'member';
+  const router = useRouter();
 
   const handleClick = () => {
-    onSelect?.(member);
+    if (onSelect) {
+      onSelect(member);
+      return;
+    }
+    const normalizedTag = member.tag.startsWith('#') ? member.tag.slice(1) : member.tag;
+    router.push(`/player/${normalizedTag}`);
   };
 
   return (
