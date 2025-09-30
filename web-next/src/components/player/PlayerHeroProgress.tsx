@@ -14,13 +14,13 @@ interface PlayerHeroProgressProps {
 type HeroShortLabel = PlayerHeroProgressItem['shortLabel'];
 
 const EMPTY_MEMBERS: Member[] = [];
-const HERO_SHORT_LABELS: HeroShortLabel[] = ['BK', 'AQ', 'GW', 'RC', 'MP'];
-const HERO_FIELD_MAP: Record<HeroShortLabel, keyof Pick<Member, 'bk' | 'aq' | 'gw' | 'rc' | 'mp'>> = {
+const HERO_SHORT_LABELS: HeroShortLabel[] = ['BK', 'AQ', 'MP', 'GW', 'RC'];
+const HERO_FIELD_MAP: Record<HeroShortLabel, keyof Pick<Member, 'bk' | 'aq' | 'mp' | 'gw' | 'rc'>> = {
   BK: 'bk',
   AQ: 'aq',
+  MP: 'mp',
   GW: 'gw',
   RC: 'rc',
-  MP: 'mp',
 };
 const HERO_ICON_MAP: Record<HeroShortLabel, { src: string; alt: string }> = {
   BK: { src: '/assets/heroes/Barbarian_King.png', alt: 'Barbarian King' },
@@ -83,7 +83,7 @@ export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes }
         return (
           <div key={hero.shortLabel} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-3">
             {icon ? (
-              <div className="relative flex-shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black/50 p-2 shadow-[0_12px_22px_-14px_rgba(8,15,31,0.8)]">
+              <div className="relative flex-shrink-0">
                 <Image
                   src={icon.src}
                   alt={icon.alt}

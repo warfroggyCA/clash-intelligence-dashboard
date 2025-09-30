@@ -135,6 +135,15 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Hero Rush % = average hero shortfall vs Town Hall cap across unlocked heroes (BK/AQ/GW/RC plus MP if available)'
   },
   {
+    key: 'ace',
+    label: 'ACE',
+    shortLabel: 'ACE',
+    group: 'Analysis',
+    sortable: true,
+    className: 'text-center border-r border-gray-300',
+    description: 'ACE score (All-Mode Clan Excellence) synthesizing offense, defense, participation, capital, and donation impact'
+  },
+  {
     key: 'activity',
     label: 'Activity',
     shortLabel: 'Activity',
@@ -187,7 +196,7 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
 
 interface GroupConfig {
   name: string;
-  icon: string;
+  icon?: string;
   columns: number;
   className: string;
 }
@@ -208,7 +217,7 @@ const GROUP_CONFIGS: GroupConfig[] = [
   {
     name: 'Analysis',
     icon: '📊',
-    columns: 2,
+    columns: 3,
     className: 'border-r border-slate-400'
   },
   {
@@ -243,8 +252,8 @@ interface SortIndicatorProps {
 const SortIndicator: React.FC<SortIndicatorProps> = ({ isActive, direction }) => {
   if (!isActive) {
     return (
-      <span className="text-gray-400 ml-1">
-        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <span className="ml-2 text-slate-400 transition-colors dark:text-slate-500" aria-hidden="true">
+        <svg className="h-3.5 w-3.5 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
         </svg>
       </span>
@@ -252,13 +261,16 @@ const SortIndicator: React.FC<SortIndicatorProps> = ({ isActive, direction }) =>
   }
 
   return (
-    <span className={`${isActive ? '!text-white' : 'text-blue-600'} ml-1`}>
+    <span
+      className="ml-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-sky-500 text-white shadow-sm transition-colors dark:bg-sky-300 dark:text-slate-900"
+      aria-hidden="true"
+    >
       {direction === 'asc' ? (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 15l7-7 7 7" />
         </svg>
       ) : (
-        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" />
         </svg>
       )}
@@ -284,15 +296,18 @@ const HeaderCell: React.FC<HeaderCellProps> = ({ config, isActive, direction, on
     }
   };
 
-  const baseStyles = "py-3 px-4 font-semibold text-blue-800 transition-colors";
-  const activeStyles = isActive ? "!bg-blue-800 !border-blue-600 !text-white" : "";
-  const hoverStyles = config.sortable ? "hover:bg-blue-50 cursor-pointer" : "cursor-default";
+  const baseStyles = "py-3 px-4 font-semibold text-blue-800 dark:text-slate-200 transition-colors";
+  const activeStyles = isActive
+    ? "relative bg-sky-100 text-sky-900 shadow-inner before:absolute before:inset-y-[0.4rem] before:left-0 before:w-1 before:rounded-full before:bg-sky-500/80 before:content-[''] dark:bg-sky-300/60 dark:text-slate-900 dark:before:bg-sky-200"
+    : "";
+  const hoverStyles = config.sortable
+    ? "hover:bg-blue-50 dark:hover:bg-slate-700/60 cursor-pointer"
+    : "cursor-default";
   const sortableStyles = config.sortable ? "cursor-pointer" : "cursor-default";
 
   return (
     <th
-      className={`${baseStyles} ${activeStyles} ${hoverStyles} ${config.className || ''}`}
-      style={isActive ? { backgroundColor: '#1e40af', color: '#ffffff', borderColor: '#1d4ed8' } : {}}
+      className={`${baseStyles} ${activeStyles} ${hoverStyles} ${sortableStyles} ${config.className || ''} dark:bg-slate-800/40`}
       onClick={handleClick}
       title={config.description}
       aria-sort={isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
@@ -336,7 +351,7 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             className={`py-2 px-4 font-bold text-blue-800 text-center ${group.className}`}
           >
             <div className="flex items-center justify-center gap-2">
-              <span className="text-sm">{group.icon}</span>
+              {group.icon && <span className="text-sm" aria-hidden="true">{group.icon}</span>}
               <span className="text-xs uppercase tracking-wide">{group.name}</span>
             </div>
           </th>

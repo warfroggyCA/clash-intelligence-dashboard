@@ -69,51 +69,69 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
     return () => window.removeEventListener('keydown', handleKey);
   }, [navigation, navigateTo]);
 
+  const navContent = navigation?.hasMultiple ? (
+    <div className="flex w-full items-center justify-between gap-3 text-sm text-muted-contrast">
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
+        onClick={() => navigateTo(navigation.prevTag)}
+      >
+        <ChevronLeft className="h-4 w-4" aria-hidden /> Prev
+      </button>
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
+        onClick={() => router.push('/')}
+      >
+        <Home className="h-4 w-4" aria-hidden /> Home
+      </button>
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
+        onClick={() => navigateTo(navigation.nextTag)}
+      >
+        Next <ChevronRight className="h-4 w-4" aria-hidden />
+      </button>
+    </div>
+  ) : (
+    <div className="flex w-full justify-end text-sm text-muted-contrast">
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
+        onClick={() => router.push('/')}
+      >
+        <Home className="h-4 w-4" aria-hidden /> Home
+      </button>
+    </div>
+  );
+
   return (
     <div className="player-profile space-y-6">
-      <div className="space-y-4">
-        {navigation?.hasMultiple ? (
-          <div className="flex items-center justify-between gap-3 pt-1 text-sm text-muted-contrast">
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
-              onClick={() => navigateTo(navigation.prevTag)}
-            >
-              <ChevronLeft className="h-4 w-4" aria-hidden /> Prev
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
-              onClick={() => router.push('/')}
-            >
-              <Home className="h-4 w-4" aria-hidden /> Home
-            </button>
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
-              onClick={() => navigateTo(navigation.nextTag)}
-            >
-              Next <ChevronRight className="h-4 w-4" aria-hidden />
-            </button>
+      <div className="sticky top-0 z-50">
+        <div className="bg-brand-surfaceRaised/85 px-4 pb-3 pt-4 shadow-[0_16px_32px_-22px_rgba(8,15,31,0.9)] backdrop-blur">
+          <div className="mx-auto w-full rounded-full border border-brand-border/50 bg-brand-surfaceRaised/95 px-4 py-2 shadow-[0_12px_24px_-18px_rgba(8,15,31,0.9)]">
+            {navContent}
           </div>
-        ) : null}
-
-        <PlayerSummaryHeader summary={data.summary} />
+        </div>
       </div>
 
-      <SectionCard title="Hero Readiness" subtitle="Progress vs. Town Hall caps" className="section-card--sub">
-        <PlayerHeroProgress heroes={data.heroProgress} />
-      </SectionCard>
+      <div className="space-y-4 pt-8">
+        <PlayerSummaryHeader summary={data.summary} />
 
-      <PlayerPerformanceOverview data={data.performance} />
+        <SectionCard title="Hero Readiness" subtitle="Progress vs. Town Hall caps" className="section-card--sub">
+          <PlayerHeroProgress heroes={data.heroProgress} />
+        </SectionCard>
 
-      <PlayerEngagementInsights
-        insights={data.engagementInsights}
-        notes={data.leadershipNotes}
-        actions={data.upcomingActions}
-      />
+        <PlayerPerformanceOverview data={data.performance} />
 
-      <PlayerNotesPanel notes={data.leadershipNotes} />
+        <PlayerEngagementInsights
+          insights={data.engagementInsights}
+          notes={data.leadershipNotes}
+          actions={data.upcomingActions}
+        />
+
+        <PlayerNotesPanel notes={data.leadershipNotes} />
+      </div>
     </div>
   );
 };

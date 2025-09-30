@@ -1,15 +1,19 @@
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import type { PlayerProfileSummary } from '@/lib/player-profile';
 import { LeagueBadge, TownHallBadge, Button } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
+import type { AceScoreResult } from '@/lib/ace-score';
 
 interface PlayerSummaryHeaderProps {
   summary: PlayerProfileSummary;
 }
 
 export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summary }) => {
+  const roster = useDashboardStore((state) => state.roster);
   const badge = getRoleBadgeVariant(summary.role);
   const cleanTag = summary.tag.replace('#', '').toUpperCase();
   const joinDate = summary.joinDate ? new Date(summary.joinDate) : null;
@@ -26,6 +30,65 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     handleCopy(`${origin}/player/${cleanTag}`);
   };
+
+  const aceScoresByTag = useMemo(() => {
+    if (!roster?.members?.length) {
+      return null;
+    }
+
+    const inputs = createAceInputsFromRoster(roster);
+    if (!inputs.length) {
+      return null;
+    }
+
+    const results = calculateAceScores(inputs);
+    const map = new Map<string, AceScoreResult>();
+
+    const register = (tag: string | null | undefined, entry: AceScoreResult) => {
+      if (!tag) return;
+      map.set(tag, entry);
+      map.set(tag.toUpperCase(), entry);
+      const stripped = tag.replace(/^#/, '');
+      if (stripped && stripped !== tag) {
+        map.set(stripped, entry);
+        map.set(stripped.toUpperCase(), entry);
+      }
+    };
+
+    results.forEach((entry) => register(entry.tag, entry));
+    return map;
+  }, [roster]);
+
+  const aceEntry = useMemo(() => {
+    if (!aceScoresByTag) return null;
+    const candidates = [
+      summary.tag,
+      summary.tag.toUpperCase(),
+      `#${summary.tag}`,
+      `#${summary.tag.toUpperCase()}`,
+    ];
+
+    for (const candidate of candidates) {
+      const found = aceScoresByTag.get(candidate);
+      if (found) return found;
+    }
+
+    return null;
+  }, [aceScoresByTag, summary.tag]);
+
+  const aceScore = aceEntry?.ace ?? summary.aceScore ?? null;
+  const aceAvailabilityPercent = (() => {
+    const availability = aceEntry?.availability ?? summary.aceAvailability ?? null;
+    if (typeof availability !== 'number') return null;
+    return Math.round(Math.max(0, Math.min(1, availability)) * 100);
+  })();
+
+  const aceTone: 'positive' | 'warning' | 'neutral' = (() => {
+    if (aceScore == null) return 'neutral';
+    if (aceScore >= 80) return 'positive';
+    if (aceScore < 55) return 'warning';
+    return 'neutral';
+  })();
 
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1.2fr),minmax(0,1fr)]">
@@ -67,16 +130,22 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
           </div>
 
           <div className="flex flex-col items-end gap-3 text-right">
-            <TownHallBadge level={summary.townHallLevel} size="xl" />
+            <TownHallBadge level={summary.townHallLevel} size="xl" className="transform translate-y-1" />
           </div>
         </div>
 
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <SummaryStat label="Activity" value={summary.activityLevel} tone="positive" />
           <SummaryStat
             label="Rush Score"
             value={`${summary.rushScore.toFixed(1)}%`}
             tone={summary.rushScore >= 70 ? 'warning' : summary.rushScore >= 40 ? 'neutral' : 'positive'}
+          />
+          <SummaryStat
+            label="ACE Score"
+            value={aceScore != null ? aceScore.toFixed(1) : '—'}
+            helper={aceAvailabilityPercent != null ? `Avail ${aceAvailabilityPercent}%` : undefined}
+            tone={aceTone}
           />
           <SummaryStat
             label="Donations"

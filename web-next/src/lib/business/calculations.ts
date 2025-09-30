@@ -22,6 +22,7 @@ import {
   HERO_MAX_LEVELS,
   HERO_MIN_TH
 } from '@/types';
+import { ACE_DEFAULT_LOGISTIC_ALPHA, computeAceLogistic } from '@/lib/ace-score';
 
 // =============================================================================
 // HERO CALCULATIONS
@@ -472,4 +473,49 @@ export const calculateOverallScore = (member: Member): number => {
   }
   
   return Math.max(0, Math.min(100, score));
+};
+
+// =============================================================================
+// ACE METRICS
+// =============================================================================
+
+const isFiniteNumber = (value: unknown): value is number => typeof value === 'number' && Number.isFinite(value);
+
+const getAceExtras = (member: Member) => {
+  return (member as any)?.extras?.ace ?? null;
+};
+
+/**
+ * Retrieve the ACE availability multiplier (0-1) if present
+ */
+export const getMemberAceAvailability = (member: Member): number | null => {
+  const extras = getAceExtras(member);
+  if (!extras) return null;
+  const availability = extras.availability;
+  return isFiniteNumber(availability) ? availability : null;
+};
+
+/**
+ * Retrieve the displayed ACE score for a member from persisted extras
+ */
+export const getMemberAceScore = (member: Member): number | null => {
+  const extras = getAceExtras(member);
+  if (!extras) return null;
+
+  if (isFiniteNumber(extras.score)) {
+    return extras.score;
+  }
+
+  const availability = getMemberAceAvailability(member) ?? 1;
+
+  if (isFiniteNumber(extras.logistic)) {
+    return extras.logistic * 100 * availability;
+  }
+
+  if (isFiniteNumber(extras.core)) {
+    const logistic = computeAceLogistic(extras.core, ACE_DEFAULT_LOGISTIC_ALPHA);
+    return logistic * 100 * availability;
+  }
+
+  return null;
 };

@@ -114,6 +114,7 @@ export function convertFullSnapshotToDailySnapshot(fullSnapshot: FullClanSnapsho
       versusBattleWins: playerDetail?.versusBattleWins || 0,
       versusTrophies: summary.builderTrophies || 0,
       clanCapitalContributions: playerDetail?.clanCapitalContributions || 0,
+      extras: playerDetail?.extras ?? (summary as any)?.extras ?? null,
     } as Member;
   });
 

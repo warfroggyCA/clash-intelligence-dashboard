@@ -41,6 +41,8 @@ import { TableFilters } from './TableFilters';
 import { Pagination } from './Pagination';
 import { Button, Input, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
+import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
+import type { AceScoreResult } from '@/lib/ace-score';
 
 // =============================================================================
 // TYPES
@@ -99,7 +101,30 @@ const DONATION_STATUS = {
 // SORTING LOGIC
 // =============================================================================
 
-const sortMembers = (members: Member[], sortKey: SortKey, sortDirection: SortDirection): Member[] => {
+const resolveAceEntry = (
+  member: Member,
+  aceScoresByTag: Map<string, AceScoreResult> | null
+): AceScoreResult | null => {
+  if (!aceScoresByTag) return null;
+  const rawTag = member.tag ?? '';
+  if (!rawTag) return null;
+  const normalized = rawTag.replace(/^#/, '');
+
+  return (
+    aceScoresByTag.get(rawTag) ||
+    aceScoresByTag.get(rawTag.toUpperCase()) ||
+    aceScoresByTag.get(normalized) ||
+    aceScoresByTag.get(normalized.toUpperCase()) ||
+    null
+  );
+};
+
+const sortMembers = (
+  members: Member[],
+  sortKey: SortKey,
+  sortDirection: SortDirection,
+  aceScoresByTag: Map<string, AceScoreResult> | null
+): Member[] => {
   return [...members].sort((a, b) => {
     let aValue: any;
     let bValue: any;
@@ -130,6 +155,13 @@ const sortMembers = (members: Member[], sortKey: SortKey, sortDirection: SortDir
         aValue = calculateRushPercentage(a);
         bValue = calculateRushPercentage(b);
         break;
+      case 'ace': {
+        const aEntry = resolveAceEntry(a, aceScoresByTag);
+        const bEntry = resolveAceEntry(b, aceScoresByTag);
+        aValue = typeof aEntry?.ace === 'number' ? aEntry.ace : Number.NEGATIVE_INFINITY;
+        bValue = typeof bEntry?.ace === 'number' ? bEntry.ace : Number.NEGATIVE_INFINITY;
+        break;
+      }
       case 'trophies':
         aValue = a.trophies || 0;
         bValue = b.trophies || 0;
@@ -262,10 +294,41 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   // Get members from roster
   const members = useMemo(() => roster?.members ?? [], [roster?.members]);
 
+  const aceScoresByTag = useMemo(() => {
+    if (!roster?.members?.length) {
+      return null;
+    }
+
+    const inputs = createAceInputsFromRoster(roster);
+    if (!inputs.length) {
+      return null;
+    }
+
+    const results = calculateAceScores(inputs);
+    const map = new Map<string, AceScoreResult>();
+
+    const register = (tag: string | null | undefined, entry: AceScoreResult) => {
+      if (!tag) return;
+      map.set(tag, entry);
+      map.set(tag.toUpperCase(), entry);
+      const stripped = tag.replace(/^#/, '');
+      if (stripped && stripped !== tag) {
+        map.set(stripped, entry);
+        map.set(stripped.toUpperCase(), entry);
+      }
+    };
+
+    results.forEach((entry) => {
+      register(entry.tag, entry);
+    });
+
+    return map;
+  }, [roster]);
+
   // Apply sorting and filtering
   const sortedMembers = useMemo(() => {
-    return sortMembers(members, sortKey, sortDir);
-  }, [members, sortKey, sortDir]);
+    return sortMembers(members, sortKey, sortDir, aceScoresByTag);
+  }, [members, sortKey, sortDir, aceScoresByTag]);
 
   const filteredMembers = useMemo(() => {
     return filterMembers(sortedMembers, filters);
@@ -505,6 +568,8 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                       member={member}
                       index={index}
                       roster={roster}
+                      activeSortKey={sortKey}
+                      aceScoresByTag={aceScoresByTag}
                     />
                   ))}
                 </tbody>
