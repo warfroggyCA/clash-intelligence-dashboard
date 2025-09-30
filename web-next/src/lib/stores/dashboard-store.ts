@@ -36,6 +36,9 @@ import type { SmartInsightsPayload, SmartInsightsHeadline } from '@/lib/smart-in
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
 import type { UserRoleRecord, ClanRoleName } from '@/lib/auth/roles';
+import { getMemberAceScore } from '@/lib/business/calculations';
+import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
+import type { AceScoreResult } from '@/lib/ace-score';
 
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -1171,10 +1174,59 @@ export const selectors = {
       );
     }
     
+    let aceScoresByTag: Map<string, AceScoreResult> | null = null;
+    if (state.sortKey === 'ace' && state.roster?.members?.length) {
+      const inputs = createAceInputsFromRoster(state.roster);
+      if (inputs.length) {
+        const results = calculateAceScores(inputs);
+        aceScoresByTag = new Map<string, AceScoreResult>();
+        const register = (tag: string | null | undefined, entry: AceScoreResult) => {
+          if (!tag) return;
+          aceScoresByTag!.set(tag, entry);
+          aceScoresByTag!.set(tag.toUpperCase(), entry);
+          const stripped = tag.replace(/^#/, '');
+          if (stripped && stripped !== tag) {
+            aceScoresByTag!.set(stripped, entry);
+            aceScoresByTag!.set(stripped.toUpperCase(), entry);
+          }
+        };
+        results.forEach((entry) => register(entry.tag, entry));
+      }
+    }
+
     // Apply sorting
     members.sort((a, b) => {
-      const aVal = a[state.sortKey as keyof Member];
-      const bVal = b[state.sortKey as keyof Member];
+      let aVal: unknown;
+      let bVal: unknown;
+
+      switch (state.sortKey) {
+        case 'ace':
+          if (aceScoresByTag) {
+            const resolve = (member: Member) => {
+              const rawTag = member.tag ?? '';
+              if (!rawTag) return null;
+              const normalized = rawTag.replace(/^#/, '');
+              return (
+                aceScoresByTag!.get(rawTag) ||
+                aceScoresByTag!.get(rawTag.toUpperCase()) ||
+                aceScoresByTag!.get(normalized) ||
+                aceScoresByTag!.get(normalized.toUpperCase()) ||
+                null
+              );
+            };
+            const aEntry = resolve(a);
+            const bEntry = resolve(b);
+            aVal = typeof aEntry?.ace === 'number' ? aEntry.ace : Number.NEGATIVE_INFINITY;
+            bVal = typeof bEntry?.ace === 'number' ? bEntry.ace : Number.NEGATIVE_INFINITY;
+          } else {
+            aVal = getMemberAceScore(a) ?? Number.NEGATIVE_INFINITY;
+            bVal = getMemberAceScore(b) ?? Number.NEGATIVE_INFINITY;
+          }
+          break;
+        default:
+          aVal = a[state.sortKey as keyof Member];
+          bVal = b[state.sortKey as keyof Member];
+      }
       
       if (typeof aVal === 'number' && typeof bVal === 'number') {
         return state.sortDir === 'asc' ? aVal - bVal : bVal - aVal;

@@ -30,6 +30,7 @@ export interface MemberSummary {
   clanRank?: number;
   previousClanRank?: number;
   league?: any;
+  extras?: Record<string, any> | null;
 }
 
 export interface FullClanSnapshot {
@@ -130,6 +131,7 @@ export async function fetchFullClanSnapshot(
       clanRank: member.clanRank,
       previousClanRank: member.previousClanRank,
       league: member.league ?? detail?.league,
+      extras: detail?.extras ?? null,
     };
   });
 

@@ -17,9 +17,9 @@
  * Last Updated: January 2025
  */
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Member, Roster } from '@/types';
+import { Member, Roster, SortKey } from '@/types';
 import { safeLocaleDateString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
@@ -29,8 +29,11 @@ import {
   isRushed,
   isVeryRushed,
   isNetReceiver,
-  isLowDonator
+  isLowDonator,
+  getMemberAceScore,
+  getMemberAceAvailability
 } from '@/lib/business/calculations';
+import type { AceScoreResult } from '@/lib/ace-score';
 import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
 import { getHeroDisplayValue, isHeroAvailable } from '@/lib/business/calculations';
 import { Button, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
@@ -47,6 +50,8 @@ export interface TableRowProps {
   member: Member;
   index: number;
   roster: Roster;
+  activeSortKey: SortKey;
+  aceScoresByTag: Map<string, AceScoreResult> | null;
   className?: string;
 }
 
@@ -142,10 +147,17 @@ const formatHeroLine = (
 interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   className?: string;
   children: React.ReactNode;
+  isActiveSort?: boolean;
 }
 
-const TableCell: React.FC<TableCellProps> = ({ className = '', children, ...rest }) => (
-  <td className={`py-2 px-4 text-sm ${className}`} {...rest}>
+const ACTIVE_SORT_CELL_CLASSES = `relative bg-sky-50/80 transition-colors shadow-inner before:absolute before:inset-y-[0.35rem] before:left-0 before:w-1 before:rounded-full before:bg-sky-400/70 before:content-[''] dark:bg-slate-700/60 dark:before:bg-sky-300/80`;
+
+const TableCell: React.FC<TableCellProps> = ({ className = '', children, isActiveSort = false, ...rest }) => (
+  <td
+    className={`py-2 px-4 text-sm ${className} ${isActiveSort ? ACTIVE_SORT_CELL_CLASSES : ''}`}
+    data-active-sort={isActiveSort ? 'true' : undefined}
+    {...rest}
+  >
     {children}
   </td>
 );
@@ -158,6 +170,8 @@ export const TableRow: React.FC<TableRowProps> = ({
   member,
   index,
   roster,
+  activeSortKey,
+  aceScoresByTag,
   className = ''
 }) => {
   const store = useDashboardStore();
@@ -181,12 +195,95 @@ export const TableRow: React.FC<TableRowProps> = ({
   const isLowDonatorPlayer = isLowDonator(member);
 
   const heroCaps = HERO_MAX_LEVELS[th] || {};
+  const isActiveColumn = (key: SortKey) => activeSortKey === key;
   const getDisplayMax = (hero: keyof HeroCaps) => {
     const baseCap = heroCaps?.[hero] ?? 0;
     const raw = member[hero];
     const value = typeof raw === 'number' ? Math.max(raw, 0) : 0;
     return Math.max(baseCap || 0, value);
   };
+
+  const aceExtras = (member as any)?.extras?.ace ?? null;
+  const aceEntry = useMemo(() => {
+    if (!aceScoresByTag) return null;
+    const rawTag = member.tag ?? '';
+    if (!rawTag) return null;
+    const normalized = rawTag.replace(/^#/, '');
+    return (
+      aceScoresByTag.get(rawTag) ||
+      aceScoresByTag.get(rawTag.toUpperCase()) ||
+      aceScoresByTag.get(normalized) ||
+      aceScoresByTag.get(normalized.toUpperCase()) ||
+      null
+    );
+  }, [aceScoresByTag, member.tag]);
+
+  const aceScoreFromEntry = typeof aceEntry?.ace === 'number' ? aceEntry.ace : null;
+  const aceScore = aceScoreFromEntry ?? getMemberAceScore(member);
+
+  const aceAvailabilityFromEntry = typeof aceEntry?.availability === 'number' ? aceEntry.availability : null;
+  const aceAvailability = aceAvailabilityFromEntry ?? getMemberAceAvailability(member);
+  const aceAvailabilityPercent = typeof aceAvailability === 'number'
+    ? Math.round(Math.max(0, Math.min(aceAvailability, 1)) * 100)
+    : null;
+
+  const logisticFromEntry = (() => {
+    if (aceScoreFromEntry == null) return null;
+    const availability = aceAvailability ?? 1;
+    if (!Number.isFinite(availability) || availability <= 0) return null;
+    const ratio = aceScoreFromEntry / (100 * availability);
+    if (!Number.isFinite(ratio)) return null;
+    return Math.max(0, Math.min(1, ratio));
+  })();
+
+  const aceCore = typeof aceExtras?.core === 'number' ? aceExtras.core : null;
+  const aceLogistic = typeof aceExtras?.logistic === 'number'
+    ? aceExtras.logistic
+    : logisticFromEntry;
+
+  const aceTooltip = useMemo(() => {
+    const lines = [
+      'ACE blends war offense, defense, participation, capital value, and donations into one score.'
+    ];
+
+    if (aceScore != null) {
+      lines.push(`Score: ${aceScore.toFixed(1)}`);
+    } else {
+      lines.push('Score unavailable — run the latest snapshot ingestion to populate ACE extras.');
+    }
+
+    if (aceAvailabilityPercent != null) {
+      lines.push(`Availability: ${aceAvailabilityPercent}%`);
+    }
+
+    if (aceLogistic != null) {
+      lines.push(`Logistic: ${(aceLogistic * 100).toFixed(1)}`);
+    }
+
+    if (aceCore != null) {
+      lines.push(`Core: ${aceCore.toFixed(2)}`);
+    }
+
+    if (aceEntry) {
+      const componentLines = [
+        ['OAE', aceEntry.breakdown.ova.shrunk],
+        ['DAE', aceEntry.breakdown.dva.shrunk],
+        ['PR', aceEntry.breakdown.par.shrunk],
+        ['CAP', aceEntry.breakdown.cap.shrunk],
+        ['DON', aceEntry.breakdown.don.shrunk],
+      ] as Array<[string, number]>;
+
+      lines.push('');
+      lines.push('Component z-scores:');
+      componentLines.forEach(([label, value]) => {
+        if (Number.isFinite(value)) {
+          lines.push(`• ${label}: ${value.toFixed(2)}`);
+        }
+      });
+    }
+
+    return lines.join('\n');
+  }, [aceScore, aceAvailabilityPercent, aceLogistic, aceCore, aceEntry]);
 
   const heroOrder: Array<keyof HeroCaps> = ['bk', 'aq', 'mp', 'gw', 'rc'];
   const heroBreakdown: HeroBreakdownRow[] = heroOrder
@@ -259,57 +356,61 @@ export const TableRow: React.FC<TableRowProps> = ({
       }}
       aria-label={`View profile for ${member.name}, ${member.role}, Town Hall ${th}`}
     >
-              {/* Name Column */}
-              <TableCell className="border-r border-gray-300">
-                <div className="flex items-center space-x-3">
-                  <LeagueBadge trophies={member.trophies} size="lg" showText={false} />
-                  <div className="flex flex-col">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenProfile();
-                      }}
-                      className="player-name-link font-heading font-semibold text-left transition-colors focus-ring-inset"
-                      style={{ color: 'var(--player-name-color, #1e40af)' }}
-                      title="View player profile"
-                    >
-                      {member.name}
-                    </button>
-                  </div>
-                </div>
-              </TableCell>
+      {/* Name Column */}
+      <TableCell className="border-r border-gray-300" isActiveSort={isActiveColumn('name')}>
+        <div className="flex items-center space-x-3">
+          <LeagueBadge trophies={member.trophies} size="lg" showText={false} />
+          <div className="flex flex-col">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                handleOpenProfile();
+              }}
+              className="player-name-link font-heading font-semibold text-left transition-colors focus-ring-inset"
+              style={{ color: 'var(--player-name-color, #1e40af)' }}
+              title="View player profile"
+            >
+              {member.name}
+            </button>
+          </div>
+        </div>
+      </TableCell>
 
-              {/* Role Column */}
-              <TableCell className="text-center border-r border-slate-600/50">
-                {(() => {
-                  const variant = getRoleBadgeVariant(member.role);
-                  return (
-                    <span
-                      className={`role-badge role-badge--${variant.tone} inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold`}
-                      title={variant.label}
-                    >
-                      {variant.icon && <span aria-hidden className="text-xs">{variant.icon}</span>}
-                      <span className="role-badge__label">{variant.label}</span>
-                    </span>
-                  );
-                })()}
-              </TableCell>
+      {/* Role Column */}
+      <TableCell className="text-center border-r border-slate-600/50" isActiveSort={isActiveColumn('role')}>
+        {(() => {
+          const variant = getRoleBadgeVariant(member.role);
+          return (
+            <span
+              className={`role-badge role-badge--${variant.tone} inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold`}
+              title={variant.label}
+            >
+              {variant.icon && <span aria-hidden className="text-xs">{variant.icon}</span>}
+              <span className="role-badge__label">{variant.label}</span>
+            </span>
+          );
+        })()}
+      </TableCell>
 
-              {/* Town Hall Column */}
-              <TableCell className="text-center border-r border-slate-700/40">
-                <div className="flex items-center justify-center">
-                  <TownHallBadge
-                    level={th}
-                    size="sm"
-                    showLevel={true}
-                    showBox={false}
-                    className="drop-shadow-md"
-                  />
-                </div>
-              </TableCell>
+      {/* Town Hall Column */}
+      <TableCell className="text-center border-r border-slate-700/40" isActiveSort={isActiveColumn('th')}>
+        <div className="flex items-center justify-center">
+          <TownHallBadge
+            level={th}
+            size="sm"
+            showLevel={true}
+            showBox={false}
+            className="drop-shadow-md"
+          />
+        </div>
+      </TableCell>
 
       {/* Trophies Column */}
-      <TableCell className="text-center border-r border-slate-700/40" title="Current trophies">
+      <TableCell
+        className="text-center border-r border-slate-700/40"
+        title="Current trophies"
+        isActiveSort={isActiveColumn('trophies')}
+      >
         <div className="flex items-center justify-center space-x-1">
           <span className="text-clash-gold">🏆</span>
           <span className="font-semibold">
@@ -327,6 +428,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       {/* Hero Columns */}
       <TableCell
         className="text-center border-r border-gray-300"
+        isActiveSort={isActiveColumn('bk')}
         title={isHeroAvailable('bk', th)
           ? `Barbarian King at TH${th} (max ${getDisplayMax('bk')})`
           : `Barbarian King unlocks at TH${HERO_MIN_TH.bk}`}
@@ -342,6 +444,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       <TableCell
         className="text-center border-r border-gray-300"
+        isActiveSort={isActiveColumn('aq')}
         title={isHeroAvailable('aq', th)
           ? `Archer Queen at TH${th} (max ${getDisplayMax('aq')})`
           : `Archer Queen unlocks at TH${HERO_MIN_TH.aq}`}
@@ -357,6 +460,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       <TableCell
         className="text-center border-r border-gray-300"
+        isActiveSort={isActiveColumn('mp')}
         title={isHeroAvailable('mp', th)
           ? `Minion Prince at TH${th} (max ${getDisplayMax('mp')})`
           : `Minion Prince unlocks at TH${HERO_MIN_TH.mp}`}
@@ -372,6 +476,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       <TableCell
         className="text-center border-r border-gray-300"
+        isActiveSort={isActiveColumn('gw')}
         title={isHeroAvailable('gw', th)
           ? `Grand Warden at TH${th} (max ${getDisplayMax('gw')})`
           : `Grand Warden unlocks at TH${HERO_MIN_TH.gw}`}
@@ -387,6 +492,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       <TableCell
         className="text-center border-r border-gray-300"
+        isActiveSort={isActiveColumn('rc')}
         title={isHeroAvailable('rc', th)
           ? `Royal Champion at TH${th} (max ${getDisplayMax('rc')})`
           : `Royal Champion unlocks at TH${HERO_MIN_TH.rc}`}
@@ -401,13 +507,31 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       {/* Rush Percentage Column */}
-      <TableCell className="text-center border-r border-slate-600/50" title={heroRushTooltip}>
+      <TableCell
+        className="text-center border-r border-slate-600/50"
+        title={heroRushTooltip}
+        isActiveSort={isActiveColumn('rush')}
+      >
         <span className={`font-semibold ${rushPercent >= 70 ? 'text-clash-red' : rushPercent >= 40 ? 'text-clash-orange' : 'text-clash-green'}`}>
           {rushPercent.toFixed(1)}%
         </span>
       </TableCell>
+      {/* ACE Score Column */}
+      <TableCell
+        className="text-center border-r border-slate-600/50 text-slate-900 dark:text-slate-100"
+        title={aceTooltip}
+        isActiveSort={isActiveColumn('ace')}
+      >
+        {aceScore != null ? (
+          <span className="font-semibold">
+            {aceScore.toFixed(1)}
+          </span>
+        ) : (
+          <span className="text-xs text-slate-500 dark:text-slate-300">—</span>
+        )}
+      </TableCell>
       {/* Activity Column (under Analysis group) */}
-      <TableCell className="text-center border-r border-slate-600/50">
+      <TableCell className="text-center border-r border-slate-600/50" isActiveSort={isActiveColumn('activity')}>
         <div className="flex flex-col items-center space-y-1">
           <span
             className={`px-2 py-1 rounded-full text-xs font-semibold border ${
@@ -431,17 +555,25 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
 
       {/* Donations Given Column */}
-      <TableCell className="text-center border-r border-slate-600/50" title={`Donations given/received: ${formatNumber(donationBalance.given)} / ${formatNumber(donationBalance.received)} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
+      <TableCell
+        className="text-center border-r border-slate-600/50"
+        title={`Donations given/received: ${formatNumber(donationBalance.given)} / ${formatNumber(donationBalance.received)} (balance ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}
+        isActiveSort={isActiveColumn('donations')}
+      >
         <span className="font-semibold text-clash-green">{formatNumber(member.donations)}</span>
       </TableCell>
 
       {/* Donations Received Column */}
-      <TableCell className="text-center border-r border-slate-600/50" title={`Donations received: ${formatNumber(member.donationsReceived)} (net ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}>
+      <TableCell
+        className="text-center border-r border-slate-600/50"
+        title={`Donations received: ${formatNumber(member.donationsReceived)} (net ${donationBalance.isNegative ? '+' : ''}${donationBalance.balance})`}
+        isActiveSort={isActiveColumn('donationsReceived')}
+      >
         <span className="font-semibold text-clash-blue">{formatNumber(member.donationsReceived)}</span>
       </TableCell>
 
       {/* Tenure Column */}
-      <TableCell className="text-center border-r border-slate-300">
+      <TableCell className="text-center border-r border-slate-300" isActiveSort={isActiveColumn('tenure')}>
         <span
           className="font-semibold"
           title={member.tenure_as_of
@@ -457,7 +589,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
 
       {/* Actions Menu */}
-      <TableCell className="text-center">
+      <TableCell className="text-center" isActiveSort={isActiveColumn('actions')}>
         <div className="relative inline-block text-left">
           <ActionsMenu 
             onViewProfile={(e) => { e.stopPropagation(); handleOpenProfile(); }}

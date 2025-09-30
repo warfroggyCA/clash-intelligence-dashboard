@@ -51,6 +51,7 @@ export interface Member {
   manualActivityOverride?: ActivityOption;
   notes?: string;
   customFields?: Record<string, string>;
+  extras?: Record<string, any>;
 }
 
 /**
@@ -447,6 +448,7 @@ export type SortKey =
   | "rc"
   | "mp"
   | "rush"
+  | "ace"
   | "trophies"
   | "donations"
   | "donationsReceived"
@@ -607,10 +609,10 @@ export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
   10: { bk: 40, aq: 40, mp: 10 },
   11: { bk: 50, aq: 50, gw: 20, mp: 15 },
   12: { bk: 65, aq: 65, gw: 40, mp: 20 },
-  13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 25 },
-  14: { bk: 80, aq: 80, gw: 55, rc: 30, mp: 30 },
-  15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 35 },
-  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 40 }
+  13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 50 },
+  14: { bk: 80, aq: 80, gw: 55, rc: 30, mp: 55 },
+  15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 60 },
+  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 }
 };
 
 // =============================================================================

@@ -4,9 +4,10 @@ import { cfg } from './config';
 import { normalizeTag, safeTagForFilename } from './tags';
 import type { FullClanSnapshot } from './full-snapshot';
 import { convertFullSnapshotToDailySnapshot } from './snapshots';
-import { calculateActivityScore, calculateRushPercentage } from './business/calculations';
+import { calculateActivityScore, calculateRushPercentage, getMemberAceScore, getMemberAceAvailability } from './business/calculations';
+import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
 import { HERO_MAX_LEVELS } from '@/types';
-import type { HeroCaps } from '@/types';
+import type { HeroCaps, Roster } from '@/types';
 import { parseRole } from './leadership';
 import type { Member as DomainMember } from '@/types';
 
@@ -32,6 +33,8 @@ export interface PlayerProfileSummary {
     balance: number;
   };
   lastSeen?: string;
+  aceScore?: number | null;
+  aceAvailability?: number | null;
 }
 
 export interface PlayerHeroProgressItem {
@@ -151,6 +154,34 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   const rushScore = calculateRushPercentage(calcMember);
   const townHallLevel = calcMember.townHallLevel ?? playerDetail.townHallLevel ?? 0;
 
+  let aceScore: number | null = null;
+  let aceAvailability: number | null = null;
+
+  const rosterLike: Roster = {
+    source: 'snapshot',
+    clanTag: dailySnapshot.clanTag ?? latestSnapshot.clanTag,
+    clanName: dailySnapshot.clanName ?? latestSnapshot.clan?.name ?? undefined,
+    date: dailySnapshot.date,
+    members: dailySnapshot.members as any,
+  };
+
+  const aceInputs = createAceInputsFromRoster(rosterLike);
+  if (aceInputs.length) {
+    const aceResults = calculateAceScores(aceInputs);
+    const playerAce = aceResults.find((entry) => normalizeTag(entry.tag) === normalizedPlayerTag);
+    if (playerAce) {
+      aceScore = playerAce.ace;
+      aceAvailability = playerAce.availability;
+    }
+  }
+
+  if (aceScore == null) {
+    aceScore = getMemberAceScore(calcMember);
+  }
+  if (aceAvailability == null) {
+    aceAvailability = getMemberAceAvailability(calcMember);
+  }
+
   const donationsGiven = calcMember.donations ?? 0;
   const donationsReceived = calcMember.donationsReceived ?? 0;
   const donationNet = donationsGiven - donationsReceived;
@@ -197,6 +228,8 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
         balance: donationNet,
       },
       lastSeen: undefined,
+      aceScore: aceScore ?? null,
+      aceAvailability: aceAvailability ?? null,
     },
     heroProgress,
     performance: {
@@ -256,9 +289,9 @@ function buildHeroProgress(playerDetail: any, townHallLevel: number): PlayerHero
   const heroOrder: Array<{ key: keyof HeroCaps; label: PlayerHeroProgressItem['hero']; short: PlayerHeroProgressItem['shortLabel'] }> = [
     { key: 'bk', label: 'Barbarian King', short: 'BK' },
     { key: 'aq', label: 'Archer Queen', short: 'AQ' },
+    { key: 'mp', label: 'Minion Prince', short: 'MP' },
     { key: 'gw', label: 'Grand Warden', short: 'GW' },
     { key: 'rc', label: 'Royal Champion', short: 'RC' },
-    { key: 'mp', label: 'Minion Prince', short: 'MP' },
   ];
 
   const heroLevels = Array.isArray(playerDetail?.heroes) ? playerDetail.heroes : [];
@@ -525,6 +558,8 @@ function buildMockProfile(normalized: string): PlayerProfileData {
         balance: 1332,
       },
       lastSeen: '2025-09-29T14:20:00.000Z',
+      aceScore: 96.4,
+      aceAvailability: 0.98,
     },
     heroProgress: [
       { hero: 'Barbarian King', shortLabel: 'BK', level: 75, maxLevel: 80 },
