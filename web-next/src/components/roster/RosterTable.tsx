@@ -19,6 +19,7 @@
 
 import React, { useMemo, useState, useCallback, useRef } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Member, Roster, SortKey, SortDirection } from '@/types';
 import { safeLocaleTimeString } from '@/lib/date';
@@ -36,7 +37,6 @@ import { TableHeader } from './TableHeader';
 import { TableRow } from './TableRow';
 import { MobileCard } from './MobileCard';
 import { PlayerCard } from './PlayerCard';
-import { PlayerDetailDrawer } from './PlayerDetailDrawer';
 import { TableFilters } from './TableFilters';
 import { Pagination } from './Pagination';
 import { Button, Input, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
@@ -257,7 +257,7 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
+  const router = useRouter();
 
   // Get members from roster
   const members = useMemo(() => roster?.members ?? [], [roster?.members]);
@@ -305,8 +305,9 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   }, []);
 
   const handleSelectMember = useCallback((member: Member) => {
-    setSelectedMember(member);
-  }, []);
+    const normalizedTag = member.tag.startsWith('#') ? member.tag.slice(1) : member.tag;
+    router.push(`/player/${normalizedTag}`);
+  }, [router]);
 
   // Clear filters
   const handleClearFilters = useCallback(() => {
@@ -560,7 +561,6 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
         </div>
       )}
 
-      <PlayerDetailDrawer member={selectedMember} onClose={() => setSelectedMember(null)} />
 
     </div>
   );
