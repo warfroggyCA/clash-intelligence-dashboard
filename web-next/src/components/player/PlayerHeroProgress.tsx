@@ -83,13 +83,17 @@ export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes }
         return (
           <div key={hero.shortLabel} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-3">
             {icon ? (
-              <div className="relative flex-shrink-0">
+              <div
+                className="relative flex-shrink-0"
+                style={{ width: '64px', height: '64px' }}
+              >
                 <Image
                   src={icon.src}
                   alt={icon.alt}
-                  width={72}
-                  height={72}
-                  className="h-16 w-16 object-contain"
+                  width={64}
+                  height={64}
+                  className="object-contain"
+                  style={{ width: '64px', height: '64px' }}
                   priority
                 />
               </div>

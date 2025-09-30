@@ -9,11 +9,11 @@ interface TownHallBadgeProps {
   size?: 'sm' | 'md' | 'lg' | 'xl';
 }
 
-const sizeClasses: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
-  sm: 'w-12 h-12',
-  md: 'w-16 h-16',
-  lg: 'w-20 h-20',
-  xl: 'w-24 h-24',
+const sizePixels: Record<'sm' | 'md' | 'lg' | 'xl', number> = {
+  sm: 48,
+  md: 64,
+  lg: 80,
+  xl: 96,
 };
 
 const textSizeClasses: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
@@ -31,16 +31,21 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
   size = 'md'
 }) => {
   const thImage = `/assets/clash/Townhalls/TH${level}.png`;
+  const dimension = sizePixels[size];
   
   if (!showBox) {
     return (
-      <div className={`relative ${className}`}>
+      <div
+        className={`relative inline-block ${className}`}
+        style={{ width: `${dimension}px`, height: `${dimension}px` }}
+      >
         <Image
           src={thImage}
           alt={`Town Hall ${level}`}
-          width={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
-          height={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
-          className={`${sizeClasses[size]} object-contain`}
+          width={dimension}
+          height={dimension}
+          className="object-contain"
+          style={{ width: `${dimension}px`, height: `${dimension}px` }}
           onError={(e) => {
             // Fallback to emoji if image fails to load
             const target = e.target as HTMLImageElement;
@@ -66,13 +71,17 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
   
   return (
     <div className={`relative ${className}`}>
-      <div className={`${sizeClasses[size]} rounded-lg flex items-center justify-center overflow-hidden`}>
+      <div
+        className="relative rounded-lg overflow-hidden"
+        style={{ width: `${dimension}px`, height: `${dimension}px` }}
+      >
         <Image
           src={thImage}
           alt={`Town Hall ${level}`}
-          width={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
-          height={size === 'sm' ? 48 : size === 'md' ? 64 : size === 'lg' ? 80 : 96}
+          width={dimension}
+          height={dimension}
           className="object-cover"
+          style={{ width: `${dimension}px`, height: `${dimension}px` }}
           onError={(e) => {
             // Fallback to emoji if image fails to load
             const target = e.target as HTMLImageElement;

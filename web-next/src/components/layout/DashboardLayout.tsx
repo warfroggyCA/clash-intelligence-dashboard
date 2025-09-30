@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
@@ -41,11 +42,6 @@ interface DashboardHeaderProps {
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen, canUseCommandRail }) => {
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  if (typeof window !== 'undefined') {
-    console.log(`[RenderTrace] DashboardHeader#${renderCountRef.current}`);
-  }
   const {
     clanTag,
     homeClan,
@@ -57,7 +53,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
     departureNotifications,
     setShowDepartureManager,
     setShowAccessManager,
-    setShowSettings,
     setShowIngestionMonitor,
     currentAccessMember,
     accessPermissions,
@@ -75,6 +70,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
     (entry) => entry.clan_tag === normalizedClanTagValue && (entry.role === 'leader' || entry.role === 'coleader')
   );
   const canShowRoleMenu = cfg.isDevelopment || hasLeadershipRole;
+  const router = useRouter();
   const actualRoleLabel = getRoleDisplayName(clanRoleFromName(actualRoleName));
   const viewingRoleLabel = getRoleDisplayName(clanRoleFromName(viewingRoleName));
   const isImpersonating = Boolean(impersonatedRole);
@@ -197,7 +193,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
           </div>
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center justify-center gap-3">
-              <div className={`relative flex h-12 w-12 items-center justify-center rounded-3xl border border-brand-border/80 bg-brand-surfaceRaised/80 text-brand-primary sm:h-14 sm:w-14 ${isScrolled ? 'shadow-none' : 'shadow-[0_16px_32px_-20px_rgba(8,15,31,0.7)]'}`}>
+              <div className="relative flex h-12 w-12 items-center justify-center sm:h-14 sm:w-14">
                 <Image
                   src={logoSrc}
                   alt="Clan Logo"
@@ -317,13 +313,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
                     </button>
                   </LeadershipGuard>
                   <button 
-                    onClick={() => setShowSettings(true)}
+                    onClick={() => router.push('/settings')}
                     className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
                   >
                     ⚙️ Settings
                   </button>
                   <button
-                    onClick={() => setShowSettings(true)}
+                    onClick={() => router.push('/settings#clan-management')}
                     className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
                   >
                     🏰 Manage Clans
@@ -382,11 +378,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   className = '',
 }) => {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  if (typeof window !== 'undefined') {
-    console.log(`[RenderTrace] DashboardLayout#${renderCount.current}`);
-  }
   const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
   const { permissions } = useLeadership();
   const canAccessLeadershipTools = permissions.canViewLeadershipFeatures;

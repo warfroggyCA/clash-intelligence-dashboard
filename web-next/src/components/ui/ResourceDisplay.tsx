@@ -70,23 +70,35 @@ export const ResourceDisplay: React.FC<ResourceDisplayProps> = ({
   return (
     <div className={`flex items-center gap-2 ${config.bgColor} ${config.borderColor} border rounded-lg ${containerSizeClasses[size]} ${className}`}>
       {showIcon && (
-        <Image
-          src={config.icon}
-          alt={`${type} resource`}
-          width={size === 'sm' ? 16 : size === 'md' ? 20 : 24}
-          height={size === 'sm' ? 16 : size === 'md' ? 20 : 24}
-          className={`${sizeClasses[size]} object-contain`}
-          onError={(e) => {
-            // Fallback to emoji if image fails to load
-            const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const parent = target.parentElement;
-            if (parent) {
-              parent.innerHTML = config.emoji;
-              parent.className += ' flex items-center justify-center';
-            }
+        <div
+          className="relative"
+          style={{
+            width: `${size === 'sm' ? 16 : size === 'md' ? 20 : 24}px`,
+            height: `${size === 'sm' ? 16 : size === 'md' ? 20 : 24}px`,
           }}
-        />
+        >
+          <Image
+            src={config.icon}
+            alt={`${type} resource`}
+            width={size === 'sm' ? 16 : size === 'md' ? 20 : 24}
+            height={size === 'sm' ? 16 : size === 'md' ? 20 : 24}
+            className="object-contain"
+            style={{
+              width: `${size === 'sm' ? 16 : size === 'md' ? 20 : 24}px`,
+              height: `${size === 'sm' ? 16 : size === 'md' ? 20 : 24}px`,
+            }}
+            onError={(e) => {
+              // Fallback to emoji if image fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              const parent = target.parentElement;
+              if (parent) {
+                parent.innerHTML = config.emoji;
+                parent.className += ' flex items-center justify-center';
+              }
+            }}
+          />
+        </div>
       )}
       <span className={`${config.color} font-bold ${textSizeClasses[size]}`}>
         {amount.toLocaleString()}

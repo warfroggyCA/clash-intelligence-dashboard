@@ -1,16 +1,11 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Button } from '@/components/ui';
 import type { ClanRoleName } from '@/lib/auth/roles';
 
 export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  if (typeof window !== 'undefined') {
-    console.log(`[RenderTrace] AuthGate#${renderCount.current}`);
-  }
   // RESTORED: Proper store selectors with critical fixes
   const currentUser = useDashboardStore((state) => state.currentUser);
   const hydrateSession = useDashboardStore((state) => state.hydrateSession);

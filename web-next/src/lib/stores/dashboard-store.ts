@@ -318,149 +318,21 @@ const initialState = {
 // STORE CREATION
 // =============================================================================
 
-// 🚨 GLOBAL DEBUG: Hook into ANY setRoster calls
-if (typeof window !== 'undefined') {
-  const originalConsoleLog = console.log;
-  console.log = (...args) => {
-    if (args[0]?.includes?.('setRoster') || args[0]?.includes?.('DashboardStore')) {
-      originalConsoleLog('🔍 GLOBAL DEBUG CAUGHT:', ...args);
-    }
-    originalConsoleLog(...args);
-  };
-
-  const originalConsoleError = console.error;
-  console.error = (...args) => {
-    try {
-      const [first, second] = args;
-      const looksLikeReactError =
-        first instanceof Error || (typeof first === 'string' && first.includes('React error #'));
-      if (looksLikeReactError) {
-        let stack: string | null = null;
-        if (first instanceof Error) {
-          stack = first.stack ?? null;
-        } else if (typeof second === 'object' && second && 'componentStack' in (second as Record<string, unknown>)) {
-          stack = (second as { componentStack?: string }).componentStack ?? null;
-        }
-        originalConsoleLog('🛑 CAPTURED console.error', {
-          message: first instanceof Error ? first.message : first,
-          stack,
-          raw: args,
-        });
-      }
-    } catch (error) {
-      originalConsoleLog('🛑 console.error hook failed', error);
-    }
-    originalConsoleError(...args);
-  };
-}
-
-let debugSetCounter = 0;
-
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
-    subscribeWithSelector((set, get) => {
-      const originalSet = set;
-      const debugSet: typeof set = (partial, replace = false) => {
-        try {
-          if (typeof window !== 'undefined') {
-            debugSetCounter += 1;
-            const snapshot = typeof partial === 'function' ? partial(get()) : partial;
-            const keys = snapshot && typeof snapshot === 'object'
-              ? Object.keys(snapshot as Record<string, unknown>)
-              : ['(fn)'];
-            const preview: Record<string, unknown> = {};
-            if (snapshot && typeof snapshot === 'object') {
-              keys.slice(0, 5).forEach((key) => {
-                preview[key] = (snapshot as Record<string, unknown>)[key];
-              });
-            }
-            const stack = new Error().stack?.split('\n').slice(1, 6).map((line) => line.trim());
-            console.log(`[DashboardStore#set#${debugSetCounter}]`, {
-              replace,
-              keys,
-              preview,
-              stack,
-            });
-          }
-        } catch (error) {
-          console.warn('[DashboardStore#set] logging failed', error);
-        }
-        return originalSet(partial as any, replace as any);
-      };
-      // eslint-disable-next-line no-param-reassign
-      set = debugSet;
-      return {
+    subscribeWithSelector((set, get) => ({
         ...initialState,
 
         // =============================================================================
         // BASIC SETTERS
         // =============================================================================
-      
       setRoster: (roster) => {
-        // 🚨 CRITICAL DEBUG: This should be visible if our code is running
-        console.log('🚨🚨🚨 ENHANCED DEBUGGING ACTIVE - COMMIT 0076e9e 🚨🚨🚨');
-        console.log('🚨🚨🚨 TIMESTAMP:', new Date().toISOString());
-        console.log('🚨🚨🚨 ROSTER CLAN TAG:', roster?.clanTag);
-        console.log('🚨🚨🚨 SETROSTER FUNCTION CALLED - THIS IS THE REAL ONE! 🚨🚨🚨');
-        
-        // Expert coder guidance: Add guard logs and stack trace
-        const stack = new Error().stack;
-        const timestamp = Date.now();
-        
-         console.log('[DashboardStore] setRoster called with:', {
-           hasRoster: !!roster,
-           memberCount: roster?.members?.length,
-           clanTag: roster?.clanTag,
-           source: roster?.source,
-           timestamp,
-           stack: stack?.split('\n').slice(1, 8).join('\n') // Show more stack frames for debugging
-         });
-         
-         // 🚨 CRITICAL DEBUG: Log the FULL stack trace
-         console.log('🚨 FULL STACK TRACE:', stack);
-        
-        // Expert guidance: Global dev flag for stack comparison
-        if (typeof window !== 'undefined') {
-          const global = window as any;
-          if (!global.__setRosterStacks) {
-            global.__setRosterStacks = [];
-          }
-          
-          // Store first few calls for comparison
-          global.__setRosterStacks.push({
-            timestamp,
-            stack: stack?.split('\n').slice(1, 6), // More stack frames
-            roster: !!roster,
-            clanTag: roster?.clanTag
-          });
-          
-          // Keep only last 5 calls
-          if (global.__setRosterStacks.length > 5) {
-            global.__setRosterStacks = global.__setRosterStacks.slice(-5);
-          }
-          
-          // Check for rapid successive calls
-          const recentCalls = global.__setRosterStacks.filter((call: any) => timestamp - call.timestamp < 500);
-          if (recentCalls.length > 1) {
-            console.error('[DashboardStore] RAPID SUCCESSIVE setRoster CALLS DETECTED!');
-            console.error('[DashboardStore] Recent calls:', recentCalls.map((call: any) => ({
-              timestamp: call.timestamp,
-              clanTag: call.clanTag,
-              stack: call.stack.slice(0, 3).join('\n')
-            })));
-          }
-        }
-        
-         console.log('🚨 ABOUT TO CALL set() with roster:', !!roster);
-         
-         set({ 
-           roster,
-           snapshotMetadata: roster?.snapshotMetadata || null,
-           snapshotDetails: roster?.snapshotDetails || null,
-         });
-         
-         console.log('🚨 set() CALLED SUCCESSFULLY');
+        set({
+          roster,
+          snapshotMetadata: roster?.snapshotMetadata ?? null,
+          snapshotDetails: roster?.snapshotDetails ?? null,
+        });
         try {
           if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
             const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
@@ -1090,8 +962,7 @@ export const useDashboardStore = create<DashboardState>()(
           setDismissedNotifications(newDismissed);
         }
       }
-    };
-    })
+    }))
     // TEMPORARILY DISABLED: devtools options might be causing React Error #185
     // , {
     //   name: 'dashboard-store',

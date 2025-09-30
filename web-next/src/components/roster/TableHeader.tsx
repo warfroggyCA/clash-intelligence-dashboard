@@ -196,7 +196,6 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
 
 interface GroupConfig {
   name: string;
-  icon?: string;
   columns: number;
   className: string;
 }
@@ -204,37 +203,31 @@ interface GroupConfig {
 const GROUP_CONFIGS: GroupConfig[] = [
   {
     name: 'Basic Info',
-    icon: '👤',
     columns: 4,
     className: 'border-r border-slate-400'
   },
   {
     name: 'Heroes',
-    icon: '⚔️',
     columns: 5,
     className: 'border-r border-slate-400'
   },
   {
     name: 'Analysis',
-    icon: '📊',
     columns: 3,
     className: 'border-r border-slate-400'
   },
   {
     name: 'Donations',
-    icon: '💝',
     columns: 2,
     className: 'border-r border-slate-400'
   },
   {
     name: 'Stats',
-    icon: '📈',
     columns: 1,
     className: ''
   },
   {
     name: '',
-    icon: '',
     columns: 1,
     className: ''
   }
@@ -351,7 +344,6 @@ export const TableHeader: React.FC<TableHeaderProps> = ({
             className={`py-2 px-4 font-bold text-blue-800 text-center ${group.className}`}
           >
             <div className="flex items-center justify-center gap-2">
-              {group.icon && <span className="text-sm" aria-hidden="true">{group.icon}</span>}
               <span className="text-xs uppercase tracking-wide">{group.name}</span>
             </div>
           </th>

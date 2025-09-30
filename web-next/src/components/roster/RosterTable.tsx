@@ -17,7 +17,7 @@
  * Last Updated: January 2025
  */
 
-import React, { useMemo, useState, useCallback, useRef } from 'react';
+import React, { useMemo, useState, useCallback } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
@@ -270,11 +270,6 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 // =============================================================================
 
 export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
-  const renderCountRef = useRef(0);
-  renderCountRef.current += 1;
-  if (typeof window !== 'undefined') {
-    console.log(`[RenderTrace] RosterTable#${renderCountRef.current}`);
-  }
   const { roster, sortKey, sortDir, setSortKey, setSortDir, dataFetchedAt } = useDashboardStore();
   const rosterViewMode = useDashboardStore((state) => state.rosterViewMode);
   const setRosterViewMode = useDashboardStore((state) => state.setRosterViewMode);
