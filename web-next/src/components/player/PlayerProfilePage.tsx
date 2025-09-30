@@ -2,9 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { PlayerProfileData, normalizePlayerTag } from '@/lib/player-profile';
+import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import type { PlayerProfileData } from '@/lib/player-profile';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { normalizeTag } from '@/lib/tags';
+import type { Member } from '@/types';
 import PlayerSummaryHeader from './PlayerSummaryHeader';
 import PlayerHeroProgress from './PlayerHeroProgress';
 import PlayerPerformanceOverview from './PlayerPerformanceOverview';
@@ -16,17 +18,19 @@ interface PlayerProfilePageProps {
   data: PlayerProfileData;
 }
 
+const EMPTY_MEMBERS: Member[] = [];
+
 export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) => {
   const router = useRouter();
-  const rosterMembers = useDashboardStore((state) => state.roster?.members ?? []);
+  const rosterMembers = useDashboardStore((state) => state.roster?.members ?? EMPTY_MEMBERS);
 
-  const normalizedTag = useMemo(() => normalizePlayerTag(data.summary.tag), [data.summary.tag]);
+  const normalizedTag = useMemo(() => normalizeTag(data.summary.tag).replace('#', ''), [data.summary.tag]);
 
   const navigation = useMemo(() => {
     if (!rosterMembers.length) {
       return null;
     }
-    const normalizedList = rosterMembers.map((member) => normalizePlayerTag(member.tag));
+    const normalizedList = rosterMembers.map((member) => normalizeTag(member.tag).replace('#', ''));
     const currentIndex = normalizedList.indexOf(normalizedTag);
     if (currentIndex === -1) {
       return null;
@@ -69,13 +73,20 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
     <div className="player-profile space-y-6">
       <div className="space-y-4">
         {navigation?.hasMultiple ? (
-          <div className="flex items-center justify-between text-sm text-muted-contrast">
+          <div className="flex items-center justify-between gap-3 pt-1 text-sm text-muted-contrast">
             <button
               type="button"
               className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
               onClick={() => navigateTo(navigation.prevTag)}
             >
               <ChevronLeft className="h-4 w-4" aria-hidden /> Prev
+            </button>
+            <button
+              type="button"
+              className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/70 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
+              onClick={() => router.push('/')}
+            >
+              <Home className="h-4 w-4" aria-hidden /> Home
             </button>
             <button
               type="button"

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PlayerProfileSummary } from '@/lib/player-profile';
+import type { PlayerProfileSummary } from '@/lib/player-profile';
 import { LeagueBadge, TownHallBadge, Button } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 
@@ -42,7 +42,7 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-1">
                 <LeagueBadge trophies={summary.league.trophies} showText={false} size="xl" />
-                <span className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-300">{leagueLabel}</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">{leagueLabel}</span>
               </div>
               <div className="space-y-2">
                 <h1
@@ -67,13 +67,7 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
           </div>
 
           <div className="flex flex-col items-end gap-3 text-right">
-            <div className="flex items-center gap-2 text-sm text-slate-200">
-              <TownHallBadge level={summary.townHallLevel} size="md" />
-              <span className="font-semibold">TH{summary.townHallLevel}</span>
-            </div>
-            {lastSeen && (
-              <p className="text-xs text-muted-contrast">Last seen {Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(lastSeen)}</p>
-            )}
+            <TownHallBadge level={summary.townHallLevel} size="xl" />
           </div>
         </div>
 
