@@ -145,8 +145,20 @@ export const RosterSummary = () => {
   }, [roster?.members]);
 
   const topCapitalContributors = useMemo<HighlightEntry[]>(() => {
-    // TODO: Implement capital contributions tracking when data structure is available
-    return [];
+    if (!roster?.members?.length) return [];
+
+    return roster.members
+      .map((member) => ({
+        name: member.name,
+        contributions: (member as any).clanCapitalContributions ?? 0,
+      }))
+      .filter((entry) => entry.contributions > 0)
+      .sort((a, b) => b.contributions - a.contributions)
+      .slice(0, 3)
+      .map((entry, index) => ({
+        label: `${index + 1}. ${entry.name}`,
+        value: formatNumber(entry.contributions),
+      }));
   }, [roster?.members]);
 
   const heroLeaders = useMemo<HighlightEntry[]>(() => {
