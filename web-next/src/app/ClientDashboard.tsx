@@ -49,23 +49,37 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       initialClanTag,
       initialRoster: !!initialRoster,
       initialRosterMembers: initialRoster?.members?.length,
+      currentClanTag: clanTag,
+      currentRoster: !!roster,
     });
     hasInitialized.current = true;
-    if (initialClanTag && !clanTag) {
+    
+    // Force set initial data regardless of current store state
+    if (initialClanTag) {
+      console.log('[ClientDashboard] Setting clan tag from initial:', initialClanTag);
       setClanTag(initialClanTag);
     }
     if (initialRoster) {
-      console.log('[ClientDashboard] Setting initial roster from server');
+      console.log('[ClientDashboard] Setting initial roster from server with', initialRoster.members?.length, 'members');
       setRoster(initialRoster);
     }
-  }, []);
+  }, [initialClanTag, initialRoster, setClanTag, setRoster]);
 
   // Auto-load data if we don't have initial data from server
   useEffect(() => {
     if (!hasInitialized.current) return;
 
+    console.log('[ClientDashboard] Auto-load check:', {
+      hasInitialRoster: !!initialRoster,
+      hasInitialClanTag: !!initialClanTag,
+      currentClanTag: clanTag,
+      currentRoster: !!roster,
+      status,
+    });
+
     // If we have initial data from server, we're done
     if (initialRoster && initialClanTag) {
+      console.log('[ClientDashboard] Has initial data, skipping auto-load');
       return;
     }
 

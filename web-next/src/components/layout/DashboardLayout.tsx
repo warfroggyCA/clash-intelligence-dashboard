@@ -7,7 +7,6 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
-import SSRSafeDashboard from './SSRSafeDashboard';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
@@ -385,7 +384,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   if (typeof window !== 'undefined') {
     console.log(`[RenderTrace] DashboardLayout#${renderCount.current}`);
   }
-  const activeTab = useDashboardStore((state) => state.activeTab);
   const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
   const { permissions } = useLeadership();
   const canAccessLeadershipTools = permissions.canViewLeadershipFeatures;
@@ -428,11 +426,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <main className="dashboard-main min-h-screen w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex-1 space-y-6">
-            {activeTab === 'roster' && (
-              <SSRSafeDashboard />
-            )}
-
-            {/* Page Content */}
             {children}
           </div>
 
