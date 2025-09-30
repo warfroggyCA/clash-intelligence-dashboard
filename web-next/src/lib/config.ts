@@ -36,9 +36,9 @@ function validateEnv() {
 
 validateEnv();
 
-// Data source configuration
-const useLocalData = isDevelopment && process.env.USE_LOCAL_DATA !== "false";
-const useSupabase = !useLocalData;
+// Data source configuration - Force Supabase usage to pull existing data
+const useLocalData = false; // Always use Supabase to pull existing data
+const useSupabase = true;
 
 export const cfg = {
   // Data storage paths

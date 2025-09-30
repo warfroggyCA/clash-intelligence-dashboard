@@ -8,6 +8,7 @@ interface HeroLevelProps {
   showProgress?: boolean;
   showName?: boolean;
   size?: 'sm' | 'md' | 'lg';
+  clanAverage?: number;
 }
 
 const sizeClasses = {
@@ -20,6 +21,12 @@ const progressHeightClasses = {
   sm: 'h-1',
   md: 'h-2',
   lg: 'h-3'
+};
+
+const markerSizeClasses = {
+  sm: 'h-2 w-2',
+  md: 'h-2.5 w-2.5',
+  lg: 'h-3 w-3'
 };
 
 const heroConfig = {
@@ -37,12 +44,18 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   className = '',
   showProgress = true,
   showName = true,
-  size = 'md'
+  size = 'md',
+  clanAverage
 }) => {
   const safeLevel = Number.isFinite(level) ? Math.max(level, 0) : 0;
   const safeMax = Number.isFinite(maxLevel) ? Math.max(maxLevel, 0) : 0;
   const percentage = safeMax > 0 ? (safeLevel / safeMax) * 100 : 0;
   const config = heroConfig[hero];
+  const hasAverage = typeof clanAverage === 'number' && Number.isFinite(clanAverage);
+  const clampedAverage = hasAverage ? Math.min(Math.max(clanAverage!, 0), safeMax) : null;
+  const averagePercentage = hasAverage && safeMax > 0 && clampedAverage !== null
+    ? (clampedAverage / safeMax) * 100
+    : null;
   
   return (
     <div className={`space-y-1 ${className}`}>
@@ -51,11 +64,19 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
         <span className="text-high-contrast">{safeLevel}/{safeMax}</span>
       </div>
       {showProgress && (
-        <div className={`hero-progress-track w-full rounded-full ${progressHeightClasses[size]} overflow-hidden`}>
+        <div className={`hero-progress-track relative w-full rounded-full ${progressHeightClasses[size]} overflow-hidden`}>
           <div 
             className={`bg-gradient-to-r ${config.color} ${progressHeightClasses[size]} rounded-full transition-all duration-500 ease-out`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
+          {averagePercentage !== null ? (
+            <span
+              className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-900/80 bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.75)] ${markerSizeClasses[size]}`}
+              style={{ left: `${averagePercentage}%` }}
+              title={`Clan average ${clanAverage?.toFixed(1) ?? ''}`}
+              aria-hidden="true"
+            />
+          ) : null}
         </div>
       )}
     </div>

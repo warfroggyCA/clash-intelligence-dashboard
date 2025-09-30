@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PlayerEngagementInsight, PlayerNoteItem } from '@/lib/player-profile';
+import type { PlayerEngagementInsight, PlayerNoteItem } from '@/lib/player-profile';
 import SectionCard from '@/components/ui/SectionCard';
 
 interface PlayerEngagementInsightsProps {

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { PlayerNoteItem } from '@/lib/player-profile';
+import type { PlayerNoteItem } from '@/lib/player-profile';
 import SectionCard from '@/components/ui/SectionCard';
 
 interface PlayerNotesPanelProps {
