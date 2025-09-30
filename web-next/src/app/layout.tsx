@@ -1,7 +1,26 @@
 // web-next/src/app/layout.tsx
 // GitHub integration test - $(date)
 import "./globals.css";
+import Script from 'next/script';
 import { ThemeProvider } from '@/lib/contexts/theme-context';
+
+const INITIAL_THEME_SCRIPT = `
+(() => {
+  try {
+    const storageKey = 'clash-intelligence-theme';
+    const stored = localStorage.getItem(storageKey);
+    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    const resolved = stored === 'light' || stored === 'dark'
+      ? stored
+      : prefersLight
+        ? 'light'
+        : 'dark';
+    document.documentElement.setAttribute('data-theme', resolved);
+  } catch (error) {
+    document.documentElement.setAttribute('data-theme', 'dark');
+  }
+})();
+`;
 
 export const metadata = {
   title: "Clash Intelligence Dashboard",
@@ -39,7 +58,7 @@ export function generateViewport() {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning data-theme="dark">
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
@@ -48,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="theme-color" content="#4f46e5" />
         <meta name="msapplication-TileColor" content="#4f46e5" />
+        <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: INITIAL_THEME_SCRIPT }} />
       </head>
       <body>
         <ThemeProvider defaultTheme="system">

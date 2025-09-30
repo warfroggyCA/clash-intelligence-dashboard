@@ -35,7 +35,7 @@ const IconWrapper = ({ icon }: { icon: React.ReactNode }) => {
 };
 
 const StatTile = ({ icon, label, value }: StatTileProps) => (
-  <div className="rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3">
+  <div className="stat-tile rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3">
     <div className="flex items-center gap-3">
       <div className="flex h-12 w-12 items-center justify-center">
         <IconWrapper icon={icon} />

@@ -51,7 +51,7 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
         <span className="text-high-contrast">{safeLevel}/{safeMax}</span>
       </div>
       {showProgress && (
-        <div className={`w-full bg-black/30 rounded-full ${progressHeightClasses[size]} border border-clash-gold/30 overflow-hidden`}>
+        <div className={`hero-progress-track w-full rounded-full ${progressHeightClasses[size]} overflow-hidden`}>
           <div 
             className={`bg-gradient-to-r ${config.color} ${progressHeightClasses[size]} rounded-full transition-all duration-500 ease-out`}
             style={{ width: `${Math.min(percentage, 100)}%` }}

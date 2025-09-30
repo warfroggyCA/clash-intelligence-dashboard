@@ -190,20 +190,23 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
       className="w-full sticky top-0 z-50 header-hero text-white shadow-lg/70 supports-[backdrop-filter]:backdrop-blur"
     >
       <div className={`relative z-10 w-full px-4 lg:px-6 ${isScrolled ? 'py-3' : 'py-6'}`}>
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            <div className={`relative hidden sm:flex h-12 w-12 items-center justify-center rounded-2xl border border-brand-border/80 bg-brand-surfaceRaised/80 text-brand-primary ${isScrolled ? 'shadow-none' : 'shadow-[0_16px_32px_-20px_rgba(8,15,31,0.7)]'}`}>
-              <Image
-                src={logoSrc}
-                alt="Clan Logo"
-                fill
-                sizes="(max-width: 640px) 3rem, 3rem"
-                className="rounded-2xl object-cover"
-                priority
-              />
-            </div>
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Clan dashboard</p>
+        <div className="grid gap-4 sm:grid-cols-[auto,1fr,auto] sm:items-center">
+          <div className="flex flex-col gap-1 text-left">
+            <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Clash Intelligence</p>
+            <span className="text-sm font-semibold text-slate-200">Dashboard</span>
+          </div>
+          <div className="flex flex-col items-center gap-2 text-center">
+            <div className="flex items-center justify-center gap-3">
+              <div className={`relative flex h-12 w-12 items-center justify-center rounded-3xl border border-brand-border/80 bg-brand-surfaceRaised/80 text-brand-primary sm:h-14 sm:w-14 ${isScrolled ? 'shadow-none' : 'shadow-[0_16px_32px_-20px_rgba(8,15,31,0.7)]'}`}>
+                <Image
+                  src={logoSrc}
+                  alt="Clan Logo"
+                  fill
+                  sizes="(max-width: 640px) 3rem, 3rem"
+                  className="rounded-3xl object-cover"
+                  priority
+                />
+              </div>
               <div
                 className={`font-semibold leading-tight text-slate-100 transition-all duration-200 ${isScrolled ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}
                 style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
@@ -213,7 +216,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
             <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
               <span className="h-2 w-2 rounded-full bg-brand-primary" />
               {accessLevelLabel}
@@ -454,7 +457,6 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
               <span className="text-gray-400">•</span>
               <span className="text-gray-400">a warfroggy project</span>
             </div>
-            <div className="text-xs text-gray-400 font-medium">Built with Next.js • Clash of Clans API</div>
           </div>
         </div>
       </footer>
