@@ -8,6 +8,7 @@ import { ElderAssessmentCard } from '@/components/settings/ElderAssessmentCard';
 import { showToast } from '@/lib/toast';
 import { useLeadership } from '@/hooks/useLeadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
+import type { ClanRole } from '@/lib/leadership';
 import {
   Settings,
   Shield,
@@ -665,7 +666,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={newUserRole}
-            onChange={(event) => setNewUserRole(event.target.value as ClanRoleName)}
+            onChange={(event) => setNewUserRole(event.target.value as ClanRole)}
             className="rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-300"
           >
             {roleOptions.map((option) => (
