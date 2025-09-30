@@ -6,6 +6,8 @@ import { Roster } from '@/types';
 import { AuthGate } from '@/components/layout/AuthGuard';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { RosterTable } from '@/components/roster/RosterTable';
+import { RosterSummary } from '@/components/roster/RosterSummary';
+import { InsightsDashboard } from '@/components/insights/InsightsDashboard';
 
 type Props = {
   initialRoster?: Roster | null;
@@ -78,7 +80,12 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   const renderTabContent = () => {
     switch (activeTab) {
       case 'roster':
-        return <RosterTable />;
+        return (
+          <div className="space-y-6">
+            <RosterSummary />
+            <RosterTable />
+          </div>
+        );
       
       case 'changes':
         return <div>Changes Dashboard Component</div>;
@@ -87,7 +94,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
         return <div>Player Database Component</div>;
       
       case 'coaching':
-        return <div>Coaching Insights Component</div>;
+        return <InsightsDashboard />;
       
       case 'events':
         return (

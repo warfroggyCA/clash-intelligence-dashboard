@@ -1,119 +1,52 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface SSRSafeDashboardProps {
   className?: string;
 }
 
-export const SSRSafeDashboard: React.FC<SSRSafeDashboardProps> = ({ className = '' }) => {
-  const [mounted, setMounted] = useState(false);
-  const [components, setComponents] = useState<{
-    SmartInsightsHeadlines?: React.ComponentType<any>;
-    RosterStatsPanel?: React.ComponentType<any>;
-    RosterHighlightsPanel?: React.ComponentType<any>;
-  }>({});
-
-  useEffect(() => {
-        // Re-enabled: Load components after fixing DashboardLayout useEffect
-        const loadComponents = async () => {
-          try {
-            const [
-              { default: SmartInsightsHeadlines },
-              { RosterStatsPanel },
-              { RosterHighlightsPanel }
-            ] = await Promise.all([
-              import('@/components/SmartInsightsHeadlines'),
-              import('@/components/roster/RosterStatsPanel'),
-              import('@/components/roster/RosterHighlightsPanel')
-            ]);
-
-            setComponents({
-              SmartInsightsHeadlines,
-              RosterStatsPanel,
-              RosterHighlightsPanel
-            });
-            setMounted(true);
-          } catch (error) {
-            console.error('Failed to load dashboard components:', error);
-            setMounted(true); // Still set mounted to show error state
-          }
-        };
-
-        loadComponents();
-  }, []);
-
-  const LoadingCard = () => (
-    <div className="min-h-[18rem] animate-pulse bg-slate-800 rounded-lg">
-      <div className="grid grid-cols-2 gap-3 text-base p-4">
+const LoadingCard = () => (
+  <div className="min-h-[16rem] rounded-2xl border border-brand-border/60 bg-brand-surfaceSubtle/70 px-4 py-6">
+    <div className="space-y-3">
+      <div className="h-3 w-28 rounded-full bg-slate-700/60" />
+      <div className="space-y-2">
         {Array.from({ length: 4 }).map((_, idx) => (
-          <div key={idx} className="h-24 rounded-2xl bg-slate-700" />
+          <div key={idx} className="h-8 rounded-xl bg-slate-800/70" />
         ))}
       </div>
     </div>
-  );
+  </div>
+);
 
-  if (!mounted) {
-    return (
-      <div className={`grid items-stretch gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] ${className}`}>
-        <div className="flex h-full flex-col gap-4 lg:col-span-2 xl:col-span-1">
-          <div className="flex items-center gap-2 mt-6">
-            <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-            <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
-          </div>
-          <LoadingCard />
-        </div>
-        <div className="flex h-full flex-col gap-4">
-          <div className="flex items-center gap-2 mt-6">
-            <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
-            <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
-          </div>
-          <LoadingCard />
-        </div>
-        <div className="flex h-full flex-col gap-4">
-          <div className="flex items-center gap-2 mt-6">
-            <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
-            <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
-          </div>
-          <LoadingCard />
-        </div>
-      </div>
-    );
-  }
+export const SSRSafeDashboard: React.FC<SSRSafeDashboardProps> = ({ className = '' }) => {
+  const [mounted, setMounted] = useState(false);
+  const [SmartInsightsHeadlines, setInsightsComponent] = useState<React.ComponentType<any> | null>(null);
 
-  const { SmartInsightsHeadlines, RosterStatsPanel, RosterHighlightsPanel } = components;
+  useEffect(() => {
+    const loadComponent = async () => {
+      try {
+        const { default: component } = await import('@/components/SmartInsightsHeadlines');
+        setInsightsComponent(() => component);
+      } catch (error) {
+        console.error('Failed to load SmartInsightsHeadlines:', error);
+      } finally {
+        setMounted(true);
+      }
+    };
+
+    loadComponent();
+  }, []);
 
   return (
-    <div className={`grid items-stretch gap-6 md:grid-cols-1 lg:grid-cols-2 xl:grid-cols-[minmax(0,1.6fr),minmax(0,1fr),minmax(0,1fr)] ${className}`}>
-      <div className="flex h-full flex-col gap-4 lg:col-span-2 xl:col-span-1">
-        <div className="flex items-center gap-2 mt-6">
-          <div className="h-1 w-8 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-          <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Headlines</h3>
-        </div>
-        {SmartInsightsHeadlines ? (
-          <SmartInsightsHeadlines className="flex-1" />
-        ) : (
-          <LoadingCard />
-        )}
+    <div className={`mt-6 ${className}`}>
+      <div className="flex items-center gap-2">
+        <div className="h-1 w-8 rounded-full bg-gradient-to-r from-clash-gold to-clash-orange" />
+        <h3 className="text-lg font-semibold text-high-contrast">Today&apos;s Highlights</h3>
       </div>
-      <div className="flex h-full flex-col gap-4">
-        <div className="flex items-center gap-2 mt-6">
-          <div className="h-1 w-8 bg-gradient-to-r from-clash-blue to-clash-purple rounded-full"></div>
-          <h3 className="text-lg font-semibold text-high-contrast">Roster Snapshot</h3>
-        </div>
-        {RosterStatsPanel ? (
-          <RosterStatsPanel className="flex-1" />
-        ) : (
-          <LoadingCard />
-        )}
-      </div>
-      <div className="flex h-full flex-col gap-4">
-        <div className="flex items-center gap-2 mt-6">
-          <div className="h-1 w-8 bg-gradient-to-r from-clash-purple to-clash-red rounded-full"></div>
-          <h3 className="text-lg font-semibold text-high-contrast">Clan Highlights</h3>
-        </div>
-        {RosterHighlightsPanel ? (
-          <RosterHighlightsPanel className="flex-1" />
+      <div className="mt-4">
+        {mounted && SmartInsightsHeadlines ? (
+          <SmartInsightsHeadlines />
         ) : (
           <LoadingCard />
         )}

@@ -13,6 +13,9 @@ export * from './layout';
 // Roster Components  
 export * from './roster';
 
+// Insights Components
+export * from './insights';
+
 // UI Components
 export * from './ui';
 
