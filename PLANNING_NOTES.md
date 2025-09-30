@@ -97,6 +97,35 @@
 - [ ] **Alert on significant stat changes** - Automated monitoring
 - [ ] **Remind about evaluation deadlines** - Scheduled notifications
 
+## Phase 1 – Dashboard Cleanup (In Progress)
+
+- [ ] **Command Rail**
+  - [ ] Finalize trimmed scope: snapshot freshness, quick refresh, links into Insights/History
+  - [ ] Confirm the command rail only reads from: `selectors.snapshotMetadata`, `selectors.dataAge`, `lastLoadInfo`, and `smartInsights` selectors
+  - [ ] Provide navigation actions that call `setActiveTab` instead of duplicating content (Insights → `coaching`, History → `changes`)
+  - [ ] Move departure alerts, change summary previews, and exports into their new homes (Roster/Insights tabs)
+  - [ ] Write regression checklist (render counts stay low, no Zustand warning logs) before/after refactor
+
+- [ ] **Roster Tab Consolidation**
+  - [ ] Move `RosterStatsPanel` and `RosterHighlightsPanel` content into the roster tab
+  - [ ] Ensure leadership-only actions remain accessible (modals, quick departures)
+  - [ ] Surface snapshot metadata (last load info) in the roster header
+
+- [ ] **Insights Tab**
+  - [ ] Create a unified “Insights” tab combining Smart Insights headlines, change summaries, and action items
+  - [ ] Reuse `selectors.smartInsights*`, `historyByClan`, and `lastLoadInfo` for data
+  - [ ] Provide clear empty/error states so the tab degrades gracefully when data is missing
+
+- [ ] **Tab Visibility**
+  - [ ] Hide placeholder tabs (Events, Applicants, Intelligence) unless data is production-ready
+  - [ ] Enforce role-based visibility per planning so leadership tools only show for leaders
+  - [ ] Update `getVisibleTabs` and `TabNavigation` to reflect the new rules
+
+- [ ] **Store & Selector Audit**
+  - [ ] Document which selectors feed each tab after the refactor
+  - [ ] Ensure shared selectors return stable references to prevent unnecessary renders
+  - [ ] Outline additional store fields required for upcoming analytics phases (war trends, capital, engagement)
+
 ## Export/Import Functionality
 - [ ] **Export roster data** to CSV/Excel
 - [ ] **Export clan summary** - JSON/Markdown format with war status, capital raids, recent performance
