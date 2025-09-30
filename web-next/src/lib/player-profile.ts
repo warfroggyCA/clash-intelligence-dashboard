@@ -257,7 +257,7 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
     
     const { data, error } = await supabase
       .from('clan_snapshots')
-      .select('clan_tag, fetched_at, clan, member_summaries, player_details, war_log, capital_seasons')
+      .select('clan_tag, fetched_at, clan, member_summaries, player_details, war_log, capital_seasons, current_war, metadata')
       .eq('clan_tag', safeTag)
       .order('snapshot_date', { ascending: false })
       .limit(limit)
