@@ -2,7 +2,7 @@ import { cfg } from '@/lib/config';
 import { runStagedIngestion, StagedIngestionOptions } from './staged-pipeline';
 import { generateChangeSummary, generateGameChatMessages } from '@/lib/ai-summarizer';
 import { addDeparture } from '@/lib/departures';
-import { resolveUnknownPlayers } from '@/lib/persistPlayerResolver';
+import { resolveUnknownPlayers } from '@/lib/player-resolver';
 import { insightsEngine } from '@/lib/smart-insights';
 import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from '@/lib/insights-storage';
 import { saveAISummary } from '@/lib/supabase';
