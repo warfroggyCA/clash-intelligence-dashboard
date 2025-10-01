@@ -119,7 +119,7 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
         <PlayerSummaryHeader summary={data.summary} />
 
         <SectionCard title="Hero Readiness" subtitle="Progress vs. Town Hall caps" className="section-card--sub">
-          <PlayerHeroProgress heroes={data.heroProgress} />
+          <PlayerHeroProgress heroes={data.heroProgress} clanHeroBenchmarks={data.heroBenchmarks} />
         </SectionCard>
 
         <PlayerPerformanceOverview data={data.performance} />

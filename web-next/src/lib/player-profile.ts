@@ -48,6 +48,13 @@ export interface PlayerHeroProgressItem {
   };
 }
 
+export interface HeroBenchmark {
+  average: number;
+  count: number;
+}
+
+export type ClanHeroBenchmarks = Partial<Record<PlayerHeroProgressItem['shortLabel'], HeroBenchmark>>;
+
 export interface PlayerPerformanceOverviewData {
   war: {
     hitRate: number;
@@ -91,6 +98,7 @@ export interface PlayerNoteItem {
 export interface PlayerProfileData {
   summary: PlayerProfileSummary;
   heroProgress: PlayerHeroProgressItem[];
+  heroBenchmarks: ClanHeroBenchmarks;
   performance: PlayerPerformanceOverviewData;
   engagementInsights: PlayerEngagementInsight[];
   leadershipNotes: PlayerNoteItem[];
@@ -134,7 +142,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   }
 
   const normalizedPlayerTag = normalizeTag(playerTagWithHash);
-  const snapshots = await loadRecentFullSnapshots(clanTag, 4);
+  const snapshots = await loadRecentFullSnapshots(clanTag, 2);
   if (!snapshots.length) {
     return null;
   }
@@ -190,6 +198,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   const roleTone: PlayerRoleTone = parsedRole === 'coLeader' ? 'coleader' : parsedRole;
 
   const heroProgress = buildHeroProgress(playerDetail, townHallLevel);
+  const heroBenchmarks = computeClanHeroBenchmarks(rosterLike.members as DomainMember[]);
   const warPerformance = computeWarPerformance(latestSnapshot);
   const capitalPerformance = computeCapitalPerformance(latestSnapshot, normalizedPlayerTag);
   const activityTrend = buildActivityTrend(snapshots, normalizedPlayerTag);
@@ -232,6 +241,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
       aceAvailability: aceAvailability ?? null,
     },
     heroProgress,
+    heroBenchmarks,
     performance: {
       war: warPerformance,
       capital: capitalPerformance,
@@ -257,7 +267,7 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
     
     const { data, error } = await supabase
       .from('clan_snapshots')
-      .select('clan_tag, fetched_at, clan, member_summaries, player_details, war_log, capital_seasons, current_war, metadata')
+      .select('clan_tag, fetched_at, clan, member_summaries, player_details, metadata')
       .eq('clan_tag', safeTag)
       .order('snapshot_date', { ascending: false })
       .limit(limit)
@@ -274,9 +284,9 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
       clan: record.clan,
       memberSummaries: record.member_summaries,
       playerDetails: record.player_details,
-      currentWar: record.current_war,
-      warLog: record.war_log,
-      capitalRaidSeasons: record.capital_seasons,
+      currentWar: null, // Not loaded to reduce data size
+      warLog: null, // Not loaded to reduce data size
+      capitalRaidSeasons: null, // Not loaded to reduce data size
       metadata: record.metadata,
     }));
   } catch (error) {
@@ -323,6 +333,51 @@ function mapMemberForCalculations(member: import('./snapshots').Member): DomainM
     rc: rc ?? undefined,
     mp: mp ?? undefined,
   } as DomainMember;
+}
+
+function computeClanHeroBenchmarks(members: DomainMember[] | undefined | null): ClanHeroBenchmarks {
+  if (!members?.length) {
+    return {};
+  }
+
+  const totals: Record<PlayerHeroProgressItem['shortLabel'], { sum: number; count: number }> = {
+    BK: { sum: 0, count: 0 },
+    AQ: { sum: 0, count: 0 },
+    GW: { sum: 0, count: 0 },
+    RC: { sum: 0, count: 0 },
+    MP: { sum: 0, count: 0 },
+  };
+
+  members.forEach((member) => {
+    const entries: Array<[PlayerHeroProgressItem['shortLabel'], number | null | undefined]> = [
+      ['BK', member.bk],
+      ['AQ', member.aq],
+      ['GW', member.gw],
+      ['RC', member.rc],
+      ['MP', member.mp],
+    ];
+
+    entries.forEach(([short, value]) => {
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        totals[short].sum += value;
+        totals[short].count += 1;
+      }
+    });
+  });
+
+  const benchmarks: ClanHeroBenchmarks = {};
+
+  (Object.keys(totals) as PlayerHeroProgressItem['shortLabel'][]).forEach((short) => {
+    const { sum, count } = totals[short];
+    if (count > 0) {
+      benchmarks[short] = {
+        average: sum / count,
+        count,
+      };
+    }
+  });
+
+  return benchmarks;
 }
 
 function computeWarPerformance(snapshot: FullClanSnapshot): PlayerPerformanceOverviewData['war'] {
@@ -568,6 +623,13 @@ function buildMockProfile(normalized: string): PlayerProfileData {
       { hero: 'Royal Champion', shortLabel: 'RC', level: 30, maxLevel: 30, upgrading: { targetLevel: 31, completeAt: '2025-10-03T18:00:00.000Z' } },
       { hero: 'Minion Prince', shortLabel: 'MP', level: 36, maxLevel: 40 },
     ],
+    heroBenchmarks: {
+      BK: { average: 72.4, count: 43 },
+      AQ: { average: 74.1, count: 42 },
+      GW: { average: 51.9, count: 41 },
+      RC: { average: 27.8, count: 39 },
+      MP: { average: 33.2, count: 18 },
+    },
     performance: {
       war: {
         hitRate: 82,
