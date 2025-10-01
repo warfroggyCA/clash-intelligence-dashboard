@@ -3,6 +3,7 @@
 import "./globals.css";
 import Script from 'next/script';
 import { ThemeProvider } from '@/lib/contexts/theme-context';
+import TooltipManager from '@/components/TooltipManager';
 
 const INITIAL_THEME_SCRIPT = `
 (() => {
@@ -71,10 +72,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ThemeProvider defaultTheme="system">
+          <TooltipManager />
           {children}
         </ThemeProvider>
       </body>
     </html>
   );
 }
-

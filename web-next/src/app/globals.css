@@ -119,6 +119,39 @@ body {
   border-color: rgba(148, 163, 184, 0.22) !important;
 }
 
+.tooltip-trigger[data-tooltip] {
+  position: relative;
+}
+
+.tooltip-trigger[data-tooltip]::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.95);
+  color: #f8fafc;
+  padding: 0.55rem 0.9rem;
+  border-radius: 0.65rem;
+  font-size: 0.78rem;
+  line-height: 1.15rem;
+  white-space: normal;
+  text-align: center;
+  max-width: min(24rem, 85vw);
+  min-width: min(16rem, 85vw);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.08s ease;
+  z-index: 2000;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.32);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.tooltip-trigger[data-tooltip]:hover::after,
+.tooltip-trigger[data-tooltip]:focus-visible::after {
+  opacity: 1;
+}
+
 /* Light theme: clash gold text on light background should be darker for readability */
 [data-theme="light"] .text-clash-gold {
   color: #8C6A00 !important; /* darken gold on white */
@@ -524,7 +557,8 @@ th { @apply text-left font-semibold; }
 }
 
 .clash-card {
-  @apply relative overflow-hidden rounded-2xl border;
+  @apply relative rounded-2xl border;
+  overflow: visible;
   background: var(--clash-bg-card);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   border-color: rgba(255, 255, 255, 0.1);
