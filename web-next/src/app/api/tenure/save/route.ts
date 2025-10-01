@@ -3,12 +3,11 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import { promises as fsp } from "fs";
-import path from "path";
 import { cfg } from "../../../../lib/config";
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { createApiContext } from '@/lib/api/route-helpers';
+import { appendTenureLedgerEntry } from '@/lib/tenure';
 
 type Update = { tag: string; tenure_days: number };
 const TAG_RE = /^#[0289PYLQGRJCUV]{5,}$/;
@@ -35,19 +34,11 @@ export async function POST(req: Request) {
     });
     if (invalid.length) return json({ success: false, error: `Invalid tag(s): ${invalid.join(", ")}` }, { status: 400 });
 
-    const outDir = path.join(process.cwd(), cfg.dataRoot);
-    const ledger = path.join(outDir, "tenure_ledger.jsonl");
-    await fsp.mkdir(outDir, { recursive: true });
-
-    try {
-      await fsp.stat(ledger);
-      const bak = path.join(outDir, `tenure_ledger_backup_${ymdUTC()}.jsonl`);
-      try { await fsp.stat(bak); } catch { await fsp.copyFile(ledger, bak); }
-    } catch { /* first write; no ledger yet */ }
-
-    const as_of = ymdUTC(); const ts = new Date().toISOString();
-    const lines = cleaned.map((c) => JSON.stringify({ tag: c.tag, base: c.base, as_of, ts }));
-    await fsp.appendFile(ledger, lines.join("\n") + "\n", "utf-8");
+    // Use Supabase-based tenure saving for production persistence
+    const as_of = ymdUTC();
+    for (const c of cleaned) {
+      await appendTenureLedgerEntry(c.tag, c.base, as_of);
+    }
 
     return json({ success: true, data: { count: cleaned.length } });
   } catch (e: any) {
