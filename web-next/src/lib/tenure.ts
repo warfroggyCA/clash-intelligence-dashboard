@@ -107,7 +107,7 @@ export async function appendTenureLedgerEntry(tag: string, base: number, asOfYmd
     content += JSON.stringify(row) + '\n';
     await supabase.storage
       .from('tenure')
-      .upload('tenure_ledger.jsonl', content, { contentType: 'application/jsonl', upsert: true });('tenure_ledger.jsonl', content, { contentType: 'application/jsonl', upsert: true });
+      .upload('tenure_ledger.jsonl', content, { contentType: 'application/jsonl', upsert: true });
   }
 }
 
