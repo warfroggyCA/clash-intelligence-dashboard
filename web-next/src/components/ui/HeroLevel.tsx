@@ -9,6 +9,8 @@ interface HeroLevelProps {
   showName?: boolean;
   size?: 'sm' | 'md' | 'lg';
   clanAverage?: number;
+  clanAverageCount?: number;
+  clanAverageSource?: 'roster' | 'profile';
 }
 
 const sizeClasses = {
@@ -45,7 +47,9 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   showProgress = true,
   showName = true,
   size = 'md',
-  clanAverage
+  clanAverage,
+  clanAverageCount,
+  clanAverageSource
 }) => {
   const safeLevel = Number.isFinite(level) ? Math.max(level, 0) : 0;
   const safeMax = Number.isFinite(maxLevel) ? Math.max(maxLevel, 0) : 0;
@@ -56,7 +60,31 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   const averagePercentage = hasAverage && safeMax > 0 && clampedAverage !== null
     ? (clampedAverage / safeMax) * 100
     : null;
-  
+  const sampleLabel = typeof clanAverageCount === 'number' && clanAverageCount > 0
+    ? `${clanAverageCount} member${clanAverageCount === 1 ? '' : 's'}`
+    : null;
+  const diffFromAverage = hasAverage ? safeLevel - (clanAverage ?? 0) : null;
+  const diffLabel = diffFromAverage != null
+    ? `${diffFromAverage === 0 ? 'matches' : diffFromAverage > 0 ? 'is above' : 'is below'} clan pace by ${Math.abs(diffFromAverage).toFixed(1)}`
+    : null;
+  const averageSourceLabel = clanAverageSource === 'profile'
+    ? 'profile snapshot'
+    : clanAverageSource === 'roster'
+      ? 'current roster'
+      : null;
+  const tooltipParts: string[] = [];
+  tooltipParts.push(`${config.name} level ${safeLevel}${safeMax ? ` of ${safeMax}` : ''}`);
+  if (hasAverage) {
+    const baseAverage = `Clan average ${clanAverage?.toFixed(1)}`;
+    const samplePart = sampleLabel ? ` from ${sampleLabel}` : '';
+    const sourcePart = averageSourceLabel ? ` (${averageSourceLabel})` : '';
+    tooltipParts.push(baseAverage + samplePart + sourcePart);
+    if (diffLabel) {
+      tooltipParts.push(`This player ${diffLabel}`);
+    }
+  }
+  const progressTitle = tooltipParts.join('. ');
+
   return (
     <div className={`space-y-1 ${className}`}>
       <div className={`flex justify-between ${sizeClasses[size]}`}>
@@ -64,7 +92,11 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
         <span className="text-high-contrast">{safeLevel}/{safeMax}</span>
       </div>
       {showProgress && (
-        <div className={`hero-progress-track relative w-full rounded-full ${progressHeightClasses[size]} overflow-hidden`}>
+        <div
+          className={`hero-progress-track relative w-full rounded-full ${progressHeightClasses[size]} overflow-hidden`}
+          title={progressTitle}
+          aria-label={progressTitle}
+        >
           <div 
             className={`bg-gradient-to-r ${config.color} ${progressHeightClasses[size]} rounded-full transition-all duration-500 ease-out`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
@@ -73,8 +105,8 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
             <span
               className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-900/80 bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.75)] ${markerSizeClasses[size]}`}
               style={{ left: `${averagePercentage}%` }}
-              title={`Clan average ${clanAverage?.toFixed(1) ?? ''}`}
-              aria-hidden="true"
+              title={progressTitle}
+              aria-label={progressTitle}
             />
           ) : null}
         </div>

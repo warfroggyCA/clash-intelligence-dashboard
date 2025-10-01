@@ -135,27 +135,36 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          <SummaryStat label="Activity" value={summary.activityLevel} tone="positive" />
+          <SummaryStat
+            label="Activity"
+            value={summary.activityLevel}
+            tone="positive"
+            hint="Composite activity band derived from donations, capital raids, war attacks, and logins over the recent span."
+          />
           <SummaryStat
             label="Rush Score"
             value={`${summary.rushScore.toFixed(1)}%`}
             tone={summary.rushScore >= 70 ? 'warning' : summary.rushScore >= 40 ? 'neutral' : 'positive'}
+            hint="Percentage of hero/building progress still missing versus Town Hall caps. Lower is healthier."
           />
           <SummaryStat
             label="ACE Score"
             value={aceScore != null ? aceScore.toFixed(1) : '—'}
             helper={aceAvailabilityPercent != null ? `Avail ${aceAvailabilityPercent}%` : undefined}
             tone={aceTone}
+            hint="All-Mode Clan Excellence score blending offensive output, defensive strength, capital activity, and donations."
           />
           <SummaryStat
             label="Donations"
             value={`${summary.donationBalance.given.toLocaleString()} / ${summary.donationBalance.received.toLocaleString()}`}
             helper={`Net ${summary.donationBalance.balance >= 0 ? '+' : ''}${summary.donationBalance.balance.toLocaleString()}`}
+            hint="Season donation totals: given vs received, including the net balance shown below."
           />
           {lastSeen && (
             <SummaryStat
               label="Last Seen"
               value={Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeStyle: 'short' }).format(lastSeen)}
+              hint="Most recent activity timestamp captured in the snapshot."
             />
           )}
         </div>
@@ -204,6 +213,7 @@ interface SummaryStatProps {
   value: string;
   helper?: string;
   tone?: 'positive' | 'warning' | 'neutral';
+  hint?: string;
 }
 
 const toneClasses: Record<NonNullable<SummaryStatProps['tone']>, string> = {
@@ -212,9 +222,9 @@ const toneClasses: Record<NonNullable<SummaryStatProps['tone']>, string> = {
   neutral: 'text-slate-200',
 };
 
-const SummaryStat: React.FC<SummaryStatProps> = ({ label, value, helper, tone = 'neutral' }) => {
+const SummaryStat: React.FC<SummaryStatProps> = ({ label, value, helper, tone = 'neutral', hint }) => {
   return (
-    <div className="rounded-2xl bg-black/20 px-4 py-3 text-sm shadow-inner">
+    <div className="rounded-2xl bg-black/20 px-4 py-3 text-sm shadow-inner" title={hint} aria-label={hint ? `${label}. ${hint}` : undefined}>
       <p className="text-[10px] uppercase tracking-[0.3em] text-slate-400">{label}</p>
       <p className={`mt-1 text-lg font-semibold ${toneClasses[tone]}`}>{value}</p>
       {helper ? <p className="text-xs text-slate-400">{helper}</p> : null}

@@ -25,6 +25,7 @@ interface StatTileProps {
   icon: ReactNode;
   label: string;
   value: string;
+  hint?: string;
 }
 
 const IconWrapper = ({ icon }: { icon: React.ReactNode }) => {
@@ -34,8 +35,12 @@ const IconWrapper = ({ icon }: { icon: React.ReactNode }) => {
   return <>{icon}</>;
 };
 
-const StatTile = ({ icon, label, value }: StatTileProps) => (
-  <div className="stat-tile rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3">
+const StatTile = ({ icon, label, value, hint }: StatTileProps) => (
+  <div
+    className="stat-tile rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3"
+    title={hint}
+    aria-label={hint ? `${label}. ${hint}` : undefined}
+  >
     <div className="flex items-center gap-3">
       <div className="flex h-12 w-12 items-center justify-center">
         <IconWrapper icon={icon} />
@@ -176,7 +181,7 @@ export const RosterSummary = () => {
 
   const statTiles = useMemo<StatTileProps[]>(() => {
     const tiles: StatTileProps[] = [
-      { icon: '👥', label: 'Members', value: formatNumber(stats.memberCount) },
+      { icon: '👥', label: 'Members', value: formatNumber(stats.memberCount), hint: 'Active members currently on the roster snapshot.' },
       {
         icon: stats.averageTownHall ? (
           <TownHallBadge
@@ -188,6 +193,7 @@ export const RosterSummary = () => {
         ) : '🏰',
         label: 'Avg. Town Hall',
         value: stats.averageTownHall ? `TH${stats.averageTownHall}` : '—',
+        hint: 'Average Town Hall level across members with a recorded TH value.',
       },
       {
         icon: stats.averageTrophies ? (
@@ -195,8 +201,9 @@ export const RosterSummary = () => {
         ) : '🏆',
         label: 'Avg. Trophies',
         value: formatNumber(stats.averageTrophies),
+        hint: 'Average home village trophies from the current roster snapshot.',
       },
-      { icon: '🤝', label: 'Total Donations', value: formatNumber(stats.totalDonations) },
+      { icon: '🤝', label: 'Total Donations', value: formatNumber(stats.totalDonations), hint: 'Season-to-date donations collectively delivered by the roster.' },
     ];
 
     if (stats.averageDonations != null) {
@@ -204,6 +211,7 @@ export const RosterSummary = () => {
         icon: '🎁',
         label: 'Avg. Donations',
         value: formatNumber(stats.averageDonations),
+        hint: 'Average donations per member for the current season.',
       });
     }
 
@@ -212,6 +220,7 @@ export const RosterSummary = () => {
         icon: '⚒️',
         label: 'Avg. Builder Trophies',
         value: formatNumber(stats.averageBuilderTrophies),
+        hint: 'Average Builder Base trophy count across members with recorded versus trophies.',
       });
     }
 
@@ -229,6 +238,7 @@ export const RosterSummary = () => {
           icon: '🦸',
           label: 'Avg. Hero Levels',
           value: heroPieces.join(' • '),
+          hint: 'Average unlocked hero levels (BK/AQ/GW/RC plus MP where present).',
         });
       }
     }
@@ -238,6 +248,7 @@ export const RosterSummary = () => {
         icon: '⚔️',
         label: 'Recent War Win Rate',
         value: `${warWinRate}%`,
+        hint: 'Win rate across the last 3 wars in the log.',
       });
     }
 

@@ -3,12 +3,13 @@
 import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { HeroLevel } from '@/components/ui';
-import type { PlayerHeroProgressItem } from '@/lib/player-profile';
+import type { ClanHeroBenchmarks, PlayerHeroProgressItem } from '@/lib/player-profile';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import type { Member } from '@/types';
 
 interface PlayerHeroProgressProps {
   heroes: PlayerHeroProgressItem[];
+  clanHeroBenchmarks?: ClanHeroBenchmarks | null;
 }
 
 type HeroShortLabel = PlayerHeroProgressItem['shortLabel'];
@@ -30,10 +31,10 @@ const HERO_ICON_MAP: Record<HeroShortLabel, { src: string; alt: string }> = {
   MP: { src: '/assets/heroes/Minion_Prince.png', alt: 'Minion Prince' },
 };
 
-export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes }) => {
+export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes, clanHeroBenchmarks }) => {
   const rosterMembers = useDashboardStore((state) => state.roster?.members ?? EMPTY_MEMBERS);
 
-  const clanHeroAverages = useMemo<Partial<Record<HeroShortLabel, number>>>(() => {
+  const storeBenchmarks = useMemo<ClanHeroBenchmarks>(() => {
     if (!rosterMembers.length) {
       return {};
     }
@@ -57,19 +58,32 @@ export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes }
       });
     });
 
-    const averages: Partial<Record<HeroShortLabel, number>> = {};
+    const benchmarks: ClanHeroBenchmarks = {};
 
     HERO_SHORT_LABELS.forEach((label) => {
       const { sum, count } = totals[label];
       if (count > 0) {
-        averages[label] = sum / count;
+        benchmarks[label] = {
+          average: sum / count,
+          count,
+        };
       }
     });
 
-    return averages;
+    return benchmarks;
   }, [rosterMembers]);
 
-  const hasClanAverages = HERO_SHORT_LABELS.some((label) => typeof clanHeroAverages[label] === 'number');
+  const mergedBenchmarks = useMemo<ClanHeroBenchmarks>(() => {
+    if (!clanHeroBenchmarks || !Object.keys(clanHeroBenchmarks).length) {
+      return storeBenchmarks;
+    }
+    return {
+      ...storeBenchmarks,
+      ...clanHeroBenchmarks,
+    };
+  }, [clanHeroBenchmarks, storeBenchmarks]);
+
+  const hasClanAverages = HERO_SHORT_LABELS.some((label) => typeof mergedBenchmarks[label]?.average === 'number');
 
   if (!heroes.length) {
     return <p className="text-sm text-muted-contrast">No heroes unlocked yet.</p>;
@@ -80,6 +94,14 @@ export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes }
       {heroes.map((hero) => {
         const shortLabel = hero.shortLabel;
         const icon = HERO_ICON_MAP[shortLabel];
+        const benchmark = mergedBenchmarks[shortLabel];
+        const clanAverage = benchmark?.average;
+        const sampleSize = benchmark?.count;
+        const source: 'profile' | 'roster' | undefined = clanHeroBenchmarks?.[shortLabel]
+          ? 'profile'
+          : storeBenchmarks[shortLabel]
+            ? 'roster'
+            : undefined;
         return (
           <div key={hero.shortLabel} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-black/20 p-3">
             {icon ? (
@@ -111,7 +133,9 @@ export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes }
                 maxLevel={hero.maxLevel}
                 showName={false}
                 size="md"
-                clanAverage={clanHeroAverages[shortLabel]}
+                clanAverage={clanAverage}
+                clanAverageCount={sampleSize}
+                clanAverageSource={source}
               />
               {hero.upgrading ? (
                 <p className="text-xs text-muted-contrast">
@@ -128,7 +152,7 @@ export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes }
       {hasClanAverages ? (
         <div className="flex items-center gap-2 pt-1 text-xs text-muted-contrast">
           <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full border border-slate-900/80 bg-amber-300 shadow-[0_0_6px_rgba(251,191,36,0.75)]" aria-hidden="true" />
-          <span>Clan average marker</span>
+          <span>Clan average marker (hover for sample size and gap vs clan)</span>
         </div>
       ) : null}
     </div>
