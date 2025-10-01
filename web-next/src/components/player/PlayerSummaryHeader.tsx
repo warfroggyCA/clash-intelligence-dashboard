@@ -18,7 +18,9 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
   const cleanTag = summary.tag.replace('#', '').toUpperCase();
   const joinDate = summary.joinDate ? new Date(summary.joinDate) : null;
   const lastSeen = summary.lastSeen ? new Date(summary.lastSeen) : null;
-  const leagueLabel = summary.league?.name || 'Unranked';
+  const leagueLabel = summary.league?.name ?? 'Unranked';
+  const hasLeagueBadge = Boolean(summary.league && summary.league.name);
+  const leagueTrophies = summary.league?.trophies ?? summary.trophies;
 
   const handleCopy = (value: string) => {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
@@ -104,7 +106,16 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
             </div>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-1">
-                <LeagueBadge trophies={summary.league.trophies} showText={false} size="xl" />
+                {hasLeagueBadge ? (
+                  <LeagueBadge
+                    league={summary.league?.name ?? undefined}
+                    trophies={leagueTrophies}
+                    showText={false}
+                    size="xl"
+                  />
+                ) : (
+                  <span className="text-3xl" aria-hidden>🏆</span>
+                )}
                 <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">{leagueLabel}</span>
               </div>
               <div className="space-y-2">

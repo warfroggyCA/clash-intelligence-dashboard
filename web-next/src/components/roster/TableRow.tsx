@@ -224,6 +224,14 @@ export const TableRow: React.FC<TableRowProps> = ({
     const value = typeof raw === 'number' ? Math.max(raw, 0) : 0;
     return Math.max(baseCap || 0, value);
   };
+  const leagueName = member.leagueName
+    ?? (typeof member.league === 'string' ? member.league : member.league?.name);
+  const leagueTrophies =
+    member.leagueTrophies
+      ?? (typeof member.league === 'object' && member.league !== null && typeof member.league.trophies === 'number'
+        ? member.league.trophies
+        : member.trophies ?? undefined);
+  const hasLeagueBadge = Boolean(leagueName || member.leagueId);
 
   const aceExtras = (member as any)?.extras?.ace ?? null;
   const aceEntry = useMemo(() => {
@@ -431,7 +439,16 @@ export const TableRow: React.FC<TableRowProps> = ({
       {/* Name Column */}
       <TableCell className="border-r border-gray-300" isActiveSort={isActiveColumn('name')}>
         <div className="flex items-center space-x-3">
-          <LeagueBadge trophies={member.trophies} size="lg" showText={false} />
+          {hasLeagueBadge ? (
+            <LeagueBadge league={leagueName ?? undefined} trophies={leagueTrophies} size="lg" showText={false} />
+          ) : (
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg"
+              aria-hidden
+            >
+              🏆
+            </span>
+          )}
           <div className="flex flex-col">
             <button
               onClick={(e) => {
