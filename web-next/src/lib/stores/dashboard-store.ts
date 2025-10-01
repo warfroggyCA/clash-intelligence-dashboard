@@ -85,6 +85,27 @@ export interface HistoryCacheEntry {
   isRefreshing?: boolean;
 }
 
+export interface IngestionPhaseSummary {
+  name: string;
+  success: boolean;
+  durationMs: number | null;
+  rowDelta: number | null;
+  errorMessage: string | null;
+}
+
+export interface IngestionHealthSummary {
+  jobId: string;
+  clanTag: string;
+  status: string;
+  startedAt: string;
+  finishedAt: string;
+  totalDurationMs: number | null;
+  phases: IngestionPhaseSummary[];
+  anomalies: Array<{ phase: string; message: string }>;
+  stale: boolean;
+  logs?: Array<Record<string, any>>;
+}
+
 
 // =============================================================================
 // STORE INTERFACES
@@ -199,6 +220,7 @@ interface DashboardState {
   userRoles: UserRoleRecord[];
   impersonatedRole?: ClanRoleName | null;
   rosterViewMode: 'table' | 'cards';
+  ingestionHealth: IngestionHealthSummary | null;
 
   canManageAccess: () => boolean;
   canManageClanData: () => boolean;
@@ -263,6 +285,7 @@ interface DashboardState {
   // Complex Actions
   resetDashboard: () => void;
   loadRoster: (clanTag: string, options?: { mode?: 'snapshot' | 'live'; force?: boolean }) => Promise<void>;
+  loadIngestionHealth: (clanTag: string) => Promise<void>;
   loadSmartInsights: (clanTag: string, options?: { force?: boolean; ttlMs?: number }) => Promise<void>;
   refreshData: () => Promise<void>;
   checkDepartureNotifications: () => Promise<void>;
@@ -345,6 +368,7 @@ const initialState = {
   userRoles: [],
   impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' as ClanRoleName : null,
   rosterViewMode: 'table' as const,
+  ingestionHealth: null,
 };
 
 // =============================================================================
@@ -464,6 +488,28 @@ export const useDashboardStore = create<DashboardState>()(
       setUserRoles: (userRoles) => set({ userRoles }),
       setImpersonatedRole: (impersonatedRole) => set({ impersonatedRole }),
       setRosterViewMode: (mode) => set({ rosterViewMode: mode }),
+      loadIngestionHealth: async (clanTag: string) => {
+        try {
+          const normalized = normalizeTag(clanTag) || clanTag;
+          const params = normalized ? `?clanTag=${encodeURIComponent(normalized)}` : '';
+          const res = await fetch(`/api/ingestion/health${params}`, { cache: 'no-store' });
+          if (!res.ok) {
+            if (res.status === 404) {
+              set({ ingestionHealth: null });
+              return;
+            }
+            throw new Error(`Failed to load ingestion health (${res.status})`);
+          }
+          const payload = await res.json();
+          if (!payload?.success) {
+            set({ ingestionHealth: null });
+            return;
+          }
+          set({ ingestionHealth: payload.data as IngestionHealthSummary });
+        } catch (error) {
+          console.warn('[loadIngestionHealth] Failed', error);
+        }
+      },
 
       // =============================================================================
       // COMPLEX ACTIONS
@@ -476,6 +522,10 @@ export const useDashboardStore = create<DashboardState>()(
         const normalizedTag = normalizeTag(clanTag) || clanTag;
         const modeOverride = options.mode;
         const forceReload = options.force ?? false;
+        const latestPayloadVersion = get().snapshotMetadata?.payloadVersion
+          ?? get().roster?.snapshotMetadata?.payloadVersion
+          ?? get().roster?.meta?.payloadVersion
+          ?? null;
         
         try {
           setStatus('loading');
@@ -536,19 +586,39 @@ export const useDashboardStore = create<DashboardState>()(
             const timer = setTimeout(() => controller.abort(), 10000);
             let res: Response;
             try {
-              res = await fetch(url, { signal: controller.signal });
+              const headers: Record<string, string> = {};
+              if (!forceReload && latestPayloadVersion) {
+                headers['If-None-Match'] = `"${latestPayloadVersion}"`;
+              }
+              res = await fetch(url, { signal: controller.signal, headers });
             } finally {
               clearTimeout(timer);
             }
+            if (res.status === 304) {
+              return { ok: true, status: 304 } as { ok: boolean; status: number; json?: any };
+            }
             const json = await res.json();
-            return { ok: res.ok, json } as { ok: boolean; json: any };
+            return { ok: res.ok, status: res.status, json } as { ok: boolean; status: number; json: any };
           };
 
           let lastError: any = null;
           for (const url of plan.urls) {
             const result = await tryFetch(url);
-              const payload = result.json?.data ?? result.json;
-              if (result.ok && Array.isArray(payload?.members)) {
+            if (result.status === 304) {
+              setStatus('success');
+              setMessage('Roster up to date');
+              setLastLoadInfo({
+                source: get().lastLoadInfo?.source ?? 'snapshot',
+                ms: Date.now() - t0,
+                tenureMatches: get().lastLoadInfo?.tenureMatches ?? 0,
+                total: get().roster?.members?.length ?? 0,
+              });
+              await get().loadIngestionHealth(normalizedTag);
+              return;
+            }
+
+            const payload = result.json?.data ?? result.json;
+            if (result.ok && Array.isArray(payload?.members)) {
               setRoster(payload);
               setStatus('success');
               const src = payload?.source || plan.sourcePreference;
@@ -561,6 +631,7 @@ export const useDashboardStore = create<DashboardState>()(
                 ?? payload?.snapshotMetadata?.fetchedAt
                 ?? new Date().toISOString();
               setDataFetchedAt(fetchedAt);
+              await get().loadIngestionHealth(normalizedTag);
               return;
             }
             lastError = result.json?.error || result.json?.message || 'Failed to load roster';

@@ -153,15 +153,21 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
 
 const ACTIVE_SORT_CELL_CLASSES = `relative bg-sky-50/80 transition-colors shadow-inner before:absolute before:inset-y-[0.35rem] before:left-0 before:w-1 before:rounded-full before:bg-sky-400/70 before:content-[''] dark:bg-slate-700/60 dark:before:bg-sky-300/80`;
 
-const TableCell: React.FC<TableCellProps> = ({ className = '', children, isActiveSort = false, ...rest }) => (
-  <td
-    className={`py-2 px-4 text-sm ${className} ${isActiveSort ? ACTIVE_SORT_CELL_CLASSES : ''}`}
-    data-active-sort={isActiveSort ? 'true' : undefined}
-    {...rest}
-  >
-    {children}
-  </td>
-);
+const TableCell: React.FC<TableCellProps> = ({ className = '', children, isActiveSort = false, title, ...rest }) => {
+  const tooltipClass = title ? 'tooltip-trigger' : '';
+  const mergedClassName = `py-2 px-4 text-sm ${className} ${isActiveSort ? ACTIVE_SORT_CELL_CLASSES : ''} ${tooltipClass}`.trim();
+
+  return (
+    <td
+      className={mergedClassName}
+      data-active-sort={isActiveSort ? 'true' : undefined}
+      data-tooltip={title ?? undefined}
+      {...rest}
+    >
+      {children}
+    </td>
+  );
+};
 
 // =============================================================================
 // MAIN COMPONENT
@@ -224,14 +230,16 @@ export const TableRow: React.FC<TableRowProps> = ({
     const value = typeof raw === 'number' ? Math.max(raw, 0) : 0;
     return Math.max(baseCap || 0, value);
   };
-  const leagueName = member.leagueName
+  const leagueNameRaw = member.leagueName
     ?? (typeof member.league === 'string' ? member.league : member.league?.name);
+  const trimmedLeagueName = leagueNameRaw?.trim() ?? '';
   const leagueTrophies =
     member.leagueTrophies
       ?? (typeof member.league === 'object' && member.league !== null && typeof member.league.trophies === 'number'
         ? member.league.trophies
         : member.trophies ?? undefined);
-  const hasLeagueBadge = Boolean(leagueName || member.leagueId);
+  const hasLeagueBadge = Boolean(trimmedLeagueName.length || member.leagueId != null);
+  const displayLeagueName = trimmedLeagueName.length ? trimmedLeagueName : 'Unranked';
 
   const aceExtras = (member as any)?.extras?.ace ?? null;
   const aceEntry = useMemo(() => {
@@ -439,25 +447,16 @@ export const TableRow: React.FC<TableRowProps> = ({
       {/* Name Column */}
       <TableCell className="border-r border-gray-300" isActiveSort={isActiveColumn('name')}>
         <div className="flex items-center space-x-3">
-          {hasLeagueBadge ? (
-            <LeagueBadge league={leagueName ?? undefined} trophies={leagueTrophies} size="lg" showText={false} />
-          ) : (
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg"
-              aria-hidden
-            >
-              🏆
-            </span>
-          )}
+          <LeagueBadge league={displayLeagueName} trophies={leagueTrophies} size="lg" showText={false} />
           <div className="flex flex-col">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleOpenProfile();
               }}
-              className="player-name-link font-heading font-semibold text-left transition-colors focus-ring-inset"
+              className="player-name-link font-heading font-semibold text-left transition-colors focus-ring-inset tooltip-trigger"
               style={{ color: 'var(--player-name-color, #1e40af)' }}
-              title="View player profile"
+              data-tooltip="View player profile"
             >
               {member.name}
             </button>
@@ -471,8 +470,8 @@ export const TableRow: React.FC<TableRowProps> = ({
           const variant = getRoleBadgeVariant(member.role);
           return (
             <span
-              className={`role-badge role-badge--${variant.tone} inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold`}
-              title={variant.label}
+              className={`role-badge role-badge--${variant.tone} inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-semibold tooltip-trigger`}
+              data-tooltip={variant.label}
             >
               {variant.icon && <span aria-hidden className="text-xs">{variant.icon}</span>}
               <span className="role-badge__label">{variant.label}</span>
@@ -506,7 +505,10 @@ export const TableRow: React.FC<TableRowProps> = ({
             {formatNumber(member.trophies)}
           </span>
           {isRushedPlayer && (
-            <span className="text-xs text-clash-red" title={`Rushed: ${rushPercent}%`}>
+            <span
+              className="text-xs text-clash-red tooltip-trigger"
+              data-tooltip={`Rushed: ${rushPercent}%`}
+            >
               {isVeryRushedPlayer ? '🔴' : '⚠️'}
             </span>
           )}
@@ -623,20 +625,14 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell className="text-center border-r border-slate-600/50" isActiveSort={isActiveColumn('activity')}>
         <div className="flex flex-col items-center space-y-1">
           <span
-            className={`px-2 py-1 rounded-full text-xs font-semibold border ${
+            className={`tooltip-trigger px-2 py-1 rounded-full text-xs font-semibold border ${
               activity.level.toLowerCase() === 'very active' ? 'bg-clash-green/20 text-clash-green border-clash-green/50' :
               activity.level.toLowerCase() === 'active' ? 'bg-clash-blue/20 text-clash-blue border-clash-blue/50' :
               activity.level.toLowerCase() === 'moderate' ? 'bg-clash-orange/20 text-clash-orange border-clash-orange/50' :
               activity.level.toLowerCase() === 'low' ? 'bg-clash-orange/20 text-clash-orange border-clash-orange/50' :
               'bg-clash-red/20 text-clash-red border-clash-red/50'
             }`}
-            title={
-              `Activity rating\n` +
-              `High: lots of recent evidence (donations/attacks/etc.)\n` +
-              `Med: some recent evidence\n` +
-              `Low: little recent evidence\n` +
-              `Inactive: no recent evidence`
-            }
+            data-tooltip={`Activity rating\nHigh: lots of recent evidence (donations/attacks/etc.)\nMed: some recent evidence\nLow: little recent evidence\nInactive: no recent evidence`}
           >
             {getActivityShortLabel(activity.level)}
           </span>
@@ -664,8 +660,8 @@ export const TableRow: React.FC<TableRowProps> = ({
       {/* Tenure Column */}
       <TableCell className="text-center border-r border-slate-300" isActiveSort={isActiveColumn('tenure')}>
         <span
-          className="font-semibold"
-          title={member.tenure_as_of
+          className="tooltip-trigger font-semibold"
+          data-tooltip={member.tenure_as_of
             ? `Tenure last set: ${safeLocaleDateString(member.tenure_as_of, {
                 fallback: 'Unknown Date',
                 context: 'RosterTableRow member.tenure_as_of'
@@ -679,7 +675,7 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Actions Menu */}
       <TableCell className="text-center" isActiveSort={isActiveColumn('actions')}>
-        <div className="relative inline-block text-left">
+        <div className="relative inline-block text-left tooltip-trigger" data-tooltip="Actions">
           <ActionsMenu 
             onViewProfile={(e) => { e.stopPropagation(); handleOpenProfile(); }}
             onCopyTag={(e) => { e.stopPropagation(); navigator.clipboard.writeText(member.tag).then(() => showToast('Tag copied','success')).catch(() => showToast('Copy failed','error')); }}

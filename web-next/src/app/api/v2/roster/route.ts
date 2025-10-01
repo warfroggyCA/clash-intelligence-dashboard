@@ -51,15 +51,29 @@ export async function GET(req: NextRequest) {
 
     const snapshot = snapshotRows?.[0] ?? null;
 
+    const requestedETag = req.headers.get('if-none-match')?.replace(/^W\//, '')?.replace(/^"|"$/g, '') ?? null;
+    const snapshotPayloadVersion = snapshot?.payload_version
+      ?? snapshot?.metadata?.payloadVersion
+      ?? snapshot?.id
+      ?? null;
+
     if (!snapshot) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          clan: clanRow,
-          snapshot: null,
-          members: [],
-        },
-      });
+      return new NextResponse(
+        JSON.stringify({
+          success: true,
+          data: {
+            clan: clanRow,
+            snapshot: null,
+            members: [],
+          },
+        }),
+        {
+          status: 200,
+          headers: snapshotPayloadVersion
+            ? { ETag: `"${snapshotPayloadVersion}"`, 'Content-Type': 'application/json' }
+            : { 'Content-Type': 'application/json' },
+        }
+      );
     }
 
     const { data: statsRows, error: statsError } = await supabase
@@ -93,6 +107,13 @@ export async function GET(req: NextRequest) {
         metadata: metric.metadata ?? null,
       };
       metricsByMember.set(metric.member_id, bucket);
+    }
+
+    if (snapshotPayloadVersion && requestedETag && requestedETag === snapshotPayloadVersion) {
+      return new NextResponse(null, {
+        status: 304,
+        headers: { ETag: `"${snapshotPayloadVersion}"` },
+      });
     }
 
     let memberLookup: Record<string, any> = {};
@@ -156,25 +177,33 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    return NextResponse.json({
-      success: true,
-      data: {
-        clan: clanRow,
-        snapshot: {
-          id: snapshot.id,
-          fetchedAt: snapshot.fetched_at,
-          memberCount: snapshot.member_count,
-          totalTrophies: snapshot.total_trophies,
-          totalDonations: snapshot.total_donations,
-          metadata: snapshot.metadata ?? null,
-          payloadVersion: snapshot.payload_version ?? null,
-          ingestionVersion: snapshot.ingestion_version ?? null,
-          schemaVersion: snapshot.schema_version ?? null,
-          computedAt: snapshot.computed_at ?? null,
+    return new NextResponse(
+      JSON.stringify({
+        success: true,
+        data: {
+          clan: clanRow,
+          snapshot: {
+            id: snapshot.id,
+            fetchedAt: snapshot.fetched_at,
+            memberCount: snapshot.member_count,
+            totalTrophies: snapshot.total_trophies,
+            totalDonations: snapshot.total_donations,
+            metadata: snapshot.metadata ?? null,
+            payloadVersion: snapshot.payload_version ?? null,
+            ingestionVersion: snapshot.ingestion_version ?? null,
+            schemaVersion: snapshot.schema_version ?? null,
+            computedAt: snapshot.computed_at ?? null,
+          },
+          members,
         },
-        members,
-      },
-    });
+      }),
+      {
+        status: 200,
+        headers: snapshotPayloadVersion
+          ? { ETag: `"${snapshotPayloadVersion}"`, 'Content-Type': 'application/json' }
+          : { 'Content-Type': 'application/json' },
+      }
+    );
   } catch (error: any) {
     console.error('[api/v2/roster] error', error);
     return NextResponse.json({ success: false, error: error?.message ?? 'Internal Server Error' }, { status: 500 });

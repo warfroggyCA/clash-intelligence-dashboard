@@ -51,7 +51,7 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
     throw new Error('No clan tag provided');
   }
 
-  const jobId = providedJobId || `ingestion_${Date.now()}`;
+  const jobId = providedJobId || crypto.randomUUID();
   
   // Initialize job record
   if (!providedJobId) {
@@ -119,13 +119,20 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
     }
 
     result.success = true;
-    await updateJobStatus(jobId, 'completed');
+    await updateJobStatus(jobId, 'completed', {
+      phases: result.phases,
+      success: true,
+    });
     await logPhase(jobId, 'pipeline', 'info', 'Staged ingestion completed successfully');
 
   } catch (error: any) {
     result.success = false;
     result.error = error.message;
-    await updateJobStatus(jobId, 'failed');
+    await updateJobStatus(jobId, 'failed', {
+      phases: result.phases,
+      success: false,
+      error: error.message,
+    });
     await logPhase(jobId, 'pipeline', 'error', `Staged ingestion failed: ${error.message}`);
   }
 

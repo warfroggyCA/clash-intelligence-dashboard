@@ -16,6 +16,7 @@ interface HighlightEntry {
   label: string;
   value: string;
   subtitle?: string;
+  hint?: string;
 }
 
 type HeroKey = 'bk' | 'aq' | 'gw' | 'rc' | 'mp';
@@ -37,8 +38,8 @@ const IconWrapper = ({ icon }: { icon: React.ReactNode }) => {
 
 const StatTile = ({ icon, label, value, hint }: StatTileProps) => (
   <div
-    className="stat-tile rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3"
-    title={hint}
+    className={`stat-tile rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3 ${hint ? 'tooltip-trigger' : ''}`}
+    data-tooltip={hint ?? undefined}
     aria-label={hint ? `${label}. ${hint}` : undefined}
   >
     <div className="flex items-center gap-3">
@@ -58,6 +59,17 @@ const formatNumber = (value: number | null | undefined, options?: Intl.NumberFor
   return value.toLocaleString(undefined, options);
 };
 
+const formatDurationMs = (ms: number | null | undefined) => {
+  if (!ms || !Number.isFinite(ms)) return '—';
+  const totalSeconds = Math.max(0, Math.round(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes === 0) {
+    return `${seconds}s`;
+  }
+  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+};
+
 export const RosterSummary = () => {
   const [showAceModal, setShowAceModal] = useState(false);
   const roster = useDashboardStore((state) => state.roster);
@@ -65,6 +77,23 @@ export const RosterSummary = () => {
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const lastLoadInfo = useDashboardStore((state) => state.lastLoadInfo);
   const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt) || snapshotMetadata?.fetchedAt || null;
+  const ingestionHealth = useDashboardStore((state) => state.ingestionHealth);
+  const seasonId = snapshotMetadata?.seasonId ?? roster?.snapshotMetadata?.seasonId ?? roster?.meta?.seasonId ?? null;
+  const seasonStartIso = snapshotMetadata?.seasonStart ?? roster?.snapshotMetadata?.seasonStart ?? roster?.meta?.seasonStart ?? null;
+  const seasonEndIso = snapshotMetadata?.seasonEnd ?? roster?.snapshotMetadata?.seasonEnd ?? roster?.meta?.seasonEnd ?? null;
+
+  const seasonBounds = useMemo(() => {
+    if (!seasonStartIso || !seasonEndIso) return null;
+    const start = new Date(seasonStartIso);
+    const end = new Date(seasonEndIso);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+    const now = new Date();
+    const totalMs = end.getTime() - start.getTime();
+    const elapsedMs = Math.max(0, Math.min(totalMs, now.getTime() - start.getTime()));
+    const progress = totalMs > 0 ? Math.round((elapsedMs / totalMs) * 100) : null;
+    const daysLeft = Math.max(0, Math.ceil((end.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    return { start, end, progress, daysLeft };
+  }, [seasonStartIso, seasonEndIso]);
 
   const stats = useMemo(() => {
     const members = roster?.members ?? [];
@@ -438,6 +467,7 @@ export const RosterSummary = () => {
         label: `${index + 1}. ${entry.name}`,
         value: formatNumber(entry.donations),
         subtitle: entry.tag,
+        hint: 'Total troops donated this season. High numbers indicate members fueling clan attacks.',
       }));
   }, [roster?.members]);
 
@@ -460,6 +490,7 @@ export const RosterSummary = () => {
         label: `${index + 1}. ${entry.name}`,
         value: `${entry.rushPercent?.toFixed(0)}%`,
         subtitle: entry.tag,
+        hint: 'Hero rush percentage – lower is healthier. Tracks average gap vs. Town Hall caps.',
       }));
   }, [roster?.members]);
 
@@ -504,6 +535,61 @@ export const RosterSummary = () => {
         label: `${index + 1}. ${entry.name}`,
         value: `${formatNumber(Math.round(entry.balance ?? 0))}`,
         subtitle: entry.tag,
+        hint: 'Donations given minus received. Positive balance shows who props up clan request volume.',
+      }));
+  }, [roster?.members]);
+
+  const donationDeficitAlerts = useMemo<HighlightEntry[]>(() => {
+    if (!roster?.members?.length) return [];
+
+    return roster.members
+      .map((member) => {
+        const balanceMetric = member.metrics?.donation_balance?.value;
+        const balance =
+          typeof balanceMetric === 'number'
+            ? balanceMetric
+            : (member.donations || 0) - (member.donationsReceived || 0);
+        return {
+          name: member.name,
+          tag: member.tag,
+          balance,
+        };
+      })
+      .filter((entry) => typeof entry.balance === 'number' && entry.balance < 0)
+      .sort((a, b) => (a.balance ?? 0) - (b.balance ?? 0))
+      .slice(0, 3)
+      .map((entry) => ({
+        label: entry.name,
+        value: formatNumber(Math.round(entry.balance ?? 0)),
+        subtitle: entry.tag,
+        hint: 'Members receiving more troops than they donate. Monitor and coach to keep clan supply balanced.',
+      }));
+  }, [roster?.members]);
+
+  const rushAlerts = useMemo<HighlightEntry[]>(() => {
+    if (!roster?.members?.length) return [];
+
+    return roster.members
+      .map((member) => {
+        const rushMetric = member.metrics?.rush_percent?.value;
+        const rush =
+          typeof rushMetric === 'number'
+            ? rushMetric
+            : calculateRushPercentage(member);
+        return {
+          name: member.name,
+          tag: member.tag,
+          rush,
+        };
+      })
+      .filter((entry) => typeof entry.rush === 'number' && entry.rush >= 60)
+      .sort((a, b) => (b.rush ?? 0) - (a.rush ?? 0))
+      .slice(0, 3)
+      .map((entry) => ({
+        label: entry.name,
+        value: `${Math.round(entry.rush ?? 0)}%`,
+        subtitle: entry.tag,
+        hint: 'Hero rush is 60%+ below cap. Prioritize upgrades before next war season.',
       }));
   }, [roster?.members]);
 
@@ -525,6 +611,7 @@ export const RosterSummary = () => {
       label: `${index + 1}. ${entry.name}`,
       value: formatNumber(entry.total),
       subtitle: `${entry.tag} • TH${entry.th}`,
+      hint: 'Total hero levels summed across BK, AQ, GW, RC, MP. Highlights raw hero power.',
     }));
   }, [roster?.members]);
 
@@ -532,6 +619,8 @@ export const RosterSummary = () => {
     topDonors.length ||
       leastRushed.length ||
       donationBalanceLeaders.length ||
+      donationDeficitAlerts.length ||
+      rushAlerts.length ||
       topCapitalContributors.length ||
       heroLeaders.length
   );
@@ -543,6 +632,33 @@ export const RosterSummary = () => {
           <div>
             <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Roster Snapshot</p>
             <h3 className="text-xl font-semibold text-slate-100">Clan Overview</h3>
+            {(seasonId || seasonBounds) && (
+              <div
+                className="mt-3 grid gap-2 rounded-2xl border border-slate-700/40 bg-slate-900/40 px-4 py-3 text-sm text-slate-200"
+                title="Season runs on monthly Clash resets (05:00 UTC). Track progress to time promotions and reviews."
+              >
+                {seasonId && <div className="font-semibold">Season {seasonId}</div>}
+                {seasonBounds && (
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                    <span>
+                      {seasonBounds.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {' – '}
+                      {seasonBounds.end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                    {typeof seasonBounds.progress === 'number' && (
+                      <span className="rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-300">
+                        {seasonBounds.progress}% complete
+                      </span>
+                    )}
+                    {typeof seasonBounds.daysLeft === 'number' && (
+                      <span className="rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-300">
+                        {seasonBounds.daysLeft} day{seasonBounds.daysLeft === 1 ? '' : 's'} remaining
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-2 2xl:grid-cols-3">
@@ -564,6 +680,49 @@ export const RosterSummary = () => {
                   <p className="text-xs uppercase tracking-wide text-slate-400">Last Load</p>
                   <p className="font-medium text-slate-100">{`${lastLoadInfo.source ?? 'unknown'} • ${lastLoadInfo.ms ?? 0}ms`}</p>
                 </div>
+              )}
+            </div>
+          )}
+          {ingestionHealth && (
+            <div className="rounded-2xl border border-slate-700/40 bg-brand-surfaceSubtle/50 px-4 py-3 text-sm text-slate-200">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-400">Ingestion Health</p>
+                  <p className="font-medium text-slate-100">
+                    {ingestionHealth.finishedAt
+                      ? `Last run ${formatDistanceToNow(new Date(ingestionHealth.finishedAt), { addSuffix: true })}`
+                      : `Started ${formatDistanceToNow(new Date(ingestionHealth.startedAt), { addSuffix: true })}`}
+                  </p>
+                  <p className="text-xs text-slate-400">
+                    Duration {formatDurationMs(ingestionHealth.totalDurationMs)} • {ingestionHealth.status}
+                  </p>
+                </div>
+                <span
+                  className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                    ingestionHealth.anomalies.length || ingestionHealth.stale
+                      ? 'bg-amber-500/15 text-amber-300'
+                      : 'bg-emerald-400/15 text-emerald-200'
+                  }`}
+                >
+                  {ingestionHealth.anomalies.length
+                    ? `${ingestionHealth.anomalies.length} issue${ingestionHealth.anomalies.length === 1 ? '' : 's'}`
+                    : ingestionHealth.stale
+                      ? 'Needs refresh'
+                      : 'Healthy'}
+                </span>
+              </div>
+              {ingestionHealth.anomalies.length > 0 && (
+                <ul className="mt-2 space-y-1 text-xs text-amber-200">
+                  {ingestionHealth.anomalies.map((issue, index) => (
+                    <li
+                      key={`${issue.phase}-${index}`}
+                      className="tooltip-trigger"
+                      data-tooltip={issue.message}
+                    >
+                      ⚠️ {issue.phase}: {issue.message}
+                    </li>
+                  ))}
+                </ul>
               )}
             </div>
           )}
@@ -644,7 +803,8 @@ export const RosterSummary = () => {
                   {topDonors.map((entry) => (
                     <li
                       key={`${entry.label}-donations`}
-                      className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none"
+                      className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
@@ -660,7 +820,8 @@ export const RosterSummary = () => {
                   {leastRushed.map((entry) => (
                     <li
                       key={`${entry.label}-rush`}
-                      className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none"
+                      className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
@@ -676,10 +837,49 @@ export const RosterSummary = () => {
                   {donationBalanceLeaders.map((entry) => (
                     <li
                       key={`${entry.label}-balance`}
-                      className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none"
+                      className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-emerald-200">
+                        {entry.value}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {donationDeficitAlerts.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Donation Deficit Watch</p>
+                <ul className="w-full space-y-1.5 text-sm text-slate-200">
+                  {donationDeficitAlerts.map((entry) => (
+                    <li
+                      key={`${entry.label}-deficit`}
+                      className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
+                      data-tooltip={entry.hint ?? undefined}
+                    >
+                      <span className="font-medium text-slate-100">{entry.label}</span>
+                      <span className="text-right font-semibold tabular-nums text-rose-300">
+                        {entry.value}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {rushAlerts.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">High Rush Priority</p>
+                <ul className="w-full space-y-1.5 text-sm text-slate-200">
+                  {rushAlerts.map((entry) => (
+                    <li
+                      key={`${entry.label}-rush-alert`}
+                      className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
+                      data-tooltip={entry.hint ?? undefined}
+                    >
+                      <span className="font-medium text-slate-100">{entry.label}</span>
+                      <span className="text-right font-semibold tabular-nums text-amber-200">
                         {entry.value}
                       </span>
                     </li>
@@ -694,7 +894,8 @@ export const RosterSummary = () => {
                   {topCapitalContributors.map((entry) => (
                     <li
                       key={`${entry.label}-capital`}
-                      className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none"
+                      className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none tooltip-trigger"
+                      data-tooltip="Season total capital gold donated. Shows who fuels raid weekend upgrades."
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-amber-200">{entry.value}</span>
@@ -710,7 +911,8 @@ export const RosterSummary = () => {
                   {heroLeaders.map((entry) => (
                     <li
                       key={`${entry.label}-hero`}
-                      className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none"
+                      className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>

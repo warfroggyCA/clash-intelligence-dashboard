@@ -53,7 +53,13 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
   size = 'md'
 }) => {
   // Determine league from trophies if not provided
-  const determinedLeague = league || (trophies !== undefined ? getLeagueFromTrophies(trophies) : 'Bronze');
+  const cleanedLeagueName = typeof league === 'string' ? league.trim() : '';
+  const hasNamedLeague = cleanedLeagueName.length > 0;
+  const determinedLeague = hasNamedLeague
+    ? cleanedLeagueName
+    : trophies !== undefined && trophies !== null
+      ? getLeagueFromTrophies(trophies)
+      : 'No League';
   
   // Map league names to image filenames
   const leagueImageMap: Record<string, string> = {
@@ -98,9 +104,12 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
     'Legend League II': 'Legend.png',
     'Legend League III': 'Legend.png',
     'Legend League IV': 'Legend.png',
+    'No League': 'No_League.png',
+    'Unranked': 'No_League.png',
   };
 
   const leagueImage = leagueImageMap[determinedLeague] || 'Bronze.png';
+  const altLabel = determinedLeague.includes('League') ? determinedLeague : `${determinedLeague} League`;
   const imagePath = `/assets/clash/Leagues/${leagueImage}`;
   
   if (!showText) {
@@ -113,7 +122,7 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
       >
         <Image
           src={imagePath}
-          alt={`${determinedLeague} League`}
+          alt={altLabel}
           width={dimensions.width}
           height={dimensions.height}
           className="object-contain"
@@ -144,7 +153,7 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
       >
         <Image
           src={imagePath}
-          alt={`${determinedLeague} League`}
+          alt={altLabel}
           width={dimensions.width}
           height={dimensions.height}
           className="object-contain"

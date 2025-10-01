@@ -11,6 +11,7 @@ interface HeroLevelProps {
   clanAverage?: number;
   clanAverageCount?: number;
   clanAverageSource?: 'roster' | 'profile';
+  tooltip?: string;
 }
 
 const sizeClasses = {
@@ -49,7 +50,8 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   size = 'md',
   clanAverage,
   clanAverageCount,
-  clanAverageSource
+  clanAverageSource,
+  tooltip
 }) => {
   const safeLevel = Number.isFinite(level) ? Math.max(level, 0) : 0;
   const safeMax = Number.isFinite(maxLevel) ? Math.max(maxLevel, 0) : 0;
@@ -73,8 +75,13 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
       ? 'current roster'
       : null;
   const tooltipParts: string[] = [];
-  tooltipParts.push(`${config.name} level ${safeLevel}${safeMax ? ` of ${safeMax}` : ''}`);
-  if (hasAverage) {
+  const unavailable = safeMax === 0;
+  tooltipParts.push(
+    unavailable
+      ? `${config.name} not yet unlocked at this Town Hall`
+      : `${config.name} level ${safeLevel}${safeMax ? ` of ${safeMax}` : ''}`
+  );
+  if (!unavailable && hasAverage) {
     const baseAverage = `Clan average ${clanAverage?.toFixed(1)}`;
     const samplePart = sampleLabel ? ` from ${sampleLabel}` : '';
     const sourcePart = averageSourceLabel ? ` (${averageSourceLabel})` : '';
@@ -83,18 +90,17 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
       tooltipParts.push(`This player ${diffLabel}`);
     }
   }
-  const progressTitle = tooltipParts.join('. ');
+  const progressTitle = tooltip ?? tooltipParts.join('. ');
 
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`space-y-1 tooltip-trigger ${className}`} data-tooltip={progressTitle}>
       <div className={`flex justify-between ${sizeClasses[size]}`}>
         {showName && <span className="text-clash-gold font-semibold">{config.name}</span>}
-        <span className="text-high-contrast">{safeLevel}/{safeMax}</span>
+        <span className="text-high-contrast">{unavailable ? '—' : `${safeLevel}/${safeMax}`}</span>
       </div>
-      {showProgress && (
+      {showProgress && !unavailable && (
         <div
           className={`hero-progress-track relative w-full rounded-full ${progressHeightClasses[size]} overflow-hidden`}
-          title={progressTitle}
           aria-label={progressTitle}
         >
           <div 
@@ -105,7 +111,6 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
             <span
               className={`absolute top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full border border-slate-900/80 bg-amber-300 shadow-[0_0_8px_rgba(251,191,36,0.75)] ${markerSizeClasses[size]}`}
               style={{ left: `${averagePercentage}%` }}
-              title={progressTitle}
               aria-label={progressTitle}
             />
           ) : null}
