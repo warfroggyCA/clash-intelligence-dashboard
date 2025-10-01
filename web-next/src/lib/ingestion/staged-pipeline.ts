@@ -411,7 +411,7 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
 
     const { data: insertedSnapshot, error: snapshotError } = await supabase
       .from('roster_snapshots')
-      .upsert(snapshotData, { onConflict: 'clan_id,fetched_at' })
+      .insert(snapshotData)
       .select('id')
       .single();
 
