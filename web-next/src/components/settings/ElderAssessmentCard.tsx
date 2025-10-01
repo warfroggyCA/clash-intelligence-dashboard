@@ -15,9 +15,9 @@ import { evaluateRoster, buildReportLine } from '@/lib/elder/evaluator';
 import { parseCsv } from '@/lib/elder/rawInputs';
 import type { ElderMetricInputs, ElderRecommendation } from '@/lib/elder/types';
 
-const CSV_TEMPLATE = `name,playerTag,tenure_days,consistency,generosity,performance,is_elder,prev_score
-Player One,#AAAAAAA,180,82,75,68,false,
-Player Two,#BBBBBBB,420,91,88,77,true,73`;
+const CSV_TEMPLATE = `name,playerTag,tenure_days,consistency,generosity,performance,role,is_elder,prev_score
+Player One,#AAAAAAA,180,82,75,68,member,false,
+Player Two,#BBBBBBB,420,91,88,77,elder,true,73`;
 
 const BAND_LABELS: Record<ElderRecommendation['band'], string> = {
   promote: 'Promote / Keep',
@@ -151,6 +151,7 @@ export function ElderAssessmentCard() {
         name: member.name,
         playerTag: member.tag,
         tenureDays: tenure,
+        role: member.role || undefined,
         consistency: dna.consistency,
         generosity: dna.generosity,
         performance: dna.performance,
@@ -236,7 +237,7 @@ export function ElderAssessmentCard() {
             Evaluate CSV
           </button>
           <span className="text-[11px] text-slate-500">
-            Headers required: name, playerTag, tenure_days, consistency, generosity, performance, is_elder, prev_score
+            Headers required: name, playerTag, tenure_days, consistency, generosity, performance, role, is_elder, prev_score
           </span>
         </div>
         {error && (
