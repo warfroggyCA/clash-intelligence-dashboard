@@ -29,6 +29,8 @@ import { useLeadership } from '@/hooks/useLeadership';
 
 export interface DashboardLayoutProps extends ComponentWithChildren {
   className?: string;
+  hideNavigation?: boolean;
+  hideCommandRail?: boolean;
 }
 
 // =============================================================================
@@ -39,9 +41,10 @@ interface DashboardHeaderProps {
   onToggleCommandRail: () => void;
   isCommandRailOpen: boolean;
   canUseCommandRail: boolean;
+  fallbackClanName?: string;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen, canUseCommandRail }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen, canUseCommandRail, fallbackClanName }) => {
   const {
     clanTag,
     homeClan,
@@ -179,6 +182,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
 
   // Simplified logo loading - use the known working logo
   const logoSrc = '/clans/2pr8r8v8p.png';
+  const headerTitle = clanName || fallbackClanName || normalizeTag(clanTag || homeClan || cfg.homeClanTag || '') || 'Clash Intelligence';
 
   return (
     <header
@@ -207,7 +211,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
                 className={`font-semibold leading-tight text-slate-100 transition-all duration-200 ${isScrolled ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}
                 style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
               >
-                {clanName || 'Clash Intelligence'}
+                {headerTitle}
               </div>
             </div>
           </div>
@@ -377,13 +381,18 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
 export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   className = '',
+  hideNavigation = false,
+  hideCommandRail = false,
 }) => {
   const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
   const { permissions } = useLeadership();
   const canAccessLeadershipTools = permissions.canViewLeadershipFeatures;
-  const showCommandRail = canAccessLeadershipTools;
+  const showCommandRail = canAccessLeadershipTools && !hideCommandRail;
+  const fallbackClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag || '');
+  const fallbackClanName = normalizeTag(fallbackClanTag) || fallbackClanTag;
 
   useEffect(() => {
+    if (!showCommandRail) return;
     if (typeof window === 'undefined') return;
     const handleResize = () => {
       if (window.innerWidth >= 1280) {
@@ -393,7 +402,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     handleResize();
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [showCommandRail]);
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
@@ -402,19 +411,22 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         onToggleCommandRail={() => setIsCommandRailOpen((prev) => !prev)}
         isCommandRailOpen={isCommandRailOpen}
         canUseCommandRail={showCommandRail}
+        fallbackClanName={fallbackClanName}
       />
       
       {/* Command Toolbar */}
-      <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-3 pb-2 pt-2 sm:px-4">
-        <div className="flex flex-col gap-2">
-          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/90">
-            <TabNavigation className="px-2" />
+      {!hideNavigation && (
+        <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-3 pb-2 pt-2 sm:px-4">
+          <div className="flex flex-col gap-2">
+            <div className="rounded-2xl border border-slate-800/70 bg-slate-900/90">
+              <TabNavigation className="px-2" />
+            </div>
+            {canAccessLeadershipTools && (
+              <QuickActions className="!border-brand-border/60 !bg-brand-surfaceRaised/90 !text-slate-100 shadow-[0_12px_30px_-20px_rgba(8,15,31,0.6)]" />
+            )}
           </div>
-          {canAccessLeadershipTools && (
-            <QuickActions className="!border-brand-border/60 !bg-brand-surfaceRaised/90 !text-slate-100 shadow-[0_12px_30px_-20px_rgba(8,15,31,0.6)]" />
-          )}
         </div>
-      </div>
+      )}
       
       {/* Main Content */}
       <main className="dashboard-main min-h-screen w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">

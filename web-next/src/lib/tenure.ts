@@ -85,14 +85,19 @@ export async function appendTenureLedgerEntry(tag: string, base: number, asOfYmd
   if (!isValidTag(t)) throw new Error('Invalid tag');
   const row = { tag: t, base: Math.max(0, Math.round(base || 0)), as_of: asOfYmd, ts: new Date().toISOString() };
 
-  if (cfg.useLocalData) {
-    const dir = path.join(process.cwd(), cfg.dataRoot);
-    await fsp.mkdir(dir, { recursive: true });
-    const ledger = path.join(dir, 'tenure_ledger.jsonl');
-    await fsp.appendFile(ledger, JSON.stringify(row) + '\n', 'utf-8');
+  const shouldWriteLocal = cfg.useLocalData || cfg.isDevelopment || !cfg.useSupabase;
+  if (shouldWriteLocal) {
+    try {
+      const dir = path.join(process.cwd(), cfg.dataRoot);
+      await fsp.mkdir(dir, { recursive: true });
+      const ledger = path.join(dir, 'tenure_ledger.jsonl');
+      await fsp.appendFile(ledger, JSON.stringify(row) + '\n', 'utf-8');
+    } catch (error) {
+      console.warn('[Tenure] Failed to append local ledger entry:', error);
+    }
   }
 
-  if (cfg.useSupabase) {
+  if (cfg.useSupabase && cfg.database.serviceRoleKey) {
     const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase.storage.from('tenure').download('tenure_ledger.jsonl');
     let content = '';
@@ -107,19 +112,17 @@ export async function appendTenureLedgerEntry(tag: string, base: number, asOfYmd
 }
 
 async function readLedgerLines(): Promise<string[]> {
-  // Prefer local data when enabled (dev)
-  if (cfg.useLocalData) {
-    const ledger = path.join(process.cwd(), cfg.dataRoot, 'tenure_ledger.jsonl');
-    try {
-      await fsp.stat(ledger);
-      const raw = await fsp.readFile(ledger, 'utf-8');
+  const ledger = path.join(process.cwd(), cfg.dataRoot, 'tenure_ledger.jsonl');
+  try {
+    const raw = await fsp.readFile(ledger, 'utf-8');
+    if (raw.trim()) {
       return raw.split(/\r?\n/);
-    } catch {
-      // fall through to Supabase
     }
+  } catch {
+    // fall through to Supabase if local read fails
   }
 
-  if (cfg.useSupabase) {
+  if (cfg.useSupabase && cfg.database.serviceRoleKey) {
     try {
       const supabase = getSupabaseAdminClient();
       const { data, error } = await supabase.storage.from('tenure').download('tenure_ledger.jsonl');
