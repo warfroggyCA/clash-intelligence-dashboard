@@ -2,6 +2,7 @@
   "name": "clash-intelligence",
   "private": true,
   "version": "0.27.15",
+  "_forceRebuild": "2025-01-15-19:45:00",
   "scripts": {
     "dev": "NEXT_PUBLIC_APP_VERSION=$(node -p \"require('./package.json').version\") next dev -p 5050",
     "dev:alt": "NEXT_PUBLIC_APP_VERSION=$(node -p \"require('./package.json').version\") next dev -p 5060",
