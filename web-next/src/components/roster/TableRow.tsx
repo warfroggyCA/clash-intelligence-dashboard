@@ -17,7 +17,7 @@
  * Last Updated: January 2025
  */
 
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Member, Roster, SortKey } from '@/types';
 import { safeLocaleDateString } from '@/lib/date';
@@ -37,6 +37,7 @@ import type { AceScoreResult } from '@/lib/ace-score';
 import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
 import { getHeroDisplayValue, isHeroAvailable } from '@/lib/business/calculations';
 import { Button, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel, Modal } from '@/components/ui';
+import { normalizeTag } from '@/lib/tags';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
@@ -197,6 +198,23 @@ export const TableRow: React.FC<TableRowProps> = ({
   const [isTenureEditorOpen, setTenureEditorOpen] = useState(false);
   const [tenureEditorValue, setTenureEditorValue] = useState(() => String(currentTenureDays));
   const [isUpdatingTenure, setIsUpdatingTenure] = useState(false);
+  const updateLocalTenure = useCallback((days: number, asOf?: string) => {
+    useDashboardStore.setState((state) => {
+      if (!state.roster) return {};
+      const members = state.roster.members.map((m) =>
+        normalizeTag(m.tag) === normalizeTag(member.tag)
+          ? { ...m, tenure_days: days, tenure_as_of: asOf ?? m.tenure_as_of }
+          : m
+      );
+      return { roster: { ...state.roster, members } } as Partial<typeof state>;
+    });
+  }, [member.tag]);
+
+  useEffect(() => {
+    if (isTenureEditorOpen) {
+      setTenureEditorValue(String(currentTenureDays));
+    }
+  }, [isTenureEditorOpen, currentTenureDays]);
 
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const isActiveColumn = (key: SortKey) => activeSortKey === key;
@@ -382,6 +400,7 @@ export const TableRow: React.FC<TableRowProps> = ({
         throw new Error(message);
       }
       showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
+      updateLocalTenure(days, new Date().toISOString().slice(0, 10));
       setTenureEditorOpen(false);
       if (clanTagForActions) {
         await loadRoster(clanTagForActions);
@@ -662,6 +681,9 @@ export const TableRow: React.FC<TableRowProps> = ({
                   throw new Error(message);
                 }
                 showToast('Granted prior tenure', 'success');
+                const baseDays = payload?.data?.base ?? currentTenureDays;
+                const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
+                updateLocalTenure(baseDays, asOf);
                 if (clanTagForActions) {
                   await loadRoster(clanTagForActions);
                 }
