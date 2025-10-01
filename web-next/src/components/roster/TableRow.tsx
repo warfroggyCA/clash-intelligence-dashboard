@@ -403,7 +403,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       updateLocalTenure(days, new Date().toISOString().slice(0, 10));
       setTenureEditorOpen(false);
       if (clanTagForActions) {
-        await loadRoster(clanTagForActions);
+        await loadRoster(clanTagForActions, { mode: 'live', force: true });
       }
     } catch (error: any) {
       const message = error?.message || 'Failed to update tenure';
@@ -685,7 +685,7 @@ export const TableRow: React.FC<TableRowProps> = ({
                 const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
                 updateLocalTenure(baseDays, asOf);
                 if (clanTagForActions) {
-                  await loadRoster(clanTagForActions);
+                  await loadRoster(clanTagForActions, { mode: 'live', force: true });
                 }
               } catch (error: any) {
                 const message = error?.message || 'Failed to grant tenure';

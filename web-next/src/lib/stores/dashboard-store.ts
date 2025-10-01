@@ -229,7 +229,7 @@ interface DashboardState {
   
   // Complex Actions
   resetDashboard: () => void;
-  loadRoster: (clanTag: string) => Promise<void>;
+  loadRoster: (clanTag: string, options?: { mode?: 'snapshot' | 'live'; force?: boolean }) => Promise<void>;
   loadSmartInsights: (clanTag: string, options?: { force?: boolean; ttlMs?: number }) => Promise<void>;
   refreshData: () => Promise<void>;
   checkDepartureNotifications: () => Promise<void>;
@@ -426,16 +426,18 @@ export const useDashboardStore = create<DashboardState>()(
       
       resetDashboard: () => set(initialState),
       
-      loadRoster: async (clanTag: string) => {
+      loadRoster: async (clanTag: string, options: { mode?: 'snapshot' | 'live'; force?: boolean } = {}) => {
         const { setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo, setDataFetchedAt } = get();
         const normalizedTag = normalizeTag(clanTag) || clanTag;
+        const modeOverride = options.mode;
+        const forceReload = options.force ?? false;
         
         try {
           setStatus('loading');
           setMessage('');
           const t0 = Date.now();
 
-          if (cfg.useSupabase) {
+          if (cfg.useSupabase && modeOverride !== 'live') {
             try {
               const snapshotRoster = await fetchRosterFromDataSpine(normalizedTag);
               if (snapshotRoster) {
@@ -458,7 +460,18 @@ export const useDashboardStore = create<DashboardState>()(
             }
           }
 
-          const plan = buildRosterFetchPlan(normalizedTag, selectedSnapshot);
+          let plan = buildRosterFetchPlan(normalizedTag, modeOverride === 'live' ? 'live' : selectedSnapshot);
+          if (modeOverride === 'live') {
+            const base = `/api/roster?clanTag=${encodeURIComponent(normalizedTag)}&mode=live`;
+            plan = { urls: [base], sourcePreference: 'live' };
+          }
+          if (forceReload) {
+            const bust = Date.now();
+            plan = {
+              ...plan,
+              urls: plan.urls.map((url) => `${url}${url.includes('?') ? '&' : '?'}_=${bust}`),
+            };
+          }
           
           const tryFetch = async (url: string) => {
             // Add a safety timeout to avoid indefinite spin
@@ -477,8 +490,8 @@ export const useDashboardStore = create<DashboardState>()(
           let lastError: any = null;
           for (const url of plan.urls) {
             const result = await tryFetch(url);
-            const payload = result.json?.data ?? result.json;
-            if (result.ok && Array.isArray(payload?.members)) {
+              const payload = result.json?.data ?? result.json;
+              if (result.ok && Array.isArray(payload?.members)) {
               setRoster(payload);
               setStatus('success');
               const src = payload?.source || plan.sourcePreference;
