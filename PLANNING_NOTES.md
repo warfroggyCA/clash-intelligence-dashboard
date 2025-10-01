@@ -1,5 +1,54 @@
 # Clash Intelligence Dashboard - Planning Notes
 
+## Fall 2025 Clash Overhaul Readiness
+- [ ] Roster summary needs dual-mode battle stats surfaced (Battle Mode vs Ranked) once APIs split; update store shape and `RosterSummary` aggregations accordingly (`web-next/src/components/roster/RosterSummary.tsx:79`)
+- [ ] Expand league/trophy rendering to support new tiers and post-reset trophies; refactor `LeagueBadge` usage so we can swap data sources without touching UI callers (`web-next/src/components/roster/RosterSummary.tsx:138`)
+- [ ] Remove the `Math.min(16, …)` Town Hall clamp so TH17/TH18 averages render correctly (`web-next/src/components/roster/RosterSummary.tsx:120`)
+- [ ] Plan new highlights for Metallurgist output / resource converters; keep highlight cards modular so additional lists can be added without large rewrites (`web-next/src/components/roster/RosterSummary.tsx:248`)
+- [ ] Ensure tenure ledger calculations stay date-driven so league resets or cancelled upgrades do not corrupt tenure; consider flagging migration windows in ledger ops (`web-next/src/lib/tenure.ts:9`)
+
+## Data Pipeline Excellence (Initiated Jan 2025)
+- [x] Supabase schema hardening – promote `members.league`, battle-mode trophies, equipment flags, and seasonal modifiers to typed columns; ship migration + backfill script before spring roadmap
+- [x] Snapshot ingestion refactor – break `persistRosterSnapshotToDataSpine` into staged jobs with idempotent checkpoints so partial failures never wipe `member_snapshot_stats`
+- [x] Differential snapshot writes – detect per-member changes and perform `upsert` only on dirty rows to cut Supabase write volume and prep for dual battle-mode metrics
+- [x] Derived metric service – spin off donation/rush/availability calculators to a worker queue so dashboard reads become pure selects (no recompute during render)
+  - [x] Persist rush %, donation balance, and donation totals via ingestion metrics writer
+  - [ ] Extend metrics coverage (war/capital/availability) and capture historical windows
+  - [ ] Move calculations into dedicated worker/queue for resilience
+- [x] Cache governance – replace `localStorage` persistence with versioned/ETag-backed fetch layer so stale schema changes invalidate automatically
+  - [x] Version-aware roster cache using `payloadVersion` + schema guardrails
+  - [ ] Add ETag/If-None-Match support to `/api/v2/roster` and frontend fetch plan
+- [x] Season-ready spine – add season_id columns to snapshots/stats/metrics with proper indexing and client-side season key computation
+- [ ] Observability – add ingestion job telemetry (duration, delta counts, Supabase response metrics) into `ingest_logs` and surface alerts when deltas or durations spike
+
+## Season-Ready Spine Implementation (Completed Jan 2025)
+
+### ✅ **Migration & Schema Updates**
+- **Season columns added** to `roster_snapshots`, `member_snapshot_stats`, and `metrics` tables
+- **Indexes created** for efficient season-based queries
+- **Backfill script** prepared to populate existing data with season IDs
+
+### ✅ **Enhanced Staged Ingestion Pipeline**
+- **Season calculation** integrated into snapshot processing
+- **Derived metrics** tagged with season information
+- **Metadata enhancement** with season fields for cache governance
+
+### ✅ **Client-Side Season Support**
+- **Season key computation** added to dashboard store for backward compatibility
+- **Roster typing** updated to include `seasonId`, `seasonStart`, `seasonEnd`
+- **Data spine mapper** enhanced to surface season information
+
+### ✅ **Version-Aware Caching**
+- **Schema versioning** implemented with proper cache invalidation
+- **Payload version** tracking for data freshness
+- **TTL-based cache** with 5-minute expiration
+
+### 📋 **Next Steps**
+1. **Apply season migration** to Supabase and run backfill script
+2. **ETag support** for efficient roster fetching when data hasn't changed
+3. **Extended metric coverage** for war/capital/availability metrics
+4. **Worker queue** for offloading heavy calculations
+
 ## Execution Status
 - [x] Sprint 0 – Data spine schema in Supabase (clans, members, snapshots, wars, raids, metrics, alerts, tasks, notes, roles, settings, ingest logs)
 - [ ] Sprint 1 – Roster pipeline
@@ -25,6 +74,19 @@
 - [ ] **Make main panel sticky** on scroll
 - [ ] **Remove ratio from donation balance** → move to mouseover
 - [ ] **Move attack totals to mouseover** in War Eff column (keep main number only)
+- [ ] **Custom Donations Icon** - Overlay Clan Castle icon with Clan icon for donations display
+  - **Clan Badge Mapping Strategy**: Use API URLs directly (`clanInfo.badgeUrls.medium`) for overlay
+  - **Fallback Logic**: Default to header image when no clan loaded or no badge available
+  - **Implementation**: CSS overlay technique with Castle icon as base, clan badge as overlay
+
+### Player View Redesign
+- [ ] **Convert player view from popup to dedicated page** - Replace floating modal with full-page player profile
+- [ ] **Player activity trend exhibits** - Comprehensive historical performance visualization
+- [ ] **Enhanced player analytics dashboard** - Deep dive into individual player metrics and patterns
+- [ ] **Player comparison tools** - Side-by-side analysis capabilities
+- [ ] **Player vs. clan average comparisons** - Individual metrics compared to overall clan performance
+- [ ] **Player notes and leadership comments** - Dedicated space for player evaluation and feedback
+- [ ] **Player achievement tracking** - Historical milestones and progress indicators
 
 ### Icon Updates
 - [ ] **Activity icon**: Change to 🏁
@@ -163,6 +225,16 @@
 - [ ] **Role-Based Permissions** - Granular access control
 - [ ] **Invite code authentication** - Simple access management
 
+### Elder Promotion System
+- [ ] **Elder Eligibility Assessment** - Automated evaluation of players based on customizable criteria
+- [ ] **Promotion Notifications** - Alert leaders when players meet elder promotion requirements
+- [ ] **Elder Status Loss Detection** - Automated evaluation of players who should lose elder status based on same criteria
+- [ ] **Demotion Notifications** - Alert leaders when players no longer meet elder requirements
+- [ ] **Customizable Criteria Settings** - Allow leaders to configure promotion/demotion thresholds
+- [ ] **In-Game Integration Workflow** - Guide leaders through in-game promotion/demotion process
+- [ ] **Congratulatory Message Templates** - Pre-built messages for celebrating promotions
+- [ ] **Demotion Communication Templates** - Pre-built messages for explaining elder status removal
+
 ## Strategic Dashboard Vision: The Indispensable War Room
 
 ### Core Mission: Transform Data into Actionable Intelligence
@@ -279,6 +351,7 @@ This transforms the dashboard from a data viewer into an indispensable command c
 - [ ] **Improve error handling** for API failures
 - [ ] **Fix change detection system** - Not detecting member departures
 - [ ] **Fix dashboard auto-loading** - Should auto-load latest snapshot on startup
+- [ ] **Fix tenure editing functionality** - Currently not working properly
 
 ---
 
