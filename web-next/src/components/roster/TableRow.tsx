@@ -36,7 +36,7 @@ import {
 import type { AceScoreResult } from '@/lib/ace-score';
 import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
 import { getHeroDisplayValue, isHeroAvailable } from '@/lib/business/calculations';
-import { Button, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel } from '@/components/ui';
+import { Button, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel, Modal } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
@@ -193,6 +193,10 @@ export const TableRow: React.FC<TableRowProps> = ({
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
   const isLowDonatorPlayer = isLowDonator(member);
+  const currentTenureDays = useMemo(() => Number(member.tenure_days ?? member.tenure ?? 0) || 0, [member.tenure_days, member.tenure]);
+  const [isTenureEditorOpen, setTenureEditorOpen] = useState(false);
+  const [tenureEditorValue, setTenureEditorValue] = useState(() => String(currentTenureDays));
+  const [isUpdatingTenure, setIsUpdatingTenure] = useState(false);
 
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const isActiveColumn = (key: SortKey) => activeSortKey === key;
@@ -342,7 +346,56 @@ export const TableRow: React.FC<TableRowProps> = ({
     ${index % 2 === 1 ? "bg-gray-50" : "bg-white"}
   `;
 
+  const handleOpenTenureEditor = () => {
+    setTenureEditorValue(String(currentTenureDays));
+    setTenureEditorOpen(true);
+  };
+
+  const handleCloseTenureEditor = () => {
+    if (!isUpdatingTenure) {
+      setTenureEditorOpen(false);
+    }
+  };
+
+  const handleTenureSave = async () => {
+    const trimmed = tenureEditorValue.trim();
+    if (!trimmed) {
+      showToast('Enter tenure in days', 'error');
+      return;
+    }
+    const match = trimmed.match(/\d+/);
+    if (!match) {
+      showToast('Tenure must be a number of days', 'error');
+      return;
+    }
+    const days = Math.max(0, Math.min(20000, Number.parseInt(match[0], 10)));
+    try {
+      setIsUpdatingTenure(true);
+      const res = await fetch('/api/tenure/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error || payload?.message || 'Failed to update tenure';
+        throw new Error(message);
+      }
+      showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
+      setTenureEditorOpen(false);
+      if (clanTagForActions) {
+        await loadRoster(clanTagForActions);
+      }
+    } catch (error: any) {
+      const message = error?.message || 'Failed to update tenure';
+      showToast(message, 'error');
+    } finally {
+      setIsUpdatingTenure(false);
+    }
+  };
+
   return (
+    <>
     <tr 
       className={`${rowStyles} ${className}`} 
       onClick={handleOpenProfile}
@@ -617,44 +670,48 @@ export const TableRow: React.FC<TableRowProps> = ({
                 showToast(message, 'error');
               }
             }}
-            onEditTenure={async (e) => {
+            onEditTenure={(e) => {
               e.stopPropagation();
-              const current = Number(member.tenure_days ?? member.tenure ?? 0) || 0;
-              const input = typeof window !== 'undefined'
-                ? window.prompt('Set tenure in days (0-20000)', String(current))
-                : null;
-              if (input === null) return;
-              const trimmed = input.trim();
-              const match = trimmed.match(/\d+/);
-              if (!match) {
-                showToast('Please enter a valid number of days', 'error');
-                return;
-              }
-              const days = Math.max(0, Math.min(20000, Number.parseInt(match[0], 10)));
-              try {
-                const res = await fetch('/api/tenure/save', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
-                });
-                const payload = await res.json().catch(() => null);
-                if (!res.ok) {
-                  const message = payload?.error || payload?.message || 'Failed to update tenure';
-                  throw new Error(message);
-                }
-                showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
-                if (clanTagForActions) {
-                  await loadRoster(clanTagForActions);
-                }
-              } catch (error: any) {
-                const message = error?.message || 'Failed to update tenure';
-                showToast(message, 'error');
-              }
+              handleOpenTenureEditor();
             }}
           />
         </div>
       </TableCell>
     </tr>
+    <Modal
+      isOpen={isTenureEditorOpen}
+      onClose={handleCloseTenureEditor}
+      title={`Edit tenure for ${member.name}`}
+      size="sm"
+    >
+      <div className="space-y-4 text-slate-100">
+        <label className="flex flex-col text-sm font-semibold text-slate-200">
+          Tenure in days
+          <input
+            type="number"
+            min={0}
+            max={20000}
+            value={tenureEditorValue}
+            onChange={(event) => setTenureEditorValue(event.target.value)}
+            className="mt-2 rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+            placeholder="0"
+          />
+        </label>
+        <div className="flex items-center justify-between text-xs text-slate-400">
+          <span>Current: {formatDays(currentTenureDays)}</span>
+          <span>Range: 0 – 20,000</span>
+        </div>
+        <div className="flex justify-end gap-2">
+          <Button variant="ghost" onClick={handleCloseTenureEditor} disabled={isUpdatingTenure}>
+            Cancel
+          </Button>
+          <Button onClick={handleTenureSave} disabled={isUpdatingTenure}>
+            {isUpdatingTenure ? 'Saving…' : 'Save tenure'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+    </>
   );
 };
 
