@@ -82,6 +82,10 @@ export interface Member {
   notes?: string;
   customFields?: Record<string, string>;
   extras?: Record<string, any>;
+  metrics?: Record<string, {
+    value: number;
+    metadata?: Record<string, any> | null;
+  }>;
 }
 
 /**
@@ -114,6 +118,9 @@ export interface Roster {
     ingestionVersion?: string | null;
     schemaVersion?: string | null;
     computedAt?: string | null;
+    seasonId?: string | null;
+    seasonStart?: string | null;
+    seasonEnd?: string | null;
   };
   snapshotDetails?: {
     currentWar?: {

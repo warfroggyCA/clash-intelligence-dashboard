@@ -74,6 +74,27 @@ export async function GET(req: NextRequest) {
     const stats = statsRows ?? [];
     const memberIds = stats.map((row) => row.member_id).filter(Boolean) as string[];
 
+    const { data: metricsRows, error: metricsError } = await supabase
+      .from('metrics')
+      .select('member_id, metric_name, value, metadata')
+      .eq('clan_id', clanRow.id)
+      .eq('metric_window', 'latest');
+
+    if (metricsError) {
+      throw metricsError;
+    }
+
+    const metricsByMember = new Map<string, Record<string, { value: number; metadata?: Record<string, any> | null }>>();
+    for (const metric of metricsRows ?? []) {
+      if (!metric?.member_id || !metric.metric_name) continue;
+      const bucket = metricsByMember.get(metric.member_id) || {};
+      bucket[metric.metric_name] = {
+        value: typeof metric.value === 'number' ? metric.value : 0,
+        metadata: metric.metadata ?? null,
+      };
+      metricsByMember.set(metric.member_id, bucket);
+    }
+
     let memberLookup: Record<string, any> = {};
 
     if (memberIds.length) {
@@ -129,6 +150,7 @@ export async function GET(req: NextRequest) {
         rankedModifier,
         seasonResetAt: member.season_reset_at ?? null,
         equipmentFlags,
+        metrics: metricsByMember.get(stat.member_id) ?? undefined,
         memberCreatedAt: member.created_at ?? null,
         memberUpdatedAt: member.updated_at ?? null,
       };

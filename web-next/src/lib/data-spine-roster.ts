@@ -65,6 +65,7 @@ interface ApiRosterMember {
   equipmentFlags?: any;
   memberCreatedAt?: string | null;
   memberUpdatedAt?: string | null;
+  metrics?: Record<string, { value: number; metadata?: Record<string, any> | null }>;
 }
 
 interface ApiRosterResponse {
@@ -141,6 +142,7 @@ function mapMember(apiMember: ApiRosterMember): Member {
     league,
     builderLeague,
     extras: apiMember.extras ?? undefined,
+    metrics: apiMember.metrics ?? undefined,
   } as Member;
 }
 
@@ -168,6 +170,9 @@ function transformResponse(body: ApiRosterResponse): Roster | null {
       ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
       schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
       computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
+      seasonId: metadata.seasonId ?? null,
+      seasonStart: metadata.seasonStart ?? null,
+      seasonEnd: metadata.seasonEnd ?? null,
     },
     snapshotMetadata: {
       snapshotDate: metadata.snapshotDate || (snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : ''),
@@ -180,6 +185,9 @@ function transformResponse(body: ApiRosterResponse): Roster | null {
       ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
       schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
       computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
+      seasonId: metadata.seasonId ?? null,
+      seasonStart: metadata.seasonStart ?? null,
+      seasonEnd: metadata.seasonEnd ?? null,
     },
     snapshotDetails: metadata.snapshotDetails ?? undefined,
   } satisfies Roster;

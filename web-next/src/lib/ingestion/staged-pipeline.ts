@@ -2,7 +2,10 @@ import { cfg } from '@/lib/config';
 import { fetchFullClanSnapshot } from '@/lib/full-snapshot';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
-import { FullClanSnapshot, MemberSummary } from '@/types';
+import { extractHeroLevels } from '@/lib/coc';
+import { calculateRushPercentage } from '@/lib/business/calculations';
+import { CURRENT_PIPELINE_SCHEMA_VERSION } from '@/lib/pipeline-constants';
+import { FullClanSnapshot, MemberSummary, Member, HeroCaps } from '@/types';
 import { appendJobLog, createJobRecord, updateJobStatus, IngestionJobLogEntry } from './job-store';
 
 export interface StagedIngestionResult {
@@ -129,6 +132,8 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
   return result;
 }
 
+type HeroLevels = Partial<Record<keyof HeroCaps, number | null>>;
+
 interface TransformedData {
   clanData: ClanData;
   memberData: MemberData[];
@@ -160,6 +165,12 @@ interface MemberData {
   ranked_league_name?: string;
   ranked_modifier?: any;
   equipment_flags?: any;
+  trophies?: number | null;
+  donations?: number | null;
+  donations_received?: number | null;
+  hero_levels?: HeroLevels | null;
+  rush_percent?: number | null;
+  extras?: any;
 }
 
 interface SnapshotStats {
@@ -169,7 +180,7 @@ interface SnapshotStats {
   trophies: number;
   donations: number;
   donations_received: number;
-  hero_levels: any;
+  hero_levels: HeroLevels | null;
   activity_score: number | null;
   rush_percent: number | null;
   extras: any;
@@ -182,6 +193,177 @@ interface SnapshotStats {
   ranked_league_id?: number;
   ranked_modifier?: any;
   equipment_flags?: any;
+}
+
+function getAchievementValue(detail: any, name: string): number | null {
+  if (!detail?.achievements) return null;
+  const entry = detail.achievements.find((achievement: any) => achievement?.name === name);
+  return typeof entry?.value === 'number' ? entry.value : null;
+}
+
+function deriveDonations(summary: MemberSummary, detail: any) {
+  const donations = summary.donations ?? detail?.donations ?? getAchievementValue(detail, 'Friend in Need');
+  // Some snapshots expose donationsReceived as `donationsReceived`, others via achievements
+  const donationsReceived = summary.donationsReceived
+    ?? detail?.donationsReceived
+    ?? getAchievementValue(detail, 'Sharing is Caring');
+
+  return {
+    donations: typeof donations === 'number' ? donations : null,
+    donationsReceived: typeof donationsReceived === 'number' ? donationsReceived : null,
+  };
+}
+
+function buildHeroLevels(detail: any): HeroLevels | null {
+  if (!detail) return null;
+  try {
+    const levels = extractHeroLevels(detail);
+    return {
+      bk: levels.bk ?? null,
+      aq: levels.aq ?? null,
+      gw: levels.gw ?? null,
+      rc: levels.rc ?? null,
+      mp: levels.mp ?? null,
+    };
+  } catch (error) {
+    console.warn('[staged-ingestion] Failed to extract hero levels', error);
+    return null;
+  }
+}
+
+function computeRushPercent(thLevel: number | undefined, heroLevels: HeroLevels | null): number | null {
+  if (!thLevel || !heroLevels) return null;
+  const syntheticMember: Partial<Member> = {
+    townHallLevel: thLevel,
+    bk: heroLevels.bk ?? 0,
+    aq: heroLevels.aq ?? 0,
+    gw: heroLevels.gw ?? 0,
+    rc: heroLevels.rc ?? 0,
+    mp: heroLevels.mp ?? 0,
+  };
+  try {
+    return calculateRushPercentage(syntheticMember as Member);
+  } catch (error) {
+    console.warn('[staged-ingestion] Failed to compute rush percent', error);
+    return null;
+  }
+}
+
+function buildExtras(summary: MemberSummary, detail: any) {
+  return {
+    builderHallLevel: summary.builderHallLevel ?? detail?.builderHallLevel ?? null,
+    townHallWeaponLevel: summary.townHallWeaponLevel ?? detail?.townHallWeaponLevel ?? null,
+    builderTrophies: summary.builderTrophies ?? detail?.versusTrophies ?? null,
+    clanRank: summary.clanRank ?? null,
+    previousClanRank: summary.previousClanRank ?? null,
+  };
+}
+
+const DERIVED_METRIC_NAMES = ['rush_percent', 'donation_balance', 'donations_given', 'donations_received'] as const;
+type DerivedMetricName = (typeof DERIVED_METRIC_NAMES)[number];
+
+async function writeDerivedMetrics(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  clanId: string,
+  snapshotId: string,
+  stats: SnapshotStats[],
+): Promise<number> {
+  if (!stats.length) return 0;
+
+  const deleteResponse = await supabase
+    .from('metrics')
+    .delete()
+    .eq('clan_id', clanId)
+    .eq('metric_window', 'latest')
+    .in('metric_name', DERIVED_METRIC_NAMES as unknown as string[]);
+
+  if (deleteResponse.error) {
+    console.warn('[staged-ingestion] Failed to prune existing derived metrics', deleteResponse.error);
+  }
+
+  const now = new Date().toISOString();
+  const inserts: Array<{
+    clan_id: string;
+    member_id: string;
+    metric_name: DerivedMetricName;
+    metric_window: string;
+    value: number;
+    metadata: Record<string, any> | null;
+    computed_at: string;
+  }> = [];
+
+  for (const stat of stats) {
+    if (!stat?.member_id) continue;
+
+    const donations = typeof stat.donations === 'number' ? stat.donations : 0;
+    const donationsReceived = typeof stat.donations_received === 'number' ? stat.donations_received : 0;
+    const donationBalance = donations - donationsReceived;
+
+    const baseMetadata = {
+      snapshotId,
+      leagueId: stat.league_id ?? null,
+      trophies: stat.trophies ?? null,
+      donations,
+      donationsReceived,
+    };
+
+    if (typeof stat.rush_percent === 'number') {
+      inserts.push({
+        clan_id: clanId,
+        member_id: stat.member_id,
+        metric_name: 'rush_percent',
+        metric_window: 'latest',
+        value: stat.rush_percent,
+        metadata: baseMetadata,
+        computed_at: now,
+      });
+    }
+
+    inserts.push({
+      clan_id: clanId,
+      member_id: stat.member_id,
+      metric_name: 'donation_balance',
+      metric_window: 'latest',
+      value: donationBalance,
+      metadata: baseMetadata,
+      computed_at: now,
+    });
+
+    inserts.push({
+      clan_id: clanId,
+      member_id: stat.member_id,
+      metric_name: 'donations_given',
+      metric_window: 'latest',
+      value: donations,
+      metadata: baseMetadata,
+      computed_at: now,
+    });
+
+    inserts.push({
+      clan_id: clanId,
+      member_id: stat.member_id,
+      metric_name: 'donations_received',
+      metric_window: 'latest',
+      value: donationsReceived,
+      metadata: baseMetadata,
+      computed_at: now,
+    });
+  }
+
+  if (!inserts.length) {
+    return 0;
+  }
+
+  const { error } = await supabase
+    .from('metrics')
+    .insert(inserts);
+
+  if (error) {
+    console.warn('[staged-ingestion] Failed to insert derived metrics', error);
+    return 0;
+  }
+
+  return inserts.length;
 }
 
 async function runFetchPhase(jobId: string, clanTag: string): Promise<PhaseResult> {
@@ -235,6 +417,11 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
       const normalized = normalizeTag(summary.tag);
       const detail = snapshot.playerDetails?.[normalized];
       const league = summary.league || detail?.league;
+      const { donations, donationsReceived } = deriveDonations(summary, detail);
+      const heroLevels = buildHeroLevels(detail);
+      const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
+      const trophies = summary.trophies ?? detail?.trophies ?? null;
+      const extras = buildExtras(summary, detail);
       
       return {
         tag: normalized,
@@ -255,6 +442,12 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
         ranked_league_name: league?.name,
         ranked_modifier: league?.modifier,
         equipment_flags: detail?.equipment,
+        trophies,
+        donations,
+        donations_received: donationsReceived,
+        hero_levels: heroLevels,
+        rush_percent: rushPercent,
+        extras,
       };
     });
 
@@ -388,12 +581,18 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
       throw new Error(`Failed to get clan ID: ${clanError.message}`);
     }
 
-    const totalTrophies = transformedData.memberData.reduce((sum, m) => sum + (m.league_trophies || 0), 0);
+    const totalTrophies = transformedData.memberData.reduce((sum, m) => sum + (m.trophies || 0), 0);
     const totalDonations = transformedData.memberData.reduce((sum, m) => sum + (m.donations || 0), 0);
     
     // Generate payload version for cache governance
     const payloadVersion = generatePayloadVersion(snapshot, transformedData);
     
+    const metadata = {
+      ...(snapshot.metadata ?? {}),
+      schemaVersion: CURRENT_PIPELINE_SCHEMA_VERSION,
+      ingestionVersion: 'staged-pipeline-v1',
+    };
+
     const snapshotData = {
       clan_id: clanRow.id,
       fetched_at: snapshot.fetchedAt,
@@ -401,11 +600,11 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
       total_trophies: totalTrophies,
       total_donations: totalDonations,
       payload: snapshot,
-      metadata: snapshot.metadata,
+      metadata,
       // New versioning fields
       payload_version: payloadVersion,
       ingestion_version: 'staged-pipeline-v1',
-      schema_version: 'pipeline-upgrade-20250115',
+      schema_version: CURRENT_PIPELINE_SCHEMA_VERSION,
       computed_at: new Date().toISOString(),
     };
 
@@ -451,11 +650,21 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
     
     const supabase = getSupabaseAdminClient();
     
+    const { data: clanRow, error: clanError } = await supabase
+      .from('clans')
+      .select('id')
+      .eq('tag', transformedData.clanData.tag)
+      .single();
+
+    if (clanError) {
+      throw new Error(`Failed to resolve clan: ${clanError.message}`);
+    }
+
     // Get latest snapshot ID
     const { data: latestSnapshot, error: snapshotError } = await supabase
       .from('roster_snapshots')
       .select('id, clan_id')
-      .eq('clan_id', (await supabase.from('clans').select('id').eq('tag', transformedData.clanData.tag).single()).data?.id)
+      .eq('clan_id', clanRow.id)
       .order('fetched_at', { ascending: false })
       .limit(1)
       .single();
@@ -479,6 +688,9 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
       memberIdByTag.set(member.tag, member.id);
     }
 
+    // Remove existing stats for this snapshot to avoid duplicates on reruns
+    await supabase.from('member_snapshot_stats').delete().eq('snapshot_id', latestSnapshot.id);
+
     // Build snapshot stats with new typed fields
     const snapshotStats = transformedData.memberData.map((member) => {
       const memberId = memberIdByTag.get(member.tag);
@@ -489,13 +701,13 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         member_id: memberId,
         th_level: member.townHallLevel,
         role: member.role,
-        trophies: member.league_trophies,
-        donations: 0, // TODO: Get from member data
-        donations_received: 0, // TODO: Get from member data
-        hero_levels: {}, // TODO: Calculate from member data
+        trophies: member.trophies ?? 0,
+        donations: member.donations ?? 0,
+        donations_received: member.donations_received ?? 0,
+        hero_levels: member.hero_levels ?? null,
         activity_score: null,
-        rush_percent: null, // TODO: Calculate
-        extras: {},
+        rush_percent: member.rush_percent ?? null,
+        extras: member.extras ?? {},
         // New typed fields
         league_id: member.league_id,
         league_name: member.league_name,
@@ -518,10 +730,18 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
       }
     }
 
+    const metricsInserted = await writeDerivedMetrics(
+      supabase,
+      latestSnapshot.clan_id,
+      latestSnapshot.id,
+      snapshotStats,
+    );
+
     const duration_ms = Date.now() - startTime;
     
     await logPhase(jobId, 'writeStats', 'info', 'Write stats phase completed', {
       statsInserted: snapshotStats.length,
+      metricsInserted,
     });
 
     return {
@@ -552,9 +772,36 @@ function generatePayloadVersion(snapshot: FullClanSnapshot, transformedData: Tra
     fetchedAt: snapshot.fetchedAt,
     memberCount: transformedData.memberData.length,
     clanTag: transformedData.clanData.tag,
-    schemaVersion: 'pipeline-upgrade-20250115',
+    schemaVersion: CURRENT_PIPELINE_SCHEMA_VERSION,
   };
   return Buffer.from(JSON.stringify(data)).toString('base64').slice(0, 16);
+}
+
+function calculateSeasonInfo(timestampIso: string) {
+  const date = new Date(timestampIso);
+  if (Number.isNaN(date.getTime())) {
+    const now = new Date();
+    const seasonId = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 5, 0, 0));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 4, 59, 59));
+    return {
+      seasonId,
+      seasonStart: start.toISOString(),
+      seasonEnd: end.toISOString(),
+    };
+  }
+
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const seasonId = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const seasonStart = new Date(Date.UTC(year, month, 1, 5, 0, 0));
+  const seasonEnd = new Date(Date.UTC(year, month + 1, 1, 4, 59, 59));
+
+  return {
+    seasonId,
+    seasonStart: seasonStart.toISOString(),
+    seasonEnd: seasonEnd.toISOString(),
+  };
 }
 
 async function logPhase(jobId: string, phase: string, level: 'info' | 'warn' | 'error', message: string, details?: Record<string, any>) {

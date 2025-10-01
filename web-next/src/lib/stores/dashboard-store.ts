@@ -28,6 +28,7 @@ import {
 import type { RolePermissions } from '@/lib/leadership';
 import { ACCESS_LEVEL_PERMISSIONS, type AccessLevel } from '@/lib/access-management';
 import { cfg } from '@/lib/config';
+import { CURRENT_PIPELINE_SCHEMA_VERSION } from '@/lib/pipeline-constants';
 import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 import { showToast } from '@/lib/toast';
 import { safeLocaleDateString, safeLocaleTimeString } from '@/lib/date';
@@ -36,6 +37,37 @@ import type { SmartInsightsPayload, SmartInsightsHeadline } from '@/lib/smart-in
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
 import type { UserRoleRecord, ClanRoleName } from '@/lib/auth/roles';
+
+// =============================================================================
+// UTILITIES
+// =============================================================================
+
+function calculateSeasonInfo(timestampIso: string) {
+  const date = new Date(timestampIso);
+  if (Number.isNaN(date.getTime())) {
+    const now = new Date();
+    const seasonId = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, '0')}`;
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 5, 0, 0));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1, 4, 59, 59));
+    return {
+      seasonId,
+      seasonStart: start.toISOString(),
+      seasonEnd: end.toISOString(),
+    };
+  }
+
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const seasonId = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const seasonStart = new Date(Date.UTC(year, month, 1, 5, 0, 0));
+  const seasonEnd = new Date(Date.UTC(year, month + 1, 1, 4, 59, 59));
+
+  return {
+    seasonId,
+    seasonStart: seasonStart.toISOString(),
+    seasonEnd: seasonEnd.toISOString(),
+  };
+}
 import { getMemberAceScore } from '@/lib/business/calculations';
 import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
 import type { AceScoreResult } from '@/lib/ace-score';
@@ -43,6 +75,7 @@ import type { AceScoreResult } from '@/lib/ace-score';
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 const EMPTY_HEADLINES: readonly SmartInsightsHeadline[] = Object.freeze([] as SmartInsightsHeadline[]);
+const ROSTER_CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
 
 export interface HistoryCacheEntry {
   items: ChangeSummary[];
@@ -337,7 +370,19 @@ export const useDashboardStore = create<DashboardState>()(
           if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
             const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
             if (tag) {
-              localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(roster));
+              const payloadVersion = roster.meta?.payloadVersion ?? roster.snapshotMetadata?.payloadVersion ?? null;
+              const schemaVersion = roster.meta?.schemaVersion ?? roster.snapshotMetadata?.schemaVersion ?? null;
+              const ingestionVersion = roster.meta?.ingestionVersion ?? roster.snapshotMetadata?.ingestionVersion ?? null;
+              const computedAt = roster.meta?.computedAt ?? roster.snapshotMetadata?.computedAt ?? null;
+              const cacheEntry = {
+                version: payloadVersion,
+                schemaVersion,
+                ingestionVersion,
+                computedAt,
+                storedAt: Date.now(),
+                roster,
+              };
+              localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(cacheEntry));
             }
           }
         } catch {}
@@ -444,17 +489,29 @@ export const useDashboardStore = create<DashboardState>()(
                 setRoster(snapshotRoster);
                 setStatus('success');
                 const memberCount = snapshotRoster.members?.length ?? 0;
-                setMessage(`Loaded ${memberCount} members (snapshot)`);
-                setLastLoadInfo({
-                  source: snapshotRoster.source || 'snapshot',
-                  ms: Date.now() - t0,
-                  tenureMatches: (snapshotRoster.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
-                  total: memberCount,
-                });
-                const fetchedAt = snapshotRoster.snapshotMetadata?.fetchedAt ?? new Date().toISOString();
-                setDataFetchedAt(fetchedAt);
-                return;
+              setMessage(`Loaded ${memberCount} members (snapshot)`);
+              setLastLoadInfo({
+                source: snapshotRoster.source || 'snapshot',
+                ms: Date.now() - t0,
+                tenureMatches: (snapshotRoster.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
+                total: memberCount,
+              });
+              const fetchedAt = snapshotRoster.snapshotMetadata?.computedAt
+                ?? snapshotRoster.meta?.computedAt
+                ?? snapshotRoster.snapshotMetadata?.fetchedAt
+                ?? new Date().toISOString();
+              
+              // Compute season key if not provided by API
+              if (!snapshotRoster.seasonId && fetchedAt) {
+                const seasonInfo = calculateSeasonInfo(fetchedAt);
+                snapshotRoster.seasonId = seasonInfo.seasonId;
+                snapshotRoster.seasonStart = seasonInfo.seasonStart;
+                snapshotRoster.seasonEnd = seasonInfo.seasonEnd;
               }
+              
+              setDataFetchedAt(fetchedAt);
+              return;
+            }
             } catch (supabaseError) {
               console.warn('[loadRoster] Failed to load roster from data spine, falling back', supabaseError);
             }
@@ -499,7 +556,11 @@ export const useDashboardStore = create<DashboardState>()(
               // Update dev status badge info
               const tenureMatches = (payload.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
               setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (payload.members || []).length });
-              setDataFetchedAt(new Date().toISOString());
+              const fetchedAt = payload?.snapshotMetadata?.computedAt
+                ?? payload?.meta?.computedAt
+                ?? payload?.snapshotMetadata?.fetchedAt
+                ?? new Date().toISOString();
+              setDataFetchedAt(fetchedAt);
               return;
             }
             lastError = result.json?.error || result.json?.message || 'Failed to load roster';
@@ -759,12 +820,38 @@ export const useDashboardStore = create<DashboardState>()(
           if (!tag) return false;
           const raw = localStorage.getItem(`lastRoster:${tag}`);
           if (!raw) return false;
-          const parsed = JSON.parse(raw);
-          // Only use cached data if it has actual members (not empty)
-          if (parsed && Array.isArray(parsed.members) && parsed.members.length > 0) {
-            set({ roster: parsed as Roster });
-            return true;
+          const parsed = JSON.parse(raw) as
+            | Roster
+            | {
+                version?: string | null;
+                schemaVersion?: string | null;
+                ingestionVersion?: string | null;
+                computedAt?: string | null;
+                storedAt?: number;
+                roster: Roster;
+              };
+
+          const cachedRoster: Roster | undefined = (parsed as any)?.roster ?? (parsed as Roster);
+          if (!cachedRoster || !Array.isArray(cachedRoster.members) || !cachedRoster.members.length) {
+            return false;
           }
+
+          const schemaVersion = (parsed as any)?.schemaVersion ?? cachedRoster.meta?.schemaVersion ?? cachedRoster.snapshotMetadata?.schemaVersion ?? null;
+          if (schemaVersion && schemaVersion !== CURRENT_PIPELINE_SCHEMA_VERSION) {
+            return false;
+          }
+
+          const storedAt: number | undefined = (parsed as any)?.storedAt;
+          if (typeof storedAt === 'number' && Date.now() - storedAt > ROSTER_CACHE_MAX_AGE_MS) {
+            return false;
+          }
+
+          set({ roster: cachedRoster });
+          const computedAt = (parsed as any)?.computedAt ?? cachedRoster.meta?.computedAt ?? cachedRoster.snapshotMetadata?.computedAt ?? null;
+          if (computedAt) {
+            set({ dataFetchedAt: computedAt });
+          }
+            return true;
         } catch {}
         return false;
       },

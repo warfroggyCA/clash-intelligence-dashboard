@@ -425,7 +425,10 @@ export const RosterSummary = () => {
     return roster.members
       .map((member) => ({
         name: member.name,
-        donations: member.donations || 0,
+        donations:
+          (typeof member.metrics?.donations_given?.value === 'number'
+            ? member.metrics?.donations_given?.value
+            : member.donations) || 0,
         tag: member.tag,
       }))
       .filter((entry) => entry.donations > 0)
@@ -445,7 +448,10 @@ export const RosterSummary = () => {
       .map((member) => ({
         name: member.name,
         tag: member.tag,
-        rushPercent: calculateRushPercentage(member),
+        rushPercent:
+          typeof member.metrics?.rush_percent?.value === 'number'
+            ? member.metrics.rush_percent.value
+            : calculateRushPercentage(member),
       }))
       .filter((entry) => Number.isFinite(entry.rushPercent))
       .sort((a, b) => (a.rushPercent ?? 0) - (b.rushPercent ?? 0))
@@ -474,6 +480,33 @@ export const RosterSummary = () => {
       }));
   }, [roster?.members]);
 
+  const donationBalanceLeaders = useMemo<HighlightEntry[]>(() => {
+    if (!roster?.members?.length) return [];
+
+    return roster.members
+      .map((member) => {
+        const balanceMetric = member.metrics?.donation_balance?.value;
+        const balance =
+          typeof balanceMetric === 'number'
+            ? balanceMetric
+            : (member.donations || 0) - (member.donationsReceived || 0);
+
+        return {
+          name: member.name,
+          tag: member.tag,
+          balance,
+        };
+      })
+      .filter((entry) => Number.isFinite(entry.balance))
+      .sort((a, b) => (b.balance ?? 0) - (a.balance ?? 0))
+      .slice(0, 3)
+      .map((entry, index) => ({
+        label: `${index + 1}. ${entry.name}`,
+        value: `${formatNumber(Math.round(entry.balance ?? 0))}`,
+        subtitle: entry.tag,
+      }));
+  }, [roster?.members]);
+
   const heroLeaders = useMemo<HighlightEntry[]>(() => {
     if (!roster?.members?.length) return [];
 
@@ -498,6 +531,7 @@ export const RosterSummary = () => {
   const hasHighlightLists = Boolean(
     topDonors.length ||
       leastRushed.length ||
+      donationBalanceLeaders.length ||
       topCapitalContributors.length ||
       heroLeaders.length
   );
@@ -630,6 +664,24 @@ export const RosterSummary = () => {
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {donationBalanceLeaders.length > 0 && (
+              <div className="space-y-4">
+                <p className="text-xs uppercase tracking-wide text-slate-400">Top Donation Balance</p>
+                <ul className="w-full space-y-1.5 text-sm text-slate-200">
+                  {donationBalanceLeaders.map((entry) => (
+                    <li
+                      key={`${entry.label}-balance`}
+                      className="flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none"
+                    >
+                      <span className="font-medium text-slate-100">{entry.label}</span>
+                      <span className="text-right font-semibold tabular-nums text-emerald-200">
+                        {entry.value}
+                      </span>
                     </li>
                   ))}
                 </ul>
