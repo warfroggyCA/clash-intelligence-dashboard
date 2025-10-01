@@ -1,3 +1,4 @@
+import { parseRole } from '@/lib/leadership';
 import { clamp, computeElderScore, identifyFailingDimensions, normalizeMetric, round1 } from './metrics';
 import type { ElderEvaluatorOptions, ElderMetricInputs, ElderRecommendation } from './types';
 
@@ -24,6 +25,9 @@ export function evaluateElderCandidate(
   const performance = normalizeMetric(input.performance);
   const score = computeElderScore(input);
   const failing = identifyFailingDimensions(input);
+  const normalizedRole = input.role ? parseRole(input.role) : input.isElder ? 'elder' : 'member';
+  const alreadyHigherLeadership = normalizedRole === 'leader' || normalizedRole === 'coLeader';
+  const alreadyElder = normalizedRole === 'elder';
 
   let band: 'promote' | 'monitor' | 'risk' | 'ineligible';
   let recommendation: string;
@@ -55,6 +59,12 @@ export function evaluateElderCandidate(
     band = 'risk';
     const reasons = failing.length ? failing : ['Low consecutive scores'];
     recommendation = `Recommend demotion: ${reasons.join(', ')}`;
+  } else if (alreadyHigherLeadership) {
+    band = 'monitor';
+    recommendation = formatRecommendation('Already leadership role—no change needed', failing);
+  } else if (alreadyElder) {
+    band = 'monitor';
+    recommendation = formatRecommendation('Maintain Elder status', failing);
   } else if (score >= promotionThreshold) {
     band = 'promote';
     recommendation = 'Recommend promotion/keep as Elder';

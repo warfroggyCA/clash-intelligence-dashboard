@@ -8,6 +8,7 @@ interface CsvRow {
   consistency: string;
   generosity: string;
   performance: string;
+  role?: string;
   is_elder?: string;
   prev_score?: string;
 }
@@ -15,7 +16,22 @@ interface CsvRow {
 export function parseCsvLine(line: string): CsvRow | null {
   const parts = line.split(',').map((p) => p.trim());
   if (parts.length < 6) return null;
-  const [name, playerTag, tenureDays, consistency, generosity, performance, isElder, prevScore] = parts;
+
+  const [name, playerTag, tenureDays, consistency, generosity, performance] = parts;
+  let role: string | undefined;
+  let isElder: string | undefined;
+  let prevScore: string | undefined;
+
+  if (parts.length >= 9) {
+    role = parts[6];
+    isElder = parts[7];
+    prevScore = parts[8];
+  } else {
+    role = undefined;
+    isElder = parts[6];
+    prevScore = parts[7];
+  }
+
   return {
     name,
     playerTag,
@@ -23,6 +39,7 @@ export function parseCsvLine(line: string): CsvRow | null {
     consistency,
     generosity,
     performance,
+    role,
     is_elder: isElder,
     prev_score: prevScore,
   } satisfies CsvRow;
@@ -33,6 +50,7 @@ export function csvRowToMetric(row: CsvRow): ElderMetricInputs {
     name: row.name,
     playerTag: normalizeTag(row.playerTag),
     tenureDays: Number.parseInt(row.tenure_days, 10) || 0,
+    role: row.role,
     consistency: Number.parseFloat(row.consistency) || 0,
     generosity: Number.parseFloat(row.generosity) || 0,
     performance: Number.parseFloat(row.performance) || 0,

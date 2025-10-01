@@ -3,6 +3,7 @@ export interface ElderMetricInputs {
   name: string;
   tenureDays: number;
   isElder?: boolean;
+  role?: string;
   previousScore?: number | null;
   consistency: number; // precomputed 0-100 or raw that we'll clamp
   generosity: number;
