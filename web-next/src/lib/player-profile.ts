@@ -21,9 +21,10 @@ export interface PlayerProfileSummary {
   clanTag: string;
   townHallLevel: number;
   league: {
-    name: string;
-    trophies: number;
-  };
+    name?: string;
+    trophies?: number;
+  } | null;
+  trophies: number;
   joinDate?: string;
   activityLevel: 'Very Active' | 'Active' | 'Moderate' | 'Low' | 'Inactive';
   rushScore: number;
@@ -217,6 +218,9 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
     activityTrend,
   });
 
+  const trophies = playerDetail.trophies ?? member.trophies ?? 0;
+  const hasLeague = Boolean(playerDetail.league && (playerDetail.league.name || typeof playerDetail.league.id === 'number'));
+
   return {
     summary: {
       name: member.name,
@@ -225,10 +229,13 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
       clanName: dailySnapshot.clanName ?? latestSnapshot.clan?.name ?? '',
       clanTag: dailySnapshot.clanTag,
       townHallLevel,
-      league: {
-        name: playerDetail.league?.name ?? 'Unranked',
-        trophies: playerDetail.trophies ?? member.trophies ?? 0,
-      },
+      league: hasLeague
+        ? {
+            name: playerDetail.league?.name ?? undefined,
+            trophies: playerDetail.league?.trophies ?? trophies,
+          }
+        : null,
+      trophies,
       activityLevel: activity.level,
       rushScore: Number(rushScore.toFixed(1)),
       donationBalance: {

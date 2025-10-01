@@ -35,6 +35,14 @@ export function PlayerDetailDrawer({ member, onClose }: PlayerDetailDrawerProps)
   const donations = calculateDonationBalance(member);
   const activity = calculateActivityScore(member);
   const heroCaps = HERO_MAX_LEVELS[th] || {};
+  const leagueName = member.leagueName
+    ?? (typeof member.league === 'string' ? member.league : member.league?.name);
+  const leagueTrophies =
+    member.leagueTrophies
+      ?? (typeof member.league === 'object' && member.league !== null && typeof member.league.trophies === 'number'
+        ? member.league.trophies
+        : member.trophies ?? undefined);
+  const hasLeagueBadge = Boolean(leagueName || member.leagueId);
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -50,7 +58,16 @@ export function PlayerDetailDrawer({ member, onClose }: PlayerDetailDrawerProps)
             <div className="text-xs text-white/60">{member.tag}</div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <LeagueBadge trophies={member.trophies || 0} size="lg" showText={false} />
+            {hasLeagueBadge ? (
+              <LeagueBadge league={leagueName ?? undefined} trophies={leagueTrophies} size="lg" showText={false} />
+            ) : (
+              <span
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-2xl"
+                aria-hidden
+              >
+                🏆
+              </span>
+            )}
             <Button variant="ghost" size="sm" onClick={onClose} className="text-white/70">
               Close
             </Button>

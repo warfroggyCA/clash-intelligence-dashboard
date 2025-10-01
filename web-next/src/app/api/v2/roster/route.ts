@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
 
     const { data: snapshotRows, error: snapshotError } = await supabase
       .from('roster_snapshots')
-      .select('id, fetched_at, member_count, total_trophies, total_donations, metadata')
+      .select('id, fetched_at, member_count, total_trophies, total_donations, metadata, payload_version, ingestion_version, schema_version, computed_at')
       .eq('clan_id', clanRow.id)
       .order('fetched_at', { ascending: false })
       .limit(1);
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
 
     const { data: statsRows, error: statsError } = await supabase
       .from('member_snapshot_stats')
-      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, extras')
+      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, extras, league_id, league_name, league_trophies, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_modifier, equipment_flags')
       .eq('snapshot_id', snapshot.id);
 
     if (statsError) {
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
     if (memberIds.length) {
       const { data: memberRows, error: memberError } = await supabase
         .from('members')
-        .select('id, tag, name, th_level, role, league, builder_league, created_at, updated_at')
+        .select('id, tag, name, th_level, role, league, builder_league, league_id, league_name, league_trophies, league_icon_small, league_icon_medium, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_league_name, ranked_modifier, season_reset_at, equipment_flags, created_at, updated_at')
         .in('id', memberIds);
 
       if (memberError) {
@@ -93,6 +93,15 @@ export async function GET(req: NextRequest) {
 
     const members = stats.map((stat) => {
       const member = memberLookup[stat.member_id] || {};
+      const leagueId = stat.league_id ?? member.league_id ?? null;
+      const leagueName = stat.league_name ?? member.league_name ?? null;
+      const leagueTrophies = stat.league_trophies ?? member.league_trophies ?? null;
+      const battleModeTrophies = stat.battle_mode_trophies ?? member.battle_mode_trophies ?? null;
+      const rankedTrophies = stat.ranked_trophies ?? member.ranked_trophies ?? null;
+      const rankedLeagueId = stat.ranked_league_id ?? member.ranked_league_id ?? null;
+      const rankedModifier = stat.ranked_modifier ?? member.ranked_modifier ?? null;
+      const equipmentFlags = stat.equipment_flags ?? member.equipment_flags ?? null;
+
       return {
         id: stat.member_id,
         tag: member.tag ?? null,
@@ -108,6 +117,18 @@ export async function GET(req: NextRequest) {
         extras: stat.extras ?? null,
         league: member.league ?? null,
         builderLeague: member.builder_league ?? null,
+        leagueId,
+        leagueName,
+        leagueTrophies,
+        leagueIconSmall: member.league_icon_small ?? null,
+        leagueIconMedium: member.league_icon_medium ?? null,
+        battleModeTrophies,
+        rankedTrophies,
+        rankedLeagueId,
+        rankedLeagueName: member.ranked_league_name ?? null,
+        rankedModifier,
+        seasonResetAt: member.season_reset_at ?? null,
+        equipmentFlags,
         memberCreatedAt: member.created_at ?? null,
         memberUpdatedAt: member.updated_at ?? null,
       };
@@ -124,6 +145,10 @@ export async function GET(req: NextRequest) {
           totalTrophies: snapshot.total_trophies,
           totalDonations: snapshot.total_donations,
           metadata: snapshot.metadata ?? null,
+          payloadVersion: snapshot.payload_version ?? null,
+          ingestionVersion: snapshot.ingestion_version ?? null,
+          schemaVersion: snapshot.schema_version ?? null,
+          computedAt: snapshot.computed_at ?? null,
         },
         members,
       },
@@ -133,4 +158,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, error: error?.message ?? 'Internal Server Error' }, { status: 500 });
   }
 }
-

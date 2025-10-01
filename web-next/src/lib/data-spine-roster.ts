@@ -1,5 +1,41 @@
 import type { Roster, Member } from '@/types';
 
+type LeagueValue = Record<string, any> | string | null;
+
+function normalizeLeagueValue(raw: unknown): LeagueValue {
+  if (raw == null) return null;
+  if (typeof raw === 'object') return raw as Record<string, any>;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (parsed && typeof parsed === 'object') {
+        return parsed as Record<string, any>;
+      }
+    } catch {
+      // ignore and fall back to raw string
+    }
+    return trimmed;
+  }
+  return null;
+}
+
+function parseNullableJson<T = Record<string, any>>(raw: unknown): T | null {
+  if (raw == null) return null;
+  if (typeof raw === 'object') return raw as T;
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    try {
+      return JSON.parse(trimmed) as T;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 interface ApiRosterMember {
   id: string;
   tag: string | null;
@@ -15,6 +51,20 @@ interface ApiRosterMember {
   extras: Record<string, any> | null;
   league?: any;
   builderLeague?: any;
+  leagueId?: number | null;
+  leagueName?: string | null;
+  leagueTrophies?: number | null;
+  leagueIconSmall?: string | null;
+  leagueIconMedium?: string | null;
+  battleModeTrophies?: number | null;
+  rankedTrophies?: number | null;
+  rankedLeagueId?: number | null;
+  rankedLeagueName?: string | null;
+  rankedModifier?: any;
+  seasonResetAt?: string | null;
+  equipmentFlags?: any;
+  memberCreatedAt?: string | null;
+  memberUpdatedAt?: string | null;
 }
 
 interface ApiRosterResponse {
@@ -35,6 +85,10 @@ interface ApiRosterResponse {
       totalTrophies: number | null;
       totalDonations: number | null;
       metadata: Record<string, any> | null;
+      payloadVersion?: string | null;
+      ingestionVersion?: string | null;
+      schemaVersion?: string | null;
+      computedAt?: string | null;
     } | null;
     members: ApiRosterMember[];
   };
@@ -43,6 +97,22 @@ interface ApiRosterResponse {
 
 function mapMember(apiMember: ApiRosterMember): Member {
   const heroLevels = apiMember.heroLevels || {};
+  const league = normalizeLeagueValue(apiMember.league);
+  const builderLeague = normalizeLeagueValue(apiMember.builderLeague);
+  const rankedModifier = parseNullableJson(apiMember.rankedModifier);
+  const equipmentFlags = parseNullableJson(apiMember.equipmentFlags);
+
+  const resolvedLeagueId = apiMember.leagueId ?? (typeof league === 'object' ? league?.id : null) ?? undefined;
+  const resolvedLeagueName = apiMember.leagueName
+    ?? (typeof league === 'object' ? league?.name : null)
+    ?? (typeof league === 'string' ? league : null)
+    ?? undefined;
+  const resolvedLeagueTrophies = apiMember.leagueTrophies ?? apiMember.trophies ?? undefined;
+  const resolvedLeagueIconSmall = apiMember.leagueIconSmall
+    ?? (typeof league === 'object' ? league?.iconUrls?.small : undefined);
+  const resolvedLeagueIconMedium = apiMember.leagueIconMedium
+    ?? (typeof league === 'object' ? league?.iconUrls?.medium : undefined);
+
   return {
     tag: apiMember.tag || undefined,
     name: apiMember.name || apiMember.tag || 'Unknown',
@@ -56,8 +126,20 @@ function mapMember(apiMember: ApiRosterMember): Member {
     gw: heroLevels.gw ?? undefined,
     rc: heroLevels.rc ?? undefined,
     mp: heroLevels.mp ?? undefined,
-    league: apiMember.league ?? undefined,
-    builderLeague: apiMember.builderLeague ?? undefined,
+    leagueId: resolvedLeagueId,
+    leagueName: resolvedLeagueName,
+    leagueTrophies: resolvedLeagueTrophies,
+    leagueIconSmall: resolvedLeagueIconSmall,
+    leagueIconMedium: resolvedLeagueIconMedium,
+    battleModeTrophies: apiMember.battleModeTrophies ?? undefined,
+    rankedTrophies: apiMember.rankedTrophies ?? undefined,
+    rankedLeagueId: apiMember.rankedLeagueId ?? undefined,
+    rankedLeagueName: apiMember.rankedLeagueName ?? undefined,
+    rankedModifier,
+    seasonResetAt: apiMember.seasonResetAt ?? undefined,
+    equipmentFlags,
+    league,
+    builderLeague,
     extras: apiMember.extras ?? undefined,
   } as Member;
 }
@@ -82,6 +164,10 @@ function transformResponse(body: ApiRosterResponse): Roster | null {
     meta: {
       clanName: clan.name ?? undefined,
       memberCount: snapshot.memberCount,
+      payloadVersion: snapshot.payloadVersion ?? metadata.payloadVersion ?? null,
+      ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
+      schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
+      computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
     },
     snapshotMetadata: {
       snapshotDate: metadata.snapshotDate || (snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : ''),
@@ -90,6 +176,10 @@ function transformResponse(body: ApiRosterResponse): Roster | null {
       warLogEntries: metadata.warLogEntries ?? metadata.war_log_entries ?? 0,
       capitalSeasons: metadata.capitalSeasons ?? metadata.capital_seasons ?? 0,
       version: metadata.version ?? 'data-spine',
+      payloadVersion: snapshot.payloadVersion ?? metadata.payloadVersion ?? null,
+      ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
+      schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
+      computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
     },
     snapshotDetails: metadata.snapshotDetails ?? undefined,
   } satisfies Roster;
@@ -113,4 +203,3 @@ export async function fetchRosterFromDataSpine(clanTag: string): Promise<Roster 
     return null;
   }
 }
-

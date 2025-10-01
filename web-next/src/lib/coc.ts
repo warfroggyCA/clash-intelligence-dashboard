@@ -238,25 +238,13 @@ async function api<T>(path: string): Promise<T> {
   }
   
   // If a proxy URL is provided, use axios + https-proxy-agent (fetch proxy dispatcher not installed)
-  console.log('[DEBUG] FIXIE_URL present:', !!FIXIE_URL);
-  console.log('[DEBUG] FIXIE_URL value:', FIXIE_URL ? FIXIE_URL.replace(/:[^:]*@/, ':****@') : 'undefined');
-  console.log('[DEBUG] Force fresh deployment - testing Fixie proxy');
-  
-  // FORCE DEPLOY: Fixie proxy is NOW ENABLED
-  console.log('[DEBUG] FIXIE_URL from env:', !!FIXIE_URL);
-  console.log('[DEBUG] Using Fixie proxy:', FIXIE_URL ? 'YES' : 'NO');
-  console.log('[DEBUG] *** NUCLEAR TEST - IF YOU SEE THIS, VERCEL IS WORKING! ***');
-  console.log('[DEBUG] *** FORCE DEPLOY - VERCEL SHOULD USE FIXIE PROXY NOW ***');
 
   if (FIXIE_URL) {
     const axiosConfig: any = {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       timeout: 10000,
     };
-    console.log('Using Fixie proxy with axios:', FIXIE_URL?.replace(/:[^:]*@/, ':****@'));
-    console.log('[DEBUG] Proxy URL being used:', FIXIE_URL?.replace(/:[^:]*@/, ':****@'));
     const proxyAgent = new HttpsProxyAgent(FIXIE_URL!);
-    console.log('[DEBUG] Proxy agent created successfully');
     axiosConfig.httpsAgent = proxyAgent;
     axiosConfig.httpAgent = proxyAgent;
     try {

@@ -36,6 +36,36 @@ export interface Member {
   donationsReceived?: number;
   warStars?: number;
   clanCapitalContributions?: number;
+  leagueId?: number;
+  leagueName?: string;
+  leagueTrophies?: number;
+  leagueIconSmall?: string;
+  leagueIconMedium?: string;
+  battleModeTrophies?: number;
+  rankedTrophies?: number;
+  rankedLeagueId?: number;
+  rankedLeagueName?: string;
+  rankedModifier?: Record<string, any> | null;
+  seasonResetAt?: string;
+  equipmentFlags?: Record<string, any> | null;
+  league?: (
+    | {
+        id?: number;
+        name?: string;
+        trophies?: number;
+        iconUrls?: Record<string, string | null>;
+      }
+    | string
+  ) | null;
+  builderLeague?: (
+    | {
+        id?: number;
+        name?: string;
+        trophies?: number;
+        iconUrls?: Record<string, string | null>;
+      }
+    | string
+  ) | null;
   
   // Activity & Tenure
   tenure_days?: number; // Effective tenure for display
@@ -67,6 +97,10 @@ export interface Roster {
     clanName?: string;
     recentClans?: string[];
     memberCount?: number;
+    payloadVersion?: string | null;
+    ingestionVersion?: string | null;
+    schemaVersion?: string | null;
+    computedAt?: string | null;
   };
   // Enhanced snapshot metadata
   snapshotMetadata?: {
@@ -76,6 +110,10 @@ export interface Roster {
     warLogEntries: number;
     capitalSeasons: number;
     version: string;
+    payloadVersion?: string | null;
+    ingestionVersion?: string | null;
+    schemaVersion?: string | null;
+    computedAt?: string | null;
   };
   snapshotDetails?: {
     currentWar?: {

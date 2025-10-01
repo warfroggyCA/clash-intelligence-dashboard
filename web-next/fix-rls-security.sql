@@ -86,3 +86,5 @@ CREATE POLICY "Clan-specific settings access"
 ON clan_settings FOR ALL 
 USING (clan_tag = '#2PR8R8V8P');  -- Replace with your clan tag
 */
+
+
