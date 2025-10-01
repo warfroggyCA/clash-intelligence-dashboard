@@ -1,7 +1,7 @@
 {
   "name": "clash-intelligence",
   "private": true,
-  "version": "0.27.13",
+  "version": "0.27.14",
   "scripts": {
     "dev": "NEXT_PUBLIC_APP_VERSION=$(node -p \"require('./package.json').version\") next dev -p 5050",
     "dev:alt": "NEXT_PUBLIC_APP_VERSION=$(node -p \"require('./package.json').version\") next dev -p 5060",

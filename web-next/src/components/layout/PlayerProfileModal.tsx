@@ -32,6 +32,10 @@ import {
   isLowDonator
 } from '@/lib/business/calculations';
 import { HERO_MAX_LEVELS, HeroCaps } from '@/types';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { showToast } from '@/lib/toast';
+import { cfg } from '@/lib/config';
+import { normalizeTag } from '@/lib/tags';
 
 // =============================================================================
 // TYPES
@@ -96,6 +100,13 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const [newNote, setNewNote] = useState('');
   const [isEditing, setIsEditing] = useState(false);
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  const store = useDashboardStore();
+  const loadRoster = store.loadRoster;
+  const clanTagForActions = roster?.clanTag || store.clanTag || store.homeClan || cfg.homeClanTag || '';
+  const normalizedMemberTag = normalizeTag(member.tag);
+  const [tenureDays, setTenureDays] = useState<number>(() => Number(member.tenure_days ?? member.tenure ?? 0) || 0);
+  const [tenureInput, setTenureInput] = useState<string>(() => String(Number(member.tenure_days ?? member.tenure ?? 0) || 0));
+  const [isSavingTenure, setIsSavingTenure] = useState(false);
 
   // Calculate player metrics
   const th = getTownHallLevel(member);
@@ -158,6 +169,132 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
 
     loadPlayerData();
   }, [member.tag]);
+
+  useEffect(() => {
+    const days = Number(member.tenure_days ?? member.tenure ?? 0) || 0;
+    setTenureDays(days);
+    setTenureInput(String(days));
+  }, [member.tag, member.tenure_days, member.tenure]);
+
+  const updateLocalTenure = (days: number, asOf?: string) => {
+    useDashboardStore.setState((state) => {
+      if (!state.roster) return {};
+      const members = state.roster.members.map((m) =>
+        normalizeTag(m.tag) === normalizedMemberTag
+          ? { ...m, tenure_days: days, tenure_as_of: asOf ?? m.tenure_as_of }
+          : m
+      );
+      return { roster: { ...state.roster, members } } as Partial<typeof state>;
+    });
+  };
+
+  const reloadRoster = async () => {
+    if (!clanTagForActions) return;
+    try {
+      await loadRoster(clanTagForActions, { mode: 'live', force: true });
+    } catch (error) {
+      console.warn('[PlayerProfileModal] Failed to reload roster after tenure update', error);
+    }
+  };
+
+  const handleTenureSave = async () => {
+    const trimmed = tenureInput.trim();
+    if (!trimmed) {
+      showToast('Enter tenure in days', 'error');
+      return;
+    }
+    const match = trimmed.match(/\d+/);
+    if (!match) {
+      showToast('Tenure must be a number of days', 'error');
+      return;
+    }
+    const days = Math.max(0, Math.min(20000, Number.parseInt(match[0], 10)));
+    try {
+      setIsSavingTenure(true);
+      const res = await fetch('/api/tenure/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error || payload?.message || 'Failed to update tenure';
+        throw new Error(message);
+      }
+      setTenureDays(days);
+      setTenureInput(String(days));
+      updateLocalTenure(days, new Date().toISOString().slice(0, 10));
+      showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
+      await reloadRoster();
+    } catch (error: any) {
+      const message = error?.message || 'Failed to update tenure';
+      showToast(message, 'error');
+    } finally {
+      setIsSavingTenure(false);
+    }
+  };
+
+  const handleGrantPriorTenure = async () => {
+    if (!clanTagForActions) {
+      showToast('Load a clan before granting tenure', 'error');
+      return;
+    }
+    try {
+      setIsSavingTenure(true);
+      const res = await fetch('/api/tenure/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clanTag: clanTagForActions, memberTag: member.tag, mode: 'grant-existing' })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error || payload?.message || 'Failed to grant prior tenure';
+        throw new Error(message);
+      }
+      const base = Number(payload?.data?.base ?? tenureDays);
+      const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
+      setTenureDays(base);
+      setTenureInput(String(base));
+      updateLocalTenure(base, asOf);
+      showToast('Granted prior tenure', 'success');
+      await reloadRoster();
+    } catch (error: any) {
+      const message = error?.message || 'Failed to grant prior tenure';
+      showToast(message, 'error');
+    } finally {
+      setIsSavingTenure(false);
+    }
+  };
+
+  const handleResetTenure = async () => {
+    if (!clanTagForActions) {
+      showToast('Load a clan before resetting tenure', 'error');
+      return;
+    }
+    try {
+      setIsSavingTenure(true);
+      const res = await fetch('/api/tenure/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clanTag: clanTagForActions, memberTag: member.tag, mode: 'reset' })
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        const message = payload?.error || payload?.message || 'Failed to reset tenure';
+        throw new Error(message);
+      }
+      setTenureDays(0);
+      setTenureInput('0');
+      updateLocalTenure(0, payload?.data?.asOf ?? new Date().toISOString().slice(0, 10));
+      showToast('Tenure reset to 0', 'success');
+      await reloadRoster();
+    } catch (error: any) {
+      const message = error?.message || 'Failed to reset tenure';
+      showToast(message, 'error');
+    } finally {
+      setIsSavingTenure(false);
+    }
+  };
 
   const handleSaveNote = () => {
     if (!newNote.trim()) return;
@@ -288,11 +425,51 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
                   </div>
                 )}
               </div>
+          </div>
+        </div>
+
+        <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+          <div className="rounded-xl border border-emerald-300/40 bg-emerald-500/10 p-4 text-sm text-emerald-50">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h4 className="text-sm font-semibold text-emerald-100">Tenure Controls</h4>
+                <p className="text-xs text-emerald-200/80">Adjust stored tenure. Changes update the ledger immediately.</p>
+              </div>
+            </div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-[1fr,auto]">
+              <label className="flex flex-col text-xs font-semibold text-emerald-100">
+                Tenure (days)
+                <input
+                  type="number"
+                  min={0}
+                  max={20000}
+                  value={tenureInput}
+                  onChange={(event) => setTenureInput(event.target.value)}
+                  className="mt-1 rounded-md border border-emerald-400/60 bg-slate-950/70 px-3 py-2 text-sm text-emerald-50 focus:border-emerald-300 focus:outline-none focus:ring-2 focus:ring-emerald-200"
+                />
+              </label>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button variant="ghost" onClick={handleResetTenure} disabled={isSavingTenure}>
+                  Reset to 0
+                </Button>
+                <Button variant="ghost" onClick={handleGrantPriorTenure} disabled={isSavingTenure || !clanTagForActions}>
+                  Grant prior tenure
+                </Button>
+                <SuccessButton onClick={handleTenureSave} disabled={isSavingTenure}>
+                  {isSavingTenure ? 'Saving…' : 'Save tenure'}
+                </SuccessButton>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-emerald-200/80">
+              <span>Current stored: {tenureDays} day{tenureDays === 1 ? '' : 's'}</span>
+              {member.tenure_as_of && <span>Last set: {member.tenure_as_of}</span>}
+              {!clanTagForActions && <span className="text-emerald-300/60">Load a clan to sync roster after saving.</span>}
             </div>
           </div>
+        </LeadershipGuard>
 
-          {/* Player Status Indicators */}
-          <div className="mt-4 flex flex-wrap gap-2">
+        {/* Player Status Indicators */}
+        <div className="mt-4 flex flex-wrap gap-2">
             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getRushBadgeClass(rushPercent)}`}>
               Hero Rush: {heroRushDisplay}%
             </span>
