@@ -140,16 +140,16 @@ function normalizeRosterSeasonFields(roster: Roster | null): Roster | null {
       })
     : roster.members;
 
-  const metaSeasonId = roster.meta?.seasonId ?? roster.meta?.season_id ?? null;
-  const snapshotSeasonId = roster.snapshotMetadata?.seasonId ?? (roster.snapshotMetadata as any)?.season_id ?? null;
-  const rootSeasonId = roster.seasonId ?? (roster as any)?.season_id ?? null;
+  const metaSeasonId = roster.meta?.seasonId ?? null;
+  const snapshotSeasonId = roster.snapshotMetadata?.seasonId ?? null;
+  const rootSeasonId = roster.seasonId ?? null;
 
-  const metaSeasonStart = roster.meta?.seasonStart ?? (roster.meta as any)?.season_start ?? null;
-  const metaSeasonEnd = roster.meta?.seasonEnd ?? (roster.meta as any)?.season_end ?? null;
-  const snapshotSeasonStart = roster.snapshotMetadata?.seasonStart ?? (roster.snapshotMetadata as any)?.season_start ?? null;
-  const snapshotSeasonEnd = roster.snapshotMetadata?.seasonEnd ?? (roster.snapshotMetadata as any)?.season_end ?? null;
-  const rootSeasonStart = roster.seasonStart ?? (roster as any)?.season_start ?? null;
-  const rootSeasonEnd = roster.seasonEnd ?? (roster as any)?.season_end ?? null;
+  const metaSeasonStart = roster.meta?.seasonStart ?? null;
+  const metaSeasonEnd = roster.meta?.seasonEnd ?? null;
+  const snapshotSeasonStart = roster.snapshotMetadata?.seasonStart ?? null;
+  const snapshotSeasonEnd = roster.snapshotMetadata?.seasonEnd ?? null;
+  const rootSeasonStart = roster.seasonStart ?? null;
+  const rootSeasonEnd = roster.seasonEnd ?? null;
 
   let resolvedSeasonId = rootSeasonId ?? snapshotSeasonId ?? metaSeasonId ?? null;
   let resolvedSeasonStart = normalizeIso(rootSeasonStart) ?? normalizeIso(snapshotSeasonStart) ?? normalizeIso(metaSeasonStart);
