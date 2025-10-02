@@ -114,7 +114,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
               onMouseEnter={(e) => (e.target as HTMLElement).style.backgroundColor = '#334155'}
               onMouseLeave={(e) => (e.target as HTMLElement).style.backgroundColor = 'transparent'}
             >
-              <span>Refresh Data</span>
+              <span>Refresh Snapshot</span>
             </button>
             <button
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
