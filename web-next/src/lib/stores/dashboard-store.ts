@@ -56,15 +56,48 @@ function calculateSeasonInfo(timestampIso: string) {
   }
 
   const year = date.getUTCFullYear();
-  const month = date.getUTCMonth();
-  const seasonId = `${year}-${String(month + 1).padStart(2, '0')}`;
+  const month = date.getUTCMonth(); // 0-based (0=Jan, 1=Feb, etc.)
+  
+  // Handle October 2025 special case first
+  if (year === 2025 && month === 9) { // October is month 9 in 0-based
+    return {
+      seasonId: '2025-10',
+      seasonStart: new Date(Date.UTC(2025, 9, 1, 5, 0, 0)).toISOString(),
+      seasonEnd: new Date(Date.UTC(2025, 9, 6, 5, 0, 0)).toISOString(),
+      isSpecialSeason: true,
+      note: 'Extended season - final Legend League before ranked system'
+    };
+  }
+  
+  // Season starts first of current month at 5:00 UTC
   const seasonStart = new Date(Date.UTC(year, month, 1, 5, 0, 0));
-  const seasonEnd = new Date(Date.UTC(year, month + 1, 1, 4, 59, 59));
-
+  
+  // Find LAST Monday of CURRENT month at 5:00 UTC
+  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)); // Gets last day of current month
+  const lastDay = lastDayOfMonth.getUTCDate();
+  const lastDayWeekday = lastDayOfMonth.getUTCDay(); // 0=Sunday, 1=Monday, 2=Tuesday, etc.
+  
+  // Calculate how many days to go back to reach the last Monday
+  let daysBack;
+  if (lastDayWeekday === 1) {
+    // Last day is already Monday
+    daysBack = 0;
+  } else if (lastDayWeekday === 0) {
+    // Last day is Sunday, so last Monday was 6 days ago
+    daysBack = 6;
+  } else {
+    // For Tuesday(2) through Saturday(6), calculate days back to Monday
+    daysBack = lastDayWeekday - 1;
+  }
+  
+  const lastMondayDate = lastDay - daysBack;
+  const seasonEnd = new Date(Date.UTC(year, month, lastMondayDate, 5, 0, 0));
+  
   return {
-    seasonId,
+    seasonId: `${year}-${String(month + 1).padStart(2, '0')}`,
     seasonStart: seasonStart.toISOString(),
     seasonEnd: seasonEnd.toISOString(),
+    isSpecialSeason: false
   };
 }
 import { getMemberAceScore } from '@/lib/business/calculations';
