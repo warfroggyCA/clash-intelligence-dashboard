@@ -30,3 +30,7 @@ The repository ships with `.github/workflows/nightly-ingestion.yml` which trigge
 - Review Next.js logs for `[Ingestion]` entries during manual runs.
 - Alerts/Errors will appear in Supabase logs and job-store entries.
 - Optional: set `INGESTION_ALERT_WEBHOOK` (Slack/Teams-compatible JSON webhook) and `INGESTION_ALERT_CHANNEL` to receive failure/anomaly notifications when the nightly job trips.
+- Ensure Supabase tables `members` and `member_snapshot_stats` include `tenure_days` (integer) and `tenure_as_of` (date). The staged pipeline writes these fields every run so the API/UI stay read-only.
+- Extend `ingestion_jobs` with telemetry columns used by the dashboard/API:
+  - `payload_version text`, `ingestion_version text`, `schema_version text`
+  - `total_duration_ms bigint`, `anomalies jsonb`, `fetched_at timestamptz`, `computed_at timestamptz`

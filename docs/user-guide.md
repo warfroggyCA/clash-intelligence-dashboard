@@ -46,7 +46,7 @@ Tip: Leaders can switch clans or reload the “home” clan from the command rai
 
 ### Insights (💡)
 - “Snapshot & Data Health” flags the loaded clan, member count, snapshot age, and insight status.
-- “Today’s Headlines” surfaces AI-generated callouts about hero progress, donation swings, or leadership opportunities.
+- “Today’s Briefing” surfaces automated callouts about hero progress, donation swings, or leadership opportunities.
 - “Latest Change Summary” highlights the most recent roster shifts with a quick jump to the History tab.
 - “Leadership Callouts” (leaders only) ranks action items with priority badges and suggested share text.
 
@@ -103,7 +103,7 @@ Need more help? Capture a screenshot of the toast or error message and share it 
 - Build out the History view so change logs are fully interactive.
 - Ship the Player Database, Applicants, Discord Publisher, and Events dashboards.
 - Add a first-run walkthrough for new leaders and tighten accessibility (keyboard hints, contrast checks).
-- Expand AI insights with war readiness and donation balance spotlights.
+- Expand automated insights with war readiness and donation balance spotlights.
 
 Feedback is welcome—leave notes in `PLANNING_NOTES.md` or message the team.
 
@@ -121,7 +121,7 @@ Feedback is welcome—leave notes in `PLANNING_NOTES.md` or message the team.
 - **Copy roster JSON** – Copies a structured snapshot (clan info, member stats, hero levels) for quick sharing.
 - **Copy snapshot summary** – Generates a Markdown digest including war results and capital raids for Discord or email posts.
 - **Download JSON/CSV** – Export the latest snapshot or war log to a file for deeper analysis.
-- **Generate insights summary** – Forces a fresh AI write-up when prepping leadership briefings.
+- **Generate insights summary** – Forces a fresh automated write-up when prepping leadership briefings.
 - **CLI fallback** – If web triggers fail, run `npm run ingest:run #CLANTAG` from the project root to pull data manually (leaders only).
 
 Keep these appendices handy if you need to explain the system to technical teammates or perform advanced maintenance.

@@ -7,7 +7,12 @@
 - [ ] Plan new highlights for Metallurgist output / resource converters; keep highlight cards modular so additional lists can be added without large rewrites (`web-next/src/components/roster/RosterSummary.tsx:248`)
 - [ ] Ensure tenure ledger calculations stay date-driven so league resets or cancelled upgrades do not corrupt tenure; consider flagging migration windows in ledger ops (`web-next/src/lib/tenure.ts:9`)
 
-## Data Pipeline Excellence (Initiated Jan 2025)
+## UI Polish & Corrections (Oct 2025)
+- [ ] **Roster Table Trophy Icons**: Remove trophy icon from individual trophy totals on the Roster Table - the numbers are clear enough without icons
+- [ ] **Sort Column Borders**: Remove thick blue border from active sort column cells - the sort icon provides sufficient visual indication
+- [x] **Header/Tabs Scroll Jitter**: Fix "vibrating" or "bouncing" behavior when slowly scrolling up - occurs until Roster Snapshot panel reaches a certain point, likely a scroll threshold issue
+
+## Data Pipeline Excellence (Initiated Oct 2025)
 - [x] Supabase schema hardening – promote `members.league`, battle-mode trophies, equipment flags, and seasonal modifiers to typed columns; ship migration + backfill script before spring roadmap
 - [x] Snapshot ingestion refactor – break `persistRosterSnapshotToDataSpine` into staged jobs with idempotent checkpoints so partial failures never wipe `member_snapshot_stats`
 - [x] Differential snapshot writes – detect per-member changes and perform `upsert` only on dirty rows to cut Supabase write volume and prep for dual battle-mode metrics
@@ -23,7 +28,7 @@
   - [x] Expose ingestion health API + dashboard card for latest run, durations, and anomalies
   - [ ] Add automated alerting (email/Slack) when ingestion fails or goes stale
 
-## Season-Ready Spine Implementation (Completed Jan 2025)
+## Season-Ready Spine Implementation (Completed Oct 2025)
 
 ### ✅ **Migration & Schema Updates**
 - **Season columns added** to `roster_snapshots`, `member_snapshot_stats`, and `metrics` tables
@@ -353,7 +358,7 @@ This transforms the dashboard from a data viewer into an indispensable command c
 - [ ] **Improve error handling** for API failures
 - [ ] **Fix change detection system** - Not detecting member departures
 - [ ] **Fix dashboard auto-loading** - Should auto-load latest snapshot on startup
-- [ ] **Fix tenure editing functionality** - Currently not working properly
+- [x] **Fix tenure editing functionality** - Currently not working properly
 
 ---
 
