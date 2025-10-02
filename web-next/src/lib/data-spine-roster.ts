@@ -66,6 +66,9 @@ interface ApiRosterMember {
   memberCreatedAt?: string | null;
   memberUpdatedAt?: string | null;
   metrics?: Record<string, { value: number; metadata?: Record<string, any> | null }>;
+  // Tenure data
+  tenure_days?: number;
+  tenure_as_of?: string | null;
 }
 
 interface ApiRosterResponse {
@@ -90,8 +93,14 @@ interface ApiRosterResponse {
       ingestionVersion?: string | null;
       schemaVersion?: string | null;
       computedAt?: string | null;
+      seasonId?: string | null;
+      seasonStart?: string | null;
+      seasonEnd?: string | null;
     } | null;
     members: ApiRosterMember[];
+    seasonId?: string | null;
+    seasonStart?: string | null;
+    seasonEnd?: string | null;
   };
   error?: string;
 }
@@ -114,6 +123,14 @@ function mapMember(apiMember: ApiRosterMember): Member {
   const resolvedLeagueIconMedium = apiMember.leagueIconMedium
     ?? (typeof league === 'object' ? league?.iconUrls?.medium : undefined);
 
+  const rawTenure = typeof apiMember.tenure_days === 'number'
+    ? apiMember.tenure_days
+    : typeof (apiMember as any).tenure === 'number'
+      ? (apiMember as any).tenure
+      : null;
+  const normalizedTenure = rawTenure != null && Number.isFinite(rawTenure)
+    ? Math.max(1, Math.round(rawTenure))
+    : undefined;
   return {
     tag: apiMember.tag || undefined,
     name: apiMember.name || apiMember.tag || 'Unknown',
@@ -143,19 +160,57 @@ function mapMember(apiMember: ApiRosterMember): Member {
     builderLeague,
     extras: apiMember.extras ?? undefined,
     metrics: apiMember.metrics ?? undefined,
+    // Map tenure data
+    tenure_days: normalizedTenure ?? undefined,
+    tenure_as_of: apiMember.tenure_as_of ?? undefined,
+    tenure: normalizedTenure ?? undefined,
   } as Member;
 }
 
-function transformResponse(body: ApiRosterResponse): Roster | null {
+export function transformResponse(body: ApiRosterResponse): Roster | null {
+  console.log('[DEBUG] transformResponse called with:', body);
   if (!body.success || !body.data) return null;
+  
+  console.log('[DEBUG] body.data.members[0]:', body.data.members?.[0]);
 
-  const { clan, snapshot, members } = body.data;
+  const { clan, snapshot, members, seasonId, seasonStart, seasonEnd } = body.data;
   if (!clan || !snapshot) {
     return null;
   }
 
-  const mappedMembers = (members || []).map(mapMember);
+  const mappedMembers = (members || []).map((member, index) => {
+    if (index === 0) {
+      console.log('[DEBUG] First member before mapping:', member);
+    }
+    const mapped = mapMember(member);
+    if (index === 0) {
+      console.log('[DEBUG] First member after mapping:', mapped);
+    }
+    return mapped;
+  });
   const metadata = snapshot.metadata || {};
+  const apiData = body.data as Record<string, any>;
+  const resolvedSeasonId = seasonId
+    ?? apiData?.season_id
+    ?? snapshot.seasonId
+    ?? (snapshot as any)?.season_id
+    ?? metadata.seasonId
+    ?? (metadata as any)?.season_id
+    ?? null;
+  const resolvedSeasonStart = seasonStart
+    ?? apiData?.season_start
+    ?? snapshot.seasonStart
+    ?? (snapshot as any)?.season_start
+    ?? metadata.seasonStart
+    ?? (metadata as any)?.season_start
+    ?? null;
+  const resolvedSeasonEnd = seasonEnd
+    ?? apiData?.season_end
+    ?? snapshot.seasonEnd
+    ?? (snapshot as any)?.season_end
+    ?? metadata.seasonEnd
+    ?? (metadata as any)?.season_end
+    ?? null;
 
   return {
     source: 'snapshot',
@@ -163,6 +218,9 @@ function transformResponse(body: ApiRosterResponse): Roster | null {
     clanName: clan.name ?? undefined,
     clanTag: clan.tag,
     members: mappedMembers,
+    seasonId: resolvedSeasonId,
+    seasonStart: resolvedSeasonStart,
+    seasonEnd: resolvedSeasonEnd,
     meta: {
       clanName: clan.name ?? undefined,
       memberCount: snapshot.memberCount,
@@ -170,9 +228,9 @@ function transformResponse(body: ApiRosterResponse): Roster | null {
       ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
       schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
       computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
-      seasonId: metadata.seasonId ?? null,
-      seasonStart: metadata.seasonStart ?? null,
-      seasonEnd: metadata.seasonEnd ?? null,
+      seasonId: resolvedSeasonId,
+      seasonStart: resolvedSeasonStart,
+      seasonEnd: resolvedSeasonEnd,
     },
     snapshotMetadata: {
       snapshotDate: metadata.snapshotDate || (snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : ''),
@@ -185,9 +243,9 @@ function transformResponse(body: ApiRosterResponse): Roster | null {
       ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
       schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
       computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
-      seasonId: metadata.seasonId ?? null,
-      seasonStart: metadata.seasonStart ?? null,
-      seasonEnd: metadata.seasonEnd ?? null,
+      seasonId: resolvedSeasonId,
+      seasonStart: resolvedSeasonStart,
+      seasonEnd: resolvedSeasonEnd,
     },
     snapshotDetails: metadata.snapshotDetails ?? undefined,
   } satisfies Roster;

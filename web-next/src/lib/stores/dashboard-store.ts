@@ -34,12 +34,19 @@ import { showToast } from '@/lib/toast';
 import { normalizeTag } from '@/lib/tags';
 import type { SmartInsightsPayload, SmartInsightsHeadline } from '@/lib/smart-insights';
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
-import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
+import { fetchRosterFromDataSpine, transformResponse } from '@/lib/data-spine-roster';
 import type { UserRoleRecord, ClanRoleName } from '@/lib/auth/roles';
 
 // =============================================================================
 // UTILITIES
 // =============================================================================
+
+function normalizeIso(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
 
 function calculateSeasonInfo(timestampIso: string) {
   const date = new Date(timestampIso);
@@ -103,6 +110,127 @@ function calculateSeasonInfo(timestampIso: string) {
 import { getMemberAceScore } from '@/lib/business/calculations';
 import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
 import type { AceScoreResult } from '@/lib/ace-score';
+
+function normalizeRosterSeasonFields(roster: Roster | null): Roster | null {
+  if (!roster) return roster;
+
+  const normalizedMembers = Array.isArray(roster.members)
+    ? roster.members.map((member) => {
+        const rawTenure = typeof member.tenure_days === 'number'
+          ? member.tenure_days
+          : typeof (member as any).tenure === 'number'
+            ? (member as any).tenure
+            : null;
+        if (rawTenure != null && Number.isFinite(rawTenure)) {
+          const adjustedTenure = Math.max(1, Math.round(rawTenure));
+          if (adjustedTenure !== rawTenure || member.tenure === undefined) {
+            return {
+              ...member,
+              tenure_days: adjustedTenure,
+              tenure: adjustedTenure,
+            };
+          }
+          return member;
+        }
+        return {
+          ...member,
+          tenure_days: undefined,
+          tenure: undefined,
+        };
+      })
+    : roster.members;
+
+  const metaSeasonId = roster.meta?.seasonId ?? roster.meta?.season_id ?? null;
+  const snapshotSeasonId = roster.snapshotMetadata?.seasonId ?? (roster.snapshotMetadata as any)?.season_id ?? null;
+  const rootSeasonId = roster.seasonId ?? (roster as any)?.season_id ?? null;
+
+  const metaSeasonStart = roster.meta?.seasonStart ?? (roster.meta as any)?.season_start ?? null;
+  const metaSeasonEnd = roster.meta?.seasonEnd ?? (roster.meta as any)?.season_end ?? null;
+  const snapshotSeasonStart = roster.snapshotMetadata?.seasonStart ?? (roster.snapshotMetadata as any)?.season_start ?? null;
+  const snapshotSeasonEnd = roster.snapshotMetadata?.seasonEnd ?? (roster.snapshotMetadata as any)?.season_end ?? null;
+  const rootSeasonStart = roster.seasonStart ?? (roster as any)?.season_start ?? null;
+  const rootSeasonEnd = roster.seasonEnd ?? (roster as any)?.season_end ?? null;
+
+  let resolvedSeasonId = rootSeasonId ?? snapshotSeasonId ?? metaSeasonId ?? null;
+  let resolvedSeasonStart = normalizeIso(rootSeasonStart) ?? normalizeIso(snapshotSeasonStart) ?? normalizeIso(metaSeasonStart);
+  let resolvedSeasonEnd = normalizeIso(rootSeasonEnd) ?? normalizeIso(snapshotSeasonEnd) ?? normalizeIso(metaSeasonEnd);
+
+  if ((!resolvedSeasonId || !resolvedSeasonStart || !resolvedSeasonEnd)) {
+    const fallbackTimestamp = roster.snapshotMetadata?.computedAt
+      ?? roster.snapshotMetadata?.fetchedAt
+      ?? roster.meta?.computedAt
+      ?? roster.meta?.seasonStart
+      ?? null;
+
+    if (fallbackTimestamp) {
+      const seasonInfo = calculateSeasonInfo(fallbackTimestamp);
+      resolvedSeasonId = resolvedSeasonId ?? seasonInfo.seasonId;
+      resolvedSeasonStart = resolvedSeasonStart ?? seasonInfo.seasonStart;
+      resolvedSeasonEnd = resolvedSeasonEnd ?? seasonInfo.seasonEnd;
+    }
+  }
+
+  const nextMeta = { ...(roster.meta ?? {}) } as NonNullable<Roster['meta']>;
+  if (resolvedSeasonId !== null) nextMeta.seasonId = resolvedSeasonId;
+  if (resolvedSeasonStart !== null) nextMeta.seasonStart = resolvedSeasonStart;
+  if (resolvedSeasonEnd !== null) nextMeta.seasonEnd = resolvedSeasonEnd;
+  if (nextMeta.memberCount == null) {
+    nextMeta.memberCount = roster.members?.length ?? roster.meta?.memberCount ?? 0;
+  }
+  if (nextMeta.payloadVersion == null && (roster.snapshotMetadata as any)?.payloadVersion) {
+    nextMeta.payloadVersion = (roster.snapshotMetadata as any)?.payloadVersion;
+  }
+  if (nextMeta.ingestionVersion == null && (roster.snapshotMetadata as any)?.ingestionVersion) {
+    nextMeta.ingestionVersion = (roster.snapshotMetadata as any)?.ingestionVersion;
+  }
+  if (nextMeta.schemaVersion == null && (roster.snapshotMetadata as any)?.schemaVersion) {
+    nextMeta.schemaVersion = (roster.snapshotMetadata as any)?.schemaVersion;
+  }
+  if (!nextMeta.computedAt) {
+    nextMeta.computedAt = roster.snapshotMetadata?.computedAt ?? roster.snapshotMetadata?.fetchedAt ?? nextMeta.seasonStart ?? null;
+  }
+
+  const nextSnapshotMetadata = { ...(roster.snapshotMetadata ?? {}) } as NonNullable<Roster['snapshotMetadata']>;
+  nextSnapshotMetadata.snapshotDate = nextSnapshotMetadata.snapshotDate
+    ?? (roster.date ?? (resolvedSeasonStart ? resolvedSeasonStart.slice(0, 10) : ''));
+  const fallbackFetchedAt = normalizeIso(
+    nextSnapshotMetadata.fetchedAt
+      ?? roster.snapshotMetadata?.fetchedAt
+      ?? roster.snapshotMetadata?.computedAt
+      ?? roster.meta?.computedAt
+      ?? roster.meta?.seasonStart
+      ?? resolvedSeasonStart
+  ) ?? new Date().toISOString();
+  nextSnapshotMetadata.fetchedAt = fallbackFetchedAt;
+  nextSnapshotMetadata.memberCount = nextSnapshotMetadata.memberCount ?? nextMeta.memberCount ?? roster.members?.length ?? 0;
+  nextSnapshotMetadata.warLogEntries = nextSnapshotMetadata.warLogEntries ?? 0;
+  nextSnapshotMetadata.capitalSeasons = nextSnapshotMetadata.capitalSeasons ?? 0;
+  nextSnapshotMetadata.version = nextSnapshotMetadata.version ?? 'data-spine';
+  nextSnapshotMetadata.payloadVersion = nextSnapshotMetadata.payloadVersion ?? nextMeta.payloadVersion ?? null;
+  nextSnapshotMetadata.ingestionVersion = nextSnapshotMetadata.ingestionVersion ?? nextMeta.ingestionVersion ?? null;
+  nextSnapshotMetadata.schemaVersion = nextSnapshotMetadata.schemaVersion ?? nextMeta.schemaVersion ?? null;
+  nextSnapshotMetadata.computedAt = normalizeIso(
+    nextSnapshotMetadata.computedAt
+      ?? roster.snapshotMetadata?.computedAt
+      ?? roster.meta?.computedAt
+      ?? fallbackFetchedAt
+  );
+  nextSnapshotMetadata.seasonId = resolvedSeasonId ?? nextSnapshotMetadata.seasonId ?? null;
+  nextSnapshotMetadata.seasonStart = resolvedSeasonStart ?? normalizeIso(nextSnapshotMetadata.seasonStart) ?? null;
+  nextSnapshotMetadata.seasonEnd = resolvedSeasonEnd ?? normalizeIso(nextSnapshotMetadata.seasonEnd) ?? null;
+
+  const nextRoster: Roster = {
+    ...roster,
+    seasonId: resolvedSeasonId ?? null,
+    seasonStart: resolvedSeasonStart ?? null,
+    seasonEnd: resolvedSeasonEnd ?? null,
+    members: normalizedMembers ?? roster.members,
+    meta: nextMeta,
+    snapshotMetadata: nextSnapshotMetadata,
+  };
+
+  return nextRoster;
+}
 
 export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -475,25 +603,46 @@ export const useDashboardStore = create<DashboardState>()(
         // BASIC SETTERS
         // =============================================================================
       setRoster: (roster) => {
-        const payloadVersion = roster?.meta?.payloadVersion ?? roster?.snapshotMetadata?.payloadVersion ?? null;
-        const snapshotId = (roster?.snapshotMetadata as any)?.snapshotId ?? null;
-        const fetchedAt = roster?.snapshotMetadata?.fetchedAt ?? roster?.meta?.computedAt ?? null;
+        const normalizedRoster = normalizeRosterSeasonFields(roster);
+        const previousRoster = get().roster;
+        if (normalizedRoster && Array.isArray(normalizedRoster.members) && previousRoster?.members?.length) {
+          const previousByTag = new Map<string | undefined, typeof previousRoster.members[number]>();
+          for (const member of previousRoster.members) {
+            previousByTag.set(member.tag, member);
+          }
+          normalizedRoster.members = normalizedRoster.members.map((member) => {
+            const prev = previousByTag.get(member.tag);
+            const currentTenure = typeof member.tenure_days === 'number' ? member.tenure_days : (typeof (member as any).tenure === 'number' ? (member as any).tenure : null);
+            const prevTenure = prev && (typeof prev.tenure_days === 'number' ? prev.tenure_days : (typeof (prev as any).tenure === 'number' ? (prev as any).tenure : null));
+            if ((currentTenure == null || currentTenure < 1) && prevTenure && prevTenure > 0) {
+              return {
+                ...member,
+                tenure_days: prevTenure,
+                tenure: prevTenure,
+              };
+            }
+            return member;
+          });
+        }
+        const payloadVersion = normalizedRoster?.meta?.payloadVersion ?? normalizedRoster?.snapshotMetadata?.payloadVersion ?? null;
+        const snapshotId = (normalizedRoster?.snapshotMetadata as any)?.snapshotId ?? null;
+        const fetchedAt = normalizedRoster?.snapshotMetadata?.fetchedAt ?? normalizedRoster?.meta?.computedAt ?? null;
         set({
-          roster,
-          snapshotMetadata: roster?.snapshotMetadata ?? null,
-          snapshotDetails: roster?.snapshotDetails ?? null,
+          roster: normalizedRoster,
+          snapshotMetadata: normalizedRoster?.snapshotMetadata ?? null,
+          snapshotDetails: normalizedRoster?.snapshotDetails ?? null,
           latestSnapshotVersion: payloadVersion,
           latestSnapshotId: snapshotId,
           lastSnapshotFetchedAt: fetchedAt ?? null,
           lastKnownIngestionVersion: payloadVersion ?? get().lastKnownIngestionVersion ?? null,
         });
         try {
-          if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
-            const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
+          if (typeof window !== 'undefined' && normalizedRoster && Array.isArray(normalizedRoster.members)) {
+            const tag = (normalizedRoster.clanTag || get().clanTag || get().homeClan || '').toString();
             if (tag) {
-              const schemaVersion = roster.meta?.schemaVersion ?? roster.snapshotMetadata?.schemaVersion ?? null;
-              const ingestionVersion = roster.meta?.ingestionVersion ?? roster.snapshotMetadata?.ingestionVersion ?? null;
-              const computedAt = roster.meta?.computedAt ?? roster.snapshotMetadata?.computedAt ?? null;
+              const schemaVersion = normalizedRoster.meta?.schemaVersion ?? normalizedRoster.snapshotMetadata?.schemaVersion ?? null;
+              const ingestionVersion = normalizedRoster.meta?.ingestionVersion ?? normalizedRoster.snapshotMetadata?.ingestionVersion ?? null;
+              const computedAt = normalizedRoster.meta?.computedAt ?? normalizedRoster.snapshotMetadata?.computedAt ?? null;
               const cacheEntry = {
                 version: payloadVersion,
                 schemaVersion,
@@ -501,9 +650,9 @@ export const useDashboardStore = create<DashboardState>()(
                 computedAt,
                 snapshotId,
                 storedAt: Date.now(),
-                roster,
+                roster: normalizedRoster,
               };
-              localStorage.setItem(`lastRoster:${tag}`, JSON.stringify(cacheEntry));
+              localStorage.setItem(`lastRoster:v3:${tag}`, JSON.stringify(cacheEntry));
             }
           }
         } catch {}
@@ -676,7 +825,7 @@ export const useDashboardStore = create<DashboardState>()(
 
           let plan = buildRosterFetchPlan(normalizedTag, modeOverride === 'live' ? 'live' : selectedSnapshot);
           if (modeOverride === 'live') {
-            const base = `/api/roster?clanTag=${encodeURIComponent(normalizedTag)}&mode=live`;
+            const base = `/api/v2/roster?clanTag=${encodeURIComponent(normalizedTag)}`;
             plan = { urls: [base], sourcePreference: 'live' };
           }
           if (forceReload) {
@@ -728,24 +877,25 @@ export const useDashboardStore = create<DashboardState>()(
               return;
             }
 
-            const payload = result.json?.data ?? result.json;
-            if (result.ok && Array.isArray(payload?.members)) {
-              setRoster(payload);
-              setStatus('success');
-              const src = payload?.source || plan.sourcePreference;
-              setMessage(`Loaded ${payload.members.length} members (${src})`);
-              // Update dev status badge info
-              const tenureMatches = (payload.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
-              setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (payload.members || []).length });
-              const fetchedAt = payload?.snapshotMetadata?.computedAt
-                ?? payload?.meta?.computedAt
-                ?? payload?.snapshot?.computedAt
-                ?? payload?.snapshotMetadata?.fetchedAt
-                ?? payload?.snapshot?.fetchedAt
-                ?? new Date().toISOString();
-              setDataFetchedAt(fetchedAt);
-              await get().loadIngestionHealth(normalizedTag);
-              return;
+            const apiResponse = result.json;
+            if (result.ok && apiResponse?.success && apiResponse?.data) {
+              const transformedRoster = transformResponse(apiResponse);
+              if (transformedRoster) {
+                setRoster(transformedRoster);
+                setStatus('success');
+                const src = transformedRoster?.source || plan.sourcePreference;
+                setMessage(`Loaded ${transformedRoster.members.length} members (${src})`);
+                // Update dev status badge info
+                const tenureMatches = (transformedRoster.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
+                setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (transformedRoster.members || []).length });
+                const fetchedAt = transformedRoster?.snapshotMetadata?.computedAt
+                  ?? transformedRoster?.meta?.computedAt
+                  ?? transformedRoster?.snapshotMetadata?.fetchedAt
+                  ?? new Date().toISOString();
+                setDataFetchedAt(fetchedAt);
+                await get().loadIngestionHealth(normalizedTag);
+                return;
+              }
             }
             lastError = result.json?.error || result.json?.message || 'Failed to load roster';
           }
@@ -1002,7 +1152,7 @@ export const useDashboardStore = create<DashboardState>()(
           if (typeof window === 'undefined') return false;
           const tag = (get().clanTag || get().homeClan || '').toString();
           if (!tag) return false;
-          const raw = localStorage.getItem(`lastRoster:${tag}`);
+          const raw = localStorage.getItem(`lastRoster:v3:${tag}`);
           if (!raw) return false;
           const parsed = JSON.parse(raw) as
             | Roster
@@ -1030,12 +1180,13 @@ export const useDashboardStore = create<DashboardState>()(
             return false;
           }
 
+          const normalized = normalizeRosterSeasonFields(cachedRoster);
           set({
-            roster: cachedRoster,
-            snapshotMetadata: cachedRoster.snapshotMetadata ?? null,
-            snapshotDetails: cachedRoster.snapshotDetails ?? null,
+            roster: normalized,
+            snapshotMetadata: normalized?.snapshotMetadata ?? null,
+            snapshotDetails: normalized?.snapshotDetails ?? null,
           });
-          const computedAt = (parsed as any)?.computedAt ?? cachedRoster.meta?.computedAt ?? cachedRoster.snapshotMetadata?.computedAt ?? null;
+          const computedAt = (parsed as any)?.computedAt ?? normalized?.meta?.computedAt ?? normalized?.snapshotMetadata?.computedAt ?? null;
           if (computedAt) {
             set({ dataFetchedAt: computedAt });
           }

@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Get current members from the roster API
-    const rosterResponse = await cached(['departures','notifications','roster', clanTag], () => fetch(`${request.nextUrl.origin}/api/roster?mode=live&clanTag=${encodeURIComponent(clanTag)}`), 10);
+    const rosterResponse = await cached(['departures','notifications','roster', clanTag], () => fetch(`${request.nextUrl.origin}/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`), 10);
     const rosterJson = await rosterResponse.json();
     const rosterData = rosterJson?.data ?? rosterJson;
     

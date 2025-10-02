@@ -231,6 +231,16 @@ export const TableRow: React.FC<TableRowProps> = ({
     const value = typeof raw === 'number' ? Math.max(raw, 0) : 0;
     return Math.max(baseCap || 0, value);
   };
+  const getHeroTooltipMessage = (hero: keyof HeroCaps) => {
+    const heroName = HERO_LABELS[hero];
+    if (!isHeroAvailable(hero, th)) {
+      return `${heroName} unlocks at TH${HERO_MIN_TH[hero]}`;
+    }
+    const raw = member[hero];
+    const current = typeof raw === 'number' ? Math.max(raw, 0) : 0;
+    const displayedCap = Math.max(heroCaps?.[hero] ?? 0, current);
+    return `${heroName} level ${current} of ${displayedCap} (TH${th})`;
+  };
   const leagueInfo = resolveMemberLeague(member);
 
   const aceExtras = (member as any)?.extras?.ace ?? null;
@@ -512,9 +522,6 @@ export const TableRow: React.FC<TableRowProps> = ({
       <TableCell
         className="text-center border-r border-gray-300"
         isActiveSort={isActiveColumn('bk')}
-        title={isHeroAvailable('bk', th)
-          ? `Barbarian King at TH${th} (max ${getDisplayMax('bk')})`
-          : `Barbarian King unlocks at TH${HERO_MIN_TH.bk}`}
       >
         <HeroLevel 
           hero="BK" 
@@ -522,15 +529,13 @@ export const TableRow: React.FC<TableRowProps> = ({
           maxLevel={getDisplayMax('bk')}
           size="sm"
           showName={false}
+          tooltip={getHeroTooltipMessage('bk')}
         />
       </TableCell>
 
       <TableCell
         className="text-center border-r border-gray-300"
         isActiveSort={isActiveColumn('aq')}
-        title={isHeroAvailable('aq', th)
-          ? `Archer Queen at TH${th} (max ${getDisplayMax('aq')})`
-          : `Archer Queen unlocks at TH${HERO_MIN_TH.aq}`}
       >
         <HeroLevel 
           hero="AQ" 
@@ -538,15 +543,13 @@ export const TableRow: React.FC<TableRowProps> = ({
           maxLevel={getDisplayMax('aq')}
           size="sm"
           showName={false}
+          tooltip={getHeroTooltipMessage('aq')}
         />
       </TableCell>
 
       <TableCell
         className="text-center border-r border-gray-300"
         isActiveSort={isActiveColumn('mp')}
-        title={isHeroAvailable('mp', th)
-          ? `Minion Prince at TH${th} (max ${getDisplayMax('mp')})`
-          : `Minion Prince unlocks at TH${HERO_MIN_TH.mp}`}
       >
         <HeroLevel 
           hero="MP" 
@@ -554,15 +557,13 @@ export const TableRow: React.FC<TableRowProps> = ({
           maxLevel={getDisplayMax('mp')}
           size="sm"
           showName={false}
+          tooltip={getHeroTooltipMessage('mp')}
         />
       </TableCell>
 
       <TableCell
         className="text-center border-r border-gray-300"
         isActiveSort={isActiveColumn('gw')}
-        title={isHeroAvailable('gw', th)
-          ? `Grand Warden at TH${th} (max ${getDisplayMax('gw')})`
-          : `Grand Warden unlocks at TH${HERO_MIN_TH.gw}`}
       >
         <HeroLevel 
           hero="GW" 
@@ -570,15 +571,13 @@ export const TableRow: React.FC<TableRowProps> = ({
           maxLevel={getDisplayMax('gw')}
           size="sm"
           showName={false}
+          tooltip={getHeroTooltipMessage('gw')}
         />
       </TableCell>
 
       <TableCell
         className="text-center border-r border-gray-300"
         isActiveSort={isActiveColumn('rc')}
-        title={isHeroAvailable('rc', th)
-          ? `Royal Champion at TH${th} (max ${getDisplayMax('rc')})`
-          : `Royal Champion unlocks at TH${HERO_MIN_TH.rc}`}
       >
         <HeroLevel 
           hero="RC" 
@@ -586,6 +585,7 @@ export const TableRow: React.FC<TableRowProps> = ({
           maxLevel={getDisplayMax('rc')}
           size="sm"
           showName={false}
+          tooltip={getHeroTooltipMessage('rc')}
         />
       </TableCell>
 
