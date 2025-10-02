@@ -6,6 +6,7 @@ import { resolveUnknownPlayers } from '@/lib/player-resolver';
 import { insightsEngine } from '@/lib/smart-insights';
 import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from '@/lib/insights-storage';
 import { saveAISummary } from '@/lib/supabase';
+import { sendIngestionFailure, sendIngestionWarning } from './alerting';
 import { detectChanges, saveChangeSummary, getSnapshotBeforeDate, type MemberChange } from '@/lib/snapshots';
 
 export interface StagedIngestionJobResult {
@@ -58,6 +59,25 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
     result.ingestionResult = ingestionResult;
     result.success = true;
 
+    const phases = ingestionResult.phases ?? {};
+    const problematicPhases = Object.entries(phases)
+      .filter(([name, phase]) => {
+        if (!phase) return false;
+        if (!phase.success) return true;
+        if ((name === 'upsertMembers' || name === 'writeStats') && typeof phase.row_delta === 'number' && phase.row_delta === 0) {
+          return true;
+        }
+        return false;
+      })
+      .map(([name, phase]) => ({ name, phase }));
+
+    if (problematicPhases.length) {
+      await sendIngestionWarning(clanTag, 'Ingestion completed with anomalies', {
+        jobId: stagedOptions.jobId,
+        phases: problematicPhases,
+      });
+    }
+
     // Run post-processing if requested
     if (runPostProcessing && ingestionResult.success) {
       console.log(`[StagedIngestion] Running post-processing for ${clanTag}`);
@@ -82,6 +102,10 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
     console.error(`[StagedIngestion] Failed for ${clanTag}:`, error);
     result.success = false;
     result.error = error.message;
+    await sendIngestionFailure(clanTag, {
+      jobId: stagedOptions.jobId,
+      error: error?.message ?? 'Unknown error',
+    });
     return result;
   }
 }

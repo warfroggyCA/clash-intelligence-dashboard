@@ -772,16 +772,35 @@ export const useDashboardStore = create<DashboardState>()(
       // =============================================================================
       
       resetDashboard: () => set(initialState),
-      
       loadRoster: async (clanTag: string, options: { mode?: 'snapshot' | 'live'; force?: boolean } = {}) => {
-        const { setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo, setDataFetchedAt } = get();
+        const {
+          setStatus,
+          setMessage,
+          setRoster,
+          selectedSnapshot,
+          setLastLoadInfo,
+          setDataFetchedAt,
+          snapshotMetadata,
+          roster,
+          lastKnownIngestionVersion,
+        } = get();
         const normalizedTag = normalizeTag(clanTag) || clanTag;
         const modeOverride = options.mode;
         const forceReload = options.force ?? false;
-        const latestPayloadVersion = get().snapshotMetadata?.payloadVersion
-          ?? get().roster?.snapshotMetadata?.payloadVersion
-          ?? get().roster?.meta?.payloadVersion
+        const latestPayloadVersion = snapshotMetadata?.payloadVersion
+          ?? roster?.snapshotMetadata?.payloadVersion
+          ?? roster?.meta?.payloadVersion
           ?? null;
+        const latestSchemaVersion = snapshotMetadata?.schemaVersion
+          ?? roster?.snapshotMetadata?.schemaVersion
+          ?? roster?.meta?.schemaVersion
+          ?? null;
+        const latestIngestionVersion = snapshotMetadata?.ingestionVersion
+          ?? roster?.snapshotMetadata?.ingestionVersion
+          ?? roster?.meta?.ingestionVersion
+          ?? lastKnownIngestionVersion
+          ?? null;
+        const previousFingerprint = latestPayloadVersion || latestIngestionVersion || null;
         
         try {
           setStatus('loading');
@@ -842,11 +861,15 @@ export const useDashboardStore = create<DashboardState>()(
             const timer = setTimeout(() => controller.abort(), 10000);
             let res: Response;
             try {
-              const headers: Record<string, string> = {};
-              if (!forceReload && latestPayloadVersion) {
-                headers['If-None-Match'] = `"${latestPayloadVersion}"`;
-              }
-              res = await fetch(url, { signal: controller.signal, headers });
+          const headers: Record<string, string> = { Accept: 'application/json' };
+          if (!forceReload) {
+            if (latestPayloadVersion) {
+              headers['If-None-Match'] = `"${latestPayloadVersion}"`;
+            } else if (latestIngestionVersion) {
+              headers['If-None-Match'] = `W/"${latestIngestionVersion}"`;
+            }
+          }
+          res = await fetch(url, { signal: controller.signal, headers });
             } finally {
               clearTimeout(timer);
             }
@@ -862,7 +885,11 @@ export const useDashboardStore = create<DashboardState>()(
             const result = await tryFetch(url);
             if (result.status === 304) {
               setStatus('success');
-              setMessage('Roster up to date');
+              const messageParts = ['Roster up to date'];
+              if (latestSchemaVersion) {
+                messageParts.push(`schema ${latestSchemaVersion}`);
+              }
+              setMessage(messageParts.join(' • '));
               setLastLoadInfo({
                 source: get().lastLoadInfo?.source ?? 'snapshot',
                 ms: Date.now() - t0,
@@ -884,7 +911,26 @@ export const useDashboardStore = create<DashboardState>()(
                 setRoster(transformedRoster);
                 setStatus('success');
                 const src = transformedRoster?.source || plan.sourcePreference;
-                setMessage(`Loaded ${transformedRoster.members.length} members (${src})`);
+                const newFingerprint = transformedRoster.snapshotMetadata?.payloadVersion
+                  ?? transformedRoster.meta?.payloadVersion
+                  ?? transformedRoster.snapshotMetadata?.ingestionVersion
+                  ?? transformedRoster.meta?.ingestionVersion
+                  ?? null;
+                const fingerprintChanged = previousFingerprint && newFingerprint
+                  ? previousFingerprint !== newFingerprint
+                  : undefined;
+                const schemaChanged = latestSchemaVersion && transformedRoster.snapshotMetadata?.schemaVersion
+                  ? latestSchemaVersion !== transformedRoster.snapshotMetadata.schemaVersion
+                  : undefined;
+                const versionHints: string[] = [];
+                if (fingerprintChanged) {
+                  versionHints.push('new snapshot version');
+                }
+                if (schemaChanged) {
+                  versionHints.push(`schema ${transformedRoster.snapshotMetadata?.schemaVersion ?? 'updated'}`);
+                }
+                const messagePrefix = `Loaded ${transformedRoster.members.length} members (${src})`;
+                setMessage(versionHints.length ? `${messagePrefix} • ${versionHints.join(' • ')}` : messagePrefix);
                 // Update dev status badge info
                 const tenureMatches = (transformedRoster.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0);
                 setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (transformedRoster.members || []).length });

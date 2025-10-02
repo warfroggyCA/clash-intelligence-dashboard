@@ -168,26 +168,14 @@ function mapMember(apiMember: ApiRosterMember): Member {
 }
 
 export function transformResponse(body: ApiRosterResponse): Roster | null {
-  console.log('[DEBUG] transformResponse called with:', body);
   if (!body.success || !body.data) return null;
-  
-  console.log('[DEBUG] body.data.members[0]:', body.data.members?.[0]);
 
   const { clan, snapshot, members, seasonId, seasonStart, seasonEnd } = body.data;
   if (!clan || !snapshot) {
     return null;
   }
 
-  const mappedMembers = (members || []).map((member, index) => {
-    if (index === 0) {
-      console.log('[DEBUG] First member before mapping:', member);
-    }
-    const mapped = mapMember(member);
-    if (index === 0) {
-      console.log('[DEBUG] First member after mapping:', mapped);
-    }
-    return mapped;
-  });
+  const mappedMembers = (members || []).map(mapMember);
   const metadata = snapshot.metadata || {};
   const apiData = body.data as Record<string, any>;
   const resolvedSeasonId = seasonId

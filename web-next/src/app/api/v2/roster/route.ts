@@ -58,6 +58,10 @@ export async function GET(req: NextRequest) {
       ?? snapshot?.metadata?.payloadVersion
       ?? snapshot?.id
       ?? null;
+    const snapshotIngestionVersion = snapshot?.ingestion_version
+      ?? snapshot?.metadata?.ingestionVersion
+      ?? snapshot?.computed_at
+      ?? null;
 
     if (!snapshot) {
       return new NextResponse(
@@ -80,7 +84,7 @@ export async function GET(req: NextRequest) {
 
     const { data: statsRows, error: statsError } = await supabase
       .from('member_snapshot_stats')
-      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, extras, league_id, league_name, league_trophies, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_modifier, equipment_flags')
+      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, extras, league_id, league_name, league_trophies, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_modifier, equipment_flags, tenure_days, tenure_as_of')
       .eq('snapshot_id', snapshot.id);
 
     if (statsError) {
@@ -115,10 +119,11 @@ export async function GET(req: NextRequest) {
     const snapshotDate = snapshot?.fetched_at ? snapshot.fetched_at.slice(0, 10) : undefined;
     const tenureDetails = await readTenureDetails(snapshotDate);
 
-    if (snapshotPayloadVersion && requestedETag && requestedETag === snapshotPayloadVersion) {
+    const strongFingerprint = snapshotPayloadVersion ?? snapshotIngestionVersion ?? null;
+    if (strongFingerprint && requestedETag && requestedETag === strongFingerprint) {
       return new NextResponse(null, {
         status: 304,
-        headers: { ETag: `"${snapshotPayloadVersion}"` },
+        headers: { ETag: `"${strongFingerprint}"` },
       });
     }
 
@@ -127,7 +132,7 @@ export async function GET(req: NextRequest) {
     if (memberIds.length) {
       const { data: memberRows, error: memberError } = await supabase
         .from('members')
-        .select('id, tag, name, th_level, role, league, builder_league, league_id, league_name, league_trophies, league_icon_small, league_icon_medium, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_league_name, ranked_modifier, season_reset_at, equipment_flags, created_at, updated_at')
+        .select('id, tag, name, th_level, role, league, builder_league, league_id, league_name, league_trophies, league_icon_small, league_icon_medium, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_league_name, ranked_modifier, season_reset_at, equipment_flags, tenure_days, tenure_as_of, created_at, updated_at')
         .in('id', memberIds);
 
       if (memberError) {
@@ -153,8 +158,13 @@ export async function GET(req: NextRequest) {
       // Get tenure data for this member
       const memberTag = member.tag ? normalizeTag(member.tag) : null;
       const tenureData = memberTag ? tenureDetails[memberTag] : null;
+      const statTenureDays = typeof (stat as any).tenure_days === 'number' ? (stat as any).tenure_days : null;
+      const statTenureAsOf = (stat as any).tenure_as_of ?? null;
 
-      const tenureAsOf = tenureData?.as_of || snapshotDate || (snapshot?.fetched_at ? snapshot.fetched_at.slice(0, 10) : null);
+      const tenureAsOf = statTenureAsOf
+        ?? tenureData?.as_of
+        ?? snapshotDate
+        ?? (snapshot?.fetched_at ? snapshot.fetched_at.slice(0, 10) : null);
 
       const fallbackTenure = (() => {
         if (member.created_at) {
@@ -174,7 +184,7 @@ export async function GET(req: NextRequest) {
         return null;
       })();
 
-      const rawTenure = tenureData?.days ?? fallbackTenure ?? null;
+      const rawTenure = statTenureDays ?? tenureData?.days ?? fallbackTenure ?? null;
       const computedTenure = rawTenure != null ? Math.max(1, Math.round(rawTenure)) : null;
 
       return {
@@ -241,8 +251,8 @@ export async function GET(req: NextRequest) {
       }),
       {
         status: 200,
-        headers: snapshotPayloadVersion
-          ? { ETag: `"${snapshotPayloadVersion}"`, 'Content-Type': 'application/json' }
+        headers: strongFingerprint
+          ? { ETag: `"${strongFingerprint}"`, 'Content-Type': 'application/json' }
           : { 'Content-Type': 'application/json' },
       }
     );
