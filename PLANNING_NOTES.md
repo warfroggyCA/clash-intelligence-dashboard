@@ -20,6 +20,8 @@
   - [ ] Add ETag/If-None-Match support to `/api/v2/roster` and frontend fetch plan
 - [x] Season-ready spine – add season_id columns to snapshots/stats/metrics with proper indexing and client-side season key computation
 - [ ] Observability – add ingestion job telemetry (duration, delta counts, Supabase response metrics) into `ingest_logs` and surface alerts when deltas or durations spike
+  - [x] Expose ingestion health API + dashboard card for latest run, durations, and anomalies
+  - [ ] Add automated alerting (email/Slack) when ingestion fails or goes stale
 
 ## Season-Ready Spine Implementation (Completed Jan 2025)
 
