@@ -105,6 +105,9 @@ export interface Roster {
     ingestionVersion?: string | null;
     schemaVersion?: string | null;
     computedAt?: string | null;
+    seasonId?: string | null;
+    seasonStart?: string | null;
+    seasonEnd?: string | null;
   };
   // Enhanced snapshot metadata
   snapshotMetadata?: {
