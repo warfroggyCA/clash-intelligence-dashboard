@@ -10,8 +10,20 @@ const requestSchema = z.object({
   runPostProcessing: z.boolean().optional(),
 });
 
+function isAuthorized(req: NextRequest): boolean {
+  const expectedKey = process.env.ADMIN_API_KEY || process.env.INGESTION_TRIGGER_KEY;
+  if (!expectedKey) {
+    return true;
+  }
+  const provided = req.headers.get('x-api-key') || req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  return provided === expectedKey;
+}
+
 export async function POST(req: NextRequest) {
   try {
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
     const body = await req.json();
     const parsed = requestSchema.safeParse(body);
 
@@ -85,6 +97,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
     console.log(`[AdminAPI] Starting staged ingestion for ${clanTag} (GET)`);
 
     const result = await runStagedIngestionJob({

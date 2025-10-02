@@ -8,6 +8,8 @@ import { CURRENT_PIPELINE_SCHEMA_VERSION } from '@/lib/pipeline-constants';
 import { Member, HeroCaps } from '@/types';
 import { FullClanSnapshot, MemberSummary } from '@/lib/full-snapshot';
 import { appendJobLog, createJobRecord, updateJobStatus, IngestionJobLogEntry } from './job-store';
+import { readTenureDetails } from '@/lib/tenure';
+import { daysSinceToDate } from '@/lib/date';
 
 export interface StagedIngestionResult {
   success: boolean;
@@ -112,8 +114,8 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
     }
 
     // Phase 5: Write Stats
-    if (!skipPhases.includes('writeStats') && transformedData) {
-      result.phases.writeStats = await runWriteStatsPhase(jobId, transformedData);
+    if (!skipPhases.includes('writeStats') && transformedData && snapshot) {
+      result.phases.writeStats = await runWriteStatsPhase(jobId, transformedData, snapshot);
       if (!result.phases.writeStats.success) {
         throw new Error(`Write stats phase failed: ${result.phases.writeStats.error_message}`);
       }
@@ -185,6 +187,8 @@ interface MemberData {
   hero_levels?: HeroLevels | null;
   rush_percent?: number | null;
   extras?: any;
+  tenure_days?: number | null;
+  tenure_as_of?: string | null;
 }
 
 interface SnapshotStats {
@@ -207,6 +211,8 @@ interface SnapshotStats {
   ranked_league_id?: number;
   ranked_modifier?: any;
   equipment_flags?: any;
+  tenure_days?: number | null;
+  tenure_as_of?: string | null;
 }
 
 function getAchievementValue(detail: any, name: string): number | null {
@@ -427,6 +433,9 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
       logo_url: pickLargestBadge(snapshot.clan),
     };
 
+    const snapshotDate = snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined;
+    const tenureDetails = await readTenureDetails(snapshotDate);
+
     const memberData: MemberData[] = snapshot.memberSummaries.map((summary) => {
       const normalized = normalizeTag(summary.tag);
       const detail = snapshot.playerDetails?.[normalized];
@@ -436,6 +445,9 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
       const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
       const trophies = summary.trophies ?? detail?.trophies ?? null;
       const extras = buildExtras(summary, detail);
+      const tenureEntry = tenureDetails[normalized];
+      const tenureDays = typeof tenureEntry?.days === 'number' ? tenureEntry.days : null;
+      const tenureAsOf = tenureEntry?.as_of ?? snapshotDate ?? null;
       
       return {
         tag: normalized,
@@ -462,6 +474,8 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
         hero_levels: heroLevels,
         rush_percent: rushPercent,
         extras,
+        tenure_days: tenureDays,
+        tenure_as_of: tenureAsOf,
       };
     });
 
@@ -540,6 +554,8 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
       ranked_league_name: member.ranked_league_name,
       ranked_modifier: member.ranked_modifier,
       equipment_flags: member.equipment_flags,
+      tenure_days: member.tenure_days ?? null,
+      tenure_as_of: member.tenure_as_of ?? null,
       updated_at: new Date().toISOString(),
     }));
 
@@ -669,7 +685,7 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
   }
 }
 
-async function runWriteStatsPhase(jobId: string, transformedData: TransformedData): Promise<PhaseResult> {
+async function runWriteStatsPhase(jobId: string, transformedData: TransformedData, snapshot: FullClanSnapshot): Promise<PhaseResult> {
   const startTime = Date.now();
   
   try {
@@ -719,9 +735,23 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
     await supabase.from('member_snapshot_stats').delete().eq('snapshot_id', latestSnapshot.id);
 
     // Build snapshot stats with new typed fields
+    const snapshotDate = snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined;
+    const tenureDetails = await readTenureDetails(snapshotDate);
+
     const snapshotStats = transformedData.memberData.map((member) => {
       const memberId = memberIdByTag.get(member.tag);
       if (!memberId) return null;
+
+       const tenureEntry = tenureDetails[member.tag];
+       const tenureAsOf = member.tenure_as_of ?? tenureEntry?.as_of ?? snapshotDate ?? null;
+       const tenureFromEntry = typeof tenureEntry?.days === 'number' ? tenureEntry.days : null;
+       let tenureDays = typeof member.tenure_days === 'number' ? member.tenure_days : tenureFromEntry;
+       if (tenureDays == null && tenureAsOf) {
+         const targetDate = snapshotDate ?? new Date().toISOString().slice(0, 10);
+         const delta = daysSinceToDate(tenureAsOf, targetDate);
+         tenureDays = delta >= 0 ? delta + 1 : null;
+       }
+       const normalizedTenure = tenureDays != null ? Math.max(1, Math.round(tenureDays)) : null;
 
       return {
         snapshot_id: latestSnapshot.id,
@@ -744,6 +774,8 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         ranked_league_id: member.ranked_league_id,
         ranked_modifier: member.ranked_modifier,
         equipment_flags: member.equipment_flags,
+        tenure_days: normalizedTenure,
+        tenure_as_of: tenureAsOf,
       };
     }).filter(Boolean) as SnapshotStats[];
 
