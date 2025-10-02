@@ -180,6 +180,15 @@ export async function GET(req: NextRequest) {
         const heroes = extractHeroLevels(p);
         const key = normalizeTag(m.tag);
         const t = tenureDetails[key];
+        const liveLeague = p.league || m.league || null;
+        const liveLeagueIcons = typeof liveLeague === 'object' && liveLeague !== null
+          ? liveLeague.iconUrls || {}
+          : {};
+        const liveLeagueId = typeof liveLeague === 'object' && liveLeague !== null ? liveLeague.id : null;
+        const liveLeagueName = typeof liveLeague === 'object' && liveLeague !== null ? liveLeague.name : null;
+        const liveLeagueTrophies = typeof liveLeague === 'object' && liveLeague !== null && typeof (liveLeague as any).trophies === 'number'
+          ? (liveLeague as any).trophies
+          : (typeof p.trophies === 'number' ? p.trophies : m.trophies ?? null);
         return {
           name: m.name,
           tag: key,
@@ -195,6 +204,12 @@ export async function GET(req: NextRequest) {
           mp: typeof heroes.mp === "number" ? heroes.mp : null,
           tenure_days: t?.days || 0,
           tenure_as_of: t?.as_of,
+          league: liveLeague,
+          leagueId: liveLeagueId ?? undefined,
+          leagueName: liveLeagueName ?? undefined,
+          leagueTrophies: liveLeagueTrophies ?? undefined,
+          leagueIconSmall: (liveLeagueIcons as any)?.small ?? undefined,
+          leagueIconMedium: (liveLeagueIcons as any)?.medium ?? undefined,
         } as Member;
       } finally {
         rateLimiter.release();

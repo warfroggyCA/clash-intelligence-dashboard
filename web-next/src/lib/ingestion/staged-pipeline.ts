@@ -119,9 +119,15 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
     }
 
     result.success = true;
+    const writeSnapshotMetadata = result.phases.writeSnapshot?.metadata ?? {};
     await updateJobStatus(jobId, 'completed', {
       phases: result.phases,
       success: true,
+      snapshotId: writeSnapshotMetadata?.snapshotId ?? null,
+      payloadVersion: writeSnapshotMetadata?.payloadVersion ?? null,
+      fetchedAt: writeSnapshotMetadata?.fetchedAt ?? snapshot?.fetchedAt ?? null,
+      computedAt: writeSnapshotMetadata?.computedAt ?? null,
+      seasonId: writeSnapshotMetadata?.seasonId ?? snapshot?.metadata?.seasonId ?? null,
     });
     await logPhase(jobId, 'pipeline', 'info', 'Staged ingestion completed successfully');
 
@@ -627,15 +633,24 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
 
     const duration_ms = Date.now() - startTime;
     
-    await logPhase(jobId, 'writeSnapshot', 'info', 'Write snapshot phase completed', {
+    const computedAt = snapshotData.computed_at;
+    const phaseMetadata = {
       snapshotId: insertedSnapshot.id,
       payloadVersion,
-    });
+      fetchedAt: snapshot.fetchedAt,
+      computedAt,
+      seasonId: metadata?.seasonId ?? null,
+    };
+
+    await logPhase(jobId, 'writeSnapshot', 'info', 'Write snapshot phase completed', phaseMetadata);
 
     return {
       success: true,
       duration_ms,
-      metadata: { snapshotId: insertedSnapshot.id, payloadVersion },
+      metadata: {
+        ...phaseMetadata,
+        snapshotDate: snapshot.scheduledAt ?? snapshot.fetchedAt ?? null,
+      },
     };
   } catch (error: any) {
     const duration_ms = Date.now() - startTime;

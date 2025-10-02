@@ -42,6 +42,7 @@ import { getRoleBadgeVariant } from '@/lib/leadership';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { showToast } from '@/lib/toast';
+import { resolveMemberLeague } from '@/lib/member-league';
 
 // =============================================================================
 // TYPES
@@ -230,16 +231,7 @@ export const TableRow: React.FC<TableRowProps> = ({
     const value = typeof raw === 'number' ? Math.max(raw, 0) : 0;
     return Math.max(baseCap || 0, value);
   };
-  const leagueNameRaw = member.leagueName
-    ?? (typeof member.league === 'string' ? member.league : member.league?.name);
-  const trimmedLeagueName = leagueNameRaw?.trim() ?? '';
-  const leagueTrophies =
-    member.leagueTrophies
-      ?? (typeof member.league === 'object' && member.league !== null && typeof member.league.trophies === 'number'
-        ? member.league.trophies
-        : member.trophies ?? undefined);
-  const hasLeagueBadge = Boolean(trimmedLeagueName.length || member.leagueId != null);
-  const displayLeagueName = trimmedLeagueName.length ? trimmedLeagueName : 'Unranked';
+  const leagueInfo = resolveMemberLeague(member);
 
   const aceExtras = (member as any)?.extras?.ace ?? null;
   const aceEntry = useMemo(() => {
@@ -447,7 +439,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       {/* Name Column */}
       <TableCell className="border-r border-gray-300" isActiveSort={isActiveColumn('name')}>
         <div className="flex items-center space-x-3">
-          <LeagueBadge league={displayLeagueName} trophies={leagueTrophies} size="lg" showText={false} />
+          <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} size="lg" showText={false} />
           <div className="flex flex-col">
             <button
               onClick={(e) => {

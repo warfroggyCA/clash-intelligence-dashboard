@@ -494,12 +494,12 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             variant="ghost"
             size="sm"
             className={`${actionButtonClasses} w-full sm:w-auto`}
-            title="Refresh roster data from the selected source"
+            title="Load the latest Supabase snapshot for this clan"
           >
             <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z"></path>
             </svg>
-            <span>Refresh Data</span>
+            <span>Refresh Snapshot</span>
           </Button>
 
           <Button

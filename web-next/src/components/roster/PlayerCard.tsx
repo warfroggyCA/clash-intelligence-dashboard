@@ -12,6 +12,7 @@ import {
 } from '@/lib/business/calculations';
 import { HERO_MAX_LEVELS } from '@/types';
 import { getRoleBadgeVariant } from '@/lib/leadership';
+import { resolveMemberLeague } from '@/lib/member-league';
 
 interface PlayerCardProps {
   member: Member;
@@ -27,14 +28,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
   const roleVariant = getRoleBadgeVariant(member.role);
   const showRoleBadge = roleVariant.tone !== 'member';
   const router = useRouter();
-  const leagueName = member.leagueName
-    ?? (typeof member.league === 'string' ? member.league : member.league?.name);
-  const leagueTrophies =
-    member.leagueTrophies
-      ?? (typeof member.league === 'object' && member.league !== null && typeof member.league.trophies === 'number'
-        ? member.league.trophies
-        : member.trophies ?? undefined);
-  const hasLeagueBadge = Boolean(leagueName || member.leagueId);
+  const leagueInfo = resolveMemberLeague(member);
 
   const handleClick = () => {
     if (onSelect) {
@@ -70,16 +64,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
           <h3 className="text-xl font-semibold text-high-contrast drop-shadow-sm">{member.name}</h3>
           <div className="text-xs text-muted-contrast">{member.tag}</div>
         </div>
-        {hasLeagueBadge ? (
-          <LeagueBadge league={leagueName ?? undefined} trophies={leagueTrophies} size="lg" showText={false} />
-        ) : (
-          <span
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-surfaceRaised/80 text-xl"
-            aria-hidden
-          >
-            🏆
-          </span>
-        )}
+        <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} size="lg" showText={false} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">

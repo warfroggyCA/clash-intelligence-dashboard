@@ -8,6 +8,7 @@ interface PhaseSummary {
   durationMs: number | null;
   rowDelta: number | null;
   errorMessage: string | null;
+  metadata?: Record<string, any> | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -47,6 +48,7 @@ export async function GET(req: NextRequest) {
         durationMs: typeof phase.duration_ms === 'number' ? phase.duration_ms : typeof phase.durationMs === 'number' ? phase.durationMs : null,
         rowDelta: typeof phase.row_delta === 'number' ? phase.row_delta : typeof phase.rowDelta === 'number' ? phase.rowDelta : null,
         errorMessage: typeof phase.error_message === 'string' ? phase.error_message : typeof phase.errorMessage === 'string' ? phase.errorMessage : null,
+        metadata: typeof phase.metadata === 'object' && phase.metadata !== null ? phase.metadata : null,
       };
     });
 
@@ -62,6 +64,17 @@ export async function GET(req: NextRequest) {
         }
       }
     });
+
+    const writeSnapshotPhase = (phasesRaw.writeSnapshot ?? null) as Record<string, any> | null;
+    const payloadVersion = typeof result.payloadVersion === 'string'
+      ? result.payloadVersion
+      : typeof writeSnapshotPhase?.metadata?.payloadVersion === 'string'
+        ? writeSnapshotPhase.metadata.payloadVersion
+        : null;
+    const snapshotId = result.snapshotId ?? writeSnapshotPhase?.metadata?.snapshotId ?? null;
+    const fetchedAt = result.fetchedAt ?? writeSnapshotPhase?.metadata?.fetchedAt ?? null;
+    const computedAt = result.computedAt ?? writeSnapshotPhase?.metadata?.computedAt ?? null;
+    const seasonId = result.seasonId ?? writeSnapshotPhase?.metadata?.seasonId ?? null;
 
     const finishedAt = data.updated_at;
     const startedAt = data.created_at;
@@ -83,6 +96,11 @@ export async function GET(req: NextRequest) {
         anomalies,
         stale: isStale,
         logs: (data.logs ?? []).slice(-15),
+        payloadVersion,
+        snapshotId,
+        fetchedAt,
+        computedAt,
+        seasonId,
       },
     });
   } catch (error: any) {

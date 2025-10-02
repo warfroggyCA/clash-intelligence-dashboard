@@ -7,6 +7,7 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { useQuickActions } from './QuickActions';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import type { TabType } from '@/types';
+import { cfg } from '@/lib/config';
 
 interface CommandRailProps {
   isOpen: boolean;
@@ -39,6 +40,10 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
   const lastLoadInfo = useDashboardStore((state) => state.lastLoadInfo);
   const setActiveTab = useDashboardStore((state) => state.setActiveTab);
   const setShowIngestionMonitor = useDashboardStore((state) => state.setShowIngestionMonitor);
+  const triggerIngestion = useDashboardStore((state) => state.triggerIngestion);
+  const isTriggeringIngestion = useDashboardStore((state) => state.isTriggeringIngestion);
+  const ingestionRunError = useDashboardStore((state) => state.ingestionRunError);
+  const canRunIngestion = useDashboardStore((state) => state.canManageClanData());
 
   const {
     handleRefreshData,
@@ -135,6 +140,9 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
               </p>
             )}
           </div>
+          <p className="mt-3 text-[11px] leading-relaxed text-slate-400">
+            Nightly ingestion refreshes this snapshot automatically. Use refresh to pull the latest run; leaders can rerun ingestion if an exception pops up.
+          </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Button
               size="sm"
@@ -145,15 +153,32 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
               {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Refresh Snapshot
             </Button>
-            <Button
-              size="sm"
-              variant="secondary"
-              className="flex-1 min-w-[8rem] bg-brand-surfaceSubtle text-slate-100 hover:bg-brand-surfaceRaised"
-              onClick={() => setShowIngestionMonitor(true)}
-            >
-              Monitor Jobs
-            </Button>
+            {canRunIngestion ? (
+              <>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="flex-1 min-w-[8rem] bg-brand-surfaceSubtle text-slate-100 hover:bg-brand-surfaceRaised"
+                  onClick={() => triggerIngestion(clanTag || cfg.homeClanTag || '')}
+                  disabled={isTriggeringIngestion}
+                >
+                  {isTriggeringIngestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Run Ingestion
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="flex-1 min-w-[8rem] bg-brand-surfaceSubtle text-slate-100 hover:bg-brand-surfaceRaised"
+                  onClick={() => setShowIngestionMonitor(true)}
+                >
+                  Monitor Jobs
+                </Button>
+              </>
+            ) : null}
           </div>
+          {canRunIngestion && ingestionRunError && (
+            <p className="mt-2 text-xs text-amber-300">{ingestionRunError}</p>
+          )}
         </GlassCard>
 
         <GlassCard className={cardClass}>

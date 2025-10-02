@@ -31,7 +31,6 @@ import { cfg } from '@/lib/config';
 import { CURRENT_PIPELINE_SCHEMA_VERSION } from '@/lib/pipeline-constants';
 import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 import { showToast } from '@/lib/toast';
-import { safeLocaleDateString, safeLocaleTimeString } from '@/lib/date';
 import { normalizeTag } from '@/lib/tags';
 import type { SmartInsightsPayload, SmartInsightsHeadline } from '@/lib/smart-insights';
 import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
@@ -91,6 +90,7 @@ export interface IngestionPhaseSummary {
   durationMs: number | null;
   rowDelta: number | null;
   errorMessage: string | null;
+  metadata?: Record<string, any> | null;
 }
 
 export interface IngestionHealthSummary {
@@ -104,6 +104,11 @@ export interface IngestionHealthSummary {
   anomalies: Array<{ phase: string; message: string }>;
   stale: boolean;
   logs?: Array<Record<string, any>>;
+  payloadVersion?: string | null;
+  snapshotId?: string | null;
+  fetchedAt?: string | null;
+  computedAt?: string | null;
+  seasonId?: string | null;
 }
 
 
@@ -215,17 +220,28 @@ interface DashboardState {
   smartInsightsError: string | null;
   smartInsightsClanTag: string | null;
   smartInsightsFetchedAt?: number;
+  latestSnapshotVersion: string | null;
+  latestSnapshotId?: string | null;
+  lastSnapshotFetchedAt?: string | null;
+  lastKnownIngestionVersion: string | null;
+  lastAutoRefreshVersion: string | null;
+  autoRefreshEnabled: boolean;
 
   currentUser: { id: string; email?: string | null } | null;
   userRoles: UserRoleRecord[];
   impersonatedRole?: ClanRoleName | null;
   rosterViewMode: 'table' | 'cards';
   ingestionHealth: IngestionHealthSummary | null;
+  isTriggeringIngestion: boolean;
+  ingestionRunError: string | null;
 
   canManageAccess: () => boolean;
   canManageClanData: () => boolean;
   canSeeLeadershipFeatures: () => boolean;
   canPublishDiscord: () => boolean;
+  startSnapshotAutoRefresh: () => void;
+  stopSnapshotAutoRefresh: () => void;
+  checkForNewSnapshot: () => Promise<void>;
 
   // Actions
   setRoster: (roster: Roster | null) => void;
@@ -286,6 +302,7 @@ interface DashboardState {
   resetDashboard: () => void;
   loadRoster: (clanTag: string, options?: { mode?: 'snapshot' | 'live'; force?: boolean }) => Promise<void>;
   loadIngestionHealth: (clanTag: string) => Promise<void>;
+  triggerIngestion: (clanTag: string) => Promise<void>;
   loadSmartInsights: (clanTag: string, options?: { force?: boolean; ttlMs?: number }) => Promise<void>;
   refreshData: () => Promise<void>;
   checkDepartureNotifications: () => Promise<void>;
@@ -304,6 +321,31 @@ const DEFAULT_ACCESS_LEVEL: AccessLevel = 'leader';
 const DEFAULT_CLAN_TAG = cfg.homeClanTag;
 const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change history
 const SMART_INSIGHTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for smart insights
+const SNAPSHOT_AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+let snapshotAutoRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+function scheduleSnapshotAutoRefreshLoop(getState: () => DashboardState) {
+  if (typeof window === 'undefined') return;
+  if (snapshotAutoRefreshTimer) {
+    clearTimeout(snapshotAutoRefreshTimer);
+    snapshotAutoRefreshTimer = null;
+  }
+  if (!getState().autoRefreshEnabled) {
+    return;
+  }
+  snapshotAutoRefreshTimer = setTimeout(async () => {
+    try {
+      await getState().checkForNewSnapshot();
+    } catch (error) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('[DashboardStore] Auto-refresh check failed', error);
+      }
+    } finally {
+      scheduleSnapshotAutoRefreshLoop(getState);
+    }
+  }, SNAPSHOT_AUTO_REFRESH_INTERVAL_MS);
+}
 
 const initialState = {
   // Core Data
@@ -364,11 +406,19 @@ const initialState = {
   smartInsightsError: null,
   smartInsightsClanTag: null,
   smartInsightsFetchedAt: undefined,
+  latestSnapshotVersion: null,
+  latestSnapshotId: null,
+  lastSnapshotFetchedAt: null,
+  lastKnownIngestionVersion: null,
+  lastAutoRefreshVersion: null,
+  autoRefreshEnabled: false,
   currentUser: null,
   userRoles: [],
   impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' as ClanRoleName : null,
   rosterViewMode: 'table' as const,
   ingestionHealth: null,
+  isTriggeringIngestion: false,
+  ingestionRunError: null,
 };
 
 // =============================================================================
@@ -385,16 +435,22 @@ export const useDashboardStore = create<DashboardState>()(
         // BASIC SETTERS
         // =============================================================================
       setRoster: (roster) => {
+        const payloadVersion = roster?.meta?.payloadVersion ?? roster?.snapshotMetadata?.payloadVersion ?? null;
+        const snapshotId = (roster?.snapshotMetadata as any)?.snapshotId ?? null;
+        const fetchedAt = roster?.snapshotMetadata?.fetchedAt ?? roster?.meta?.computedAt ?? null;
         set({
           roster,
           snapshotMetadata: roster?.snapshotMetadata ?? null,
           snapshotDetails: roster?.snapshotDetails ?? null,
+          latestSnapshotVersion: payloadVersion,
+          latestSnapshotId: snapshotId,
+          lastSnapshotFetchedAt: fetchedAt ?? null,
+          lastKnownIngestionVersion: payloadVersion ?? get().lastKnownIngestionVersion ?? null,
         });
         try {
           if (typeof window !== 'undefined' && roster && Array.isArray(roster.members)) {
             const tag = (roster.clanTag || get().clanTag || get().homeClan || '').toString();
             if (tag) {
-              const payloadVersion = roster.meta?.payloadVersion ?? roster.snapshotMetadata?.payloadVersion ?? null;
               const schemaVersion = roster.meta?.schemaVersion ?? roster.snapshotMetadata?.schemaVersion ?? null;
               const ingestionVersion = roster.meta?.ingestionVersion ?? roster.snapshotMetadata?.ingestionVersion ?? null;
               const computedAt = roster.meta?.computedAt ?? roster.snapshotMetadata?.computedAt ?? null;
@@ -403,6 +459,7 @@ export const useDashboardStore = create<DashboardState>()(
                 schemaVersion,
                 ingestionVersion,
                 computedAt,
+                snapshotId,
                 storedAt: Date.now(),
                 roster,
               };
@@ -419,7 +476,13 @@ export const useDashboardStore = create<DashboardState>()(
       // Snapshot metadata actions
       setSnapshotMetadata: (snapshotMetadata) => set({ snapshotMetadata }),
       setSnapshotDetails: (snapshotDetails) => set({ snapshotDetails }),
-      clearSnapshotData: () => set({ snapshotMetadata: null, snapshotDetails: null }),
+      clearSnapshotData: () => set({
+        snapshotMetadata: null,
+        snapshotDetails: null,
+        latestSnapshotVersion: null,
+        latestSnapshotId: null,
+        lastSnapshotFetchedAt: null,
+      }),
       
       setActiveTab: (activeTab) => set({ activeTab }),
       setSortKey: (sortKey) => set({ sortKey }),
@@ -505,7 +568,11 @@ export const useDashboardStore = create<DashboardState>()(
             set({ ingestionHealth: null });
             return;
           }
-          set({ ingestionHealth: payload.data as IngestionHealthSummary });
+          const health = payload.data as IngestionHealthSummary;
+          set({
+            ingestionHealth: health,
+            lastKnownIngestionVersion: health.payloadVersion ?? get().lastKnownIngestionVersion ?? null,
+          });
         } catch (error) {
           console.warn('[loadIngestionHealth] Failed', error);
         }
@@ -613,6 +680,10 @@ export const useDashboardStore = create<DashboardState>()(
                 tenureMatches: get().lastLoadInfo?.tenureMatches ?? 0,
                 total: get().roster?.members?.length ?? 0,
               });
+              const computed = get().snapshotMetadata?.computedAt ?? get().dataFetchedAt;
+              if (computed) {
+                setDataFetchedAt(computed);
+              }
               await get().loadIngestionHealth(normalizedTag);
               return;
             }
@@ -628,7 +699,9 @@ export const useDashboardStore = create<DashboardState>()(
               setLastLoadInfo({ source: src, ms: Date.now() - t0, tenureMatches, total: (payload.members || []).length });
               const fetchedAt = payload?.snapshotMetadata?.computedAt
                 ?? payload?.meta?.computedAt
+                ?? payload?.snapshot?.computedAt
                 ?? payload?.snapshotMetadata?.fetchedAt
+                ?? payload?.snapshot?.fetchedAt
                 ?? new Date().toISOString();
               setDataFetchedAt(fetchedAt);
               await get().loadIngestionHealth(normalizedTag);
@@ -917,7 +990,11 @@ export const useDashboardStore = create<DashboardState>()(
             return false;
           }
 
-          set({ roster: cachedRoster });
+          set({
+            roster: cachedRoster,
+            snapshotMetadata: cachedRoster.snapshotMetadata ?? null,
+            snapshotDetails: cachedRoster.snapshotDetails ?? null,
+          });
           const computedAt = (parsed as any)?.computedAt ?? cachedRoster.meta?.computedAt ?? cachedRoster.snapshotMetadata?.computedAt ?? null;
           if (computedAt) {
             set({ dataFetchedAt: computedAt });
@@ -925,6 +1002,38 @@ export const useDashboardStore = create<DashboardState>()(
             return true;
         } catch {}
         return false;
+      },
+
+      triggerIngestion: async (clanTag: string) => {
+        const { loadRoster, loadIngestionHealth } = get();
+        const normalizedTag = normalizeTag(clanTag) || clanTag;
+        if (!normalizedTag) {
+          set({ ingestionRunError: 'No clan tag available to run ingestion.' });
+          return;
+        }
+
+        set({ isTriggeringIngestion: true, ingestionRunError: null });
+
+        try {
+          const res = await fetch('/api/admin/run-staged-ingestion', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clanTag: normalizedTag })
+          });
+          const payload = await res.json().catch(() => null);
+          if (!res.ok || !payload?.success) {
+            const message = payload?.error || 'Ingestion run failed';
+            throw new Error(message);
+          }
+
+          await loadRoster(normalizedTag, { mode: 'snapshot', force: true });
+          await loadIngestionHealth(normalizedTag);
+        } catch (error: any) {
+          const message = error?.message || 'Failed to trigger ingestion';
+          set({ ingestionRunError: message });
+        } finally {
+          set({ isTriggeringIngestion: false });
+        }
       },
 
       hydrateSession: async () => {
@@ -986,85 +1095,108 @@ export const useDashboardStore = create<DashboardState>()(
         }
         return state.userRoles.some((role) => role.clan_tag === clanTag && (role.role === 'leader' || role.role === 'coleader'));
       },
-      
-      refreshData: async () => {
-        const { clanTag, loadRoster, setStatus, setMessage, setRoster, selectedSnapshot, setLastLoadInfo, setDataFetchedAt } = get();
+      startSnapshotAutoRefresh: () => {
+        if (typeof window === 'undefined') return;
+        set((state) => (state.autoRefreshEnabled ? {} : { autoRefreshEnabled: true }));
+        get().checkForNewSnapshot().catch(() => {
+          /* no-op */
+        });
+        scheduleSnapshotAutoRefreshLoop(get);
+      },
+      stopSnapshotAutoRefresh: () => {
+        if (typeof window === 'undefined') return;
+        if (snapshotAutoRefreshTimer) {
+          clearTimeout(snapshotAutoRefreshTimer);
+          snapshotAutoRefreshTimer = null;
+        }
+        set({ autoRefreshEnabled: false });
+      },
+      checkForNewSnapshot: async () => {
+        if (typeof window === 'undefined') return;
+        if (typeof document !== 'undefined' && document.hidden) {
+          return;
+        }
+
+        const state = get();
+        const activeStatus = state.status;
+        if (activeStatus === 'loading') {
+          return;
+        }
+
+        const clanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
         if (!clanTag) return;
-        
+
+        try {
+          const params = new URLSearchParams({ clanTag, _t: Date.now().toString() });
+          const res = await fetch(`/api/ingestion/health?${params.toString()}`, { cache: 'no-store' });
+          if (!res.ok) {
+            return;
+          }
+          const payload = await res.json();
+          if (!payload?.success) {
+            return;
+          }
+
+          const data = payload.data as IngestionHealthSummary;
+          const latestVersion = data.payloadVersion ?? null;
+          const latestSnapshotId = data.snapshotId ?? null;
+          const finishedAt = data.finishedAt ?? null;
+
+          set({
+            lastKnownIngestionVersion: latestVersion ?? state.lastKnownIngestionVersion ?? null,
+            ingestionHealth: data,
+          });
+
+          if (data.status !== 'completed') {
+            return;
+          }
+
+          const currentVersion = state.latestSnapshotVersion;
+          const currentSnapshotId = state.latestSnapshotId ?? null;
+
+          const fingerprintMatches = (() => {
+            if (latestVersion && currentVersion) {
+              return latestVersion === currentVersion;
+            }
+            if (!latestVersion && latestSnapshotId && currentSnapshotId) {
+              return latestSnapshotId === currentSnapshotId;
+            }
+            return false;
+          })();
+
+          if (fingerprintMatches) {
+            return;
+          }
+
+          const alreadyQueuedVersion = state.lastAutoRefreshVersion;
+          const candidateFingerprint = latestVersion ?? latestSnapshotId ?? finishedAt;
+          if (candidateFingerprint && alreadyQueuedVersion === candidateFingerprint) {
+            return;
+          }
+
+          set({ lastAutoRefreshVersion: candidateFingerprint ?? null });
+          showToast('New snapshot detected. Refreshing…', 'info');
+          await get().refreshData();
+        } catch (error) {
+          if (process.env.NODE_ENV === 'development') {
+            console.warn('[DashboardStore] Failed to check snapshot freshness', error);
+          }
+        }
+      },
+
+      refreshData: async () => {
+        const { clanTag, loadRoster, setStatus, setMessage } = get();
+        if (!clanTag) {
+          setMessage('Load a clan first to refresh data');
+          return;
+        }
+
         try {
           setStatus('loading');
-          setMessage('Refreshing data...');
-          const t0 = Date.now();
-
-          // Force fresh snapshot data by adding cache-busting parameter
-          const base = `/api/roster?clanTag=${encodeURIComponent(clanTag)}`;
-          const cacheBuster = `&_t=${Date.now()}`;
-          const date = selectedSnapshot === 'latest' || !selectedSnapshot ? 'latest' : selectedSnapshot;
-          
-          // Always use snapshot data for roster
-          const snapshotUrl = `${base}&mode=snapshot&date=${encodeURIComponent(date)}${cacheBuster}`;
-          const urls = [snapshotUrl, `${base}${cacheBuster}`];
-
-          const tryFetch = async (url: string) => {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 10000);
-            let res: Response;
-            try {
-              res = await fetch(url, { signal: controller.signal });
-            } finally {
-              clearTimeout(timer);
-            }
-            const json = await res.json();
-            return { ok: res.ok, json } as { ok: boolean; json: any };
-          };
-
-          let lastError: any = null;
-          for (const url of urls) {
-            try {
-              const { ok, json } = await tryFetch(url);
-              if (ok && json?.members) {
-                setRoster(json);
-                setLastLoadInfo({
-                  source: 'snapshot',
-                  ms: Date.now() - t0,
-                  tenureMatches: (json.members || []).reduce((acc: number, m: any) => acc + (((m.tenure_days || m.tenure || 0) > 0) ? 1 : 0), 0),
-                  total: (json.members || []).length
-                });
-                setDataFetchedAt(new Date().toISOString());
-                setStatus('success');
-                setMessage(`Loaded ${json.members.length} members from snapshot data`);
-                
-                
-                // Show toast notification with snapshot metadata
-                if (json.snapshotMetadata) {
-                  const snapshotDate = safeLocaleDateString(json.snapshotMetadata.snapshotDate, {
-                    fallback: 'Unknown',
-                    context: 'DashboardStore snapshotMetadata.snapshotDate'
-                  });
-                  const fetchedTime = safeLocaleTimeString(json.snapshotMetadata.fetchedAt, {
-                    locales: 'en-US',
-                    options: {
-                      hour12: false,
-                      timeZone: 'UTC'
-                    },
-                    fallback: 'Unknown',
-                    context: 'DashboardStore snapshotMetadata.fetchedAt'
-                  });
-                  showToast(
-                    `Latest snapshot: ${snapshotDate} ${fetchedTime} UTC`, 
-                    'success', 
-                    3000
-                  );
-                }
-                return;
-              }
-              lastError = json?.error || 'Invalid response format';
-            } catch (error) {
-              lastError = error;
-            }
-          }
-          
-          throw lastError || new Error('All fetch attempts failed');
+          setMessage('Refreshing snapshot from Supabase…');
+          await loadRoster(clanTag, { mode: 'snapshot', force: true });
+          setStatus('success');
+          setMessage('Snapshot data refreshed');
         } catch (error) {
           console.error('Failed to refresh roster:', error);
           setStatus('error');
@@ -1369,4 +1501,9 @@ if (typeof window !== 'undefined') {
   
   // Hydrate immediately
   hydrateFromStorage();
+
+  const state = useDashboardStore.getState();
+  if (!state.autoRefreshEnabled) {
+    state.startSnapshotAutoRefresh();
+  }
 }
