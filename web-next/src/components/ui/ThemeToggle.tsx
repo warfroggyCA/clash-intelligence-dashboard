@@ -40,7 +40,7 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   showLabels = false,
   size = 'md'
 }) => {
-  const { theme, setTheme, toggleTheme } = useTheme();
+  const { theme, resolvedTheme, setTheme, toggleTheme } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
 
   const sizeClasses = {
@@ -62,7 +62,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
   ];
 
   // Use appropriate icon based on current theme
-  const CurrentIcon = theme === 'light' ? Sun : Moon;
+  const CurrentIcon = resolvedTheme === 'light' ? Sun : Moon;
+  const nextThemeLabel = resolvedTheme === 'light' ? 'Switch to Dark' : 'Switch to Light';
 
   return (
     <div className={`relative ${className}`}>
@@ -126,36 +127,42 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                 </p>
               </div>
               
-              {themes.map(({ key, icon: Icon, label }) => (
-                <button
-                  key={key}
-                  onClick={() => {
-                    setTheme(key);
-                    setIsOpen(false);
-                  }}
-                  className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-150 focus:outline-none"
-                  style={{ 
-                    color: '#e2e8f0',
-                    backgroundColor: 'transparent'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.backgroundColor = '#334155';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.backgroundColor = '#334155';
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.backgroundColor = 'transparent';
-                  }}
-                  aria-label={`Switch to ${label} theme`}
-                >
-                  <Icon size={18} className="flex-shrink-0" />
-                  <span className="font-medium">{label}</span>
-                </button>
-              ))}
+              {themes.map(({ key, icon: Icon, label }) => {
+                const isActive = theme === key || (key === 'system' && theme === 'system');
+                const baseColor = '#e2e8f0';
+                const hoverColor = '#334155';
+
+                return (
+                  <button
+                    key={key}
+                    onClick={() => {
+                      setTheme(key);
+                      setIsOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-150 focus:outline-none"
+                    style={{
+                      color: baseColor,
+                      backgroundColor: isActive ? '#334155' : 'transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = hoverColor;
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isActive ? '#334155' : 'transparent';
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.backgroundColor = hoverColor;
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.backgroundColor = isActive ? '#334155' : 'transparent';
+                    }}
+                    aria-label={`Switch to ${label} theme`}
+                  >
+                    <Icon size={18} className="flex-shrink-0" />
+                    <span className="font-medium">{label}</span>
+                  </button>
+                );
+              })}
               
               {/* Quick Toggle */}
               <div 
@@ -179,8 +186,8 @@ export const ThemeToggle: React.FC<ThemeToggleProps> = ({
                     e.currentTarget.style.backgroundColor = 'rgba(251, 191, 36, 0.1)';
                   }}
                 >
-                  <Moon size={16} />
-                  Switch to Dark
+                  {resolvedTheme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+                  {nextThemeLabel}
                 </button>
               </div>
             </div>

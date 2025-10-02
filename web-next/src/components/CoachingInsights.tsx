@@ -185,9 +185,24 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
         schemaVersion: SMART_INSIGHTS_SCHEMA_VERSION,
         snapshotId: snapshotMetadata?.fetchedAt,
       },
+      briefing: {
+        title: "Today's Briefing",
+        summary: recommendations.length
+          ? `${recommendations.length} coaching recommendation${recommendations.length === 1 ? '' : 's'} ready.`
+          : 'No automated highlights available yet.',
+        sentiment: diagnostics.hasError ? 'warning' : (recommendations.length ? 'positive' : 'neutral'),
+        highlights: [],
+      },
       headlines: [],
+      recognition: {
+        playerOfTheDay: null,
+        spotlights: [],
+        watchlist: [],
+        callouts: [],
+      },
       coaching: recommendations.map(({ timestamp, date, ...rest }) => rest),
       playerSpotlights: [],
+      playerOfTheDay: null,
       diagnostics,
       context: {
         changeSummary: undefined,

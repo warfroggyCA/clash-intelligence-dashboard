@@ -110,7 +110,8 @@ body {
 /* Light theme body background */
 [data-theme="light"] body {
   background:
-    linear-gradient(180deg, #F8FAFC 0%, #F1F5F9 55%, #EEF2F7 100%);
+    linear-gradient(180deg, #FFFFFF 0%, #F7FAFF 50%, #EEF2F7 100%);
+  color: #1F2A44;
 }
 
 /* Light theme: main content background should be light */
@@ -309,30 +310,32 @@ th { @apply text-left font-semibold; }
 }
 
 [data-theme="light"] .view-toggle-btn:not(.view-toggle-btn--active) {
-  color: #1f2937 !important;
-  border-color: rgba(148, 163, 184, 0.45) !important;
-  background-color: rgba(255, 255, 255, 0.78) !important;
+  color: #1F2A44 !important;
+  border-color: rgba(203, 213, 225, 0.55) !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 6px 16px -12px rgba(15, 23, 42, 0.18);
 }
 
 [data-theme="light"] .view-toggle-btn:not(.view-toggle-btn--active):hover,
 [data-theme="light"] .view-toggle-btn:not(.view-toggle-btn--active):focus-visible {
-  color: #0f172a !important;
-  border-color: rgba(59, 130, 246, 0.45) !important;
-  background-color: rgba(226, 232, 240, 0.95) !important;
+  color: #0F172A !important;
+  border-color: rgba(148, 163, 184, 0.6) !important;
+  background-color: #F1F5F9 !important;
 }
 
 /* Light theme glass-card styling */
 [data-theme="light"] .glass-card {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.92), rgba(241, 245, 249, 0.9));
-  border: 1px solid rgba(148, 163, 184, 0.24);
-  color: var(--text-primary) !important;
+  background: #FFFFFF !important;
+  border: 1px solid rgba(203, 213, 225, 0.55) !important;
+  color: #1F2A44 !important;
+  box-shadow: 0 10px 22px -16px rgba(15, 23, 42, 0.16);
 }
 
 [data-theme="light"] .player-card {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.96), rgba(241, 245, 255, 0.9)) !important;
-  border-color: rgba(148, 163, 184, 0.3) !important;
-  box-shadow: 0 16px 32px -26px rgba(15, 23, 42, 0.22) !important;
-  color: #1E293B !important;
+  background: #FFFFFF !important;
+  border-color: rgba(203, 213, 225, 0.55) !important;
+  box-shadow: 0 14px 26px -20px rgba(15, 23, 42, 0.16) !important;
+  color: #1F2A44 !important;
 }
 
 /* Force text colors in light theme glass cards */
@@ -354,33 +357,52 @@ th { @apply text-left font-semibold; }
 [data-theme="light"] .glass-card p,
 [data-theme="light"] .glass-card span,
 [data-theme="light"] .glass-card div {
-  color: var(--text-primary) !important;
+  color: #1F2A44 !important;
 }
 
-[data-theme="light"] .glass-card {
-  box-shadow: 0 18px 36px -28px rgba(15, 23, 42, 0.16), 0 2px 6px rgba(15, 23, 42, 0.08);
+[data-theme="light"] .glass-card .text-slate-200,
+[data-theme="light"] .glass-card .text-slate-300,
+[data-theme="light"] .glass-card .text-slate-400,
+[data-theme="light"] .glass-card .text-slate-500,
+[data-theme="light"] .glass-card .text-slate-600,
+[data-theme="light"] .glass-card .text-muted-contrast {
+  color: #30415F !important;
+}
+
+[data-theme="light"] .glass-card .uppercase {
+  color: #2A3B57 !important;
+  letter-spacing: 0.18em;
+}
+
+[data-theme="light"] .glass-card .uppercase.text-slate-400 {
+  color: #2E4060 !important;
 }
 
 [data-theme="light"] .stat-tile {
-  background: linear-gradient(155deg, rgba(255, 255, 255, 0.96), rgba(240, 245, 255, 0.9)) !important;
-  border-color: rgba(148, 163, 184, 0.26) !important;
-  box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.18);
+  background: #FFFFFF !important;
+  border-color: rgba(209, 213, 219, 0.55) !important;
+  box-shadow: 0 8px 18px -14px rgba(15, 23, 42, 0.15);
+  color: #1F2A44 !important;
+}
+
+[data-theme="light"] .stat-tile .text-muted {
+  color: #4A5D7C !important;
 }
 
 [data-theme="light"] .hero-progress-track {
-  background-color: rgba(226, 232, 240, 0.65) !important;
-  border-color: rgba(148, 163, 184, 0.45) !important;
+  background-color: rgba(226, 232, 240, 0.45) !important;
+  border-color: rgba(203, 213, 225, 0.55) !important;
 }
 
 [data-theme="light"] .player-card__hero-section {
-  background-color: rgba(226, 232, 240, 0.75) !important;
+  background-color: rgba(244, 248, 255, 0.78) !important;
   border-color: rgba(203, 213, 225, 0.45) !important;
 }
 
 [data-theme="light"] .player-card__chip {
-  background-color: rgba(226, 232, 240, 0.65) !important;
+  background-color: rgba(236, 241, 255, 0.7) !important;
   border-color: rgba(203, 213, 225, 0.5) !important;
-  color: #1E293B !important;
+  color: #1F2A44 !important;
 }
 
 [data-theme="light"] .player-card__chip--positive {
@@ -396,50 +418,21 @@ th { @apply text-left font-semibold; }
 }
 
 [data-theme="light"] .player-card__chip--muted {
-  background-color: rgba(203, 213, 225, 0.45) !important;
-  border-color: rgba(148, 163, 184, 0.4) !important;
+  background-color: rgba(226, 232, 240, 0.6) !important;
+  border-color: rgba(203, 213, 225, 0.5) !important;
   color: #475569 !important;
 }
 
 [data-theme="light"] .player-card__action-button {
-  border-color: rgba(148, 163, 184, 0.45) !important;
-  color: #1E3A8A !important;
-  background-color: rgba(226, 232, 240, 0.8) !important;
+  border-color: rgba(203, 213, 225, 0.55) !important;
+  color: #1F2A44 !important;
+  background-color: #FFFFFF !important;
+  box-shadow: 0 6px 12px -10px rgba(15, 23, 42, 0.15);
 }
 
 [data-theme="light"] .player-card__action-button:hover {
-  background-color: rgba(203, 213, 225, 0.9) !important;
-  color: #1E293B !important;
-}
-
-[data-theme="light"] .view-toggle-btn {
-  border-color: rgba(148, 163, 184, 0.4) !important;
-  color: #1E3A8A !important;
-  background-color: rgba(226, 232, 240, 0.45) !important;
-}
-
-[data-theme="light"] .view-toggle-btn--active {
-  box-shadow: 0 12px 24px -14px rgba(59, 130, 246, 0.35) !important;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(99, 102, 241, 0.9)) !important;
-  color: #ffffff !important;
-}
-
-[data-theme="light"] .glass-card .text-slate-200,
-[data-theme="light"] .glass-card .text-slate-300,
-[data-theme="light"] .glass-card .text-slate-400,
-[data-theme="light"] .glass-card .text-slate-500 {
-  color: #475569 !important;
-}
-
-[data-theme="light"] .glass-card .text-slate-100,
-[data-theme="light"] .glass-card .text-slate-50,
-[data-theme="light"] .glass-card .text-white {
-  color: #1E293B !important;
-}
-
-[data-theme="light"] .glass-card .text-slate-300.uppercase,
-[data-theme="light"] .glass-card .text-slate-400.uppercase {
-  color: #64748B !important;
+  background-color: #F1F5F9 !important;
+  color: #0F172A !important;
 }
 
 .glass-card::before {
@@ -464,11 +457,11 @@ th { @apply text-left font-semibold; }
 }
 
 [data-theme="light"] .glass-card::before {
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.5), rgba(226, 232, 240, 0.25));
+  display: none;
 }
 
 [data-theme="light"] .glass-card::after {
-  background: radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 55%);
+  display: none;
 }
 
 /* Make tooltips appear immediately - override browser default delay */
@@ -631,9 +624,10 @@ th { @apply text-left font-semibold; }
 
 /* Light theme table styles */
 [data-theme="light"] .clash-table th {
-  background-color: #EEF2FF;
+  background-color: #F3F6FF;
   border-color: rgba(148, 163, 184, 0.35);
-  color: #1E3A8A;
+  color: #243659;
+  font-weight: 600;
 }
 
 [data-theme="light"] .clash-table td {
@@ -687,9 +681,9 @@ th { @apply text-left font-semibold; }
 }
 
 [data-theme="light"] .clash-card {
-  background: linear-gradient(150deg, rgba(255, 255, 255, 0.94), rgba(241, 245, 249, 0.9)) !important;
-  border-color: rgba(148, 163, 184, 0.28) !important;
-  box-shadow: 0 14px 28px -20px rgba(15, 23, 42, 0.18) !important;
+  background: #ffffff !important;
+  border-color: rgba(148, 163, 184, 0.32) !important;
+  box-shadow: 0 18px 36px -28px rgba(15, 23, 42, 0.2) !important;
 }
 
 .role-badge {
@@ -848,36 +842,16 @@ th { @apply text-left font-semibold; }
   color: #0F172A !important;
 }
 
-[data-theme="light"] .text-slate-200 {
-  color: #334155 !important;
-}
-
-[data-theme="light"] .text-slate-300 {
-  color: #475569 !important;
-}
-
-[data-theme="light"] .text-slate-400 {
-  color: #64748B !important;
-}
-
-[data-theme="light"] .text-slate-500 {
-  color: #64748B !important;
-}
-
-[data-theme="light"] .text-slate-600 {
-  color: #475569 !important;
-}
-
-[data-theme="light"] .text-slate-700 {
-  color: #334155 !important;
-}
-
-[data-theme="light"] .text-slate-800 {
-  color: #1E293B !important;
-}
-
+[data-theme="light"] .text-slate-100,
+[data-theme="light"] .text-slate-200,
+[data-theme="light"] .text-slate-300,
+[data-theme="light"] .text-slate-400,
+[data-theme="light"] .text-slate-500,
+[data-theme="light"] .text-slate-600,
+[data-theme="light"] .text-slate-700,
+[data-theme="light"] .text-slate-800,
 [data-theme="light"] .text-slate-900 {
-  color: #0F172A !important;
+  color: #1F2A44 !important;
 }
 
 /* Light theme border colors */
@@ -910,14 +884,6 @@ th { @apply text-left font-semibold; }
 }
 
 /* Keep header text white in light theme */
-[data-theme="light"] .header-hero {
-  color: white !important;
-}
-
-[data-theme="light"] .header-hero * {
-  color: white !important;
-}
-
 [data-theme="light"] .border-white\/30 { border-color: rgba(15, 23, 42, 0.2) !important; }
 [data-theme="light"] .border-white\/20 { border-color: rgba(15, 23, 42, 0.15) !important; }
 [data-theme="light"] .border-white\/15 { border-color: rgba(15, 23, 42, 0.12) !important; }
@@ -954,6 +920,11 @@ th { @apply text-left font-semibold; }
 
 [data-theme="dark"] .metric-label {
   color: rgba(241, 245, 249, 0.65);
+}
+
+[data-theme="light"] .metric-label {
+  color: #2F4160;
+  letter-spacing: 0.2em;
 }
 
 .metric-value {
@@ -997,7 +968,7 @@ th { @apply text-left font-semibold; }
 
 [data-theme="light"] .quick-action-btn {
   border-color: rgba(148, 163, 184, 0.35) !important;
-  color: #1E3A8A !important;
+  color: #20304C !important;
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(226, 232, 240, 0.92)) !important;
   box-shadow: 0 10px 18px -14px rgba(15, 23, 42, 0.18);
 }
@@ -1013,13 +984,13 @@ th { @apply text-left font-semibold; }
 
 [data-theme="light"] .quick-actions-card .bg-brand-surfaceSubtle\/70,
 [data-theme="light"] .quick-actions-card .bg-brand-surfaceRaised\/60 {
-  background-color: rgba(226, 232, 240, 0.82) !important;
-  color: #1E293B !important;
+  background-color: #ffffff !important;
+  color: #1F2937 !important;
 }
 
 [data-theme="light"] .quick-actions-card .bg-brand-surfaceRaised\/80 {
-  background-color: rgba(209, 213, 219, 0.82) !important;
-  color: #1E293B !important;
+  background-color: rgba(241, 245, 249, 0.92) !important;
+  color: #1F2937 !important;
 }
 
 [data-theme="light"] .quick-actions-card .text-slate-200,
@@ -1028,10 +999,16 @@ th { @apply text-left font-semibold; }
   color: #475569 !important;
 }
 [data-theme="light"] .command-rail-card {
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.94), rgba(237, 242, 248, 0.92)) !important;
+  background: #ffffff !important;
   color: #10213A !important;
   border-color: rgba(148, 163, 184, 0.35) !important;
-  box-shadow: 0 22px 44px -28px rgba(15, 23, 42, 0.2) !important;
+  box-shadow: 0 24px 46px -30px rgba(15, 23, 42, 0.22) !important;
+}
+
+[data-theme="light"] .command-rail-card p,
+[data-theme="light"] .command-rail-card span,
+[data-theme="light"] .command-rail-card div {
+  color: #20304C !important;
 }
 
 [data-theme="light"] .command-rail-card .text-slate-100,
@@ -1070,10 +1047,16 @@ th { @apply text-left font-semibold; }
   box-shadow: 0 28px 52px -32px rgba(15, 23, 42, 0.22) !important;
 }
 [data-theme="light"] .command-rail-header {
-  background: linear-gradient(150deg, rgba(245, 248, 255, 0.95), rgba(226, 232, 240, 0.92)) !important;
+  background: #f8fafc !important;
   border-color: rgba(203, 213, 225, 0.65) !important;
   color: #1E293B !important;
-  box-shadow: 0 18px 36px -28px rgba(15, 23, 42, 0.22) !important;
+  box-shadow: 0 18px 32px -26px rgba(15, 23, 42, 0.18) !important;
+}
+
+/* Keep header white text in light theme */
+[data-theme="light"] .header-hero,
+[data-theme="light"] .header-hero * {
+  color: #ffffff !important;
 }
 
 [data-theme="light"] .command-rail-header .text-slate-100,
@@ -1086,4 +1069,8 @@ th { @apply text-left font-semibold; }
 [data-theme="light"] .command-rail-header .bg-brand-surfaceSubtle {
   background-color: rgba(226, 232, 240, 0.85) !important;
   color: #1E293B !important;
+}
+[data-theme="light"] .text-slate-400.uppercase,
+[data-theme="light"] .text-slate-500.uppercase {
+  color: #2F4160 !important;
 }

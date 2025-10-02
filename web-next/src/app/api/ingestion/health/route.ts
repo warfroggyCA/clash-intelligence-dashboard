@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
 
     let query = supabase
       .from('ingestion_jobs')
-      .select('id, clan_tag, status, created_at, updated_at, steps, logs, result')
+      .select('id, clan_tag, status, created_at, updated_at, steps, logs, result, payload_version, ingestion_version, schema_version, total_duration_ms, anomalies, fetched_at, computed_at')
       .order('created_at', { ascending: false })
       .limit(1);
 
@@ -38,8 +38,10 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'No ingestion jobs found' }, { status: 404 });
     }
 
-    const result = (data.result ?? {}) as Record<string, any>;
-    const phasesRaw = result.phases ?? {};
+    const phasesRaw = ((data.steps ?? []) as any[]).reduce<Record<string, any>>((acc, step) => {
+      acc[step.name] = step.metadata ? { ...step.metadata, success: step.success } : { success: step.success };
+      return acc;
+    }, {});
     const phases: PhaseSummary[] = Object.entries(phasesRaw).map(([name, value]) => {
       const phase = value as Record<string, any>;
       return {
@@ -66,15 +68,12 @@ export async function GET(req: NextRequest) {
     });
 
     const writeSnapshotPhase = (phasesRaw.writeSnapshot ?? null) as Record<string, any> | null;
-    const payloadVersion = typeof result.payloadVersion === 'string'
-      ? result.payloadVersion
-      : typeof writeSnapshotPhase?.metadata?.payloadVersion === 'string'
-        ? writeSnapshotPhase.metadata.payloadVersion
-        : null;
-    const snapshotId = result.snapshotId ?? writeSnapshotPhase?.metadata?.snapshotId ?? null;
-    const fetchedAt = result.fetchedAt ?? writeSnapshotPhase?.metadata?.fetchedAt ?? null;
-    const computedAt = result.computedAt ?? writeSnapshotPhase?.metadata?.computedAt ?? null;
-    const seasonId = result.seasonId ?? writeSnapshotPhase?.metadata?.seasonId ?? null;
+    const payloadVersion = data.payload_version
+      ?? (typeof writeSnapshotPhase?.metadata?.payloadVersion === 'string' ? writeSnapshotPhase.metadata.payloadVersion : null);
+    const snapshotId = writeSnapshotPhase?.metadata?.snapshotId ?? null;
+    const fetchedAt = data.fetched_at ?? writeSnapshotPhase?.metadata?.fetchedAt ?? null;
+    const computedAt = data.computed_at ?? writeSnapshotPhase?.metadata?.computedAt ?? null;
+    const seasonId = writeSnapshotPhase?.metadata?.seasonId ?? null;
 
     const finishedAt = data.updated_at;
     const startedAt = data.created_at;
@@ -91,12 +90,14 @@ export async function GET(req: NextRequest) {
         status: data.status,
         startedAt,
         finishedAt,
-        totalDurationMs,
+        totalDurationMs: data.total_duration_ms ?? totalDurationMs,
         phases,
         anomalies,
         stale: isStale,
         logs: (data.logs ?? []).slice(-15),
         payloadVersion,
+        ingestionVersion: data.ingestion_version ?? null,
+        schemaVersion: data.schema_version ?? null,
         snapshotId,
         fetchedAt,
         computedAt,

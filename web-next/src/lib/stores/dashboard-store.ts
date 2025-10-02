@@ -266,6 +266,8 @@ export interface IngestionHealthSummary {
   stale: boolean;
   logs?: Array<Record<string, any>>;
   payloadVersion?: string | null;
+  ingestionVersion?: string | null;
+  schemaVersion?: string | null;
   snapshotId?: string | null;
   fetchedAt?: string | null;
   computedAt?: string | null;
@@ -996,7 +998,7 @@ export const useDashboardStore = create<DashboardState>()(
           const timer = setTimeout(() => controller.abort(), 10000);
           let res: Response;
           try {
-            res = await fetch(`/api/ai/batch-results?clanTag=${encodeURIComponent(cleanTag)}`, { signal: controller.signal });
+            res = await fetch(`/api/insights?clanTag=${encodeURIComponent(cleanTag)}`, { signal: controller.signal });
           } finally {
             clearTimeout(timer);
           }
@@ -1006,7 +1008,10 @@ export const useDashboardStore = create<DashboardState>()(
           }
 
           const data = await res.json();
-          const payload: SmartInsightsPayload | null = data?.data?.smartInsightsPayload ?? data?.data?.smart_insights_payload ?? null;
+          const payload: SmartInsightsPayload | null = data?.data?.smartInsightsPayload
+            ?? data?.data?.payload
+            ?? data?.data?.smart_insights_payload
+            ?? null;
 
           if (payload) {
             get().setSmartInsights(payload);

@@ -3,7 +3,7 @@
 import { useMemo } from 'react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { GlassCard, Button } from '@/components/ui';
-import SmartInsightsHeadlines from '@/components/SmartInsightsHeadlines';
+import TodaysBriefing from '@/components/TodaysBriefing';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import { normalizeTag } from '@/lib/tags';
@@ -33,7 +33,6 @@ export const InsightsDashboard: React.FC = () => {
   const smartInsights = useDashboardStore(selectors.smartInsights);
   const smartInsightsStatus = useDashboardStore(selectors.smartInsightsStatus);
   const smartInsightsError = useDashboardStore(selectors.smartInsightsError);
-  const smartInsightsHeadlines = useDashboardStore(selectors.smartInsightsHeadlines);
 
   const normalizedTag = useMemo(() => normalizeTag(clanTag) || clanTag, [clanTag]);
   const historyEntry = useDashboardStore((state) =>
@@ -55,11 +54,15 @@ export const InsightsDashboard: React.FC = () => {
     return 'Outdated (>48h)';
   }, [dataAgeHours]);
 
+  const hasPayload = Boolean(smartInsights);
+  const highlightCount = smartInsights?.briefing?.highlights?.length ?? 0;
+
   const insightStatusLabel = useMemo(() => {
     if (smartInsightsStatus === 'loading') return 'Refreshing';
     if (smartInsightsStatus === 'error') return 'Error';
-    return smartInsightsHeadlines.length > 0 ? 'Fresh' : 'No insights yet';
-  }, [smartInsightsStatus, smartInsightsHeadlines.length]);
+    if (!hasPayload) return 'No insights yet';
+    return highlightCount > 0 ? 'Fresh' : 'No insights yet';
+  }, [smartInsightsStatus, hasPayload, highlightCount]);
 
   const recentChanges: ChangeSummary[] = useMemo(() => {
     if (!historyEntry?.items?.length) return [];
@@ -134,16 +137,8 @@ export const InsightsDashboard: React.FC = () => {
       </GlassCard>
 
       <GlassCard className="space-y-4">
-        <SectionTitle icon="💡" title="Today&apos;s Headlines" subtitle="Key insights from the latest snapshot" />
-        {smartInsightsHeadlines.length > 0 ? (
-          <SmartInsightsHeadlines />
-        ) : (
-          <p className="text-sm text-slate-300">
-            {smartInsightsStatus === 'loading'
-              ? 'Generating new headlines…'
-              : 'No headlines available yet. Refresh insights to generate today’s briefing.'}
-          </p>
-        )}
+        <SectionTitle icon="💡" title="Today&apos;s Briefing" subtitle="Key insights from the latest snapshot" />
+        <TodaysBriefing />
       </GlassCard>
 
       <GlassCard className="space-y-4">

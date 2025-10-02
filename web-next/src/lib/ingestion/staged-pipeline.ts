@@ -123,14 +123,28 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
 
     result.success = true;
     const writeSnapshotMetadata = result.phases.writeSnapshot?.metadata ?? {};
+    const totalDurationMs = Object.values(result.phases).reduce((sum, phase) => sum + (phase?.duration_ms ?? 0), 0);
+    const anomalies = Object.entries(result.phases)
+      .filter(([name, phase]) => {
+        if (!phase) return false;
+        if (!phase.success) return true;
+        if ((name === 'upsertMembers' || name === 'writeStats') && typeof phase.row_delta === 'number' && phase.row_delta === 0) {
+          return true;
+        }
+        return false;
+      })
+      .map(([name, phase]) => ({ phase: name, message: phase?.error_message ?? 'row_delta 0' }));
+
+    (result as any).anomalies = anomalies;
+
     await updateJobStatus(jobId, 'completed', {
-      phases: result.phases,
-      success: true,
-      snapshotId: writeSnapshotMetadata?.snapshotId ?? null,
+      totalDurationMs,
+      anomalies,
       payloadVersion: writeSnapshotMetadata?.payloadVersion ?? null,
+      ingestionVersion: writeSnapshotMetadata?.ingestionVersion ?? 'staged-pipeline-v1',
+      schemaVersion: CURRENT_PIPELINE_SCHEMA_VERSION,
       fetchedAt: writeSnapshotMetadata?.fetchedAt ?? snapshot?.fetchedAt ?? null,
       computedAt: writeSnapshotMetadata?.computedAt ?? null,
-      seasonId: writeSnapshotMetadata?.seasonId ?? null,
     });
     await logPhase(jobId, 'pipeline', 'info', 'Staged ingestion completed successfully');
 
@@ -138,9 +152,8 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
     result.success = false;
     result.error = error.message;
     await updateJobStatus(jobId, 'failed', {
-      phases: result.phases,
-      success: false,
-      error: error.message,
+      totalDurationMs: Object.values(result.phases).reduce((sum, phase) => sum + (phase?.duration_ms ?? 0), 0),
+      anomalies: [{ phase: 'pipeline', message: error.message }],
     });
     await logPhase(jobId, 'pipeline', 'error', `Staged ingestion failed: ${error.message}`);
   }
@@ -661,6 +674,8 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
       fetchedAt: snapshot.fetchedAt,
       computedAt,
       seasonId: metadata?.seasonId ?? null,
+      ingestionVersion: snapshotData.ingestion_version,
+      schemaVersion: snapshotData.schema_version,
     };
 
     await logPhase(jobId, 'writeSnapshot', 'info', 'Write snapshot phase completed', phaseMetadata);

@@ -88,6 +88,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
 
   // Shrink-on-scroll state
   const [isScrolled, setIsScrolled] = useState(false);
+  const SCROLL_ACTIVATE_THRESHOLD = 64;
+  const SCROLL_DEACTIVATE_THRESHOLD = 24;
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
   const roleMenuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement | null>(null);
@@ -102,10 +104,18 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const onScroll = () => setIsScrolled(window.scrollY > 12);
-    onScroll();
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    const handleScroll = () => {
+      setIsScrolled((prev) => {
+        const currentY = window.scrollY;
+        if (prev) {
+          return currentY > SCROLL_DEACTIVATE_THRESHOLD;
+        }
+        return currentY >= SCROLL_ACTIVATE_THRESHOLD;
+      });
+    };
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
   useEffect(() => {

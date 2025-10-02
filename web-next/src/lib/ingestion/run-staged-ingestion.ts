@@ -60,18 +60,21 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
     result.success = true;
 
     const phases = ingestionResult.phases ?? {};
-    const problematicPhases = Object.entries(phases)
-      .filter(([name, phase]) => {
-        if (!phase) return false;
-        if (!phase.success) return true;
-        if ((name === 'upsertMembers' || name === 'writeStats') && typeof phase.row_delta === 'number' && phase.row_delta === 0) {
-          return true;
-        }
-        return false;
-      })
-      .map(([name, phase]) => ({ name, phase }));
+    const anomalies = (ingestionResult as any).anomalies as Array<{ phase: string; message: string }> | undefined;
+    const problematicPhases = anomalies?.length
+      ? anomalies
+      : Object.entries(phases)
+          .filter(([name, phase]) => {
+            if (!phase) return false;
+            if (!phase.success) return true;
+            if ((name === 'upsertMembers' || name === 'writeStats') && typeof phase.row_delta === 'number' && phase.row_delta === 0) {
+              return true;
+            }
+            return false;
+          })
+          .map(([name, phase]) => ({ phase: name, message: phase?.error_message ?? 'row_delta 0' }));
 
-    if (problematicPhases.length) {
+    if (problematicPhases?.length) {
       await sendIngestionWarning(clanTag, 'Ingestion completed with anomalies', {
         jobId: stagedOptions.jobId,
         phases: problematicPhases,

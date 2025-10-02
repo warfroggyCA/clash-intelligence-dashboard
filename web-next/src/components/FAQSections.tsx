@@ -66,13 +66,13 @@ const FAQSections: React.FC<FAQSectionsProps> = ({ className }) => {
             <ul className="space-y-1">
               <li>Current clan composition, average TH, trophy pulls, donation totals.</li>
               <li>ACE leader highlight (tap to view full leaderboard + math breakdown).</li>
-              <li>Smart insights reel (AI-generated headlines from stored change logs).</li>
+              <li>Smart insights reel (automated headlines from stored change logs).</li>
             </ul>
           </Card>
           <Card title="Changes & history">
             <ul className="space-y-1">
               <li>Roster change log (joins, leaves, promotions, rush deltas).</li>
-              <li>AI change summaries stored in Supabase (with read/action tracking).</li>
+              <li>Automated change summaries stored in Supabase (with read/action tracking).</li>
               <li>Export-ready copy for Discord or clan mail.</li>
             </ul>
           </Card>
@@ -138,7 +138,8 @@ const FAQSections: React.FC<FAQSectionsProps> = ({ className }) => {
             <ul className="space-y-1">
               <li><code>roster_snapshots</code>: clan snapshot metadata.</li>
               <li><code>member_snapshot_stats</code>: per-member metrics + `extras.ace` payload.</li>
-              <li><code>batch_ai_results</code>: smart insights & coaching bundles.</li>
+              <li><code>smart_insights_payloads</code>: consolidated smart insights payloads.</li>
+              <li><code>batch_ai_results</code>: legacy smart insights & coaching bundles (read-only fallback).</li>
               <li><code>clan_snapshots</code>, <code>snapshots</code>: legacy snapshot storage.</li>
             </ul>
           </Card>
