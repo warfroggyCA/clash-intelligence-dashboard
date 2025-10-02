@@ -8,6 +8,7 @@ import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { createApiContext } from '@/lib/api/route-helpers';
 import { appendTenureLedgerEntry } from '@/lib/tenure';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 type Update = { tag: string; tenure_days: number };
 const TAG_RE = /^#[0289PYLQGRJCUV]{5,}$/;
@@ -34,13 +35,29 @@ export async function POST(req: Request) {
     });
     if (invalid.length) return json({ success: false, error: `Invalid tag(s): ${invalid.join(", ")}` }, { status: 400 });
 
-    // Use Supabase-based tenure saving for production persistence
     const as_of = ymdUTC();
+    const supabase = cfg.useSupabase ? getSupabaseAdminClient() : null;
+
     for (const c of cleaned) {
       await appendTenureLedgerEntry(c.tag, c.base, as_of);
+
+      if (supabase) {
+        const { error } = await supabase
+          .from('members')
+          .update({
+            tenure_days: c.base,
+            tenure_as_of: as_of,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('tag', c.tag);
+
+        if (error) {
+          console.warn('[api/tenure/save] Failed to update members tenure column', error);
+        }
+      }
     }
 
-    return json({ success: true, data: { count: cleaned.length } });
+    return json({ success: true, data: { count: cleaned.length, as_of } });
   } catch (e: any) {
     return json({ success: false, error: e?.message || "Save failed" }, { status: 500 });
   }

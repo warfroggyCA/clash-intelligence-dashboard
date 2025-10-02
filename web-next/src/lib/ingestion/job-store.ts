@@ -27,8 +27,14 @@ export interface IngestionJobRecord {
   steps: IngestionJobStep[];
   createdAt: string;
   updatedAt: string;
-  result?: Record<string, any>;
   logs: IngestionJobLogEntry[];
+  anomalies?: Array<{ phase: string; message: string }>;
+  totalDurationMs?: number | null;
+  payloadVersion?: string | null;
+  ingestionVersion?: string | null;
+  schemaVersion?: string | null;
+  fetchedAt?: string | null;
+  computedAt?: string | null;
 }
 
 const JOBS_DIR = path.join(process.cwd(), cfg.dataRoot, 'ingestion-jobs');
@@ -81,7 +87,13 @@ async function writeJobRecord(record: IngestionJobRecord) {
           status: record.status,
           steps: record.steps,
           logs: record.logs,
-          result: record.result ?? null,
+          anomalies: record.anomalies ?? null,
+          total_duration_ms: record.totalDurationMs ?? null,
+          payload_version: record.payloadVersion ?? null,
+          ingestion_version: record.ingestionVersion ?? null,
+          schema_version: record.schemaVersion ?? null,
+          fetched_at: record.fetchedAt ?? null,
+          computed_at: record.computedAt ?? null,
           created_at: record.createdAt,
           updated_at: record.updatedAt,
         });
@@ -121,8 +133,14 @@ async function readJobRecord(jobId: string): Promise<IngestionJobRecord | null> 
         steps: data.steps || [],
         createdAt: data.created_at,
         updatedAt: data.updated_at,
-        result: data.result || undefined,
         logs: data.logs || [],
+        anomalies: data.anomalies ?? undefined,
+        totalDurationMs: data.total_duration_ms ?? undefined,
+        payloadVersion: data.payload_version ?? undefined,
+        ingestionVersion: data.ingestion_version ?? undefined,
+        schemaVersion: data.schema_version ?? undefined,
+        fetchedAt: data.fetched_at ?? undefined,
+        computedAt: data.computed_at ?? undefined,
       };
     } catch (error) {
       console.warn('[IngestionJobStore] Supabase unavailable, using local fallback', error);
@@ -177,7 +195,13 @@ export async function updateJobStatus(jobId: string, status: IngestionStepStatus
   record.status = status;
   record.updatedAt = new Date().toISOString();
   if (result) {
-    record.result = result;
+    record.totalDurationMs = typeof result.totalDurationMs === 'number' ? result.totalDurationMs : record.totalDurationMs;
+    record.anomalies = Array.isArray(result.anomalies) ? result.anomalies : record.anomalies;
+    record.payloadVersion = result.payloadVersion ?? record.payloadVersion;
+    record.ingestionVersion = result.ingestionVersion ?? record.ingestionVersion;
+    record.schemaVersion = result.schemaVersion ?? record.schemaVersion;
+    record.fetchedAt = result.fetchedAt ?? record.fetchedAt;
+    record.computedAt = result.computedAt ?? record.computedAt;
   }
   await writeJobRecord(record);
 }

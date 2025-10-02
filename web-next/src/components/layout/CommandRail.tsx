@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from 'react';
+import { formatDistanceToNow } from 'date-fns';
 import { Loader2, PanelRightClose, PanelRightOpen, ShieldCheck } from 'lucide-react';
 import { Button, GlassCard } from '@/components/ui';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
@@ -44,6 +45,7 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
   const isTriggeringIngestion = useDashboardStore((state) => state.isTriggeringIngestion);
   const ingestionRunError = useDashboardStore((state) => state.ingestionRunError);
   const canRunIngestion = useDashboardStore((state) => state.canManageClanData());
+  const ingestionHealth = useDashboardStore((state) => state.ingestionHealth);
 
   const {
     handleRefreshData,
@@ -80,6 +82,25 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
     () => smartInsightsState(smartInsightsStatus, smartInsightsIsStale),
     [smartInsightsStatus, smartInsightsIsStale]
   );
+
+  const lastIngestionTimestamp = ingestionHealth?.finishedAt ?? ingestionHealth?.startedAt ?? null;
+  const ingestionLastRunLabel = lastIngestionTimestamp
+    ? formatDistanceToNow(new Date(lastIngestionTimestamp), { addSuffix: true })
+    : 'Never';
+  const ingestionDurationLabel = (() => {
+    const ms = ingestionHealth?.totalDurationMs;
+    if (ms == null || !Number.isFinite(ms)) return 'Unknown';
+    const seconds = Math.round(ms / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
+    if (minutes <= 0) return `${remainingSeconds}s`;
+    return `${minutes}m ${remainingSeconds.toString().padStart(2, '0')}s`;
+  })();
+  const ingestionIssues = ingestionHealth?.anomalies?.length ?? 0;
+  const ingestionStatusLabel = ingestionHealth?.status
+    ? ingestionHealth.status.charAt(0).toUpperCase() + ingestionHealth.status.slice(1)
+    : 'Unknown';
+  const ingestionNeedsAttention = ingestionHealth?.stale || (ingestionIssues > 0);
 
   const handleNavigate = (tab: TabType) => {
     setActiveTab(tab);
@@ -177,6 +198,73 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
             ) : null}
           </div>
           {canRunIngestion && ingestionRunError && (
+            <p className="mt-2 text-xs text-amber-300">{ingestionRunError}</p>
+          )}
+        </GlassCard>
+
+        <GlassCard className={cardClass}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Ingestion health</p>
+              <p className="text-sm font-semibold text-slate-100">
+                {ingestionStatusLabel}
+                {ingestionNeedsAttention ? ' • Attention' : ''}
+              </p>
+            </div>
+            {isTriggeringIngestion && <Loader2 className="h-4 w-4 animate-spin text-slate-300" />}
+          </div>
+          <div className="mt-2 grid gap-2 text-xs text-slate-300">
+            <p>
+              Last run: <span className="text-slate-100">{ingestionLastRunLabel}</span>
+            </p>
+            <p>
+              Duration: <span className="text-slate-100">{ingestionDurationLabel}</span>
+            </p>
+            <p>
+              Version: <span className="text-slate-100">{ingestionHealth?.ingestionVersion ?? 'n/a'}</span>
+            </p>
+            <p>
+              Payload: <span className="text-slate-100">{ingestionHealth?.payloadVersion ?? 'n/a'}</span>
+            </p>
+            {ingestionHealth?.schemaVersion && (
+              <p>
+                Schema: <span className="text-slate-100">{ingestionHealth.schemaVersion}</span>
+              </p>
+            )}
+            {ingestionNeedsAttention && (
+              <div className="rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-amber-200">
+                {ingestionHealth?.stale ? 'Snapshot appears stale. Refresh recommended.' : null}
+                {ingestionIssues > 0 ? (
+                  <>
+                    {ingestionHealth?.stale ? <br /> : null}
+                    {ingestionIssues} ingestion issue{ingestionIssues === 1 ? '' : 's'} detected.
+                  </>
+                ) : null}
+              </div>
+            )}
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              className="flex-1 min-w-[8rem] bg-brand-surfaceSubtle text-slate-100 hover:bg-brand-surfaceRaised"
+              onClick={() => setShowIngestionMonitor(true, { jobId: ingestionHealth?.jobId ?? null })}
+            >
+              View Details
+            </Button>
+            {canRunIngestion && (
+              <Button
+                size="sm"
+                className="flex-1 min-w-[8rem] bg-brand-primary text-white hover:bg-brand-secondary"
+                onClick={() => triggerIngestion(clanTag || cfg.homeClanTag || '')}
+                disabled={isTriggeringIngestion}
+              >
+                {isTriggeringIngestion ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Run Ingestion
+              </Button>
+            )}
+          </div>
+          {ingestionRunError && (
             <p className="mt-2 text-xs text-amber-300">{ingestionRunError}</p>
           )}
         </GlassCard>

@@ -2,7 +2,14 @@
 // Supabase integration for storing and retrieving smart insights bundles
 
 import { createClient } from '@supabase/supabase-js';
-import { InsightsBundle, PlayerDNAInsights, SmartInsightsPayload, composeSmartInsightsPayload } from './smart-insights';
+import {
+  InsightsBundle,
+  PlayerDNAInsights,
+  SmartInsightsPayload,
+  composeSmartInsightsPayload,
+  type SmartInsightsSource,
+  type SmartInsightsDiagnostics,
+} from './smart-insights';
 import { calculatePlayerDNA, classifyPlayerArchetype } from './player-dna';
 import { normalizeTag, safeTagForFilename } from './tags';
 import { safeLocaleString } from './date';
@@ -14,10 +21,29 @@ const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
+const SMART_INSIGHTS_TABLE = 'smart_insights_payloads';
+
+export interface SmartInsightsPayloadRow {
+  id: number;
+  clan_tag: string;
+  snapshot_date: string;
+  snapshot_id: string | null;
+  source: SmartInsightsSource;
+  schema_version: string;
+  generated_at: string;
+  processing_time_ms: number | null;
+  primary_headline: string | null;
+  payload: SmartInsightsPayload;
+  diagnostics: SmartInsightsDiagnostics | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // Map database field names to frontend field names
 function ensureSmartInsightsPayload(record: StoredInsightsBundle): SmartInsightsPayload | null {
-  if (record.smart_insights_payload) {
-    return record.smart_insights_payload;
+  const existing = record.smart_insights_payload as SmartInsightsPayload | null;
+  if (existing && existing.briefing && existing.recognition) {
+    return existing;
   }
 
   const normalizedClanTag = normalizeTag(record.clan_tag);
@@ -36,18 +62,40 @@ function ensureSmartInsightsPayload(record: StoredInsightsBundle): SmartInsights
   };
 
   try {
-    return composeSmartInsightsPayload({
+    const composed = composeSmartInsightsPayload({
       bundle: legacyBundle,
       clanTag: legacyBundle.clanTag,
       snapshotDate: record.date,
       source: 'unknown',
-      processingTimeMs: 0,
+      processingTimeMs: existing?.diagnostics?.processingTimeMs ?? 0,
       snapshotId: record.timestamp,
-      openAIConfigured: true,
+      openAIConfigured: existing?.diagnostics?.openAIConfigured ?? true,
+      playerOfTheDay: existing?.playerOfTheDay ?? null,
     });
+
+    if (existing) {
+      return {
+        ...existing,
+        ...composed,
+        metadata: {
+          ...composed.metadata,
+          ...existing.metadata,
+        },
+        diagnostics: existing.diagnostics ?? composed.diagnostics,
+        context: {
+          ...composed.context,
+          ...(existing.context ?? {}),
+        },
+        briefing: composed.briefing,
+        recognition: composed.recognition,
+        playerOfTheDay: composed.playerOfTheDay ?? existing.playerOfTheDay ?? null,
+      };
+    }
+
+    return composed;
   } catch (error) {
     console.error('[Insights Storage] Failed to compose fallback smart insights payload:', error);
-    return null;
+    return existing ?? null;
   }
 }
 
@@ -58,6 +106,95 @@ function mapDatabaseToFrontend(record: StoredInsightsBundle): StoredInsightsBund
     smart_insights_payload: ensureSmartInsightsPayload(record),
     smartInsightsPayload: ensureSmartInsightsPayload(record),
   };
+}
+
+async function upsertSmartInsightsPayload(payload: SmartInsightsPayload): Promise<boolean> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+
+  try {
+    const metadata = payload.metadata;
+    const normalizedClanTag = normalizeTag(metadata.clanTag) || metadata.clanTag;
+    const safeTag = safeTagForFilename(normalizedClanTag);
+    const primaryHeadline = payload.briefing?.highlights?.[0]?.headline
+      ?? payload.headlines?.[0]?.title
+      ?? null;
+
+    const { error } = await supabase
+      .from(SMART_INSIGHTS_TABLE)
+      .upsert({
+        clan_tag: safeTag || normalizedClanTag,
+        snapshot_date: metadata.snapshotDate,
+        snapshot_id: metadata.snapshotId ?? null,
+        source: metadata.source,
+        schema_version: metadata.schemaVersion,
+        generated_at: metadata.generatedAt,
+        processing_time_ms: payload.diagnostics?.processingTimeMs ?? null,
+        primary_headline: primaryHeadline,
+        payload,
+        diagnostics: payload.diagnostics ?? null,
+      }, {
+        onConflict: 'clan_tag,snapshot_date'
+      });
+
+    if (error) {
+      console.error('[Insights Storage] Error saving smart insights payload:', error);
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.error('[Insights Storage] Exception saving smart insights payload:', error);
+    return false;
+  }
+}
+
+async function fetchSmartInsightsPayloadFromTable(
+  clanTag: string,
+  date?: string
+): Promise<SmartInsightsPayload | null> {
+  if (!supabase) {
+    throw new Error('Supabase client not initialized');
+  }
+
+  const normalizedClanTag = normalizeTag(clanTag) || clanTag;
+  const safeTag = safeTagForFilename(normalizedClanTag);
+  const attempts = Array.from(new Set([safeTag, normalizedClanTag])).filter(Boolean) as string[];
+
+  for (const tag of attempts) {
+    try {
+      let query = supabase
+        .from(SMART_INSIGHTS_TABLE)
+        .select('payload')
+        .eq('clan_tag', tag)
+        .order('generated_at', { ascending: false })
+        .limit(1);
+
+      if (date) {
+        query = query.eq('snapshot_date', date);
+      }
+
+      const { data, error } = await query.single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          continue;
+        }
+        console.error('[Insights Storage] Error fetching smart insights payload:', error);
+        return null;
+      }
+
+      if (data?.payload) {
+        return data.payload;
+      }
+    } catch (error) {
+      console.error('[Insights Storage] Exception fetching smart insights payload:', error);
+      return null;
+    }
+  }
+
+  return null;
 }
 
 export interface StoredInsightsBundle {
@@ -125,6 +262,14 @@ export async function saveInsightsBundle(results: InsightsBundle): Promise<boole
       return false;
     }
 
+    const payloadSaved = results.smartInsightsPayload
+      ? await upsertSmartInsightsPayload(results.smartInsightsPayload)
+      : true;
+
+    if (!payloadSaved) {
+      return false;
+    }
+
     console.log(`[Insights Storage] Successfully saved bundle for ${results.clanTag}`);
     return true;
   } catch (error) {
@@ -182,13 +327,27 @@ export async function getLatestInsightsBundle(clanTag: string): Promise<StoredIn
 }
 
 export async function getLatestSmartInsightsPayload(clanTag: string): Promise<SmartInsightsPayload | null> {
+  const payload = await fetchSmartInsightsPayloadFromTable(clanTag);
+  if (payload) {
+    return payload;
+  }
+
   const bundle = await getLatestInsightsBundle(clanTag);
   return bundle?.smartInsightsPayload ?? bundle?.smart_insights_payload ?? null;
 }
 
 export async function getSmartInsightsPayloadByDate(clanTag: string, date: string): Promise<SmartInsightsPayload | null> {
+  const payload = await fetchSmartInsightsPayloadFromTable(clanTag, date);
+  if (payload) {
+    return payload;
+  }
+
   const bundle = await getInsightsBundleByDate(clanTag, date);
   return bundle?.smartInsightsPayload ?? bundle?.smart_insights_payload ?? null;
+}
+
+export async function saveSmartInsightsPayloadOnly(payload: SmartInsightsPayload): Promise<boolean> {
+  return upsertSmartInsightsPayload(payload);
 }
 export async function getInsightsBundleByDate(clanTag: string, date: string): Promise<StoredInsightsBundle | null> {
   if (!supabase) {

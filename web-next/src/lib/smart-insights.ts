@@ -4,9 +4,9 @@
 import OpenAI from 'openai';
 import { MemberChange, ChangeSummary } from './snapshots';
 import { calculatePlayerDNA, calculateClanDNA, classifyPlayerArchetype } from './player-dna';
-import { groupMemberChanges, formatAggregatedChange } from './insights-utils';
+import { groupMemberChanges, formatAggregatedChange, type AggregatedChange } from './insights-utils';
 
-export const SMART_INSIGHTS_SCHEMA_VERSION = '1.0.0';
+export const SMART_INSIGHTS_SCHEMA_VERSION = '2.0.0';
 
 export type SmartInsightsSource = 'nightly_cron' | 'manual_refresh' | 'adhoc' | 'unknown';
 
@@ -68,6 +68,52 @@ export interface SmartInsightsDiagnostics {
   errorMessage?: string;
 }
 
+export type SmartInsightsSentiment = 'positive' | 'neutral' | 'warning';
+
+export interface SmartInsightsBriefingMetric {
+  label: string;
+  value: string;
+  trend?: 'up' | 'down' | 'flat';
+}
+
+export interface SmartInsightsBriefingHighlight {
+  id: string;
+  headline: string;
+  detail?: string;
+  priority: 'high' | 'medium' | 'low';
+  category: 'change' | 'performance' | 'war' | 'donation' | 'spotlight' | 'intel' | 'warning';
+  tags?: string[];
+  metric?: SmartInsightsBriefingMetric;
+}
+
+export interface SmartInsightsBriefing {
+  title: string;
+  summary: string;
+  sentiment: SmartInsightsSentiment;
+  highlights: SmartInsightsBriefingHighlight[];
+}
+
+export type SmartInsightsRecognitionEmphasis = 'celebrate' | 'watch' | 'warn';
+
+export interface SmartInsightsRecognitionEntry {
+  id: string;
+  playerTag: string;
+  playerName: string;
+  headline: string;
+  reason: string;
+  emphasis: SmartInsightsRecognitionEmphasis;
+  metricValue?: string;
+  metricDelta?: string;
+  tags?: string[];
+}
+
+export interface SmartInsightsRecognition {
+  playerOfTheDay?: SmartInsightsPlayerOfDay | null;
+  spotlights: SmartInsightsRecognitionEntry[];
+  watchlist: SmartInsightsRecognitionEntry[];
+  callouts: SmartInsightsRecognitionEntry[];
+}
+
 export interface SmartInsightsContext {
   changeSummary?: SnapshotSummaryAnalysis;
   performanceAnalysis?: SnapshotSummaryAnalysis;
@@ -77,7 +123,9 @@ export interface SmartInsightsContext {
 
 export interface SmartInsightsPayload {
   metadata: SmartInsightsMetadata;
+  briefing: SmartInsightsBriefing;
   headlines: SmartInsightsHeadline[];
+  recognition: SmartInsightsRecognition;
   coaching: SmartInsightsRecommendation[];
   playerSpotlights: SmartInsightsPlayerSpotlight[];
   playerOfTheDay?: SmartInsightsPlayerOfDay | null;
@@ -237,6 +285,7 @@ export class InsightsEngine {
         snapshotId: options.snapshotId,
         openAIConfigured: this.isConfigured,
         playerOfTheDay,
+        roster: clanData,
       });
       return results;
     }
@@ -290,6 +339,7 @@ export class InsightsEngine {
         snapshotId: options.snapshotId,
         openAIConfigured: this.isConfigured,
         playerOfTheDay,
+        roster: clanData,
       });
 
       return results;
@@ -306,6 +356,7 @@ export class InsightsEngine {
         snapshotId: options.snapshotId,
         openAIConfigured: this.isConfigured,
         playerOfTheDay,
+        roster: clanData,
       });
       return results;
     }
@@ -880,7 +931,14 @@ Provide an engaging, concise summary highlighting the most important changes and
   }
 }
 
-function calculatePlayerOfTheDay(changes: MemberChange[]): SmartInsightsPlayerOfDay | null {
+interface ContributionScore {
+  tag: string;
+  name: string;
+  score: number;
+  highlights: string[];
+}
+
+function buildContributionScores(changes: MemberChange[]): ContributionScore[] {
   const contributions = new Map<string, { name: string; score: number; highlights: string[] }>();
 
   const addContribution = (tag: string, name: string, points: number, highlight: string) => {
@@ -961,9 +1019,13 @@ function calculatePlayerOfTheDay(changes: MemberChange[]): SmartInsightsPlayerOf
     }
   }
 
-  const ranked = Array.from(contributions.entries())
+  return Array.from(contributions.entries())
     .map(([tag, data]) => ({ tag, ...data }))
     .sort((a, b) => b.score - a.score);
+}
+
+function calculatePlayerOfTheDay(changes: MemberChange[]): SmartInsightsPlayerOfDay | null {
+  const ranked = buildContributionScores(changes);
 
   if (!ranked.length || ranked[0].score < 5) {
     return null;
@@ -987,6 +1049,7 @@ export interface SmartInsightsComposeParams {
   snapshotId?: string;
   openAIConfigured?: boolean;
   playerOfTheDay?: SmartInsightsPlayerOfDay | null;
+  roster?: any;
 }
 
 export function composeSmartInsightsPayload({
@@ -998,6 +1061,7 @@ export function composeSmartInsightsPayload({
   snapshotId,
   openAIConfigured = true,
   playerOfTheDay = null,
+  roster,
 }: SmartInsightsComposeParams): SmartInsightsPayload {
   const truncate = (value?: string, max = 96) => {
     if (!value) return 'Latest update';
@@ -1027,6 +1091,7 @@ export function composeSmartInsightsPayload({
   const headlines: SmartInsightsHeadline[] = [];
 
   const aggregatedChanges = bundle.changes ? groupMemberChanges(bundle.changes) : [];
+  const contributionLeaderboard = bundle.changes ? buildContributionScores(bundle.changes) : [];
 
   if (bundle.changeSummary) {
     const mergedInsights = aggregatedChanges.length
@@ -1107,6 +1172,21 @@ export function composeSmartInsightsPayload({
     errorMessage: bundle.error,
   };
 
+  const briefingHighlights = buildBriefingHighlights(headlines);
+  const briefing: SmartInsightsBriefing = {
+    title: "Today's Briefing",
+    summary: buildBriefingSummary(briefingHighlights),
+    sentiment: deriveBriefingSentiment(briefingHighlights, diagnostics.hasError),
+    highlights: briefingHighlights,
+  };
+
+  const recognition = buildRecognitionHighlights({
+    aggregatedChanges,
+    playerOfTheDay,
+    contributionScores: contributionLeaderboard,
+    roster,
+  });
+
   return {
     metadata: {
       clanTag,
@@ -1116,7 +1196,9 @@ export function composeSmartInsightsPayload({
       schemaVersion: SMART_INSIGHTS_SCHEMA_VERSION,
       snapshotId,
     },
+    briefing,
     headlines,
+    recognition,
     coaching,
     playerSpotlights,
     playerOfTheDay,
@@ -1127,6 +1209,312 @@ export function composeSmartInsightsPayload({
       clanDNAInsights: bundle.clanDNAInsights,
       gameChatMessages: bundle.gameChatMessages,
     },
+  };
+}
+
+const PRIORITY_ORDER: Record<'high' | 'medium' | 'low', number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+function mapHeadlineCategory(
+  category: SmartInsightsHeadline['category']
+): SmartInsightsBriefingHighlight['category'] {
+  if (category === 'change' || category === 'performance' || category === 'war' || category === 'donation' || category === 'spotlight') {
+    return category;
+  }
+  return 'intel';
+}
+
+function deriveBriefingTags(headline: SmartInsightsHeadline): string[] | undefined {
+  const tags: string[] = [];
+  if (headline.category === 'donation') {
+    tags.push('donations');
+  } else if (headline.category === 'war') {
+    tags.push('war');
+  } else if (headline.category === 'performance') {
+    tags.push('performance');
+  } else if (headline.category === 'spotlight') {
+    tags.push('spotlight');
+  }
+  if (headline.priority === 'high') {
+    tags.push('priority');
+  }
+  return tags.length ? Array.from(new Set(tags)) : undefined;
+}
+
+function buildBriefingHighlights(headlines: SmartInsightsHeadline[]): SmartInsightsBriefingHighlight[] {
+  if (!headlines.length) {
+    return [];
+  }
+
+  return [...headlines]
+    .sort((a, b) => (PRIORITY_ORDER[a.priority] ?? 99) - (PRIORITY_ORDER[b.priority] ?? 99))
+    .slice(0, 5)
+    .map((headline) => ({
+      id: `briefing-${headline.id}`,
+      headline: headline.title,
+      detail: headline.detail,
+      priority: headline.priority,
+      category: mapHeadlineCategory(headline.category),
+      tags: deriveBriefingTags(headline),
+    }));
+}
+
+function buildBriefingSummary(highlights: SmartInsightsBriefingHighlight[]): string {
+  if (!highlights.length) {
+    return 'No automated highlights available yet.';
+  }
+
+  const phrases = highlights.slice(0, 3).map((item) => item.headline.replace(/\.*$/, '').trim());
+  return phrases.join('; ');
+}
+
+function deriveBriefingSentiment(
+  highlights: SmartInsightsBriefingHighlight[],
+  hasError: boolean
+): SmartInsightsSentiment {
+  if (hasError) {
+    return 'warning';
+  }
+
+  const hasWarning = highlights.some((highlight) => {
+    if (highlight.category === 'warning') return true;
+    const detail = highlight.detail?.toLowerCase() ?? '';
+    return detail.includes('lost') || detail.includes('departed') || detail.includes('inactive');
+  });
+  if (hasWarning) {
+    return 'warning';
+  }
+
+  const hasCelebrate = highlights.some((highlight) => highlight.category === 'spotlight' || highlight.category === 'performance');
+  return hasCelebrate ? 'positive' : 'neutral';
+}
+
+function normalizeContributionText(value: string): string {
+  return value.replace(/^[-•]\s*/, '').replace(/\s+/g, ' ').trim();
+}
+
+function deriveRecognitionHeadline(contribution: string): string {
+  const normalized = contribution.toLowerCase();
+  if (normalized.includes('donated')) return 'Donation leader';
+  if (normalized.includes('town hall')) return 'Town Hall upgrade';
+  if (normalized.includes('role')) return 'Leadership update';
+  if (normalized.includes('gained')) return 'Trophy surge';
+  if (normalized.includes('joined')) return 'New arrival';
+  if (normalized.includes('lost')) return 'Performance dip';
+  if (normalized.includes('departed')) return 'Member departure';
+  if (normalized.includes('received')) return 'Needs support';
+  return contribution.charAt(0).toUpperCase() + contribution.slice(1);
+}
+
+function deriveRecognitionTags(contribution: string): string[] | undefined {
+  const normalized = contribution.toLowerCase();
+  const tags: string[] = [];
+  if (normalized.includes('donated') || normalized.includes('received')) {
+    tags.push('donations');
+  }
+  if (normalized.includes('troph')) {
+    tags.push('trophies');
+  }
+  if (normalized.includes('town hall') || normalized.includes('hero')) {
+    tags.push('upgrades');
+  }
+  if (normalized.includes('role')) {
+    tags.push('leadership');
+  }
+  if (normalized.includes('joined')) {
+    tags.push('new-member');
+  }
+  if (normalized.includes('departed')) {
+    tags.push('departure');
+  }
+  return tags.length ? Array.from(new Set(tags)) : undefined;
+}
+
+interface RecognitionBuildOptions {
+  aggregatedChanges: AggregatedChange[];
+  contributionScores: ContributionScore[];
+  playerOfTheDay: SmartInsightsPlayerOfDay | null;
+  roster?: any;
+}
+
+function buildRecognitionHighlights({
+  aggregatedChanges,
+  contributionScores,
+  playerOfTheDay,
+  roster,
+}: RecognitionBuildOptions): SmartInsightsRecognition {
+  const spotlights: SmartInsightsRecognitionEntry[] = [];
+  const watchlist: SmartInsightsRecognitionEntry[] = [];
+  const callouts: SmartInsightsRecognitionEntry[] = [];
+  const seen = new Set<string>();
+
+  if (playerOfTheDay) {
+    spotlights.push({
+      id: `recognition-spotlight-${playerOfTheDay.playerTag}`,
+      playerTag: playerOfTheDay.playerTag,
+      playerName: playerOfTheDay.playerName,
+      headline: 'Player of the Day',
+      reason: playerOfTheDay.highlights[0] || 'Standout contributions across multiple metrics.',
+      emphasis: 'celebrate',
+      metricValue: playerOfTheDay.score.toFixed(1),
+      tags: ['spotlight'],
+    });
+    seen.add(playerOfTheDay.playerTag);
+  }
+
+  const positiveKeywords = [/donated/i, /gained/i, /upgrade/i, /town hall/i, /role/i, /joined/i];
+  const cautionKeywords = [/lost/i, /departed/i, /received/i];
+
+  for (const score of contributionScores) {
+    if (spotlights.length >= 3) {
+      break;
+    }
+    if (seen.has(score.tag)) {
+      continue;
+    }
+
+    const topHighlight = score.highlights[0];
+    if (!topHighlight) {
+      continue;
+    }
+
+    spotlights.push({
+      id: `recognition-leader-${score.tag}`,
+      playerTag: score.tag,
+      playerName: score.name,
+      headline: deriveRecognitionHeadline(topHighlight),
+      reason: normalizeContributionText(topHighlight),
+      emphasis: 'celebrate',
+      metricValue: `${Math.round(score.score * 10) / 10}`,
+      tags: deriveRecognitionTags(topHighlight),
+    });
+    seen.add(score.tag);
+  }
+
+  for (const change of aggregatedChanges) {
+    if (seen.has(change.tag)) {
+      continue;
+    }
+
+    const contribution = change.contributions.find((entry) => positiveKeywords.some((pattern) => pattern.test(entry)));
+    if (contribution && spotlights.length < 5) {
+      const normalized = normalizeContributionText(contribution);
+      spotlights.push({
+        id: `recognition-spotlight-${change.tag}`,
+        playerTag: change.tag,
+        playerName: change.name,
+        headline: deriveRecognitionHeadline(normalized),
+        reason: normalized,
+        emphasis: 'celebrate',
+        tags: deriveRecognitionTags(normalized),
+      });
+      seen.add(change.tag);
+      continue;
+    }
+
+    const caution = change.contributions.find((entry) => cautionKeywords.some((pattern) => pattern.test(entry)));
+    if (caution && watchlist.length < 4) {
+      const normalized = normalizeContributionText(caution);
+      watchlist.push({
+        id: `recognition-watch-${change.tag}`,
+        playerTag: change.tag,
+        playerName: change.name,
+        headline: deriveRecognitionHeadline(normalized),
+        reason: normalized,
+        emphasis: normalized.toLowerCase().includes('departed') ? 'warn' : 'watch',
+        tags: deriveRecognitionTags(normalized),
+      });
+      seen.add(change.tag);
+      continue;
+    }
+
+    const spotlightCallout = change.contributions.find((entry) => /role/i.test(entry) || /town hall/i.test(entry));
+    if (spotlightCallout && callouts.length < 4) {
+      const normalized = normalizeContributionText(spotlightCallout);
+      callouts.push({
+        id: `recognition-callout-${change.tag}`,
+        playerTag: change.tag,
+        playerName: change.name,
+        headline: deriveRecognitionHeadline(normalized),
+        reason: normalized,
+        emphasis: 'watch',
+        tags: deriveRecognitionTags(normalized),
+      });
+      seen.add(change.tag);
+    }
+  }
+
+  if (roster?.members) {
+    const members = Array.isArray(roster.members) ? roster.members : [];
+    const donationSorted = members
+      .filter((member: any) => Number.isFinite(member?.donations))
+      .sort((a: any, b: any) => (b.donations || 0) - (a.donations || 0))
+      .slice(0, 3);
+
+    for (const member of donationSorted) {
+      const tag = member.tag ?? member.playerTag;
+      if (!tag || seen.has(tag)) {
+        continue;
+      }
+      spotlights.push({
+        id: `recognition-donation-${tag}`,
+        playerTag: tag,
+        playerName: member.name ?? tag,
+        headline: 'Donation leader',
+        reason: `${member.donations ?? 0} troops donated this cycle`,
+        emphasis: 'celebrate',
+        metricValue: `${member.donations ?? 0}`,
+        tags: ['donations'],
+      });
+      seen.add(tag);
+      if (spotlights.length >= 5) {
+        break;
+      }
+    }
+
+    const lowDonors = members
+      .map((member: any) => {
+        const donations = member.donations ?? 0;
+        const received = member.donationsReceived ?? 0;
+        const deficit = received - donations;
+        return {
+          member,
+          donations,
+          received,
+          deficit,
+        };
+      })
+      .filter((entry: any) => entry.deficit > 200)
+      .sort((a: any, b: any) => b.deficit - a.deficit)
+      .slice(0, 3);
+
+    for (const entry of lowDonors) {
+      const tag = entry.member.tag ?? entry.member.playerTag;
+      if (!tag || seen.has(tag)) {
+        continue;
+      }
+      watchlist.push({
+        id: `recognition-support-${tag}`,
+        playerTag: tag,
+        playerName: entry.member.name ?? tag,
+        headline: 'Needs donation support',
+        reason: `Net ${entry.deficit} troops received`,
+        emphasis: 'watch',
+        metricValue: `-${entry.deficit}`,
+        tags: ['donations', 'support'],
+      });
+      seen.add(tag);
+    }
+  }
+
+  return {
+    playerOfTheDay: playerOfTheDay ?? null,
+    spotlights,
+    watchlist,
+    callouts,
   };
 }
 

@@ -152,7 +152,7 @@ interface TableCellProps extends React.TdHTMLAttributes<HTMLTableCellElement> {
   isActiveSort?: boolean;
 }
 
-const ACTIVE_SORT_CELL_CLASSES = `relative bg-sky-50/80 transition-colors shadow-inner before:absolute before:inset-y-[0.35rem] before:left-0 before:w-1 before:rounded-full before:bg-sky-400/70 before:content-[''] dark:bg-slate-700/60 dark:before:bg-sky-300/80`;
+const ACTIVE_SORT_CELL_CLASSES = `relative bg-slate-800/20 transition-colors dark:bg-slate-700/40`;
 
 const TableCell: React.FC<TableCellProps> = ({ className = '', children, isActiveSort = false, title, ...rest }) => {
   const tooltipClass = title ? 'tooltip-trigger' : '';
@@ -501,9 +501,8 @@ export const TableRow: React.FC<TableRowProps> = ({
         title="Current trophies"
         isActiveSort={isActiveColumn('trophies')}
       >
-        <div className="flex items-center justify-center space-x-1">
-          <span className="text-clash-gold">🏆</span>
-          <span className="font-semibold">
+        <div className="flex items-center justify-center">
+          <span className="font-semibold text-slate-900 dark:text-slate-100">
             {formatNumber(member.trophies)}
           </span>
           {isRushedPlayer && (
