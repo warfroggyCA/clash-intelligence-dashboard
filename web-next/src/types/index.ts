@@ -615,6 +615,15 @@ export interface CoCPlayer {
   versusBattleWins?: number;
   versusTrophies?: number;
   warStars?: number;
+  league?: {
+    id: number;
+    name: string;
+    iconUrls: {
+      small: string;
+      tiny: string;
+      medium: string;
+    };
+  };
   heroes?: Array<{
     name: string;
     level?: number;
