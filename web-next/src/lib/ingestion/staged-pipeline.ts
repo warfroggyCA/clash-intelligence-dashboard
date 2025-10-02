@@ -5,7 +5,8 @@ import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { extractHeroLevels } from '@/lib/coc';
 import { calculateRushPercentage } from '@/lib/business/calculations';
 import { CURRENT_PIPELINE_SCHEMA_VERSION } from '@/lib/pipeline-constants';
-import { FullClanSnapshot, MemberSummary, Member, HeroCaps } from '@/types';
+import { Member, HeroCaps } from '@/types';
+import { FullClanSnapshot, MemberSummary } from '@/lib/full-snapshot';
 import { appendJobLog, createJobRecord, updateJobStatus, IngestionJobLogEntry } from './job-store';
 
 export interface StagedIngestionResult {
@@ -127,7 +128,7 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
       payloadVersion: writeSnapshotMetadata?.payloadVersion ?? null,
       fetchedAt: writeSnapshotMetadata?.fetchedAt ?? snapshot?.fetchedAt ?? null,
       computedAt: writeSnapshotMetadata?.computedAt ?? null,
-      seasonId: writeSnapshotMetadata?.seasonId ?? snapshot?.metadata?.seasonId ?? null,
+      seasonId: writeSnapshotMetadata?.seasonId ?? null,
     });
     await logPhase(jobId, 'pipeline', 'info', 'Staged ingestion completed successfully');
 
@@ -600,10 +601,14 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
     // Generate payload version for cache governance
     const payloadVersion = generatePayloadVersion(snapshot, transformedData);
     
+    const seasonInfo = calculateSeasonInfo(snapshot.fetchedAt);
     const metadata = {
       ...(snapshot.metadata ?? {}),
       schemaVersion: CURRENT_PIPELINE_SCHEMA_VERSION,
       ingestionVersion: 'staged-pipeline-v1',
+      seasonId: seasonInfo.seasonId,
+      seasonStart: seasonInfo.seasonStart,
+      seasonEnd: seasonInfo.seasonEnd,
     };
 
     const snapshotData = {
@@ -649,7 +654,7 @@ async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, 
       duration_ms,
       metadata: {
         ...phaseMetadata,
-        snapshotDate: snapshot.scheduledAt ?? snapshot.fetchedAt ?? null,
+        snapshotDate: snapshot.fetchedAt ?? null,
       },
     };
   } catch (error: any) {
@@ -829,9 +834,8 @@ function calculateSeasonInfo(timestampIso: string) {
 async function logPhase(jobId: string, phase: string, level: 'info' | 'warn' | 'error', message: string, details?: Record<string, any>) {
   await appendJobLog(jobId, {
     level,
-    message,
+    message: `[${phase}] ${message}`,
     details,
-    phase,
     timestamp: new Date().toISOString(),
   });
 }

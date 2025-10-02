@@ -97,6 +97,9 @@ export interface Roster {
   clanName?: string;
   clanTag?: string;
   members: Member[];
+  seasonId?: string | null;
+  seasonStart?: string | null;
+  seasonEnd?: string | null;
   meta?: {
     clanName?: string;
     recentClans?: string[];

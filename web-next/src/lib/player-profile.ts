@@ -292,8 +292,8 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
       memberSummaries: record.member_summaries,
       playerDetails: record.player_details,
       currentWar: null, // Not loaded to reduce data size
-      warLog: null, // Not loaded to reduce data size
-      capitalRaidSeasons: null, // Not loaded to reduce data size
+      warLog: [], // Not loaded to reduce data size
+      capitalRaidSeasons: [], // Not loaded to reduce data size
       metadata: record.metadata,
     }));
   } catch (error) {
@@ -607,6 +607,7 @@ function buildMockProfile(normalized: string): PlayerProfileData {
       clanName: 'Heck Yeah',
       clanTag: '#2PR8R8V8P',
       townHallLevel: 13,
+      trophies: 2577,
       league: {
         name: 'Champion League',
         trophies: 2577,

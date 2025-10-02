@@ -135,6 +135,10 @@ interface DashboardState {
     seasonId?: string | null;
     seasonStart?: string | null;
     seasonEnd?: string | null;
+    payloadVersion?: string | null;
+    ingestionVersion?: string | null;
+    schemaVersion?: string | null;
+    computedAt?: string | null;
   } | null;
   snapshotDetails: {
     currentWar?: {

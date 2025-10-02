@@ -6,7 +6,7 @@ import { resolveUnknownPlayers } from '@/lib/player-resolver';
 import { insightsEngine } from '@/lib/smart-insights';
 import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from '@/lib/insights-storage';
 import { saveAISummary } from '@/lib/supabase';
-import { detectChanges, saveChangeSummary, getSnapshotBeforeDate } from '@/lib/snapshots';
+import { detectChanges, saveChangeSummary, getSnapshotBeforeDate, type MemberChange } from '@/lib/snapshots';
 
 export interface StagedIngestionJobResult {
   clanTag: string;
@@ -15,7 +15,7 @@ export interface StagedIngestionJobResult {
   changeSummary?: string;
   gameChatMessages?: string[];
   playersResolved?: number;
-  resolutionErrors?: number;
+  resolutionErrors?: string[];
   insightsGenerated?: boolean;
   error?: string;
 }
@@ -90,7 +90,7 @@ interface PostProcessingResult {
   changeSummary?: string;
   gameChatMessages?: string[];
   playersResolved?: number;
-  resolutionErrors?: number;
+  resolutionErrors?: string[];
   insightsGenerated?: boolean;
 }
 
@@ -100,14 +100,32 @@ async function runPostProcessingSteps(clanTag: string, jobId?: string): Promise<
   try {
     // Change detection and summary generation
     console.log(`[PostProcessing] Detecting changes for ${clanTag}`);
-    const changes = await detectChanges(clanTag);
+    
+    // Get current and previous snapshots for change detection
+    const currentSnapshot = await getSnapshotBeforeDate(clanTag, new Date().toISOString().split('T')[0]);
+    const previousSnapshot = await getSnapshotBeforeDate(clanTag, currentSnapshot?.date || '');
+    
+    let changes: MemberChange[] = [];
+    if (previousSnapshot && currentSnapshot && previousSnapshot.date !== currentSnapshot.date) {
+      changes = detectChanges(previousSnapshot, currentSnapshot);
+    }
     
     if (changes.length > 0) {
       console.log(`[PostProcessing] Found ${changes.length} changes`);
       
       // Generate change summary
-      const summary = await generateChangeSummary(changes);
-      await saveChangeSummary(clanTag, summary);
+      const summary = await generateChangeSummary(changes, clanTag, currentSnapshot?.date || new Date().toISOString().split('T')[0]);
+      const changeSummary = {
+        date: currentSnapshot?.date || new Date().toISOString().split('T')[0],
+        clanTag,
+        changes,
+        summary,
+        gameChatMessages: [], // Will be populated below
+        unread: true,
+        actioned: false,
+        createdAt: new Date().toISOString(),
+      };
+      await saveChangeSummary(changeSummary);
       result.changeSummary = summary;
 
       // Generate game chat messages
@@ -115,30 +133,47 @@ async function runPostProcessingSteps(clanTag: string, jobId?: string): Promise<
       result.gameChatMessages = messages;
 
       // Process departures
-      const departures = changes.filter(c => c.type === 'departure');
+      const departures = changes.filter(c => c.type === 'left_member');
       for (const departure of departures) {
-        await addDeparture(departure.memberTag, departure.memberName, departure.asOf);
+        await addDeparture(clanTag, {
+          memberTag: departure.member.tag,
+          memberName: departure.member.name,
+          departureDate: currentSnapshot?.date || new Date().toISOString().split('T')[0],
+          lastSeen: new Date().toISOString(),
+          lastRole: departure.member.role,
+          lastTownHall: departure.member.townHallLevel,
+          lastTrophies: (departure.member as any).trophies,
+        });
       }
     }
 
     // Player resolution
     console.log(`[PostProcessing] Resolving unknown players for ${clanTag}`);
-    const resolutionResult = await resolveUnknownPlayers(clanTag);
+    const resolutionResult = await resolveUnknownPlayers();
     result.playersResolved = resolutionResult.resolved;
     result.resolutionErrors = resolutionResult.errors;
 
     // Smart insights generation
-    if (cfg.enableInsights) {
-      console.log(`[PostProcessing] Generating insights for ${clanTag}`);
-      try {
-        await insightsEngine.generateInsights(clanTag);
-        await saveInsightsBundle(clanTag);
-        await cachePlayerDNAForClan(clanTag);
-        await generateSnapshotSummary(clanTag);
+    console.log(`[PostProcessing] Generating insights for ${clanTag}`);
+    try {
+        // Get clan data for insights generation
+        const clanData = await getSnapshotBeforeDate(clanTag, new Date().toISOString().split('T')[0]);
+        if (!clanData) {
+          throw new Error('No clan data available for insights generation');
+        }
+        
+        const insightsBundle = await insightsEngine.processBundle(
+          clanData,
+          changes,
+          clanTag,
+          currentSnapshot?.date || new Date().toISOString().split('T')[0]
+        );
+        
+        await saveInsightsBundle(insightsBundle);
+        await cachePlayerDNAForClan(clanData, clanTag, currentSnapshot?.date || new Date().toISOString().split('T')[0]);
         result.insightsGenerated = true;
-      } catch (insightsError: any) {
-        console.warn(`[PostProcessing] Insights generation failed: ${insightsError.message}`);
-      }
+    } catch (insightsError: any) {
+      console.warn(`[PostProcessing] Insights generation failed: ${insightsError.message}`);
     }
 
     console.log(`[PostProcessing] Completed for ${clanTag}`);
