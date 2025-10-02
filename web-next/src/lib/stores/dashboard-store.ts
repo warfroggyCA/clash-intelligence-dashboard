@@ -132,6 +132,9 @@ interface DashboardState {
     warLogEntries: number;
     capitalSeasons: number;
     version: string;
+    seasonId?: string | null;
+    seasonStart?: string | null;
+    seasonEnd?: string | null;
   } | null;
   snapshotDetails: {
     currentWar?: {
