@@ -7,7 +7,7 @@ export type RosterFetchPlan = {
 };
 
 export function buildRosterFetchPlan(clanTag: string, selectedSnapshot?: string): RosterFetchPlan {
-  const base = `/api/roster?clanTag=${encodeURIComponent(clanTag)}`;
+  const base = `/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`;
   
   // If explicitly requesting live data, return live-only plan
   if (selectedSnapshot === 'live') {

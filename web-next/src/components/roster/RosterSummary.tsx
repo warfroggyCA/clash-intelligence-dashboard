@@ -906,7 +906,7 @@ export const RosterSummary = () => {
             )}
             {heroLeaders.length > 0 && (
               <div className="space-y-4">
-                <p className="text-xs uppercase tracking-wide text-slate-400">Hero Power</p>
+                <p className="text-xs uppercase tracking-wide text-slate-400">Top Hero Power</p>
                 <ul className="w-full space-y-1.5 text-sm text-slate-200">
                   {heroLeaders.map((entry) => (
                     <li

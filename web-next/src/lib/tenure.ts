@@ -44,6 +44,45 @@ export async function readLedgerEffective(targetDate?: string): Promise<Record<s
   return parseTenureLedger(lines, targetDate);
 }
 
+// Reads tenure ledger entries for a specific clan
+export async function readTenureLedger(clanTag: string, targetDate?: string): Promise<Array<{ tag: string; base: number; as_of: string; ts: string; tenure_days: number }>> {
+  const lines = await readLedgerLines();
+  if (!lines.length) return [];
+  
+  const entries: Array<{ tag: string; base: number; as_of: string; ts: string; tenure_days: number }> = [];
+  
+  for (const raw of lines) {
+    const s = String(raw ?? '').trim();
+    if (!s) continue;
+    let row: TenureRow | null = null;
+    try { 
+      row = JSON.parse(s); 
+    } catch { 
+      continue; 
+    }
+    
+    const tag = normalizeTag(row?.tag || '');
+    const ts = String(row?.ts || '');
+    if (!isValidTag(tag) || !ts) continue;
+    
+    // Filter by clan if needed (for now, return all entries)
+    const base = typeof row?.base === 'number' ? row.base : (typeof row?.tenure_days === 'number' ? row.tenure_days : 0);
+    const as_of = String(row?.as_of || '');
+    const tenure_days = targetDate ? daysSinceToDate(as_of, targetDate) : daysSince(as_of);
+    
+    entries.push({
+      tag,
+      base: Number(base) || 0,
+      as_of,
+      ts,
+      tenure_days: Math.max(0, Math.round(base + tenure_days))
+    });
+  }
+  
+  // Sort by timestamp descending (most recent first)
+  return entries.sort((a, b) => b.ts.localeCompare(a.ts));
+}
+
 // Detailed parse including as_of date
 export function parseTenureDetails(lines: string[], targetDate?: string): Record<string, { days: number; as_of?: string }> {
   const latest: Record<string, string> = {};

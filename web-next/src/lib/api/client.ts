@@ -265,7 +265,7 @@ class ApiEndpoints {
 
   // Roster endpoints
   async getRoster(clanTag: string) {
-    return this.client.get('/api/roster', { clanTag });
+    return this.client.get('/api/v2/roster', { clanTag });
   }
 
   // Insights endpoints

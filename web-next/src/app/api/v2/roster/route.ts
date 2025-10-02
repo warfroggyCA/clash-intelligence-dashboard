@@ -3,6 +3,8 @@ import { z } from 'zod';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { readTenureDetails } from '@/lib/tenure';
+import { daysSinceToDate } from '@/lib/date';
 
 const querySchema = z.object({
   clanTag: z.string().optional(),
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest) {
 
     const { data: snapshotRows, error: snapshotError } = await supabase
       .from('roster_snapshots')
-      .select('id, fetched_at, member_count, total_trophies, total_donations, metadata, payload_version, ingestion_version, schema_version, computed_at')
+      .select('id, fetched_at, member_count, total_trophies, total_donations, metadata, payload_version, ingestion_version, schema_version, computed_at, season_id, season_start, season_end')
       .eq('clan_id', clanRow.id)
       .order('fetched_at', { ascending: false })
       .limit(1);
@@ -109,6 +111,10 @@ export async function GET(req: NextRequest) {
       metricsByMember.set(metric.member_id, bucket);
     }
 
+    // Fetch tenure data for all members
+    const snapshotDate = snapshot?.fetched_at ? snapshot.fetched_at.slice(0, 10) : undefined;
+    const tenureDetails = await readTenureDetails(snapshotDate);
+
     if (snapshotPayloadVersion && requestedETag && requestedETag === snapshotPayloadVersion) {
       return new NextResponse(null, {
         status: 304,
@@ -144,6 +150,33 @@ export async function GET(req: NextRequest) {
       const rankedModifier = stat.ranked_modifier ?? member.ranked_modifier ?? null;
       const equipmentFlags = stat.equipment_flags ?? member.equipment_flags ?? null;
 
+      // Get tenure data for this member
+      const memberTag = member.tag ? normalizeTag(member.tag) : null;
+      const tenureData = memberTag ? tenureDetails[memberTag] : null;
+
+      const tenureAsOf = tenureData?.as_of || snapshotDate || (snapshot?.fetched_at ? snapshot.fetched_at.slice(0, 10) : null);
+
+      const fallbackTenure = (() => {
+        if (member.created_at) {
+          const createdDate = new Date(member.created_at);
+          if (!Number.isNaN(createdDate.getTime())) {
+            const target = snapshot?.fetched_at ? new Date(snapshot.fetched_at) : new Date();
+            const diffMs = target.getTime() - createdDate.getTime();
+            const days = Math.floor(diffMs / 86400000);
+            return days >= 0 ? days + 1 : null;
+          }
+        }
+        if (tenureAsOf) {
+          const today = snapshotDate ?? new Date().toISOString().slice(0, 10);
+          const delta = daysSinceToDate(tenureAsOf, today);
+          return delta >= 0 ? delta + 1 : null;
+        }
+        return null;
+      })();
+
+      const rawTenure = tenureData?.days ?? fallbackTenure ?? null;
+      const computedTenure = rawTenure != null ? Math.max(1, Math.round(rawTenure)) : null;
+
       return {
         id: stat.member_id,
         tag: member.tag ?? null,
@@ -174,6 +207,9 @@ export async function GET(req: NextRequest) {
         metrics: metricsByMember.get(stat.member_id) ?? undefined,
         memberCreatedAt: member.created_at ?? null,
         memberUpdatedAt: member.updated_at ?? null,
+        // Add tenure data
+        tenure_days: computedTenure ?? null,
+        tenure_as_of: tenureAsOf,
       };
     });
 
@@ -193,8 +229,14 @@ export async function GET(req: NextRequest) {
             ingestionVersion: snapshot.ingestion_version ?? null,
             schemaVersion: snapshot.schema_version ?? null,
             computedAt: snapshot.computed_at ?? null,
+            seasonId: snapshot.season_id ?? snapshot.metadata?.seasonId ?? null,
+            seasonStart: snapshot.season_start ?? snapshot.metadata?.seasonStart ?? null,
+            seasonEnd: snapshot.season_end ?? snapshot.metadata?.seasonEnd ?? null,
           },
           members,
+          seasonId: snapshot.season_id ?? snapshot.metadata?.seasonId ?? null,
+          seasonStart: snapshot.season_start ?? snapshot.metadata?.seasonStart ?? null,
+          seasonEnd: snapshot.season_end ?? snapshot.metadata?.seasonEnd ?? null,
         },
       }),
       {

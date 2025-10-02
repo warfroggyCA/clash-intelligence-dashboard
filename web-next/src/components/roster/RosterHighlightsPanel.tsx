@@ -87,7 +87,7 @@ export const RosterHighlightsPanel: React.FC<RosterHighlightsPanelProps> = ({ cl
         entries: topDonators,
       },
       {
-        title: 'Hero Power Leaders',
+        title: 'Top Hero Power',
         icon: '/assets/icons/hero.svg',
         entries: heroLeaders,
       },

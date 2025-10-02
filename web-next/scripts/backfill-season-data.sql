@@ -25,13 +25,13 @@ begin
   season_id := year_val || '-' || lpad(month_val::text, 2, '0');
   
   -- Calculate season start (1st of month at 05:00 UTC)
-  season_start := make_timestamp(year_val, month_val, 1, 5, 0, 0);
+  season_start := make_timestamptz(year_val, month_val, 1, 5, 0, 0, 'UTC');
   
   -- Calculate season end (1st of next month at 04:59:59 UTC)
   if month_val = 12 then
-    season_end := make_timestamp(year_val + 1, 1, 1, 4, 59, 59);
+    season_end := make_timestamptz(year_val + 1, 1, 1, 4, 59, 59, 'UTC');
   else
-    season_end := make_timestamp(year_val, month_val + 1, 1, 4, 59, 59);
+    season_end := make_timestamptz(year_val, month_val + 1, 1, 4, 59, 59, 'UTC');
   end if;
   
   return json_build_object(
