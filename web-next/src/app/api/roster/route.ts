@@ -180,7 +180,7 @@ export async function GET(req: NextRequest) {
         const heroes = extractHeroLevels(p);
         const key = normalizeTag(m.tag);
         const t = tenureDetails[key];
-        const liveLeague = p.league || m.league || null;
+        const liveLeague = p.league || null;
         const liveLeagueIcons = typeof liveLeague === 'object' && liveLeague !== null
           ? liveLeague.iconUrls || {}
           : {};
