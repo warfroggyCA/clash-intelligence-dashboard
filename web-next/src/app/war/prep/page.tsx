@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import Link from 'next/link';
 
 type OpponentProfile = {
   clan: {
@@ -51,6 +53,17 @@ function WarPrepPageContent() {
   const cleanOurClan = useMemo(() => (ourClanTag ? normalizeTag(ourClanTag) : ''), [ourClanTag]);
 
   const onFetch = async (opts: { pin?: boolean } = {}) => {
+    // Check if we're already showing the same opponent
+    const targetOpponentTag = cleanOpponent || (autoDetect ? 'auto-detect' : '');
+    const currentOpponentTag = profile?.clan?.tag;
+    
+    if (targetOpponentTag && currentOpponentTag && 
+        normalizeTag(targetOpponentTag) === normalizeTag(currentOpponentTag) &&
+        !opts.pin) {
+      console.log('[WarPrep] Same opponent already loaded, skipping fetch');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
     setProfile(null);
@@ -178,15 +191,20 @@ function WarPrepPageContent() {
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold text-slate-100">War Prep</h1>
-        <p className="text-sm text-slate-400">Enter an opponent tag or auto-detect your current opponent.</p>
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <h1 className="text-xl font-semibold text-slate-100">War Prep</h1>
+          <p className="text-sm text-slate-400">Enter an opponent tag or auto-detect your current opponent.</p>
+        </div>
+        <Link href="/" className="rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceRaised" title="Return to the main dashboard">
+          ← Back to Dashboard
+        </Link>
       </div>
 
       <GlassCard className="space-y-4">
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wide text-slate-400">Opponent Tag</label>
+            <label className="text-xs uppercase tracking-wide text-slate-400" title="Enter the opponent clan tag (e.g., #2PR8R8V8P)">Opponent Tag</label>
             <input
               className="w-full rounded-xl border border-brand-border/60 bg-brand-surfaceSubtle px-3 py-2 text-sm text-slate-100 outline-none"
               placeholder="#OPPONENT"
@@ -197,14 +215,14 @@ function WarPrepPageContent() {
             <p className="text-xs text-slate-500">{cleanOpponent}</p>
           </div>
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wide text-slate-400">Auto-detect Opponent</label>
+            <label className="text-xs uppercase tracking-wide text-slate-400" title="Use current war pairing to find the opponent. If no pairing or private war log, enter a tag manually.">Auto-detect Opponent</label>
             <div className="flex items-center gap-2">
               <input type="checkbox" checked={autoDetect} onChange={(e) => setAutoDetect(e.target.checked)} />
               <span className="text-sm text-slate-200">Use current war (our clan: {cleanOurClan || 'n/a'})</span>
             </div>
           </div>
           <div className="space-y-2">
-            <label className="text-xs uppercase tracking-wide text-slate-400">Enrich Players</label>
+            <label className="text-xs uppercase tracking-wide text-slate-400" title="How many top players to fetch hero/TH data for. Higher values take longer but give better coverage.">Enrich Players</label>
             <input
               type="number"
               min={4}
@@ -216,14 +234,22 @@ function WarPrepPageContent() {
             <p className="text-xs text-slate-500">Top N players to fetch hero/TH for</p>
             <div className="mt-1 flex items-center gap-2">
               <input type="checkbox" id="fullEnrich" onChange={(e) => setEnrich(e.target.checked ? 50 : 12)} />
-              <label htmlFor="fullEnrich" className="text-xs text-slate-300">Full roster (50) — paced</label>
+              <label htmlFor="fullEnrich" className="text-xs text-slate-300" title="Fetch detailed data for the full roster (50). Calls are globally rate-limited to stay within CoC API rules.">Full roster (50) — paced</label>
             </div>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button onClick={() => onFetch()} disabled={loading} loading={loading}>
-            Fetch Opponent Profile
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={() => onFetch()} 
+              disabled={loading || (profile && cleanOpponent && normalizeTag(cleanOpponent) === normalizeTag(profile.clan?.tag || ''))} 
+              loading={loading} 
+              title="Fetch opponent profile and pin it for your clan"
+            >
+              {profile && cleanOpponent && normalizeTag(cleanOpponent) === normalizeTag(profile.clan?.tag || '') 
+                ? 'Same Opponent Already Loaded' 
+                : 'Fetch Opponent Profile'
+              }
+            </Button>
         </div>
         {error && (
           <div className="rounded-xl border border-rose-400/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{error}</div>
@@ -243,7 +269,7 @@ function WarPrepPageContent() {
               </div>
             </div>
             <div className="grid gap-2 md:grid-cols-3">
-              <div className="rounded-2xl border border-brand-border/60 bg-brand-surfaceSubtle p-3">
+              <div className="rounded-2xl border border-brand-border/60 bg-brand-surfaceSubtle p-3" title="Count of Town Hall levels among enriched players (increase Enrich for more coverage)">
                 <p className="text-xs uppercase tracking-wide text-slate-400">TH Distribution</p>
                 <div className="mt-2 flex flex-wrap gap-2">
                   {thChips.length ? thChips.map((c) => (
@@ -251,11 +277,11 @@ function WarPrepPageContent() {
                   )) : <span className="text-xs text-slate-500">Limited until player details fetched</span>}
                 </div>
               </div>
-              <div className="rounded-2xl border border-brand-border/60 bg-brand-surfaceSubtle p-3">
+              <div className="rounded-2xl border border-brand-border/60 bg-brand-surfaceSubtle p-3" title="W-L-T, average stars and destruction from the opponent’s recent war log (if public)">
                 <p className="text-xs uppercase tracking-wide text-slate-400">Recent Form</p>
                 <p className="mt-2 text-sm text-slate-200">{profile.recentForm.wlt.w}-{profile.recentForm.wlt.l}-{profile.recentForm.wlt.t} • {profile.recentForm.avgStars?.toFixed(2) ?? '—'}⭐ • {profile.recentForm.avgDestruction ? Math.round(profile.recentForm.avgDestruction) : '—'}%</p>
               </div>
-              <div className="rounded-2xl border border-brand-border/60 bg-brand-surfaceSubtle p-3">
+              <div className="rounded-2xl border border-brand-border/60 bg-brand-surfaceSubtle p-3" title="Public means we can compute recent metrics; private limits history.">
                 <p className="text-xs uppercase tracking-wide text-slate-400">War Log</p>
                 <p className="mt-2 text-sm text-slate-200">{profile.clan.publicWarLog ? 'Public' : 'Private/Unavailable'}</p>
               </div>
@@ -278,8 +304,8 @@ function WarPrepPageContent() {
                     <th className="py-2 pr-3">Name</th>
                     <th className="py-2 pr-3">Tag</th>
                     <th className="py-2 pr-3">Role</th>
-                    <th className="py-2 pr-3">TH</th>
-                    <th className="py-2 pr-3">Readiness</th>
+                    <th className="py-2 pr-3" title="Town Hall level (from enriched players)">TH</th>
+                    <th className="py-2 pr-3" title="Hero readiness vs Town Hall caps (AQ/GW/RC weighted more than BK)">Readiness</th>
                     <th className="py-2 pr-3">Donations</th>
                   </tr>
                 </thead>
@@ -313,9 +339,10 @@ function WarPrepPageContent() {
 
 export default function WarPrepPage() {
   return (
-    <Suspense fallback={<div>Loading war preparation...</div>}>
-      <WarPrepPageContent />
-    </Suspense>
+    <DashboardLayout>
+      <Suspense fallback={<div className="mx-auto max-w-6xl p-4">Loading war preparation...</div>}>
+        <WarPrepPageContent />
+      </Suspense>
+    </DashboardLayout>
   );
 }
-
