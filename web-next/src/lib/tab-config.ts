@@ -30,9 +30,9 @@ export const TAB_CONFIGS: TabConfig[] = [
   },
   {
     id: 'coaching',
-    label: 'Coaching',
-    icon: '💡',
-    description: 'Recommendations, spotlights, and coaching',
+    label: 'Command Center',
+    icon: '🎯',
+    description: 'Real-time intelligence and actionable alerts',
     requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
   },
   {
