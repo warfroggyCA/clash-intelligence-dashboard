@@ -21,7 +21,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
 }) => {
   const {
     handleGenerateInsightsSummary,
-    handleRefreshData,
+    refreshData,
     handleRefreshInsights,
     handleCopySnapshotSummary,
     handleCopyRosterJson,
@@ -107,7 +107,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: '#e2e8f0' }}
               onClick={() => {
-                handleRefreshData();
+                refreshData();
                 setOpen(false);
               }}
               disabled={isRefreshing}
