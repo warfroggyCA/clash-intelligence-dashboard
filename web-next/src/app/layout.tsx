@@ -10,12 +10,10 @@ const INITIAL_THEME_SCRIPT = `
   try {
     const storageKey = 'clash-intelligence-theme';
     const stored = localStorage.getItem(storageKey);
-    const prefersLight = window.matchMedia('(prefers-color-scheme: light)').matches;
+    // Default to dark mode - only use light if explicitly set
     const resolved = stored === 'light' || stored === 'dark'
       ? stored
-      : prefersLight
-        ? 'light'
-        : 'dark';
+      : 'dark'; // Always default to dark mode
     document.documentElement.setAttribute('data-theme', resolved);
   } catch (error) {
     document.documentElement.setAttribute('data-theme', 'dark');
