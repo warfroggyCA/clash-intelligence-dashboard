@@ -296,8 +296,8 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
                   </div>
                 </div>
               ))}
-              {getMembersNeedingCoaching(warMetrics.memberPerformance).length > 5 && (
-                <p className="text-xs text-slate-500 text-center">+{getMembersNeedingCoaching(warMetrics.memberPerformance).length - 5} more</p>
+              {membersNeedingWarCoaching.length > 5 && (
+                <p className="text-xs text-slate-500 text-center">+{membersNeedingWarCoaching.length - 5} more</p>
               )}
             </div>
           </div>
