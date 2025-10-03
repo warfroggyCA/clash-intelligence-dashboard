@@ -24,8 +24,16 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
     return clanData?.members || [];
   }, [clanData]);
 
+  const warData: WarData | undefined = useMemo(() => {
+    return clanData?.snapshotDetails ? {
+      currentWar: clanData.snapshotDetails.currentWar,
+      warLog: clanData.snapshotDetails.warLog
+    } : undefined;
+  }, [clanData]);
+
   const clanHealth = useMemo(() => calculateClanHealth(members), [members]);
-  const alerts = useMemo(() => generateAlerts(members), [members]);
+  const warMetrics = useMemo(() => calculateWarMetrics(members, warData), [members, warData]);
+  const alerts = useMemo(() => generateAlerts(members, warData), [members, warData]);
   const topPerformers = useMemo(() => getTopPerformers(members, 3), [members]);
   const watchlist = useMemo(() => generateWatchlist(members), [members]);
   const momentum = useMemo(() => calculateMomentum(members), [members]);
