@@ -275,11 +275,11 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
         )}
 
         {/* Members Needing Coaching */}
-        {getMembersNeedingCoaching(warMetrics.memberPerformance).length > 0 && (
+        {membersNeedingWarCoaching.length > 0 && (
           <div>
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Needs War Coaching ({getMembersNeedingCoaching(warMetrics.memberPerformance).length})</h3>
+            <h3 className="text-sm font-semibold text-slate-300 mb-3">Needs War Coaching ({membersNeedingWarCoaching.length})</h3>
             <div className="space-y-2">
-              {getMembersNeedingCoaching(warMetrics.memberPerformance).slice(0, 5).map((performer) => (
+              {membersNeedingWarCoaching.slice(0, 5).map((performer) => (
                 <div
                   key={performer.tag}
                   className="flex items-center justify-between p-2 bg-red-500/10 border border-red-500/30 rounded"
