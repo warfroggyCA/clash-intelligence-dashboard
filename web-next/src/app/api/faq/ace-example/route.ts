@@ -44,7 +44,15 @@ export const runtime = 'nodejs';
 export async function GET() {
   try {
     const snapshotsDir = path.join(process.cwd(), 'out', 'full-snapshots');
-    const entries = await fs.readdir(snapshotsDir);
+    let entries: string[];
+    try {
+      entries = await fs.readdir(snapshotsDir);
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: 'SNAPSHOTS_DIR_NOT_FOUND' },
+        { status: 404 }
+      );
+    }
     const jsonFiles = entries.filter((file) => file.endsWith('.json')).sort();
 
     if (!jsonFiles.length) {
