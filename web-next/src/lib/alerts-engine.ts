@@ -34,10 +34,16 @@ export function generateAlerts(members: Member[], warData?: WarData): Alert[] {
   const context: AlertContext = {
     members,
     avgDonations: members.reduce((sum, m) => sum + (m.donations || 0), 0) / members.length,
-    thCaps: calculateThCaps(members)
+    thCaps: calculateThCaps(members),
+    warData
   };
 
   const alerts: Alert[] = [];
+
+  // War alerts (if war data available)
+  if (warData) {
+    alerts.push(...detectWarAlerts(context));
+  }
 
   // High priority alerts
   alerts.push(...detectInactiveMembers(context));
