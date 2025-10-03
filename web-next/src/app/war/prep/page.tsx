@@ -241,7 +241,7 @@ function WarPrepPageContent() {
           <div className="flex gap-2">
             <Button 
               onClick={() => onFetch()} 
-              disabled={loading || (profile && cleanOpponent && profile.clan?.tag && normalizeTag(cleanOpponent) === normalizeTag(profile.clan.tag))} 
+              disabled={loading || Boolean(profile && cleanOpponent && profile.clan?.tag && normalizeTag(cleanOpponent) === normalizeTag(profile.clan.tag))} 
               loading={loading} 
               title="Fetch opponent profile and pin it for your clan"
             >
