@@ -103,11 +103,11 @@ const nextConfig = {
   // Webpack optimizations
   webpack: (config, { isServer }) => {
     // Only apply optimizations in production
-    if (isProd) {
-      // Enable tree shaking
+    if (isProd && !isServer) {
+      // Enable tree shaking (client-side only)
       config.optimization.usedExports = true;
       
-      // Split chunks for better caching
+      // Split chunks for better caching (client-side only)
       config.optimization.splitChunks = {
         chunks: 'all',
         cacheGroups: {
