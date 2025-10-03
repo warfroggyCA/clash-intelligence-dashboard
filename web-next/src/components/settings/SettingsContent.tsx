@@ -9,6 +9,7 @@ import { showToast } from '@/lib/toast';
 import { useLeadership } from '@/hooks/useLeadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import type { ClanRole } from '@/lib/leadership';
+import { clearSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import {
   Settings,
   Shield,
@@ -43,6 +44,8 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
     loadRoster,
     userRole,
     setUserRole,
+    loadSmartInsights,
+    setSmartInsights,
   } = useDashboardStore();
 
   const [newHomeClan, setNewHomeClan] = useState(homeClan || '');
@@ -289,8 +292,11 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       });
       const result = await response.json();
       if (result.success) {
+        clearSmartInsightsPayload(clanTag);
+        setSmartInsights(null);
         setMessage(`Force refresh completed! ${result.data.memberCount} members, ${result.data.changesDetected} changes detected. Insights: ${result.data.insightsGenerated ? 'Generated' : 'Skipped'}`);
         showToast('Force refresh completed successfully!', 'success');
+        await loadSmartInsights(clanTag, { force: true, ttlMs: 0 });
         await loadRoster(clanTag);
       } else {
         setMessage(`Force refresh failed: ${result.error}`);
