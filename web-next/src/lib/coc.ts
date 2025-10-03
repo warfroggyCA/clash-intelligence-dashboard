@@ -6,6 +6,7 @@ import { Agent, setGlobalDispatcher } from "undici";
 import axios from "axios";
 import { HttpsProxyAgent } from "https-proxy-agent";
 import { normalizeTag } from './tags';
+import { rateLimiter } from './rate-limiter';
 
 type CoCPlayer = {
   tag: string;
@@ -258,6 +259,7 @@ async function api<T>(path: string): Promise<T> {
     axiosConfig.httpAgent = proxyAgent;
     try {
       console.log(`[API Call] (proxy) ${path}`);
+      await rateLimiter.acquire();
       const response = await axios.get(`${BASE}${path}`, axiosConfig);
       setCached(path, response.data);
       return response.data as T;
@@ -270,12 +272,15 @@ async function api<T>(path: string): Promise<T> {
       } else {
         throw new Error(`CoC API request failed: ${error.message}`);
       }
+    } finally {
+      rateLimiter.release();
     }
   }
 
   // Default path: native fetch using global IPv4 dispatcher
   try {
     console.log(`[API Call] ${path}`);
+    await rateLimiter.acquire();
     const res = await fetch(`${BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       cache: 'no-store',
@@ -289,6 +294,8 @@ async function api<T>(path: string): Promise<T> {
     return data;
   } catch (error: any) {
     throw new Error(`CoC API request failed: ${error.message}`);
+  } finally {
+    try { rateLimiter.release(); } catch {}
   }
 }
 

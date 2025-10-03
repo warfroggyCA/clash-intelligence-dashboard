@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
@@ -37,6 +38,8 @@ type OpponentProfile = {
 
 export default function WarPrepPage() {
   const ourClanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
+  const router = useRouter();
+  const search = useSearchParams();
   const [opponentInput, setOpponentInput] = useState('');
   const [autoDetect, setAutoDetect] = useState(true);
   const [enrich, setEnrich] = useState(12);
@@ -47,7 +50,7 @@ export default function WarPrepPage() {
   const cleanOpponent = useMemo(() => (opponentInput ? normalizeTag(opponentInput) : ''), [opponentInput]);
   const cleanOurClan = useMemo(() => (ourClanTag ? normalizeTag(ourClanTag) : ''), [ourClanTag]);
 
-  const onFetch = async () => {
+  const onFetch = async (opts: { pin?: boolean } = {}) => {
     setLoading(true);
     setError(null);
     setProfile(null);
@@ -69,6 +72,24 @@ export default function WarPrepPage() {
           throw new Error(body?.error || `HTTP ${res.status}`);
         }
         setProfile(body.data as OpponentProfile);
+        // Update URL for deep link
+        const url = new URL(window.location.href);
+        url.searchParams.set('autoDetect', String(autoDetect));
+        if (!autoDetect && cleanOpponent) url.searchParams.set('opponentTag', cleanOpponent);
+        if (cleanOurClan) url.searchParams.set('ourClanTag', cleanOurClan);
+        url.searchParams.set('enrich', String(enrich));
+        router.replace(`${url.pathname}?${url.searchParams.toString()}`);
+        // Persist pin server-side (cross device)
+        if (opts.pin !== false && cleanOurClan && (cleanOpponent || body?.data?.clan?.tag)) {
+          const oppTag = cleanOpponent || body.data.clan.tag;
+          try {
+            await fetch('/api/war/pin', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ ourClanTag: cleanOurClan, opponentTag: oppTag }),
+            });
+          } catch {}
+        }
       } finally {
         clearTimeout(timeout);
       }
@@ -78,6 +99,47 @@ export default function WarPrepPage() {
       setLoading(false);
     }
   };
+
+  // On mount: if URL has params, auto-load; else, try pinned opponent for our clan
+  useEffect(() => {
+    const sp = search;
+    if (!sp) return;
+    const qOpp = sp.get('opponentTag');
+    const qAuto = sp.get('autoDetect');
+    const qOur = sp.get('ourClanTag');
+    const qEnrich = sp.get('enrich');
+    let needsFetch = false;
+    if (qEnrich) setEnrich(Math.max(4, Math.min(50, Number(qEnrich) || 12)));
+    if (qAuto != null) {
+      const ad = qAuto === 'true';
+      setAutoDetect(ad);
+      if (ad) needsFetch = true;
+    }
+    if (qOpp) {
+      setOpponentInput(qOpp);
+      if (!qAuto || qAuto === 'false') needsFetch = true;
+    }
+    if (needsFetch) {
+      void onFetch({ pin: false });
+      return;
+    }
+    // If no params, try pinned opponent
+    const loadPinned = async () => {
+      const oc = cleanOurClan;
+      if (!oc) return;
+      try {
+        const res = await fetch(`/api/war/pin?ourClanTag=${encodeURIComponent(oc)}`, { cache: 'no-store' });
+        const body = await res.json();
+        if (res.ok && body?.success && body?.data?.opponent_tag) {
+          setAutoDetect(false);
+          setOpponentInput(body.data.opponent_tag);
+          await onFetch({ pin: false });
+        }
+      } catch {}
+    };
+    void loadPinned();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search, cleanOurClan]);
 
   const thChips = useMemo(() => {
     if (!profile) return [] as Array<{ th: string; count: number }>;
@@ -124,10 +186,14 @@ export default function WarPrepPage() {
               className="w-24 rounded-xl border border-brand-border/60 bg-brand-surfaceSubtle px-3 py-2 text-sm text-slate-100 outline-none"
             />
             <p className="text-xs text-slate-500">Top N players to fetch hero/TH for</p>
+            <div className="mt-1 flex items-center gap-2">
+              <input type="checkbox" id="fullEnrich" onChange={(e) => setEnrich(e.target.checked ? 50 : 12)} />
+              <label htmlFor="fullEnrich" className="text-xs text-slate-300">Full roster (50) — paced</label>
+            </div>
           </div>
         </div>
         <div className="flex gap-2">
-          <Button onClick={onFetch} disabled={loading} loading={loading}>
+          <Button onClick={() => onFetch()} disabled={loading} loading={loading}>
             Fetch Opponent Profile
           </Button>
         </div>
@@ -216,4 +282,3 @@ export default function WarPrepPage() {
     </div>
   );
 }
-
