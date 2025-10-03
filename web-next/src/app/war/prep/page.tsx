@@ -51,6 +51,49 @@ function WarPrepPageContent() {
   const cleanOpponent = useMemo(() => (opponentInput ? normalizeTag(opponentInput) : ''), [opponentInput]);
   const cleanOurClan = useMemo(() => (ourClanTag ? normalizeTag(ourClanTag) : ''), [ourClanTag]);
 
+  // Persist opponent data to localStorage
+  useEffect(() => {
+    if (profile) {
+      try {
+        localStorage.setItem('war-prep-opponent', JSON.stringify({
+          profile,
+          timestamp: Date.now(),
+          opponentTag: profile.clan.tag,
+          autoDetect,
+          enrich
+        }));
+      } catch (error) {
+        console.warn('[WarPrep] Failed to save to localStorage:', error);
+      }
+    }
+  }, [profile, autoDetect, enrich]);
+
+  // Restore opponent data from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('war-prep-opponent');
+      if (saved) {
+        const data = JSON.parse(saved);
+        const age = Date.now() - data.timestamp;
+        // Keep data for 24 hours
+        if (age < 24 * 60 * 60 * 1000 && data.profile) {
+          console.log('[WarPrep] Restored opponent from localStorage');
+          setProfile(data.profile);
+          setAutoDetect(data.autoDetect ?? true);
+          setEnrich(data.enrich ?? 12);
+          if (data.opponentTag) {
+            setOpponentInput(data.opponentTag);
+          }
+        } else {
+          // Data too old, clear it
+          localStorage.removeItem('war-prep-opponent');
+        }
+      }
+    } catch (error) {
+      console.warn('[WarPrep] Failed to restore from localStorage:', error);
+    }
+  }, []); // Only run on mount
+
   const onFetch = async (opts: { pin?: boolean } = {}) => {
     // Check if we're already showing the same opponent
     const targetOpponentTag = cleanOpponent || (autoDetect ? 'auto-detect' : '');
