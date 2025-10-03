@@ -18,7 +18,7 @@
 
   "crons": [
     {
-      "path": "/api/cron/nightly-ingestion",
+      "path": "/api/cron/daily-ingestion",
       "schedule": "0 3 * * *"
     }
   ],
