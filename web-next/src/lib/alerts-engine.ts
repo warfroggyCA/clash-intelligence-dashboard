@@ -264,3 +264,46 @@ function detectNewMemberWelcome(context: AlertContext): Alert[] {
 
   return alerts;
 }
+
+// Detect war-related alerts
+function detectWarAlerts(context: AlertContext): Alert[] {
+  if (!context.warData) return [];
+  
+  const alerts: Alert[] = [];
+  const warMetrics = calculateWarMetrics(context.members, context.warData);
+  const warAlerts = generateWarAlerts(warMetrics, context.members);
+  
+  // Convert war alerts to standard alert format
+  for (const warAlert of warAlerts) {
+    const priority: AlertPriority = warAlert.severity;
+    
+    alerts.push({
+      id: `war-${warAlert.type}-${Date.now()}`,
+      priority,
+      category: 'war',
+      title: warAlert.title,
+      description: warAlert.description,
+      affectedMembers: [], // War alerts typically don't target specific members
+      actionable: getWarActionable(warAlert.type),
+      metric: warAlert.metric,
+      timestamp: new Date().toISOString()
+    });
+  }
+  
+  return alerts;
+}
+
+function getWarActionable(alertType: string): string {
+  switch (alertType) {
+    case 'current_war':
+      return 'Monitor war progress and ensure all members attack. Check Command Center for performance insights.';
+    case 'performance_decline':
+      return 'Review recent war strategies and attack plans. Consider coaching sessions or strategy adjustments.';
+    case 'win_rate':
+      return 'Analyze war matchups and member performance. May need to adjust war lineup or provide attack guidance.';
+    case 'low_performers':
+      return 'Provide coaching to struggling members. Share base attack strategies and practice attack plans.';
+    default:
+      return 'Review war performance and take appropriate action.';
+  }
+}
