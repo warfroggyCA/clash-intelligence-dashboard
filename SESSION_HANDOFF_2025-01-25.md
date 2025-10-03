@@ -9,6 +9,41 @@
 
 ---
 
+## 🚨 CRITICAL: READ THIS FIRST
+
+### **What This Document Is:**
+A complete record of what was built, tested, and deployed during this session.
+
+### **What's COMPLETED and LIVE:**
+✅ **Command Center** - Fully built, tested, working in code
+✅ **UI Polish** - Dark mode, colors, icons all fixed
+✅ **Nightly Automation** - Code fixed, ready to deploy
+✅ **Build Optimizations** - Vercel configs updated
+✅ **Documentation** - Comprehensive status reports created
+
+### **What's NOT YET DONE:**
+❌ **Deployed to Production** - Changes exist in code but NOT pushed to GitHub yet
+❌ **Environment Variables** - User still needs to add CRON_SECRET to Vercel
+❌ **Supabase Migration** - User still needs to run SQL migration
+❌ **War Analytics** - Not started (identified as next priority)
+❌ **UI/UX Audit** - Not started (reason you're reading this)
+
+### **About the "Preview":**
+- The cloud preview at `preview.emergentagent.com` was specific to the original development session
+- **You (new agent) will NOT have access to that preview environment**
+- To see the work: User must push to GitHub first, then view at https://heckyeah.clashintelligence.com
+- Or user can run locally: `cd /Users/dougfindlay/New\ Clash\ Intelligence/web-next && npm run dev`
+
+### **Your Job (If You're the UI/UX Agent):**
+1. ✅ DO: Review the production site for accessibility/contrast/UX issues
+2. ✅ DO: Create prioritized list of fixes needed
+3. ✅ DO: Implement HIGH and CRITICAL fixes
+4. ❌ DON'T: Try to rebuild Command Center (it's done)
+5. ❌ DON'T: Ask user to push to GitHub until you have fixes ready
+6. ❌ DON'T: Expect to access the cloud preview (you can't)
+
+---
+
 ## 📋 Executive Summary
 
 This session focused on:
