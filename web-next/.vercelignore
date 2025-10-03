@@ -1,0 +1,60 @@
+# Vercel Ignore - Speed up deployments by excluding unnecessary files
+
+# Development
+.env.local
+.env.development
+.env.test
+*.local
+
+# Testing
+**/__tests__/**
+**/__mocks__/**
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+jest.config.*
+.jest/
+
+# Documentation
+*.md
+!README.md
+docs/
+CHANGELOG.md
+PLANNING_NOTES.md
+CODEX_CONTEXT.md
+
+# Scripts (unless needed for build)
+scripts/
+!scripts/check-env.js
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Misc
+.DS_Store
+Thumbs.db
+
+# Old builds
+.next/cache/
+out/
+
+# Local data (used for dev)
+../out/
+../data/
