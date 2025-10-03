@@ -191,14 +191,23 @@ function WarPrepPageContent() {
 
   return (
     <div className="mx-auto max-w-6xl p-4 space-y-6">
+      {/* Prominent Back Button */}
+      <div className="flex items-center gap-3 mb-4">
+        <Link 
+          href="/" 
+          className="inline-flex items-center gap-2 rounded-lg border border-blue-500/40 bg-blue-500/10 px-4 py-2 text-sm font-semibold text-blue-400 hover:bg-blue-500/20 hover:border-blue-500/60 transition-colors" 
+          title="Return to the main dashboard"
+        >
+          <span className="text-lg">←</span>
+          <span>Back to Dashboard</span>
+        </Link>
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-xl font-semibold text-slate-100">War Prep</h1>
-          <p className="text-sm text-slate-400">Enter an opponent tag or auto-detect your current opponent.</p>
+          <h1 className="text-2xl font-bold text-slate-100">⚔️ War Prep</h1>
+          <p className="text-sm text-slate-400">Analyze your opponent's clan before battle day.</p>
         </div>
-        <Link href="/" className="rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceRaised" title="Return to the main dashboard">
-          ← Back to Dashboard
-        </Link>
       </div>
 
       <GlassCard className="space-y-4">
