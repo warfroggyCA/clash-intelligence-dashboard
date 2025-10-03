@@ -273,6 +273,28 @@ case 'coaching':
 
 ---
 
+## 🚀 DEPLOYMENT STATUS
+
+### **Git Status:**
+- ❌ Changes are in `/app/web-next/` but NOT pushed to GitHub
+- ❌ Production site still has OLD code
+- ✅ All code is tested and ready to push
+- ⚠️ User should push via "Save to GitHub" button in Emergent
+
+### **To See the NEW Features:**
+**Option 1:** User pushes to GitHub, Vercel auto-deploys to https://heckyeah.clashintelligence.com
+**Option 2:** User runs locally: `cd /Users/dougfindlay/New\ Clash\ Intelligence/web-next && npm run dev`
+**Option 3:** ❌ Cloud preview is NOT available to new agents (session-specific)
+
+### **What User Must Do Before Features Are Live:**
+1. Click "Save to GitHub" in Emergent chat
+2. Wait for Vercel to deploy (~6 minutes)
+3. Visit https://heckyeah.clashintelligence.com to verify
+4. Add `CRON_SECRET` to Vercel for automation
+5. Run Supabase migration for tenure tracking
+
+---
+
 ## 📊 Current State Assessment
 
 ### **Completion Status:**
