@@ -103,11 +103,15 @@ function WarPrepPageContent() {
   // On mount: if URL has params, auto-load; else, try pinned opponent for our clan
   useEffect(() => {
     const sp = search;
-    if (!sp) return;
+    if (!sp) {
+      console.log('[WarPrep] No search params, loading pinned opponent');
+      return;
+    }
     const qOpp = sp.get('opponentTag');
     const qAuto = sp.get('autoDetect');
     const qOur = sp.get('ourClanTag');
     const qEnrich = sp.get('enrich');
+    console.log('[WarPrep] URL params:', { qOpp, qAuto, qOur, qEnrich });
     let needsFetch = false;
     if (qEnrich) setEnrich(Math.max(4, Math.min(50, Number(qEnrich) || 12)));
     if (qAuto != null) {
@@ -116,26 +120,38 @@ function WarPrepPageContent() {
       if (ad) needsFetch = true;
     }
     if (qOpp) {
+      console.log('[WarPrep] Found opponent in URL, setting input and fetching');
       setOpponentInput(qOpp);
       if (!qAuto || qAuto === 'false') needsFetch = true;
     }
     if (needsFetch) {
+      console.log('[WarPrep] Fetching from URL params');
       void onFetch({ pin: false });
       return;
     }
     // If no params, try pinned opponent
     const loadPinned = async () => {
       const oc = cleanOurClan;
-      if (!oc) return;
+      if (!oc) {
+        console.log('[WarPrep] No clan tag, skipping pinned opponent load');
+        return;
+      }
+      console.log('[WarPrep] Loading pinned opponent for clan:', oc);
       try {
         const res = await fetch(`/api/war/pin?ourClanTag=${encodeURIComponent(oc)}`, { cache: 'no-store' });
         const body = await res.json();
+        console.log('[WarPrep] Pinned opponent response:', body);
         if (res.ok && body?.success && body?.data?.opponent_tag) {
+          console.log('[WarPrep] Loading pinned opponent:', body.data.opponent_tag);
           setAutoDetect(false);
           setOpponentInput(body.data.opponent_tag);
           await onFetch({ pin: false });
+        } else {
+          console.log('[WarPrep] No pinned opponent found');
         }
-      } catch {}
+      } catch (error) {
+        console.error('[WarPrep] Error loading pinned opponent:', error);
+      }
     };
     void loadPinned();
     // eslint-disable-next-line react-hooks/exhaustive-deps
