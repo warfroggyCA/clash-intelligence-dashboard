@@ -114,6 +114,7 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
                 alert={alert}
                 isExpanded={expandedAlert === alert.id}
                 onToggle={() => setExpandedAlert(expandedAlert === alert.id ? null : alert.id)}
+                members={members}
               />
             ))}
 
