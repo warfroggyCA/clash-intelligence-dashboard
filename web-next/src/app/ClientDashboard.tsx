@@ -84,7 +84,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
         return <div>Player Database Component</div>;
       
       case 'coaching':
-        return <InsightsDashboard />;
+        return <CommandCenter clanData={roster} clanTag={clanTag || homeClan || initialClanTag} />;
       
       case 'events':
         return (
