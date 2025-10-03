@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Wand2 } from 'lucide-react';
 import { useQuickActions } from './QuickActions';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Button, GlassCard } from '@/components/ui';
 
 interface QuickActionsMenuProps {
@@ -22,7 +23,6 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
   const {
     handleGenerateInsightsSummary,
     handleRefreshAll,
-    handleRefreshInsights,
     handleCopySnapshotSummary,
     handleCopyRosterJson,
     handleExportSnapshot,
@@ -33,6 +33,24 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
     hasData,
     smartInsightsStatus,
   } = useQuickActions();
+
+  const { loadSmartInsights, clanTag, setMessage, setStatus } = useDashboardStore();
+
+  const handleRefreshInsights = async () => {
+    if (!clanTag) {
+      setMessage('Load a clan first to refresh insights');
+      return;
+    }
+    try {
+      await loadSmartInsights(clanTag, { force: true, ttlMs: 0 });
+      setMessage('Smart insights refreshed');
+      setStatus('success');
+    } catch (error) {
+      console.error('Failed to refresh insights:', error);
+      setMessage('Failed to refresh insights');
+      setStatus('error');
+    }
+  };
 
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
