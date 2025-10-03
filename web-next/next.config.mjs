@@ -31,41 +31,23 @@ const nextConfig = {
   poweredByHeader: false,
   
   // ============================================
-  // 🚀 VERCEL BUILD OPTIMIZATIONS
+  // 🚀 SIMPLIFIED VERCEL BUILD OPTIMIZATIONS
   // ============================================
   
-  // Compiler optimizations
+  // Remove console logs in production
   compiler: {
-    // Remove console logs in production (faster runtime)
     removeConsole: isProd ? {
-      exclude: ['error', 'warn'], // Keep error and warn logs
+      exclude: ['error', 'warn'],
     } : false,
   },
 
-  // Experimental features for faster builds
-  experimental: {
-    // Optimize package imports - reduces bundle size
-    optimizePackageImports: ['lucide-react', 'date-fns', 'recharts'],
-    // Use SWC minifier (faster than Terser)
-    swcMinify: true,
-  },
-
-  // Output configuration for Vercel
-  output: 'standalone', // Creates optimized production bundle
-
-  // ESLint - skip during builds for speed
+  // Skip ESLint during builds
   eslint: {
     ignoreDuringBuilds: true,
   },
 
-  // TypeScript - already type-checked in dev, skip in build
-  typescript: {
-    ignoreBuildErrors: false, // Set to true only if you're 100% confident
-  },
-
   // Image optimization
   images: {
-    formats: ['image/avif', 'image/webp'], // Modern formats, smaller sizes
     remotePatterns: [
       {
         protocol: 'https',
@@ -76,15 +58,10 @@ const nextConfig = {
         hostname: 'cdn-assets-eu.frontify.com',
       },
     ],
-    // Reduce image optimization timeout
-    minimumCacheTTL: 60,
   },
 
-  // Production source maps - disable for faster builds
+  // Disable production source maps for faster builds
   productionBrowserSourceMaps: false,
-
-  // Compress output
-  compress: true,
 
   // Security headers
   async headers() {
@@ -99,44 +76,8 @@ const nextConfig = {
       },
     ];
   },
-
-  // Webpack optimizations
-  webpack: (config, { isServer }) => {
-    // Only apply optimizations in production
-    if (isProd && !isServer) {
-      // Enable tree shaking (client-side only)
-      config.optimization.usedExports = true;
-      
-      // Split chunks for better caching (client-side only)
-      config.optimization.splitChunks = {
-        chunks: 'all',
-        cacheGroups: {
-          default: false,
-          vendors: false,
-          // Vendor chunk for node_modules
-          vendor: {
-            name: 'vendor',
-            chunks: 'all',
-            test: /node_modules/,
-            priority: 20,
-          },
-          // Common chunk for shared code
-          common: {
-            name: 'common',
-            minChunks: 2,
-            chunks: 'all',
-            priority: 10,
-            reuseExistingChunk: true,
-            enforce: true,
-          },
-        },
-      };
-    }
-    
-    return config;
-  },
 };
 
 export default nextConfig;
 
-// Build timestamp: 2025-01-25 - Vercel optimization update
+// Build timestamp: 2025-01-25 - Simplified config
