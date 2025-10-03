@@ -348,10 +348,10 @@ function WarPrepPageContent() {
 
 export default function WarPrepPage() {
   return (
-    <DashboardLayout>
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
       <Suspense fallback={<div className="mx-auto max-w-6xl p-4">Loading war preparation...</div>}>
         <WarPrepPageContent />
       </Suspense>
-    </DashboardLayout>
+    </div>
   );
 }
