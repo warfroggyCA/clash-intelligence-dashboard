@@ -600,7 +600,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       </TableCell>
       {/* ACE Score Column */}
       <TableCell
-        className="text-center border-r border-slate-600/50 text-slate-900 dark:text-slate-100"
+        className="text-center border-r border-slate-600/50 text-slate-700 dark:text-slate-200"
         title={aceTooltip}
         isActiveSort={isActiveColumn('ace')}
       >
