@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
-import DashboardLayout from '@/components/layout/DashboardLayout';
 import Link from 'next/link';
 
 type OpponentProfile = {
