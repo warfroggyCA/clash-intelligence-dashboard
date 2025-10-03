@@ -253,7 +253,7 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
           <div className="mb-4">
             <h3 className="text-sm font-semibold text-slate-300 mb-3">Top War Performers (Est. Stars/Attack)</h3>
             <div className="space-y-2">
-              {getTopWarPerformers(warMetrics.memberPerformance, 5).map((performer) => (
+              {topWarPerformers.map((performer) => (
                 <div
                   key={performer.tag}
                   className="flex items-center justify-between p-2 bg-emerald-500/10 border border-emerald-500/30 rounded"
