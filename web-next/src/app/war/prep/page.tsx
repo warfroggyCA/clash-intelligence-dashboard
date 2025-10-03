@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
@@ -312,6 +312,10 @@ function WarPrepPageContent() {
 }
 
 export default function WarPrepPage() {
-  return <WarPrepPageContent />;
+  return (
+    <Suspense fallback={<div>Loading war preparation...</div>}>
+      <WarPrepPageContent />
+    </Suspense>
+  );
 }
 
