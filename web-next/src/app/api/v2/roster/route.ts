@@ -6,6 +6,8 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { readTenureDetails } from '@/lib/tenure';
 import { daysSinceToDate } from '@/lib/date';
 
+export const dynamic = 'force-dynamic';
+
 const querySchema = z.object({
   clanTag: z.string().optional(),
 });

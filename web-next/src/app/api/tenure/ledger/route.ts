@@ -5,6 +5,8 @@ import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { readTenureLedger } from '@/lib/tenure';
 
+export const dynamic = 'force-dynamic';
+
 const querySchema = z.object({
   clanTag: z.string().optional(),
 });

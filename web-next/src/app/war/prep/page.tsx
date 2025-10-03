@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
@@ -36,7 +36,7 @@ type OpponentProfile = {
   detectedOpponentTag?: string | null;
 };
 
-export default function WarPrepPage() {
+function WarPrepPageContent() {
   const ourClanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
   const router = useRouter();
   const search = useSearchParams();
@@ -280,5 +280,13 @@ export default function WarPrepPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function WarPrepPage() {
+  return (
+    <Suspense fallback={<div>Loading war preparation...</div>}>
+      <WarPrepPageContent />
+    </Suspense>
   );
 }

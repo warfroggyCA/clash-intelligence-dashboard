@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 
+export const dynamic = 'force-dynamic';
+
 interface PhaseSummary {
   name: string;
   success: boolean;
