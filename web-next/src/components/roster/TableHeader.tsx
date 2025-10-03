@@ -291,7 +291,7 @@ const HeaderCell: React.FC<HeaderCellProps> = ({ config, isActive, direction, on
 
   const baseStyles = "py-3 px-4 font-semibold text-blue-800 dark:text-slate-200 transition-colors";
   const activeStyles = isActive
-    ? "relative bg-sky-100 text-sky-900 shadow-inner before:absolute before:inset-y-[0.4rem] before:left-0 before:w-1 before:rounded-full before:bg-sky-500/80 before:content-[''] dark:bg-sky-300/60 dark:text-slate-900 dark:before:bg-sky-200"
+    ? "relative bg-sky-50/50 text-sky-900 dark:bg-slate-700/30 dark:text-slate-100"
     : "";
   const hoverStyles = config.sortable
     ? "hover:bg-blue-50 dark:hover:bg-slate-700/60 cursor-pointer"
