@@ -231,7 +231,7 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
     const inactiveMembers = members.filter(m => Number(m.lastSeen || 0) > 3);
     const newMembers = members.filter(m => (m.tenure_days || m.tenure || 0) < 7);
 
-    let message = `⚡ **Activity Report for ${clanData.clanName || 'Your Clan'}**\n\n`;
+    let message = `🏁 **Activity Report for ${clanData.clanName || 'Your Clan'}**\n\n`;
     
     message += `🟢 **Active Members:** ${activeMembers.length}/${members.length}\n`;
     message += `🟡 **Inactive Members:** ${inactiveMembers.length}/${members.length}\n`;
