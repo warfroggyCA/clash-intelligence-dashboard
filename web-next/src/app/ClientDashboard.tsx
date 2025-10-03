@@ -8,6 +8,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import { RosterTable } from '@/components/roster/RosterTable';
 import { RosterSummary } from '@/components/roster/RosterSummary';
 import { InsightsDashboard } from '@/components/insights/InsightsDashboard';
+import CommandCenter from '@/components/CommandCenter';
 
 type Props = {
   initialRoster?: Roster | null;
