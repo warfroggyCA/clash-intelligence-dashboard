@@ -2,11 +2,10 @@
 
 import { useMemo, useState } from 'react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCcw, ChevronDown, ChevronUp, Users, Shield, Trophy, Heart, Swords } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCcw, ChevronDown, ChevronUp, Users, Shield, Trophy, Heart } from 'lucide-react';
 import { GlassCard, Button } from '@/components/ui';
 import { calculateClanHealth, getTopPerformers, generateWatchlist, calculateMomentum, getElderPromotionCandidates, type Member } from '@/lib/clan-metrics';
 import { generateAlerts, type Alert } from '@/lib/alerts-engine';
-import { calculateWarMetrics, getTopWarPerformers, getMembersNeedingCoaching, type WarData } from '@/lib/war-metrics';
 import { formatDistanceToNow } from 'date-fns';
 
 interface CommandCenterProps {
@@ -24,22 +23,12 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
     return clanData?.members || [];
   }, [clanData]);
 
-  const warData: WarData | undefined = useMemo(() => {
-    return clanData?.snapshotDetails ? {
-      currentWar: clanData.snapshotDetails.currentWar,
-      warLog: clanData.snapshotDetails.warLog
-    } : undefined;
-  }, [clanData]);
-
   const clanHealth = useMemo(() => calculateClanHealth(members), [members]);
-  const warMetrics = useMemo(() => calculateWarMetrics(members, warData), [members, warData]);
-  const alerts = useMemo(() => generateAlerts(members, warData), [members, warData]);
+  const alerts = useMemo(() => generateAlerts(members), [members]);
   const topPerformers = useMemo(() => getTopPerformers(members, 3), [members]);
   const watchlist = useMemo(() => generateWatchlist(members), [members]);
   const momentum = useMemo(() => calculateMomentum(members), [members]);
   const elderCandidates = useMemo(() => getElderPromotionCandidates(members), [members]);
-  const topWarPerformers = useMemo(() => getTopWarPerformers(warMetrics.memberPerformance, 5), [warMetrics.memberPerformance]);
-  const membersNeedingWarCoaching = useMemo(() => getMembersNeedingCoaching(warMetrics.memberPerformance), [warMetrics.memberPerformance]);
 
   const dataFreshnessLabel = useMemo(() => {
     if (!snapshotMetadata?.fetchedAt) return 'Unknown';
@@ -118,30 +107,35 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
             <p>No alerts detected. Clan is operating smoothly! 🎉</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div id="alerts-list" className="space-y-3">
             {displayedAlerts.map((alert) => (
               <AlertCard
                 key={alert.id}
                 alert={alert}
                 isExpanded={expandedAlert === alert.id}
                 onToggle={() => setExpandedAlert(expandedAlert === alert.id ? null : alert.id)}
-                members={members}
               />
             ))}
 
             {alerts.length > 5 && (
               <button
                 onClick={() => setShowAllAlerts(!showAllAlerts)}
-                className="w-full py-2 text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center justify-center gap-1"
+                className="w-full py-2 min-h-[44px] text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center justify-center gap-1 focus-ring"
+                aria-expanded={showAllAlerts}
+                aria-controls="alerts-list"
+                aria-label={showAllAlerts 
+                  ? `Collapse alerts list. Currently showing all ${alerts.length} alerts.` 
+                  : `Expand to show all ${alerts.length} alerts. Currently showing 5.`
+                }
               >
                 {showAllAlerts ? (
                   <>
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp className="w-4 h-4" aria-hidden="true" />
                     Show Less
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-4 h-4" aria-hidden="true" />
                     Show All {alerts.length} Alerts
                   </>
                 )}
@@ -187,121 +181,6 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
             description="3-7 days inactive"
           />
         </div>
-      </GlassCard>
-
-      {/* War Performance */}
-      <GlassCard>
-        <h2 className="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
-          <Swords className="w-5 h-5 text-orange-400" />
-          War Performance
-        </h2>
-
-        {/* Current War Status */}
-        {warMetrics.currentWar.active ? (
-          <div className="mb-6 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-orange-400">⚔️ WAR ACTIVE</span>
-                {warMetrics.currentWar.state === 'preparation' && (
-                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">Preparation</span>
-                )}
-                {warMetrics.currentWar.state === 'inWar' && (
-                  <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">Battle Day</span>
-                )}
-              </div>
-              <div className="text-right">
-                <p className="text-sm text-slate-300">vs {warMetrics.currentWar.opponent}</p>
-                <p className="text-xs text-slate-400">{warMetrics.currentWar.teamSize}v{warMetrics.currentWar.teamSize}</p>
-              </div>
-            </div>
-            {warMetrics.currentWar.timeRemaining && (
-              <p className="text-sm text-slate-300 mt-2">{warMetrics.currentWar.timeRemaining}</p>
-            )}
-          </div>
-        ) : (
-          <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
-            <p className="text-sm text-slate-400">No active war</p>
-          </div>
-        )}
-
-        {/* Recent War Record */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          <MetricCard
-            label="Last 10 Wars"
-            value={`${warMetrics.recentPerformance.last10Wars.wins}W-${warMetrics.recentPerformance.last10Wars.losses}L`}
-            trend={warMetrics.recentPerformance.trend === 'improving' ? 'up' : warMetrics.recentPerformance.trend === 'declining' ? 'down' : 'flat'}
-            description={`${warMetrics.recentPerformance.last10Wars.draws} draws`}
-          />
-
-          <MetricCard
-            label="Win Rate"
-            value={`${warMetrics.recentPerformance.last10Wars.winRate}%`}
-            trend={warMetrics.recentPerformance.last10Wars.winRate >= 60 ? 'up' : warMetrics.recentPerformance.last10Wars.winRate >= 40 ? 'flat' : 'down'}
-            description={warMetrics.recentPerformance.trend === 'improving' ? '↗️ Improving' : warMetrics.recentPerformance.trend === 'declining' ? '↘️ Declining' : '→ Stable'}
-          />
-
-          <MetricCard
-            label="Performance Trend"
-            value={warMetrics.recentPerformance.trend.charAt(0).toUpperCase() + warMetrics.recentPerformance.trend.slice(1)}
-            trend={warMetrics.recentPerformance.trend === 'improving' ? 'up' : warMetrics.recentPerformance.trend === 'declining' ? 'down' : 'flat'}
-            description="Based on last 10 wars"
-          />
-        </div>
-
-        {/* Top War Performers */}
-        {warMetrics.memberPerformance.length > 0 && (
-          <div className="mb-4">
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Top War Performers (Est. Stars/Attack)</h3>
-            <div className="space-y-2">
-              {topWarPerformers.map((performer) => (
-                <div
-                  key={performer.tag}
-                  className="flex items-center justify-between p-2 bg-emerald-500/10 border border-emerald-500/30 rounded"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">{performer.name}</p>
-                    <p className="text-xs text-slate-400">
-                      {performer.warStars} stars • {performer.estimatedAttacks} attacks
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-emerald-400">{performer.estimatedStarsPerAttack.toFixed(2)}</p>
-                    <p className="text-xs text-slate-400">stars/attack</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Members Needing Coaching */}
-        {membersNeedingWarCoaching.length > 0 && (
-          <div>
-            <h3 className="text-sm font-semibold text-slate-300 mb-3">Needs War Coaching ({membersNeedingWarCoaching.length})</h3>
-            <div className="space-y-2">
-              {membersNeedingWarCoaching.slice(0, 5).map((performer) => (
-                <div
-                  key={performer.tag}
-                  className="flex items-center justify-between p-2 bg-red-500/10 border border-red-500/30 rounded"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-slate-100">{performer.name}</p>
-                    <p className="text-xs text-slate-400">
-                      {performer.warStars} stars • {performer.estimatedAttacks} attacks
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-red-400">{performer.estimatedStarsPerAttack.toFixed(2)}</p>
-                    <p className="text-xs text-slate-400">stars/attack</p>
-                  </div>
-                </div>
-              ))}
-              {membersNeedingWarCoaching.length > 5 && (
-                <p className="text-xs text-slate-500 text-center">+{membersNeedingWarCoaching.length - 5} more</p>
-              )}
-            </div>
-          </div>
-        )}
       </GlassCard>
 
       {/* Top Performers & Watchlist */}
@@ -437,14 +316,29 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
       <GlassCard>
         <h2 className="text-xl font-bold text-slate-100 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Button variant="outline" className="w-full" disabled>
-            📢 Share Weekly Update
+          <Button 
+            variant="outline" 
+            className="w-full min-h-[44px]" 
+            disabled
+            aria-label="Share weekly clan update (Coming soon)"
+          >
+            <span aria-hidden="true">📢</span> Share Weekly Update
           </Button>
-          <Button variant="outline" className="w-full" disabled>
-            👥 Export Watchlist
+          <Button 
+            variant="outline" 
+            className="w-full min-h-[44px]" 
+            disabled
+            aria-label="Export watchlist to CSV (Coming soon)"
+          >
+            <span aria-hidden="true">👥</span> Export Watchlist
           </Button>
-          <Button variant="outline" className="w-full" disabled>
-            🏆 View Detailed Analytics
+          <Button 
+            variant="outline" 
+            className="w-full min-h-[44px]" 
+            disabled
+            aria-label="View detailed clan analytics (Coming soon)"
+          >
+            <span aria-hidden="true">🏆</span> View Detailed Analytics
           </Button>
         </div>
         <p className="text-xs text-slate-500 mt-2 text-center">Quick actions coming soon</p>
@@ -454,17 +348,7 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
 }
 
 // Alert Card Component
-function AlertCard({ 
-  alert, 
-  isExpanded, 
-  onToggle,
-  members 
-}: { 
-  alert: Alert; 
-  isExpanded: boolean; 
-  onToggle: () => void;
-  members: Member[];
-}) {
+function AlertCard({ alert, isExpanded, onToggle }: { alert: Alert; isExpanded: boolean; onToggle: () => void }) {
   const priorityColors = {
     high: 'bg-red-500/10 border-red-500/40',
     medium: 'bg-amber-500/10 border-amber-500/40',
@@ -475,12 +359,6 @@ function AlertCard({
     high: 'text-red-400',
     medium: 'text-amber-400',
     low: 'text-slate-400'
-  };
-
-  // Helper to get member name from tag
-  const getMemberName = (tag: string): string => {
-    const member = members.find(m => m.tag === tag);
-    return member?.name || tag;
   };
 
   return (
@@ -528,7 +406,7 @@ function AlertCard({
                       key={tag}
                       className="text-xs bg-slate-700/50 px-2 py-1 rounded text-slate-300"
                     >
-                      {getMemberName(tag)}
+                      {tag}
                     </span>
                   ))}
                   {alert.affectedMembers.length > 10 && (

@@ -464,13 +464,33 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 </Button>
               </div>
             </div>
-            <Input
-              type="text"
-              placeholder="Search members by name or tag..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange({ search: e.target.value })}
-              className="mt-1"
-            />
+            <div className="relative mt-1">
+              <label htmlFor="member-search-input" className="sr-only">
+                Search clan members by name or player tag
+              </label>
+              <Input
+                id="member-search-input"
+                type="search"
+                role="searchbox"
+                placeholder="Search members by name or tag..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
+                aria-label="Search clan members by name or player tag"
+                aria-describedby="search-help"
+                autoComplete="off"
+              />
+              <span id="search-help" className="sr-only">
+                Enter a player name or tag to filter the roster. Results update as you type.
+              </span>
+            </div>
+            {filters.search && (
+              <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+                {filteredCount === 0 
+                  ? `No members found matching "${filters.search}"`
+                  : `Found ${filteredCount} member${filteredCount === 1 ? '' : 's'} matching "${filters.search}"`
+                }
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-contrast">
               <span className="text-muted-contrast">Quick filters:</span>
               <Button
@@ -522,18 +542,22 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
             size="sm"
             variant={rosterViewMode === 'table' ? 'primary' : 'ghost'}
             onClick={() => setRosterViewMode('table')}
-            className={`view-toggle-btn ${rosterViewMode === 'table' ? 'view-toggle-btn--active' : ''}`}
+            className={`view-toggle-btn min-h-[44px] ${rosterViewMode === 'table' ? 'view-toggle-btn--active' : ''}`}
+            aria-pressed={rosterViewMode === 'table'}
+            aria-label={`Switch to table view${rosterViewMode === 'table' ? ' (currently active)' : ''}`}
           >
-            <List className="h-4 w-4" aria-hidden />
+            <List className="h-4 w-4" aria-hidden="true" />
             <span>Table View</span>
           </Button>
           <Button
             size="sm"
             variant={rosterViewMode === 'cards' ? 'primary' : 'ghost'}
             onClick={() => setRosterViewMode('cards')}
-            className={`view-toggle-btn ${rosterViewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
+            className={`view-toggle-btn min-h-[44px] ${rosterViewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
+            aria-pressed={rosterViewMode === 'cards'}
+            aria-label={`Switch to card view${rosterViewMode === 'cards' ? ' (currently active)' : ''}`}
           >
-            <LayoutGrid className="h-4 w-4" aria-hidden />
+            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
             <span>Card View</span>
           </Button>
         </div>
@@ -551,22 +575,38 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
           <div className="hidden lg:block overflow-x-auto">
             <div className="clash-card overflow-hidden">
               <table className="clash-table" role="table" aria-label="Clan member roster">
+                <caption className="sr-only">
+                  Clan member roster showing {paginatedMembers.length} of {filteredMembers.length} members.
+                  {hasActiveFilters && ' Filters are active.'}
+                  {sortKey && ` Sorted by ${sortKey} ${sortDir === 'asc' ? 'ascending' : 'descending'}.`}
+                  Table has multiple columns including name, role, town hall level, heroes, trophies, donations, and activity.
+                </caption>
                 <TableHeader
                   sortKey={sortKey}
                   sortDirection={sortDir}
                   onSort={handleSort}
                 />
                 <tbody>
-                  {paginatedMembers.map((member, index) => (
-                    <TableRow
-                      key={`${member.tag}-${index}`}
-                      member={member}
-                      index={index}
-                      roster={roster}
-                      activeSortKey={sortKey}
-                      aceScoresByTag={aceScoresByTag}
-                    />
-                  ))}
+                  {paginatedMembers.length === 0 ? (
+                    <tr>
+                      <td colSpan={12} className="text-center py-8">
+                        <p className="text-slate-400">
+                          No members match your filters. Try adjusting your search criteria.
+                        </p>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedMembers.map((member, index) => (
+                      <TableRow
+                        key={`${member.tag}-${index}`}
+                        member={member}
+                        index={index}
+                        roster={roster}
+                        activeSortKey={sortKey}
+                        aceScoresByTag={aceScoresByTag}
+                      />
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
