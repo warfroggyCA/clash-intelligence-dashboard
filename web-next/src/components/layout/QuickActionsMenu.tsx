@@ -27,8 +27,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
     handleCopyRosterJson,
     handleExportSnapshot,
     isGeneratingSummary,
-    isRefreshing,
-    isRefreshingInsights,
+    isRefreshingAll,
     isExporting,
     hasData,
     smartInsightsStatus,
@@ -36,11 +35,21 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
 
   const { loadSmartInsights, clanTag, setMessage, setStatus } = useDashboardStore();
 
+  const handleRefreshAllWrapper = async () => {
+    setIsRefreshing(true);
+    try {
+      await handleRefreshAll();
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
   const handleRefreshInsights = async () => {
     if (!clanTag) {
       setMessage('Load a clan first to refresh insights');
       return;
     }
+    setIsRefreshingInsights(true);
     try {
       await loadSmartInsights(clanTag, { force: true, ttlMs: 0 });
       setMessage('Smart insights refreshed');
@@ -49,10 +58,14 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
       console.error('Failed to refresh insights:', error);
       setMessage('Failed to refresh insights');
       setStatus('error');
+    } finally {
+      setIsRefreshingInsights(false);
     }
   };
 
   const [open, setOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -125,7 +138,7 @@ export const QuickActionsMenu: React.FC<QuickActionsMenuProps> = ({
               className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ color: '#e2e8f0' }}
               onClick={() => {
-                handleRefreshAll();
+                handleRefreshAllWrapper();
                 setOpen(false);
               }}
               disabled={isRefreshing}
