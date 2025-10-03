@@ -300,10 +300,17 @@ const HeaderCell: React.FC<HeaderCellProps> = ({ config, isActive, direction, on
 
   return (
     <th
+      scope="col"
       className={`${baseStyles} ${activeStyles} ${hoverStyles} ${sortableStyles} ${config.className || ''} dark:bg-slate-800/40`}
       onClick={handleClick}
       title={config.description}
       aria-sort={isActive ? (direction === 'asc' ? 'ascending' : 'descending') : 'none'}
+      aria-label={config.sortable 
+        ? `${config.label}, ${isActive 
+            ? `currently sorted ${direction === 'asc' ? 'ascending' : 'descending'}, click to sort ${direction === 'asc' ? 'descending' : 'ascending'}` 
+            : 'not sorted, click to sort ascending'}`
+        : config.label
+      }
       role="columnheader"
       tabIndex={config.sortable ? 0 : -1}
       onKeyDown={(e) => {

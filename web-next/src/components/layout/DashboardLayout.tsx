@@ -416,6 +416,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
+      {/* Skip to main content link - WCAG 2.1 AA requirement */}
+      <a 
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-6 focus:py-3 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-xl focus:font-semibold"
+      >
+        Skip to main content
+      </a>
+      
       {/* Header */}
       <DashboardHeader
         onToggleCommandRail={() => setIsCommandRailOpen((prev) => !prev)}
@@ -439,7 +447,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       )}
       
       {/* Main Content */}
-      <main className="dashboard-main min-h-screen w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
+      <main id="main-content" role="main" tabIndex={-1} className="dashboard-main min-h-screen w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
         <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
           <div className="flex-1 space-y-6">
             {children}
