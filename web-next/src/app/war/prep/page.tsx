@@ -248,8 +248,30 @@ function WarPrepPageContent() {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-100">⚔️ War Prep</h1>
-          <p className="text-sm text-slate-400">Analyze your opponent's clan before battle day.</p>
+          <p className="text-sm text-slate-400">
+            {profile ? (
+              <span>
+                Currently analyzing: <span className="font-semibold text-slate-300">{profile.clan.name}</span>
+              </span>
+            ) : (
+              'Analyze your opponent's clan before battle day.'
+            )}
+          </p>
         </div>
+        {profile && (
+          <Button
+            onClick={() => {
+              setProfile(null);
+              setOpponentInput('');
+              setError(null);
+              localStorage.removeItem('war-prep-opponent');
+            }}
+            variant="ghost"
+            className="text-slate-400 hover:text-red-400"
+          >
+            Clear & Analyze New
+          </Button>
+        )}
       </div>
 
       <GlassCard className="space-y-4">
