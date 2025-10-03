@@ -69,7 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: INITIAL_THEME_SCRIPT }} />
       </head>
       <body>
-        <ThemeProvider defaultTheme="system">
+        <ThemeProvider defaultTheme="dark">
           <TooltipManager />
           {children}
         </ThemeProvider>
