@@ -172,6 +172,12 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
               {isRefreshingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
               Refresh Data & Insights
             </Button>
+            <a
+              href="/war/prep"
+              className="flex-1 min-w-[8rem] rounded-2xl border border-brand-border/80 bg-brand-surfaceSubtle px-3 py-2 text-center text-sm text-slate-100 hover:bg-brand-surfaceRaised"
+            >
+              Open War Prep
+            </a>
             {canRunIngestion ? (
               <>
                 <Button

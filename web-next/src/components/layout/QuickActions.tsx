@@ -482,6 +482,16 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
               )}
             </span>
           </Button>
+          <a
+            href="/war/prep"
+            className={`${actionButtonClasses} w-full sm:w-auto inline-flex`}
+            title="Open War Prep to analyze an opponent"
+          >
+            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c1.657 0 3-1.343 3-3S13.657 2 12 2 9 3.343 9 5s1.343 3 3 3zm0 2c-3.866 0-7 2.239-7 5v3h14v-3c0-2.761-3.134-5-7-5z" />
+            </svg>
+            <span>Open War Prep</span>
+          </a>
 
           <Button
             onClick={handleCopySnapshotSummary}
