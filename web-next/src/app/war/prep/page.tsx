@@ -254,7 +254,7 @@ function WarPrepPageContent() {
                 Currently analyzing: <span className="font-semibold text-slate-300">{profile.clan.name}</span>
               </span>
             ) : (
-              'Analyze your opponent's clan before battle day.'
+              "Analyze your opponent's clan before battle day."
             )}
           </p>
         </div>
