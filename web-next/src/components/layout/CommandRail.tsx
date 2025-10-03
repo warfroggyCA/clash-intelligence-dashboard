@@ -48,10 +48,8 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
   const ingestionHealth = useDashboardStore((state) => state.ingestionHealth);
 
   const {
-    handleRefreshData,
-    handleRefreshInsights,
-    isRefreshing,
-    isRefreshingInsights,
+    handleRefreshAll,
+    isRefreshingAll,
     smartInsightsStatus,
     smartInsightsError,
     smartInsightsIsStale,
@@ -140,7 +138,7 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
               <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Snapshot status</p>
               <p className="text-sm font-semibold text-slate-100">{clanTag || 'No clan loaded'}</p>
             </div>
-            {isRefreshing && <Loader2 className="h-4 w-4 animate-spin text-slate-300" />}
+            {isRefreshingAll && <Loader2 className="h-4 w-4 animate-spin text-slate-300" />}
           </div>
           <div className="mt-3 space-y-2 text-xs text-slate-300">
             <p>
@@ -168,11 +166,11 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
             <Button
               size="sm"
               className="flex-1 min-w-[8rem] bg-brand-primary text-white hover:bg-brand-secondary"
-              onClick={() => handleRefreshData()}
-              disabled={isRefreshing}
+              onClick={() => handleRefreshAll()}
+              disabled={isRefreshingAll}
             >
-              {isRefreshing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Refresh Snapshot
+              {isRefreshingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Refresh Data & Insights
             </Button>
             {canRunIngestion ? (
               <>
@@ -275,7 +273,7 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
               <p className="text-[11px] uppercase tracking-[0.2em] text-slate-400">Insights status</p>
               <p className="text-sm font-semibold text-slate-100">{insightsLabel}</p>
             </div>
-            {isRefreshingInsights && <Loader2 className="h-4 w-4 animate-spin text-slate-300" />}
+            {isRefreshingAll && <Loader2 className="h-4 w-4 animate-spin text-slate-300" />}
           </div>
           <div className="mt-3 space-y-2 text-xs text-slate-300">
             <p>
@@ -290,11 +288,11 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
               size="sm"
               variant="secondary"
               className="flex-1 min-w-[8rem] bg-brand-surfaceSubtle text-slate-100 hover:bg-brand-surfaceRaised"
-              onClick={() => handleRefreshInsights()}
-              disabled={isRefreshingInsights || smartInsightsStatus === 'loading'}
+              onClick={() => handleRefreshAll()}
+              disabled={isRefreshingAll || smartInsightsStatus === 'loading'}
             >
-              {isRefreshingInsights ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Refresh Insights
+              {isRefreshingAll ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Refresh Data & Insights
             </Button>
             <Button
               size="sm"

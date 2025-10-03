@@ -33,7 +33,7 @@ import { buildRosterFetchPlan } from '@/lib/data-source-policy';
 import { showToast } from '@/lib/toast';
 import { normalizeTag } from '@/lib/tags';
 import type { SmartInsightsPayload, SmartInsightsHeadline } from '@/lib/smart-insights';
-import { loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
+import { clearSmartInsightsPayload, loadSmartInsightsPayload, saveSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import { fetchRosterFromDataSpine, transformResponse } from '@/lib/data-spine-roster';
 import type { UserRoleRecord, ClanRoleName } from '@/lib/auth/roles';
 
@@ -490,7 +490,7 @@ interface DashboardState {
 const DEFAULT_ACCESS_LEVEL: AccessLevel = 'leader';
 const DEFAULT_CLAN_TAG = cfg.homeClanTag;
 const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change history
-const SMART_INSIGHTS_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for smart insights
+const SMART_INSIGHTS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours cache for smart insights
 const SNAPSHOT_AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 let snapshotAutoRefreshTimer: ReturnType<typeof setTimeout> | null = null;
@@ -979,10 +979,21 @@ export const useDashboardStore = create<DashboardState>()(
           }
         }
 
-        set({ smartInsightsStatus: 'loading', smartInsightsError: null });
+        if (force) {
+          clearSmartInsightsPayload(cleanTag);
+          set({
+            smartInsights: null,
+            smartInsightsStatus: 'loading',
+            smartInsightsError: null,
+            smartInsightsClanTag: cleanTag,
+            smartInsightsFetchedAt: undefined,
+          });
+        } else {
+          set({ smartInsightsStatus: 'loading', smartInsightsError: null });
+        }
 
         try {
-          const cached = loadSmartInsightsPayload(cleanTag);
+          const cached = force ? null : loadSmartInsightsPayload(cleanTag);
           if (cached) {
             get().setSmartInsights(cached);
           }

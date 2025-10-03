@@ -54,8 +54,7 @@ export const useQuickActions = () => {
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isCopyingSnapshot, setIsCopyingSnapshot] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
-  const [isRefreshingInsights, setIsRefreshingInsights] = useState(false);
+  const [isRefreshingAll, setIsRefreshingAll] = useState(false);
 
   const handleGenerateInsightsSummary = async () => {
     if (!clanTag) {
@@ -154,43 +153,24 @@ export const useQuickActions = () => {
     }
   };
 
-  const handleRefreshInsights = async () => {
+  const handleRefreshAll = async () => {
     if (!clanTag) {
-      setMessage('Load a clan first to refresh insights');
+      setMessage('Load a clan first to refresh the dashboard');
       return;
     }
 
-    setIsRefreshingInsights(true);
-    try {
-      await loadSmartInsights(clanTag, { force: true });
-      setMessage('Smart insights refreshed');
-      setStatus('success');
-    } catch (error) {
-      console.error('Failed to refresh smart insights:', error);
-      setMessage('Failed to refresh smart insights');
-      setStatus('error');
-    } finally {
-      setIsRefreshingInsights(false);
-    }
-  };
-
-  const handleRefreshData = async () => {
-    if (!clanTag) {
-      setMessage('Load a clan first to refresh data');
-      return;
-    }
-
-    setIsRefreshing(true);
+    setIsRefreshingAll(true);
     try {
       await refreshData();
-      setMessage('Snapshot data refreshed');
+      await loadSmartInsights(clanTag, { force: true, ttlMs: 0 });
+      setMessage('Snapshot data and smart insights refreshed');
       setStatus('success');
     } catch (error) {
-      console.error('Failed to refresh data:', error);
-      setMessage('Failed to refresh data');
+      console.error('Failed to refresh dashboard data:', error);
+      setMessage('Failed to refresh dashboard data');
       setStatus('error');
     } finally {
-      setIsRefreshing(false);
+      setIsRefreshingAll(false);
     }
   };
 
@@ -370,16 +350,14 @@ export const useQuickActions = () => {
 
   return {
     handleGenerateInsightsSummary,
-    handleRefreshData,
-    handleRefreshInsights,
+    handleRefreshAll,
     handleCopySnapshotSummary,
     handleCopyRosterJson,
     handleExportSnapshot,
     isGeneratingSummary,
     isCopyingSnapshot,
     isExporting,
-    isRefreshing,
-    isRefreshingInsights,
+    isRefreshingAll,
     smartInsightsStatus,
     smartInsightsError,
     smartInsightsIsStale,
@@ -415,16 +393,14 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
   }, [showExportMenu]);
   const {
     handleGenerateInsightsSummary,
-    handleRefreshData,
-    handleRefreshInsights,
+    handleRefreshAll,
     handleCopySnapshotSummary,
     handleCopyRosterJson,
     handleExportSnapshot,
     isGeneratingSummary,
     isCopyingSnapshot,
     isExporting,
-    isRefreshing,
-    isRefreshingInsights,
+    isRefreshingAll,
     smartInsightsStatus,
     smartInsightsError,
     smartInsightsIsStale,
@@ -488,35 +464,20 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
 
         <div className="flex flex-wrap gap-2">
           <Button
-            onClick={handleRefreshData}
-            disabled={!hasData || isRefreshing}
-            loading={isRefreshing}
+            onClick={handleRefreshAll}
+            disabled={!hasData || isRefreshingAll}
+            loading={isRefreshingAll}
             variant="ghost"
             size="sm"
             className={`${actionButtonClasses} w-full sm:w-auto`}
-            title="Load the latest Supabase snapshot for this clan"
+            title="Refresh snapshot data and smart insights"
           >
             <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z"></path>
             </svg>
-            <span>Refresh Snapshot</span>
-          </Button>
-
-          <Button
-            onClick={handleRefreshInsights}
-            disabled={!hasData || isRefreshingInsights || smartInsightsStatus === 'loading'}
-            loading={isRefreshingInsights || smartInsightsStatus === 'loading'}
-            variant="ghost"
-            size="sm"
-            className={`${actionButtonClasses} w-full sm:w-auto`}
-            title="Refresh Smart Insights payload for this clan"
-          >
-            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.5 12a7.5 7.5 0 0112.672-5.303l2.131-2.131A.75.75 0 0120.75 5.25v5a.75.75 0 01-.75.75h-5a.75.75 0 01-.53-1.28l1.986-1.986A6 6 0 106.5 12a.75.75 0 11-1.5 0zm15 0a7.5 7.5 0 01-12.672 5.303l-2.131 2.131A.75.75 0 013.25 18.75v-5a.75.75 0 01.75-.75h5a.75.75 0 01.53 1.28l-1.986 1.986A6 6 0 1017.5 12a.75.75 0 111.5 0z"></path>
-            </svg>
             <span className="flex items-center gap-2">
-              Refresh Insights
-              {smartInsightsIsStale && (
+              Refresh Data & Insights
+              {smartInsightsIsStale && !isRefreshingAll && (
                 <span className="rounded-full bg-amber-300/15 px-2 py-0.5 text-[10px] font-medium text-amber-200">Stale</span>
               )}
             </span>
