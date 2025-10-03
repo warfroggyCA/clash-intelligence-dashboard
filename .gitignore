@@ -14,3 +14,7 @@ _backups/
 .DS_Store
 
 .vercel
+-e 
+# Environment files
+*.env
+*.env.*
