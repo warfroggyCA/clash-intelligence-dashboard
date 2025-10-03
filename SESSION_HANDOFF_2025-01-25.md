@@ -178,7 +178,9 @@ case 'coaching':
 
 ---
 
-### **2. Nightly Automation (Fixed & Deployed)**
+### **2. Nightly Automation (Fixed & Ready) - ✅ 95% DONE**
+
+**STATUS:** Code is fixed and ready. Waiting on user to configure environment variables.
 
 **Problem:**
 - Nightly automation was 90% built but not working
