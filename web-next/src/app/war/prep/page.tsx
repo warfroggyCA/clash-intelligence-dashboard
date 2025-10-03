@@ -86,7 +86,11 @@ function WarPrepPageContent() {
             await fetch('/api/war/pin', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ ourClanTag: cleanOurClan, opponentTag: oppTag }),
+              body: JSON.stringify({ 
+                ourClanTag: cleanOurClan, 
+                opponentTag: oppTag,
+                profileData: body.data
+              }),
             });
           } catch {}
         }
@@ -145,7 +149,15 @@ function WarPrepPageContent() {
           console.log('[WarPrep] Loading pinned opponent:', body.data.opponent_tag);
           setAutoDetect(false);
           setOpponentInput(body.data.opponent_tag);
-          await onFetch({ pin: false });
+          
+          // If we have cached profile data, use it directly
+          if (body.data.profile_data) {
+            console.log('[WarPrep] Using cached profile data');
+            setProfile(body.data.profile_data);
+          } else {
+            // Otherwise fetch fresh data
+            await onFetch({ pin: false });
+          }
         } else {
           console.log('[WarPrep] No pinned opponent found');
         }

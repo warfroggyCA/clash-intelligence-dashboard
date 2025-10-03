@@ -10,7 +10,11 @@ import { normalizeTag } from '@/lib/tags';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 const GetSchema = z.object({ ourClanTag: z.string().min(2) });
-const PostSchema = z.object({ ourClanTag: z.string().min(2), opponentTag: z.string().min(2) });
+const PostSchema = z.object({ 
+  ourClanTag: z.string().min(2), 
+  opponentTag: z.string().min(2),
+  profileData: z.any().optional()
+});
 
 export async function GET(request: Request) {
   const { json } = createApiContext(request, '/api/war/pin');
@@ -62,7 +66,11 @@ export async function POST(request: Request) {
     const admin = getSupabaseAdminClient();
     const { data, error } = await admin
       .from('war_prep_pins')
-      .upsert({ our_clan_tag: our, opponent_tag: opp }, { onConflict: 'our_clan_tag' })
+      .upsert({ 
+        our_clan_tag: our, 
+        opponent_tag: opp,
+        profile_data: parsed.data.profileData || null
+      }, { onConflict: 'our_clan_tag' })
       .select('*')
       .single();
     if (error) {
