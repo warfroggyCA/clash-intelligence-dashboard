@@ -38,6 +38,8 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
   const watchlist = useMemo(() => generateWatchlist(members), [members]);
   const momentum = useMemo(() => calculateMomentum(members), [members]);
   const elderCandidates = useMemo(() => getElderPromotionCandidates(members), [members]);
+  const topWarPerformers = useMemo(() => getTopWarPerformers(warMetrics.memberPerformance, 5), [warMetrics.memberPerformance]);
+  const membersNeedingWarCoaching = useMemo(() => getMembersNeedingCoaching(warMetrics.memberPerformance), [warMetrics.memberPerformance]);
 
   const dataFreshnessLabel = useMemo(() => {
     if (!snapshotMetadata?.fetchedAt) return 'Unknown';
