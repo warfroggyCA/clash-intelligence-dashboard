@@ -3,6 +3,7 @@
 
 import type { Member } from './clan-metrics';
 import { getTownHallLevel, calculateHeroDeficit, calculateThCaps } from './clan-metrics';
+import { calculateWarMetrics, generateWarAlerts, type WarData } from './war-metrics';
 
 export type AlertPriority = 'high' | 'medium' | 'low';
 export type AlertCategory = 'inactivity' | 'performance' | 'war' | 'donations' | 'promotion' | 'retention';
@@ -23,10 +24,11 @@ interface AlertContext {
   members: Member[];
   avgDonations: number;
   thCaps: Map<number, any>;
+  warData?: WarData;
 }
 
 // Generate all alerts for the clan
-export function generateAlerts(members: Member[]): Alert[] {
+export function generateAlerts(members: Member[], warData?: WarData): Alert[] {
   if (!members || members.length === 0) return [];
 
   const context: AlertContext = {
