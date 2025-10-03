@@ -502,7 +502,7 @@ export const TableRow: React.FC<TableRowProps> = ({
         isActiveSort={isActiveColumn('trophies')}
       >
         <div className="flex items-center justify-center">
-          <span className="font-bold text-slate-800 dark:text-white">
+          <span className="font-semibold text-clash-gold">
             {formatNumber(member.trophies)}
           </span>
           {isRushedPlayer && (
