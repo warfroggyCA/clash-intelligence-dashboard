@@ -187,6 +187,121 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
         </div>
       </GlassCard>
 
+      {/* War Performance */}
+      <GlassCard>
+        <h2 className="text-xl font-bold text-slate-100 mb-4 flex items-center gap-2">
+          <Swords className="w-5 h-5 text-orange-400" />
+          War Performance
+        </h2>
+
+        {/* Current War Status */}
+        {warMetrics.currentWar.active ? (
+          <div className="mb-6 p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-orange-400">⚔️ WAR ACTIVE</span>
+                {warMetrics.currentWar.state === 'preparation' && (
+                  <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-1 rounded">Preparation</span>
+                )}
+                {warMetrics.currentWar.state === 'inWar' && (
+                  <span className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded">Battle Day</span>
+                )}
+              </div>
+              <div className="text-right">
+                <p className="text-sm text-slate-300">vs {warMetrics.currentWar.opponent}</p>
+                <p className="text-xs text-slate-400">{warMetrics.currentWar.teamSize}v{warMetrics.currentWar.teamSize}</p>
+              </div>
+            </div>
+            {warMetrics.currentWar.timeRemaining && (
+              <p className="text-sm text-slate-300 mt-2">{warMetrics.currentWar.timeRemaining}</p>
+            )}
+          </div>
+        ) : (
+          <div className="mb-6 p-4 bg-slate-800/50 border border-slate-700 rounded-lg text-center">
+            <p className="text-sm text-slate-400">No active war</p>
+          </div>
+        )}
+
+        {/* Recent War Record */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <MetricCard
+            label="Last 10 Wars"
+            value={`${warMetrics.recentPerformance.last10Wars.wins}W-${warMetrics.recentPerformance.last10Wars.losses}L`}
+            trend={warMetrics.recentPerformance.trend === 'improving' ? 'up' : warMetrics.recentPerformance.trend === 'declining' ? 'down' : 'flat'}
+            description={`${warMetrics.recentPerformance.last10Wars.draws} draws`}
+          />
+
+          <MetricCard
+            label="Win Rate"
+            value={`${warMetrics.recentPerformance.last10Wars.winRate}%`}
+            trend={warMetrics.recentPerformance.last10Wars.winRate >= 60 ? 'up' : warMetrics.recentPerformance.last10Wars.winRate >= 40 ? 'flat' : 'down'}
+            description={warMetrics.recentPerformance.trend === 'improving' ? '↗️ Improving' : warMetrics.recentPerformance.trend === 'declining' ? '↘️ Declining' : '→ Stable'}
+          />
+
+          <MetricCard
+            label="Performance Trend"
+            value={warMetrics.recentPerformance.trend.charAt(0).toUpperCase() + warMetrics.recentPerformance.trend.slice(1)}
+            trend={warMetrics.recentPerformance.trend === 'improving' ? 'up' : warMetrics.recentPerformance.trend === 'declining' ? 'down' : 'flat'}
+            description="Based on last 10 wars"
+          />
+        </div>
+
+        {/* Top War Performers */}
+        {warMetrics.memberPerformance.length > 0 && (
+          <div className="mb-4">
+            <h3 className="text-sm font-semibold text-slate-300 mb-3">Top War Performers (Est. Stars/Attack)</h3>
+            <div className="space-y-2">
+              {getTopWarPerformers(warMetrics.memberPerformance, 5).map((performer) => (
+                <div
+                  key={performer.tag}
+                  className="flex items-center justify-between p-2 bg-emerald-500/10 border border-emerald-500/30 rounded"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">{performer.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {performer.warStars} stars • {performer.estimatedAttacks} attacks
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-emerald-400">{performer.estimatedStarsPerAttack.toFixed(2)}</p>
+                    <p className="text-xs text-slate-400">stars/attack</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Members Needing Coaching */}
+        {getMembersNeedingCoaching(warMetrics.memberPerformance).length > 0 && (
+          <div>
+            <h3 className="text-sm font-semibold text-slate-300 mb-3">Needs War Coaching ({getMembersNeedingCoaching(warMetrics.memberPerformance).length})</h3>
+            <div className="space-y-2">
+              {getMembersNeedingCoaching(warMetrics.memberPerformance).slice(0, 5).map((performer) => (
+                <div
+                  key={performer.tag}
+                  className="flex items-center justify-between p-2 bg-red-500/10 border border-red-500/30 rounded"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">{performer.name}</p>
+                    <p className="text-xs text-slate-400">
+                      {performer.warStars} stars • {performer.estimatedAttacks} attacks
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-red-400">{performer.estimatedStarsPerAttack.toFixed(2)}</p>
+                    <p className="text-xs text-slate-400">stars/attack</p>
+                  </div>
+                </div>
+              ))}
+              {getMembersNeedingCoaching(warMetrics.memberPerformance).length > 5 && (
+                <p className="text-xs text-slate-500 text-center">+{getMembersNeedingCoaching(warMetrics.memberPerformance).length - 5} more</p>
+              )}
+            </div>
+          </div>
+        )}
+      </GlassCard>
+
       {/* Top Performers & Watchlist */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Top Performers */}
