@@ -327,7 +327,17 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
 }
 
 // Alert Card Component
-function AlertCard({ alert, isExpanded, onToggle }: { alert: Alert; isExpanded: boolean; onToggle: () => void }) {
+function AlertCard({ 
+  alert, 
+  isExpanded, 
+  onToggle,
+  members 
+}: { 
+  alert: Alert; 
+  isExpanded: boolean; 
+  onToggle: () => void;
+  members: Member[];
+}) {
   const priorityColors = {
     high: 'bg-red-500/10 border-red-500/40',
     medium: 'bg-amber-500/10 border-amber-500/40',
@@ -338,6 +348,12 @@ function AlertCard({ alert, isExpanded, onToggle }: { alert: Alert; isExpanded: 
     high: 'text-red-400',
     medium: 'text-amber-400',
     low: 'text-slate-400'
+  };
+
+  // Helper to get member name from tag
+  const getMemberName = (tag: string): string => {
+    const member = members.find(m => m.tag === tag);
+    return member?.name || tag;
   };
 
   return (
@@ -385,7 +401,7 @@ function AlertCard({ alert, isExpanded, onToggle }: { alert: Alert; isExpanded: 
                       key={tag}
                       className="text-xs bg-slate-700/50 px-2 py-1 rounded text-slate-300"
                     >
-                      {tag}
+                      {getMemberName(tag)}
                     </span>
                   ))}
                   {alert.affectedMembers.length > 10 && (
