@@ -1,7 +1,7 @@
 {
   "name": "clash-intelligence",
   "private": true,
-  "version": "0.29.0",
+  "version": "0.30.0",
   "_forceRebuild": "2025-01-15-19:45:00",
   "scripts": {
     "dev": "NEXT_PUBLIC_APP_VERSION=$(node -p \"require('./package.json').version\") next dev -p 5050",
