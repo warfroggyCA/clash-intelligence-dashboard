@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
-import { AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCcw, ChevronDown, ChevronUp, Users, Shield, Trophy, Heart } from 'lucide-react';
+import { AlertTriangle, TrendingUp, TrendingDown, Minus, RefreshCcw, ChevronDown, ChevronUp, Users, Shield, Trophy, Heart, Swords } from 'lucide-react';
 import { GlassCard, Button } from '@/components/ui';
 import { calculateClanHealth, getTopPerformers, generateWatchlist, calculateMomentum, getElderPromotionCandidates, type Member } from '@/lib/clan-metrics';
 import { generateAlerts, type Alert } from '@/lib/alerts-engine';
+import { calculateWarMetrics, getTopWarPerformers, getMembersNeedingCoaching, type WarData } from '@/lib/war-metrics';
 import { formatDistanceToNow } from 'date-fns';
 
 interface CommandCenterProps {
