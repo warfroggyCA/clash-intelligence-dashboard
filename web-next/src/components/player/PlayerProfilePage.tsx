@@ -75,19 +75,24 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
         }
 
         // Fetch comparison data
+        console.log(`[Player Profile] Fetching comparison for ${normalizedTag}...`);
         const comparisonResponse = await fetch(`/api/player/${normalizedTag}/comparison`);
+        console.log(`[Player Profile] Comparison response status: ${comparisonResponse.status}`);
+        
         if (comparisonResponse.ok) {
           const comparisonResult = await comparisonResponse.json();
+          console.log('[Player Profile] Comparison result:', comparisonResult);
           if (comparisonResult.success && comparisonResult.data) {
+            console.log('[Player Profile] Setting comparison data');
             setComparisonData(comparisonResult.data);
           } else {
-            console.warn('Comparison API returned unsuccessful:', comparisonResult);
+            console.warn('[Player Profile] Comparison API returned unsuccessful:', comparisonResult);
             setComparisonData(null);
           }
         } else {
-          console.error('Comparison API failed:', comparisonResponse.status, comparisonResponse.statusText);
+          console.error('[Player Profile] Comparison API failed:', comparisonResponse.status, comparisonResponse.statusText);
           const errorText = await comparisonResponse.text();
-          console.error('Error response:', errorText);
+          console.error('[Player Profile] Error response:', errorText);
           setComparisonData(null);
         }
       } catch (error) {
