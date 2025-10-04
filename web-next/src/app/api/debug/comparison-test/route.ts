@@ -32,13 +32,13 @@ export async function GET(request: NextRequest) {
     const baseUrl = `${protocol}://${host}`;
     const clanTag = process.env.DEFAULT_CLAN_TAG || '#2PR8R8V8P';
     
-    diagnostics.tests.rosterUrl = `${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`;
+    diagnostics.tests.rosterUrl = `${baseUrl}/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`;
     
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
     
     const startTime = Date.now();
-    const rosterResponse = await fetch(`${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`, {
+    const rosterResponse = await fetch(`${baseUrl}/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`, {
       headers: {
         'x-api-key': process.env.ADMIN_API_KEY || '',
       },
