@@ -112,14 +112,20 @@ export async function GET(
     }).finally(() => clearTimeout(timeoutId));
 
     if (!rosterResponse.ok) {
+      const errorText = await rosterResponse.text().catch(() => 'Unable to read error');
       logger.error('Failed to fetch roster', { 
         status: rosterResponse.status, 
         statusText: rosterResponse.statusText,
-        url: `${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`
+        url: `${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`,
+        errorBody: errorText.substring(0, 200),
       });
       return json({ 
         success: false, 
-        error: "Unable to load roster data for comparison. Please try refreshing the page." 
+        error: `Roster API returned ${rosterResponse.status}: ${rosterResponse.statusText}`,
+        debug: {
+          url: `${baseUrl}/api/roster`,
+          status: rosterResponse.status,
+        }
       }, { status: 503 });
     }
 
