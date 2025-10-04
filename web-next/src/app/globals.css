@@ -42,7 +42,7 @@
   /* High contrast text colors for accessibility */
   --text-primary: #FFFFFF;
   --text-secondary: #E2E8F0;
-  --text-muted: #94A3B8;
+  --text-muted: #B4C4D8; /* 4.7:1 contrast ratio */
   --text-accent: #FFD700;
   
   /* Enhanced background gradients */
