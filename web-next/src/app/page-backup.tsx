@@ -1536,8 +1536,8 @@ export default function HomePage(){
       const apiTag = currentClanTag.startsWith('#') ? currentClanTag : `#${currentClanTag}`;
       
       // Fetch fresh data from API
-      console.log("Fetching fresh data from API:", `/api/roster?clanTag=${encodeURIComponent(apiTag)}&mode=live`);
-      const response = await fetch(`/api/roster?clanTag=${encodeURIComponent(apiTag)}&mode=live`);
+      console.log("Fetching fresh data from API:", `/api/v2/roster?clanTag=${encodeURIComponent(apiTag)}`);
+      const response = await fetch(`/api/v2/roster?clanTag=${encodeURIComponent(apiTag)}`);
       console.log("API response status:", response.status, response.ok);
       const data = await response.json();
       console.log("API response data:", data);
@@ -1586,7 +1586,7 @@ export default function HomePage(){
         params.set("date", snapshotDate);
       }
       
-      const url = `/api/roster?${params.toString()}`;
+      const url = `/api/v2/roster?${params.toString()}`;
       console.log("Fetching from URL:", url);
       const r = await fetch(url, { cache: "no-store" });
       const j = await r.json();
@@ -1893,7 +1893,7 @@ Please analyze this clan data and provide insights on:
     setStatus("loading"); setMessage(`Loading live data for ${raw}…`);
     try {
       const qs = new URLSearchParams({ mode: "live", clanTag: raw }).toString();
-      const r = await fetch(`/api/roster?${qs}`, { cache: "no-store" });
+      const r = await fetch(`/api/v2/roster?${qs}`, { cache: "no-store" });
       const j = await r.json();
       
       if (!r.ok) {

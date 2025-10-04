@@ -12,7 +12,7 @@ describe('buildRosterFetchPlan', () => {
     const p = buildRosterFetchPlan('#TAG', 'latest');
     expect(p.sourcePreference).toBe('snapshot');
     expect(p.urls[0]).toContain('mode=snapshot');
-    expect(p.urls[1]).toContain('/api/roster?');
+    expect(p.urls[1]).toContain('/api/v2/roster?');
   });
 
   test('snapshot specific date then live fallback', () => {
