@@ -20,7 +20,6 @@ interface CommandCenterProps {
 export default function CommandCenter({ clanData, clanTag }: CommandCenterProps) {
   const [expandedAlert, setExpandedAlert] = useState<string | null>(null);
   const [showAllAlerts, setShowAllAlerts] = useState(false);
-  const [thresholds, setThresholds] = useState<AlertThresholds | null>(null);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const dataAgeHours = useDashboardStore(selectors.dataAge);
 
