@@ -455,10 +455,7 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
       />
 
       {/* Command Center Settings */}
-      <CommandCenterSettings
-        onSave={(newThresholds) => setThresholds(newThresholds)}
-        initialThresholds={thresholds || undefined}
-      />
+      <CommandCenterSettings />
     </div>
   );
 }
