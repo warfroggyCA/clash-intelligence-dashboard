@@ -443,14 +443,29 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
       <GlassCard>
         <h2 className="text-xl font-bold text-slate-100 mb-4">Quick Actions</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <Button variant="outline" className="w-full" disabled>
-            📢 Share Weekly Update
+          <Button 
+            variant="outline" 
+            className="w-full min-h-[44px]" 
+            disabled
+            aria-label="Share weekly clan update (Coming soon)"
+          >
+            <span aria-hidden="true">📢</span> Share Weekly Update
           </Button>
-          <Button variant="outline" className="w-full" disabled>
-            👥 Export Watchlist
+          <Button 
+            variant="outline" 
+            className="w-full min-h-[44px]" 
+            disabled
+            aria-label="Export watchlist (Coming soon)"
+          >
+            <span aria-hidden="true">👥</span> Export Watchlist
           </Button>
-          <Button variant="outline" className="w-full" disabled>
-            🏆 View Detailed Analytics
+          <Button 
+            variant="outline" 
+            className="w-full min-h-[44px]" 
+            disabled
+            aria-label="View detailed analytics (Coming soon)"
+          >
+            <span aria-hidden="true">🏆</span> View Detailed Analytics
           </Button>
         </div>
         <p className="text-xs text-slate-500 mt-2 text-center">Quick actions coming soon</p>
