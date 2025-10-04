@@ -132,16 +132,22 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
             {alerts.length > 5 && (
               <button
                 onClick={() => setShowAllAlerts(!showAllAlerts)}
-                className="w-full py-2 text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center justify-center gap-1"
+                className="w-full py-2 min-h-[44px] text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center justify-center gap-1 focus-ring"
+                aria-expanded={showAllAlerts}
+                aria-controls="alerts-list"
+                aria-label={showAllAlerts 
+                  ? `Collapse alerts list. Currently showing all ${alerts.length} alerts.` 
+                  : `Expand to show all ${alerts.length} alerts. Currently showing 5.`
+                }
               >
                 {showAllAlerts ? (
                   <>
-                    <ChevronUp className="w-4 h-4" />
+                    <ChevronUp className="w-4 h-4" aria-hidden="true" />
                     Show Less
                   </>
                 ) : (
                   <>
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown className="w-4 h-4" aria-hidden="true" />
                     Show All {alerts.length} Alerts
                   </>
                 )}
