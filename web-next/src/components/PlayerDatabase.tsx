@@ -741,6 +741,18 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
           }}
         />
       )}
+
+      {/* Returning Player Review Modal */}
+      {showReturningPlayerReview && returningPlayers.length > 0 && (
+        <ReturningPlayerReview
+          returningPlayers={returningPlayers}
+          onProcessReturn={handleProcessReturn}
+          onDismiss={() => {
+            setShowReturningPlayerReview(false);
+            setReturningPlayers([]);
+          }}
+        />
+      )}
     </div>
   );
 }
