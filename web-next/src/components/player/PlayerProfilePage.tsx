@@ -321,7 +321,7 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
               </div>
             ) : historicalData.length > 0 ? (
               <PlayerActivityAnalytics 
-                historicalData={historicalData}
+                data={historicalData}
                 playerName={data.summary.name}
               />
             ) : (
