@@ -333,7 +333,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
   // Separate departed players (with departure info) from all players
   const departedPlayers = players.filter(p => {
-    const hasD departureInfo = p.notes.some(note => 
+    const hasDepartureInfo = p.notes.some(note => 
       note.customFields?.['Departure Date'] || 
       note.customFields?.['Departure Reason'] ||
       note.customFields?.['Tenure at Departure']
