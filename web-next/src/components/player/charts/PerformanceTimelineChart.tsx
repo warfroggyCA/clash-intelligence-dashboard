@@ -1,162 +1,150 @@
 'use client';
 
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { useMemo } from 'react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+import { TrendingUp, TrendingDown } from 'lucide-react';
 
-interface DataPoint {
-  date: string;
-  trophies: number;
-  donations: number;
-  donationsReceived: number;
-  clanCapitalContributions: number;
-  deltas?: {
+interface PerformanceTimelineChartProps {
+  data: Array<{
+    date: string;
     trophies?: number;
     donations?: number;
     donationsReceived?: number;
     clanCapitalContributions?: number;
-  };
-}
-
-interface PerformanceTimelineChartProps {
-  data: DataPoint[];
+    deltas?: {
+      trophies?: number;
+      donations?: number;
+      donationsReceived?: number;
+      clanCapitalContributions?: number;
+    };
+  }>;
   metric: 'trophies' | 'donations' | 'donationsReceived' | 'clanCapitalContributions';
   title: string;
   color?: string;
 }
 
-const METRIC_CONFIG = {
-  trophies: { 
-    label: 'Trophies', 
-    color: '#3b82f6', 
-    icon: '🏆',
-    format: (val: number) => val.toLocaleString()
-  },
-  donations: { 
-    label: 'Donations Given', 
-    color: '#10b981', 
-    icon: '🎁',
-    format: (val: number) => val.toLocaleString()
-  },
-  donationsReceived: { 
-    label: 'Donations Received', 
-    color: '#8b5cf6', 
-    icon: '📥',
-    format: (val: number) => val.toLocaleString()
-  },
-  clanCapitalContributions: { 
-    label: 'Capital Gold', 
-    color: '#f59e0b', 
-    icon: '🏛️',
-    format: (val: number) => val.toLocaleString()
-  },
+const metricColors = {
+  trophies: '#F59E0B',
+  donations: '#10B981', 
+  donationsReceived: '#8B5CF6',
+  clanCapitalContributions: '#EF4444'
 };
 
-const CustomTooltip = ({ active, payload, label, metric }: any) => {
-  if (!active || !payload || !payload.length) return null;
+const metricLabels = {
+  trophies: 'Trophies',
+  donations: 'Donations',
+  donationsReceived: 'Donations Received',
+  clanCapitalContributions: 'Capital Gold'
+};
 
-  const config = METRIC_CONFIG[metric as keyof typeof METRIC_CONFIG];
-  const value = payload[0].value;
-  const delta = payload[0].payload.deltas?.[metric];
+export default function PerformanceTimelineChart({ 
+  data, 
+  metric, 
+  title, 
+  color 
+}: PerformanceTimelineChartProps) {
+  const chartData = useMemo(() => {
+    return data.map(point => ({
+      ...point,
+      date: format(new Date(point.date), 'MMM dd'),
+      value: point[metric] || 0,
+      delta: point.deltas?.[metric] || 0
+    }));
+  }, [data, metric]);
 
-  return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-lg">
-      <p className="text-gray-300 text-sm font-medium mb-1">{label}</p>
-      <p className="text-white text-lg font-bold">
-        {config.icon} {config.format(value)}
-      </p>
-      {delta !== undefined && delta !== 0 && (
-        <p className={`text-sm flex items-center gap-1 mt-1 ${
-          delta > 0 ? 'text-green-400' : delta < 0 ? 'text-red-400' : 'text-gray-400'
-        }`}>
-          {delta > 0 ? <TrendingUp className="w-3 h-3" /> : delta < 0 ? <TrendingDown className="w-3 h-3" /> : <Minus className="w-3 h-3" />}
-          {delta > 0 ? '+' : ''}{delta}
+  const trendPercentage = useMemo(() => {
+    if (chartData.length < 2) return 0;
+    const first = chartData[0].value;
+    const last = chartData[chartData.length - 1].value;
+    if (first === 0) return 0;
+    return ((last - first) / first) * 100;
+  }, [chartData]);
+
+  const chartColor = color || metricColors[metric];
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+
+    const data = payload[0].payload;
+    const delta = data.delta;
+
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
+        <p className="font-medium text-gray-900">{label}</p>
+        <p className="text-sm">
+          <span className="font-medium" style={{ color: chartColor }}>
+            {metricLabels[metric]}: {data.value.toLocaleString()}
+          </span>
         </p>
-      )}
-    </div>
-  );
-};
-
-export const PerformanceTimelineChart = ({
-  data,
-  metric,
-  title,
-  color,
-}: PerformanceTimelineChartProps) => {
-  const config = METRIC_CONFIG[metric];
-  const lineColor = color || config.color;
-
-  // Format date for display (MM/DD)
-  const formattedData = data.map(point => ({
-    ...point,
-    displayDate: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-  }));
-
-  // Calculate trend
-  const trend = data.length >= 2 
-    ? data[data.length - 1][metric] - data[0][metric]
-    : 0;
-
-  const trendPercentage = data.length >= 2 && data[0][metric] > 0
-    ? ((trend / data[0][metric]) * 100).toFixed(1)
-    : '0.0';
+        {delta !== 0 && (
+          <p className="text-xs flex items-center gap-1">
+            {delta > 0 ? (
+              <>
+                <TrendingUp className="w-3 h-3 text-green-600" />
+                <span className="text-green-600">+{delta.toLocaleString()}</span>
+              </>
+            ) : (
+              <>
+                <TrendingDown className="w-3 h-3 text-red-600" />
+                <span className="text-red-600">{delta.toLocaleString()}</span>
+              </>
+            )}
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
-    <div className="bg-brand-surface border border-brand-border rounded-lg p-4">
+    <div className="bg-white border border-gray-200 rounded-lg p-4">
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-100 flex items-center gap-2">
-            <span>{config.icon}</span>
-            {title}
-          </h3>
-          <p className="text-sm text-gray-400 mt-1">Last {data.length} days</p>
-        </div>
-        <div className="text-right">
-          <div className={`flex items-center gap-1 text-sm font-medium ${
-            trend > 0 ? 'text-green-400' : trend < 0 ? 'text-red-400' : 'text-gray-400'
-          }`}>
-            {trend > 0 ? (
-              <TrendingUp className="w-4 h-4" />
-            ) : trend < 0 ? (
-              <TrendingDown className="w-4 h-4" />
+        <h3 className="font-semibold text-gray-900">{title}</h3>
+        {Math.abs(trendPercentage) > 0.1 && (
+          <div className="flex items-center gap-1 text-sm">
+            {trendPercentage > 0 ? (
+              <>
+                <TrendingUp className="w-4 h-4 text-green-600" />
+                <span className="text-green-600">+{trendPercentage.toFixed(1)}%</span>
+              </>
             ) : (
-              <Minus className="w-4 h-4" />
+              <>
+                <TrendingDown className="w-4 h-4 text-red-600" />
+                <span className="text-red-600">{trendPercentage.toFixed(1)}%</span>
+              </>
             )}
-            <span>{trend > 0 ? '+' : ''}{trend}</span>
           </div>
-          <p className="text-xs text-gray-500 mt-0.5">
-            {trend > 0 ? '+' : ''}{trendPercentage}%
-          </p>
-        </div>
+        )}
       </div>
-
+      
       <ResponsiveContainer width="100%" height={250}>
-        <LineChart data={formattedData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+        <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
           <XAxis 
-            dataKey="displayDate" 
-            stroke="#9ca3af"
-            tick={{ fill: '#9ca3af', fontSize: 12 }}
-            tickLine={{ stroke: '#4b5563' }}
+            dataKey="date" 
+            stroke="#6b7280"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
           />
           <YAxis 
-            stroke="#9ca3af"
-            tick={{ fill: '#9ca3af', fontSize: 12 }}
-            tickLine={{ stroke: '#4b5563' }}
+            stroke="#6b7280"
+            fontSize={12}
+            tickLine={false}
+            axisLine={false}
             tickFormatter={(value) => value.toLocaleString()}
           />
-          <Tooltip content={<CustomTooltip metric={metric} />} />
-          <Line 
-            type="monotone" 
-            dataKey={metric} 
-            stroke={lineColor} 
+          <Tooltip content={<CustomTooltip />} />
+          <Line
+            type="monotone"
+            dataKey="value"
+            stroke={chartColor}
             strokeWidth={2}
-            dot={{ fill: lineColor, r: 3 }}
-            activeDot={{ r: 5 }}
+            dot={{ fill: chartColor, strokeWidth: 0, r: 4 }}
+            activeDot={{ r: 6, stroke: chartColor, strokeWidth: 2, fill: 'white' }}
           />
         </LineChart>
       </ResponsiveContainer>
     </div>
   );
-};
-
-export default PerformanceTimelineChart;
+}
