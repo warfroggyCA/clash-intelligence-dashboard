@@ -94,6 +94,55 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
           // All batches processed, sort and update state
           playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
           setPlayers(playerRecords);
+          
+          // Detect returning players
+          const currentRoster = currentClanMembers.map(tag => {
+            const nameKey = `player_name_${tag}`;
+            return {
+              tag,
+              name: localStorage.getItem(nameKey) || 'Unknown',
+            };
+          });
+          
+          // Convert PlayerRecords to PlayerHistoryRecords
+          const historyRecords: PlayerHistoryRecord[] = playerRecords.map(record => {
+            // Extract movement history from notes
+            const movements = record.notes
+              .filter(n => n.customFields?.['Movement Type'])
+              .map(n => ({
+                type: n.customFields?.['Movement Type'] as 'joined' | 'departed' | 'returned',
+                date: n.customFields?.['Departure Date'] || n.customFields?.['Return Date'] || n.timestamp,
+                reason: n.customFields?.['Departure Reason'],
+                tenureAtDeparture: parseInt(n.customFields?.['Tenure at Departure'] || '0'),
+                notes: n.note,
+              }));
+
+            // Calculate if departed
+            const lastMovement = movements[movements.length - 1];
+            const isDeparted = lastMovement?.type === 'departed';
+
+            return {
+              tag: record.tag,
+              primaryName: record.name,
+              aliases: [], // Will be built from name changes
+              movements,
+              totalTenure: 0, // Can be calculated from movements
+              currentStint: isDeparted ? null : {
+                startDate: lastMovement?.date || record.lastUpdated,
+                isActive: true,
+              },
+              notes: record.notes,
+              status: (record.status as any) || (isDeparted ? 'departed' : 'active'),
+              lastUpdated: record.lastUpdated,
+            };
+          });
+
+          const returns = detectReturns(currentRoster, historyRecords);
+          if (returns.length > 0) {
+            setReturningPlayers(returns);
+            setShowReturningPlayerReview(true);
+          }
+          
           setLoading(false);
         }
       };
