@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Eye, EyeOff, MessageSquare, Download, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { GlassCard, Button } from '@/components/ui';
 import type { Member } from '@/types';
