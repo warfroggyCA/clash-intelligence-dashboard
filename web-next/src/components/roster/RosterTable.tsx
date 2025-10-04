@@ -542,18 +542,22 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
             size="sm"
             variant={rosterViewMode === 'table' ? 'primary' : 'ghost'}
             onClick={() => setRosterViewMode('table')}
-            className={`view-toggle-btn ${rosterViewMode === 'table' ? 'view-toggle-btn--active' : ''}`}
+            className={`view-toggle-btn min-h-[44px] ${rosterViewMode === 'table' ? 'view-toggle-btn--active' : ''}`}
+            aria-pressed={rosterViewMode === 'table'}
+            aria-label={`Switch to table view${rosterViewMode === 'table' ? ' (currently active)' : ''}`}
           >
-            <List className="h-4 w-4" aria-hidden />
+            <List className="h-4 w-4" aria-hidden="true" />
             <span>Table View</span>
           </Button>
           <Button
             size="sm"
             variant={rosterViewMode === 'cards' ? 'primary' : 'ghost'}
             onClick={() => setRosterViewMode('cards')}
-            className={`view-toggle-btn ${rosterViewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
+            className={`view-toggle-btn min-h-[44px] ${rosterViewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
+            aria-pressed={rosterViewMode === 'cards'}
+            aria-label={`Switch to card view${rosterViewMode === 'cards' ? ' (currently active)' : ''}`}
           >
-            <LayoutGrid className="h-4 w-4" aria-hidden />
+            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
             <span>Card View</span>
           </Button>
         </div>
