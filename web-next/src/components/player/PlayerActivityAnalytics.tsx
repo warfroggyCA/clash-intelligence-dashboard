@@ -271,7 +271,7 @@ export default function PlayerActivityAnalytics({
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-red-500 rounded"></div>
-            <span>Inactive (<20)</span>
+            <span>Inactive (&lt;20)</span>
           </div>
         </div>
       </div>
