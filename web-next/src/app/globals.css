@@ -1074,3 +1074,93 @@ th { @apply text-left font-semibold; }
 [data-theme="light"] .text-slate-500.uppercase {
   color: #2F4160 !important;
 }
+
+
+/* ========================================
+   Accessibility Enhancements
+   ======================================== */
+
+/* Enhanced focus visibility for all interactive elements */
+*:focus-visible {
+  outline: 3px solid #60A5FA !important;
+  outline-offset: 3px !important;
+  box-shadow: 0 0 0 5px rgba(59, 130, 246, 0.25) !important;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid #60A5FA !important;
+  outline-offset: 2px !important;
+}
+
+/* Minimum touch target sizes for accessibility */
+button, a, input[type="checkbox"], input[type="radio"], select {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+button:has(svg:only-child) {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Mobile touch targets */
+@media (max-width: 768px) {
+  button, a.button {
+    min-height: 48px;
+    min-width: 48px;
+  }
+}
+
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.sr-only:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  padding: inherit;
+  margin: inherit;
+  overflow: visible;
+  clip: auto;
+  white-space: normal;
+}
+
+/* Enhanced text contrast in dark mode */
+[data-theme="dark"] .text-slate-400 {
+  color: #B0C5DC !important;
+}
+
+[data-theme="dark"] .text-slate-500 {
+  color: #98ABBD !important;
+}
+
+[data-theme="dark"] .metric-label {
+  color: rgba(241, 245, 249, 0.90) !important;
+  font-weight: 600;
+}
+
