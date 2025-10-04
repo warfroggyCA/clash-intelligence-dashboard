@@ -1,236 +1,280 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { Activity, AlertTriangle, TrendingUp, Calendar } from 'lucide-react';
-
-interface HistoricalDataPoint {
-  date: string;
-  trophies: number;
-  donations: number;
-  donationsReceived: number;
-  warStars: number;
-  clanCapitalContributions: number;
-  deltas?: {
-    trophies?: number;
-    donations?: number;
-    warStars?: number;
-    clanCapitalContributions?: number;
-  };
-}
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { format } from 'date-fns';
+import { Activity, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
 interface PlayerActivityAnalyticsProps {
-  historicalData: HistoricalDataPoint[];
+  data: Array<{
+    date: string;
+    deltas?: {
+      trophies?: number;
+      donations?: number;
+      warStars?: number;
+      clanCapitalContributions?: number;
+    };
+  }>;
   playerName: string;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload || !payload.length) return null;
+interface ActivityScore {
+  date: string;
+  score: number;
+  breakdown: {
+    donations: number;
+    trophies: number;
+    warStars: number;
+    capital: number;
+  };
+}
 
-  const activityScore = payload[0].value;
-  const level = activityScore >= 80 ? 'Very Active' : activityScore >= 60 ? 'Active' : activityScore >= 40 ? 'Moderate' : activityScore >= 20 ? 'Low' : 'Inactive';
-  const color = activityScore >= 80 ? 'text-green-400' : activityScore >= 60 ? 'text-blue-400' : activityScore >= 40 ? 'text-yellow-400' : activityScore >= 20 ? 'text-orange-400' : 'text-red-400';
+function calculateActivityScore(deltas: any): ActivityScore['breakdown'] {
+  const donations = deltas?.donations || 0;
+  const trophies = Math.abs(deltas?.trophies || 0);
+  const warStars = deltas?.warStars || 0;
+  const capital = deltas?.clanCapitalContributions || 0;
 
-  return (
-    <div className="bg-gray-900 border border-gray-700 rounded-lg p-3 shadow-lg">
-      <p className="text-gray-300 text-sm font-medium mb-1">{label}</p>
-      <p className={`text-lg font-bold ${color}`}>
-        {activityScore}/100
-      </p>
-      <p className="text-xs text-gray-400 mt-1">{level}</p>
-    </div>
-  );
-};
+  return {
+    donations: Math.min(Math.max(donations / 2, 0), 30), // Max 30 points
+    trophies: Math.min(trophies / 5, 20), // Max 20 points  
+    warStars: Math.min(warStars * 15, 30), // Max 30 points
+    capital: Math.min(capital / 50, 20), // Max 20 points
+  };
+}
 
-export const PlayerActivityAnalytics = ({
-  historicalData,
-  playerName,
-}: PlayerActivityAnalyticsProps) => {
-  // Calculate activity scores based on daily changes
-  const activityData = useMemo(() => {
-    return historicalData.map((point, index) => {
-      if (index === 0) {
-        return {
-          date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          activityScore: 50, // Default for first day
-        };
-      }
+function getScoreColor(score: number): string {
+  if (score >= 80) return '#10B981'; // green-500
+  if (score >= 60) return '#3B82F6'; // blue-500
+  if (score >= 40) return '#F59E0B'; // amber-500
+  if (score >= 20) return '#F97316'; // orange-500
+  return '#EF4444'; // red-500
+}
 
-      const deltas = point.deltas || {};
-      
-      // Activity scoring algorithm
-      let score = 0;
-      
-      // Donations activity (max 30 points)
-      const donationActivity = Math.min((deltas.donations || 0) / 2, 30);
-      score += donationActivity;
-      
-      // Trophy activity (max 20 points)
-      const trophyChange = Math.abs(deltas.trophies || 0);
-      const trophyActivity = Math.min(trophyChange / 5, 20);
-      score += trophyActivity;
-      
-      // War activity (max 30 points)
-      const warActivity = Math.min((deltas.warStars || 0) * 15, 30);
-      score += warActivity;
-      
-      // Capital activity (max 20 points)
-      const capitalActivity = Math.min((deltas.clanCapitalContributions || 0) / 50, 20);
-      score += capitalActivity;
+function getScoreLabel(score: number): string {
+  if (score >= 80) return 'Very Active';
+  if (score >= 60) return 'Active';
+  if (score >= 40) return 'Moderate';
+  if (score >= 20) return 'Low Activity';
+  return 'Inactive';
+}
 
+export default function PlayerActivityAnalytics({ 
+  data, 
+  playerName 
+}: PlayerActivityAnalyticsProps) {
+  const activityScores = useMemo(() => {
+    return data.map(point => {
+      const breakdown = calculateActivityScore(point.deltas);
+      const totalScore = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
+      
       return {
-        date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        activityScore: Math.min(Math.round(score), 100),
+        date: format(new Date(point.date), 'MMM dd'),
+        score: Math.round(totalScore),
+        breakdown,
+        color: getScoreColor(totalScore)
       };
     });
-  }, [historicalData]);
+  }, [data]);
 
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const scores = activityData.map(d => d.activityScore);
-    const avgScore = scores.reduce((sum, s) => sum + s, 0) / scores.length;
-    const maxScore = Math.max(...scores);
-    const minScore = Math.min(...scores);
+  const analytics = useMemo(() => {
+    if (activityScores.length === 0) {
+      return {
+        averageScore: 0,
+        consistencyScore: 0,
+        trend: 0,
+        inactivityRisk: 'Unknown'
+      };
+    }
+
+    const scores = activityScores.map(s => s.score);
+    const averageScore = scores.reduce((sum, score) => sum + score, 0) / scores.length;
     
-    // Activity consistency (lower standard deviation = more consistent)
-    const variance = scores.reduce((sum, s) => sum + Math.pow(s - avgScore, 2), 0) / scores.length;
-    const stdDev = Math.sqrt(variance);
-    const consistencyScore = Math.max(0, 100 - stdDev);
+    // Calculate standard deviation for consistency
+    const variance = scores.reduce((sum, score) => sum + Math.pow(score - averageScore, 2), 0) / scores.length;
+    const stdDeviation = Math.sqrt(variance);
+    const consistencyScore = Math.max(0, 100 - stdDeviation);
 
-    // Detect trend
-    const recentAvg = scores.slice(-7).reduce((sum, s) => sum + s, 0) / Math.min(7, scores.length);
-    const olderAvg = scores.slice(0, 7).reduce((sum, s) => sum + s, 0) / Math.min(7, scores.length);
-    const trend = recentAvg - olderAvg;
-
-    // Inactivity risk
+    // Calculate 7-day trend
     const recentScores = scores.slice(-7);
-    const inactivityRisk = recentScores.filter(s => s < 30).length / recentScores.length;
+    const trend = recentScores.length >= 2 
+      ? recentScores[recentScores.length - 1] - recentScores[0]
+      : 0;
+
+    // Assess inactivity risk
+    const lowActivityDays = scores.filter(score => score &lt; 20).length;
+    const riskPercentage = (lowActivityDays / scores.length) * 100;
+    
+    let inactivityRisk = 'Low';
+    if (riskPercentage > 50) inactivityRisk = 'High';
+    else if (riskPercentage > 25) inactivityRisk = 'Medium';
 
     return {
-      avgScore: Math.round(avgScore),
-      maxScore,
-      minScore,
+      averageScore: Math.round(averageScore),
       consistencyScore: Math.round(consistencyScore),
       trend: Math.round(trend),
-      inactivityRisk: Math.round(inactivityRisk * 100),
+      inactivityRisk
     };
-  }, [activityData]);
+  }, [activityScores]);
 
-  const getBarColor = (score: number) => {
-    if (score >= 80) return '#10b981'; // green
-    if (score >= 60) return '#3b82f6'; // blue
-    if (score >= 40) return '#eab308'; // yellow
-    if (score >= 20) return '#f97316'; // orange
-    return '#ef4444'; // red
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (!active || !payload || !payload.length) return null;
+
+    const data = payload[0].payload;
+    const breakdown = data.breakdown;
+
+    return (
+      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-lg">
+        <p className="font-medium text-gray-900 mb-2">{label}</p>
+        <p className="text-lg font-bold mb-2" style={{ color: data.color }}>
+          Score: {data.score}/100 ({getScoreLabel(data.score)})
+        </p>
+        <div className="space-y-1 text-sm">
+          <div className="flex justify-between">
+            <span>Donations:</span>
+            <span className="font-medium">{breakdown.donations.toFixed(1)}/30</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Trophies:</span>
+            <span className="font-medium">{breakdown.trophies.toFixed(1)}/20</span>
+          </div>
+          <div className="flex justify-between">
+            <span>War Stars:</span>
+            <span className="font-medium">{breakdown.warStars.toFixed(1)}/30</span>
+          </div>
+          <div className="flex justify-between">
+            <span>Capital:</span>
+            <span className="font-medium">{breakdown.capital.toFixed(1)}/20</span>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
     <div className="space-y-6">
-      {/* Activity Statistics */}
+      <div>
+        <h2 className="text-xl font-bold text-gray-900 mb-2">
+          Daily Activity Analysis
+        </h2>
+        <p className="text-gray-600">
+          {playerName}'s activity scored based on daily contributions across key metrics
+        </p>
+      </div>
+
+      {/* Analytics Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-brand-surface border border-brand-border rounded-lg p-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-4 h-4 text-blue-400" />
-            <p className="text-xs text-gray-500">Avg Activity</p>
+            <Activity className="w-5 h-5 text-blue-600" />
+            <h3 className="font-medium text-gray-900">Avg Score</h3>
           </div>
-          <p className="text-2xl font-bold text-gray-100">{stats.avgScore}/100</p>
-          <p className="text-xs text-gray-400 mt-1">
-            {stats.avgScore >= 80 ? 'Very Active' : stats.avgScore >= 60 ? 'Active' : stats.avgScore >= 40 ? 'Moderate' : 'Low'}
+          <p className="text-2xl font-bold text-blue-600">{analytics.averageScore}</p>
+          <p className="text-sm text-gray-500">{getScoreLabel(analytics.averageScore)}</p>
+        </div>
+
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <TrendingUp className="w-5 h-5 text-green-600" />
+            <h3 className="font-medium text-gray-900">Consistency</h3>
+          </div>
+          <p className="text-2xl font-bold text-green-600">{analytics.consistencyScore}</p>
+          <p className="text-sm text-gray-500">
+            {analytics.consistencyScore >= 80 ? 'Very Consistent' :
+             analytics.consistencyScore >= 60 ? 'Consistent' :
+             analytics.consistencyScore >= 40 ? 'Moderate' : 'Inconsistent'}
           </p>
         </div>
 
-        <div className="bg-brand-surface border border-brand-border rounded-lg p-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-4 h-4 text-purple-400" />
-            <p className="text-xs text-gray-500">Consistency</p>
+            {analytics.trend >= 0 ? (
+              <TrendingUp className="w-5 h-5 text-green-600" />
+            ) : (
+              <TrendingDown className="w-5 h-5 text-red-600" />
+            )}
+            <h3 className="font-medium text-gray-900">7-Day Trend</h3>
           </div>
-          <p className="text-2xl font-bold text-gray-100">{stats.consistencyScore}/100</p>
-          <p className="text-xs text-gray-400 mt-1">
-            {stats.consistencyScore >= 80 ? 'Very Consistent' : stats.consistencyScore >= 60 ? 'Consistent' : 'Variable'}
+          <p className={`text-2xl font-bold ${analytics.trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {analytics.trend >= 0 ? '+' : ''}{analytics.trend}
+          </p>
+          <p className="text-sm text-gray-500">
+            {Math.abs(analytics.trend) < 5 ? 'Stable' :
+             analytics.trend > 0 ? 'Improving' : 'Declining'}
           </p>
         </div>
 
-        <div className="bg-brand-surface border border-brand-border rounded-lg p-4">
+        <div className="bg-white border border-gray-200 rounded-lg p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Calendar className="w-4 h-4 text-green-400" />
-            <p className="text-xs text-gray-500">7-Day Trend</p>
+            <AlertCircle className={`w-5 h-5 ${
+              analytics.inactivityRisk === 'High' ? 'text-red-600' :
+              analytics.inactivityRisk === 'Medium' ? 'text-orange-600' : 'text-green-600'
+            }`} />
+            <h3 className="font-medium text-gray-900">Risk Level</h3>
           </div>
-          <p className={`text-2xl font-bold ${stats.trend > 0 ? 'text-green-400' : stats.trend < 0 ? 'text-orange-400' : 'text-gray-100'}`}>
-            {stats.trend > 0 ? '+' : ''}{stats.trend}
+          <p className={`text-2xl font-bold ${
+            analytics.inactivityRisk === 'High' ? 'text-red-600' :
+            analytics.inactivityRisk === 'Medium' ? 'text-orange-600' : 'text-green-600'
+          }`}>
+            {analytics.inactivityRisk}
           </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {stats.trend > 0 ? 'Improving' : stats.trend < 0 ? 'Declining' : 'Stable'}
-          </p>
-        </div>
-
-        <div className="bg-brand-surface border border-brand-border rounded-lg p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertTriangle className={`w-4 h-4 ${stats.inactivityRisk > 50 ? 'text-red-400' : 'text-green-400'}`} />
-            <p className="text-xs text-gray-500">Inactivity Risk</p>
-          </div>
-          <p className={`text-2xl font-bold ${stats.inactivityRisk > 50 ? 'text-red-400' : 'text-green-400'}`}>
-            {stats.inactivityRisk}%
-          </p>
-          <p className="text-xs text-gray-400 mt-1">
-            {stats.inactivityRisk > 50 ? 'High Risk' : stats.inactivityRisk > 25 ? 'Moderate' : 'Low Risk'}
-          </p>
+          <p className="text-sm text-gray-500">Inactivity Risk</p>
         </div>
       </div>
 
-      {/* Activity Timeline Chart */}
-      <div className="bg-brand-surface border border-brand-border rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-gray-100 mb-4 flex items-center gap-2">
-          <Activity className="w-5 h-5 text-blue-400" />
-          Daily Activity Score
-        </h3>
+      {/* Activity Score Chart */}
+      <div className="bg-white border border-gray-200 rounded-lg p-6">
+        <h3 className="font-semibold text-gray-900 mb-4">Daily Activity Scores</h3>
         <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={activityData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+          <BarChart data={activityScores} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
             <XAxis 
               dataKey="date" 
-              stroke="#9ca3af"
-              tick={{ fill: '#9ca3af', fontSize: 12 }}
-              tickLine={{ stroke: '#4b5563' }}
+              stroke="#6b7280"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
             />
             <YAxis 
-              stroke="#9ca3af"
-              tick={{ fill: '#9ca3af', fontSize: 12 }}
-              tickLine={{ stroke: '#4b5563' }}
+              stroke="#6b7280"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
               domain={[0, 100]}
             />
             <Tooltip content={<CustomTooltip />} />
-            <Bar dataKey="activityScore" radius={[4, 4, 0, 0]}>
-              {activityData.map((entry, index) => (
-                <Cell key={`cell-${index}`} fill={getBarColor(entry.activityScore)} />
-              ))}
-            </Bar>
+            <Bar 
+              dataKey="score" 
+              fill={(entry: any) => entry?.color || '#3B82F6'}
+              radius={[4, 4, 0, 0]}
+            />
           </BarChart>
         </ResponsiveContainer>
-        <div className="mt-4 flex items-center justify-center gap-6 text-xs">
+        
+        {/* Legend */}
+        <div className="mt-4 flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-green-500"></div>
-            <span className="text-gray-400">Very Active (80+)</span>
+            <div className="w-3 h-3 bg-green-500 rounded"></div>
+            <span>Very Active (80-100)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-blue-500"></div>
-            <span className="text-gray-400">Active (60-79)</span>
+            <div className="w-3 h-3 bg-blue-500 rounded"></div>
+            <span>Active (60-79)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-yellow-500"></div>
-            <span className="text-gray-400">Moderate (40-59)</span>
+            <div className="w-3 h-3 bg-amber-500 rounded"></div>
+            <span>Moderate (40-59)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-orange-500"></div>
-            <span className="text-gray-400">Low (20-39)</span>
+            <div className="w-3 h-3 bg-orange-500 rounded"></div>
+            <span>Low (20-39)</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-red-500"></div>
-            <span className="text-gray-400">Inactive (&lt;20)</span>
+            <div className="w-3 h-3 bg-red-500 rounded"></div>
+            <span>Inactive (&lt;20)</span>
           </div>
         </div>
       </div>
     </div>
   );
-};
-
-export default PlayerActivityAnalytics;
+}
