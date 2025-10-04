@@ -571,6 +571,11 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
           <div className="hidden lg:block overflow-x-auto">
             <div className="clash-card overflow-hidden">
               <table className="clash-table" role="table" aria-label="Clan member roster">
+                <caption className="sr-only">
+                  Clan member roster showing {paginatedMembers.length} of {filteredMembers.length} members.
+                  {hasActiveFilters && ' Filters are active.'}
+                  {sortKey && ` Sorted by ${sortKey} ${sortDir === 'asc' ? 'ascending' : 'descending'}.`}
+                </caption>
                 <TableHeader
                   sortKey={sortKey}
                   sortDirection={sortDir}
