@@ -88,17 +88,23 @@ export async function GET(
   }
 
   try {
-    // Fetch current roster from the API
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:5050';
+    // Fetch current roster from the API - use relative URL for server-side fetch
     const clanTag = process.env.DEFAULT_CLAN_TAG || '#2PR8R8V8P';
+    
+    // Get the host from the request headers for server-side fetch
+    const protocol = request.headers.get('x-forwarded-proto') || 'http';
+    const host = request.headers.get('host') || 'localhost:3000';
+    const baseUrl = `${protocol}://${host}`;
     
     const rosterResponse = await fetch(`${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`, {
       headers: {
         'x-api-key': process.env.ADMIN_API_KEY || '',
       },
+      cache: 'no-store',
     });
 
     if (!rosterResponse.ok) {
+      logger.error('Failed to fetch roster', { status: rosterResponse.status, statusText: rosterResponse.statusText });
       throw new Error('Failed to fetch roster data');
     }
 
