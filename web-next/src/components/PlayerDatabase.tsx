@@ -5,6 +5,7 @@ import { X, Plus } from "lucide-react";
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import CreatePlayerNoteModal from "./CreatePlayerNoteModal";
 import FontSizeControl from "./FontSizeControl";
+import DepartedPlayersTable from "./DepartedPlayersTable";
 
 interface PlayerNote {
   timestamp: string;
