@@ -8,6 +8,9 @@ import { calculateClanHealth, getTopPerformers, generateWatchlist, calculateMome
 import { generateAlerts, type Alert } from '@/lib/alerts-engine';
 import { calculateWarMetrics, getTopWarPerformers, getMembersNeedingCoaching, type WarData } from '@/lib/war-metrics';
 import { formatDistanceToNow } from 'date-fns';
+import ElderPromotionPanel from './command-center/ElderPromotionPanel';
+import WatchlistManager from './command-center/WatchlistManager';
+import CommandCenterSettings, { type AlertThresholds } from './command-center/CommandCenterSettings';
 
 interface CommandCenterProps {
   clanData: any;
