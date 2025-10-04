@@ -104,15 +104,34 @@ export async function GET(
     });
 
     if (!rosterResponse.ok) {
-      logger.error('Failed to fetch roster', { status: rosterResponse.status, statusText: rosterResponse.statusText });
-      throw new Error('Failed to fetch roster data');
+      logger.error('Failed to fetch roster', { 
+        status: rosterResponse.status, 
+        statusText: rosterResponse.statusText,
+        url: `${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`
+      });
+      return json({ 
+        success: false, 
+        error: "Unable to load roster data for comparison. Please try refreshing the page." 
+      }, { status: 503 });
     }
 
     const rosterData = await rosterResponse.json();
+    
+    if (!rosterData.success) {
+      logger.error('Roster API returned error', { error: rosterData.error });
+      return json({ 
+        success: false, 
+        error: "Roster data unavailable" 
+      }, { status: 503 });
+    }
+    
     const members = rosterData.data?.members || [];
 
     if (members.length === 0) {
-      return json({ success: false, error: "No roster data available" }, { status: 404 });
+      return json({ 
+        success: false, 
+        error: "No roster members found. Please refresh clan data from the dashboard." 
+      }, { status: 404 });
     }
 
     // Find the player
