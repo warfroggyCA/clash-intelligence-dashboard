@@ -96,12 +96,20 @@ export async function GET(
     const host = request.headers.get('host') || 'localhost:3000';
     const baseUrl = `${protocol}://${host}`;
     
+    logger.info('Fetching roster for comparison', { baseUrl, clanTag });
+    
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    
     const rosterResponse = await fetch(`${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`, {
       headers: {
         'x-api-key': process.env.ADMIN_API_KEY || '',
+        'User-Agent': 'NextJS-Internal-Fetch',
       },
       cache: 'no-store',
-    });
+      signal: controller.signal,
+    }).finally(() => clearTimeout(timeoutId));
 
     if (!rosterResponse.ok) {
       logger.error('Failed to fetch roster', { 
