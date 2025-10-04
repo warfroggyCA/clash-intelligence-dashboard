@@ -225,7 +225,7 @@ export const PlayerActivityAnalytics: React.FC<PlayerActivityAnalyticsProps> = (
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-red-500"></div>
-            <span className="text-gray-400">Inactive (<20)</span>
+            <span className="text-gray-400">Inactive (&lt;20)</span>
           </div>
         </div>
       </div>
