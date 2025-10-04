@@ -121,11 +121,7 @@ export async function GET(
       });
       return json({ 
         success: false, 
-        error: `Roster API returned ${rosterResponse.status}: ${rosterResponse.statusText}`,
-        debug: {
-          url: `${baseUrl}/api/v2/roster`,
-          status: rosterResponse.status,
-        }
+        error: `Roster API returned ${rosterResponse.status}: ${rosterResponse.statusText}. Check that /api/v2/roster is accessible.`,
       }, { status: 503 });
     }
 
