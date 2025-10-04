@@ -1,0 +1,23 @@
+
+> clash-intelligence@0.30.0 dev
+> NEXT_PUBLIC_APP_VERSION=$(node -p "require('./package.json').version") next dev -p 5050
+
+ ⨯ Failed to start server
+Error: listen EADDRINUSE: address already in use :::5050
+    at Server.setupListenHandle [as _listen2] (node:net:1908:16)
+    at listenInCluster (node:net:1965:12)
+    at Server.listen (node:net:2067:7)
+    at /app/web-next/node_modules/next/dist/server/lib/start-server.js:280:16
+    at new Promise (<anonymous>)
+    at startServer (/app/web-next/node_modules/next/dist/server/lib/start-server.js:191:11)
+    at /app/web-next/node_modules/next/dist/server/lib/start-server.js:310:52
+    at Span.traceAsyncFn (/app/web-next/node_modules/next/dist/trace/trace.js:154:26)
+    at process.<anonymous> (/app/web-next/node_modules/next/dist/server/lib/start-server.js:310:35)
+    at process.emit (node:events:524:28) {
+  code: 'EADDRINUSE',
+  errno: -98,
+  syscall: 'listen',
+  address: '::',
+  port: 5050
+}
+[?25h
