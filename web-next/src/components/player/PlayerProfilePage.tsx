@@ -143,7 +143,7 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
   );
 
   return (
-    <div className="player-profile space-y-6">
+    <div className="player-profile space-y-6 pb-12">
       <div className="sticky top-0 z-50">
         <div className="bg-brand-surfaceRaised/85 px-4 pb-3 pt-4 shadow-[0_16px_32px_-22px_rgba(8,15,31,0.9)] backdrop-blur">
           <div className="mx-auto w-full rounded-full border border-brand-border/50 bg-brand-surfaceRaised/95 px-4 py-2 shadow-[0_12px_24px_-18px_rgba(8,15,31,0.9)]">
@@ -152,22 +152,172 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
         </div>
       </div>
 
-      <div className="space-y-4 pt-8">
+      <div className="space-y-6 pt-8 px-4 md:px-6">
         <PlayerSummaryHeader summary={data.summary} />
 
-        <SectionCard title="Hero Readiness" subtitle="Progress vs. Town Hall caps" className="section-card--sub">
-          <PlayerHeroProgress heroes={data.heroProgress} clanHeroBenchmarks={data.heroBenchmarks} />
-        </SectionCard>
+        {/* Analytics Tabs */}
+        <div className="bg-brand-surface border border-brand-border rounded-lg p-1 flex flex-wrap gap-1">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'overview'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-brand-surfaceRaised'
+            }`}
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="hidden sm:inline">Overview</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('trends')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'trends'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-brand-surfaceRaised'
+            }`}
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span className="hidden sm:inline">Performance Trends</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('comparison')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'comparison'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-brand-surfaceRaised'
+            }`}
+          >
+            <Home className="w-4 h-4" />
+            <span className="hidden sm:inline">vs Clan</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('activity')}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
+              activeTab === 'activity'
+                ? 'bg-blue-500 text-white shadow-lg'
+                : 'text-gray-400 hover:text-gray-200 hover:bg-brand-surfaceRaised'
+            }`}
+          >
+            <Activity className="w-4 h-4" />
+            <span className="hidden sm:inline">Activity</span>
+          </button>
+        </div>
 
-        <PlayerPerformanceOverview data={data.performance} />
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-4">
+            <SectionCard title="Hero Readiness" subtitle="Progress vs. Town Hall caps" className="section-card--sub">
+              <PlayerHeroProgress heroes={data.heroProgress} clanHeroBenchmarks={data.heroBenchmarks} />
+            </SectionCard>
 
-        <PlayerEngagementInsights
-          insights={data.engagementInsights}
-          notes={data.leadershipNotes}
-          actions={data.upcomingActions}
-        />
+            <PlayerPerformanceOverview data={data.performance} />
 
-        <PlayerNotesPanel notes={data.leadershipNotes} />
+            <PlayerEngagementInsights
+              insights={data.engagementInsights}
+              notes={data.leadershipNotes}
+              actions={data.upcomingActions}
+            />
+
+            <PlayerNotesPanel notes={data.leadershipNotes} />
+          </div>
+        )}
+
+        {/* Performance Trends Tab */}
+        {activeTab === 'trends' && (
+          <div className="space-y-6">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+              </div>
+            ) : historicalData.length === 0 ? (
+              <div className="bg-brand-surface border border-brand-border rounded-lg p-8 text-center">
+                <p className="text-gray-400">No historical data available yet. Check back after daily ingestion runs.</p>
+              </div>
+            ) : (
+              <>
+                {/* Days Filter */}
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-bold text-gray-100">Performance Timeline</h3>
+                  <div className="flex gap-2">
+                    {[7, 14, 30, 60, 90].map(days => (
+                      <button
+                        key={days}
+                        onClick={() => setDaysFilter(days)}
+                        className={`px-3 py-1 rounded-md text-sm font-medium transition ${
+                          daysFilter === days
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-brand-surfaceRaised text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        {days}d
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <PerformanceTimelineChart
+                    data={historicalData}
+                    metric="trophies"
+                    title="Trophy Progression"
+                  />
+                  <PerformanceTimelineChart
+                    data={historicalData}
+                    metric="donations"
+                    title="Donations Given"
+                  />
+                  <PerformanceTimelineChart
+                    data={historicalData}
+                    metric="donationsReceived"
+                    title="Donations Received"
+                  />
+                  <PerformanceTimelineChart
+                    data={historicalData}
+                    metric="clanCapitalContributions"
+                    title="Capital Contributions"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Comparison Tab */}
+        {activeTab === 'comparison' && (
+          <div>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+              </div>
+            ) : comparisonData ? (
+              <PlayerComparisonDashboard comparison={comparisonData} />
+            ) : (
+              <div className="bg-brand-surface border border-brand-border rounded-lg p-8 text-center">
+                <p className="text-gray-400">Comparison data unavailable</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Activity Tab */}
+        {activeTab === 'activity' && (
+          <div>
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
+              </div>
+            ) : historicalData.length > 0 ? (
+              <PlayerActivityAnalytics 
+                historicalData={historicalData}
+                playerName={data.summary.name}
+              />
+            ) : (
+              <div className="bg-brand-surface border border-brand-border rounded-lg p-8 text-center">
+                <p className="text-gray-400">No activity data available yet</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
