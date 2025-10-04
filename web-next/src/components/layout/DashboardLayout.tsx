@@ -416,6 +416,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
+      {/* Skip to main content link */}
+      <a 
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-6 focus:py-3 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-xl focus:font-semibold"
+      >
+        Skip to main content
+      </a>
+      
       {/* Header */}
       <DashboardHeader
         onToggleCommandRail={() => setIsCommandRailOpen((prev) => !prev)}
