@@ -164,9 +164,9 @@ export async function GET(
         
         comparisonData.townHallComparison = {
           level: playerTH,
-          averageTrophies: Math.round(thTrophies.reduce((sum, val) => sum + val, 0) / thTrophies.length),
-          averageDonations: Math.round(thDonations.reduce((sum, val) => sum + val, 0) / thDonations.length),
-          averageWarStars: Math.round(thWarStars.reduce((sum, val) => sum + val, 0) / thWarStars.length),
+          averageTrophies: Math.round(thTrophies.reduce((sum: number, val: number) => sum + val, 0) / thTrophies.length),
+          averageDonations: Math.round(thDonations.reduce((sum: number, val: number) => sum + val, 0) / thDonations.length),
+          averageWarStars: Math.round(thWarStars.reduce((sum: number, val: number) => sum + val, 0) / thWarStars.length),
           playersAtLevel: sameTHMembers.length
         };
       }
