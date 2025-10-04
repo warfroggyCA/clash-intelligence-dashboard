@@ -447,17 +447,20 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
 
       {/* Watchlist Manager */}
       <WatchlistManager 
-        watchlist={watchlist.map(item => ({
-          member: {
+        watchlist={watchlist.map(item => {
+          const fullMember = members.find(m => m.tag === item.tag) || {
             tag: item.tag,
             name: item.name,
-            trophies: 0, // Would need to lookup from members
+            trophies: 0,
             donations: 0,
             role: 'member',
-          },
-          reason: item.reason,
-          severity: item.severity,
-        }))} 
+          };
+          return {
+            member: fullMember,
+            reason: item.reason,
+            severity: item.severity,
+          };
+        })} 
       />
 
       {/* Command Center Settings */}
