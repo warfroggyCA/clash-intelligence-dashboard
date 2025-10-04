@@ -448,12 +448,19 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
       {/* Watchlist Manager */}
       <WatchlistManager 
         watchlist={watchlist.map(item => ({
-          tag: item.tag,
-          name: item.name,
+          member: {
+            tag: item.tag,
+            name: item.name,
+            townHallLevel: 0, // Default values for required Member fields
+            role: 'member',
+            trophies: 0,
+            donations: 0,
+            donationsReceived: 0,
+            warStars: 0,
+            lastSeen: 0,
+          },
           reason: item.reason,
           severity: item.severity as 'high' | 'medium' | 'low',
-          metric: item.metric,
-          daysInactive: item.daysInactive,
         }))} 
       />
 
