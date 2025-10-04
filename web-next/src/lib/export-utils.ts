@@ -118,7 +118,7 @@ export function formatAlertsForDiscord(alerts: Alert[]): string {
     message += `${discord.bold('🔴 High Priority')} (${high.length} alert${high.length === 1 ? '' : 's'}):\n`;
     high.forEach(alert => {
       message += `${discord.bullet} ${discord.bold(alert.title)}\n`;
-      message += `   ${alert.message}\n`;
+      message += `   ${alert.description}\n`;
     });
     message += '\n';
   }
@@ -126,7 +126,7 @@ export function formatAlertsForDiscord(alerts: Alert[]): string {
   if (medium.length > 0) {
     message += `${discord.bold('🟡 Medium Priority')} (${medium.length} alert${medium.length === 1 ? '' : 's'}):\n`;
     medium.forEach(alert => {
-      message += `${discord.bullet} ${alert.title}: ${alert.message}\n`;
+      message += `${discord.bullet} ${alert.title}: ${alert.description}\n`;
     });
     message += '\n';
   }
