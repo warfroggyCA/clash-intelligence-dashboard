@@ -1,6 +1,5 @@
 'use client';
 
-import React from 'react';
 import { TrendingUp, TrendingDown, Award, Users, Target, Gift } from 'lucide-react';
 
 interface ComparisonMetrics {
