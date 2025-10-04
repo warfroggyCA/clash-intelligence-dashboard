@@ -102,7 +102,7 @@ export async function GET(
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
     
-    const rosterResponse = await fetch(`${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`, {
+    const rosterResponse = await fetch(`${baseUrl}/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`, {
       headers: {
         'x-api-key': process.env.ADMIN_API_KEY || '',
         'User-Agent': 'NextJS-Internal-Fetch',
@@ -115,7 +115,7 @@ export async function GET(
       logger.error('Failed to fetch roster', { 
         status: rosterResponse.status, 
         statusText: rosterResponse.statusText,
-        url: `${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`
+        url: `${baseUrl}/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`
       });
       return json({ 
         success: false, 
