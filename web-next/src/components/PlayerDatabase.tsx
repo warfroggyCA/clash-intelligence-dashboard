@@ -20,6 +20,7 @@ interface PlayerRecord {
   name: string;
   notes: PlayerNote[];
   lastUpdated: string;
+  status?: string; // departed, active, rejected, etc.
 }
 
 interface PlayerDatabaseProps {
