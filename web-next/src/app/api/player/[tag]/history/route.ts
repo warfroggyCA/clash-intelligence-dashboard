@@ -128,13 +128,6 @@ export async function GET(
     return json({
       success: true,
       data: historicalWithDeltas,
-      meta: {
-        playerTag: normalized,
-        days,
-        dataPoints: historicalWithDeltas.length,
-        startDate: startDate.toISOString().split('T')[0],
-        endDate: endDate.toISOString().split('T')[0],
-      }
     });
 
   } catch (error: any) {
