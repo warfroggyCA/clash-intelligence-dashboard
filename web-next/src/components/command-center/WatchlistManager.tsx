@@ -25,12 +25,22 @@ interface WatchlistManagerProps {
   onUpdateWatchlist?: (watchlist: WatchlistItem[]) => void;
 }
 
-export const WatchlistManager = ({ watchlist: initialWatchlist, onUpdateWatchlist }: WatchlistManagerProps) => {
-  const [watchlist, setWatchlist] = useState<WatchlistItem[]>(initialWatchlist);
+export const WatchlistManager = ({ watchlist, onUpdateWatchlist }: WatchlistManagerProps) => {
+  const [internalWatchlist, setInternalWatchlist] = useState<WatchlistItem[]>([]);
   const [copied, setCopied] = useState(false);
   const [expandedMember, setExpandedMember] = useState<string | null>(null);
   const [editingNotes, setEditingNotes] = useState<string | null>(null);
   const [noteText, setNoteText] = useState('');
+
+  // Initialize internal watchlist from prop only once
+  useEffect(() => {
+    if (internalWatchlist.length === 0 && watchlist.length > 0) {
+      setInternalWatchlist(watchlist);
+    }
+  }, []); // Only on mount
+
+  // Use internal watchlist if available, otherwise use prop
+  const activeWatchlistData = internalWatchlist.length > 0 ? internalWatchlist : watchlist;
 
   const activeWatchlist = useMemo(() => {
     return watchlist.filter(item => {
