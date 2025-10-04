@@ -43,10 +43,12 @@ export default function DepartureSyncTool() {
       }
 
       const data = await response.json();
+      console.log('API Response:', data);
       
-      if (data.success && data.departureData) {
+      if (data.success && data.data && data.data.departureData) {
+        console.log('Found departure data:', data.data.departureData.length, 'departures');
         // Process each departure and create localStorage entries
-        for (const departure of data.departureData) {
+        for (const departure of data.data.departureData) {
           try {
             const notesKey = `player_notes_${departure.memberTag.toUpperCase()}`;
             const nameKey = `player_name_${departure.memberTag.toUpperCase()}`;
@@ -94,6 +96,7 @@ export default function DepartureSyncTool() {
           }
         }
       } else {
+        console.log('No departure data found. API response structure:', data);
         errors.push('No departure data found in API response');
       }
 
