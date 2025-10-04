@@ -116,7 +116,7 @@ export async function GET(
       logger.error('Failed to fetch roster', { 
         status: rosterResponse.status, 
         statusText: rosterResponse.statusText,
-        url: `${baseUrl}/api/roster?clanTag=${encodeURIComponent(clanTag)}`,
+        url: `${baseUrl}/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`,
         errorBody: errorText.substring(0, 200),
       });
       return json({ 
