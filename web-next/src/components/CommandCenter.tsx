@@ -118,7 +118,7 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
             <p>No alerts detected. Clan is operating smoothly! 🎉</p>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div id="alerts-list" className="space-y-3">
             {displayedAlerts.map((alert) => (
               <AlertCard
                 key={alert.id}
