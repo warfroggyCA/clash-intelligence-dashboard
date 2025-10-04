@@ -5,13 +5,22 @@ import { X } from "lucide-react";
 
 interface CreatePlayerNoteModalProps {
   onClose: () => void;
+  prefilledPlayerTag?: string;
+  prefilledPlayerName?: string;
 }
 
-export default function CreatePlayerNoteModal({ onClose }: CreatePlayerNoteModalProps) {
-  const [playerTag, setPlayerTag] = useState("");
-  const [playerName, setPlayerName] = useState("");
+export default function CreatePlayerNoteModal({ 
+  onClose, 
+  prefilledPlayerTag, 
+  prefilledPlayerName 
+}: CreatePlayerNoteModalProps) {
+  const [playerTag, setPlayerTag] = useState(prefilledPlayerTag || "");
+  const [playerName, setPlayerName] = useState(prefilledPlayerName || "");
   const [note, setNote] = useState("");
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  
+  // If player info is prefilled, disable those fields
+  const isPlayerPrefilled = !!prefilledPlayerTag;
 
   const savePlayerNote = () => {
     if (!playerTag.trim() || !note.trim()) {
