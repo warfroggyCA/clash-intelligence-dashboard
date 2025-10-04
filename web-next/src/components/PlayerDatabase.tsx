@@ -331,12 +331,27 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
     );
   }
 
+  // Separate departed players (with departure info) from all players
+  const departedPlayers = players.filter(p => {
+    const hasD departureInfo = p.notes.some(note => 
+      note.customFields?.['Departure Date'] || 
+      note.customFields?.['Departure Reason'] ||
+      note.customFields?.['Tenure at Departure']
+    );
+    return hasDepartureInfo || p.status === 'Departed' || p.status === 'Left' || p.status === 'Kicked';
+  });
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Player Database</h2>
-          <p className="text-sm text-gray-600 mt-1">Players who have left the clan or were never in the clan</p>
+          <p className="text-sm text-gray-600 mt-1">
+            {activeView === 'departed' 
+              ? 'Players who have departed from the clan'
+              : 'All tracked players including departed members'
+            }
+          </p>
         </div>
         <div className="flex space-x-2">
           <FontSizeControl />
