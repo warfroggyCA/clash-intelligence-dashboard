@@ -43,18 +43,18 @@ export const WatchlistManager = ({ watchlist, onUpdateWatchlist }: WatchlistMana
   const activeWatchlistData = internalWatchlist.length > 0 ? internalWatchlist : watchlist;
 
   const activeWatchlist = useMemo(() => {
-    return watchlist.filter(item => {
+    return activeWatchlistData.filter(item => {
       if (!item.snoozedUntil) return true;
       return new Date(item.snoozedUntil) < new Date();
     });
-  }, [watchlist]);
+  }, [activeWatchlistData]);
 
   const snoozedWatchlist = useMemo(() => {
-    return watchlist.filter(item => {
+    return activeWatchlistData.filter(item => {
       if (!item.snoozedUntil) return false;
       return new Date(item.snoozedUntil) >= new Date();
     });
-  }, [watchlist]);
+  }, [activeWatchlistData]);
 
   const handleCopyDiscord = async () => {
     const formatted = formatWatchlistForDiscord(activeWatchlist);
