@@ -60,6 +60,34 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
     router.push(`/player/${tag}`);
   }, [router]);
 
+  // Fetch historical data
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Fetch historical data
+        const historyResponse = await fetch(`/api/player/${normalizedTag}/history?days=${daysFilter}`);
+        if (historyResponse.ok) {
+          const historyResult = await historyResponse.json();
+          setHistoricalData(historyResult.data || []);
+        }
+
+        // Fetch comparison data
+        const comparisonResponse = await fetch(`/api/player/${normalizedTag}/comparison`);
+        if (comparisonResponse.ok) {
+          const comparisonResult = await comparisonResponse.json();
+          setComparisonData(comparisonResult.data);
+        }
+      } catch (error) {
+        console.error('Error fetching player analytics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [normalizedTag, daysFilter]);
+
   useEffect(() => {
     if (!navigation?.hasMultiple) return;
 
