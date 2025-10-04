@@ -5,6 +5,7 @@ import { X, Plus } from "lucide-react";
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import CreatePlayerNoteModal from "./CreatePlayerNoteModal";
 import FontSizeControl from "./FontSizeControl";
+import DataRecoveryTool from "./DataRecoveryTool";
 
 interface PlayerNote {
   timestamp: string;
@@ -388,7 +389,14 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
         {filteredPlayers.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
-            {searchTerm ? 'No players found matching your search.' : 'No departed players with notes found. This database shows players who have left the clan or were never in the clan.'}
+            {searchTerm ? 'No players found matching your search.' : (
+              <div className="space-y-4">
+                <p>No departed players with notes found. This database shows players who have left the clan or were never in the clan.</p>
+                <div className="mt-6">
+                  <DataRecoveryTool />
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">
