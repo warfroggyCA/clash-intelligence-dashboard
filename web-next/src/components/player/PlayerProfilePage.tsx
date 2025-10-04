@@ -26,6 +26,12 @@ const EMPTY_MEMBERS: Member[] = [];
 export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) => {
   const router = useRouter();
   const rosterMembers = useDashboardStore((state) => state.roster?.members ?? EMPTY_MEMBERS);
+  
+  const [historicalData, setHistoricalData] = useState<any[]>([]);
+  const [comparisonData, setComparisonData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'overview' | 'trends' | 'comparison' | 'activity'>('overview');
+  const [daysFilter, setDaysFilter] = useState(30);
 
   const normalizedTag = useMemo(() => normalizeTag(data.summary.tag).replace('#', ''), [data.summary.tag]);
 
