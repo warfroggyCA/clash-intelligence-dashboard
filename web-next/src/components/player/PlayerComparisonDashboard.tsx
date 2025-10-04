@@ -108,9 +108,9 @@ const ComparisonCard = ({
   );
 };
 
-export const PlayerComparisonDashboard: React.FC<PlayerComparisonDashboardProps> = ({ 
+export const PlayerComparisonDashboard = ({ 
   comparison 
-}) => {
+}: PlayerComparisonDashboardProps) => {
   return (
     <div className="space-y-6">
       {/* Main Metrics Comparison */}
