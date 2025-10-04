@@ -64,7 +64,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { tag: string } }
 ) {
-  const context = createApiContext(request);
+  const context = createApiContext(request, `/api/player/${params.tag}/comparison`);
   
   try {
     const playerTag = normalizeTag(params.tag);
