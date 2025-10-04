@@ -42,10 +42,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   );
 };
 
-export const PlayerActivityAnalytics: React.FC<PlayerActivityAnalyticsProps> = ({
+export const PlayerActivityAnalytics = ({
   historicalData,
   playerName,
-}) => {
+}: PlayerActivityAnalyticsProps) => {
   // Calculate activity scores based on daily changes
   const activityData = useMemo(() => {
     return historicalData.map((point, index) => {
