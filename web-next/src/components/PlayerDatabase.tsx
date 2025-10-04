@@ -392,18 +392,55 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border">
-        <div className="p-4 border-b">
-          <input
-            type="text"
-            placeholder="Search players by name, tag, or note content..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full border rounded-lg px-3 py-2"
-          />
+      {/* View Tabs */}
+      <div className="border-b border-gray-200">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setActiveView('all')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
+              activeView === 'all'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            All Players ({players.length})
+          </button>
+          <button
+            onClick={() => setActiveView('departed')}
+            className={`px-6 py-3 font-medium text-sm border-b-2 transition ${
+              activeView === 'departed'
+                ? 'border-blue-600 text-blue-600'
+                : 'border-transparent text-gray-600 hover:text-gray-800'
+            }`}
+          >
+            Departed Players ({departedPlayers.length})
+          </button>
         </div>
+      </div>
 
-        {filteredPlayers.length === 0 ? (
+      {/* Departed Players Table View */}
+      {activeView === 'departed' ? (
+        <DepartedPlayersTable 
+          players={departedPlayers.map(p => ({
+            ...p,
+            departureDate: p.notes.find(n => n.customFields?.['Departure Date'])?.customFields?.['Departure Date'],
+            departureReason: p.notes.find(n => n.customFields?.['Departure Reason'])?.customFields?.['Departure Reason'],
+            tenure: parseInt(p.notes.find(n => n.customFields?.['Tenure at Departure'])?.customFields?.['Tenure at Departure'] || '0'),
+          }))}
+        />
+      ) : (
+        <div className="bg-white rounded-lg border">
+          <div className="p-4 border-b">
+            <input
+              type="text"
+              placeholder="Search players by name, tag, or note content..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
+            />
+          </div>
+
+          {filteredPlayers.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             {searchTerm ? 'No players found matching your search.' : 'No departed players with notes found. This database shows players who have left the clan or were never in the clan.'}
           </div>
