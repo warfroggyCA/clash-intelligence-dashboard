@@ -561,6 +561,8 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
       {/* Create Player Note Modal */}
       {showCreatePlayerNote && (
         <CreatePlayerNoteModal
+          prefilledPlayerTag={selectedPlayer?.tag}
+          prefilledPlayerName={selectedPlayer?.name}
           onClose={() => {
             setShowCreatePlayerNote(false);
             // Refresh the database after creating a note
