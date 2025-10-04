@@ -102,7 +102,7 @@ export default function PlayerActivityAnalytics({
       : 0;
 
     // Assess inactivity risk
-    const lowActivityDays = scores.filter(score => score &lt; 20).length;
+    const lowActivityDays = scores.filter(score => score < 20).length;
     const riskPercentage = (lowActivityDays / scores.length) * 100;
     
     let inactivityRisk = 'Low';
