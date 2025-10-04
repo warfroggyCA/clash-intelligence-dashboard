@@ -490,7 +490,8 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
             </table>
           </div>
         )}
-      </div>
+        </div>
+      )}
 
       {/* Player Detail Modal */}
       {showPlayerModal && selectedPlayer && (
