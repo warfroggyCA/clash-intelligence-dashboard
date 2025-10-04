@@ -34,6 +34,12 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
   const [showPlayerModal, setShowPlayerModal] = useState(false);
   const [showCreatePlayerNote, setShowCreatePlayerNote] = useState(false);
   const [activeView, setActiveView] = useState<'all' | 'departed'>('all');
+  const [returningPlayers, setReturningPlayers] = useState<Array<{
+    player: PlayerHistoryRecord;
+    currentName: string;
+    nameChanged: boolean;
+  }>>([]);
+  const [showReturningPlayerReview, setShowReturningPlayerReview] = useState(false);
 
   // Function to load player database from localStorage
   const loadPlayerDatabase = useCallback(() => {
