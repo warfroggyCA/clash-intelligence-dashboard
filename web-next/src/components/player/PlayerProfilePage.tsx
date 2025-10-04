@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Home } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, TrendingUp, BarChart3, Activity, RefreshCw } from 'lucide-react';
 import type { PlayerProfileData } from '@/lib/player-profile';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
@@ -13,6 +13,9 @@ import PlayerPerformanceOverview from './PlayerPerformanceOverview';
 import PlayerEngagementInsights from './PlayerEngagementInsights';
 import PlayerNotesPanel from './PlayerNotesPanel';
 import SectionCard from '@/components/ui/SectionCard';
+import PerformanceTimelineChart from './charts/PerformanceTimelineChart';
+import PlayerComparisonDashboard from './PlayerComparisonDashboard';
+import PlayerActivityAnalytics from './PlayerActivityAnalytics';
 
 interface PlayerProfilePageProps {
   data: PlayerProfileData;
