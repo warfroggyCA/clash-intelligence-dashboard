@@ -464,13 +464,33 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
                 </Button>
               </div>
             </div>
-            <Input
-              type="text"
-              placeholder="Search members by name or tag..."
-              value={filters.search}
-              onChange={(e) => handleFilterChange({ search: e.target.value })}
-              className="mt-1"
-            />
+            <div className="relative mt-1">
+              <label htmlFor="member-search-input" className="sr-only">
+                Search clan members by name or player tag
+              </label>
+              <Input
+                id="member-search-input"
+                type="search"
+                role="searchbox"
+                placeholder="Search members by name or tag..."
+                value={filters.search}
+                onChange={(e) => handleFilterChange({ search: e.target.value })}
+                aria-label="Search clan members by name or player tag"
+                aria-describedby="search-help"
+                autoComplete="off"
+              />
+              <span id="search-help" className="sr-only">
+                Enter a player name or tag to filter the roster. Results update as you type.
+              </span>
+            </div>
+            {filters.search && (
+              <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
+                {filteredCount === 0 
+                  ? `No members found matching "${filters.search}"`
+                  : `Found ${filteredCount} member${filteredCount === 1 ? '' : 's'} matching "${filters.search}"`
+                }
+              </div>
+            )}
             <div className="flex flex-wrap items-center gap-2 text-xs text-muted-contrast">
               <span className="text-muted-contrast">Quick filters:</span>
               <Button
