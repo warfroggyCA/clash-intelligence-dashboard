@@ -70,16 +70,29 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
         if (historyResponse.ok) {
           const historyResult = await historyResponse.json();
           setHistoricalData(historyResult.data || []);
+        } else {
+          console.warn('History API failed:', historyResponse.status, historyResponse.statusText);
         }
 
         // Fetch comparison data
         const comparisonResponse = await fetch(`/api/player/${normalizedTag}/comparison`);
         if (comparisonResponse.ok) {
           const comparisonResult = await comparisonResponse.json();
-          setComparisonData(comparisonResult.data);
+          if (comparisonResult.success && comparisonResult.data) {
+            setComparisonData(comparisonResult.data);
+          } else {
+            console.warn('Comparison API returned unsuccessful:', comparisonResult);
+            setComparisonData(null);
+          }
+        } else {
+          console.error('Comparison API failed:', comparisonResponse.status, comparisonResponse.statusText);
+          const errorText = await comparisonResponse.text();
+          console.error('Error response:', errorText);
+          setComparisonData(null);
         }
       } catch (error) {
         console.error('Error fetching player analytics:', error);
+        setComparisonData(null);
       } finally {
         setLoading(false);
       }
