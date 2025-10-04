@@ -434,6 +434,31 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
 
   return (
     <div className="space-y-4">
+      {/* Returning Players Banner */}
+      {!showReturningPlayerReview && returningPlayers.length > 0 && (
+        <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-green-500 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <UserCheck className="w-6 h-6 text-green-600" />
+              <div>
+                <h3 className="font-semibold text-green-900">
+                  🎉 {returningPlayers.length} Departed Player{returningPlayers.length !== 1 ? 's' : ''} {returningPlayers.length !== 1 ? 'Have' : 'Has'} Returned!
+                </h3>
+                <p className="text-sm text-green-700 mt-1">
+                  Review their history and decide on tenure awards
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowReturningPlayerReview(true)}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-semibold transition"
+            >
+              Review Returns
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-2xl font-bold">Player Database</h2>
