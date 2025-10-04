@@ -123,7 +123,7 @@ export async function GET(
         success: false, 
         error: `Roster API returned ${rosterResponse.status}: ${rosterResponse.statusText}`,
         debug: {
-          url: `${baseUrl}/api/roster`,
+          url: `${baseUrl}/api/v2/roster`,
           status: rosterResponse.status,
         }
       }, { status: 503 });
