@@ -105,6 +105,14 @@ export default function CreatePlayerNoteModal({
         </div>
 
         <div className="space-y-4">
+          {isPlayerPrefilled && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-2">
+              <p className="text-sm text-blue-800">
+                ℹ️ <strong>Note:</strong> Adding note for <strong>{playerName || playerTag}</strong>
+              </p>
+            </div>
+          )}
+          
           <div>
             <label className="block text-sm font-medium mb-2">Player Tag *</label>
             <input
@@ -118,8 +126,9 @@ export default function CreatePlayerNoteModal({
                 }
                 setPlayerTag(value);
               }}
-              placeholder="2PR8R8V8P"
-              className="w-full border rounded-lg px-3 py-2"
+              placeholder="#2PR8R8V8P"
+              disabled={isPlayerPrefilled}
+              className={`w-full border rounded-lg px-3 py-2 ${isPlayerPrefilled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             />
           </div>
 
@@ -130,7 +139,8 @@ export default function CreatePlayerNoteModal({
               value={playerName}
               onChange={(e) => setPlayerName(e.target.value)}
               placeholder="Player's display name (optional)"
-              className="w-full border rounded-lg px-3 py-2"
+              disabled={isPlayerPrefilled}
+              className={`w-full border rounded-lg px-3 py-2 ${isPlayerPrefilled ? 'bg-gray-100 cursor-not-allowed' : ''}`}
             />
           </div>
 
