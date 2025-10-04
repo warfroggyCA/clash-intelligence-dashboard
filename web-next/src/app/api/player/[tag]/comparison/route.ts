@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { normalizeTag, isValidTag } from "@/lib/tags";
 import { createApiContext } from "@/lib/api/route-helpers";
-import { useDashboardStore } from "@/lib/stores/dashboard-store";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
