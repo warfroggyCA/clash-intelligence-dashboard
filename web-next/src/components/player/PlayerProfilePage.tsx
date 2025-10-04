@@ -303,7 +303,7 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
                 <RefreshCw className="w-8 h-8 text-blue-400 animate-spin" />
               </div>
             ) : comparisonData ? (
-              <PlayerComparisonDashboard comparison={comparisonData} />
+              <PlayerComparisonDashboard data={comparisonData} playerName={data.summary.name} />
             ) : (
               <div className="bg-brand-surface border border-brand-border rounded-lg p-8 text-center">
                 <p className="text-gray-400">Comparison data unavailable</p>
