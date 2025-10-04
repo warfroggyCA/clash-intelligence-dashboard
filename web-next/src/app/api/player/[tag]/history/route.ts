@@ -10,7 +10,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { tag: string } }
 ) {
-  const context = createApiContext(request);
+  const context = createApiContext(request, `/api/player/${params.tag}/history`);
   
   try {
     const playerTag = normalizeTag(params.tag);
