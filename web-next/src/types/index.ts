@@ -605,6 +605,7 @@ export interface PlayerRecord {
   notes: PlayerNote[];
   customFields: Record<string, string>;
   lastUpdated: string;
+  status?: 'active' | 'departed'; // Track player departure status
 }
 
 /**
