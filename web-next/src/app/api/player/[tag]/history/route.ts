@@ -60,8 +60,8 @@ export async function GET(
 
     // Fetch snapshots from Supabase
     const { data: snapshots, error } = await supabase
-      .from('full_snapshots')
-      .select('snapshot_date, snapshot_data')
+      .from('clan_snapshots')
+      .select('snapshot_date, member_summaries, player_details')
       .eq('clan_tag', clanTag)
       .gte('snapshot_date', startDate.toISOString().split('T')[0])
       .lte('snapshot_date', endDate.toISOString().split('T')[0])
@@ -78,8 +78,13 @@ export async function GET(
     if (snapshots && snapshots.length > 0) {
       for (const snapshot of snapshots) {
         try {
-          const snapshotData = snapshot.snapshot_data as DailySnapshot;
-          const member = snapshotData.members?.find(m => normalizeTag(m.tag) === normalized);
+          // Look in member_summaries first (main roster data)
+          let member = snapshot.member_summaries?.find((m: any) => normalizeTag(m.tag) === normalized);
+          
+          // If not found, check player_details (detailed player data)
+          if (!member && snapshot.player_details) {
+            member = snapshot.player_details.find((p: any) => normalizeTag(p.tag) === normalized);
+          }
           
           if (member) {
             historicalData.push({
