@@ -76,12 +76,12 @@ const CustomTooltip = ({ active, payload, label, metric }: any) => {
   );
 };
 
-export const PerformanceTimelineChart: React.FC<PerformanceTimelineChartProps> = ({
+export const PerformanceTimelineChart = ({
   data,
   metric,
   title,
   color,
-}) => {
+}: PerformanceTimelineChartProps) => {
   const config = METRIC_CONFIG[metric];
   const lineColor = color || config.color;
 
