@@ -362,6 +362,40 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
     // Users can manually sync using the "Sync Departures" button
   }, [loadPlayerDatabase, applyPlayerNameResolutions]);
 
+  // Handle processing player return
+  const handleProcessReturn = useCallback((
+    playerTag: string,
+    options: { awardPreviousTenure?: number; returnNotes?: string }
+  ) => {
+    const returningPlayer = returningPlayers.find(r => r.player.tag === playerTag);
+    if (!returningPlayer) return;
+
+    // Process the return
+    const updatedPlayer = processPlayerReturn(
+      playerTag,
+      returningPlayer.currentName,
+      returningPlayer.player,
+      options
+    );
+
+    // Save updated record to localStorage
+    const notesKey = `player_notes_${playerTag}`;
+    localStorage.setItem(notesKey, JSON.stringify(updatedPlayer.notes));
+
+    // Update player name if changed
+    const nameKey = `player_name_${playerTag}`;
+    localStorage.setItem(nameKey, updatedPlayer.primaryName);
+
+    // Save aliases
+    if (updatedPlayer.aliases.length > 0) {
+      const aliasKey = `player_aliases_${playerTag}`;
+      localStorage.setItem(aliasKey, JSON.stringify(updatedPlayer.aliases));
+    }
+
+    // Reload player database
+    loadPlayerDatabase();
+  }, [returningPlayers, loadPlayerDatabase]);
+
   const filteredPlayers = players.filter(player =>
     player.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     player.tag.toLowerCase().includes(searchTerm.toLowerCase()) ||
