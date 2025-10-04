@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { X, Plus } from "lucide-react";
+import { X, Plus, UserCheck } from "lucide-react";
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import CreatePlayerNoteModal from "./CreatePlayerNoteModal";
 import FontSizeControl from "./FontSizeControl";
 import DepartedPlayersTable from "./DepartedPlayersTable";
+import ReturningPlayerReview from "./ReturningPlayerReview";
+import { detectReturns, processPlayerReturn, type PlayerHistoryRecord } from '@/lib/player-history';
 
 interface PlayerNote {
   timestamp: string;
