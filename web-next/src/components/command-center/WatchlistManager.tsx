@@ -72,7 +72,7 @@ export const WatchlistManager = ({ watchlist, onUpdateWatchlist }: WatchlistMana
   };
 
   const handleSnooze = (memberTag: string, days: number) => {
-    const updated = watchlist.map(item => {
+    const updated = activeWatchlistData.map(item => {
       if (item.member.tag === memberTag) {
         const snoozedUntil = new Date();
         snoozedUntil.setDate(snoozedUntil.getDate() + days);
@@ -80,35 +80,35 @@ export const WatchlistManager = ({ watchlist, onUpdateWatchlist }: WatchlistMana
       }
       return item;
     });
-    setWatchlist(updated);
+    setInternalWatchlist(updated);
     onUpdateWatchlist?.(updated);
   };
 
   const handleUnsnooze = (memberTag: string) => {
-    const updated = watchlist.map(item => {
+    const updated = activeWatchlistData.map(item => {
       if (item.member.tag === memberTag) {
         return { ...item, snoozedUntil: undefined };
       }
       return item;
     });
-    setWatchlist(updated);
+    setInternalWatchlist(updated);
     onUpdateWatchlist?.(updated);
   };
 
   const handleRemove = (memberTag: string) => {
-    const updated = watchlist.filter(item => item.member.tag !== memberTag);
-    setWatchlist(updated);
+    const updated = activeWatchlistData.filter(item => item.member.tag !== memberTag);
+    setInternalWatchlist(updated);
     onUpdateWatchlist?.(updated);
   };
 
   const handleSaveNotes = (memberTag: string) => {
-    const updated = watchlist.map(item => {
+    const updated = activeWatchlistData.map(item => {
       if (item.member.tag === memberTag) {
         return { ...item, notes: noteText };
       }
       return item;
     });
-    setWatchlist(updated);
+    setInternalWatchlist(updated);
     onUpdateWatchlist?.(updated);
     setEditingNotes(null);
     setNoteText('');
