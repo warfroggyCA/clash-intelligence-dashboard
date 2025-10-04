@@ -239,10 +239,22 @@ export async function GET(
     });
 
   } catch (error: any) {
-    logger.error('Error generating player comparison', { error: error.message });
+    if (error.name === 'AbortError') {
+      logger.error('Roster fetch timeout', { tag: normalized });
+      return json({ 
+        success: false, 
+        error: "Request timeout while loading roster data. Please try again." 
+      }, { status: 504 });
+    }
+    
+    logger.error('Error generating player comparison', { 
+      error: error.message, 
+      stack: error.stack,
+      tag: normalized 
+    });
     return json({ 
       success: false, 
-      error: error.message || "Failed to generate comparison data" 
+      error: "Unable to generate comparison data. Please try again later." 
     }, { status: 500 });
   }
 }
