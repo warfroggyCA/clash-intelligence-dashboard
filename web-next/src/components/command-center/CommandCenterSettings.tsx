@@ -41,12 +41,24 @@ export const CommandCenterSettings = ({ onSave, initialThresholds }: CommandCent
     if (stored) {
       try {
         const parsed = JSON.parse(stored);
-        setThresholds({ ...DEFAULT_THRESHOLDS, ...parsed });
+        const loadedThresholds = { ...DEFAULT_THRESHOLDS, ...parsed };
+        setThresholds(loadedThresholds);
+        // Don't call onSave here to prevent infinite loop
       } catch (error) {
         console.error('Failed to parse stored thresholds:', error);
       }
+    } else if (initialThresholds) {
+      // If no stored settings but initialThresholds provided, use those
+      setThresholds({ ...DEFAULT_THRESHOLDS, ...initialThresholds });
     }
-  }, []);
+  }, []); // Only run on mount
+
+  // Sync with initialThresholds changes (but don't trigger infinite updates)
+  useEffect(() => {
+    if (initialThresholds && !localStorage.getItem('commandCenterThresholds')) {
+      setThresholds(prev => ({ ...DEFAULT_THRESHOLDS, ...initialThresholds }));
+    }
+  }, [initialThresholds]);
 
   const handleSave = () => {
     localStorage.setItem('commandCenterThresholds', JSON.stringify(thresholds));
