@@ -6,6 +6,7 @@ import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import CreatePlayerNoteModal from "./CreatePlayerNoteModal";
 import FontSizeControl from "./FontSizeControl";
 import DataRecoveryTool from "./DataRecoveryTool";
+import DepartureSyncTool from "./DepartureSyncTool";
 
 interface PlayerNote {
   timestamp: string;
@@ -392,7 +393,8 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
             {searchTerm ? 'No players found matching your search.' : (
               <div className="space-y-4">
                 <p>No departed players with notes found. This database shows players who have left the clan or were never in the clan.</p>
-                <div className="mt-6">
+                <div className="mt-6 space-y-4">
+                  <DepartureSyncTool />
                   <DataRecoveryTool />
                 </div>
               </div>
