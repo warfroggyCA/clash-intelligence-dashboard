@@ -114,7 +114,7 @@ export const PlayerActivityAnalytics = ({
       trend: Math.round(trend),
       inactivityRisk: Math.round(inactivityRisk * 100),
     };
-  }, [activityData]);
+  }), [activityData];
 
   const getBarColor = (score: number) => {
     if (score >= 80) return '#10b981'; // green
