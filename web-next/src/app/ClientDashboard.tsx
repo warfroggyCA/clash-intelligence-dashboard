@@ -9,6 +9,7 @@ import { RosterTable } from '@/components/roster/RosterTable';
 import { RosterSummary } from '@/components/roster/RosterSummary';
 import { InsightsDashboard } from '@/components/insights/InsightsDashboard';
 import CommandCenter from '@/components/CommandCenter';
+import PlayerDatabase from '@/components/PlayerDatabase';
 
 type Props = {
   initialRoster?: Roster | null;
@@ -81,7 +82,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
         return <div>Changes Dashboard Component</div>;
       
       case 'database':
-        return <div>Player Database Component</div>;
+        return <PlayerDatabase currentClanMembers={roster?.members?.map(m => m.tag) || []} />;
       
       case 'coaching':
         return <CommandCenter clanData={roster} clanTag={clanTag || homeClan || initialClanTag} />;
