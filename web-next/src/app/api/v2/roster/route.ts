@@ -4,6 +4,7 @@ import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { readTenureDetails } from '@/lib/tenure';
+import { extractHeroLevels } from '@/lib/coc';
 import { daysSinceToDate } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,7 @@ export async function GET(req: NextRequest) {
 
     const { data: snapshotRows, error: snapshotError } = await supabase
       .from('roster_snapshots')
-      .select('id, fetched_at, member_count, total_trophies, total_donations, metadata, payload_version, ingestion_version, schema_version, computed_at, season_id, season_start, season_end')
+      .select('id, fetched_at, member_count, total_trophies, total_donations, metadata, payload_version, ingestion_version, schema_version, computed_at, season_id, season_start, season_end, payload')
       .eq('clan_id', clanRow.id)
       .order('fetched_at', { ascending: false })
       .limit(1);
@@ -146,6 +147,104 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Fast fallback: If no stats available, derive members from snapshot payload (memberSummaries + playerDetails)
+    if (!stats.length) {
+      const payload: any = (snapshot as any).payload ?? null;
+      const summaries: any[] = Array.isArray(payload?.memberSummaries) ? payload.memberSummaries : [];
+      const details: Record<string, any> = (payload?.playerDetails && typeof payload.playerDetails === 'object') ? payload.playerDetails : {};
+
+      const mappedMembers = summaries.map((summary) => {
+        const tag = normalizeTag(summary.tag);
+        const detail = details[tag];
+        const heroLevels = detail ? extractHeroLevels(detail) : null;
+        const league = summary.league || detail?.league || null;
+        const leagueId = typeof league === 'object' ? league?.id : null;
+        const leagueName = typeof league === 'object' ? league?.name : (typeof league === 'string' ? league : null);
+        const leagueTrophies = typeof league === 'object' ? league?.trophies ?? null : null;
+        const leagueIconSmall = typeof league === 'object' ? league?.iconUrls?.small ?? null : null;
+        const leagueIconMedium = typeof league === 'object' ? league?.iconUrls?.medium ?? null : null;
+
+        return {
+          id: `fallback:${tag}`,
+          tag,
+          name: summary.name ?? tag,
+          townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
+          role: summary.role ?? null,
+          trophies: summary.trophies ?? detail?.trophies ?? null,
+          donations: summary.donations ?? null,
+          donationsReceived: summary.donationsReceived ?? null,
+          heroLevels: heroLevels,
+          activityScore: null,
+          rushPercent: null,
+          extras: null,
+          league,
+          builderLeague: detail?.builderBaseLeague ?? null,
+          leagueId,
+          leagueName,
+          leagueTrophies,
+          leagueIconSmall,
+          leagueIconMedium,
+          battleModeTrophies: leagueTrophies ?? null,
+          rankedTrophies: leagueTrophies ?? null,
+          rankedLeagueId: leagueId,
+          rankedLeagueName: leagueName,
+          rankedModifier: null,
+          seasonResetAt: null,
+          equipmentFlags: detail?.equipment ?? null,
+          metrics: {},
+          tenure_days: null,
+          tenure_as_of: null,
+        } as any;
+      });
+
+      const metadata = snapshot?.metadata ?? {};
+      const respBody = {
+        success: true,
+        data: {
+          clan: {
+            id: clanRow.id,
+            tag: clanRow.tag,
+            name: clanRow.name ?? null,
+            logo_url: null,
+          },
+          snapshot: {
+            id: snapshot.id,
+            fetchedAt: snapshot.fetched_at,
+            memberCount: Array.isArray(mappedMembers) ? mappedMembers.length : 0,
+            totalTrophies: snapshot.total_trophies ?? null,
+            totalDonations: snapshot.total_donations ?? null,
+            metadata,
+            payloadVersion: snapshot.payload_version ?? null,
+            ingestionVersion: snapshot.ingestion_version ?? null,
+            schemaVersion: snapshot.schema_version ?? null,
+            computedAt: snapshot.computed_at ?? null,
+            seasonId: (snapshot as any).season_id ?? metadata.seasonId ?? null,
+            seasonStart: (snapshot as any).season_start ?? metadata.seasonStart ?? null,
+            seasonEnd: (snapshot as any).season_end ?? metadata.seasonEnd ?? null,
+          },
+          members: mappedMembers,
+          seasonId: (snapshot as any).season_id ?? metadata.seasonId ?? null,
+          seasonStart: (snapshot as any).season_start ?? metadata.seasonStart ?? null,
+          seasonEnd: (snapshot as any).season_end ?? metadata.seasonEnd ?? null,
+        },
+      };
+
+      return NextResponse.json(respBody, {
+        status: 200,
+        headers: { 'Cache-Control': 'private, max-age=60' },
+      });
+    }
+
+    // Prepare optional enrichment maps from payload if available
+    const payloadEnrich: any = (snapshot as any).payload ?? null;
+    const payloadDetailsMap: Record<string, any> = (payloadEnrich?.playerDetails && typeof payloadEnrich.playerDetails === 'object') ? payloadEnrich.playerDetails : {};
+    const payloadSummariesArr: any[] = Array.isArray(payloadEnrich?.memberSummaries) ? payloadEnrich.memberSummaries : [];
+    const payloadSummaryByTag = new Map<string, any>();
+    for (const s of payloadSummariesArr) {
+      const t = normalizeTag(s?.tag || '');
+      if (t) payloadSummaryByTag.set(t, s);
+    }
+
     const members = stats.map((stat) => {
       const member = memberLookup[stat.member_id] || {};
       const leagueId = stat.league_id ?? member.league_id ?? null;
@@ -158,8 +257,8 @@ export async function GET(req: NextRequest) {
       const equipmentFlags = stat.equipment_flags ?? member.equipment_flags ?? null;
 
       // Get tenure data for this member
-      const memberTag = member.tag ? normalizeTag(member.tag) : null;
-      const tenureData = memberTag ? tenureDetails[memberTag] : null;
+      const normalizedTag = member.tag ? normalizeTag(member.tag) : null;
+      const tenureData = normalizedTag ? tenureDetails[normalizedTag] : null;
       const statTenureDays = typeof (stat as any).tenure_days === 'number' ? (stat as any).tenure_days : null;
       const statTenureAsOf = (stat as any).tenure_as_of ?? null;
 
@@ -189,16 +288,22 @@ export async function GET(req: NextRequest) {
       const rawTenure = statTenureDays ?? tenureData?.days ?? fallbackTenure ?? null;
       const computedTenure = rawTenure != null ? Math.max(1, Math.round(rawTenure)) : null;
 
+      // Enrich from payload when missing
+      const pDetail = normalizedTag ? payloadDetailsMap[normalizedTag] : null;
+      const pSummary = normalizedTag ? payloadSummaryByTag.get(normalizedTag) : null;
+      const enrichedHeroLevels = stat.hero_levels ?? (pDetail ? extractHeroLevels(pDetail) : null);
+      const enrichedTh = stat.th_level ?? (pSummary?.townHallLevel ?? pDetail?.townHallLevel ?? null);
+
       return {
         id: stat.member_id,
         tag: member.tag ?? null,
         name: member.name ?? null,
-        townHallLevel: stat.th_level ?? member.th_level ?? null,
+        townHallLevel: enrichedTh ?? member.th_level ?? null,
         role: stat.role ?? member.role ?? null,
         trophies: stat.trophies,
         donations: stat.donations,
         donationsReceived: stat.donations_received,
-        heroLevels: stat.hero_levels ?? null,
+        heroLevels: enrichedHeroLevels ?? null,
         activityScore: stat.activity_score ?? null,
         rushPercent: stat.rush_percent ?? null,
         extras: stat.extras ?? null,
