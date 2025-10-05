@@ -374,6 +374,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
   const insightsEnabled = process.env.NEXT_PUBLIC_ENABLE_INSIGHTS === 'true';
   const [showExportMenu, setShowExportMenu] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
 
   // Close dropdown when clicking outside
   useEffect(() => {
