@@ -6,6 +6,24 @@ import { getSupabaseAdminClient } from "@/lib/supabase-admin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+interface HistoricalDataPoint {
+  date: string;
+  trophies: number;
+  donations: number;
+  donationsReceived: number;
+  warStars: number;
+  clanCapitalContributions: number;
+  townHallLevel: number;
+  role: string;
+  deltas?: {
+    trophies: number;
+    donations: number;
+    donationsReceived: number;
+    warStars: number;
+    clanCapitalContributions: number;
+  };
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: { tag: string } }
@@ -62,8 +80,8 @@ export async function GET(
     }
 
     // Extract player data from snapshots
-    const historicalData: any[] = [];
-    let previousData: any = null;
+    const historicalData: HistoricalDataPoint[] = [];
+    let previousData: HistoricalDataPoint | null = null;
 
     for (const snapshot of snapshots) {
       if (!snapshot.snapshot_data || !snapshot.snapshot_data.members) {
@@ -75,7 +93,7 @@ export async function GET(
       );
 
       if (playerData) {
-        const currentData = {
+        const currentData: HistoricalDataPoint = {
           date: snapshot.snapshot_date,
           trophies: playerData.trophies || 0,
           donations: playerData.donations || 0,

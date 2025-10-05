@@ -185,9 +185,9 @@ export async function GET(
       
       comparisonData.roleComparison = {
         role: playerRole,
-        averageTrophies: Math.round(roleTrophies.reduce((sum, val) => sum + val, 0) / roleTrophies.length),
-        averageDonations: Math.round(roleDonations.reduce((sum, val) => sum + val, 0) / roleDonations.length),
-        averageWarStars: Math.round(roleWarStars.reduce((sum, val) => sum + val, 0) / roleWarStars.length),
+        averageTrophies: Math.round(roleTrophies.reduce((sum: number, val: number) => sum + val, 0) / roleTrophies.length),
+        averageDonations: Math.round(roleDonations.reduce((sum: number, val: number) => sum + val, 0) / roleDonations.length),
+        averageWarStars: Math.round(roleWarStars.reduce((sum: number, val: number) => sum + val, 0) / roleWarStars.length),
         playersWithRole: sameRoleMembers.length
       };
     }

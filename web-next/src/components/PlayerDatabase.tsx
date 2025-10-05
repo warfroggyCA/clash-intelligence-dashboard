@@ -195,6 +195,18 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
               const nameKey = `player_name_${departure.memberTag.toUpperCase()}`;
               localStorage.setItem(nameKey, departure.memberName);
               
+              // Update local history record for full audit trail
+              try {
+                const { recordDeparture } = await import('@/lib/player-history-storage');
+                recordDeparture({
+                  memberTag: departure.memberTag,
+                  memberName: departure.memberName,
+                  departureDate: departure.departureDate,
+                  departureReason: departure.departureReason,
+                  notes: departure.notes,
+                });
+              } catch {}
+              
               syncedCount++;
             }
           }
@@ -340,6 +352,14 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
         </div>
         <div className="flex space-x-2">
           <FontSizeControl />
+          <a
+            href="/retired"
+            className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 flex items-center space-x-2"
+            title="View retired players list"
+          >
+            <span>🏁</span>
+            <span>Retired List</span>
+          </a>
           <button
             onClick={() => setShowCreatePlayerNote(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
@@ -393,6 +413,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
             {searchTerm ? 'No players found matching your search.' : (
               <div className="space-y-4">
                 <p>No departed players with notes found. This database shows players who have left the clan or were never in the clan.</p>
+                <p className="text-sm text-blue-600">Use the tools below to recover your kicked players from September 10th!</p>
                 <div className="mt-6 space-y-4">
                   <DepartureSyncTool />
                   <DataRecoveryTool />
@@ -476,7 +497,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                   <span className="text-gray-600">Status:</span>
                   <select
                     className="border rounded px-2 py-1 text-sm"
-                    value={(typeof window !== 'undefined' ? (localStorage.getItem(`player_status_${selectedPlayer.tag}`) || '') : '')}
+                    value={(typeof window !== 'undefined' ? (localStorage.getItem(`player_status_${selectedPlayer.tag.toUpperCase()}`) || '') : '')}
                     onChange={(e) => {
                       try {
                         const key = `player_status_${selectedPlayer.tag.toUpperCase()}`;
@@ -491,6 +512,16 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                     <option value="hired">Hired</option>
                     <option value="rejected">Rejected</option>
                   </select>
+                  <span className="text-gray-400">•</span>
+                  <a
+                    href={`/retired/${(selectedPlayer.tag || '').replace('#', '')}`}
+                    className="text-blue-600 hover:text-blue-700 underline"
+                    title="Open simplified retired profile"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open Page
+                  </a>
                 </div>
               </div>
               <button 
@@ -576,6 +607,9 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
             // Refresh the database after creating a note
             loadPlayerDatabase();
           }}
+          defaultTag={showPlayerModal && selectedPlayer ? selectedPlayer.tag : undefined}
+          defaultName={showPlayerModal && selectedPlayer ? selectedPlayer.name : undefined}
+          lockTag={Boolean(showPlayerModal && selectedPlayer)}
         />
       )}
     </div>

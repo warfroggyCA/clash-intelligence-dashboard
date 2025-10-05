@@ -18,6 +18,8 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [result, setResult] = useState<EvalResult | null>(null);
+  const [historyNote, setHistoryNote] = useState<string>('');
+  const [historyLink, setHistoryLink] = useState<string | null>(null);
   const [saved, setSaved] = useState<boolean>(false);
   const [status, setStatus] = useState<string>('shortlisted');
   const [copied, setCopied] = useState<boolean>(false);
@@ -37,6 +39,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
 
   const onEvaluate = async () => {
     setLoading(true); setError(''); setResult(null);
+    setHistoryNote(''); setHistoryLink(null);
     try {
       const qs = new URLSearchParams();
       qs.set('tag', tag.trim());
@@ -50,6 +53,49 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
       }
       setResult(json.data);
       setSaved(false);
+
+      // History / alias audit
+      try {
+        const a = json.data.applicant || {};
+        const nm = String(a.name || '');
+        const tg = String(a.tag || '');
+        const effClan = (storeClan || clanTag || defaultClanTag || '').trim();
+
+        const norm = (s: string) => String(s || '').replace('#', '').toUpperCase();
+
+        // 1) Local history by tag or alias
+        try {
+          const mod = await import('@/lib/player-history-storage');
+          const rec = mod.loadHistory(tg, nm);
+          if (rec && (rec.status === 'departed' || rec.movements.some((m: any) => m.type === 'departed'))) {
+            setHistoryNote('Applicant appears in your history with a prior departure');
+            setHistoryLink(`/retired/${norm(tg)}`);
+          } else {
+            const byAlias = mod.findByAlias(nm);
+            if (byAlias) {
+              setHistoryNote(`Name matches previous alias for ${byAlias.primaryName}`);
+              setHistoryLink(`/retired/${norm(byAlias.tag)}`);
+            }
+          }
+        } catch {}
+
+        // 2) Departures list on server
+        if (!historyNote && effClan) {
+          try {
+            const res2 = await fetch(`/api/departures?clanTag=${encodeURIComponent(effClan)}`, { cache: 'no-store' });
+            const j2 = await res2.json();
+            if (res2.ok && j2?.success) {
+              const items = Array.isArray(j2.data) ? j2.data : [];
+              const hit = items.find((d: any) => norm(d.memberTag) === norm(tg))
+                || items.find((d: any) => String(d.memberName || '').toLowerCase().trim() === nm.toLowerCase().trim());
+              if (hit) {
+                setHistoryNote('This tag/name appears in your departed list');
+                setHistoryLink(`/retired/${norm(hit.memberTag)}`);
+              }
+            }
+          } catch {}
+        }
+      } catch {}
     } catch (e: any) {
       setError(e?.message || 'Failed to evaluate');
     } finally {
@@ -253,6 +299,17 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
               </button>
             </div>
           </div>
+          {historyNote && (
+            <div className="mt-3 rounded border bg-amber-50 p-3 text-amber-800 text-sm">
+              <div className="font-semibold">History/Alias Audit</div>
+              <div>{historyNote}</div>
+              {historyLink && (
+                <div className="mt-1">
+                  <a href={historyLink} target="_blank" rel="noreferrer" className="underline text-amber-900 hover:text-amber-700">View retired profile</a>
+                </div>
+              )}
+            </div>
+          )}
           {error && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
               <div className="text-red-700 text-sm">{error}</div>
