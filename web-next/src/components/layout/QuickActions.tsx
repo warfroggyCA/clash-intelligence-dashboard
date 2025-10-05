@@ -426,12 +426,12 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
         ? 'bg-amber-400/20 text-amber-200'
         : 'bg-emerald-400/20 text-emerald-200';
 
-  const snapshotSummary = smartInsightsMetadata
-    ? `${'Snapshot '}${safeLocaleDateString(smartInsightsMetadata.snapshotDate, {
-        fallback: smartInsightsMetadata.snapshotDate,
+  const snapshotSummary = snapshotMetadata
+    ? `${'Snapshot '}${safeLocaleDateString(snapshotMetadata.snapshotDate, {
+        fallback: snapshotMetadata.snapshotDate,
         context: 'QuickActions snapshotSummary'
-      })}${smartInsightsMetadata.generatedAt ? ` • Generated ${safeLocaleString(smartInsightsMetadata.generatedAt, {
-        fallback: smartInsightsMetadata.generatedAt,
+      })}${snapshotMetadata.fetchedAt ? ` • Generated ${safeLocaleString(snapshotMetadata.fetchedAt, {
+        fallback: snapshotMetadata.fetchedAt,
         context: 'QuickActions snapshotGeneratedAt'
       })}` : ''}`
     : 'Snapshot timing unavailable';
