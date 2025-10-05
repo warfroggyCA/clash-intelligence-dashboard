@@ -65,49 +65,74 @@ export async function fetchFullClanSnapshot(
 ): Promise<FullClanSnapshot> {
   const normalizedTag = normalizeTag(clanTag);
   const fetchPlayers = options.includePlayerDetails !== false;
-  const [clan, members] = await Promise.all([
-    getClanInfo(normalizedTag),
-    getClanMembers(normalizedTag),
-  ]);
+  // Add timeout to prevent hanging on main API calls
+  const timeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout fetching clan data')), 60000); // 60 second timeout
+  });
+
+  const [clan, members] = await Promise.race([
+    Promise.all([
+      getClanInfo(normalizedTag),
+      getClanMembers(normalizedTag),
+    ]),
+    timeoutPromise
+  ]) as [any, any];
 
   const warLogLimit = options.warLogLimit ?? 10;
   const capitalSeasonLimit = options.capitalSeasonLimit ?? 3;
 
-  const [warLog, currentWar, capitalRaidSeasons] = await Promise.all([
-    getClanWarLog(normalizedTag, warLogLimit),
-    getClanCurrentWar(normalizedTag),
-    getClanCapitalRaidSeasons(normalizedTag, capitalSeasonLimit),
-  ]);
+  // Add timeout to war data fetching
+  const warTimeoutPromise = new Promise((_, reject) => {
+    setTimeout(() => reject(new Error('Timeout fetching war data')), 45000); // 45 second timeout
+  });
+
+  const [warLog, currentWar, capitalRaidSeasons] = await Promise.race([
+    Promise.all([
+      getClanWarLog(normalizedTag, warLogLimit),
+      getClanCurrentWar(normalizedTag),
+      getClanCapitalRaidSeasons(normalizedTag, capitalSeasonLimit),
+    ]),
+    warTimeoutPromise
+  ]) as [any[], any, any[]];
 
   const playerDetails: Record<string, any> = {};
   if (fetchPlayers) {
     let cacheHits = 0;
     let cacheMisses = 0;
 
-    await Promise.all(
-      members.map(async (member: any) => {
-        const tag = normalizeTag(member.tag);
+    // Process players with timeout and better error handling
+    const playerPromises = members.map(async (member: any) => {
+      const tag = normalizeTag(member.tag);
 
-        const cachedDetail = await loadPlayerDetailFromCache(tag);
-        if (cachedDetail) {
-          playerDetails[tag] = cachedDetail;
-          cacheHits += 1;
-          return;
-        }
+      const cachedDetail = await loadPlayerDetailFromCache(tag);
+      if (cachedDetail) {
+        playerDetails[tag] = cachedDetail;
+        cacheHits += 1;
+        return;
+      }
 
-        await rateLimiter.acquire();
-        try {
-          const detail = await getPlayer(tag);
-          playerDetails[tag] = detail;
-          cacheMisses += 1;
-          await savePlayerDetailToCache(tag, detail);
-        } catch (error) {
-          console.error('[FullSnapshot] Failed to fetch player detail', member.tag, error);
-        } finally {
-          rateLimiter.release();
-        }
-      })
-    );
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error(`Timeout fetching player ${tag}`)), 30000); // 30 second timeout
+      });
+
+      await rateLimiter.acquire();
+      try {
+        const detailPromise = getPlayer(tag);
+        const detail = await Promise.race([detailPromise, timeoutPromise]);
+        playerDetails[tag] = detail;
+        cacheMisses += 1;
+        await savePlayerDetailToCache(tag, detail);
+      } catch (error) {
+        console.error('[FullSnapshot] Failed to fetch player detail', member.tag, error);
+        // Don't let one player failure block the entire process
+      } finally {
+        rateLimiter.release();
+      }
+    });
+
+    // Wait for all players with timeout
+    await Promise.allSettled(playerPromises);
 
     if (cacheHits || cacheMisses) {
       console.log(`[FullSnapshot] Player detail cache stats — hits: ${cacheHits}, misses: ${cacheMisses}`);
