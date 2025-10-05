@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format } from 'date-fns';
 import { Activity, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
 
@@ -245,9 +245,12 @@ export default function PlayerActivityAnalytics({
             <Tooltip content={<CustomTooltip />} />
             <Bar 
               dataKey="score" 
-              fill={(entry: any) => entry?.color || '#3B82F6'}
               radius={[4, 4, 0, 0]}
-            />
+            >
+              {activityScores.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color} />
+              ))}
+            </Bar>
           </BarChart>
         </ResponsiveContainer>
         

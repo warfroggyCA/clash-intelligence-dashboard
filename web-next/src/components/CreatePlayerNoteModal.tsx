@@ -1,17 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X } from "lucide-react";
 
 interface CreatePlayerNoteModalProps {
   onClose: () => void;
+  defaultTag?: string;
+  defaultName?: string;
+  lockTag?: boolean;
 }
 
-export default function CreatePlayerNoteModal({ onClose }: CreatePlayerNoteModalProps) {
+export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName, lockTag = false }: CreatePlayerNoteModalProps) {
   const [playerTag, setPlayerTag] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [note, setNote] = useState("");
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
+
+  // Initialize defaults when provided
+  useEffect(() => {
+    if (defaultTag && !playerTag) {
+      const up = defaultTag.toUpperCase();
+      setPlayerTag(up.startsWith('#') ? up : `#${up}`);
+    }
+    if (defaultName && !playerName) {
+      setPlayerName(defaultName);
+    }
+  }, [defaultTag, defaultName]);
 
   const savePlayerNote = () => {
     if (!playerTag.trim() || !note.trim()) {
@@ -98,20 +112,29 @@ export default function CreatePlayerNoteModal({ onClose }: CreatePlayerNoteModal
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Player Tag *</label>
-            <input
-              type="text"
-              value={playerTag}
-              onChange={(e) => {
-                let value = e.target.value.toUpperCase();
-                // Auto-add # if not present
-                if (value && !value.startsWith('#')) {
-                  value = '#' + value;
-                }
-                setPlayerTag(value);
-              }}
-              placeholder="2PR8R8V8P"
-              className="w-full border rounded-lg px-3 py-2"
-            />
+            {lockTag ? (
+              <div className="flex items-center gap-2">
+                <span className="font-mono px-2 py-1 rounded bg-gray-100 text-gray-700">
+                  {playerTag || defaultTag}
+                </span>
+                <span className="text-xs text-gray-500">Pre-filled from selected player</span>
+              </div>
+            ) : (
+              <input
+                type="text"
+                value={playerTag}
+                onChange={(e) => {
+                  let value = e.target.value.toUpperCase();
+                  // Auto-add # if not present
+                  if (value && !value.startsWith('#')) {
+                    value = '#' + value;
+                  }
+                  setPlayerTag(value);
+                }}
+                placeholder="2PR8R8V8P"
+                className="w-full border rounded-lg px-3 py-2"
+              />
+            )}
           </div>
 
           <div>

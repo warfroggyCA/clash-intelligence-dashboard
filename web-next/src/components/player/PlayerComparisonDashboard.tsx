@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, TrendingDown, Award, Users, Target, Gift } from 'lucide-react';
+import { TrendingUp, TrendingDown, Award, Users, Target, Gift, type LucideIcon } from 'lucide-react';
 
 interface ComparisonMetrics {
   playerValue: number;
@@ -47,7 +47,7 @@ const ComparisonCard = ({
   color = 'blue' 
 }: {
   title: string;
-  icon: any;
+  icon: LucideIcon;
   metrics: ComparisonMetrics;
   unit?: string;
   color?: 'blue' | 'green' | 'purple' | 'orange' | 'red';

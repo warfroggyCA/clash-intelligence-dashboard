@@ -9,7 +9,9 @@ import { RosterTable } from '@/components/roster/RosterTable';
 import { RosterSummary } from '@/components/roster/RosterSummary';
 import { InsightsDashboard } from '@/components/insights/InsightsDashboard';
 import CommandCenter from '@/components/CommandCenter';
+import ApplicantsPanel from '@/components/ApplicantsPanel';
 import PlayerDatabase from '@/components/PlayerDatabase';
+import ReturningPlayerReview from '@/components/returning/ReturningPlayerReview';
 
 type Props = {
   initialRoster?: Roster | null;
@@ -97,13 +99,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
         );
       
       case 'applicants':
-        return (
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">🎯</div>
-            <h3 className="text-xl font-semibold text-gray-800 mb-2">Applicant Evaluation</h3>
-            <p className="text-gray-600">Applicant evaluation system coming soon...</p>
-          </div>
-        );
+        return <ApplicantsPanel defaultClanTag={clanTag || homeClan || initialClanTag} />;
       
       case 'intelligence':
         return <div>Player DNA Dashboard Component</div>;
@@ -118,7 +114,11 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
 
   return (
     <AuthGate>
-      <DashboardLayout>{renderTabContent()}</DashboardLayout>
+      <DashboardLayout>
+        {/* Returning player review modal hooks into roster + departures notifications */}
+        <ReturningPlayerReview />
+        {renderTabContent()}
+      </DashboardLayout>
     </AuthGate>
   );
 }

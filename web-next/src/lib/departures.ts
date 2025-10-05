@@ -15,6 +15,9 @@ export interface DepartureRecord {
   lastRole?: string;
   lastTownHall?: number;
   lastTrophies?: number;
+  resolved?: boolean;
+  resolvedAt?: string;
+  rejoinDate?: string;
 }
 
 export interface RejoinNotification {
@@ -214,7 +217,7 @@ export async function checkForRejoins(
   const rejoins: RejoinNotification[] = [];
   
   for (const departure of departures) {
-    if (currentMemberTags.has(normalizeTag(departure.memberTag))) {
+    if (!departure.resolved && currentMemberTags.has(normalizeTag(departure.memberTag))) {
       const departureDate = new Date(departure.departureDate);
       const now = new Date();
       const daysAway = Math.floor((now.getTime() - departureDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -242,12 +245,19 @@ export async function getActiveDepartures(
   const departures = await readDepartures(clanTag);
   const currentMemberTags = new Set(currentMembers.map(m => normalizeTag(m.tag)));
   
-  return departures.filter(departure => !currentMemberTags.has(normalizeTag(departure.memberTag)));
+  return departures.filter(departure => !departure.resolved && !currentMemberTags.has(normalizeTag(departure.memberTag)));
 }
 
 // Mark a departure as resolved (member returned)
 export async function markDepartureResolved(clanTag: string, memberTag: string): Promise<void> {
   const departures = await readDepartures(clanTag);
-  const filtered = departures.filter(d => normalizeTag(d.memberTag) !== normalizeTag(memberTag));
-  await writeDepartures(clanTag, filtered);
+  const norm = normalizeTag(memberTag);
+  const now = new Date().toISOString();
+  const updated = departures.map((d) => {
+    if (normalizeTag(d.memberTag) === norm) {
+      return { ...d, resolved: true, resolvedAt: now, rejoinDate: now } as DepartureRecord;
+    }
+    return d;
+  });
+  await writeDepartures(clanTag, updated);
 }
