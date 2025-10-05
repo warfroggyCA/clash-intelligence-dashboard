@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runIngestionJob } from '@/lib/ingestion/run-ingestion';
+import { runStagedIngestionJob } from '@/lib/ingestion/run-staged-ingestion';
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     console.log('[Cron] Starting daily ingestion job');
     
-    const results = await runIngestionJob({ 
+    const results = await runStagedIngestionJob({ 
       clanTag: '#2PR8R8V8P'
     });
     
