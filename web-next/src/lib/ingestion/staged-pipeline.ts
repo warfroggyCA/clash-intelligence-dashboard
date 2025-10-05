@@ -408,7 +408,7 @@ async function runFetchPhase(jobId: string, clanTag: string): Promise<PhaseResul
     const snapshot = await fetchFullClanSnapshot(clanTag, {
       warLogLimit: 10,
       capitalSeasonLimit: 3,
-      fetchPlayers: true,
+      includePlayerDetails: true,
     });
 
     const duration_ms = Date.now() - startTime;
