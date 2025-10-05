@@ -12,6 +12,7 @@ import CommandCenter from '@/components/CommandCenter';
 import ApplicantsPanel from '@/components/ApplicantsPanel';
 import PlayerDatabase from '@/components/PlayerDatabase';
 import ReturningPlayerReview from '@/components/returning/ReturningPlayerReview';
+import { selectors } from '@/lib/stores/dashboard-store';
 
 type Props = {
   initialRoster?: Roster | null;
@@ -29,7 +30,9 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     loadRoster,
     roster,
     status,
+    refreshData,
   } = useDashboardStore();
+  const dataAgeHours = useDashboardStore(selectors.dataAge);
   const hasInitialized = useRef(false);
 
   useEffect(() => {
@@ -69,6 +72,32 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
       void loadRoster(currentClanTag);
     }
   }, [initialRoster, initialClanTag, clanTag, homeClan, roster, status, loadRoster]);
+
+  // Date-aware soft refresh policy: if snapshot older than 12h, refresh once per session and on focus (30m backoff)
+  useEffect(() => {
+    if (!roster) return;
+    if (typeof window === 'undefined') return;
+    const key = `soft-refresh:${(clanTag || homeClan || initialClanTag || '').toUpperCase()}`;
+    const maybeSoftRefresh = () => {
+      const now = Date.now();
+      const last = Number(sessionStorage.getItem(key) || '0');
+      const minIntervalMs = 30 * 60 * 1000; // 30 minutes
+      if (typeof dataAgeHours === 'number' && dataAgeHours > 12) {
+        if (!last || (now - last) > minIntervalMs) {
+          void refreshData();
+          sessionStorage.setItem(key, String(now));
+        }
+      }
+    };
+    // Trigger on mount (when roster available)
+    maybeSoftRefresh();
+    // Trigger when tab regains focus
+    const onVis = () => {
+      if (document.visibilityState === 'visible') maybeSoftRefresh();
+    };
+    document.addEventListener('visibilitychange', onVis);
+    return () => document.removeEventListener('visibilitychange', onVis);
+  }, [roster, dataAgeHours, clanTag, homeClan, initialClanTag, refreshData]);
 
   const renderTabContent = () => {
     switch (activeTab) {

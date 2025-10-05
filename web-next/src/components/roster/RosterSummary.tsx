@@ -78,6 +78,11 @@ export const RosterSummary = () => {
   const lastLoadInfo = useDashboardStore((state) => state.lastLoadInfo);
   const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt) || snapshotMetadata?.fetchedAt || null;
   const ingestionHealth = useDashboardStore((state) => state.ingestionHealth);
+  const dataAgeHours = useDashboardStore(selectors.dataAge);
+  const refreshData = useDashboardStore((state) => state.refreshData);
+  const triggerIngestion = useDashboardStore((state) => state.triggerIngestion);
+  const canRunIngestion = useDashboardStore((state) => state.canManageClanData());
+  const currentClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   const seasonId = snapshotMetadata?.seasonId ?? roster?.snapshotMetadata?.seasonId ?? roster?.meta?.seasonId ?? null;
   const seasonStartIso = snapshotMetadata?.seasonStart ?? roster?.snapshotMetadata?.seasonStart ?? roster?.meta?.seasonStart ?? null;
   const seasonEndIso = snapshotMetadata?.seasonEnd ?? roster?.snapshotMetadata?.seasonEnd ?? roster?.meta?.seasonEnd ?? null;
@@ -627,6 +632,33 @@ export const RosterSummary = () => {
 
   return (
     <div className="space-y-4">
+      {/* Stale snapshot banner (prompt threshold: 48h) */}
+      {typeof dataAgeHours === 'number' && dataAgeHours >= 48 && (
+        <div className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-4 text-amber-100">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold">Snapshot is {Math.floor(dataAgeHours / 24)} day{Math.floor(dataAgeHours / 24) === 1 ? '' : 's'} old</p>
+              <p className="text-sm text-amber-200/90">Data may be outdated. Refresh to pull the latest snapshot; leaders can run ingestion if needed.</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => refreshData()}
+                className="rounded-xl border border-amber-400/60 bg-amber-500/20 px-3 py-2 text-sm hover:bg-amber-500/30"
+              >
+                Refresh Snapshot
+              </button>
+              {canRunIngestion && (
+                <button
+                  onClick={() => triggerIngestion(currentClanTag)}
+                  className="rounded-xl border border-amber-400/60 bg-amber-500/20 px-3 py-2 text-sm hover:bg-amber-500/30"
+                >
+                  Run Ingestion
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.4fr),minmax(0,1fr)]">
         <GlassCard className="space-y-5">
           <div>
