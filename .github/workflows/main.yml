@@ -2,7 +2,7 @@ name: Nightly Clan Ingestion
 
 on:
   schedule:
-    - cron: '0 5 * * *'  # 05:00 UTC nightly
+    - cron: '0 6 * * *'  # 06:00 UTC nightly (1 hour after Vercel cron as backup)
   workflow_dispatch:
     inputs:
       clanTag:
@@ -35,8 +35,21 @@ jobs:
           if [ -n "$CLAN_TAG_INPUT" ]; then
             PAYLOAD="{\"clanTag\": \"$CLAN_TAG_INPUT\"}"
           fi
-          curl --fail --show-error --silent \
+          
+          echo "🚀 Starting GitHub Actions ingestion backup..."
+          echo "📡 Calling: $APP_BASE_URL/api/admin/run-staged-ingestion"
+          
+          # Add timeout and better error handling
+          timeout 300 curl --fail --show-error --max-time 300 \
             -X POST "$APP_BASE_URL/api/admin/run-staged-ingestion" \
             -H "Content-Type: application/json" \
             -H "x-api-key: $ADMIN_API_KEY" \
-            -d "$PAYLOAD"
+            -d "$PAYLOAD" \
+            -w "\n📊 Response time: %{time_total}s\n📈 Status: %{http_code}\n"
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ GitHub Actions ingestion completed successfully"
+          else
+            echo "❌ GitHub Actions ingestion failed"
+            exit 1
+          fi
