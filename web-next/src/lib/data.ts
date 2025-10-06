@@ -82,7 +82,7 @@ export async function readLedgerEffective(): Promise<Record<string, number>> {
     const ts  = String(row?.ts ?? "");
     if (!isValidTag(tag) || !ts) continue;
     if (latest[tag] && latest[tag] >= ts) continue; latest[tag] = ts;
-    const base = typeof row?.base === "number" ? row.base : (typeof row?.tenure_days === "number" ? row.tenure_days : undefined);
+    const base = typeof row?.base === "number" ? row.base : (typeof row?.tenure_days === "number" ? row.tenure_days : null);
     if (typeof base !== "number") continue;
     const as_of = String(row?.as_of ?? "") || ymdNowUTC();
     map[tag] = Math.max(0, Math.round(base + daysSince(as_of)));

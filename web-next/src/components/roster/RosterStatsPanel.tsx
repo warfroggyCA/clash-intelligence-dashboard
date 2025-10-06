@@ -136,7 +136,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     {
       label: 'Avg Trophies',
       value: averageTrophies > 0 ? formatNumber(averageTrophies) : 'No data',
-      trophies: averageTrophies > 0 ? averageTrophies : undefined,
+      trophies: averageTrophies > 0 ? averageTrophies : null,
     },
   ];
 
