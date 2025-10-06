@@ -92,7 +92,7 @@ export const RosterSummary = () => {
     if (impersonatedRole) {
       return impersonatedRole === 'leader' || impersonatedRole === 'coleader';
     }
-    return userRoles?.some(role => role === 'leader' || role === 'coleader') || false;
+    return userRoles?.some(role => role.role === 'leader' || role.role === 'coleader') || false;
   }, [impersonatedRole, userRoles, currentClanTag]);
   const seasonId = snapshotMetadata?.seasonId ?? roster?.snapshotMetadata?.seasonId ?? roster?.meta?.seasonId ?? null;
   const seasonStartIso = snapshotMetadata?.seasonStart ?? roster?.snapshotMetadata?.seasonStart ?? roster?.meta?.seasonStart ?? null;
