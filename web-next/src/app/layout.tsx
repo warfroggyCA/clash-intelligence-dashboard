@@ -73,7 +73,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body suppressHydrationWarning>
         <ThemeProvider defaultTheme="dark">
-          <TooltipManager />
+          {process.env.NEXT_PUBLIC_DISABLE_TOOLTIP_MANAGER === 'true' ? null : <TooltipManager />}
           <div id="app-root" suppressHydrationWarning>
             <HydrationGate>
               {children}

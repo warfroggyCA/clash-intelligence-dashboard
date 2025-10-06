@@ -1758,7 +1758,11 @@ if (typeof window !== 'undefined') {
   const state = useDashboardStore.getState();
   // Ensure auto-refresh loop is started only once per window lifecycle
   const w = window as any;
-  if (!state.autoRefreshEnabled && !w.__ciAutoRefreshStarted) {
+  if (
+    !state.autoRefreshEnabled &&
+    !w.__ciAutoRefreshStarted &&
+    process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH !== 'true'
+  ) {
     try {
       w.__ciAutoRefreshStarted = true;
     } catch {}
