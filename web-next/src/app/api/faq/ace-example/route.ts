@@ -18,7 +18,7 @@ function normalizeMember(summary: Record<string, any>): Member {
   return {
     tag: summary.tag ?? undefined,
     name: summary.name ?? summary.tag ?? 'Unknown Player',
-    townHallLevel: summary.townHallLevel ?? summary.th ?? undefined,
+    townHallLevel: summary.townHallLevel ?? summary.th ?? null,
     trophies: summary.trophies ?? undefined,
     versusTrophies: summary.versusTrophies ?? undefined,
     donations: summary.donations ?? undefined,

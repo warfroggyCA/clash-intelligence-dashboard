@@ -131,7 +131,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
     {
       label: 'Avg Town Hall',
       value: averageTownHall > 0 ? `TH${averageTownHall}` : 'No data',
-      townHallLevel: averageTownHall > 0 ? averageTownHall : undefined,
+      townHallLevel: averageTownHall > 0 ? averageTownHall : null,
     },
     {
       label: 'Avg Trophies',
