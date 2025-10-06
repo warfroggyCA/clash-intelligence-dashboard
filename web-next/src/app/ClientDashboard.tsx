@@ -146,7 +146,7 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     <AuthGate>
       <DashboardLayout>
         {/* Returning player review modal hooks into roster + departures notifications */}
-        <ReturningPlayerReview />
+        {process.env.NEXT_PUBLIC_DISABLE_RETURNING_REVIEW === 'true' ? null : <ReturningPlayerReview />}
         {renderTabContent()}
       </DashboardLayout>
     </AuthGate>
