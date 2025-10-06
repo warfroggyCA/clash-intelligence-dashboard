@@ -45,7 +45,6 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
   const triggerIngestion = useDashboardStore((state) => state.triggerIngestion);
   const isTriggeringIngestion = useDashboardStore((state) => state.isTriggeringIngestion);
   const ingestionRunError = useDashboardStore((state) => state.ingestionRunError);
-  const canRunIngestion = useDashboardStore((state) => state.canManageClanData());
   const ingestionHealth = useDashboardStore((state) => state.ingestionHealth);
 
   const {
