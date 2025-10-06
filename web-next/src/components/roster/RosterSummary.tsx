@@ -83,6 +83,17 @@ export const RosterSummary = () => {
   const triggerIngestion = useDashboardStore((state) => state.triggerIngestion);
   // Removed direct store-action-in-selector call to avoid render-update loops
   const currentClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
+  
+  // Add canRunIngestion logic similar to CommandRail
+  const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
+  const userRoles = useDashboardStore((state) => state.userRoles);
+  const canRunIngestion = useMemo(() => {
+    const normalized = currentClanTag ? currentClanTag.replace('#', '') : '';
+    if (impersonatedRole) {
+      return impersonatedRole === 'leader' || impersonatedRole === 'coleader';
+    }
+    return userRoles?.some(role => role === 'leader' || role === 'coleader') || false;
+  }, [impersonatedRole, userRoles, currentClanTag]);
   const seasonId = snapshotMetadata?.seasonId ?? roster?.snapshotMetadata?.seasonId ?? roster?.meta?.seasonId ?? null;
   const seasonStartIso = snapshotMetadata?.seasonStart ?? roster?.snapshotMetadata?.seasonStart ?? roster?.meta?.seasonStart ?? null;
   const seasonEndIso = snapshotMetadata?.seasonEnd ?? roster?.snapshotMetadata?.seasonEnd ?? roster?.meta?.seasonEnd ?? null;
