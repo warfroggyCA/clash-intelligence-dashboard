@@ -7,9 +7,9 @@ import { normalizeTag, isValidTag } from "./tags";
 export type Member = {
   name: string;
   tag: string;
-  townHallLevel?: number; th?: number;
+  townHallLevel?: number | null; th?: number;
 
-  bk?: number; aq?: number; gw?: number; rc?: number; mp?: number;
+  bk?: number | null; aq?: number | null; gw?: number | null; rc?: number | null; mp?: number | null;
 
   trophies?: number;
   donations?: number;
@@ -90,9 +90,9 @@ export async function readLedgerEffective(): Promise<Record<string, number>> {
   return map;
 }
 
-function coerceNum(v: any): number | undefined {
+function coerceNum(v: any): number | null {
   if (typeof v === "number") return v;
-  const n = Number(v); return Number.isFinite(n) ? n : undefined;
+  const n = Number(v); return Number.isFinite(n) ? n : null;
 }
 function collectRecentClans(members: Member[]): string[] {
   const s = new Set<string>(); members.forEach(m => (m.recentClans||[]).forEach(c=>s.add(String(c))));
