@@ -55,13 +55,13 @@ type CoachingCard = SmartInsightsRecommendation & {
 interface Member {
   name: string;
   tag: string;
-  townHallLevel?: number;
+  townHallLevel?: number | null;
   th?: number;
-  bk?: number;
-  aq?: number;
-  gw?: number;
-  rc?: number;
-  mp?: number;
+  bk?: number | null;
+  aq?: number | null;
+  gw?: number | null;
+  rc?: number | null;
+  mp?: number | null;
   trophies?: number;
   donations?: number;
   donationsReceived?: number;

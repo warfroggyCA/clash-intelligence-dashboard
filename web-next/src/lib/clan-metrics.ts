@@ -4,7 +4,7 @@
 export interface Member {
   tag: string;
   name: string;
-  townHallLevel?: number;
+  townHallLevel?: number | null;
   th?: number;
   role?: string;
   trophies?: number;
@@ -16,11 +16,11 @@ export interface Member {
   lastSeen?: number | string;
   tenure_days?: number;
   tenure?: number;
-  bk?: number;
-  aq?: number;
-  gw?: number;
-  rc?: number;
-  mp?: number;
+  bk?: number | null;
+  aq?: number | null;
+  gw?: number | null;
+  rc?: number | null;
+  mp?: number | null;
 }
 
 export interface ClanHealthMetrics {
