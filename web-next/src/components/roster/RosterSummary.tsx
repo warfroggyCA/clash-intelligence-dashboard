@@ -10,7 +10,8 @@ import {
   getTownHallLevel,
 } from '@/lib/business/calculations';
 import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
-import AceLeaderboardCard from './AceLeaderboardCard';
+import dynamic from 'next/dynamic';
+const AceLeaderboardCard = dynamic(() => import('./AceLeaderboardCard'), { ssr: false });
 
 interface HighlightEntry {
   label: string;
@@ -86,6 +87,9 @@ export const RosterSummary = () => {
   }
 
   const [showAceModal, setShowAceModal] = useState(false);
+  // Local hydration gate to ensure no content renders before mount if needed
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const roster = useDashboardStore((state) => state.roster);
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
@@ -688,6 +692,10 @@ export const RosterSummary = () => {
     // eslint-disable-next-line no-console
     console.log('[RosterSummary] render', summary);
   });
+
+  if (!mounted) {
+    return <div data-rs-placeholder />;
+  }
 
   return (
     <div className="space-y-4">
