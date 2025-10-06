@@ -122,12 +122,107 @@ export async function GET(req: NextRequest) {
     const snapshotDate = snapshot?.fetched_at ? snapshot.fetched_at.slice(0, 10) : undefined;
     const tenureDetails = await readTenureDetails(snapshotDate);
 
+    // Check for a newer full snapshot in clan_snapshots; if newer, prefer it
+    let clanSnapshot: any | null = null;
+    let clanNewer = false;
+    try {
+      const safeTag = clanRow.tag.replace('#', '').toUpperCase();
+      const { data: cs, error: csError } = await supabase
+        .from('clan_snapshots')
+        .select('fetched_at, clan, member_summaries, player_details, metadata')
+        .eq('clan_tag', safeTag)
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (!csError && cs) {
+        clanSnapshot = cs;
+        clanNewer = Boolean(clanSnapshot?.fetched_at && (!snapshot?.fetched_at || clanSnapshot.fetched_at > snapshot.fetched_at));
+      }
+    } catch {}
+
     const strongFingerprint = snapshotPayloadVersion ?? snapshotIngestionVersion ?? null;
-    if (strongFingerprint && requestedETag && requestedETag === strongFingerprint) {
+    if (!clanNewer && strongFingerprint && requestedETag && requestedETag === strongFingerprint) {
       return new NextResponse(null, {
         status: 304,
         headers: { ETag: `"${strongFingerprint}"` },
       });
+    }
+
+    if (clanNewer && clanSnapshot) {
+      const summaries: any[] = Array.isArray(clanSnapshot.member_summaries) ? clanSnapshot.member_summaries : [];
+      const details: Record<string, any> = (clanSnapshot.player_details && typeof clanSnapshot.player_details === 'object') ? clanSnapshot.player_details : {};
+      const mappedMembers = summaries.map((summary) => {
+        const tag = normalizeTag(summary.tag);
+        const detail = details[tag] || null;
+        const heroLevels = detail ? extractHeroLevels(detail) : null;
+        const league = summary.league || detail?.league || null;
+        const leagueId = typeof league === 'object' ? league?.id : null;
+        const leagueName = typeof league === 'object' ? league?.name : (typeof league === 'string' ? league : null);
+        const leagueTrophies = typeof league === 'object' ? league?.trophies ?? null : null;
+        const leagueIconSmall = typeof league === 'object' ? league?.iconUrls?.small ?? null : null;
+        const leagueIconMedium = typeof league === 'object' ? league?.iconUrls?.medium ?? null : null;
+        return {
+          id: `clan:${tag}`,
+          tag,
+          name: summary.name ?? tag,
+          townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
+          role: summary.role ?? null,
+          trophies: summary.trophies ?? detail?.trophies ?? null,
+          donations: summary.donations ?? null,
+          donationsReceived: summary.donationsReceived ?? null,
+          heroLevels,
+          activityScore: null,
+          rushPercent: null,
+          extras: null,
+          league,
+          builderLeague: detail?.builderBaseLeague ?? null,
+          leagueId,
+          leagueName,
+          leagueTrophies,
+          leagueIconSmall,
+          leagueIconMedium,
+          battleModeTrophies: leagueTrophies ?? null,
+          rankedTrophies: leagueTrophies ?? null,
+          rankedLeagueId: leagueId,
+          rankedLeagueName: leagueName,
+          rankedModifier: null,
+          seasonResetAt: null,
+          equipmentFlags: detail?.equipment ?? null,
+          metrics: {},
+          tenure_days: null,
+          tenure_as_of: null,
+        } as any;
+      });
+
+      const metadata = clanSnapshot?.metadata ?? {};
+      return new NextResponse(
+        JSON.stringify({
+          success: true,
+          data: {
+            clan: clanRow,
+            snapshot: {
+              id: 'clan_snapshot_fallback',
+              fetchedAt: clanSnapshot.fetched_at,
+              memberCount: mappedMembers.length,
+              totalTrophies: null,
+              totalDonations: null,
+              metadata,
+              payloadVersion: null,
+              ingestionVersion: null,
+              schemaVersion: null,
+              computedAt: null,
+              seasonId: metadata?.seasonId ?? null,
+              seasonStart: metadata?.seasonStart ?? null,
+              seasonEnd: metadata?.seasonEnd ?? null,
+            },
+            members: mappedMembers,
+            seasonId: metadata?.seasonId ?? null,
+            seasonStart: metadata?.seasonStart ?? null,
+            seasonEnd: metadata?.seasonEnd ?? null,
+          },
+        }),
+        { status: 200, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } }
+      );
     }
 
     let memberLookup: Record<string, any> = {};
@@ -229,10 +324,7 @@ export async function GET(req: NextRequest) {
         },
       };
 
-      return NextResponse.json(respBody, {
-        status: 200,
-        headers: { 'Cache-Control': 'private, max-age=60' },
-      });
+      return NextResponse.json(respBody, { status: 200, headers: { 'Cache-Control': 'no-store' } });
     }
 
     // Prepare optional enrichment maps from payload if available
@@ -359,8 +451,8 @@ export async function GET(req: NextRequest) {
       {
         status: 200,
         headers: strongFingerprint
-          ? { ETag: `"${strongFingerprint}"`, 'Content-Type': 'application/json' }
-          : { 'Content-Type': 'application/json' },
+          ? { ETag: `"${strongFingerprint}"`, 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }
+          : { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' },
       }
     );
   } catch (error: any) {
