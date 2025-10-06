@@ -18,7 +18,7 @@ export default function ShadowRootPortal({ children }: { children: React.ReactNo
       try {
         // For same-origin stylesheets, re-create a <style> tag with the rules
         const cssRules = (sheet.cssRules || []) as any;
-        const cssText = Array.from(cssRules).map((r: CSSRule) => r.cssText).join('\n');
+        const cssText = Array.from(cssRules as CSSRule[]).map((r: CSSRule) => r.cssText).join('\n');
         if (cssText) {
           const styleEl = document.createElement('style');
           styleEl.textContent = cssText;
