@@ -17,6 +17,7 @@
  */
 
 import React from 'react';
+export const dynamic = 'force-dynamic';
 import ClientDashboard from './ClientDashboard';
 import { cfg } from '@/lib/config';
 import type { Roster } from '@/types';

@@ -6,6 +6,7 @@ import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit
 import { createApiContext } from '@/lib/api/route-helpers';
 import { cached } from '@/lib/cache';
 import type { ApiResponse } from '@/types';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -40,19 +41,28 @@ export async function GET(request: NextRequest) {
       });
     }
     
-    // Get current members from the roster API
-    const rosterResponse = await cached(['departures','notifications','roster', clanTag], () => fetch(`${request.nextUrl.origin}/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}`), 10);
-    const rosterJson = await rosterResponse.json();
-    const rosterData = rosterJson?.data ?? rosterJson;
-    
-    if (!rosterData?.members) {
-      return json({ success: false, error: 'Failed to fetch current members' }, { status: 500 });
+    // Get current members from Supabase directly (avoid nested API fetches)
+    const supabase = getSupabaseServerClient();
+    const { data: clanRow, error: clanErr } = await supabase
+      .from('clans')
+      .select('id, tag, name')
+      .eq('tag', clanTag)
+      .single();
+
+    if (clanErr || !clanRow) {
+      return json({ success: false, error: 'Clan not found in database' }, { status: 404 });
     }
-    
-    const currentMembers = rosterData.members.map((m: any) => ({
-      tag: m.tag,
-      name: m.name
-    }));
+
+    const { data: memberRows, error: membersErr } = await supabase
+      .from('members')
+      .select('tag, name')
+      .eq('clan_id', clanRow.id);
+
+    if (membersErr) {
+      return json({ success: false, error: 'Failed to read current members' }, { status: 500 });
+    }
+
+    const currentMembers = (memberRows || []).map((m) => ({ tag: m.tag, name: m.name }));
     
     // Check for rejoins
     const rejoins = await checkForRejoins(clanTag, currentMembers);
