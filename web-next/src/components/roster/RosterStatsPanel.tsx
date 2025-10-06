@@ -19,7 +19,7 @@ interface HighlightMetric {
   value: string;
   subtitle?: string;
   badge?: ReactNode;
-  townHallLevel?: number;
+  townHallLevel?: number | null;
   trophies?: number;
   onClick?: () => void;
   fullWidth?: boolean;
