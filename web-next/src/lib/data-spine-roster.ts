@@ -45,6 +45,10 @@ interface ApiRosterMember {
   trophies: number | null;
   donations: number | null;
   donationsReceived: number | null;
+  warStars: number | null;
+  attackWins: number | null;
+  defenseWins: number | null;
+  lastSeen: string | number | null;
   heroLevels: Record<string, number | null> | null;
   activityScore: number | null;
   rushPercent: number | null;
@@ -65,10 +69,9 @@ interface ApiRosterMember {
   equipmentFlags?: any;
   memberCreatedAt?: string | null;
   memberUpdatedAt?: string | null;
-  metrics?: Record<string, { value: number; metadata?: Record<string, any> | null }>;
-  // Tenure data
-  tenure_days?: number;
+  tenure_days?: number | null;
   tenure_as_of?: string | null;
+  metrics?: Record<string, { value: number; metadata?: Record<string, any> | null }>;
 }
 
 interface ApiRosterResponse {
