@@ -212,8 +212,8 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
 
   return {
     source: 'snapshot',
-    date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : null,
-    clanName: clan.name ?? null,
+    date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined,
+    clanName: clan.name ?? undefined,
     clanTag: clan.tag,
     members: mappedMembers,
     seasonId: resolvedSeasonId,
