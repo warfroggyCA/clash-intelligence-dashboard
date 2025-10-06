@@ -123,7 +123,7 @@ export async function loadRoster(): Promise<RosterPayload> {
       gw: coerceNum(hero.gw ?? m.gw),
       rc: coerceNum(hero.rc ?? m.rc),
       mp: coerceNum(hero.mp ?? m.mp),
-      townHallLevel: typeof th === "number" ? th : undefined,
+      townHallLevel: typeof th === "number" ? th : null,
       tenure_days: tenureMap[tag] ?? m.tenure_days ?? m.tenure
     };
     return { ...m, ...add };

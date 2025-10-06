@@ -115,7 +115,7 @@ const HERO_MAX_LEVELS: Record<number, Record<"bk"|"aq"|"gw"|"rc"|"mp", number>> 
   16: { bk: 95, aq: 95, gw: 80, rc: 65, mp: 95 },
   17: { bk: 100, aq: 100, gw: 90, rc: 75, mp: 100 }
 };
-const getTH = (m: Member) => m.townHallLevel ?? m.th ?? undefined;
+const getTH = (m: Member) => m.townHallLevel ?? m.th ?? null;
 const getTenure = (m: Member) => {
   const v = m.tenure_days ?? m.tenure;
   return typeof v === "number" && Number.isFinite(v) ? v : 0;

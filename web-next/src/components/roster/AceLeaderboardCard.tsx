@@ -95,7 +95,7 @@ export const AceLeaderboardCard: React.FC<AceLeaderboardCardProps> = ({ classNam
 
     return topFive.map((player) => {
       const member = memberMap.get(player.tag);
-      const townHall = member?.townHallLevel ?? member?.th ?? undefined;
+      const townHall = member?.townHallLevel ?? member?.th ?? null;
       let availability = player.availability ?? 1;
       let availabilityPercent = Math.round(availability * 100);
 
