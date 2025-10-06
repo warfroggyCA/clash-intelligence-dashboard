@@ -19,14 +19,7 @@
 import React from 'react';
 export const dynamic = 'force-dynamic';
 import dynamicImport from 'next/dynamic';
-const ClientDashboardNoSSR = dynamicImport(() => import('./ClientDashboard'), {
-  ssr: false,
-  loading: () => (
-    <div className="min-h-[40vh] flex items-center justify-center">
-      <div className="text-slate-400 text-sm">Loading dashboard…</div>
-    </div>
-  ),
-});
+const ClientDashboardNoSSR = dynamicImport(() => import('./ClientDashboard'), { ssr: false });
 import RootErrorBoundary from '@/components/layout/RootErrorBoundary';
 import { cfg } from '@/lib/config';
 import type { Roster } from '@/types';
