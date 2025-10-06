@@ -16,14 +16,14 @@ interface SnapshotFile {
 
 function normalizeMember(summary: Record<string, any>): Member {
   return {
-    tag: summary.tag ?? undefined,
+    tag: summary.tag ?? null,
     name: summary.name ?? summary.tag ?? 'Unknown Player',
     townHallLevel: summary.townHallLevel ?? summary.th ?? null,
-    trophies: summary.trophies ?? undefined,
-    versusTrophies: summary.versusTrophies ?? undefined,
-    donations: summary.donations ?? undefined,
-    donationsReceived: summary.donationsReceived ?? undefined,
-    extras: summary.extras ?? undefined,
+    trophies: summary.trophies ?? null,
+    versusTrophies: summary.versusTrophies ?? null,
+    donations: summary.donations ?? null,
+    donationsReceived: summary.donationsReceived ?? null,
+    extras: summary.extras ?? null,
   } as Member;
 }
 

@@ -205,10 +205,10 @@ export default function CoachingInsights({ clanData, clanTag }: CoachingInsights
       playerOfTheDay: null,
       diagnostics,
       context: {
-        changeSummary: undefined,
-        performanceAnalysis: undefined,
-        clanDNAInsights: undefined,
-        gameChatMessages: undefined,
+        changeSummary: null,
+        performanceAnalysis: null,
+        clanDNAInsights: null,
+        gameChatMessages: null,
       },
     };
   }, [clanTag, snapshotMetadata?.snapshotDate, snapshotMetadata?.fetchedAt]);
