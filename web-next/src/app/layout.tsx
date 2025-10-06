@@ -4,6 +4,7 @@ import "./globals.css";
 import Script from 'next/script';
 import { ThemeProvider } from '@/lib/contexts/theme-context';
 import TooltipManager from '@/components/TooltipManager';
+import HydrationGate from '@/components/HydrationGate';
 
 const INITIAL_THEME_SCRIPT = `
 (() => {
@@ -55,6 +56,8 @@ export function generateViewport() {
   };
 }
 
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning data-theme="dark">
@@ -68,10 +71,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="msapplication-TileColor" content="#4f46e5" />
         <Script id="theme-init" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: INITIAL_THEME_SCRIPT }} />
       </head>
-      <body>
+      <body suppressHydrationWarning>
         <ThemeProvider defaultTheme="dark">
           <TooltipManager />
-          {children}
+          <div id="app-root" suppressHydrationWarning>
+            <HydrationGate>
+              {children}
+            </HydrationGate>
+          </div>
         </ThemeProvider>
       </body>
     </html>
