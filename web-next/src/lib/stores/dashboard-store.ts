@@ -1756,7 +1756,12 @@ if (typeof window !== 'undefined') {
   hydrateFromStorage();
 
   const state = useDashboardStore.getState();
-  if (!state.autoRefreshEnabled) {
+  // Ensure auto-refresh loop is started only once per window lifecycle
+  const w = window as any;
+  if (!state.autoRefreshEnabled && !w.__ciAutoRefreshStarted) {
+    try {
+      w.__ciAutoRefreshStarted = true;
+    } catch {}
     state.startSnapshotAutoRefresh();
   }
 }
