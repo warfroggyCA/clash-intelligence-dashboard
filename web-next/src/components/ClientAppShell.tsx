@@ -7,11 +7,16 @@ import ShadowRootPortal from '@/components/ShadowRootPortal';
 import type { Roster } from '@/types';
 
 export default function ClientAppShell({ initialRoster, initialClanTag }: { initialRoster: Roster | null; initialClanTag: string }) {
+  const disablePortal = process.env.NEXT_PUBLIC_DISABLE_SHADOW_PORTAL === 'true';
   return (
     <RootErrorBoundary>
-      <ShadowRootPortal>
+      {disablePortal ? (
         <ClientDashboard initialRoster={initialRoster ?? null} initialClanTag={initialClanTag} />
-      </ShadowRootPortal>
+      ) : (
+        <ShadowRootPortal>
+          <ClientDashboard initialRoster={initialRoster ?? null} initialClanTag={initialClanTag} />
+        </ShadowRootPortal>
+      )}
     </RootErrorBoundary>
   );
 }

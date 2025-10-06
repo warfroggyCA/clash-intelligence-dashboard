@@ -81,7 +81,7 @@ export const RosterSummary = () => {
   const dataAgeHours = useDashboardStore(selectors.dataAge);
   const refreshData = useDashboardStore((state) => state.refreshData);
   const triggerIngestion = useDashboardStore((state) => state.triggerIngestion);
-  const canRunIngestion = useDashboardStore((state) => state.canManageClanData());
+  // Removed direct store-action-in-selector call to avoid render-update loops
   const currentClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   const seasonId = snapshotMetadata?.seasonId ?? roster?.snapshotMetadata?.seasonId ?? roster?.meta?.seasonId ?? null;
   const seasonStartIso = snapshotMetadata?.seasonStart ?? roster?.snapshotMetadata?.seasonStart ?? roster?.meta?.seasonStart ?? null;

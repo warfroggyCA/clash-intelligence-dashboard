@@ -9,6 +9,7 @@ import { useQuickActions } from './QuickActions';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import type { TabType } from '@/types';
 import { cfg } from '@/lib/config';
+import { normalizeTag } from '@/lib/tags';
 
 interface CommandRailProps {
   isOpen: boolean;
@@ -80,6 +81,17 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
     () => smartInsightsState(smartInsightsStatus, smartInsightsIsStale),
     [smartInsightsStatus, smartInsightsIsStale]
   );
+
+  // Avoid calling store actions from selectors; derive permission locally
+  const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
+  const userRoles = useDashboardStore((state) => state.userRoles);
+  const canRunIngestion = useMemo(() => {
+    const normalized = normalizeTag(clanTag || cfg.homeClanTag || '');
+    if (impersonatedRole) {
+      return impersonatedRole === 'leader' || impersonatedRole === 'coleader';
+    }
+    return userRoles.some((r) => r.clan_tag === normalized && (r.role === 'leader' || r.role === 'coleader'));
+  }, [clanTag, impersonatedRole, userRoles]);
 
   const lastIngestionTimestamp = ingestionHealth?.finishedAt ?? ingestionHealth?.startedAt ?? null;
   const ingestionLastRunLabel = lastIngestionTimestamp
