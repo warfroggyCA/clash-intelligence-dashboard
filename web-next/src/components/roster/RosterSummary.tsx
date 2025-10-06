@@ -39,8 +39,8 @@ const IconWrapper = ({ icon }: { icon: React.ReactNode }) => {
 const StatTile = ({ icon, label, value, hint }: StatTileProps) => (
   <div
     className={`stat-tile rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3 ${hint ? 'tooltip-trigger' : ''}`}
-    data-tooltip={hint ?? null}
-    aria-label={hint ? `${label}. ${hint}` : null}
+    data-tooltip={hint ?? undefined}
+    aria-label={hint ? `${label}. ${hint}` : undefined}
   >
     <div className="flex items-center gap-3">
       <div className="flex h-12 w-12 items-center justify-center">
@@ -836,7 +836,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-donations`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? null}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
@@ -853,7 +853,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-rush`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? null}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
@@ -870,7 +870,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-balance`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? null}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-emerald-200">
@@ -889,7 +889,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-deficit`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? null}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-rose-300">
@@ -908,7 +908,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-rush-alert`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? null}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-amber-200">
@@ -944,7 +944,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-hero`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? null}
+                      data-tooltip={entry.hint ?? undefined}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
