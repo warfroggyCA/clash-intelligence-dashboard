@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useEffect, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { GlassCard, TownHallBadge, LeagueBadge, Modal } from '@/components/ui';
@@ -71,6 +71,20 @@ const formatDurationMs = (ms: number | null | undefined) => {
 };
 
 export const RosterSummary = () => {
+  // Diagnostics toggles (compile-time)
+  const RS_DISABLE_STATS = process.env.NEXT_PUBLIC_RS_DISABLE_STATS === 'true';
+  const RS_DISABLE_WAR = process.env.NEXT_PUBLIC_RS_DISABLE_WAR === 'true';
+  const RS_DISABLE_HIGHLIGHTS = process.env.NEXT_PUBLIC_RS_DISABLE_HIGHLIGHTS === 'true';
+  const RS_DISABLE_MODAL = process.env.NEXT_PUBLIC_RS_DISABLE_MODAL === 'true';
+  const RS_DEBUG_LOG = process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true';
+
+  // Render counter for debugging re-renders
+  const renderCountRef = useRef(0);
+  if (RS_DEBUG_LOG) {
+    // Increment synchronously to track exact render cycles
+    renderCountRef.current += 1;
+  }
+
   const [showAceModal, setShowAceModal] = useState(false);
   const roster = useDashboardStore((state) => state.roster);
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
@@ -112,6 +126,17 @@ export const RosterSummary = () => {
   }, [seasonStartIso, seasonEndIso]);
 
   const stats = useMemo(() => {
+    if (RS_DISABLE_STATS) {
+      return {
+        memberCount: 0,
+        averageTownHall: null,
+        averageTrophies: null,
+        totalDonations: null,
+        averageDonations: null,
+        averageBuilderTrophies: null,
+        averageHeroLevels: null,
+      } as const;
+    }
     const members = roster?.members ?? [];
     const memberCount = members.length;
 
@@ -182,9 +207,10 @@ export const RosterSummary = () => {
       averageBuilderTrophies,
       averageHeroLevels,
     };
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_STATS]);
 
   const aceScores = useMemo(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_ACE_IN_SUMMARY === 'true') return [];
     if (!roster?.members?.length) {
       return [];
     }
@@ -199,6 +225,9 @@ export const RosterSummary = () => {
     : null;
 
   const { currentWar, recentWars, warWinRate } = useMemo(() => {
+    if (RS_DISABLE_WAR) {
+      return { currentWar: null, recentWars: [], warWinRate: null } as const;
+    }
     const warLog = snapshotDetails?.warLog ?? [];
     const recent = warLog.slice(0, 3);
     const wins = recent.filter((war) => war.result === 'WIN').length;
@@ -209,7 +238,7 @@ export const RosterSummary = () => {
       recentWars: recent,
       warWinRate: winRate,
     };
-  }, [snapshotDetails]);
+  }, [snapshotDetails, RS_DISABLE_WAR]);
 
   const capitalSummary = snapshotDetails?.capitalRaidSeasons?.[0] ?? null;
 
@@ -225,25 +254,19 @@ export const RosterSummary = () => {
   }, [dataFetchedAt]);
 
   const statTiles = useMemo<StatTileProps[]>(() => {
+    if (RS_DISABLE_STATS) return [];
     const tiles: StatTileProps[] = [
       { icon: '👥', label: 'Members', value: formatNumber(stats.memberCount), hint: 'Active members currently on the roster snapshot.' },
       {
-        icon: stats.averageTownHall ? (
-          <TownHallBadge
-            level={Math.max(1, Math.min(16, stats.averageTownHall))}
-            showBox={false}
-            showLevel={false}
-            size="md"
-          />
-        ) : '🏰',
+        // Use a simple emoji here to avoid any Next/Image side-effects in this summary panel
+        icon: '🏰',
         label: 'Avg. Town Hall',
         value: stats.averageTownHall ? `TH${stats.averageTownHall}` : '—',
         hint: 'Average Town Hall level across members with a recorded TH value.',
       },
       {
-        icon: stats.averageTrophies ? (
-          <LeagueBadge trophies={stats.averageTrophies} showText={false} size="xl" />
-        ) : '🏆',
+        // Simplify to emoji to eliminate image re-hydration complexity
+        icon: '🏆',
         label: 'Avg. Trophies',
         value: formatNumber(stats.averageTrophies),
         hint: 'Average home village trophies from the current roster snapshot.',
@@ -298,9 +321,10 @@ export const RosterSummary = () => {
     }
 
     return tiles;
-  }, [stats, warWinRate]);
+  }, [stats, warWinRate, RS_DISABLE_STATS]);
 
   const recentWarRecord = useMemo(() => {
+    if (RS_DISABLE_WAR) return null;
     if (!recentWars.length) {
       return null;
     }
@@ -312,9 +336,10 @@ export const RosterSummary = () => {
       parts.push(`${draws} D`);
     }
     return parts.join(' / ');
-  }, [recentWars]);
+  }, [recentWars, RS_DISABLE_WAR]);
 
   const warEndsLabel = useMemo(() => {
+    if (RS_DISABLE_WAR) return null;
     if (!currentWar?.endTime) {
       return null;
     }
@@ -323,9 +348,10 @@ export const RosterSummary = () => {
       return null;
     }
     return formatDistanceToNow(endDate, { addSuffix: true });
-  }, [currentWar?.endTime]);
+  }, [currentWar?.endTime, RS_DISABLE_WAR]);
 
   const warSectionNodes = useMemo(() => {
+    if (RS_DISABLE_WAR) return [];
     const sections: React.ReactNode[] = [];
     if (currentWar) {
       sections.push(
@@ -407,9 +433,10 @@ export const RosterSummary = () => {
     }
 
     return sections;
-  }, [currentWar, recentWars, warEndsLabel]);
+  }, [currentWar, recentWars, warEndsLabel, RS_DISABLE_WAR]);
 
   const capitalSectionNodes = useMemo(() => {
+    if (RS_DISABLE_WAR) return [];
     const sections: React.ReactNode[] = [];
     if (capitalSummary) {
       sections.push(
@@ -459,12 +486,13 @@ export const RosterSummary = () => {
     }
 
     return sections;
-  }, [capitalSummary, recentWarRecord, warWinRate]);
+  }, [capitalSummary, recentWarRecord, warWinRate, RS_DISABLE_WAR]);
 
   const hasActivityContent = warSectionNodes.length > 0 || capitalSectionNodes.length > 0;
   const activityColumnsClass = warSectionNodes.length && capitalSectionNodes.length ? 'lg:grid-cols-2' : '';
 
   const topDonors = useMemo<HighlightEntry[]>(() => {
+    if (RS_DISABLE_HIGHLIGHTS) return [];
     if (!roster?.members?.length) return [];
 
     return roster.members
@@ -485,9 +513,10 @@ export const RosterSummary = () => {
         subtitle: entry.tag,
         hint: 'Total troops donated this season. High numbers indicate members fueling clan attacks.',
       }));
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
 
   const leastRushed = useMemo<HighlightEntry[]>(() => {
+    if (RS_DISABLE_HIGHLIGHTS) return [];
     if (!roster?.members?.length) return [];
 
     return roster.members
@@ -508,9 +537,10 @@ export const RosterSummary = () => {
         subtitle: entry.tag,
         hint: 'Hero rush percentage – lower is healthier. Tracks average gap vs. Town Hall caps.',
       }));
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
 
   const topCapitalContributors = useMemo<HighlightEntry[]>(() => {
+    if (RS_DISABLE_HIGHLIGHTS) return [];
     if (!roster?.members?.length) return [];
 
     return roster.members
@@ -525,9 +555,10 @@ export const RosterSummary = () => {
         label: `${index + 1}. ${entry.name}`,
         value: formatNumber(entry.contributions),
       }));
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
 
   const donationBalanceLeaders = useMemo<HighlightEntry[]>(() => {
+    if (RS_DISABLE_HIGHLIGHTS) return [];
     if (!roster?.members?.length) return [];
 
     return roster.members
@@ -553,9 +584,10 @@ export const RosterSummary = () => {
         subtitle: entry.tag,
         hint: 'Donations given minus received. Positive balance shows who props up clan request volume.',
       }));
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
 
   const donationDeficitAlerts = useMemo<HighlightEntry[]>(() => {
+    if (RS_DISABLE_HIGHLIGHTS) return [];
     if (!roster?.members?.length) return [];
 
     return roster.members
@@ -580,9 +612,10 @@ export const RosterSummary = () => {
         subtitle: entry.tag,
         hint: 'Members receiving more troops than they donate. Monitor and coach to keep clan supply balanced.',
       }));
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
 
   const rushAlerts = useMemo<HighlightEntry[]>(() => {
+    if (RS_DISABLE_HIGHLIGHTS) return [];
     if (!roster?.members?.length) return [];
 
     return roster.members
@@ -607,9 +640,10 @@ export const RosterSummary = () => {
         subtitle: entry.tag,
         hint: 'Hero rush is 60%+ below cap. Prioritize upgrades before next war season.',
       }));
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
 
   const heroLeaders = useMemo<HighlightEntry[]>(() => {
+    if (RS_DISABLE_HIGHLIGHTS) return [];
     if (!roster?.members?.length) return [];
 
     const withTotals = roster.members
@@ -629,9 +663,9 @@ export const RosterSummary = () => {
       subtitle: `${entry.tag} • TH${entry.th}`,
       hint: 'Total hero levels summed across BK, AQ, GW, RC, MP. Highlights raw hero power.',
     }));
-  }, [roster?.members]);
+  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
 
-  const hasHighlightLists = Boolean(
+  const hasHighlightLists = !RS_DISABLE_HIGHLIGHTS && Boolean(
     topDonors.length ||
       leastRushed.length ||
       donationBalanceLeaders.length ||
@@ -640,6 +674,20 @@ export const RosterSummary = () => {
       topCapitalContributors.length ||
       heroLeaders.length
   );
+
+  // Log after commit, once per render, for diagnostics
+  useEffect(() => {
+    if (!RS_DEBUG_LOG) return;
+    // Summaries of section sizes for quick diffing
+    const summary = {
+      renders: renderCountRef.current,
+      statsTiles: statTiles.length,
+      warSections: warSectionNodes.length + capitalSectionNodes.length,
+      highlights: topDonors.length + leastRushed.length + donationBalanceLeaders.length + donationDeficitAlerts.length + rushAlerts.length + topCapitalContributors.length + heroLeaders.length,
+    };
+    // eslint-disable-next-line no-console
+    console.log('[RosterSummary] render', summary);
+  });
 
   return (
     <div className="space-y-4">
@@ -970,14 +1018,16 @@ export const RosterSummary = () => {
         )}
       </GlassCard>
 
-      <Modal
-        isOpen={showAceModal}
-        onClose={() => setShowAceModal(false)}
-        title="ACE Leaderboard"
-        size="xl"
-      >
-        <AceLeaderboardCard className="shadow-none hover:translate-y-0" />
-      </Modal>
+      {!RS_DISABLE_MODAL && (
+        <Modal
+          isOpen={showAceModal}
+          onClose={() => setShowAceModal(false)}
+          title="ACE Leaderboard"
+          size="xl"
+        >
+          <AceLeaderboardCard className="shadow-none hover:translate-y-0" />
+        </Modal>
+      )}
     </div>
   );
 };
