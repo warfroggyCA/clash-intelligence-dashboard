@@ -21,13 +21,13 @@ export interface Member {
   tag: string;
   
   // Town Hall & Heroes
-  townHallLevel?: number;
+  townHallLevel?: number | null;
   th?: number; // Alias for townHallLevel
-  bk?: number; // Barbarian King
-  aq?: number; // Archer Queen
-  gw?: number; // Grand Warden
-  rc?: number; // Royal Champion
-  mp?: number; // Master Builder (Pet House)
+  bk?: number | null; // Barbarian King
+  aq?: number | null; // Archer Queen
+  gw?: number | null; // Grand Warden
+  rc?: number | null; // Royal Champion
+  mp?: number | null; // Master Builder (Pet House)
   
   // Stats
   trophies?: number;
