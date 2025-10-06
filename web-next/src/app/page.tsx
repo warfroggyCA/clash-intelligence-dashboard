@@ -18,8 +18,8 @@
 
 import React from 'react';
 export const dynamic = 'force-dynamic';
-import dynamic from 'next/dynamic';
-const ClientDashboardNoSSR = dynamic(() => import('./ClientDashboard'), {
+import dynamicImport from 'next/dynamic';
+const ClientDashboardNoSSR = dynamicImport(() => import('./ClientDashboard'), {
   ssr: false,
   loading: () => (
     <div className="min-h-[40vh] flex items-center justify-center">
