@@ -101,12 +101,26 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
   }, [roster, dataAgeHours, clanTag, homeClan, initialClanTag, refreshData]);
 
   const renderTabContent = () => {
+    const disableRosterSummary = process.env.NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY === 'true';
+    const disableRosterTable = process.env.NEXT_PUBLIC_DISABLE_ROSTER_TABLE === 'true';
     switch (activeTab) {
       case 'roster':
         return (
           <div className="space-y-6">
-            <RosterSummary />
-            <RosterTable />
+            {disableRosterSummary ? (
+              <div className="rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 p-4 text-slate-200">
+                Roster Summary disabled by NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY.
+              </div>
+            ) : (
+              <RosterSummary />
+            )}
+            {disableRosterTable ? (
+              <div className="rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 p-4 text-slate-200">
+                Roster Table disabled by NEXT_PUBLIC_DISABLE_ROSTER_TABLE.
+              </div>
+            ) : (
+              <RosterTable />
+            )}
           </div>
         );
       
