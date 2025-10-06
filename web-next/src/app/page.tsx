@@ -152,6 +152,19 @@ export default async function HomePage() {
   const initialClanTag = cfg.homeClanTag;
   let initialRoster: Roster | null = null;
 
+  // Safe mode: render a minimal shell to isolate render loops in production
+  if (process.env.NEXT_PUBLIC_SAFE_MODE === 'true') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-900 text-slate-100">
+        <div className="text-center space-y-2">
+          <div className="text-4xl">🛟</div>
+          <p className="text-lg font-semibold">Dashboard Safe Mode</p>
+          <p className="text-sm text-slate-300">Core UI temporarily disabled for diagnostics.</p>
+        </div>
+      </div>
+    );
+  }
+
   try {
     initialRoster = await buildRosterSnapshotFirst(initialClanTag, 'latest');
   } catch (error) {
