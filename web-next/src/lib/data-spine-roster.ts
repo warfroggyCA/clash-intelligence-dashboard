@@ -112,16 +112,16 @@ function mapMember(apiMember: ApiRosterMember): Member {
   const rankedModifier = parseNullableJson(apiMember.rankedModifier);
   const equipmentFlags = parseNullableJson(apiMember.equipmentFlags);
 
-  const resolvedLeagueId = apiMember.leagueId ?? (typeof league === 'object' ? league?.id : null) ?? undefined;
+  const resolvedLeagueId = apiMember.leagueId ?? (typeof league === 'object' ? league?.id : null) ?? null;
   const resolvedLeagueName = apiMember.leagueName
     ?? (typeof league === 'object' ? league?.name : null)
     ?? (typeof league === 'string' ? league : null)
-    ?? undefined;
-  const resolvedLeagueTrophies = apiMember.leagueTrophies ?? apiMember.trophies ?? undefined;
+    ?? null;
+  const resolvedLeagueTrophies = apiMember.leagueTrophies ?? apiMember.trophies ?? null;
   const resolvedLeagueIconSmall = apiMember.leagueIconSmall
-    ?? (typeof league === 'object' ? league?.iconUrls?.small : undefined);
+    ?? (typeof league === 'object' ? league?.iconUrls?.small : null);
   const resolvedLeagueIconMedium = apiMember.leagueIconMedium
-    ?? (typeof league === 'object' ? league?.iconUrls?.medium : undefined);
+    ?? (typeof league === 'object' ? league?.iconUrls?.medium : null);
 
   const rawTenure = typeof apiMember.tenure_days === 'number'
     ? apiMember.tenure_days
@@ -130,15 +130,15 @@ function mapMember(apiMember: ApiRosterMember): Member {
       : null;
   const normalizedTenure = rawTenure != null && Number.isFinite(rawTenure)
     ? Math.max(1, Math.round(rawTenure))
-    : undefined;
+    : null;
   return {
-    tag: apiMember.tag || undefined,
+    tag: apiMember.tag || null,
     name: apiMember.name || apiMember.tag || 'Unknown',
     townHallLevel: apiMember.townHallLevel ?? null,
-    role: apiMember.role ?? undefined,
-    trophies: apiMember.trophies ?? undefined,
-    donations: apiMember.donations ?? undefined,
-    donationsReceived: apiMember.donationsReceived ?? undefined,
+    role: apiMember.role ?? null,
+    trophies: apiMember.trophies ?? null,
+    donations: apiMember.donations ?? null,
+    donationsReceived: apiMember.donationsReceived ?? null,
     bk: heroLevels.bk ?? null,
     aq: heroLevels.aq ?? null,
     gw: heroLevels.gw ?? null,
@@ -149,21 +149,21 @@ function mapMember(apiMember: ApiRosterMember): Member {
     leagueTrophies: resolvedLeagueTrophies,
     leagueIconSmall: resolvedLeagueIconSmall,
     leagueIconMedium: resolvedLeagueIconMedium,
-    battleModeTrophies: apiMember.battleModeTrophies ?? undefined,
-    rankedTrophies: apiMember.rankedTrophies ?? undefined,
-    rankedLeagueId: apiMember.rankedLeagueId ?? undefined,
-    rankedLeagueName: apiMember.rankedLeagueName ?? undefined,
+    battleModeTrophies: apiMember.battleModeTrophies ?? null,
+    rankedTrophies: apiMember.rankedTrophies ?? null,
+    rankedLeagueId: apiMember.rankedLeagueId ?? null,
+    rankedLeagueName: apiMember.rankedLeagueName ?? null,
     rankedModifier,
-    seasonResetAt: apiMember.seasonResetAt ?? undefined,
+    seasonResetAt: apiMember.seasonResetAt ?? null,
     equipmentFlags,
     league,
     builderLeague,
-    extras: apiMember.extras ?? undefined,
-    metrics: apiMember.metrics ?? undefined,
+    extras: apiMember.extras ?? null,
+    metrics: apiMember.metrics ?? null,
     // Map tenure data
-    tenure_days: normalizedTenure ?? undefined,
-    tenure_as_of: apiMember.tenure_as_of ?? undefined,
-    tenure: normalizedTenure ?? undefined,
+    tenure_days: normalizedTenure ?? null,
+    tenure_as_of: apiMember.tenure_as_of ?? null,
+    tenure: normalizedTenure ?? null,
   } as Member;
 }
 
@@ -203,14 +203,14 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
   return {
     source: 'snapshot',
     date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined,
-    clanName: clan.name ?? undefined,
+    clanName: clan.name ?? null,
     clanTag: clan.tag,
     members: mappedMembers,
     seasonId: resolvedSeasonId,
     seasonStart: resolvedSeasonStart,
     seasonEnd: resolvedSeasonEnd,
     meta: {
-      clanName: clan.name ?? undefined,
+      clanName: clan.name ?? null,
       memberCount: snapshot.memberCount,
       payloadVersion: snapshot.payloadVersion ?? metadata.payloadVersion ?? null,
       ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
@@ -235,7 +235,7 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
       seasonStart: resolvedSeasonStart,
       seasonEnd: resolvedSeasonEnd,
     },
-    snapshotDetails: metadata.snapshotDetails ?? undefined,
+    snapshotDetails: metadata.snapshotDetails ?? null,
   } satisfies Roster;
 }
 

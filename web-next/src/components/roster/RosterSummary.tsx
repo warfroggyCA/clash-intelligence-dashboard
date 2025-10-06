@@ -39,8 +39,8 @@ const IconWrapper = ({ icon }: { icon: React.ReactNode }) => {
 const StatTile = ({ icon, label, value, hint }: StatTileProps) => (
   <div
     className={`stat-tile rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 px-4 py-3 ${hint ? 'tooltip-trigger' : ''}`}
-    data-tooltip={hint ?? undefined}
-    aria-label={hint ? `${label}. ${hint}` : undefined}
+    data-tooltip={hint ?? null}
+    aria-label={hint ? `${label}. ${hint}` : null}
   >
     <div className="flex items-center gap-3">
       <div className="flex h-12 w-12 items-center justify-center">
@@ -56,7 +56,7 @@ const StatTile = ({ icon, label, value, hint }: StatTileProps) => (
 
 const formatNumber = (value: number | null | undefined, options?: Intl.NumberFormatOptions) => {
   if (value == null || Number.isNaN(value)) return '—';
-  return value.toLocaleString(undefined, options);
+  return value.toLocaleString('en-US', options);
 };
 
 const formatDurationMs = (ms: number | null | undefined) => {
@@ -338,7 +338,7 @@ export const RosterSummary = () => {
               )}
             </div>
             {warEndsLabel && (
-              <p className="text-xs text-slate-400">Ends {warEndsLabel}</p>
+              <p className="text-xs text-slate-400" suppressHydrationWarning>Ends {warEndsLabel}</p>
             )}
           </div>
         </div>
@@ -381,7 +381,7 @@ export const RosterSummary = () => {
                       {war.result ?? 'N/A'}
                     </span>
                   </div>
-                  <p className="mt-2 text-xs text-slate-400">
+                  <p className="mt-2 text-xs text-slate-400" suppressHydrationWarning>
                     {war.teamSize && war.teamSize > 0
                       ? `${war.teamSize}v${war.teamSize}`
                       : 'Unknown size'}{' '}
@@ -673,17 +673,17 @@ export const RosterSummary = () => {
                 {seasonBounds && (
                   <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
                     <span>
-                      {seasonBounds.start.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {seasonBounds.start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       {' – '}
-                      {seasonBounds.end.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {seasonBounds.end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                     </span>
                     {typeof seasonBounds.progress === 'number' && (
-                      <span className="rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-300">
+                      <span className="rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-300" suppressHydrationWarning>
                         {seasonBounds.progress}% complete
                       </span>
                     )}
                     {typeof seasonBounds.daysLeft === 'number' && (
-                      <span className="rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-300">
+                      <span className="rounded-full bg-slate-800/70 px-2 py-0.5 text-slate-300" suppressHydrationWarning>
                         {seasonBounds.daysLeft} day{seasonBounds.daysLeft === 1 ? '' : 's'} remaining
                       </span>
                     )}
@@ -704,7 +704,7 @@ export const RosterSummary = () => {
               {updatedAtLabel && (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-slate-400">Data Freshness</p>
-                  <p className="font-medium text-slate-100">Updated {updatedAtLabel}</p>
+                  <p className="font-medium text-slate-100" suppressHydrationWarning>Updated {updatedAtLabel}</p>
                 </div>
               )}
               {lastLoadInfo && (
@@ -720,7 +720,7 @@ export const RosterSummary = () => {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-wide text-slate-400">Ingestion Health</p>
-                  <p className="font-medium text-slate-100">
+                  <p className="font-medium text-slate-100" suppressHydrationWarning>
                     {ingestionHealth.finishedAt
                       ? `Last run ${formatDistanceToNow(new Date(ingestionHealth.finishedAt), { addSuffix: true })}`
                       : `Started ${formatDistanceToNow(new Date(ingestionHealth.startedAt), { addSuffix: true })}`}
@@ -836,7 +836,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-donations`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? undefined}
+                      data-tooltip={entry.hint ?? null}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
@@ -853,7 +853,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-rush`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? undefined}
+                      data-tooltip={entry.hint ?? null}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
@@ -870,7 +870,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-balance`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? undefined}
+                      data-tooltip={entry.hint ?? null}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-emerald-200">
@@ -889,7 +889,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-deficit`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? undefined}
+                      data-tooltip={entry.hint ?? null}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-rose-300">
@@ -908,7 +908,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-rush-alert`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? undefined}
+                      data-tooltip={entry.hint ?? null}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-amber-200">
@@ -944,7 +944,7 @@ export const RosterSummary = () => {
                     <li
                       key={`${entry.label}-hero`}
                       className={`flex items-center justify-between gap-2 border-b border-white/10 pb-1 last:border-none ${entry.hint ? 'tooltip-trigger' : ''}`}
-                      data-tooltip={entry.hint ?? undefined}
+                      data-tooltip={entry.hint ?? null}
                     >
                       <span className="font-medium text-slate-100">{entry.label}</span>
                       <span className="text-right font-semibold tabular-nums text-slate-100">{entry.value}</span>
