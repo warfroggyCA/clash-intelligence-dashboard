@@ -15,7 +15,7 @@ interface RankedPlayer extends AceScoreResult {
   member?: Member;
   strengths: string;
   availabilityPercent: number;
-  townHallLevel?: number;
+  townHallLevel?: number | null;
   componentBreakdown: Array<{ code: string; weight: number; value: number; weighted: number }>;
   core: number;
   logistic: number;
