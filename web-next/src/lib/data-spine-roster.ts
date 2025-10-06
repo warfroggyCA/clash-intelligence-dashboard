@@ -106,9 +106,46 @@ interface ApiRosterResponse {
 }
 
 function mapMember(apiMember: ApiRosterMember): Member {
+  const league = normalizeLeagueValue(apiMember.league);
+  const builderLeague = normalizeLeagueValue(apiMember.builderLeague);
+  const rankedModifier = parseNullableJson(apiMember.rankedModifier);
+  const equipmentFlags = parseNullableJson(apiMember.equipmentFlags);
+
+  const resolvedLeagueId = apiMember.leagueId ?? (typeof league === 'object' ? league?.id : null) ?? null;
+  const resolvedLeagueName = apiMember.leagueName
+    ?? (typeof league === 'object' ? league?.name : null)
+    ?? (typeof league === 'string' ? league : null)
+    ?? null;
+  const resolvedLeagueTrophies = apiMember.leagueTrophies ?? apiMember.trophies ?? null;
+  const resolvedLeagueIconSmall = apiMember.leagueIconSmall
+    ?? (typeof league === 'object' ? league?.iconUrls?.small : null);
+  const resolvedLeagueIconMedium = apiMember.leagueIconMedium
+    ?? (typeof league === 'object' ? league?.iconUrls?.medium : null);
+
+  const rawTenure = typeof apiMember.tenure_days === 'number'
+    ? apiMember.tenure_days
+    : typeof (apiMember as any).tenure === 'number'
+      ? (apiMember as any).tenure
+      : null;
+  const normalizedTenure = rawTenure != null && Number.isFinite(rawTenure)
+    ? Math.max(1, Math.round(rawTenure))
+    : null;
+
   const heroLevels = apiMember.heroLevels || {};
 
-  
+  return {
+    tag: apiMember.tag || null,
+    name: apiMember.name || apiMember.tag || 'Unknown',
+    townHallLevel: apiMember.townHallLevel ?? null,
+    role: apiMember.role ?? null,
+    trophies: apiMember.trophies ?? null,
+    donations: apiMember.donations ?? null,
+    donationsReceived: apiMember.donationsReceived ?? null,
+    warStars: apiMember.warStars ?? null,
+    attackWins: apiMember.attackWins ?? null,
+    defenseWins: apiMember.defenseWins ?? null,
+    lastSeen: apiMember.lastSeen ?? null,
+    // Hero levels
     bk: heroLevels.bk ?? null,
     aq: heroLevels.aq ?? null,
     gw: heroLevels.gw ?? null,
