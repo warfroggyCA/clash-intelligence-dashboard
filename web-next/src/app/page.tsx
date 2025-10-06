@@ -19,8 +19,7 @@
 import React from 'react';
 export const dynamic = 'force-dynamic';
 import dynamicImport from 'next/dynamic';
-const ClientDashboardNoSSR = dynamicImport(() => import('./ClientDashboard'), { ssr: false });
-import RootErrorBoundary from '@/components/layout/RootErrorBoundary';
+const ClientAppShellNoSSR = dynamicImport(() => import('@/components/ClientAppShell'), { ssr: false });
 import { cfg } from '@/lib/config';
 import type { Roster } from '@/types';
 import { buildRosterSnapshotFirst } from '@/lib/roster';
@@ -160,8 +159,6 @@ export default async function HomePage() {
   }
 
   return (
-    <RootErrorBoundary>
-      <ClientDashboardNoSSR initialRoster={initialRoster} initialClanTag={initialClanTag} />
-    </RootErrorBoundary>
+    <ClientAppShellNoSSR initialRoster={initialRoster} initialClanTag={initialClanTag} />
   );
 }
