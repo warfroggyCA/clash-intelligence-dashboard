@@ -1,0 +1,231 @@
+# React Error #185 Debug Log
+## Clash Intelligence Dashboard - Hydration Mismatch Resolution
+
+**Date Started:** January 25, 2025  
+**Issue:** React Error #185 (Hydration Mismatch) causing infinite re-render loop  
+**Status:** 🔄 **IN PROGRESS** - Expert coder implementing hydration-level fixes
+
+---
+
+## 🚨 **PROBLEM SUMMARY**
+
+### **Initial Symptoms:**
+- Dashboard shows "Application error: a client-side exception has occurred"
+- Browser console shows "Error: Minified React error #185"
+- Infinite re-render loop with `aY` and `a9` functions repeating endlessly
+- Error Boundary catches the error but doesn't prevent the loop
+
+### **Root Cause Identified:**
+- **Hydration mismatch** between server-rendered HTML and client-side React tree
+- **Infinite loop starts during hydration** (before component logic can execute)
+- **Expert coder's surgical instrumentation confirmed** the problem is at hydration level, not component rendering
+
+---
+
+## 🔍 **DEBUGGING JOURNEY**
+
+### **Phase 1: Initial Hydration Fixes (January 25, 2025)**
+
+#### **Attempt 1: Undefined to Null Conversions**
+**Files Modified:**
+- `web-next/src/lib/snapshots.ts` - Changed `summary.townHallLevel` to `null` if `undefined`
+- `web-next/src/lib/data-spine-roster.ts` - Multiple `?? undefined` to `?? null` conversions
+- `web-next/src/app/page-backup.tsx` - Fixed `getTH` function
+- `web-next/src/app/api/faq/ace-example/route.ts` - Fixed `normalizeMember` function
+- `web-next/src/components/roster/RosterStatsPanel.tsx` - Updated `HighlightMetric` interface
+- `web-next/src/components/roster/AceLeaderboardCard.tsx` - Updated `RankedPlayer` interface
+- `web-next/src/lib/data.ts` - Fixed `coerceNum` function and `Member` interface
+
+**Result:** ❌ **FAILED** - Error persisted despite extensive `undefined` to `null` conversions
+
+#### **Attempt 2: TypeScript Interface Updates**
+**Files Modified:**
+- `web-next/src/types/index.ts` - Updated core `Member` interface to allow `null` for `townHallLevel` and hero levels
+- `web-next/src/lib/clan-metrics.ts` - Updated `Member` interface
+- `web-next/src/components/CoachingInsights.tsx` - Updated `Member` interface
+- `web-next/src/components/DiscordPublisher.tsx` - Updated `Member` interface
+- `web-next/src/lib/player-dna.ts` - Updated `Member` type
+
+**Result:** ❌ **FAILED** - Error persisted despite comprehensive type fixes
+
+#### **Attempt 3: Time-Relative String Fixes**
+**Files Modified:**
+- `web-next/src/components/roster/RosterSummary.tsx` - Added `suppressHydrationWarning` to time-relative elements
+- `web-next/src/app/api/departures/notifications/route.ts` - Fixed 500 error by reading members directly from Supabase
+- `web-next/src/app/page.tsx` - Forced dynamic SSR using `export const dynamic = 'force-dynamic'`
+
+**Result:** ❌ **FAILED** - Error persisted despite time-relative string fixes
+
+### **Phase 2: Expert Coder Intervention (January 25, 2025)**
+
+#### **Expert Coder's Surgical Instrumentation**
+**Files Modified:**
+- `web-next/src/components/roster/RosterSummary.tsx` - Added section toggles and debug logging
+- `web-next/src/app/api/debug/flags/route.ts` - Added expert coder's debug flags
+
+**Debug Flags Added:**
+- `NEXT_PUBLIC_RS_DISABLE_STATS=true` - Disable stats section
+- `NEXT_PUBLIC_RS_DISABLE_WAR=true` - Disable war section  
+- `NEXT_PUBLIC_RS_DISABLE_HIGHLIGHTS=true` - Disable highlights section
+- `NEXT_PUBLIC_RS_DISABLE_MODAL=true` - Disable modal section
+- `NEXT_PUBLIC_DISABLE_ACE_IN_SUMMARY=true` - Disable ACE calculations
+- `NEXT_PUBLIC_RS_DEBUG_LOG=true` - Enable debug logging
+
+**Result:** ❌ **FAILED** - Error persisted, but **CRITICAL DISCOVERY**: Expert coder's instrumentation never executed, proving the infinite loop happens during hydration, before component logic can run
+
+#### **Expert Coder's Hydration-Level Fixes**
+**Files Modified:**
+- `web-next/src/components/roster/RosterSummary.tsx` - Added local hydration gate with `mounted` state
+- `web-next/src/components/roster/RosterSummary.tsx` - Lazy loading of ACE leaderboard panel
+
+**Key Changes:**
+```typescript
+// Local hydration gate
+const [mounted, setMounted] = useState(false);
+useEffect(() => setMounted(true), []);
+
+// Early return for stable placeholder
+if (!mounted) return <div data-rs-placeholder />;
+
+// Lazy loading
+const AceLeaderboardCard = dynamic(() => import('./AceLeaderboardCard'), { ssr: false });
+```
+
+**Result:** ❌ **FAILED** - Expert coder's hydration fixes deployed but error persists
+
+### **Phase 3: Expert Coder's Hydration Gate Failure (January 25, 2025)**
+
+#### **Expert Coder's Hydration Gate Approach**
+**Files Modified:**
+- `web-next/src/components/roster/RosterSummary.tsx` - Added local hydration gate with `mounted` state
+- `web-next/src/components/roster/RosterSummary.tsx` - Lazy loading of ACE leaderboard panel
+
+**Key Changes:**
+```typescript
+// Local hydration gate
+const [mounted, setMounted] = useState(false);
+useEffect(() => setMounted(true), []);
+
+// Early return for stable placeholder
+if (!mounted) return <div data-rs-placeholder />;
+
+// Lazy loading
+const AceLeaderboardCard = dynamic(() => import('./AceLeaderboardCard'), { ssr: false });
+```
+
+**Result:** ❌ **FAILED** - Error persisted despite hydration gate approach
+
+#### **Critical Discovery:**
+**The infinite loop is happening OUTSIDE of RosterSummary!** Even with:
+- ✅ **All RosterSummary sections disabled** (stats, war, highlights, modal, ACE)
+- ✅ **Hydration gate in place** (stable placeholder first)
+- ✅ **Lazy loading implemented** (defer heavy components)
+- ❌ **Error still persists** (infinite loop continues)
+
+**This proves the problem is NOT in RosterSummary - it's in a different component or the hydration process itself!**
+
+---
+
+## 🎯 **CURRENT STATUS**
+
+### **Deployed Fixes:**
+- ✅ **Expert coder's hydration gate** - Renders stable placeholder first, then full UI after mount
+- ✅ **Lazy loading of ACE panel** - Prevents heavy imports during hydration
+- ✅ **Section-level debug toggles** - All set to `true` for minimal rendering
+- ✅ **Global RosterSummary enabled** - `NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY` removed
+
+### **Expected Behavior:**
+- ✅ **No React Error #185** - Hydration gate prevents SSR/CSR mismatch
+- ✅ **No infinite loop** - Stable placeholder prevents re-render cascades
+- ✅ **Debug logs visible** - Component can now execute after hydration
+- ✅ **Dashboard loads successfully** - Full UI appears after mount
+
+### **Next Steps:**
+1. **Test current deployment** - Check if hydration fixes resolved the error
+2. **Systematic section re-enabling** - Turn off debug flags one by one
+3. **Identify remaining issues** - If error persists, apply same pattern to other components
+
+---
+
+## 📊 **DEBUGGING TOOLS**
+
+### **Debug Flags Endpoint:**
+- **URL:** `https://heckyeah.clashintelligence.com/api/debug/flags`
+- **Purpose:** Verify environment variables and debug toggles
+
+### **Console Logs to Watch:**
+- `[RosterSummary] render { renders: N, statsTiles: 0, warSections: 0, highlights: 0 }`
+- React Error #185 stack traces
+- Infinite loop patterns (`aY` and `a9` function repetitions)
+
+### **Environment Variables:**
+```bash
+# Expert coder's surgical instrumentation
+NEXT_PUBLIC_RS_DISABLE_STATS=true
+NEXT_PUBLIC_RS_DISABLE_WAR=true
+NEXT_PUBLIC_RS_DISABLE_HIGHLIGHTS=true
+NEXT_PUBLIC_RS_DISABLE_MODAL=true
+NEXT_PUBLIC_DISABLE_ACE_IN_SUMMARY=true
+NEXT_PUBLIC_RS_DEBUG_LOG=true
+
+# Global toggles
+NEXT_PUBLIC_DISABLE_SHADOW_PORTAL=true
+NEXT_PUBLIC_DISABLE_TOOLTIP_MANAGER=true
+NEXT_PUBLIC_DISABLE_RETURNING_REVIEW=true
+NEXT_PUBLIC_DISABLE_AUTO_REFRESH=true
+```
+
+---
+
+## 🚀 **EXPERT CODER'S STRATEGY**
+
+### **Hydration-Level Approach:**
+1. **Stable first paint** - Return placeholder during hydration
+2. **Defer heavy components** - Lazy load after mount
+3. **Prevent SSR/CSR mismatch** - Ensure consistent rendering
+4. **Systematic re-enabling** - Turn on sections one by one
+
+### **If Current Fix Fails:**
+- Apply same hydration gate pattern to other components
+- Use `NEXT_PUBLIC_SAFE_MODE=true` to isolate the problem
+- Continue systematic component isolation
+
+---
+
+## 📝 **LESSONS LEARNED**
+
+### **Key Insights:**
+1. **React Error #185 is a hydration mismatch** - Server vs client HTML differences
+2. **Infinite loops can start during hydration** - Before component logic executes
+3. **Surgical instrumentation is powerful** - But only if the component can mount
+4. **Hydration-level fixes are necessary** - When the problem is in the hydration process itself
+
+### **Debugging Strategy:**
+1. **Start with component-level fixes** - Undefined to null, type fixes
+2. **Move to hydration-level fixes** - Stable placeholders, lazy loading
+3. **Use systematic isolation** - Disable sections one by one
+4. **Apply pattern to other components** - If problem persists elsewhere
+
+---
+
+## 🔄 **NEXT ACTIONS**
+
+### **Immediate:**
+1. **Test current deployment** - Check if hydration fixes resolved the error
+2. **Verify debug flags** - Confirm all toggles are set correctly
+3. **Check console logs** - Look for expert coder's debug output
+
+### **If Successful:**
+1. **Re-enable sections systematically** - Turn off debug flags one by one
+2. **Monitor for regressions** - Watch for error return
+3. **Document successful pattern** - For future hydration issues
+
+### **If Failed:**
+1. **Apply same pattern to other components** - CommandRail, DashboardLayout
+2. **Use safe mode** - `NEXT_PUBLIC_SAFE_MODE=true`
+3. **Continue systematic isolation** - Until root cause found
+
+---
+
+**Last Updated:** January 25, 2025  
+**Status:** 🔄 **IN PROGRESS** - Expert coder's hydration fixes deployed, awaiting test results

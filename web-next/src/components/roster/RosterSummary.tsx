@@ -71,7 +71,25 @@ const formatDurationMs = (ms: number | null | undefined) => {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 };
 
+// Split into a shell + inner to avoid touching the store before mount
 export const RosterSummary = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
+      // eslint-disable-next-line no-console
+      console.log('[RosterSummaryShell] effect start');
+    }
+    setMounted(true);
+  }, []);
+  if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
+    // eslint-disable-next-line no-console
+    console.log('[RosterSummaryShell] render', { mounted });
+  }
+  if (!mounted) return <div data-rs-placeholder suppressHydrationWarning />;
+  return <RosterSummaryInner />;
+};
+
+const RosterSummaryInner = () => {
   // Diagnostics toggles (compile-time)
   const RS_DISABLE_STATS = process.env.NEXT_PUBLIC_RS_DISABLE_STATS === 'true';
   const RS_DISABLE_WAR = process.env.NEXT_PUBLIC_RS_DISABLE_WAR === 'true';
@@ -82,14 +100,10 @@ export const RosterSummary = () => {
   // Render counter for debugging re-renders
   const renderCountRef = useRef(0);
   if (RS_DEBUG_LOG) {
-    // Increment synchronously to track exact render cycles
     renderCountRef.current += 1;
   }
 
   const [showAceModal, setShowAceModal] = useState(false);
-  // Local hydration gate to ensure no content renders before mount if needed
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
   const roster = useDashboardStore((state) => state.roster);
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
@@ -692,10 +706,6 @@ export const RosterSummary = () => {
     // eslint-disable-next-line no-console
     console.log('[RosterSummary] render', summary);
   });
-
-  if (!mounted) {
-    return <div data-rs-placeholder />;
-  }
 
   return (
     <div className="space-y-4">
