@@ -107,38 +107,8 @@ interface ApiRosterResponse {
 
 function mapMember(apiMember: ApiRosterMember): Member {
   const heroLevels = apiMember.heroLevels || {};
-  const league = normalizeLeagueValue(apiMember.league);
-  const builderLeague = normalizeLeagueValue(apiMember.builderLeague);
-  const rankedModifier = parseNullableJson(apiMember.rankedModifier);
-  const equipmentFlags = parseNullableJson(apiMember.equipmentFlags);
 
-  const resolvedLeagueId = apiMember.leagueId ?? (typeof league === 'object' ? league?.id : null) ?? null;
-  const resolvedLeagueName = apiMember.leagueName
-    ?? (typeof league === 'object' ? league?.name : null)
-    ?? (typeof league === 'string' ? league : null)
-    ?? null;
-  const resolvedLeagueTrophies = apiMember.leagueTrophies ?? apiMember.trophies ?? null;
-  const resolvedLeagueIconSmall = apiMember.leagueIconSmall
-    ?? (typeof league === 'object' ? league?.iconUrls?.small : null);
-  const resolvedLeagueIconMedium = apiMember.leagueIconMedium
-    ?? (typeof league === 'object' ? league?.iconUrls?.medium : null);
-
-  const rawTenure = typeof apiMember.tenure_days === 'number'
-    ? apiMember.tenure_days
-    : typeof (apiMember as any).tenure === 'number'
-      ? (apiMember as any).tenure
-      : null;
-  const normalizedTenure = rawTenure != null && Number.isFinite(rawTenure)
-    ? Math.max(1, Math.round(rawTenure))
-    : null;
-  return {
-    tag: apiMember.tag || null,
-    name: apiMember.name || apiMember.tag || 'Unknown',
-    townHallLevel: apiMember.townHallLevel ?? null,
-    role: apiMember.role ?? null,
-    trophies: apiMember.trophies ?? null,
-    donations: apiMember.donations ?? null,
-    donationsReceived: apiMember.donationsReceived ?? null,
+  
     bk: heroLevels.bk ?? null,
     aq: heroLevels.aq ?? null,
     gw: heroLevels.gw ?? null,
@@ -203,14 +173,14 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
   return {
     source: 'snapshot',
     date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined,
-    clanName: clan.name ?? null,
+    clanName: clan.name ?? undefined,
     clanTag: clan.tag,
     members: mappedMembers,
     seasonId: resolvedSeasonId,
     seasonStart: resolvedSeasonStart,
     seasonEnd: resolvedSeasonEnd,
     meta: {
-      clanName: clan.name ?? null,
+      clanName: clan.name ?? undefined,
       memberCount: snapshot.memberCount,
       payloadVersion: snapshot.payloadVersion ?? metadata.payloadVersion ?? null,
       ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
