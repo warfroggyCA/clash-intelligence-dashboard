@@ -98,7 +98,7 @@ export function convertFullSnapshotToDailySnapshot(fullSnapshot: FullClanSnapsho
     return {
       name: summary.name,
       tag: summary.tag,
-      townHallLevel: summary.townHallLevel,
+      townHallLevel: summary.townHallLevel ?? null,
       bk: playerDetail ? extractHeroLevels(playerDetail).bk : null,
       aq: playerDetail ? extractHeroLevels(playerDetail).aq : null,
       gw: playerDetail ? extractHeroLevels(playerDetail).gw : null,
