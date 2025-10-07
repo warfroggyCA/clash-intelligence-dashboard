@@ -1061,7 +1061,7 @@ export const useDashboardStore = create<DashboardState>()(
             smartInsightsStatus: state.smartInsights && state.smartInsightsClanTag === cleanTag ? 'success' : 'error',
             smartInsightsError: error?.message || 'Failed to load insights',
             smartInsightsClanTag: cleanTag,
-          } as unknown as DashboardState);
+          } as unknown as DashboardState));
         }
       },
 
