@@ -1,5 +1,16 @@
 # Clash Intelligence Dashboard - Planning Notes
 
+## October 2025 Overhaul: Task Checklist (Captured)
+- [ ] Types: plan `rankedTrophies`, `rankedLeague {id,name,tier}`, `leagueFloor`, `tournamentStats`, `shieldStatus` (no implementation yet)
+- [ ] DB: draft migration `202510XX_ranked_league_migration.sql` (members: ranked fields + floor; new `member_tournament_stats` table; metrics additions)
+- [ ] Ingestion: scope fetch/transform changes for dual mode + 34-tier mapping; update rush% caps (TH14 +5 BK/AQ/GW), exclude TH weapon from rush
+- [ ] ACE: redefine PAR (ranked attacks used/available) and DVA (defensive trophies gained); keep DON w/ economic note
+- [ ] API: extend `/api/v2/roster` to surface ranked fields; consider defense snapshot details endpoint (ranked frozen defense)
+- [ ] UI: prioritize `rankedTrophies` in RosterSummary/Table; add Weekly Tournament card and Defense Insights panel
+- [ ] Metrics: plan `starry_ore_acquisition`, `loot_multiplier_efficiency`, `magic_shield_triggers`, `revenge_success_rate`
+- [ ] Assets: gather authoritative 34-tier league names/icons; define league-floor lookup per TH
+
+
 ## Fall 2025 Clash Overhaul Readiness
 - [ ] Roster summary needs dual-mode battle stats surfaced (Battle Mode vs Ranked) once APIs split; update store shape and `RosterSummary` aggregations accordingly (`web-next/src/components/roster/RosterSummary.tsx:79`)
 - [ ] Expand league/trophy rendering to support new tiers and post-reset trophies; refactor `LeagueBadge` usage so we can swap data sources without touching UI callers (`web-next/src/components/roster/RosterSummary.tsx:138`)
