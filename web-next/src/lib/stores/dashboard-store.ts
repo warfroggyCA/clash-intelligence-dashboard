@@ -1793,9 +1793,9 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
       w.__ciAutoRefreshStarted = true;
     } catch {}
     
-    // Delay auto-refresh start until after React hydration completes
-    // This prevents auto-refresh from triggering state changes during hydration
-    const startAutoRefreshAfterHydration = () => {
+    // SIMPLIFIED FIX: Just delay auto-refresh start to prevent hydration conflicts
+    // The previous complex browser detection was causing iPad Safari issues
+    setTimeout(() => {
       const currentState = useDashboardStore.getState();
       if (currentState.autoRefreshEnabled) {
         // Already started by another mechanism
@@ -1808,25 +1808,6 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
           console.warn('[DashboardStore] Failed to start auto-refresh after hydration:', error);
         }
       }
-    };
-    
-    // Multiple strategies to ensure hydration is complete:
-    // 1. Use longer delay for Safari/iOS which has stricter hydration timing requirements
-    const isSafari = typeof window !== 'undefined' && 
-      /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-    const isMobile = typeof window !== 'undefined' && 
-      /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    
-    const baseDelay = isSafari || isMobile ? 500 : 100;
-    
-    // 2. Wait for DOMContentLoaded as a fallback
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', () => {
-        setTimeout(startAutoRefreshAfterHydration, baseDelay);
-      });
-    } else {
-      // 3. DOM already loaded, use timeout
-      setTimeout(startAutoRefreshAfterHydration, baseDelay);
-    }
+    }, 200); // Simple 200ms delay - works for all browsers
   }
 }
