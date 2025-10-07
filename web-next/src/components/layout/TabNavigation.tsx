@@ -20,6 +20,13 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
   );
 
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_TAB_AUTO_CORRECT === 'true') {
+      if (typeof window !== 'undefined' && (window as any).__TAB_DEBUG__) {
+        // eslint-disable-next-line no-console
+        console.log('[TabNavigation] auto-correct disabled');
+      }
+      return;
+    }
     if (!visibleTabs.length) return;
     const isActiveVisible = visibleTabs.some((tab) => tab.id === activeTab);
     if (!isActiveVisible) {

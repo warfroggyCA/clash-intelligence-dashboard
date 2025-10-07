@@ -93,8 +93,15 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
     }
   }, [initialRoster, initialClanTag, clanTag, homeClan, roster, status, loadRoster]);
 
-  // Date-aware soft refresh policy: if snapshot older than 12h, refresh once per session and on focus (30m backoff)
+  // Date-aware soft refresh policy (debug gateable)
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_SOFT_REFRESH === 'true') {
+      if (process.env.NEXT_PUBLIC_DASHBOARD_DEBUG_LOG === 'true') {
+        // eslint-disable-next-line no-console
+        console.log('[ClientDashboard] soft refresh disabled by flag');
+      }
+      return;
+    }
     if (!roster) return;
     if (typeof window === 'undefined') return;
     const key = `soft-refresh:${(clanTag || homeClan || initialClanTag || '').toUpperCase()}`;
