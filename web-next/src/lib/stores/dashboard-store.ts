@@ -1539,7 +1539,7 @@ export const useDashboardStore = create<DashboardState>()(
           setDismissedNotifications(newDismissed);
         }
       }
-    }))
+    }));
     // TEMPORARILY DISABLED: devtools options might be causing React Error #185
     // , {
     //   name: 'dashboard-store',
