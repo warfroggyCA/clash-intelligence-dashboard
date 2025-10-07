@@ -1349,6 +1349,9 @@ export const useDashboardStore = create<DashboardState>()(
         return state.userRoles.some((role) => role.clan_tag === clanTag && (role.role === 'leader' || role.role === 'coleader'));
       },
       startSnapshotAutoRefresh: () => {
+        if (process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH === 'true') {
+          return;
+        }
         if (typeof window === 'undefined') return;
         set((state) => (state.autoRefreshEnabled ? {} : { autoRefreshEnabled: true }));
         get().checkForNewSnapshot().catch(() => {

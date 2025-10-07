@@ -366,5 +366,31 @@ NEXT_PUBLIC_DISABLE_AUTO_REFRESH=true
 
 **The problem is in the CONTENT or EFFECTS, not the wrappers!**
 
+---
+
+## 🚨 **STEP 1 FAILED - ALL POST-MOUNT EFFECTS FROZEN BUT ERROR PERSISTS!**
+
+**Date:** October 6, 2025  
+**Test:** All post-mount effects disabled (AUTO_LOAD_HOME, SOFT_REFRESH, TAB_AUTO_CORRECT, STORE_HYDRATION, STORE_SUBSCRIPTIONS, AUTO_REFRESH)  
+**Result:** ❌ **FAILED** - Error still occurs!
+
+### 🔍 **CRITICAL DISCOVERY:**
+
+**Even with ALL post-mount effects frozen, the React Error #185 still happens!** This means:
+
+- ❌ **NOT caused by post-mount effects** - All effects disabled but error persists
+- 🎯 **Problem is in initial render logic** - Not effects, but component rendering
+- 💡 **This suggests:** The error is in component rendering logic, state selectors, or render-time calculations
+
+### 📊 **What This Means:**
+
+**The expert coder needs to investigate:**
+- 🔍 **Component rendering logic** - State selectors causing re-renders
+- 🔍 **Render-time calculations** - Computed values that trigger updates
+- 🔍 **Store selectors** - Selectors that cause infinite re-render loops
+- 🔍 **Component state** - State updates during render phase
+
+**The problem is NOT in post-mount effects - it's in the render logic itself!**
+
 **Last Updated:** October 6, 2025  
-**Status:** 🚨 **CRITICAL DISCOVERY** - Error happens POST-MOUNT, not during hydration!
+**Status:** 🚨 **STEP 1 FAILED** - Error persists even with all post-mount effects frozen!

@@ -173,8 +173,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   // The corrupted clan tag cleanup and home clan normalization are now handled in initialization
   // instead of on every render to prevent React Error #185
 
-  // Auto-load home clan if no clan is currently loaded and home clan exists
+  // Auto-load home clan if no clan is currently loaded and home clan exists (debug gateable)
   useEffect(() => {
+    if (process.env.NEXT_PUBLIC_DISABLE_AUTO_LOAD_HOME === 'true') {
+      if (process.env.NEXT_PUBLIC_DASHBOARD_DEBUG_LOG === 'true') {
+        // eslint-disable-next-line no-console
+        console.log('[DashboardLayout] auto-load home disabled');
+      }
+      return;
+    }
     // Only run on client side after hydration
     if (typeof window === 'undefined') return;
     
