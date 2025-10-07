@@ -421,6 +421,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
     return () => window.removeEventListener('resize', handleResize);
   }, [showCommandRail]);
 
+  const disableTabNavigation = process.env.NEXT_PUBLIC_DISABLE_TAB_NAV === 'true';
+  const disableCommandRail = process.env.NEXT_PUBLIC_DISABLE_COMMAND_RAIL === 'true';
+  const disableQuickActions = process.env.NEXT_PUBLIC_DISABLE_QUICK_ACTIONS === 'true';
+
   return (
     <div className={`min-h-screen w-full ${className}`}>
       {/* Skip to main content link */}
@@ -444,9 +448,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-3 pb-2 pt-2 sm:px-4">
           <div className="flex flex-col gap-2">
             <div className="rounded-2xl border border-slate-800/70 bg-slate-900/90">
-              <TabNavigation className="px-2" />
+              {disableTabNavigation ? (
+                <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
+              ) : (
+                <TabNavigation className="px-2" />
+              )}
             </div>
-            {canAccessLeadershipTools && (
+            {canAccessLeadershipTools && !disableQuickActions && (
               <QuickActions className="!border-brand-border/60 !bg-brand-surfaceRaised/90 !text-slate-100 shadow-[0_12px_30px_-20px_rgba(8,15,31,0.6)]" />
             )}
           </div>
@@ -460,7 +468,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
             {children}
           </div>
 
-          {showCommandRail && (
+          {showCommandRail && !disableCommandRail && (
             <CommandRail
               isOpen={isCommandRailOpen}
               onToggle={() => setIsCommandRailOpen((prev) => !prev)}

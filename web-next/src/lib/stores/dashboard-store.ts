@@ -598,7 +598,25 @@ const initialState = {
 export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools middleware might be causing React Error #185
   // devtools(
-    subscribeWithSelector((set, get) => ({
+    subscribeWithSelector((baseSet, get) => {
+      const set: typeof baseSet = (partial: any, replace?: any) => {
+        if (process.env.NEXT_PUBLIC_DASHBOARD_DEBUG_LOG === 'true') {
+          try {
+            const depthKey = '__dsSetDepth';
+            const w: any = typeof window !== 'undefined' ? window : {};
+            w[depthKey] = (w[depthKey] || 0) + 1;
+            // eslint-disable-next-line no-console
+            console.log('[DashboardStore.set]', { depth: w[depthKey], keys: typeof partial === 'function' ? 'fn' : Object.keys(partial || {}) });
+            const result = baseSet(partial as any, replace);
+            w[depthKey] -= 1;
+            return result;
+          } catch {
+            return baseSet(partial as any, replace);
+          }
+        }
+        return baseSet(partial as any, replace);
+      };
+      return ({
         ...initialState,
 
         // =============================================================================
@@ -1043,7 +1061,7 @@ export const useDashboardStore = create<DashboardState>()(
             smartInsightsStatus: state.smartInsights && state.smartInsightsClanTag === cleanTag ? 'success' : 'error',
             smartInsightsError: error?.message || 'Failed to load insights',
             smartInsightsClanTag: cleanTag,
-          }));
+    } as unknown as DashboardState);
         }
       },
 
@@ -1699,7 +1717,8 @@ export const selectors = {
 // =============================================================================
 
 // Subscribe to localStorage changes for persistence
-if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRATION !== 'true') {
+// Gate correctly with SUBSCRIPTIONS flag (was HYDRATION)
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_SUBSCRIPTIONS !== 'true') {
   useDashboardStore.subscribe(
     (state) => state.clanTag,
     (clanTag) => {
@@ -1735,7 +1754,8 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
 // =============================================================================
 
 // Hydrate store from localStorage on client-side initialization
-if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_SUBSCRIPTIONS !== 'true') {
+// Gate correctly with HYDRATION flag (was SUBSCRIPTIONS)
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRATION !== 'true') {
   const hydrateFromStorage = () => {
     try {
       const currentClanTag = localStorage.getItem('currentClanTag');
