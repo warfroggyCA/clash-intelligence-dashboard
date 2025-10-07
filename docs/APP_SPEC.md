@@ -150,6 +150,11 @@ File: `web-next/src/lib/stores/dashboard-store.ts`
 - Store intentionally centralizes cross‑component state to reduce prop drilling and enable precise refresh policies.
 - Use `normalizeTag` for all clan/player tag comparisons and keys.
 
+## Upcoming Changes (Oct 2025 Overhaul)
+- Planning captured for the October 2025 Clash overhaul (Ranked/Battle split, 34‑tier leagues, weekly tournaments, shields, economic changes, hero cap shifts).
+- See roadmap details in `docs/REVISION_PLAN_OCT2025.md`.
+- No functional changes are implemented yet; this serves as a reference for future updates across types, migrations, ingestion, API, UI, and calculations.
+
 ## Extending the System (Guidelines)
 - Add new derived metrics: compute during the `writeStats` phase and persist to `metrics` with a clear `metric_name` and `metadata`; surface via `member.metrics` in `/api/v2/roster`.
 - New UI panels: source data via selectors; avoid direct store updates in render paths; prefer `useMemo` for computed props.
@@ -171,4 +176,3 @@ File: `web-next/src/lib/stores/dashboard-store.ts`
 ---
 
 This spec reflects the current implementation and is intended to be “close to the code”. If you want a machine‑readable JSON manifest (endpoints, types, selectors) for tooling, ask and we’ll generate `docs/app-spec.json` next.
-

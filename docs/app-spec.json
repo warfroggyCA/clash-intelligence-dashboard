@@ -369,6 +369,39 @@
     "quickActions": "QuickActions",
     "insights": "components/insights/*",
     "warPrep": "app/war/prep/page.tsx"
+  },
+  "roadmap": {
+    "oct2025": {
+      "status": "planned",
+      "doc": "docs/REVISION_PLAN_OCT2025.md",
+      "types": [
+        "Member.rankedTrophies",
+        "Member.rankedLeague{ id,name,tier }",
+        "Member.leagueFloor{ th,id,name }",
+        "Member.tournamentStats{ seasonId,attacksUsed,attacksMax,offTrophies,defTrophies }",
+        "Member.shieldStatus{ type,durationHours,lootProtected,revengeAvailable }",
+        "SnapshotMetadata.defenseSnapshotTimestamp|defenseSnapshotLayoutId"
+      ],
+      "db": [
+        "Add ranked fields to members/member_snapshot_stats",
+        "Create member_tournament_stats",
+        "Add metrics: starry_ore_acquisition, loot_multiplier_efficiency, magic_shield_triggers, revenge_success_rate"
+      ],
+      "ingestion": [
+        "Dual-mode fetch/transform",
+        "34-tier league mapping + floor",
+        "Rush caps (TH14 +5 BK/AQ/GW), exclude TH weapon",
+        "ACE PAR/DVA redefinition"
+      ],
+      "api": [
+        "Extend /api/v2/roster ranked fields",
+        "Consider ranked defense snapshot details endpoint"
+      ],
+      "ui": [
+        "Ranked trophies primary",
+        "Weekly Tournament card",
+        "Defense insights panel"
+      ]
+    }
   }
 }
-
