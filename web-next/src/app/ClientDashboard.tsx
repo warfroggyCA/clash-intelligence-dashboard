@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Roster } from '@/types';
 import { AuthGate } from '@/components/layout/AuthGuard';
@@ -20,7 +20,26 @@ type Props = {
   initialClanTag: string;
 };
 
+// Split into shell + inner to avoid store reads before mount
 export default function ClientDashboard({ initialRoster, initialClanTag }: Props) {
+  const debug = process.env.NEXT_PUBLIC_DASHBOARD_DEBUG_LOG === 'true';
+  const [mounted, setMounted] = useState(false);
+  if (debug) {
+    // eslint-disable-next-line no-console
+    console.log('[ClientDashboardShell] render', { mounted });
+  }
+  useEffect(() => {
+    if (debug) {
+      // eslint-disable-next-line no-console
+      console.log('[ClientDashboardShell] effect mount');
+    }
+    setMounted(true);
+  }, [debug]);
+  if (!mounted) return <div data-dashboard-shell suppressHydrationWarning />;
+  return <ClientDashboardInner initialRoster={initialRoster} initialClanTag={initialClanTag} />;
+}
+
+function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
   const {
     activeTab,
     homeClan,
@@ -156,13 +175,29 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
     }
   };
 
-  return (
-    <AuthGate>
-      <DashboardLayout>
+  const disableAuthGuard = process.env.NEXT_PUBLIC_DISABLE_AUTH_GUARD === 'true';
+  const disableDashboardLayout = process.env.NEXT_PUBLIC_DISABLE_DASHBOARD_LAYOUT === 'true';
+
+  const content = (
+    <>
         {/* Returning player review modal hooks into roster + departures notifications */}
         {process.env.NEXT_PUBLIC_DISABLE_RETURNING_REVIEW === 'true' ? null : <ReturningPlayerReview />}
         {renderTabContent()}
-      </DashboardLayout>
+    </>
+  );
+
+  if (disableAuthGuard && disableDashboardLayout) {
+    return content;
+  }
+  if (disableAuthGuard && !disableDashboardLayout) {
+    return <DashboardLayout>{content}</DashboardLayout>;
+  }
+  if (!disableAuthGuard && disableDashboardLayout) {
+    return <AuthGate>{content}</AuthGate>;
+  }
+  return (
+    <AuthGate>
+      <DashboardLayout>{content}</DashboardLayout>
     </AuthGate>
   );
 }

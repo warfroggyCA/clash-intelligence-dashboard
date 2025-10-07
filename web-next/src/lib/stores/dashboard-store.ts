@@ -1696,7 +1696,7 @@ export const selectors = {
 // =============================================================================
 
 // Subscribe to localStorage changes for persistence
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRATION !== 'true') {
   useDashboardStore.subscribe(
     (state) => state.clanTag,
     (clanTag) => {
@@ -1732,7 +1732,7 @@ if (typeof window !== 'undefined') {
 // =============================================================================
 
 // Hydrate store from localStorage on client-side initialization
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_SUBSCRIPTIONS !== 'true') {
   const hydrateFromStorage = () => {
     try {
       const currentClanTag = localStorage.getItem('currentClanTag');
