@@ -1780,9 +1780,8 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
   // Hydrate immediately
   hydrateFromStorage();
 
-  // CRITICAL FIX: Delay auto-refresh until after hydration to prevent React Error #185
-  // Auto-refresh was starting during hydration, causing state changes that triggered hydration mismatches
   const state = useDashboardStore.getState();
+  // Ensure auto-refresh loop is started only once per window lifecycle
   const w = window as any;
   if (
     !state.autoRefreshEnabled &&
@@ -1792,22 +1791,6 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
     try {
       w.__ciAutoRefreshStarted = true;
     } catch {}
-    
-    // SIMPLIFIED FIX: Just delay auto-refresh start to prevent hydration conflicts
-    // The previous complex browser detection was causing iPad Safari issues
-    setTimeout(() => {
-      const currentState = useDashboardStore.getState();
-      if (currentState.autoRefreshEnabled) {
-        // Already started by another mechanism
-        return;
-      }
-      try {
-        currentState.startSnapshotAutoRefresh();
-      } catch (error) {
-        if (process.env.NODE_ENV === 'development') {
-          console.warn('[DashboardStore] Failed to start auto-refresh after hydration:', error);
-        }
-      }
-    }, 200); // Simple 200ms delay - works for all browsers
+    state.startSnapshotAutoRefresh();
   }
 }
