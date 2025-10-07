@@ -1,0 +1,374 @@
+{
+  "app": {
+    "name": "clash-intelligence",
+    "version": "0.31.0",
+    "specVersion": "1.0.0",
+    "paths": {
+      "root": "web-next",
+      "ui": "web-next/src/components",
+      "appRoutes": "web-next/src/app",
+      "apiRoutes": "web-next/src/app/api",
+      "lib": "web-next/src/lib",
+      "store": "web-next/src/lib/stores/dashboard-store.ts",
+      "types": "web-next/src/types/index.ts",
+      "migrations": "supabase/migrations"
+    }
+  },
+  "environment": {
+    "requiredInProd": [
+      "NEXT_PUBLIC_SUPABASE_URL",
+      "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
+      "COC_API_TOKEN"
+    ],
+    "featureFlags": [
+      "NEXT_PUBLIC_ENABLE_INSIGHTS",
+      "NEXT_PUBLIC_RS_DEBUG_LOG",
+      "NEXT_PUBLIC_DASHBOARD_DEBUG_LOG",
+      "NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY",
+      "NEXT_PUBLIC_DISABLE_ROSTER_TABLE",
+      "NEXT_PUBLIC_DISABLE_SOFT_REFRESH",
+      "NEXT_PUBLIC_SAFE_MODE"
+    ],
+    "defaults": {
+      "homeClanTag": "#2PR8R8V8P"
+    }
+  },
+  "models": {
+    "Member": {
+      "fields": {
+        "name": "string",
+        "tag": "string",
+        "townHallLevel": "number|null",
+        "th": "number|undefined",
+        "bk": "number|null",
+        "aq": "number|null",
+        "gw": "number|null",
+        "rc": "number|null",
+        "mp": "number|null",
+        "trophies": "number|undefined",
+        "versusTrophies": "number|undefined",
+        "donations": "number|undefined",
+        "donationsReceived": "number|undefined",
+        "warStars": "number|undefined",
+        "clanCapitalContributions": "number|undefined",
+        "leagueId": "number|undefined",
+        "leagueName": "string|undefined",
+        "leagueTrophies": "number|undefined",
+        "leagueIconSmall": "string|undefined",
+        "leagueIconMedium": "string|undefined",
+        "battleModeTrophies": "number|undefined",
+        "rankedTrophies": "number|undefined",
+        "rankedLeagueId": "number|undefined",
+        "rankedLeagueName": "string|undefined",
+        "rankedModifier": "object|null|undefined",
+        "seasonResetAt": "string|undefined",
+        "equipmentFlags": "object|null|undefined",
+        "league": "object|string|null|undefined",
+        "builderLeague": "object|string|null|undefined",
+        "tenure_days": "number|undefined",
+        "tenure": "number|undefined",
+        "tenure_as_of": "string|undefined",
+        "lastSeen": "string|number|undefined",
+        "role": "string|undefined",
+        "recentClans": "string[]|undefined",
+        "manualActivityOverride": "string|undefined",
+        "notes": "string|undefined",
+        "customFields": "Record<string,string>|undefined",
+        "extras": "Record<string,any>|undefined",
+        "metrics": "Record<string,{value:number,metadata?:object|null}>|undefined"
+      }
+    },
+    "Roster": {
+      "fields": {
+        "source": "'live'|'fallback'|'snapshot'",
+        "date": "string|undefined",
+        "clanName": "string|undefined",
+        "clanTag": "string|undefined",
+        "members": "Member[]",
+        "seasonId": "string|null|undefined",
+        "seasonStart": "string|null|undefined",
+        "seasonEnd": "string|null|undefined",
+        "meta": "{ memberCount?: number, payloadVersion?: string|null, ingestionVersion?: string|null, schemaVersion?: string|null, computedAt?: string|null, seasonId?: string|null, seasonStart?: string|null, seasonEnd?: string|null }|undefined",
+        "snapshotMetadata": "SnapshotMetadata|undefined",
+        "snapshotDetails": "SnapshotDetails|undefined"
+      }
+    },
+    "SnapshotMetadata": {
+      "fields": {
+        "snapshotDate": "string",
+        "fetchedAt": "string",
+        "memberCount": "number",
+        "warLogEntries": "number",
+        "capitalSeasons": "number",
+        "version": "string",
+        "payloadVersion": "string|null|undefined",
+        "ingestionVersion": "string|null|undefined",
+        "schemaVersion": "string|null|undefined",
+        "computedAt": "string|null|undefined",
+        "seasonId": "string|null|undefined",
+        "seasonStart": "string|null|undefined",
+        "seasonEnd": "string|null|undefined"
+      }
+    },
+    "SnapshotDetails": {
+      "fields": {
+        "currentWar": "{ state:string, teamSize:number, opponent?:{name:string,tag:string}, attacksPerMember?:number, startTime?:string, endTime?:string }|undefined",
+        "warLog": "Array<{ result:string, opponent:{name:string,tag:string}, endTime:string, teamSize:number, attacksPerMember:number }>|undefined",
+        "capitalRaidSeasons": "Array<{ capitalHallLevel:number, state:string, endTime:string, offensiveLoot:number, defensiveLoot:number }>|undefined"
+      }
+    },
+    "IngestionHealthSummary": {
+      "fields": {
+        "jobId": "string",
+        "clanTag": "string",
+        "status": "string",
+        "startedAt": "string",
+        "finishedAt": "string",
+        "totalDurationMs": "number|null",
+        "phases": "Array<{name:string,success:boolean,durationMs:number|null,rowDelta:number|null,errorMessage:string|null,metadata?:object|null}>",
+        "anomalies": "Array<{phase:string,message:string}>",
+        "payloadVersion": "string|null|undefined",
+        "ingestionVersion": "string|null|undefined",
+        "schemaVersion": "string|null|undefined",
+        "snapshotId": "string|null|undefined",
+        "fetchedAt": "string|null|undefined",
+        "computedAt": "string|null|undefined",
+        "seasonId": "string|null|undefined"
+      }
+    }
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/api/v2/roster",
+      "query": { "clanTag": "string", "mode": "optional", "date": "optional" },
+      "response": { "success": "boolean", "data": "{ clan, snapshot, members, season* }" },
+      "notes": "Snapshot-first with fallback; honors ETag via payload/ingestion versions.",
+      "source": "web-next/src/app/api/v2/roster/route.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/insights",
+      "query": { "clanTag": "string", "date": "optional" },
+      "response": { "success": "boolean", "data": "{ smartInsightsPayload }" },
+      "source": "web-next/src/app/api/insights/route.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/insights",
+      "body": { "payload": "SmartInsightsPayload" },
+      "auth": "Bearer ADMIN_API_KEY if set",
+      "response": { "success": "boolean" },
+      "source": "web-next/src/app/api/insights/route.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/snapshots/changes",
+      "query": { "clanTag": "string" },
+      "response": { "changes": "ChangeSummary[]" },
+      "source": "web-next/src/app/api/snapshots/changes/route.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/snapshots/create",
+      "body": { "clanTag": "string" },
+      "response": { "success": "boolean" },
+      "source": "web-next/src/app/api/snapshots/create/route.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/admin/run-staged-ingestion",
+      "body": { "clanTag": "string" },
+      "response": { "success": "boolean", "data": "job metadata" },
+      "source": "web-next/src/app/api/admin/run-staged-ingestion/route.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/ingestion/health",
+      "query": { "clanTag": "string" },
+      "response": { "success": "boolean", "data": "IngestionHealthSummary" },
+      "source": "web-next/src/app/api/ingestion/health/route.ts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/war/pin",
+      "query": { "ourClanTag": "string" },
+      "response": { "success": "boolean", "data": "{ id, our_clan_tag, opponent_tag, profile_data, updated_at }|null" },
+      "source": "web-next/src/app/api/war/pin/route.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/war/pin",
+      "body": { "ourClanTag": "string", "opponentTag": "string", "profileData": "any?" },
+      "response": { "success": "boolean", "data": "row" },
+      "source": "web-next/src/app/api/war/pin/route.ts"
+    },
+    {
+      "method": "POST",
+      "path": "/api/ai-summary/generate",
+      "body": { "type": "full_analysis", "clanData": "object" },
+      "response": { "success": "boolean", "data": "summary" },
+      "source": "web-next/src/app/api/ai-summary/generate/route.ts"
+    }
+  ],
+  "store": {
+    "file": "web-next/src/lib/stores/dashboard-store.ts",
+    "state": {
+      "roster": "Roster|null",
+      "clanTag": "string",
+      "homeClan": "string|null",
+      "message": "string",
+      "status": "'idle'|'loading'|'success'|'error'",
+      "snapshotMetadata": "SnapshotMetadata|null",
+      "snapshotDetails": "SnapshotDetails|null",
+      "historyByClan": "Record<string,{items:ChangeSummary[],status:string,error?:string,lastFetched?:number,isRefreshing?:boolean}>",
+      "availableSnapshots": "Array<{ date:string, label?:string }>",
+      "selectedSnapshot": "'latest'|'live'|string",
+      "dataFetchedAt": "string|undefined",
+      "dataAge": "number|undefined",
+      "smartInsights": "SmartInsightsPayload|null",
+      "smartInsightsStatus": "'idle'|'loading'|'success'|'error'",
+      "smartInsightsError": "string|null",
+      "smartInsightsClanTag": "string|null",
+      "ingestionHealth": "IngestionHealthSummary|null",
+      "latestSnapshotVersion": "string|null",
+      "latestSnapshotId": "string|null"
+    },
+    "selectors": [
+      "clanName",
+      "memberCount",
+      "snapshotMetadata",
+      "snapshotDetails",
+      "isDataFresh",
+      "dataAge",
+      "smartInsights",
+      "smartInsightsStatus",
+      "smartInsightsError"
+    ],
+    "actions": [
+      "setRoster",
+      "setClanTag",
+      "setHomeClan",
+      "setMessage",
+      "setStatus",
+      "setSnapshotMetadata",
+      "setSnapshotDetails",
+      "clearSnapshotData",
+      "setAvailableSnapshots",
+      "setSelectedSnapshot",
+      "hydrateRosterFromCache",
+      "loadRoster",
+      "refreshData",
+      "loadIngestionHealth",
+      "loadSmartInsights",
+      "loadHistory",
+      "mutateHistoryItems",
+      "triggerIngestion",
+      "hydrateSession"
+    ]
+  },
+  "calculations": {
+    "rushPercentage": {
+      "file": "web-next/src/lib/business/calculations.ts",
+      "fn": "calculateRushPercentage(member, thCaps?)",
+      "inputs": ["Member", "optional Map<TownHall,HeroCaps>"],
+      "output": "integer 0..100",
+      "caps": "HERO_MAX_LEVELS in web-next/src/types/index.ts"
+    },
+    "donationBalance": {
+      "file": "web-next/src/lib/business/calculations.ts",
+      "fn": "calculateDonationBalance(member)",
+      "output": "{given,received,balance,isNegative}"
+    },
+    "aceScore": {
+      "file": "web-next/src/lib/ace-score.ts",
+      "fns": ["calculateAceScores(inputs, options?)", "createAceInputsFromRoster(roster)"],
+      "components": ["OVA","DVA","PAR","CAP","DON"],
+      "weights": { "ova": 0.4, "dva": 0.15, "par": 0.2, "cap": 0.15, "don": 0.1 },
+      "logisticAlpha": 1.1,
+      "availabilityClamp": [0.7, 1.05]
+    },
+    "seasonBounds": {
+      "files": [
+        "web-next/src/lib/ingestion/staged-pipeline.ts",
+        "web-next/src/lib/stores/dashboard-store.ts"
+      ],
+      "rule": "UTC season starts 1st 05:00; ends last Monday 05:00; special case 2025-10"
+    }
+  },
+  "flows": [
+    {
+      "id": "initial-load",
+      "summary": "Server builds roster snapshot-first, ClientDashboard hydrates store.",
+      "server": "buildRosterSnapshotFirst(homeClanTag,'latest')",
+      "client": "setClanTag, setRoster in ClientDashboard useEffect"
+    },
+    {
+      "id": "roster-refresh",
+      "summary": "loadRoster builds fetch plan, uses ETag to avoid re-fetch; on change, setRoster and update fingerprint.",
+      "api": "/api/v2/roster",
+      "etag": "payloadVersion strong; ingestionVersion weak"
+    },
+    {
+      "id": "smart-insights",
+      "summary": "Cache-then-network load of SmartInsightsPayload with TTL governance; optional admin POST to persist payloads.",
+      "api": ["GET /api/insights", "POST /api/insights"]
+    },
+    {
+      "id": "ingestion-monitor",
+      "summary": "Trigger staged ingestion, then poll/refresh ingestion health; auto-refresh roster when version changes.",
+      "api": ["POST /api/admin/run-staged-ingestion", "GET /api/ingestion/health"]
+    },
+    {
+      "id": "war-prep-pin",
+      "summary": "Persist pinned opponent per clan across devices.",
+      "api": ["GET /api/war/pin", "POST /api/war/pin"],
+      "table": "war_prep_pins"
+    }
+  ],
+  "database": {
+    "tables": {
+      "clans": ["id","tag","name","logo_url","created_at","updated_at"],
+      "members": [
+        "id","clan_id","tag","name","th_level","role",
+        "league","builder_league",
+        "league_id","league_name","league_trophies","league_icon_small","league_icon_medium",
+        "battle_mode_trophies","ranked_trophies","ranked_league_id","ranked_league_name","ranked_modifier",
+        "season_reset_at","equipment_flags",
+        "tenure_days","tenure_as_of","created_at","updated_at"
+      ],
+      "roster_snapshots": [
+        "id","clan_id","fetched_at","member_count","total_trophies","total_donations",
+        "payload","metadata","payload_version","ingestion_version","schema_version","computed_at",
+        "season_id","season_start","season_end"
+      ],
+      "member_snapshot_stats": [
+        "snapshot_id","member_id","th_level","role","trophies","donations","donations_received",
+        "hero_levels","activity_score","rush_percent","extras",
+        "league_id","league_name","league_trophies","battle_mode_trophies","ranked_trophies","ranked_league_id","ranked_modifier","equipment_flags",
+        "tenure_days","tenure_as_of","season_id"
+      ],
+      "metrics": ["clan_id","member_id","metric_name","metric_window","value","metadata","computed_at","season_id"],
+      "clan_snapshots": [
+        "id","clan_tag","snapshot_date","fetched_at","clan","member_summaries","player_details","current_war","war_log","capital_seasons","metadata","created_at"
+      ],
+      "ingestion_jobs": ["id","clan_tag","status","steps","logs","result","created_at","updated_at"],
+      "war_prep_pins": ["id","our_clan_tag","opponent_tag","profile_data","created_at","updated_at"]
+    },
+    "migrations": [
+      "20250115_pipeline_schema_upgrade.sql",
+      "20250115_add_season_columns.sql",
+      "20250115_add_tenure_columns.sql",
+      "20251012_create_war_prep_pins.sql"
+    ]
+  },
+  "ui": {
+    "main": "ClientDashboard",
+    "roster": ["RosterSummary","RosterTable"],
+    "quickActions": "QuickActions",
+    "insights": "components/insights/*",
+    "warPrep": "app/war/prep/page.tsx"
+  }
+}
+

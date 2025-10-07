@@ -1,19 +1,20 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from 'react';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
-import { Roster } from '@/types';
-import { AuthGate } from '@/components/layout/AuthGuard';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import { RosterTable } from '@/components/roster/RosterTable';
 import dynamic from 'next/dynamic';
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import { Roster } from '@/types';
+
+// Lazy-load all heavy/child components to avoid module-time side effects
+const AuthGate = dynamic(() => import('@/components/layout/AuthGuard').then(m => m.AuthGate), { ssr: false });
+const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+const RosterTable = dynamic(() => import('@/components/roster/RosterTable').then(m => m.RosterTable), { ssr: false });
 const RosterSummary = dynamic(() => import('@/components/roster/RosterSummary').then(m => m.RosterSummary), { ssr: false });
-import { InsightsDashboard } from '@/components/insights/InsightsDashboard';
-import CommandCenter from '@/components/CommandCenter';
-import ApplicantsPanel from '@/components/ApplicantsPanel';
-import PlayerDatabase from '@/components/PlayerDatabase';
-import ReturningPlayerReview from '@/components/returning/ReturningPlayerReview';
-import { selectors } from '@/lib/stores/dashboard-store';
+const InsightsDashboard = dynamic(() => import('@/components/insights/InsightsDashboard').then(m => m.InsightsDashboard), { ssr: false });
+const CommandCenter = dynamic(() => import('@/components/CommandCenter'), { ssr: false });
+const ApplicantsPanel = dynamic(() => import('@/components/ApplicantsPanel'), { ssr: false });
+const PlayerDatabase = dynamic(() => import('@/components/PlayerDatabase'), { ssr: false });
+const ReturningPlayerReview = dynamic(() => import('@/components/returning/ReturningPlayerReview'), { ssr: false });
 
 type Props = {
   initialRoster?: Roster | null;
