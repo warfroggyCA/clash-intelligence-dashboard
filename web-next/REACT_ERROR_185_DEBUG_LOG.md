@@ -331,5 +331,40 @@ NEXT_PUBLIC_DISABLE_AUTO_REFRESH=true
 - 🎯 **Next test:** Store initialization (Test C)
 - 🔄 **Final test:** Either store init is the problem, or we need to go deeper
 
+---
+
+## 🚨 **TEST C RESULTS - CRITICAL DISCOVERY!**
+
+**Date:** October 6, 2025  
+**Test:** `NEXT_PUBLIC_DISABLE_STORE_HYDRATION=true` + `NEXT_PUBLIC_DISABLE_STORE_SUBSCRIPTIONS=true`  
+**Result:** ❌ **FAILED BUT DIFFERENT BEHAVIOR!**
+
+### 🔍 **CRITICAL OBSERVATION:**
+
+**Content briefly rendered for a split second, THEN crashed!** This is a major clue:
+
+- 🎯 **Initial render succeeded** - Component tree mounted
+- ❌ **Post-mount crash** - Error triggered AFTER mount
+- 💡 **Key insight:** This is NOT a pure hydration mismatch!
+
+### 📊 **What This Means:**
+
+**The error is likely caused by a POST-MOUNT effect or state update:**
+
+- ⚡ **Effect loop** - A `useEffect` that triggers repeatedly
+- 🔄 **State update cascade** - A state update causing infinite re-renders
+- 📡 **Store subscription** - A store listener triggering updates
+- 🎯 **NOT a hydration issue** - The initial SSR/CSR match succeeded
+
+### 🎯 **Expert Coder Action Required:**
+
+**All wrapper components ruled out:**
+- ✅ **ClientDashboard wrapper** - Fine
+- ✅ **AuthGuard** - Fine  
+- ✅ **DashboardLayout** - Fine
+- ✅ **Store disabled** - Still errors (but renders first!)
+
+**The problem is in the CONTENT or EFFECTS, not the wrappers!**
+
 **Last Updated:** October 6, 2025  
-**Status:** 🔄 **IN PROGRESS** - Test B failed, DashboardLayout is fine, moving to Test C
+**Status:** 🚨 **CRITICAL DISCOVERY** - Error happens POST-MOUNT, not during hydration!
