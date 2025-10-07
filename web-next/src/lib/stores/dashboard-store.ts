@@ -1563,7 +1563,6 @@ export const useDashboardStore = create<DashboardState>()(
     //   },
     // }
   // )
-);
 
 // =============================================================================
 // SELECTORS
