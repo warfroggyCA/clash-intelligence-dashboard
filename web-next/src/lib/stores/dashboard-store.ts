@@ -394,8 +394,7 @@ interface DashboardState {
   latestSnapshotId?: string | null;
   lastSnapshotFetchedAt?: string | null;
   lastKnownIngestionVersion: string | null;
-  lastAutoRefreshVersion: string | null;
-  autoRefreshEnabled: boolean;
+  // auto-refresh removed
 
   currentUser: { id: string; email?: string | null } | null;
   userRoles: UserRoleRecord[];
@@ -409,9 +408,7 @@ interface DashboardState {
   canManageClanData: () => boolean;
   canSeeLeadershipFeatures: () => boolean;
   canPublishDiscord: () => boolean;
-  startSnapshotAutoRefresh: () => void;
-  stopSnapshotAutoRefresh: () => void;
-  checkForNewSnapshot: () => Promise<void>;
+  // auto-refresh removed
 
   // Actions
   setRoster: (roster: Roster | null) => void;
@@ -491,51 +488,7 @@ const DEFAULT_ACCESS_LEVEL: AccessLevel = 'leader';
 const DEFAULT_CLAN_TAG = cfg.homeClanTag;
 const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change history
 const SMART_INSIGHTS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours cache for smart insights
-const SNAPSHOT_AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-let snapshotAutoRefreshTimer: ReturnType<typeof setTimeout> | null = null;
-
-function scheduleSnapshotAutoRefreshLoop(getState: () => DashboardState) {
-  if (typeof window === 'undefined') return;
-  
-  // CRITICAL FIX: Always clean up existing timer before creating new one
-  if (snapshotAutoRefreshTimer) {
-    clearTimeout(snapshotAutoRefreshTimer);
-    snapshotAutoRefreshTimer = null;
-  }
-  
-  if (!getState().autoRefreshEnabled) {
-    return;
-  }
-  
-  snapshotAutoRefreshTimer = setTimeout(async () => {
-    try {
-      await getState().checkForNewSnapshot();
-    } catch (error) {
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('[DashboardStore] Auto-refresh check failed', error);
-      }
-    } finally {
-      // CRITICAL FIX: Only reschedule if auto-refresh is still enabled
-      if (getState().autoRefreshEnabled) {
-        scheduleSnapshotAutoRefreshLoop(getState);
-      }
-    }
-  }, SNAPSHOT_AUTO_REFRESH_INTERVAL_MS);
-}
-
-// CRITICAL FIX: Clean up auto-refresh timer on page unload to prevent memory leaks
-if (typeof window !== 'undefined') {
-  const cleanupAutoRefresh = () => {
-    if (snapshotAutoRefreshTimer) {
-      clearTimeout(snapshotAutoRefreshTimer);
-      snapshotAutoRefreshTimer = null;
-    }
-  };
-  
-  window.addEventListener('beforeunload', cleanupAutoRefresh);
-  window.addEventListener('unload', cleanupAutoRefresh);
-}
+// auto-refresh removed
 
 const initialState = {
   // Core Data
@@ -600,8 +553,6 @@ const initialState = {
   latestSnapshotId: null,
   lastSnapshotFetchedAt: null,
   lastKnownIngestionVersion: null,
-  lastAutoRefreshVersion: null,
-  autoRefreshEnabled: false,
   currentUser: null,
   userRoles: [],
   impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' as ClanRoleName : null,
@@ -1386,112 +1337,7 @@ export const useDashboardStore = create<DashboardState>()(
         }
         return state.userRoles.some((role) => role.clan_tag === clanTag && (role.role === 'leader' || role.role === 'coleader'));
       },
-      startSnapshotAutoRefresh: () => {
-        if (process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH === 'true') {
-          return;
-        }
-        if (typeof window === 'undefined') return;
-        set((state) => (state.autoRefreshEnabled ? {} : { autoRefreshEnabled: true }));
-        get().checkForNewSnapshot().catch(() => {
-          /* no-op */
-        });
-        scheduleSnapshotAutoRefreshLoop(get);
-      },
-      stopSnapshotAutoRefresh: () => {
-        if (typeof window === 'undefined') return;
-        // CRITICAL FIX: Always clean up timer when stopping auto-refresh
-        if (snapshotAutoRefreshTimer) {
-          clearTimeout(snapshotAutoRefreshTimer);
-          snapshotAutoRefreshTimer = null;
-        }
-        set({ autoRefreshEnabled: false });
-      },
-      checkForNewSnapshot: async () => {
-        if (typeof window === 'undefined') return;
-        if (typeof document !== 'undefined' && document.hidden) {
-          return;
-        }
-
-        // CRITICAL FIX: Prevent auto-refresh during page refresh/reload
-        // Add a delay after page load to prevent conflicts with page refresh
-        if (typeof window !== 'undefined' && window.performance) {
-          const navigationEntries = window.performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
-          if (navigationEntries.length > 0) {
-            const navigation = navigationEntries[0];
-            const timeSinceLoad = Date.now() - navigation.loadEventEnd;
-            // Skip auto-refresh if page was loaded less than 2 seconds ago (likely a refresh)
-            if (timeSinceLoad < 2000) {
-              return;
-            }
-          }
-        }
-
-        const state = get();
-        const activeStatus = state.status;
-        if (activeStatus === 'loading') {
-          return;
-        }
-
-        const clanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
-        if (!clanTag) return;
-
-        try {
-          const params = new URLSearchParams({ clanTag, _t: Date.now().toString() });
-          const res = await fetch(`/api/ingestion/health?${params.toString()}`, { cache: 'no-store' });
-          if (!res.ok) {
-            return;
-          }
-          const payload = await res.json();
-          if (!payload?.success) {
-            return;
-          }
-
-          const data = payload.data as IngestionHealthSummary;
-          const latestVersion = data.payloadVersion ?? null;
-          const latestSnapshotId = data.snapshotId ?? null;
-          const finishedAt = data.finishedAt ?? null;
-
-          set({
-            lastKnownIngestionVersion: latestVersion ?? state.lastKnownIngestionVersion ?? null,
-            ingestionHealth: data,
-          });
-
-          if (data.status !== 'completed') {
-            return;
-          }
-
-          const currentVersion = state.latestSnapshotVersion;
-          const currentSnapshotId = state.latestSnapshotId ?? null;
-
-          const fingerprintMatches = (() => {
-            if (latestVersion && currentVersion) {
-              return latestVersion === currentVersion;
-            }
-            if (!latestVersion && latestSnapshotId && currentSnapshotId) {
-              return latestSnapshotId === currentSnapshotId;
-            }
-            return false;
-          })();
-
-          if (fingerprintMatches) {
-            return;
-          }
-
-          const alreadyQueuedVersion = state.lastAutoRefreshVersion;
-          const candidateFingerprint = latestVersion ?? latestSnapshotId ?? finishedAt;
-          if (candidateFingerprint && alreadyQueuedVersion === candidateFingerprint) {
-            return;
-          }
-
-          set({ lastAutoRefreshVersion: candidateFingerprint ?? null });
-          showToast('New snapshot detected. Refreshing…', 'info');
-          await get().refreshData();
-        } catch (error) {
-          if (process.env.NODE_ENV === 'development') {
-            console.warn('[DashboardStore] Failed to check snapshot freshness', error);
-          }
-        }
-      },
+      // auto-refresh removed
 
       refreshData: async () => {
         const { clanTag, loadRoster, setStatus, setMessage } = get();

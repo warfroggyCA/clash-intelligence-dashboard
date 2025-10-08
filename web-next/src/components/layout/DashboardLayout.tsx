@@ -11,6 +11,7 @@ import { TabNavigation } from './TabNavigation';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
+import NewSnapshotIndicator from './NewSnapshotIndicator';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
@@ -295,6 +296,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
             )}
 
             <ThemeToggle size="sm" />
+
+            {/* New snapshot indicator (manual refresh) */}
+            <NewSnapshotIndicator />
 
             {canUseCommandRail && (
               <button
