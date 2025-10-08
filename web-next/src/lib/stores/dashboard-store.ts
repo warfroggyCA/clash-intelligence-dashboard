@@ -1801,17 +1801,21 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
   // Hydrate immediately
   hydrateFromStorage();
 
-  const state = useDashboardStore.getState();
-  // Ensure auto-refresh loop is started only once per window lifecycle
-  const w = window as any;
-  if (
-    !state.autoRefreshEnabled &&
-    !w.__ciAutoRefreshStarted &&
-    process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH !== 'true'
-  ) {
-    try {
-      w.__ciAutoRefreshStarted = true;
-    } catch {}
-    state.startSnapshotAutoRefresh();
-  }
+  // CRITICAL FIX: Delay auto-refresh to ensure hydration is complete
+  // This prevents race conditions between localStorage hydration and auto-refresh
+  setTimeout(() => {
+    const state = useDashboardStore.getState();
+    // Ensure auto-refresh loop is started only once per window lifecycle
+    const w = window as any;
+    if (
+      !state.autoRefreshEnabled &&
+      !w.__ciAutoRefreshStarted &&
+      process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH !== 'true'
+    ) {
+      try {
+        w.__ciAutoRefreshStarted = true;
+      } catch {}
+      state.startSnapshotAutoRefresh();
+    }
+  }, 0); // Use setTimeout(0) to defer to next tick, ensuring hydration is complete
 }
