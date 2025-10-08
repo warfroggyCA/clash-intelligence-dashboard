@@ -1829,7 +1829,7 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
       // Safety check 1: Ensure page is fully loaded
       document.readyState === 'complete' &&
       // Safety check 2: Wait longer after page load
-      (Date.now() - (window.performance?.navigation?.loadEventEnd || 0)) > 3000
+      (Date.now() - (window.performance?.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.loadEventEnd || 0)) > 3000
     ) {
       try {
         w.__ciAutoRefreshStarted = true;
