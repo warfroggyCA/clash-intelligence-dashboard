@@ -1412,6 +1412,20 @@ export const useDashboardStore = create<DashboardState>()(
           return;
         }
 
+        // CRITICAL FIX: Prevent auto-refresh during page refresh/reload
+        // Add a delay after page load to prevent conflicts with page refresh
+        if (typeof window !== 'undefined' && window.performance) {
+          const navigationEntries = window.performance.getEntriesByType('navigation') as PerformanceNavigationTiming[];
+          if (navigationEntries.length > 0) {
+            const navigation = navigationEntries[0];
+            const timeSinceLoad = Date.now() - navigation.loadEventEnd;
+            // Skip auto-refresh if page was loaded less than 2 seconds ago (likely a refresh)
+            if (timeSinceLoad < 2000) {
+              return;
+            }
+          }
+        }
+
         const state = get();
         const activeStatus = state.status;
         if (activeStatus === 'loading') {
