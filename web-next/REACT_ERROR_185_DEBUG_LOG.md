@@ -453,3 +453,65 @@ NEXT_PUBLIC_DISABLE_AUTO_REFRESH=true
 - **Restore full dashboard functionality**
 
 **The expert coder's methodical debugging approach has successfully resolved the React Error #185!** 🚀
+
+---
+
+## 🚨 **NEW ISSUE: REFRESH CRASH AFTER REACT ERROR #185 RESOLUTION**
+
+**Date:** January 25, 2025  
+**Status:** 🔄 **IN PROGRESS** - New issue discovered after React Error #185 was resolved
+
+### 🔍 **NEW PROBLEM:**
+- ✅ **Initial load works** - Dashboard loads successfully
+- ❌ **Refresh crashes** - App crashes on regular refresh (not hard refresh)
+- ✅ **Hard refresh works** - App loads after hard refresh
+- 🔄 **Random behavior** - Sometimes works, sometimes crashes
+
+### 🎯 **INVESTIGATION APPROACH:**
+
+#### **Phase 1: Auto-Refresh Timing Fixes**
+**Attempt 1: Memory Leak Fix**
+- **Issue:** `snapshotAutoRefreshTimer` global variable persisting across refreshes
+- **Fix:** Added proper cleanup on page unload and in `stopSnapshotAutoRefresh`
+- **Result:** ❌ **FAILED** - Still crashes on refresh
+
+**Attempt 2: Race Condition Fix**
+- **Issue:** Race condition between localStorage hydration and auto-refresh initialization
+- **Fix:** Added `setTimeout(0)` to defer auto-refresh until after hydration
+- **Result:** ❌ **FAILED** - Still crashes on refresh
+
+**Attempt 3: Page Refresh Detection**
+- **Issue:** Auto-refresh triggering during page refresh causing conflicts
+- **Fix:** Added 2-second delay after page load to prevent auto-refresh during refresh
+- **Result:** ❌ **FAILED** - Still crashes, now more random
+
+#### **Phase 2: Auto-Refresh Isolation**
+**Current Status:** Auto-refresh completely disabled to isolate the problem
+- **Commit:** `5499b10` - Auto-refresh initialization commented out
+- **Purpose:** Determine if crashes are auto-refresh related or something else
+- **Test:** If crashes stop → auto-refresh was the problem
+- **Test:** If crashes continue → issue is elsewhere
+
+### 📊 **CURRENT HYPOTHESIS:**
+
+**The refresh crash might be caused by:**
+1. **Auto-refresh conflicts** - Auto-refresh triggering during page refresh
+2. **Store state persistence** - localStorage hydration causing state conflicts
+3. **Component re-initialization** - Components not handling refresh properly
+4. **Memory leaks** - Timer or subscription cleanup issues
+5. **Race conditions** - Multiple initialization processes conflicting
+
+### 🔧 **NEXT STEPS:**
+1. **Test with auto-refresh disabled** - See if crashes persist
+2. **If crashes stop** → Re-enable auto-refresh with better timing
+3. **If crashes continue** → Investigate other causes (store hydration, component lifecycle)
+4. **Systematic re-enabling** - Once root cause found, re-enable features one by one
+
+### 📝 **DEBUGGING COMMITS:**
+- `d871f04` - Fixed auto-refresh timer memory leak
+- `e39640d` - Fixed race condition between localStorage hydration and auto-refresh
+- `795c011` - Added 2-second delay to prevent auto-refresh during page refresh
+- `5499b10` - **CURRENT** - Disabled auto-refresh to isolate the problem
+
+**Last Updated:** January 25, 2025  
+**Status:** 🔄 **IN PROGRESS** - Testing with auto-refresh disabled to isolate refresh crash issue

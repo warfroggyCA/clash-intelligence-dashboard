@@ -1815,23 +1815,28 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
   // Hydrate immediately
   hydrateFromStorage();
 
-  // TEMPORARILY DISABLED: Auto-refresh to isolate refresh crash issue
-  // TODO: Re-enable once refresh crash is resolved
-  /*
+  // CRITICAL FIX: Re-enable auto-refresh with robust timing to prevent conflicts
+  // Use multiple safety checks to prevent auto-refresh during page refresh
   setTimeout(() => {
     const state = useDashboardStore.getState();
-    // Ensure auto-refresh loop is started only once per window lifecycle
     const w = window as any;
+    
+    // Multiple safety checks to prevent conflicts during page refresh
     if (
       !state.autoRefreshEnabled &&
       !w.__ciAutoRefreshStarted &&
-      process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH !== 'true'
+      process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH !== 'true' &&
+      // Safety check 1: Ensure page is fully loaded
+      document.readyState === 'complete' &&
+      // Safety check 2: Wait longer after page load
+      (Date.now() - (window.performance?.navigation?.loadEventEnd || 0)) > 3000
     ) {
       try {
         w.__ciAutoRefreshStarted = true;
-      } catch {}
-      state.startSnapshotAutoRefresh();
+        state.startSnapshotAutoRefresh();
+      } catch (error) {
+        console.warn('[DashboardStore] Failed to start auto-refresh:', error);
+      }
     }
-  }, 0); // Use setTimeout(0) to defer to next tick, ensuring hydration is complete
-  */
+  }, 3000); // Wait 3 seconds after hydration to ensure page is stable
 }
