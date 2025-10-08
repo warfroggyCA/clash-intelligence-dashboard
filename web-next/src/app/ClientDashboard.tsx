@@ -94,12 +94,13 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
     }
   }, [initialRoster, initialClanTag, clanTag, homeClan, roster, status, loadRoster]);
 
-  // Date-aware soft refresh policy (debug gateable)
+  // Date-aware soft refresh policy (explicit opt-in)
   useEffect(() => {
-    if (process.env.NEXT_PUBLIC_DISABLE_SOFT_REFRESH === 'true') {
+    const softRefreshEnabled = process.env.NEXT_PUBLIC_ENABLE_SOFT_REFRESH === 'true';
+    if (!softRefreshEnabled) {
       if (process.env.NEXT_PUBLIC_DASHBOARD_DEBUG_LOG === 'true') {
         // eslint-disable-next-line no-console
-        console.log('[ClientDashboard] soft refresh disabled by flag');
+        console.log('[ClientDashboard] soft refresh disabled (enable flag not set)');
       }
       return;
     }

@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import RootErrorBoundary from '@/components/layout/RootErrorBoundary';
 import ClientDashboard from '@/app/ClientDashboard';
 import ShadowRootPortal from '@/components/ShadowRootPortal';
@@ -25,25 +24,7 @@ export default function ClientAppShell({ initialRoster, initialClanTag }: { init
     setMounted(true);
   }, [debug]);
 
-  // Initialize auto-refresh loop after client mount (opt-in via flag)
-  useEffect(() => {
-    const disabled = process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH === 'true';
-    if (disabled) return;
-    const start = useDashboardStore.getState().startSnapshotAutoRefresh;
-    const stop = useDashboardStore.getState().stopSnapshotAutoRefresh;
-    try {
-      if (debug) console.log('[ClientAppShell] starting auto-refresh loop');
-      start();
-    } catch (e) {
-      if (debug) console.warn('[ClientAppShell] failed to start auto-refresh', e);
-    }
-    return () => {
-      try {
-        if (debug) console.log('[ClientAppShell] stopping auto-refresh loop');
-        stop();
-      } catch {}
-    };
-  }, [debug]);
+  // Auto-refresh removed (indicator-based approach used instead)
 
   return (
     <RootErrorBoundary>
