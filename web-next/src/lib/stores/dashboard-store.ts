@@ -1815,8 +1815,9 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
   // Hydrate immediately
   hydrateFromStorage();
 
-  // CRITICAL FIX: Delay auto-refresh to ensure hydration is complete
-  // This prevents race conditions between localStorage hydration and auto-refresh
+  // TEMPORARILY DISABLED: Auto-refresh to isolate refresh crash issue
+  // TODO: Re-enable once refresh crash is resolved
+  /*
   setTimeout(() => {
     const state = useDashboardStore.getState();
     // Ensure auto-refresh loop is started only once per window lifecycle
@@ -1832,4 +1833,5 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
       state.startSnapshotAutoRefresh();
     }
   }, 0); // Use setTimeout(0) to defer to next tick, ensuring hydration is complete
+  */
 }
