@@ -497,13 +497,17 @@ let snapshotAutoRefreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 function scheduleSnapshotAutoRefreshLoop(getState: () => DashboardState) {
   if (typeof window === 'undefined') return;
+  
+  // CRITICAL FIX: Always clean up existing timer before creating new one
   if (snapshotAutoRefreshTimer) {
     clearTimeout(snapshotAutoRefreshTimer);
     snapshotAutoRefreshTimer = null;
   }
+  
   if (!getState().autoRefreshEnabled) {
     return;
   }
+  
   snapshotAutoRefreshTimer = setTimeout(async () => {
     try {
       await getState().checkForNewSnapshot();
@@ -512,9 +516,25 @@ function scheduleSnapshotAutoRefreshLoop(getState: () => DashboardState) {
         console.warn('[DashboardStore] Auto-refresh check failed', error);
       }
     } finally {
-      scheduleSnapshotAutoRefreshLoop(getState);
+      // CRITICAL FIX: Only reschedule if auto-refresh is still enabled
+      if (getState().autoRefreshEnabled) {
+        scheduleSnapshotAutoRefreshLoop(getState);
+      }
     }
   }, SNAPSHOT_AUTO_REFRESH_INTERVAL_MS);
+}
+
+// CRITICAL FIX: Clean up auto-refresh timer on page unload to prevent memory leaks
+if (typeof window !== 'undefined') {
+  const cleanupAutoRefresh = () => {
+    if (snapshotAutoRefreshTimer) {
+      clearTimeout(snapshotAutoRefreshTimer);
+      snapshotAutoRefreshTimer = null;
+    }
+  };
+  
+  window.addEventListener('beforeunload', cleanupAutoRefresh);
+  window.addEventListener('unload', cleanupAutoRefresh);
 }
 
 const initialState = {
@@ -1379,6 +1399,7 @@ export const useDashboardStore = create<DashboardState>()(
       },
       stopSnapshotAutoRefresh: () => {
         if (typeof window === 'undefined') return;
+        // CRITICAL FIX: Always clean up timer when stopping auto-refresh
         if (snapshotAutoRefreshTimer) {
           clearTimeout(snapshotAutoRefreshTimer);
           snapshotAutoRefreshTimer = null;
