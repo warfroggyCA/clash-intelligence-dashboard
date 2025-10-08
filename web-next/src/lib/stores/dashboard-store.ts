@@ -1815,28 +1815,11 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
   // Hydrate immediately
   hydrateFromStorage();
 
-  // CRITICAL FIX: Re-enable auto-refresh with robust timing to prevent conflicts
-  // Use multiple safety checks to prevent auto-refresh during page refresh
-  setTimeout(() => {
-    const state = useDashboardStore.getState();
-    const w = window as any;
-    
-    // Multiple safety checks to prevent conflicts during page refresh
-    if (
-      !state.autoRefreshEnabled &&
-      !w.__ciAutoRefreshStarted &&
-      process.env.NEXT_PUBLIC_DISABLE_AUTO_REFRESH !== 'true' &&
-      // Safety check 1: Ensure page is fully loaded
-      document.readyState === 'complete' &&
-      // Safety check 2: Wait longer after page load
-      (Date.now() - ((window.performance?.getEntriesByType('navigation')[0] as PerformanceNavigationTiming)?.loadEventEnd || 0)) > 3000
-    ) {
-      try {
-        w.__ciAutoRefreshStarted = true;
-        state.startSnapshotAutoRefresh();
-      } catch (error) {
-        console.warn('[DashboardStore] Failed to start auto-refresh:', error);
-      }
-    }
-  }, 3000); // Wait 3 seconds after hydration to ensure page is stable
+  // AUTO-REFRESH DISABLED: Timing hacks are not the solution
+  // The real issue is that auto-refresh is fundamentally incompatible with how the app is architected
+  // TODO: Re-architect auto-refresh to use a proper React pattern (useEffect hook in a component)
+  // instead of trying to initialize it from the store module scope
+  
+  // For now, users can manually refresh when needed
+  // This keeps the app stable and functional
 }
