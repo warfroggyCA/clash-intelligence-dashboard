@@ -544,4 +544,30 @@ NEXT_PUBLIC_DISABLE_AUTO_REFRESH=true
 3. **Multiple refreshes** → Continue working
 4. **Auto-refresh** → Functions normally after page is stable
 
-**Status:** 🎉 **SOLUTION DEPLOYED** - Auto-refresh re-enabled with robust safety checks
+**Status:** 🚨 **AUTO-REFRESH DISABLED** - Architecture issue identified
+
+### 🎯 **FINAL DECISION:**
+- ❌ **Auto-refresh disabled permanently** - Timing hacks are not the solution
+- ✅ **Root cause identified** - Initializing auto-refresh from store module scope is architecturally wrong
+- 🔧 **Proper solution** - Re-architect auto-refresh using React patterns (useEffect in component)
+- ✅ **App is stable** - Users can manually refresh when needed
+
+#### **Phase 4: Architecture Issue Identified**
+**Problem:** Auto-refresh is being initialized from the store module scope (outside React component tree)
+- This causes conflicts during page refresh/reload
+- Timing hacks (delays, performance checks) don't address the root cause
+- The issue is architectural, not timing-related
+
+**Proper Solution:**
+- Move auto-refresh logic into a React component using `useEffect`
+- This ensures proper lifecycle management
+- Auto-refresh will start/stop with component mount/unmount
+- React will handle cleanup automatically
+
+**Current Status:**
+- **Commit:** `b18b997` - Auto-refresh disabled, app is stable
+- **For now:** Users can manually refresh when needed
+- **Future:** Re-architect auto-refresh with proper React patterns
+
+**Last Updated:** January 25, 2025  
+**Status:** ✅ **APP STABLE** - Auto-refresh disabled, no crashes, manual refresh works
