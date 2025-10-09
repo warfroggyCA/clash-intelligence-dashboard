@@ -52,7 +52,7 @@ export function PlayerDetailDrawer({ member, onClose }: PlayerDetailDrawerProps)
             <div className="text-xs text-white/60">{member.tag}</div>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} size="lg" showText={false} />
+            <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="lg" showText={false} />
             <Button variant="ghost" size="sm" onClick={onClose} className="text-white/70">
               Close
             </Button>
@@ -61,7 +61,7 @@ export function PlayerDetailDrawer({ member, onClose }: PlayerDetailDrawerProps)
 
         <section className="px-6 py-5">
           <div className="grid grid-cols-2 gap-4 text-sm">
-            <Stat label="Trophies" value={member.trophies ?? 0} icon="🏆" />
+            <Stat label="Trophies" value={(member as any).rankedTrophies ?? member.trophies ?? 0} icon="🏆" />
             <Stat label="Donated" value={member.donations ?? 0} icon="💝" tone="positive" />
             <Stat label="Received" value={member.donationsReceived ?? 0} icon="📥" tone={donations.isNegative ? 'warning' : 'muted'} />
             <Stat label="Rush" value={`${rushPercent.toFixed(1)}%`} icon={isVeryRushed(member) ? '🔥' : isRushed(member) ? '⚠️' : '✅'} />

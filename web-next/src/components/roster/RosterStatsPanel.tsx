@@ -57,7 +57,7 @@ export const RosterStatsPanel: React.FC<RosterStatsPanelProps> = ({ className = 
         memberCount
     );
     const averageTrophies = Math.round(
-      members.reduce((sum, member) => sum + (member.trophies || 0), 0) /
+      members.reduce((sum, member) => sum + (((member as any).rankedTrophies ?? member.trophies) || 0), 0) /
         memberCount
     );
     const totalDonations = members.reduce((sum, member) => sum + (member.donations || 0), 0);

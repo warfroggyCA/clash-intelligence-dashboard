@@ -14,6 +14,15 @@ export function getSupabaseAdminClient(): SupabaseClient {
 
   client = createClient(url, serviceKey, {
     auth: { persistSession: false },
+    global: {
+      fetch: (input, init) =>
+        fetch(input, {
+          ...init,
+          cache: 'no-store',
+          next: { revalidate: 0 },
+        }),
+    },
   });
+
   return client;
 }

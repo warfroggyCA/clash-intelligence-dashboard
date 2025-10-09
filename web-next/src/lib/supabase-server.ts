@@ -9,7 +9,8 @@ let cached: SupabaseClient | null = null;
  * instead of creating ad-hoc clients so we can centralise connection logic.
  */
 export function getSupabaseServerClient(): SupabaseClient {
-  if (cached) return cached;
+  // Temporarily disable caching to debug snapshot issue
+  // if (cached) return cached;
   cached = getSupabaseAdminClient();
   return cached;
 }

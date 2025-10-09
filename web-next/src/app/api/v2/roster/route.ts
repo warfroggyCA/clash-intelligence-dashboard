@@ -8,6 +8,7 @@ import { extractHeroLevels } from '@/lib/coc';
 import { daysSinceToDate } from '@/lib/date';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Disable all caching
 
 const querySchema = z.object({
   clanTag: z.string().optional(),
@@ -87,7 +88,7 @@ export async function GET(req: NextRequest) {
 
     const { data: statsRows, error: statsError } = await supabase
       .from('member_snapshot_stats')
-      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, extras, league_id, league_name, league_trophies, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_modifier, equipment_flags, tenure_days, tenure_as_of')
+      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, extras, league_id, league_name, league_trophies, battle_mode_trophies, ranked_trophies, ranked_league_id, ranked_league_name, ranked_modifier, equipment_flags, tenure_days, tenure_as_of')
       .eq('snapshot_id', snapshot.id);
 
     if (statsError) {
@@ -345,6 +346,7 @@ export async function GET(req: NextRequest) {
       const battleModeTrophies = stat.battle_mode_trophies ?? member.battle_mode_trophies ?? null;
       const rankedTrophies = stat.ranked_trophies ?? member.ranked_trophies ?? null;
       const rankedLeagueId = stat.ranked_league_id ?? member.ranked_league_id ?? null;
+      const rankedLeagueNameFromStat = (stat as any).ranked_league_name ?? null;
       const rankedModifier = stat.ranked_modifier ?? member.ranked_modifier ?? null;
       const equipmentFlags = stat.equipment_flags ?? member.equipment_flags ?? null;
 
@@ -382,6 +384,19 @@ export async function GET(req: NextRequest) {
 
       // Enrich from payload when missing
       const pDetail = normalizedTag ? payloadDetailsMap[normalizedTag] : null;
+      // Attempt to derive ranked league name from snapshot payload details when missing
+      const rankedNameFromDetail = (() => {
+        const d = pDetail as any;
+        if (!d || typeof d !== 'object') return null;
+        // Known candidates from Oct 2025 overhaul
+        return (
+          d?.rankedLeague?.name ||
+          d?.leagueTier?.name ||
+          d?.ranked?.league?.name ||
+          d?.ranked?.leagueTier?.name ||
+          null
+        );
+      })();
       const pSummary = normalizedTag ? payloadSummaryByTag.get(normalizedTag) : null;
       const enrichedHeroLevels = stat.hero_levels ?? (pDetail ? extractHeroLevels(pDetail) : null);
       const enrichedTh = stat.th_level ?? (pSummary?.townHallLevel ?? pDetail?.townHallLevel ?? null);
@@ -409,7 +424,7 @@ export async function GET(req: NextRequest) {
         battleModeTrophies,
         rankedTrophies,
         rankedLeagueId,
-        rankedLeagueName: member.ranked_league_name ?? null,
+        rankedLeagueName: rankedLeagueNameFromStat ?? member.ranked_league_name ?? rankedNameFromDetail ?? null,
         rankedModifier,
         seasonResetAt: member.season_reset_at ?? null,
         equipmentFlags,

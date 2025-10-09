@@ -163,8 +163,8 @@ const sortMembers = (
         break;
       }
       case 'trophies':
-        aValue = a.trophies || 0;
-        bValue = b.trophies || 0;
+        aValue = (a as any).rankedTrophies ?? a.trophies ?? 0;
+        bValue = (b as any).rankedTrophies ?? b.trophies ?? 0;
         break;
       case 'donations':
         aValue = a.donations || 0;

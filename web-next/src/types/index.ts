@@ -46,6 +46,25 @@ export interface Member {
   rankedLeagueId?: number;
   rankedLeagueName?: string;
   rankedModifier?: Record<string, any> | null;
+  rankedLeague?: { id?: number; name?: string; tier?: number } | null;
+  leagueFloor?: { th: number; id?: number; name?: string } | null;
+  tournamentStats?: {
+    seasonId: string;
+    attacksUsed: number;
+    attacksMax: number;
+    offTrophies: number;
+    defTrophies: number;
+    offAvgDestruction?: number;
+    defAvgDestruction?: number;
+    rank?: number;
+    promotion?: 'promoted' | 'retained' | 'demoted' | 'decay';
+  } | null;
+  shieldStatus?: {
+    type: 'none' | 'magic' | 'legend';
+    durationHours: number;
+    lootProtected: boolean;
+    revengeAvailable: boolean;
+  } | null;
   seasonResetAt?: string;
   equipmentFlags?: Record<string, any> | null;
   league?: (
@@ -127,6 +146,9 @@ export interface Roster {
     seasonId?: string | null;
     seasonStart?: string | null;
     seasonEnd?: string | null;
+    // Ranked defense freeze metadata (if provided)
+    defenseSnapshotTimestamp?: string | null;
+    defenseSnapshotLayoutId?: string | null;
   };
   snapshotDetails?: {
     currentWar?: {
@@ -168,7 +190,7 @@ export type HeroCaps = Partial<Record<"bk" | "aq" | "gw" | "rc" | "mp", number>>
 /**
  * Town Hall level type
  */
-export type TownHallLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16;
+export type TownHallLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17;
 
 // =============================================================================
 // ACTIVITY & EVENTS
@@ -671,9 +693,12 @@ export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
   11: { bk: 50, aq: 50, gw: 20, mp: 15 },
   12: { bk: 65, aq: 65, gw: 40, mp: 20 },
   13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 50 },
-  14: { bk: 80, aq: 80, gw: 55, rc: 30, mp: 55 },
+  // Oct 2025: BK/AQ/GW +5 moved down to TH14
+  14: { bk: 85, aq: 85, gw: 60, rc: 30, mp: 55 },
   15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 60 },
-  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 }
+  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 },
+  // Placeholder for TH17 (icon support exists); caps to be confirmed
+  17: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 },
 };
 
 // =============================================================================

@@ -202,6 +202,8 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       activity_score: null,
       rush_percent: rushPercent,
       extras: buildExtras(summary, detail),
+      ranked_league_id: detail?.leagueTier?.id ?? null,
+      ranked_league_name: detail?.leagueTier?.name ?? null,
     };
   }).filter(Boolean) as any[];
 

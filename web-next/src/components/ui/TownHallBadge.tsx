@@ -30,7 +30,8 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
   showBox = true,
   size = 'md'
 }) => {
-  const thImage = `/assets/clash/Townhalls/TH${level}.png`;
+  const safeLevel = Math.max(1, Number(level) || 1);
+  const thImage = `/assets/clash/Townhalls/TH${safeLevel}.png`;
   const dimension = sizePixels[size];
   
   if (!showBox) {

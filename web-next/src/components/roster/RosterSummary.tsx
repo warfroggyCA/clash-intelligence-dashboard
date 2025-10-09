@@ -176,7 +176,7 @@ const RosterSummaryInner = () => {
     );
 
     const averageTrophies = Math.round(
-      members.reduce((sum, member) => sum + (member.trophies || 0), 0) /
+      members.reduce((sum, member) => sum + (((member as any).rankedTrophies ?? member.trophies) || 0), 0) /
         memberCount
     );
 

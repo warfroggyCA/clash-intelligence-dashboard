@@ -64,11 +64,11 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
           <h3 className="text-xl font-semibold text-high-contrast drop-shadow-sm">{member.name}</h3>
           <div className="text-xs text-muted-contrast">{member.tag}</div>
         </div>
-        <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} size="lg" showText={false} />
+        <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="lg" showText={false} />
       </div>
 
       <div className="grid grid-cols-2 gap-3">
-        <StatChip label="Trophies" value={member.trophies ?? 0} icon="🏆" />
+        <StatChip label="Trophies" value={(member as any).rankedTrophies ?? member.trophies ?? 0} icon="🏆" />
         <StatChip label="Rush" value={`${rushPercent.toFixed(1)}%`} icon={rushPercent >= 70 ? '🔥' : rushPercent >= 40 ? '⚠️' : '✅'} />
         <StatChip label="Donated" value={member.donations ?? 0} icon="💝" tone="positive" />
         <StatChip

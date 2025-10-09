@@ -576,8 +576,9 @@ export const useDashboardStore = create<DashboardState>()(
             const depthKey = '__dsSetDepth';
             const w: any = typeof window !== 'undefined' ? window : {};
             w[depthKey] = (w[depthKey] || 0) + 1;
+            const keys = typeof partial === 'function' ? ['fn'] : Object.keys(partial || {});
             // eslint-disable-next-line no-console
-            console.log('[DashboardStore.set]', { depth: w[depthKey], keys: typeof partial === 'function' ? 'fn' : Object.keys(partial || {}) });
+            console.log('[DashboardStore.set depth=%d keys=%s]', w[depthKey], keys.join(','));
             const result = baseSet(partial as any, replace);
             w[depthKey] -= 1;
             return result;

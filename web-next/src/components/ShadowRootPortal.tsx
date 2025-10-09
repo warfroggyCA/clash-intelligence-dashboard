@@ -8,34 +8,39 @@ export default function ShadowRootPortal({ children }: { children: React.ReactNo
   const [shadowRoot, setShadowRoot] = useState<ShadowRoot | null>(null);
 
   useEffect(() => {
-    if (!hostRef.current) return;
-    // Create a shadow root to isolate from DOM mutations by extensions
-    const root = hostRef.current.attachShadow({ mode: 'open' });
-    // Adopt base styles by cloning existing stylesheets into the shadow root
-    const styleSheets = Array.from(document.styleSheets) as CSSStyleSheet[];
-    const frag = document.createDocumentFragment();
-    for (const sheet of styleSheets) {
-      try {
-        // For same-origin stylesheets, re-create a <style> tag with the rules
-        const cssRules = (sheet.cssRules || []) as any;
-        const cssText = Array.from(cssRules as CSSRule[]).map((r: CSSRule) => r.cssText).join('\n');
-        if (cssText) {
-          const styleEl = document.createElement('style');
-          styleEl.textContent = cssText;
-          frag.appendChild(styleEl);
-        }
-      } catch {
-        // Cross-origin sheets: fall back to link clone where possible
-        const ownerNode = sheet && (sheet.ownerNode as HTMLLinkElement | HTMLStyleElement | null);
-        if (ownerNode && ownerNode.tagName === 'LINK') {
-          const link = document.createElement('link');
-          link.rel = 'stylesheet';
-          link.href = (ownerNode as HTMLLinkElement).href;
-          frag.appendChild(link);
+    const host = hostRef.current;
+    if (!host) return;
+    // Reuse an existing shadow root if one is already attached (React Strict Mode re-run safe)
+    const existing = (host as any).shadowRoot as ShadowRoot | null;
+    const root = existing ?? host.attachShadow({ mode: 'open' });
+    // Only inject styles the first time we create the shadow root
+    if (!existing) {
+      // Adopt base styles by cloning existing stylesheets into the shadow root
+      const styleSheets = Array.from(document.styleSheets) as CSSStyleSheet[];
+      const frag = document.createDocumentFragment();
+      for (const sheet of styleSheets) {
+        try {
+          // For same-origin stylesheets, re-create a <style> tag with the rules
+          const cssRules = (sheet.cssRules || []) as any;
+          const cssText = Array.from(cssRules as CSSRule[]).map((r: CSSRule) => r.cssText).join('\n');
+          if (cssText) {
+            const styleEl = document.createElement('style');
+            styleEl.textContent = cssText;
+            frag.appendChild(styleEl);
+          }
+        } catch {
+          // Cross-origin sheets: fall back to link clone where possible
+          const ownerNode = sheet && (sheet.ownerNode as HTMLLinkElement | HTMLStyleElement | null);
+          if (ownerNode && ownerNode.tagName === 'LINK') {
+            const link = document.createElement('link');
+            link.rel = 'stylesheet';
+            link.href = (ownerNode as HTMLLinkElement).href;
+            frag.appendChild(link);
+          }
         }
       }
+      root.appendChild(frag);
     }
-    root.appendChild(frag);
     setShadowRoot(root);
     return () => setShadowRoot(null);
   }, []);
@@ -46,4 +51,3 @@ export default function ShadowRootPortal({ children }: { children: React.ReactNo
     </div>
   );
 }
-

@@ -96,9 +96,11 @@ export async function fetchFullClanSnapshot(
   ]) as [any[], any, any[]];
 
   const playerDetails: Record<string, any> = {};
+  console.log(`[FullSnapshot] fetchPlayers=${fetchPlayers}, members.length=${members?.length ?? 0}`);
   if (fetchPlayers) {
     let cacheHits = 0;
     let cacheMisses = 0;
+    console.log(`[FullSnapshot] Starting player detail fetch for ${members?.length ?? 0} members`);
 
     // Process players with timeout and better error handling
     const playerPromises = members.map(async (member: any) => {
@@ -113,7 +115,7 @@ export async function fetchFullClanSnapshot(
 
       // Add timeout to prevent hanging
       const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error(`Timeout fetching player ${tag}`)), 30000); // 30 second timeout
+        setTimeout(() => reject(new Error(`Timeout fetching player ${tag}`)), 60000); // 60 second timeout (increased from 30s)
       });
 
       await rateLimiter.acquire();
@@ -134,9 +136,10 @@ export async function fetchFullClanSnapshot(
     // Wait for all players with timeout
     await Promise.allSettled(playerPromises);
 
-    if (cacheHits || cacheMisses) {
-      console.log(`[FullSnapshot] Player detail cache stats — hits: ${cacheHits}, misses: ${cacheMisses}`);
-    }
+    const playerDetailCount = Object.keys(playerDetails).length;
+    console.log(`[FullSnapshot] Player detail cache stats — hits: ${cacheHits}, misses: ${cacheMisses}, total: ${playerDetailCount}`);
+  } else {
+    console.log('[FullSnapshot] Player detail fetch SKIPPED (fetchPlayers=false)');
   }
 
   const memberSummaries: MemberSummary[] = members.map((member: any) => {
