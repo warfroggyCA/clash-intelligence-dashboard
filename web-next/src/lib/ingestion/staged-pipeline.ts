@@ -416,6 +416,9 @@ async function runFetchPhase(jobId: string, clanTag: string): Promise<PhaseResul
     await logPhase(jobId, 'fetch', 'info', 'Fetch phase completed', {
       memberCount: snapshot.memberSummaries.length,
       warLogEntries: snapshot.metadata.warLogEntries,
+      playerDetailSuccessCount: snapshot.metadata.playerDetailSuccessCount ?? 0,
+      playerDetailFailureCount: snapshot.metadata.playerDetailFailureCount ?? 0,
+      playerDetailFailures: snapshot.metadata.playerDetailFailures ?? [],
     });
 
     return {

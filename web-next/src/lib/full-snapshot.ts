@@ -10,7 +10,6 @@ import {
   getClanCurrentWar,
   getClanCapitalRaidSeasons,
 } from './coc';
-import { rateLimiter } from './rate-limiter';
 import { getSupabaseAdminClient } from './supabase-admin';
 import { loadPlayerDetailFromCache, savePlayerDetailToCache } from './player-cache';
 
@@ -50,6 +49,10 @@ export interface FullClanSnapshot {
     snapshotDate?: string;
     fetchedAt?: string;
     clanName?: string | null;
+    playerDetailFailures?: string[];
+    playerDetailFailureCount?: number;
+    playerDetailSuccessCount?: number;
+    playerDetailErrorSamples?: Array<{ tag: string; message: string }>;
   };
 }
 
@@ -97,9 +100,12 @@ export async function fetchFullClanSnapshot(
 
   const playerDetails: Record<string, any> = {};
   console.log(`[FullSnapshot] fetchPlayers=${fetchPlayers}, members.length=${members?.length ?? 0}`);
+  const snapshotMetadataExtras: Partial<FullClanSnapshot['metadata']> = {};
   if (fetchPlayers) {
     let cacheHits = 0;
     let cacheMisses = 0;
+    const failedPlayers: string[] = [];
+    const playerErrors: Array<{ tag: string; message: string }> = [];
     console.log(`[FullSnapshot] Starting player detail fetch for ${members?.length ?? 0} members`);
 
     // Process players with timeout and better error handling
@@ -118,18 +124,18 @@ export async function fetchFullClanSnapshot(
         setTimeout(() => reject(new Error(`Timeout fetching player ${tag}`)), 60000); // 60 second timeout (increased from 30s)
       });
 
-      await rateLimiter.acquire();
       try {
         const detailPromise = getPlayer(tag);
         const detail = await Promise.race([detailPromise, timeoutPromise]);
         playerDetails[tag] = detail;
         cacheMisses += 1;
         await savePlayerDetailToCache(tag, detail);
-      } catch (error) {
-        console.error('[FullSnapshot] Failed to fetch player detail', member.tag, error);
+      } catch (error: any) {
+        const message = error?.message || 'Unknown error';
+        failedPlayers.push(tag);
+        playerErrors.push({ tag, message });
+        console.error('[FullSnapshot] Failed to fetch player detail', member.tag, message);
         // Don't let one player failure block the entire process
-      } finally {
-        rateLimiter.release();
       }
     });
 
@@ -138,8 +144,36 @@ export async function fetchFullClanSnapshot(
 
     const playerDetailCount = Object.keys(playerDetails).length;
     console.log(`[FullSnapshot] Player detail cache stats — hits: ${cacheHits}, misses: ${cacheMisses}, total: ${playerDetailCount}`);
+    if (failedPlayers.length > 0) {
+      console.warn('[FullSnapshot] Player detail fetch failures', {
+        failedCount: failedPlayers.length,
+        totalMembers: members?.length ?? 0,
+        failedPlayers,
+      });
+    }
+
+    if (members?.length) {
+      const failureRatio = failedPlayers.length / members.length;
+      if (failureRatio >= 0.99) {
+        const sample = playerErrors[0]?.message || 'all player detail requests failed';
+        throw new Error(`Player detail fetch failed for all members (${members.length}). Last error: ${sample}`);
+      }
+      if (failureRatio >= 0.6) {
+        const sample = playerErrors[0]?.message || 'high failure rate';
+        throw new Error(`Player detail fetch failure rate ${(failureRatio * 100).toFixed(1)}% (${failedPlayers.length}/${members.length}). Sample error: ${sample}`);
+      }
+    }
+
+    snapshotMetadataExtras.playerDetailFailures = failedPlayers;
+    snapshotMetadataExtras.playerDetailFailureCount = failedPlayers.length;
+    snapshotMetadataExtras.playerDetailSuccessCount = playerDetailCount;
+    snapshotMetadataExtras.playerDetailErrorSamples = playerErrors.slice(0, 5);
   } else {
     console.log('[FullSnapshot] Player detail fetch SKIPPED (fetchPlayers=false)');
+    snapshotMetadataExtras.playerDetailSuccessCount = 0;
+    snapshotMetadataExtras.playerDetailFailureCount = 0;
+    snapshotMetadataExtras.playerDetailFailures = [];
+    snapshotMetadataExtras.playerDetailErrorSamples = [];
   }
 
   const memberSummaries: MemberSummary[] = members.map((member: any) => {
@@ -165,6 +199,17 @@ export async function fetchFullClanSnapshot(
 
   const fetchedAt = new Date().toISOString();
 
+  const metadata = {
+    memberCount: members.length,
+    warLogEntries: warLog.length,
+    capitalSeasons: capitalRaidSeasons.length,
+    version: SNAPSHOT_VERSION,
+    snapshotDate: fetchedAt.slice(0, 10),
+    fetchedAt,
+    clanName: clan?.name ?? null,
+    ...snapshotMetadataExtras,
+  };
+
   return {
     clanTag: normalizedTag,
     fetchedAt,
@@ -174,15 +219,7 @@ export async function fetchFullClanSnapshot(
     currentWar,
     warLog,
     capitalRaidSeasons,
-    metadata: {
-      memberCount: members.length,
-      warLogEntries: warLog.length,
-      capitalSeasons: capitalRaidSeasons.length,
-      version: SNAPSHOT_VERSION,
-      snapshotDate: fetchedAt.slice(0, 10),
-      fetchedAt,
-      clanName: clan?.name ?? null,
-    },
+    metadata,
   };
 }
 
