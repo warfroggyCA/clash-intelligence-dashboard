@@ -305,7 +305,7 @@ const RosterSummaryInner = () => {
     const tiles: StatTileProps[] = [
       { icon: '👥', label: 'Members', value: formatNumber(stats.memberCount), hint: 'Active members currently on the roster snapshot.' },
       {
-        icon: <TownHallBadge level={stats.averageTownHall || 0} size="sm" />,
+        icon: <TownHallBadge level={stats.averageTownHall || 0} size="md" />,
         label: 'Avg. Town Hall',
         value: stats.averageTownHall ? `TH${stats.averageTownHall}` : '—',
         hint: 'Average Town Hall level across members with a recorded TH value.',
@@ -317,7 +317,7 @@ const RosterSummaryInner = () => {
       tiles.push({
         icon: <LeagueBadge 
           league={stats.mostCommonLeague} 
-          size="lg" 
+          size="xl" 
           showText={false} 
         />,
         label: 'Common League',
