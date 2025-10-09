@@ -293,9 +293,12 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
 
-  // CRITICAL FIX: Use shallow comparison instead of array reference
-  // This prevents infinite loops when Zustand creates new array references
-  const members = useDashboardStore((state) => state.roster?.members ?? [], shallow);
+  // CRITICAL FIX: Extract members with useMemo on member count for stability
+  // Using roster?.members directly creates new array refs - use length as dependency
+  const memberCount = useDashboardStore((state) => state.roster?.members?.length ?? 0);
+  const members = useMemo(() => {
+    return useDashboardStore.getState().roster?.members ?? [];
+  }, [memberCount]);
 
   // CRITICAL FIX: Use members.length as stable dependency instead of roster object
   const aceScoresByTag = useMemo(() => {
