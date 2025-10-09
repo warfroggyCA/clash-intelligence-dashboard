@@ -454,6 +454,7 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
       const normalized = normalizeTag(summary.tag);
       const detail = snapshot.playerDetails?.[normalized];
       const league = summary.league || detail?.league;
+      const leagueTier = detail?.leagueTier; // NEW: Extract ranked league tier
       const { donations, donationsReceived } = deriveDonations(summary, detail);
       const heroLevels = buildHeroLevels(detail);
       const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
@@ -478,8 +479,8 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
         league_icon_medium: league?.iconUrls?.medium,
         battle_mode_trophies: league?.trophies, // TODO: Split when battle mode data is available
         ranked_trophies: league?.trophies, // TODO: Split when ranked data is available
-        ranked_league_id: league?.id,
-        ranked_league_name: league?.name,
+        ranked_league_id: leagueTier?.id ?? null, // FIXED: Use leagueTier instead of league
+        ranked_league_name: leagueTier?.name ?? null, // FIXED: Use leagueTier instead of league
         ranked_modifier: league?.modifier,
         equipment_flags: detail?.equipment,
         trophies,

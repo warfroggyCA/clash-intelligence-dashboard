@@ -449,7 +449,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       {/* Name Column */}
       <TableCell className="border-r border-gray-300" isActiveSort={isActiveColumn('name')}>
         <div className="flex items-center space-x-3">
-          <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} size="lg" showText={false} />
+          <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="lg" showText={false} />
           <div className="flex flex-col">
             <button
               onClick={(e) => {
@@ -503,7 +503,7 @@ export const TableRow: React.FC<TableRowProps> = ({
       >
         <div className="flex items-center justify-center">
           <span className="font-semibold text-clash-gold">
-            {formatNumber(member.trophies)}
+            {formatNumber((member as any).rankedTrophies ?? member.trophies ?? 0)}
           </span>
           {isRushedPlayer && (
             <span

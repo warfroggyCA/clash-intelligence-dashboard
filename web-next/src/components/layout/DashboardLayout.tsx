@@ -175,6 +175,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
   // instead of on every render to prevent React Error #185
 
   // Auto-load home clan if no clan is currently loaded and home clan exists (debug gateable)
+  const hasAttemptedHomeLoad = useRef(false);
+
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_DISABLE_AUTO_LOAD_HOME === 'true') {
       if (process.env.NEXT_PUBLIC_DASHBOARD_DEBUG_LOG === 'true') {
@@ -183,11 +185,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
       }
       return;
     }
-    // Only run on client side after hydration
     if (typeof window === 'undefined') return;
-    
-    // Auto-load home clan if no clan is currently loaded and home clan exists
-    if (!clanTag && homeClan) {
+
+    if (clanTag) {
+      hasAttemptedHomeLoad.current = true;
+      return;
+    }
+
+    if (!hasAttemptedHomeLoad.current && homeClan) {
+      hasAttemptedHomeLoad.current = true;
       handleLoadHome();
     }
   }, [clanTag, homeClan, handleLoadHome]);

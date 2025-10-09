@@ -13,16 +13,22 @@ export default function NewSnapshotIndicator() {
 
   const normalizedTag = useMemo(() => normalizeTag(clanTag) || clanTag, [clanTag]);
   const [hasUpdate, setHasUpdate] = useState(false);
-  const [checking, setChecking] = useState(false);
+  // Use a ref to avoid state-driven re-renders causing effect loops
+  const checkingRef = useRef(false);
   const lastCheckedRef = useRef<number>(0);
 
+  const latestVersionRef = useRef<string | null>(null);
+  const latestIdRef = useRef<string | null>(null);
+  useEffect(() => { latestVersionRef.current = latestVersion ?? null; }, [latestVersion]);
+  useEffect(() => { latestIdRef.current = latestId ?? null; }, [latestId]);
+
   const checkForNew = useCallback(async () => {
-    if (!normalizedTag || checking) return;
+    if (!normalizedTag || checkingRef.current) return;
     const now = Date.now();
     // Throttle to at most once per 30 minutes
     if (now - lastCheckedRef.current < 30 * 60 * 1000) return;
     lastCheckedRef.current = now;
-    setChecking(true);
+    checkingRef.current = true;
     try {
       const params = new URLSearchParams({ clanTag: normalizedTag, _t: String(now) });
       const res = await fetch(`/api/ingestion/health?${params.toString()}`, { cache: 'no-store' });
@@ -34,21 +40,20 @@ export default function NewSnapshotIndicator() {
       const serverSnapshotId: string | null = data?.snapshotId ?? null;
       const status: string | null = data?.status ?? null;
       if (status !== 'completed') return;
-      const currentVersion = latestVersion ?? null;
-      const currentId = latestId ?? null;
+      const currentVersion = latestVersionRef.current;
+      const currentId = latestIdRef.current;
       const differs = (() => {
         if (serverVersion && currentVersion) return serverVersion !== currentVersion;
         if (!serverVersion && serverSnapshotId && currentId) return serverSnapshotId !== currentId;
-        // if we have neither, don’t spam
         return false;
       })();
       if (differs) setHasUpdate(true);
     } catch {
       // silent
     } finally {
-      setChecking(false);
+      checkingRef.current = false;
     }
-  }, [normalizedTag, checking, latestVersion, latestId]);
+  }, [normalizedTag]);
 
   useEffect(() => {
     const onVis = () => {
@@ -85,4 +90,3 @@ export default function NewSnapshotIndicator() {
     </button>
   );
 }
-

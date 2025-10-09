@@ -216,22 +216,37 @@ export async function checkForRejoins(
   
   const rejoins: RejoinNotification[] = [];
   
+  // Server-side noise filters: only return credible, recent rejoins
+  const minDaysAway = Number(process.env.RPR_MIN_DAYS_AWAY || '1');
+  const maxDepartureAgeDays = Number(process.env.RPR_MAX_DEPARTURE_AGE_DAYS || '45');
+
   for (const departure of departures) {
-    if (!departure.resolved && currentMemberTags.has(normalizeTag(departure.memberTag))) {
-      const departureDate = new Date(departure.departureDate);
-      const now = new Date();
-      const daysAway = Math.floor((now.getTime() - departureDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      const currentMember = currentMembers.find(m => normalizeTag(m.tag) === normalizeTag(departure.memberTag));
-      
-      rejoins.push({
-        memberTag: departure.memberTag,
-        memberName: currentMember?.name || departure.memberName,
-        previousDeparture: departure,
-        rejoinDate: now.toISOString(),
-        daysAway
-      });
-    }
+    if (departure.resolved) continue;
+
+    const tag = normalizeTag(departure.memberTag);
+    if (!currentMemberTags.has(tag)) continue; // not currently in clan → not a rejoin
+
+    // Validate departure date
+    const departureDate = departure.departureDate ? new Date(departure.departureDate) : null;
+    if (!departureDate || Number.isNaN(departureDate.getTime())) continue;
+
+    const now = new Date();
+    const daysAway = Math.floor((now.getTime() - departureDate.getTime()) / (1000 * 60 * 60 * 24));
+
+    // Must be away for at least minDaysAway (avoid trivial flickers)
+    if (!(typeof daysAway === 'number' && daysAway >= minDaysAway)) continue;
+    // Ignore very old departures (likely already back long-term or bad data)
+    if (daysAway > maxDepartureAgeDays) continue;
+
+    const currentMember = currentMembers.find(m => normalizeTag(m.tag) === tag);
+
+    rejoins.push({
+      memberTag: departure.memberTag,
+      memberName: currentMember?.name || departure.memberName,
+      previousDeparture: departure,
+      rejoinDate: now.toISOString(),
+      daysAway
+    });
   }
   
   return rejoins;

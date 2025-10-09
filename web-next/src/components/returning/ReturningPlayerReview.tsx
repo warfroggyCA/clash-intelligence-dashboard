@@ -44,6 +44,16 @@ function addLocalReturnNote(tag: string, name: string, noteText?: string, awardT
 export default function ReturningPlayerReview() {
   const clanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
   const roster = useDashboardStore((s) => s.roster);
+  // Use a stable fingerprint; avoid volatile client-side timestamps
+  const snapshotFingerprint = useDashboardStore((s) =>
+    s.latestSnapshotVersion ||
+    s.latestSnapshotId ||
+    s.snapshotMetadata?.payloadVersion ||
+    s.snapshotMetadata?.ingestionVersion ||
+    s.snapshotMetadata?.computedAt ||
+    s.snapshotMetadata?.fetchedAt ||
+    null
+  );
   const rosterByTag = useMemo(() => {
     const map = new Map<string, string>();
     (roster?.members || []).forEach((m) => map.set(normalizeTag(m.tag), m.name));
@@ -81,19 +91,50 @@ export default function ReturningPlayerReview() {
       if (res.ok && json.success) {
         const rejoins: Rejoin[] = Array.isArray(json.data?.rejoins) ? json.data.rejoins : [];
         const dismissed = getDismissed();
-        const filtered = rejoins.filter((r) => !dismissed.has(normalizeTag(r.memberTag)));
-        if (filtered.length > 0) {
-          setQueue(filtered);
+        const minDaysAway = Number(process.env.NEXT_PUBLIC_RPR_MIN_DAYS_AWAY || '3');
+        // Valid rejoin: not dismissed, has a real departure date, and away long enough
+        const valid = rejoins
+          .filter((r) => !!r?.previousDeparture?.departureDate)
+          .filter((r) => typeof r.daysAway === 'number' && r.daysAway >= minDaysAway)
+          .filter((r) => !dismissed.has(normalizeTag(r.memberTag)));
+
+        if (valid.length > 0) {
+          const clanKey = (clanTag || '').toUpperCase();
+          // Snooze gating: avoid resurfacing within a window regardless of fingerprint
+          const snoozeHours = Number(process.env.NEXT_PUBLIC_RPR_SNOOZE_HOURS || '24');
+          const lastShownKey = `returning_review_last_shown:${clanKey}`;
+          try {
+            const last = Number(localStorage.getItem(lastShownKey) || '0');
+            if (last && Date.now() - last < snoozeHours * 60 * 60 * 1000) {
+              return;
+            }
+          } catch {}
+
+          // Fingerprint gating: show at most once per snapshot fingerprint
+          const versionKey = (snapshotFingerprint || 'unknown').toString();
+          const shownKey = `returning_review_shown:${clanKey}:${versionKey}`;
+          try {
+            if (localStorage.getItem(shownKey)) {
+              return; // already surfaced for this snapshot
+            }
+          } catch {}
+
+          setQueue(valid);
           setIndex(0);
           setAward(0);
           setNote('');
           setOpen(true);
+
+          try {
+            localStorage.setItem(shownKey, '1');
+            localStorage.setItem(lastShownKey, String(Date.now()));
+          } catch {}
         }
       }
     } catch (e) {
       // silent
     }
-  }, [clanTag, getDismissed]);
+  }, [clanTag, snapshotFingerprint, getDismissed]);
 
   useEffect(() => {
     // Trigger whenever roster is available to ensure it re-appears until dismissed or resolved

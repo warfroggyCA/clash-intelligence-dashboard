@@ -72,6 +72,26 @@ interface ApiRosterMember {
   tenure_days?: number | null;
   tenure_as_of?: string | null;
   metrics?: Record<string, { value: number; metadata?: Record<string, any> | null }>;
+  // Oct 2025 optional fields
+  rankedLeague?: { id?: number; name?: string; tier?: number } | null;
+  leagueFloor?: { th: number; id?: number; name?: string } | null;
+  tournamentStats?: {
+    seasonId: string;
+    attacksUsed: number;
+    attacksMax: number;
+    offTrophies: number;
+    defTrophies: number;
+    offAvgDestruction?: number;
+    defAvgDestruction?: number;
+    rank?: number;
+    promotion?: 'promoted' | 'retained' | 'demoted' | 'decay';
+  } | null;
+  shieldStatus?: {
+    type: 'none' | 'magic' | 'legend';
+    durationHours: number;
+    lootProtected: boolean;
+    revengeAvailable: boolean;
+  } | null;
 }
 
 interface ApiRosterResponse {
@@ -163,6 +183,10 @@ function mapMember(apiMember: ApiRosterMember): Member {
     rankedTrophies: apiMember.rankedTrophies ?? null,
     rankedLeagueId: apiMember.rankedLeagueId ?? null,
     rankedLeagueName: apiMember.rankedLeagueName ?? null,
+    rankedLeague: apiMember.rankedLeague ?? null,
+    leagueFloor: apiMember.leagueFloor ?? null,
+    tournamentStats: apiMember.tournamentStats ?? null,
+    shieldStatus: apiMember.shieldStatus ?? null,
     rankedModifier,
     seasonResetAt: apiMember.seasonResetAt ?? null,
     equipmentFlags,
@@ -244,6 +268,8 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
       seasonId: resolvedSeasonId,
       seasonStart: resolvedSeasonStart,
       seasonEnd: resolvedSeasonEnd,
+      defenseSnapshotTimestamp: metadata.defenseSnapshotTimestamp ?? null,
+      defenseSnapshotLayoutId: metadata.defenseSnapshotLayoutId ?? null,
     },
     snapshotDetails: metadata.snapshotDetails ?? null,
   } satisfies Roster;

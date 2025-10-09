@@ -209,7 +209,7 @@ export const MobileCard: React.FC<MobileCardProps> = ({
         </div>
         <div className="flex items-center gap-2">
           <span className="text-white/50">Trophies</span>
-          <span className="font-semibold text-white">{formatNumber(member.trophies)}</span>
+          <span className="font-semibold text-white">{formatNumber((member as any).rankedTrophies ?? member.trophies ?? 0)}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-white/50">Donated</span>

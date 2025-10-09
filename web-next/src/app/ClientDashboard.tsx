@@ -8,8 +8,10 @@ import { Roster } from '@/types';
 // Lazy-load all heavy/child components to avoid module-time side effects
 const AuthGate = dynamic(() => import('@/components/layout/AuthGuard').then(m => m.AuthGate), { ssr: false });
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
-const RosterTable = dynamic(() => import('@/components/roster/RosterTable').then(m => m.RosterTable), { ssr: false });
+// Default export component
+const RosterTable = dynamic(() => import('@/components/roster/RosterTable'), { ssr: false });
 const RosterSummary = dynamic(() => import('@/components/roster/RosterSummary').then(m => m.RosterSummary), { ssr: false });
+const TournamentCard = dynamic(() => import('@/components/roster/TournamentCard'), { ssr: false });
 const InsightsDashboard = dynamic(() => import('@/components/insights/InsightsDashboard').then(m => m.InsightsDashboard), { ssr: false });
 const CommandCenter = dynamic(() => import('@/components/CommandCenter'), { ssr: false });
 const ApplicantsPanel = dynamic(() => import('@/components/ApplicantsPanel'), { ssr: false });
@@ -41,18 +43,16 @@ export default function ClientDashboard({ initialRoster, initialClanTag }: Props
 }
 
 function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
-  const {
-    activeTab,
-    homeClan,
-    clanTag,
-    setClanTag,
-    setHomeClan,
-    setRoster,
-    loadRoster,
-    roster,
-    status,
-    refreshData,
-  } = useDashboardStore();
+  // Use selective subscriptions instead of destructuring to prevent unnecessary re-renders
+  const activeTab = useDashboardStore((state) => state.activeTab);
+  const homeClan = useDashboardStore((state) => state.homeClan);
+  const clanTag = useDashboardStore((state) => state.clanTag);
+  const roster = useDashboardStore((state) => state.roster);
+  const status = useDashboardStore((state) => state.status);
+  
+  // Actions don't change, so they're safe to destructure
+  const { setClanTag, setHomeClan, setRoster, loadRoster, refreshData } = useDashboardStore();
+  
   const dataAgeHours = useDashboardStore(selectors.dataAge);
   const hasInitialized = useRef(false);
 
@@ -126,7 +126,8 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
     };
     document.addEventListener('visibilitychange', onVis);
     return () => document.removeEventListener('visibilitychange', onVis);
-  }, [roster, dataAgeHours, clanTag, homeClan, initialClanTag, refreshData]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roster, dataAgeHours, clanTag, homeClan, initialClanTag]); // refreshData removed to prevent infinite loop
 
   const renderTabContent = () => {
     const disableRosterSummary = process.env.NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY === 'true';
@@ -135,6 +136,7 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
       case 'roster':
         return (
           <div className="space-y-6">
+            <TournamentCard />
             {disableRosterSummary ? (
               <div className="rounded-2xl border border-brand-border/70 bg-brand-surfaceSubtle/70 p-4 text-slate-200">
                 Roster Summary disabled by NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY.
