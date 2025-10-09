@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useEffect, useState, type ReactNode } from 'react';
+import React, { useMemo, useRef, useEffect, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { formatDistanceToNow } from 'date-fns';
 import { GlassCard, TownHallBadge, LeagueBadge, Modal } from '@/components/ui';
@@ -71,23 +71,7 @@ const formatDurationMs = (ms: number | null | undefined) => {
   return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
 };
 
-// Split into a shell + inner to avoid touching the store before mount
-export const RosterSummary = () => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
-      // eslint-disable-next-line no-console
-      console.log('[RosterSummaryShell] effect start');
-    }
-    setMounted(true);
-  }, []);
-  if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
-    // eslint-disable-next-line no-console
-    console.log('[RosterSummaryShell] render', { mounted });
-  }
-  if (!mounted) return <div data-rs-placeholder suppressHydrationWarning />;
-  return <RosterSummaryInner />;
-};
+// REMOVED: Moved to bottom with React.memo wrapper
 
 const RosterSummaryInner = () => {
   // Diagnostics toggles (compile-time)
@@ -1088,6 +1072,28 @@ const RosterSummaryInner = () => {
       )}
     </div>
   );
+};
+
+// CRITICAL FIX: Wrap in React.memo to prevent unnecessary re-renders
+// This prevents the component from re-rendering when unrelated store values change
+const MemoizedRosterSummaryInner = React.memo(RosterSummaryInner);
+
+// Shell component with SSR hydration guard
+export const RosterSummary = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
+      // eslint-disable-next-line no-console
+      console.log('[RosterSummaryShell] effect start');
+    }
+    setMounted(true);
+  }, []);
+  if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
+    // eslint-disable-next-line no-console
+    console.log('[RosterSummaryShell] render', { mounted });
+  }
+  if (!mounted) return <div data-rs-placeholder suppressHydrationWarning />;
+  return <MemoizedRosterSummaryInner />;
 };
 
 export default RosterSummary;

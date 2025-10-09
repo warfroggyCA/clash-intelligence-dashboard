@@ -20,6 +20,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { shallow } from 'zustand/shallow';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Member, Roster, SortKey, SortDirection } from '@/types';
 import { safeLocaleTimeString } from '@/lib/date';
@@ -270,7 +271,13 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 // =============================================================================
 
 export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
-  const { roster, sortKey, sortDir, setSortKey, setSortDir, dataFetchedAt } = useDashboardStore();
+  // CRITICAL FIX: Use selective subscriptions instead of whole-store destructuring
+  const roster = useDashboardStore((state) => state.roster);
+  const sortKey = useDashboardStore((state) => state.sortKey);
+  const sortDir = useDashboardStore((state) => state.sortDir);
+  const setSortKey = useDashboardStore((state) => state.setSortKey);
+  const setSortDir = useDashboardStore((state) => state.setSortDir);
+  const dataFetchedAt = useDashboardStore((state) => state.dataFetchedAt);
   const rosterViewMode = useDashboardStore((state) => state.rosterViewMode);
   const setRosterViewMode = useDashboardStore((state) => state.setRosterViewMode);
   const [filters, setFilters] = useState<TableFilters>({
@@ -286,11 +293,13 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   const [showFilters, setShowFilters] = useState(false);
   const router = useRouter();
 
-  // Get members from roster
-  const members = useMemo(() => roster?.members ?? [], [roster?.members]);
+  // CRITICAL FIX: Use shallow comparison instead of array reference
+  // This prevents infinite loops when Zustand creates new array references
+  const members = useDashboardStore((state) => state.roster?.members ?? [], shallow);
 
+  // CRITICAL FIX: Use members.length as stable dependency instead of roster object
   const aceScoresByTag = useMemo(() => {
-    if (!roster?.members?.length) {
+    if (!members.length || !roster) {
       return null;
     }
 
@@ -318,12 +327,13 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
     });
 
     return map;
-  }, [roster]);
+  }, [members.length]);
 
   // Apply sorting and filtering
+  // CRITICAL FIX: Use members.length instead of members array
   const sortedMembers = useMemo(() => {
     return sortMembers(members, sortKey, sortDir, aceScoresByTag);
-  }, [members, sortKey, sortDir, aceScoresByTag]);
+  }, [members.length, sortKey, sortDir, aceScoresByTag]);
 
   const filteredMembers = useMemo(() => {
     return filterMembers(sortedMembers, filters);
@@ -549,17 +559,19 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
             <List className="h-4 w-4" aria-hidden="true" />
             <span>Table View</span>
           </Button>
-          <Button
-            size="sm"
-            variant={rosterViewMode === 'cards' ? 'primary' : 'ghost'}
-            onClick={() => setRosterViewMode('cards')}
-            className={`view-toggle-btn min-h-[44px] ${rosterViewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
-            aria-pressed={rosterViewMode === 'cards'}
-            aria-label={`Switch to card view${rosterViewMode === 'cards' ? ' (currently active)' : ''}`}
-          >
-            <LayoutGrid className="h-4 w-4" aria-hidden="true" />
-            <span>Card View</span>
-          </Button>
+          {process.env.NEXT_PUBLIC_DISABLE_ROSTER_CARDS !== 'true' && (
+            <Button
+              size="sm"
+              variant={rosterViewMode === 'cards' ? 'primary' : 'ghost'}
+              onClick={() => setRosterViewMode('cards')}
+              className={`view-toggle-btn min-h-[44px] ${rosterViewMode === 'cards' ? 'view-toggle-btn--active' : ''}`}
+              aria-pressed={rosterViewMode === 'cards'}
+              aria-label={`Switch to card view${rosterViewMode === 'cards' ? ' (currently active)' : ''}`}
+            >
+              <LayoutGrid className="h-4 w-4" aria-hidden="true" />
+              <span>Card View</span>
+            </Button>
+          )}
         </div>
       </div>
 

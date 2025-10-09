@@ -19,7 +19,9 @@ type DepartureRecord = {
 export default function RetiredPlayersTable() {
   const clanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
   const roster = useDashboardStore((s) => s.roster);
-  const currentTags = useMemo(() => new Set((roster?.members || []).map(m => normalizeTag(m.tag))), [roster]);
+  // CRITICAL FIX: Use member count instead of roster object
+  const memberCount = roster?.members?.length ?? 0;
+  const currentTags = useMemo(() => new Set((roster?.members || []).map(m => normalizeTag(m.tag))), [memberCount]);
 
   const [items, setItems] = useState<DepartureRecord[]>([]);
   const [loading, setLoading] = useState(false);

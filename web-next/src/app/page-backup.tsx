@@ -1914,7 +1914,9 @@ Please analyze this clan data and provide insights on:
   }
 
   // -------- Rush % (relative to best-at-TH in current roster) --------
-  const thCaps = useMemo(() => calculateThCaps(roster?.members || []), [roster]);
+  // CRITICAL FIX: Use member count instead of roster object
+  const memberCount = roster?.members?.length ?? 0;
+  const thCaps = useMemo(() => calculateThCaps(roster?.members || []), [memberCount]);
 
   const rushDetail = (m: Member): string => {
     const th = getTH(m) ?? 0; const caps = thCaps.get(th) || {};
