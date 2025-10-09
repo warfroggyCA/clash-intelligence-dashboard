@@ -403,6 +403,7 @@ interface DashboardState {
   ingestionHealth: IngestionHealthSummary | null;
   isTriggeringIngestion: boolean;
   ingestionRunError: string | null;
+  isRefreshingData: boolean;
 
   canManageAccess: () => boolean;
   canManageClanData: () => boolean;
@@ -560,6 +561,7 @@ const initialState = {
   ingestionHealth: null,
   isTriggeringIngestion: false,
   ingestionRunError: null,
+  isRefreshingData: false,
 };
 
 // =============================================================================
@@ -1341,22 +1343,39 @@ export const useDashboardStore = create<DashboardState>()(
       // auto-refresh removed
 
       refreshData: async () => {
-        const { clanTag, loadRoster, setStatus, setMessage } = get();
-        if (!clanTag) {
-          setMessage('Load a clan first to refresh data');
+        if (get().isRefreshingData) {
           return;
         }
 
+        const { clanTag, loadRoster } = get();
+        if (!clanTag) {
+          set({
+            message: 'Load a clan first to refresh data',
+            status: 'error',
+          });
+          return;
+        }
+
+        set({
+          status: 'loading',
+          message: 'Refreshing snapshot from Supabase…',
+          isRefreshingData: true,
+        });
+
         try {
-          setStatus('loading');
-          setMessage('Refreshing snapshot from Supabase…');
           await loadRoster(clanTag, { mode: 'snapshot', force: true });
-          setStatus('success');
-          setMessage('Snapshot data refreshed');
+          set({
+            status: 'success',
+            message: 'Snapshot data refreshed',
+          });
         } catch (error) {
           console.error('Failed to refresh roster:', error);
-          setStatus('error');
-          setMessage(`Failed to refresh data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          set({
+            status: 'error',
+            message: `Failed to refresh data: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          });
+        } finally {
+          set({ isRefreshingData: false });
         }
       },
       
