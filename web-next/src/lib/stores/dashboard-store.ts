@@ -1504,7 +1504,9 @@ export const selectors = {
   smartInsightsHeadlines: (state: DashboardState) => state.smartInsights?.headlines ?? EMPTY_HEADLINES,
   rosterViewMode: (state: DashboardState) => state.rosterViewMode,
   smartInsightsIsStale: (state: DashboardState) => {
-    if (!state.smartInsights?.metadata.generatedAt) return true;
+    // Only show "stale" if insights exist AND are old (>24h)
+    // Don't show "stale" if insights simply don't exist yet
+    if (!state.smartInsights?.metadata.generatedAt) return false;
     const generatedAt = new Date(state.smartInsights.metadata.generatedAt);
     const now = new Date();
     const hoursDiff = (now.getTime() - generatedAt.getTime()) / (1000 * 60 * 60);

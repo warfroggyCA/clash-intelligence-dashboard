@@ -36,6 +36,18 @@ function normalizeDate(value: DateLike): Date | null {
     return null;
   }
 
+  // Special handling for YYYY-MM-DD date-only strings to avoid timezone issues
+  // When parsing "2025-10-09", we want Oct 9 in local time, not UTC midnight
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [year, month, day] = value.split('-').map(Number);
+    // Create date in local timezone at noon to avoid DST edge cases
+    const date = new Date(year, month - 1, day, 12, 0, 0);
+    if (isNaN(date.getTime())) {
+      return null;
+    }
+    return date;
+  }
+
   const date = value instanceof Date ? value : new Date(value);
   if (isNaN(date.getTime())) {
     return null;
