@@ -10,7 +10,10 @@ const AuthGate = dynamic(() => import('@/components/layout/AuthGuard').then(m =>
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 // Default export component
 const RosterTable = dynamic(() => import('@/components/roster/RosterTable'), { ssr: false });
-const RosterSummary = dynamic(() => import('@/components/roster/RosterSummary').then(m => m.RosterSummary), { ssr: false });
+// Conditionally load RosterSummary only when not disabled
+const RosterSummary = process.env.NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY === 'true'
+  ? () => null
+  : dynamic(() => import('@/components/roster/RosterSummary'), { ssr: false });
 const TournamentCard = dynamic(() => import('@/components/roster/TournamentCard'), { ssr: false });
 const InsightsDashboard = dynamic(() => import('@/components/insights/InsightsDashboard').then(m => m.InsightsDashboard), { ssr: false });
 const CommandCenter = dynamic(() => import('@/components/CommandCenter'), { ssr: false });
