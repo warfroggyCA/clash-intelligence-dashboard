@@ -266,14 +266,180 @@ This pattern could be lurking in:
 
 ## Questions for Expert
 
-1. Should we **disable Card View** temporarily until this is fully fixed?
+1. Should we **disable Card View** temporarily until this is fully fixed? ✅ **DONE** - Locked behind `NEXT_PUBLIC_DISABLE_ROSTER_CARDS=true`
 2. Do we have **performance monitoring** in production to detect similar cascades?
 3. Should we consider **migrating away from Zustand** for this use case?
 4. Can we add **automated tests** that detect infinite render loops?
 
 ---
 
+## 🔍 Audit Results (2025-10-09)
+
+### Found Dangerous Patterns
+
+#### HIGH RISK - roster?.members in dependency array
+```bash
+# Command run: grep -r "useMemo.*\[.*roster" src/
+```
+
+1. **`src/app/page-backup.tsx`**
+   ```typescript
+   const thCaps = useMemo(() => calculateThCaps(roster?.members || []), [roster]);
+   ```
+   ❌ **CRITICAL**: Depends on entire `roster` object - NEW REFERENCE EVERY RENDER
+
+2. **`src/components/roster/RosterTable.tsx`** (LINE 274)
+   ```typescript
+   const members = useMemo(() => roster?.members ?? [], [roster?.members]);
+   ```
+   ❌ **CRITICAL**: Depends on `roster?.members` array - NEW REFERENCE EVERY RENDER
+   
+3. **`src/components/retired/RetiredPlayersTable.tsx`**
+   ```typescript
+   const currentTags = useMemo(() => new Set((roster?.members || []).map(m => normalizeTag(m.tag))), [roster]);
+   ```
+   ❌ **CRITICAL**: Depends on entire `roster` object
+
+4. **`src/components/roster/RosterSummary.tsx`** (LINES 146-228, 231-405)
+   - Multiple useMemo hooks previously using `[roster?.members]`
+   - ✅ **PARTIALLY FIXED**: Now using `[stableRosterKey]` but still unstable
+
+#### MEDIUM RISK - members array in dependency
+```bash  
+# Command run: grep -r "useMemo.*members" src/
+```
+
+5-12. **`src/components/CommandCenter.tsx`** (8 instances)
+   ```typescript
+   const clanHealth = useMemo(() => calculateClanHealth(members), [members]);
+   const warMetrics = useMemo(() => calculateWarMetrics(members, warData), [members, warData]);
+   const alerts = useMemo(() => generateAlerts(members, warData), [members, warData]);
+   const topPerformers = useMemo(() => getTopPerformers(members, 3), [members]);
+   const watchlist = useMemo(() => generateWatchlist(members), [members]);
+   const momentum = useMemo(() => calculateMomentum(members), [members]);
+   const elderCandidates = useMemo(() => getElderPromotionCandidates(members), [members]);
+   ```
+   ⚠️ **MEDIUM RISK**: Depends on `members` prop/variable
+   - **Status**: UNKNOWN - need to check where `members` comes from
+   - If `members` comes from Zustand: **HIGH RISK**
+   - If `members` is a stable prop: **LOW RISK**
+
+### No useEffect Issues Found
+```bash
+# Command run: grep -r "useEffect.*\[.*roster" src/
+# Result: No matches found ✅
+```
+
+---
+
+## 🛠️ ESLint Rule Configuration
+
+### Recommended ESLint Rules
+
+Add to `.eslintrc.json`:
+
+```json
+{
+  "rules": {
+    "no-zustand-arrays-in-deps": "error",
+    "react-hooks/exhaustive-deps": [
+      "warn",
+      {
+        "additionalHooks": "(useMemo|useCallback)"
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": ["*.ts", "*.tsx"],
+      "rules": {
+        "no-restricted-syntax": [
+          "error",
+          {
+            "selector": "CallExpression[callee.name='useMemo'] ArrayExpression[elements.0.type='MemberExpression'][elements.0.property.name='members']",
+            "message": "Do not use roster?.members or store arrays directly in useMemo dependencies. Use shallow comparison or primitive values (length, ID) instead."
+          },
+          {
+            "selector": "CallExpression[callee.name='useMemo'] ArrayExpression[elements.0.object.property.name='roster']",
+            "message": "Do not use roster object directly in useMemo dependencies. Extract primitive values or use shallow comparison."
+          }
+        ]
+      }
+    }
+  ]
+}
+```
+
+### Manual Grep Commands for Code Review
+
+```bash
+# Find all dangerous useMemo patterns
+grep -rn "useMemo.*\[.*roster" src/ --include="*.tsx" --include="*.ts"
+grep -rn "useMemo.*roster\\.members" src/ --include="*.tsx" --include="*.ts"
+grep -rn "useMemo.*state\\." src/ --include="*.tsx" --include="*.ts"
+
+# Find all dangerous useEffect patterns  
+grep -rn "useEffect.*\[.*roster" src/ --include="*.tsx" --include="*.ts"
+grep -rn "useEffect.*roster\\.members" src/ --include="*.tsx" --include="*.ts"
+
+# Find whole-store destructuring (also dangerous)
+grep -rn "= useDashboardStore()" src/ --include="*.tsx" --include="*.ts"
+grep -rn "const { .* } = useDashboardStore" src/ --include="*.tsx" --include="*.ts"
+
+# Find array spreads from store
+grep -rn "\\.\\.\\.roster\\." src/ --include="*.tsx" --include="*.ts"
+grep -rn "\\.\\.\\.state\\." src/ --include="*.tsx" --include="*.ts"
+```
+
+### Pre-commit Hook (Optional)
+
+Add to `.husky/pre-commit`:
+
+```bash
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Check for dangerous Zustand patterns
+DANGEROUS_PATTERNS=$(grep -rn "useMemo.*\[.*roster\\.members" src/ --include="*.tsx" --include="*.ts" 2>/dev/null)
+
+if [ -n "$DANGEROUS_PATTERNS" ]; then
+  echo "❌ COMMIT BLOCKED: Dangerous Zustand pattern detected!"
+  echo "$DANGEROUS_PATTERNS"
+  echo ""
+  echo "Do not use roster?.members in useMemo/useEffect dependencies."
+  echo "Use shallow comparison or primitive values instead."
+  echo "See CRITICAL_INFINITE_LOOP_PATTERN.md for details."
+  exit 1
+fi
+```
+
+---
+
+## 📋 Expert Action Checklist
+
+### ✅ Completed (2025-10-09)
+- [x] Card View locked behind `NEXT_PUBLIC_DISABLE_ROSTER_CARDS=true`
+- [x] Full codebase audit completed (grep results above)
+- [x] ESLint rules documented
+- [x] Grep commands provided for ongoing monitoring
+
+### 🔄 In Progress
+- [ ] Fix `RosterTable.tsx` line 274: `[roster?.members]` → use shallow comparison
+- [ ] Fix `page-backup.tsx`: `[roster]` → extract primitives
+- [ ] Fix `RetiredPlayersTable.tsx`: `[roster]` → use member count
+- [ ] Audit `CommandCenter.tsx` to determine `members` source
+- [ ] Add shallow comparison imports where needed
+
+### ⏳ Next Steps
+- [ ] Implement store-derived selectors for expensive calculations
+- [ ] Add React.memo with custom comparison to heavy components
+- [ ] Create integration tests for view mode switching
+- [ ] Monitor production for similar crashes
+
+---
+
 **Document created**: 2025-10-09  
-**Status**: ACTIVE ISSUE - NEEDS EXPERT REVIEW  
+**Last updated**: 2025-10-09 (Post-Audit)
+**Status**: ACTIVE ISSUE - CARD VIEW DISABLED - FIXES IN PROGRESS  
 **Priority**: P0 - CRITICAL ARCHITECTURAL ISSUE
 
