@@ -276,23 +276,38 @@ const RosterSummaryInner = () => {
     return formatDistanceToNow(parsed, { addSuffix: true });
   }, [dataFetchedAt]);
 
+  // Helper to map trophies to league name (for average league calculation)
+  const getLeagueFromTrophies = (trophies: number): string => {
+    if (trophies >= 5000) return 'Legend League';
+    if (trophies >= 4000) return 'Titan League';
+    if (trophies >= 3000) return 'Champion League';
+    if (trophies >= 2000) return 'Master League';
+    if (trophies >= 1400) return 'Crystal League';
+    if (trophies >= 800) return 'Gold League';
+    if (trophies >= 400) return 'Silver League';
+    return 'Bronze League';
+  };
+
   const statTiles = useMemo<StatTileProps[]>(() => {
     if (RS_DISABLE_STATS) return [];
     const tiles: StatTileProps[] = [
       { icon: '👥', label: 'Members', value: formatNumber(stats.memberCount), hint: 'Active members currently on the roster snapshot.' },
       {
-        // Use a simple emoji here to avoid any Next/Image side-effects in this summary panel
-        icon: '🏰',
+        icon: <TownHallBadge level={stats.averageTownHall || 0} size="sm" />,
         label: 'Avg. Town Hall',
         value: stats.averageTownHall ? `TH${stats.averageTownHall}` : '—',
         hint: 'Average Town Hall level across members with a recorded TH value.',
       },
       {
-        // Simplify to emoji to eliminate image re-hydration complexity
-        icon: '🏆',
-        label: 'Avg. Trophies',
-        value: formatNumber(stats.averageTrophies),
-        hint: 'Average home village trophies from the current roster snapshot.',
+        icon: <LeagueBadge 
+          league={getLeagueFromTrophies(stats.averageTrophies || 0)} 
+          trophies={stats.averageTrophies || 0} 
+          size="sm" 
+          showText={false} 
+        />,
+        label: 'Avg. League',
+        value: getLeagueFromTrophies(stats.averageTrophies || 0),
+        hint: 'Average league based on clan\'s average trophy count.',
       },
       { icon: '🤝', label: 'Total Donations', value: formatNumber(stats.totalDonations), hint: 'Season-to-date donations collectively delivered by the roster.' },
     ];
