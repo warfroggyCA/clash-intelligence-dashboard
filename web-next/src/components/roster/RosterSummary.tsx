@@ -116,10 +116,12 @@ const RosterSummaryInner = () => {
   // Removed direct store-action-in-selector call to avoid render-update loops
   const currentClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   
-  // CRITICAL: Use stable snapshot ID to prevent infinite re-renders
-  // Instead of depending on roster?.members (which creates new array refs), use the snapshot ID
+  // CRITICAL: Use stable member count instead of roster?.members to prevent infinite re-renders  
+  // The array reference changes but the count is stable
+  const memberCount = roster?.members?.length ?? 0;
   const latestSnapshotId = useDashboardStore((state) => state.latestSnapshotId);
-  const stableRosterKey = latestSnapshotId || roster?.date || '';
+  // Combine count + snapshot ID as stable key
+  const stableRosterKey = `${latestSnapshotId || roster?.date || ''}-${memberCount}`;
   
   // Add canRunIngestion logic similar to CommandRail
   const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
