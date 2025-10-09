@@ -6,12 +6,25 @@ import { ymdNowUTC } from '@/lib/date';
 import { rateLimiter } from '@/lib/rate-limiter';
 import type { Roster, Member } from '@/types';
 import { sanitizeForJSON } from '@/lib/sanitize';
+import { fetchRosterFromDataSpine } from '@/lib/data-spine-roster';
 
 export async function buildRosterSnapshotFirst(clanTagRaw: string, date: 'latest' | string = 'latest'): Promise<Roster | null> {
   const clanTag = normalizeTag(clanTagRaw);
   if (!isValidTag(clanTag)) return null;
 
-  // Try snapshot first
+  // Fast path: use the same roster snapshot payload the API surfaces
+  if (date === 'latest' || !date || date === 'snapshot') {
+    try {
+      const apiRoster = await fetchRosterFromDataSpine(clanTag);
+      if (apiRoster) {
+        return sanitizeForJSON<Roster>(apiRoster);
+      }
+    } catch (error) {
+      console.error('[buildRosterSnapshotFirst] Failed to load roster from data spine, falling back', error);
+    }
+  }
+
+  // Legacy fallback path
   let snapshot = null as any;
   if (date && date !== 'live') {
     snapshot = date === 'latest' ? await getLatestSnapshot(clanTag) : await loadSnapshot(clanTag, date);
