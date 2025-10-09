@@ -317,7 +317,7 @@ const RosterSummaryInner = () => {
       tiles.push({
         icon: <LeagueBadge 
           league={stats.mostCommonLeague} 
-          size="sm" 
+          size="lg" 
           showText={false} 
         />,
         label: 'Common League',
