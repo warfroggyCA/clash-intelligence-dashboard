@@ -158,6 +158,7 @@ const RosterSummaryInner = () => {
         averageDonations: null,
         averageBuilderTrophies: null,
         averageHeroLevels: null,
+        mostCommonLeague: null,
       } as const;
     }
     const members = roster?.members ?? [];
@@ -172,6 +173,7 @@ const RosterSummaryInner = () => {
         averageDonations: null,
         averageBuilderTrophies: null,
         averageHeroLevels: null,
+        mostCommonLeague: null,
       };
     }
 
@@ -221,6 +223,27 @@ const RosterSummaryInner = () => {
       mp: heroCounts.mp ? Math.round(heroSums.mp / heroCounts.mp) : null,
     };
 
+    // Calculate most common league (mode) from ranked leagues
+    // Strip tier numbers to get base league name (e.g., "Wizard League 12" -> "Wizard League")
+    const leagueCounts = new Map<string, number>();
+    members.forEach((member) => {
+      const rankedName = (member as any).rankedLeagueName;
+      if (rankedName && rankedName !== 'Unranked') {
+        // Extract base league name by removing trailing numbers
+        const baseLeague = rankedName.replace(/\s+\d+$/, '');
+        leagueCounts.set(baseLeague, (leagueCounts.get(baseLeague) || 0) + 1);
+      }
+    });
+    
+    let mostCommonLeague: string | null = null;
+    let maxCount = 0;
+    leagueCounts.forEach((count, league) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonLeague = league;
+      }
+    });
+
     return {
       memberCount,
       averageTownHall,
@@ -229,6 +252,7 @@ const RosterSummaryInner = () => {
       averageDonations,
       averageBuilderTrophies,
       averageHeroLevels,
+      mostCommonLeague,
     };
   }, [stableRosterKey, RS_DISABLE_STATS]);
 
@@ -276,18 +300,6 @@ const RosterSummaryInner = () => {
     return formatDistanceToNow(parsed, { addSuffix: true });
   }, [dataFetchedAt]);
 
-  // Helper to map trophies to league name (for average league calculation)
-  const getLeagueFromTrophies = (trophies: number): string => {
-    if (trophies >= 5000) return 'Legend League';
-    if (trophies >= 4000) return 'Titan League';
-    if (trophies >= 3000) return 'Champion League';
-    if (trophies >= 2000) return 'Master League';
-    if (trophies >= 1400) return 'Crystal League';
-    if (trophies >= 800) return 'Gold League';
-    if (trophies >= 400) return 'Silver League';
-    return 'Bronze League';
-  };
-
   const statTiles = useMemo<StatTileProps[]>(() => {
     if (RS_DISABLE_STATS) return [];
     const tiles: StatTileProps[] = [
@@ -298,19 +310,25 @@ const RosterSummaryInner = () => {
         value: stats.averageTownHall ? `TH${stats.averageTownHall}` : '—',
         hint: 'Average Town Hall level across members with a recorded TH value.',
       },
-      {
+    ];
+
+    // Add league tile if we have a most common league
+    if (stats.mostCommonLeague) {
+      tiles.push({
         icon: <LeagueBadge 
-          league={getLeagueFromTrophies(stats.averageTrophies || 0)} 
-          trophies={stats.averageTrophies || 0} 
+          league={stats.mostCommonLeague} 
           size="sm" 
           showText={false} 
         />,
-        label: 'Avg. League',
-        value: getLeagueFromTrophies(stats.averageTrophies || 0),
-        hint: 'Average league based on clan\'s average trophy count.',
-      },
-      { icon: '🤝', label: 'Total Donations', value: formatNumber(stats.totalDonations), hint: 'Season-to-date donations collectively delivered by the roster.' },
-    ];
+        label: 'Common League',
+        value: stats.mostCommonLeague,
+        hint: 'Most common ranked league among clan members (excludes Unranked).',
+      });
+    }
+
+    tiles.push(
+      { icon: '🤝', label: 'Total Donations', value: formatNumber(stats.totalDonations), hint: 'Season-to-date donations collectively delivered by the roster.' }
+    );
 
     if (stats.averageDonations != null) {
       tiles.push({
