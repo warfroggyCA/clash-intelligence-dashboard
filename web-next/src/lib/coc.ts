@@ -79,9 +79,14 @@ type CoCCapitalRaidSeason = {
 };
 
 const BASE = process.env.COC_API_BASE || "https://api.clashofclans.com/v1";
+const FIXIE_URL = process.env.FIXIE_URL;
+const DEFAULT_TIMEOUT_MS = Number(process.env.COC_API_TIMEOUT_MS ?? 15000);
+const MAX_RETRIES = Math.max(1, Number(process.env.COC_API_MAX_RETRIES ?? 3));
+const RETRY_BACKOFF_BASE_MS = Number(process.env.COC_API_RETRY_BASE_MS ?? 1000);
+const DISABLE_PROXY = process.env.COC_DISABLE_PROXY === 'true';
+const ALLOW_PROXY_FALLBACK = process.env.COC_ALLOW_PROXY_FALLBACK !== 'false';
 
 // Force IPv4 for native fetch (some keys/IP-allowlists are v4-only) when no proxy is set
-const FIXIE_URL = process.env.FIXIE_URL;
 if (!FIXIE_URL) {
   try {
     setGlobalDispatcher(new Agent({ connect: { family: 4 } }));
@@ -247,56 +252,157 @@ async function api<T>(path: string): Promise<T> {
     throw new Error("COC_API_TOKEN not set");
   }
   
-  // If a proxy URL is provided, use axios + https-proxy-agent (fetch proxy dispatcher not installed)
-
-  if (FIXIE_URL) {
-    const axiosConfig: any = {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
-      timeout: 10000,
-    };
-    const proxyAgent = new HttpsProxyAgent(FIXIE_URL!);
-    axiosConfig.httpsAgent = proxyAgent;
-    axiosConfig.httpAgent = proxyAgent;
-    try {
-      console.log(`[API Call] (proxy) ${path}`);
-      await rateLimiter.acquire();
-      const response = await axios.get(`${BASE}${path}`, axiosConfig);
-      setCached(path, response.data);
-      return response.data as T;
-    } catch (error: any) {
-      if (error.response) {
-        const status = error.response.status;
-        const statusText = error.response.statusText;
-        const data = error.response.data;
-        throw new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
-      } else {
-        throw new Error(`CoC API request failed: ${error.message}`);
+  const attemptModes: Array<'proxy' | 'direct'> = [];
+  const canUseProxy = Boolean(FIXIE_URL) && !DISABLE_PROXY;
+  if (canUseProxy) {
+    attemptModes.push('proxy');
+    if (ALLOW_PROXY_FALLBACK) {
+      while (attemptModes.length < MAX_RETRIES) {
+        attemptModes.push('direct');
       }
-    } finally {
-      rateLimiter.release();
+    } else {
+      while (attemptModes.length < MAX_RETRIES) {
+        attemptModes.push('proxy');
+      }
+    }
+  } else {
+    while (attemptModes.length < MAX_RETRIES) {
+      attemptModes.push('direct');
     }
   }
 
-  // Default path: native fetch using global IPv4 dispatcher
+  let lastError: any = null;
+
+  for (let i = 0; i < attemptModes.length; i += 1) {
+    const mode = attemptModes[i];
+    const attemptNumber = i + 1;
+    const totalAttempts = attemptModes.length;
+
+    try {
+      const data = await withRateLimiter(async () => {
+        if (mode === 'proxy') {
+          return requestViaProxy<T>(path, token);
+        }
+        return requestDirect<T>(path, token);
+      });
+
+      setCached(path, data);
+      if (lastError) {
+        console.warn(`[CoC API] Recovered after ${attemptNumber}/${totalAttempts} attempts for ${path}`);
+      }
+      return data;
+    } catch (error: any) {
+      lastError = error;
+      const status = (error as any)?.status ?? deriveStatusFromMessage(error?.message);
+      const isClientError = typeof status === 'number' && status >= 400 && status < 500 && status !== 429;
+      const isLastAttempt = attemptNumber === totalAttempts || isClientError;
+
+      const modeLabel = mode === 'proxy' ? 'proxy' : 'direct';
+      console.warn(`[CoC API] Attempt ${attemptNumber}/${totalAttempts} (${modeLabel}) failed for ${path}: ${error?.message || error}`);
+
+      if (mode === 'proxy' && (!ALLOW_PROXY_FALLBACK || isClientError)) {
+        // If proxy fails and fallback disabled or client error, stop immediately
+        if (isClientError) {
+          throw error;
+        }
+      }
+
+      if (isLastAttempt) {
+        throw new Error(`CoC API request failed after ${attemptNumber} attempts: ${error?.message || error}`);
+      }
+
+      await delay(RETRY_BACKOFF_BASE_MS * attemptNumber + Math.floor(Math.random() * 250));
+    }
+  }
+
+  throw new Error(`CoC API request failed: ${lastError?.message || 'Unknown error'}`);
+}
+
+async function withRateLimiter<T>(fn: () => Promise<T>): Promise<T> {
+  await rateLimiter.acquire();
   try {
-    console.log(`[API Call] ${path}`);
-    await rateLimiter.acquire();
+    return await fn();
+  } finally {
+    rateLimiter.release();
+  }
+}
+
+async function requestViaProxy<T>(path: string, token: string): Promise<T> {
+  if (!FIXIE_URL) {
+    return requestDirect<T>(path, token);
+  }
+
+  const axiosConfig: any = {
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    timeout: DEFAULT_TIMEOUT_MS,
+  };
+  const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
+  axiosConfig.httpsAgent = proxyAgent;
+  axiosConfig.httpAgent = proxyAgent;
+
+  try {
+    console.log(`[API Call] (proxy) ${path}`);
+    const response = await axios.get(`${BASE}${path}`, axiosConfig);
+    return response.data as T;
+  } catch (error: any) {
+    if (error?.response) {
+      const status = error.response.status;
+      const statusText = error.response.statusText;
+      const data = error.response.data;
+      const proxiedError: any = new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
+      proxiedError.status = status;
+      throw proxiedError;
+    }
+    const proxiedError: any = new Error(`CoC API proxy request failed: ${error?.message || error}`);
+    proxiedError.code = error?.code;
+    throw proxiedError;
+  }
+}
+
+async function requestDirect<T>(path: string, token: string): Promise<T> {
+  console.log(`[API Call] ${path}`);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+
+  try {
     const res = await fetch(`${BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       cache: 'no-store',
+      signal: controller.signal,
     });
+
     if (!res.ok) {
       const text = await res.text().catch(() => '');
-      throw new Error(`CoC API ${res.status} ${res.statusText}: ${text}`);
+      const err: any = new Error(`CoC API ${res.status} ${res.statusText}: ${text}`);
+      err.status = res.status;
+      throw err;
     }
-    const data = (await res.json()) as T;
-    setCached(path, data);
-    return data;
+
+    return (await res.json()) as T;
   } catch (error: any) {
-    throw new Error(`CoC API request failed: ${error.message}`);
+    if (error?.name === 'AbortError') {
+      const timeoutError: any = new Error(`CoC API request timed out after ${DEFAULT_TIMEOUT_MS}ms`);
+      timeoutError.code = 'ETIMEDOUT';
+      throw timeoutError;
+    }
+    throw error;
   } finally {
-    try { rateLimiter.release(); } catch {}
+    clearTimeout(timeoutId);
   }
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function deriveStatusFromMessage(message?: string): number | null {
+  if (!message) return null;
+  const match = message.match(/CoC API (\d{3})/);
+  if (match) {
+    const code = Number(match[1]);
+    return Number.isFinite(code) ? code : null;
+  }
+  return null;
 }
 
 export async function getClanMembers(clanTag: string) {

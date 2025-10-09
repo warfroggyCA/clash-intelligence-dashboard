@@ -279,7 +279,14 @@ export async function fetchRosterFromDataSpine(clanTag: string): Promise<Roster 
   try {
     const params = new URLSearchParams();
     if (clanTag) params.set('clanTag', clanTag);
-    const res = await fetch(`/api/v2/roster?${params.toString()}`, {
+    
+    // SSR needs absolute URL - construct from env or fallback
+    const baseUrl = typeof window === 'undefined'
+      ? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5050')
+      : '';
+    const url = `${baseUrl}/api/v2/roster?${params.toString()}`;
+    
+    const res = await fetch(url, {
       method: 'GET',
       headers: { 'Accept': 'application/json' },
     });
