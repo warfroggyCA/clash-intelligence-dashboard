@@ -116,6 +116,11 @@ const RosterSummaryInner = () => {
   // Removed direct store-action-in-selector call to avoid render-update loops
   const currentClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   
+  // CRITICAL: Use stable snapshot ID to prevent infinite re-renders
+  // Instead of depending on roster?.members (which creates new array refs), use the snapshot ID
+  const latestSnapshotId = useDashboardStore((state) => state.latestSnapshotId);
+  const stableRosterKey = latestSnapshotId || roster?.date || '';
+  
   // Add canRunIngestion logic similar to CommandRail
   const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
   const userRoles = useDashboardStore((state) => state.userRoles);
@@ -225,7 +230,7 @@ const RosterSummaryInner = () => {
       averageBuilderTrophies,
       averageHeroLevels,
     };
-  }, [roster?.members, RS_DISABLE_STATS]);
+  }, [stableRosterKey, RS_DISABLE_STATS]);
 
   const aceScores = useMemo(() => {
     if (process.env.NEXT_PUBLIC_DISABLE_ACE_IN_SUMMARY === 'true') return [];
@@ -234,7 +239,7 @@ const RosterSummaryInner = () => {
     }
     const inputs = createAceInputsFromRoster(roster);
     return calculateAceScores(inputs);
-  }, [roster]);
+  }, [stableRosterKey]);
 
   const aceLeader = aceScores[0];
   const aceLeaderScoreLabel = typeof aceLeader?.ace === 'number' ? aceLeader.ace.toFixed(1) : null;
@@ -531,7 +536,7 @@ const RosterSummaryInner = () => {
         subtitle: entry.tag,
         hint: 'Total troops donated this season. High numbers indicate members fueling clan attacks.',
       }));
-  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
+  }, [stableRosterKey, RS_DISABLE_HIGHLIGHTS]);
 
   const leastRushed = useMemo<HighlightEntry[]>(() => {
     if (RS_DISABLE_HIGHLIGHTS) return [];
@@ -555,7 +560,7 @@ const RosterSummaryInner = () => {
         subtitle: entry.tag,
         hint: 'Hero rush percentage – lower is healthier. Tracks average gap vs. Town Hall caps.',
       }));
-  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
+  }, [stableRosterKey, RS_DISABLE_HIGHLIGHTS]);
 
   const topCapitalContributors = useMemo<HighlightEntry[]>(() => {
     if (RS_DISABLE_HIGHLIGHTS) return [];
@@ -573,7 +578,7 @@ const RosterSummaryInner = () => {
         label: `${index + 1}. ${entry.name}`,
         value: formatNumber(entry.contributions),
       }));
-  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
+  }, [stableRosterKey, RS_DISABLE_HIGHLIGHTS]);
 
   const donationBalanceLeaders = useMemo<HighlightEntry[]>(() => {
     if (RS_DISABLE_HIGHLIGHTS) return [];
@@ -602,7 +607,7 @@ const RosterSummaryInner = () => {
         subtitle: entry.tag,
         hint: 'Donations given minus received. Positive balance shows who props up clan request volume.',
       }));
-  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
+  }, [stableRosterKey, RS_DISABLE_HIGHLIGHTS]);
 
   const donationDeficitAlerts = useMemo<HighlightEntry[]>(() => {
     if (RS_DISABLE_HIGHLIGHTS) return [];
@@ -630,7 +635,7 @@ const RosterSummaryInner = () => {
         subtitle: entry.tag,
         hint: 'Members receiving more troops than they donate. Monitor and coach to keep clan supply balanced.',
       }));
-  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
+  }, [stableRosterKey, RS_DISABLE_HIGHLIGHTS]);
 
   const rushAlerts = useMemo<HighlightEntry[]>(() => {
     if (RS_DISABLE_HIGHLIGHTS) return [];
@@ -658,7 +663,7 @@ const RosterSummaryInner = () => {
         subtitle: entry.tag,
         hint: 'Hero rush is 60%+ below cap. Prioritize upgrades before next war season.',
       }));
-  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
+  }, [stableRosterKey, RS_DISABLE_HIGHLIGHTS]);
 
   const heroLeaders = useMemo<HighlightEntry[]>(() => {
     if (RS_DISABLE_HIGHLIGHTS) return [];
@@ -679,9 +684,9 @@ const RosterSummaryInner = () => {
       label: `${index + 1}. ${entry.name}`,
       value: formatNumber(entry.total),
       subtitle: `${entry.tag} • TH${entry.th}`,
-      hint: 'Total hero levels summed across BK, AQ, GW, RC, MP. Highlights raw hero power.',
-    }));
-  }, [roster?.members, RS_DISABLE_HIGHLIGHTS]);
+        hint: 'Total hero levels summed across BK, AQ, GW, RC, MP. Highlights raw hero power.',
+      }));
+  }, [stableRosterKey, RS_DISABLE_HIGHLIGHTS]);
 
   const hasHighlightLists = !RS_DISABLE_HIGHLIGHTS && Boolean(
     topDonors.length ||
