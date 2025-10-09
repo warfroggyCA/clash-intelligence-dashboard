@@ -9,7 +9,7 @@ export default function TournamentCard() {
   const snapshot = useDashboardStore((s) => s.snapshotMetadata);
 
   const seasonId = roster?.seasonId || snapshot?.seasonId || null;
-  const defenseSnapshotAt = snapshot?.defenseSnapshotTimestamp || null;
+  const defenseSnapshotAt = (snapshot as any)?.defenseSnapshotTimestamp || null;
 
   const avgRanked = useMemo(() => {
     const members = roster?.members || [];
