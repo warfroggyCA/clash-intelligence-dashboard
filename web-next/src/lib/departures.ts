@@ -213,12 +213,13 @@ export async function checkForRejoins(
 ): Promise<RejoinNotification[]> {
   const departures = await readDepartures(clanTag);
   const currentMemberTags = new Set(currentMembers.map(m => normalizeTag(m.tag)));
-  
+  let mutated = false;
   const rejoins: RejoinNotification[] = [];
   
   // Server-side noise filters: only return credible, recent rejoins
   const minDaysAway = Number(process.env.RPR_MIN_DAYS_AWAY || '1');
   const maxDepartureAgeDays = Number(process.env.RPR_MAX_DEPARTURE_AGE_DAYS || '45');
+  const reviewWindowDays = Number(process.env.RPR_REVIEW_WINDOW_DAYS || '7');
 
   for (const departure of departures) {
     if (departure.resolved) continue;
@@ -231,7 +232,35 @@ export async function checkForRejoins(
     if (!departureDate || Number.isNaN(departureDate.getTime())) continue;
 
     const now = new Date();
-    const daysAway = Math.floor((now.getTime() - departureDate.getTime()) / (1000 * 60 * 60 * 24));
+    const millisPerDay = 1000 * 60 * 60 * 24;
+
+    let rejoinDate: Date | null = null;
+    if (departure.rejoinDate) {
+      const parsed = new Date(departure.rejoinDate);
+      if (!Number.isNaN(parsed.getTime())) {
+        rejoinDate = parsed;
+      }
+    }
+
+    if (!rejoinDate) {
+      rejoinDate = now;
+      departure.rejoinDate = now.toISOString();
+      mutated = true;
+    }
+
+    const daysSinceReturn = Math.floor((now.getTime() - rejoinDate.getTime()) / millisPerDay);
+    if (Number.isFinite(reviewWindowDays) && reviewWindowDays >= 0 && daysSinceReturn > reviewWindowDays) {
+      // Auto-resolve stale departures so they don't linger forever
+      if (!departure.resolved) {
+        departure.resolved = true;
+        departure.resolvedAt = now.toISOString();
+        if (!departure.rejoinDate) departure.rejoinDate = rejoinDate.toISOString();
+        mutated = true;
+      }
+      continue;
+    }
+
+    const daysAway = Math.max(0, Math.floor((rejoinDate.getTime() - departureDate.getTime()) / millisPerDay));
 
     // Must be away for at least minDaysAway (avoid trivial flickers)
     if (!(typeof daysAway === 'number' && daysAway >= minDaysAway)) continue;
@@ -244,9 +273,17 @@ export async function checkForRejoins(
       memberTag: departure.memberTag,
       memberName: currentMember?.name || departure.memberName,
       previousDeparture: departure,
-      rejoinDate: now.toISOString(),
+      rejoinDate: rejoinDate.toISOString(),
       daysAway
     });
+  }
+
+  if (mutated) {
+    try {
+      await writeDepartures(clanTag, departures);
+    } catch (error) {
+      console.error('[Departures] Failed to persist rejoin metadata for', clanTag, error);
+    }
   }
   
   return rejoins;
