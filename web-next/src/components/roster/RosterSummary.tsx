@@ -88,7 +88,9 @@ const RosterSummaryInner = () => {
   }
 
   const [showAceModal, setShowAceModal] = useState(false);
-  const roster = useDashboardStore((state) => state.roster);
+  
+  // CRITICAL FIX: Don't subscribe to whole roster object - get individual fields
+  // Subscribing to the entire roster causes re-renders on EVERY store update
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const lastLoadInfo = useDashboardStore((state) => state.lastLoadInfo);
@@ -97,15 +99,17 @@ const RosterSummaryInner = () => {
   const dataAgeHours = useDashboardStore(selectors.dataAge);
   const refreshData = useDashboardStore((state) => state.refreshData);
   const triggerIngestion = useDashboardStore((state) => state.triggerIngestion);
-  // Removed direct store-action-in-selector call to avoid render-update loops
   const currentClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
-  
-  // CRITICAL: Use stable member count instead of roster?.members to prevent infinite re-renders  
-  // The array reference changes but the count is stable
-  const memberCount = roster?.members?.length ?? 0;
+  const memberCount = useDashboardStore((state) => state.roster?.members?.length ?? 0);
   const latestSnapshotId = useDashboardStore((state) => state.latestSnapshotId);
-  // Combine count + snapshot ID as stable key
-  const stableRosterKey = `${latestSnapshotId || roster?.date || ''}-${memberCount}`;
+  const rosterDate = useDashboardStore((state) => state.roster?.date);
+  
+  // Get roster object ONLY when we need it (in useMemo), not via subscription
+  // This prevents component re-renders when unrelated store values change
+  const roster = useMemo(() => useDashboardStore.getState().roster, [latestSnapshotId, memberCount]);
+  
+  // Combine snapshot ID + member count as stable key
+  const stableRosterKey = `${latestSnapshotId || rosterDate || ''}-${memberCount}`;
   
   // Add canRunIngestion logic similar to CommandRail
   const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
