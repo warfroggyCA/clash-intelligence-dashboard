@@ -156,7 +156,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
     return null;
   }
 
-  const latestSnapshot = snapshots[snapshots.length - 1];
+  const latestSnapshot = snapshots[0]; // First snapshot is newest due to DESC order
   console.log('[RCA] Latest snapshot:', {
     clanTag: latestSnapshot.clanTag,
     fetchedAt: latestSnapshot.fetchedAt,
