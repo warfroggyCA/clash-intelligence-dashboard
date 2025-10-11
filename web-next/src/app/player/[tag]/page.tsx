@@ -4,6 +4,10 @@ import { fetchPlayerProfile, normalizePlayerTag } from '@/lib/player-profile';
 import PlayerProfilePage from '@/components/player/PlayerProfilePage';
 import { notFound } from 'next/navigation';
 
+// Disable caching - always fetch fresh player data
+export const revalidate = 0;
+export const dynamic = 'force-dynamic';
+
 interface PlayerPageProps {
   params: {
     tag: string;
