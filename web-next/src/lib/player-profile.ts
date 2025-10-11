@@ -270,6 +270,11 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
     const normalizedClanTag = normalizeTag(clanTag);
     const safeTag = safeTagForFilename(normalizedClanTag);
     
+    console.log('[RCA] loadRecentFullSnapshots called');
+    console.log('[RCA] Input clanTag:', clanTag);
+    console.log('[RCA] Normalized clanTag:', normalizedClanTag);
+    console.log('[RCA] Safe tag for query:', safeTag);
+    
     const { getSupabaseAdminClient } = await import('@/lib/supabase-admin');
     const supabase = getSupabaseAdminClient();
     
@@ -280,6 +285,16 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
       .order('snapshot_date', { ascending: false })
       .limit(limit)
       .abortSignal(AbortSignal.timeout(10000)); // 10 second timeout
+
+    console.log('[RCA] Query returned:', {
+      dataCount: data?.length ?? 0,
+      error: error?.message ?? 'none',
+      firstRecord: data?.[0] ? {
+        clan_tag: data[0].clan_tag,
+        snapshot_date: data[0].snapshot_date || 'no snapshot_date field',
+        playerDetailsKeys: Object.keys(data[0].player_details || {}).length
+      } : 'no data'
+    });
 
     if (error) {
       console.warn('[PlayerProfile] Failed to load snapshots from Supabase:', error);
