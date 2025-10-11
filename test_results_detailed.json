@@ -1,0 +1,126 @@
+{
+  "summary": {
+    "total": 10,
+    "passed": 5,
+    "failed": 5,
+    "success_rate": 50.0
+  },
+  "results": [
+    {
+      "test": "Health Endpoint Basic",
+      "success": true,
+      "details": "Health check successful. CoC API: False, OpenAI: False",
+      "timestamp": "2025-10-11T21:15:14.326882",
+      "response_data": {
+        "success": true,
+        "data": {
+          "hasCoC": false,
+          "hasOpenAI": false
+        },
+        "requestId": "n7zg6oj6"
+      }
+    },
+    {
+      "test": "Health Endpoint MCP",
+      "success": true,
+      "details": "MCP health check successful with 2 tools",
+      "timestamp": "2025-10-11T21:15:14.340918",
+      "response_data": {
+        "success": true,
+        "data": {
+          "name": "Clash Intelligence MCP Server",
+          "version": "1.0.0",
+          "description": "MCP server for Clash Intelligence dashboard tools and data access",
+          "tools": [
+            {
+              "name": "get-clan-data",
+              "description": "Retrieve current clan information and statistics",
+              "parameters": [
+                {
+                  "name": "clanTag",
+                  "type": "string",
+                  "description": "Clan tag to retrieve data for",
+                  "required": true
+                }
+              ]
+            },
+            {
+              "name": "get-member-data",
+              "description": "Retrieve member information and statistics",
+              "parameters": [
+                {
+                  "name": "playerTag",
+                  "type": "string",
+                  "description": "Player tag to retrieve data for",
+                  "required": true
+                }
+              ]
+            }
+          ],
+          "capabilities": [
+            "clan-data-access",
+            "member-analytics"
+          ]
+        },
+        "requestId": "7jujmi2j"
+      }
+    },
+    {
+      "test": "V2 Roster API Structure",
+      "success": false,
+      "details": "Roster API returned 500: {\"success\":false,\"error\":\"Supabase service role credentials are not configured\"}",
+      "timestamp": "2025-10-11T21:15:14.494521",
+      "response_data": null
+    },
+    {
+      "test": "V2 Roster API with ClanTag",
+      "success": false,
+      "details": "Roster API with clan tag failed: 500",
+      "timestamp": "2025-10-11T21:15:14.508154",
+      "response_data": null
+    },
+    {
+      "test": "Player History API",
+      "success": false,
+      "details": "No player tag available for testing (roster API may have failed)",
+      "timestamp": "2025-10-11T21:15:14.508197",
+      "response_data": null
+    },
+    {
+      "test": "Player Comparison API",
+      "success": false,
+      "details": "No player tag available for testing (roster API may have failed)",
+      "timestamp": "2025-10-11T21:15:14.508204",
+      "response_data": null
+    },
+    {
+      "test": "Insights API Structure",
+      "success": false,
+      "details": "HTTP 500: {\"success\":false,\"error\":\"Supabase client not initialized\",\"requestId\":\"venopozc\"}",
+      "timestamp": "2025-10-11T21:15:14.793615",
+      "response_data": null
+    },
+    {
+      "test": "Insights API Validation",
+      "success": true,
+      "details": "API correctly requires clanTag parameter",
+      "timestamp": "2025-10-11T21:15:14.802242",
+      "response_data": null
+    },
+    {
+      "test": "Error Handling - 404",
+      "success": true,
+      "details": "Non-existent endpoints return 404",
+      "timestamp": "2025-10-11T21:15:15.783709",
+      "response_data": null
+    },
+    {
+      "test": "Error Handling - Malformed",
+      "success": true,
+      "details": "Malformed requests handled properly (400)",
+      "timestamp": "2025-10-11T21:15:16.244833",
+      "response_data": null
+    }
+  ],
+  "timestamp": "2025-10-11T21:15:16.245019"
+}
