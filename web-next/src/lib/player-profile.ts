@@ -142,22 +142,59 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
     return null;
   }
 
+  console.log('[RCA] buildProfileFromSnapshots called');
+  console.log('[RCA] Input playerTagWithHash:', playerTagWithHash);
+  
   const normalizedPlayerTag = normalizeTag(playerTagWithHash);
+  console.log('[RCA] Normalized player tag:', normalizedPlayerTag);
+  
   const snapshots = await loadRecentFullSnapshots(clanTag, 2);
+  console.log('[RCA] Snapshots loaded:', snapshots.length);
+  
   if (!snapshots.length) {
+    console.error('[RCA] ❌ FAILURE POINT #1: No snapshots returned');
     return null;
   }
 
   const latestSnapshot = snapshots[snapshots.length - 1];
+  console.log('[RCA] Latest snapshot:', {
+    clanTag: latestSnapshot.clanTag,
+    fetchedAt: latestSnapshot.fetchedAt,
+    memberSummariesCount: latestSnapshot.memberSummaries?.length ?? 0,
+    playerDetailsKeys: Object.keys(latestSnapshot.playerDetails || {}).slice(0, 10)
+  });
+  
   const dailySnapshot = convertFullSnapshotToDailySnapshot(latestSnapshot);
+  console.log('[RCA] Daily snapshot:', {
+    membersCount: dailySnapshot.members.length,
+    firstThreeTags: dailySnapshot.members.slice(0, 3).map(m => m.tag)
+  });
 
   const member = dailySnapshot.members.find((m) => normalizeTag(m.tag) === normalizedPlayerTag);
   const playerDetail = latestSnapshot.playerDetails?.[normalizedPlayerTag];
+  
+  console.log('[RCA] Player lookup:', {
+    normalizedPlayerTag,
+    memberFound: !!member,
+    playerDetailFound: !!playerDetail,
+    memberName: member?.name ?? 'not found',
+    availablePlayerDetailKeys: Object.keys(latestSnapshot.playerDetails || {}).slice(0, 5)
+  });
 
   if (!member || !playerDetail) {
-    console.log(`[PlayerProfile] Player not found in snapshot. Tag: ${normalizedPlayerTag}, member: ${!!member}, playerDetail: ${!!playerDetail}, memberCount: ${dailySnapshot.members.length}`);
+    if (!member) {
+      console.error('[RCA] ❌ FAILURE POINT #2: Player not in members array');
+      console.error('[RCA] Available member tags:', dailySnapshot.members.map(m => m.tag));
+    }
+    if (!playerDetail) {
+      console.error('[RCA] ❌ FAILURE POINT #3: Player not in playerDetails object');
+      console.error('[RCA] Available playerDetails keys:', Object.keys(latestSnapshot.playerDetails || {}));
+      console.error('[RCA] Looking for key:', normalizedPlayerTag);
+    }
     return null;
   }
+  
+  console.log('[RCA] ✅ SUCCESS: Player found in both members and playerDetails');
 
   const calcMember = mapMemberForCalculations(member);
   const activity = calculateActivityScore(calcMember);
