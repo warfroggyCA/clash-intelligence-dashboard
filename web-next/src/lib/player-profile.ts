@@ -329,7 +329,10 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
       firstRecord: data?.[0] ? {
         clan_tag: data[0].clan_tag,
         snapshot_date: data[0].snapshot_date || 'no snapshot_date field',
-        playerDetailsKeys: Object.keys(data[0].player_details || {}).length
+        playerDetailsKeys: Object.keys(data[0].player_details || {}).length,
+        playerDetailsType: typeof data[0].player_details,
+        playerDetailsIsNull: data[0].player_details === null,
+        firstPlayerKey: Object.keys(data[0].player_details || {})[0]
       } : 'no data'
     });
 
