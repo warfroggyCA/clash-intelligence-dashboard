@@ -341,17 +341,34 @@ async function loadRecentFullSnapshots(clanTag: string, limit: number): Promise<
       return [];
     }
 
-    return (data || []).map((record): FullClanSnapshot => ({
-      clanTag: normalizeTag(record.clan_tag),
-      fetchedAt: record.fetched_at,
-      clan: record.clan,
-      memberSummaries: record.member_summaries,
-      playerDetails: record.player_details,
-      currentWar: null, // Not loaded to reduce data size
-      warLog: [], // Not loaded to reduce data size
-      capitalRaidSeasons: [], // Not loaded to reduce data size
-      metadata: record.metadata,
-    }));
+    return (data || []).map((record): FullClanSnapshot => {
+      console.log('[RCA] Transforming record:', {
+        clan_tag: record.clan_tag,
+        playerDetailsType: typeof record.player_details,
+        playerDetailsKeys: Object.keys(record.player_details || {}).length,
+        playerDetailsIsNull: record.player_details === null
+      });
+      
+      const transformed = {
+        clanTag: normalizeTag(record.clan_tag),
+        fetchedAt: record.fetched_at,
+        clan: record.clan,
+        memberSummaries: record.member_summaries,
+        playerDetails: record.player_details,
+        currentWar: null, // Not loaded to reduce data size
+        warLog: [], // Not loaded to reduce data size
+        capitalRaidSeasons: [], // Not loaded to reduce data size
+        metadata: record.metadata,
+      };
+      
+      console.log('[RCA] Transformed result:', {
+        clanTag: transformed.clanTag,
+        playerDetailsType: typeof transformed.playerDetails,
+        playerDetailsKeys: Object.keys(transformed.playerDetails || {}).length
+      });
+      
+      return transformed;
+    });
   } catch (error) {
     console.warn('[PlayerProfile] Unable to load snapshots from Supabase:', error);
     return [];
