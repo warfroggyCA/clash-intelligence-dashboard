@@ -155,6 +155,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   const playerDetail = latestSnapshot.playerDetails?.[normalizedPlayerTag];
 
   if (!member || !playerDetail) {
+    console.log(`[PlayerProfile] Player not found in snapshot. Tag: ${normalizedPlayerTag}, member: ${!!member}, playerDetail: ${!!playerDetail}, memberCount: ${dailySnapshot.members.length}`);
     return null;
   }
 
@@ -599,14 +600,17 @@ function deriveUpcomingActions(context: InsightContext): PlayerProfileData['upco
 }
 
 function buildMockProfile(normalized: string): PlayerProfileData {
+  // Generate unique mock name from tag to avoid showing same player for all profiles
+  const mockName = `Player ${normalized.slice(0, 4).toUpperCase()}`;
+  
   return {
     summary: {
-      name: 'DoubleD',
+      name: mockName,
       tag: `#${normalized}`,
-      role: 'coleader',
+      role: 'member',
       clanName: 'Heck Yeah',
       clanTag: '#2PR8R8V8P',
-      townHallLevel: 13,
+      townHallLevel: 12,
       trophies: 2577,
       league: {
         name: 'Champion League',
