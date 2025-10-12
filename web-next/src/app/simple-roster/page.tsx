@@ -293,16 +293,16 @@ export default function SimpleRosterPage() {
                     Player {sortKey === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
-                    onClick={() => handleSort('th')}
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
-                  >
-                    TH {sortKey === 'th' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th 
                     onClick={() => handleSort('role')}
                     className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Role {sortKey === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('th')}
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    TH {sortKey === 'th' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('league')}
