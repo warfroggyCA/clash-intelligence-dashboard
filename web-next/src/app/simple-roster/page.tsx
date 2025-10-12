@@ -490,13 +490,26 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span 
-                          title={`Current trophy count: ${player.trophies.toLocaleString()}`}
-                          className="font-mono text-sm text-brand-text-primary font-medium cursor-help"
-                        >
-                          {player.trophies.toLocaleString()}
-                        </span>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          <div 
+                            title={`Current trophy count: ${player.trophies.toLocaleString()}`}
+                            className="relative cursor-help" 
+                            style={{ width: '48px', height: '48px' }}
+                          >
+                            <img 
+                              src="/assets/clash/trophy.png"
+                              alt="Trophy"
+                              className="w-full h-full object-contain"
+                            />
+                            <span 
+                              className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                              style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
+                            >
+                              {player.trophies >= 1000 ? `${(player.trophies / 1000).toFixed(1)}k` : player.trophies}
+                            </span>
+                          </div>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span 
