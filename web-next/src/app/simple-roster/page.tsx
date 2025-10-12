@@ -362,21 +362,6 @@ export default function SimpleRosterPage() {
                           {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-brand-text-primary font-medium">
-                          {player.trophies.toLocaleString()}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-green-600 font-medium">
-                          {player.donations}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-blue-600 font-medium">
-                          {player.donationsReceived}
-                        </span>
-                      </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
                           {player.rankedLeagueName ? (
@@ -390,6 +375,33 @@ export default function SimpleRosterPage() {
                             <span className="text-xs text-brand-text-tertiary">Unranked</span>
                           )}
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-mono text-sm text-brand-text-primary font-medium">
+                          {player.trophies.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`font-mono text-sm font-semibold ${rushColor}`}>
+                          {rushPercent}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex justify-center">
+                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${activityColor}`}>
+                            {activity.level}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-mono text-sm text-green-600 font-medium">
+                          {player.donations}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <span className="font-mono text-sm text-blue-600 font-medium">
+                          {player.donationsReceived}
+                        </span>
                       </td>
                     </tr>
                   );
