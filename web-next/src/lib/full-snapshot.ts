@@ -29,6 +29,10 @@ export interface MemberSummary {
   clanRank?: number;
   previousClanRank?: number;
   league?: any;
+  leagueTier?: {
+    id: number;
+    name: string;
+  };
   extras?: Record<string, any> | null;
 }
 
