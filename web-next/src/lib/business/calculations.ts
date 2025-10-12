@@ -399,6 +399,7 @@ export const calculateRealTimeActivity = (member: Member): {
   }
   
   // Determine preliminary activity level based on real-time score
+  // This is just for real-time indicators (max 35 pts), final level calculated in calculateActivityScore
   let activity_level: ActivityLevel;
   if (score >= 30) {
     activity_level = 'Very Active';
