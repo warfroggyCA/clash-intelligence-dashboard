@@ -1092,7 +1092,7 @@ const RosterSummaryInner = () => {
 const MemoizedRosterSummaryInner = React.memo(RosterSummaryInner);
 
 // Shell component with SSR hydration guard
-export const RosterSummary = () => {
+const RosterSummaryShell = () => {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
     if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
@@ -1108,5 +1108,8 @@ export const RosterSummary = () => {
   if (!mounted) return <div data-rs-placeholder suppressHydrationWarning />;
   return <MemoizedRosterSummaryInner />;
 };
+
+// CRITICAL: Wrap the shell too to prevent parent re-renders from cascading
+export const RosterSummary = React.memo(RosterSummaryShell);
 
 export default RosterSummary;
