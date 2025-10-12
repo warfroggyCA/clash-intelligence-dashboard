@@ -1093,20 +1093,16 @@ const MemoizedRosterSummaryInner = React.memo(RosterSummaryInner);
 
 // Shell component with SSR hydration guard
 const RosterSummaryShell = () => {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => {
-    if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
-      // eslint-disable-next-line no-console
-      console.log('[RosterSummaryShell] effect start');
-    }
-    setMounted(true);
-  }, []);
-  if (process.env.NEXT_PUBLIC_RS_DEBUG_LOG === 'true') {
-    // eslint-disable-next-line no-console
-    console.log('[RosterSummaryShell] render', { mounted });
-  }
-  if (!mounted) return <div data-rs-placeholder suppressHydrationWarning />;
-  return <MemoizedRosterSummaryInner />;
+  // EMERGENCY FIX: Completely disable RosterSummary until infinite loop is resolved
+  return (
+    <div className="rounded-2xl border border-yellow-500/70 bg-yellow-900/20 p-6 text-yellow-200">
+      <h3 className="text-lg font-semibold mb-2">⚠️ Roster Summary Temporarily Disabled</h3>
+      <p className="text-sm">
+        This component is being rebuilt to fix the React 185 infinite loop error.
+        Roster table below is fully functional.
+      </p>
+    </div>
+  );
 };
 
 // CRITICAL: Wrap the shell too to prevent parent re-renders from cascading
