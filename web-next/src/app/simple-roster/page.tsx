@@ -511,6 +511,21 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           {rushPercent}%
                         </span>
                       </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-mono text-sm text-brand-text-primary">{player.bk || '-'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-mono text-sm text-brand-text-primary">{player.aq || '-'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-mono text-sm text-brand-text-primary">{player.gw || '-'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-mono text-sm text-brand-text-primary">{player.rc || '-'}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className="font-mono text-sm text-brand-text-primary">{player.mp || '-'}</span>
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
                           <span 
