@@ -2,10 +2,10 @@
 
 import React, { useMemo } from 'react';
 import { GlassCard } from '@/components/ui';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 
 export default function TournamentCard() {
-  const roster = useDashboardStore((s) => s.roster);
+  const roster = useDashboardStore(useShallow((s) => s.roster));
   const snapshot = useDashboardStore((s) => s.snapshotMetadata);
 
   const seasonId = roster?.seasonId || snapshot?.seasonId || null;
