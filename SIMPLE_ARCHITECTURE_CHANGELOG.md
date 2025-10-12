@@ -436,18 +436,18 @@ The nginx backend proxy configuration kept getting deleted on container/service 
 
 ## Future Enhancements (Planned)
 
-### Phase 1 - Core Features:
-- [ ] Add roster summary cards (total members, avg TH, total donations)
-- [ ] Add search/filter functionality
-- [ ] Add column sorting
-- [ ] Add player count badge
+### Phase 1 - Core Features (COMPLETED):
+- [x] ~~Add roster summary cards~~ (SKIPPED - not actionable per user)
+- [x] ~~Add search/filter functionality~~ (KILLED - not needed for small roster)
+- [x] Add column sorting ✅ 
+- [x] Add rush score calculations ✅
+- [x] Add activity level indicators ✅
 
-### Phase 2 - Advanced Features:
-- [ ] Add rush score calculations
-- [ ] Add activity level indicators
+### Phase 2 - Advanced Features (In Progress):
+- [ ] Add hero columns (desktop only)
 - [ ] Add ACE score integration
 - [ ] Add donation balance warnings
-- [ ] Add card/table view toggle
+- [ ] ~~Add card/table view toggle~~ (Already responsive - auto-switches)
 
 ### Phase 3 - Polish:
 - [ ] Add animations and transitions
