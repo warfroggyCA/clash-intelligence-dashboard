@@ -577,14 +577,41 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
               key={player.tag}
               className="rounded-lg border border-brand-border bg-brand-surface shadow-sm p-3"
             >
-              {/* Compact Header - Single Row */}
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <div title={`Town Hall ${player.townHallLevel}`} className="flex-shrink-0">
-                    <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
+              {/* Header - Name First */}
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex-1 min-w-0">
+                  <Link
+                    href={`/simple-player/${player.tag.replace('#', '')}`}
+                    className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline block truncate"
+                    style={{ fontFamily: "'Clash Display', sans-serif" }}
+                  >
+                    {player.name}
+                  </Link>
+                  <div className="flex items-center gap-2 mt-0.5">
+                    <span 
+                      title={`Town Hall ${player.townHallLevel}`}
+                      className="text-xs text-brand-text-tertiary cursor-help"
+                    >
+                      TH{player.townHallLevel}
+                    </span>
+                    <span 
+                      title={roleTooltip}
+                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium cursor-help ${
+                      player.role === 'leader' 
+                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
+                        : player.role === 'coLeader'
+                        ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                        : player.role === 'admin'
+                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                        : 'bg-gray-100 text-gray-800 border border-gray-200'
+                    }`}>
+                      {player.role === 'leader' ? 'Lead' : player.role === 'coLeader' ? 'Co-L' : player.role === 'admin' ? 'Elder' : 'Mem'}
+                    </span>
                   </div>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                   {player.rankedLeagueName && (
-                    <div title={leagueTooltip} className="cursor-help flex-shrink-0">
+                    <div title={leagueTooltip} className="cursor-help">
                       <LeagueBadge 
                         league={player.rankedLeagueName} 
                         trophies={player.trophies}
@@ -593,28 +620,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       />
                     </div>
                   )}
-                  <div className="flex-1 min-w-0">
-                    <Link
-                      href={`/simple-player/${player.tag.replace('#', '')}`}
-                      className="text-sm font-semibold text-brand-accent hover:text-brand-accent-hover hover:underline block truncate"
-                    >
-                      {player.name}
-                    </Link>
-                  </div>
                 </div>
-                <span 
-                  title={roleTooltip}
-                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-help flex-shrink-0 ml-2 ${
-                  player.role === 'leader' 
-                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
-                    : player.role === 'coLeader'
-                    ? 'bg-orange-100 text-orange-800 border border-orange-200'
-                    : player.role === 'admin'
-                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                    : 'bg-gray-100 text-gray-800 border border-gray-200'
-                }`}>
-                  {player.role === 'leader' ? 'Lead' : player.role === 'coLeader' ? 'Co-L' : player.role === 'admin' ? 'Elder' : 'Mem'}
-                </span>
               </div>
 
               {/* Compact Stats Grid - 3 columns */}
