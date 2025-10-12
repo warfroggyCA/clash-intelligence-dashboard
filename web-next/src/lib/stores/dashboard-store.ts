@@ -1703,9 +1703,8 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
  * 
  * Example:
  * const roster = useDashboardStoreShallow((state) => state.roster);
+ * 
+ * In Zustand v5, use it like this:
+ * const roster = useDashboardStore(useShallow((state) => state.roster));
  */
-export function useDashboardStoreShallow<T>(
-  selector: (state: DashboardState) => T
-): T {
-  return useDashboardStore(selector as any, shallow as any) as T;
-}
+export { useShallow };
