@@ -202,76 +202,64 @@ export const isLowDonator = (member: Member): boolean => {
 
 /**
  * Calculate activity score based on various factors
+ * 
+ * NEW MULTI-INDICATOR SCORING SYSTEM (Jan 2025):
+ * Total: 0-100 points
+ * 
+ * Tier 1: Definitive Real-Time Indicators (0-70 points)
+ * - Ranked Battle Participation: 0-20 points (definitive)
+ * - War/Raids/Clan Games: 0-35 points (future - placeholder)
+ * - Donations: 0-15 points
+ * 
+ * Tier 2: Supporting Indicators (0-30 points)
+ * - Hero Development: 0-10 points
+ * - Clan Role: 0-10 points
+ * - Trophy Activity: 0-10 points (future - placeholder)
  */
 export const calculateActivityScore = (member: Member): ActivityEvidence => {
   let score = 0;
   const indicators: string[] = [];
   
-  // Real-time activity indicators (0-50 points)
+  // TIER 1: Real-time activity indicators (0-70 points)
   const realTimeActivity = calculateRealTimeActivity(member);
-  const manualWeight = getActivityWeighting(realTimeActivity.activity_level);
+  score += realTimeActivity.score;
+  indicators.push(...realTimeActivity.indicators);
   
-  if (realTimeActivity.confidence === 'definitive') {
-    score += 50;
-    indicators.push("Definitive activity evidence");
-  } else if (realTimeActivity.confidence === 'high') {
-    score += 40;
-    indicators.push("High confidence activity");
-  } else {
-    score += manualWeight;
-  }
+  // TIER 2: Supporting indicators (0-30 points)
   
-  // Trophy activity (0-25 points)
-  const trophies = member.trophies ?? 0;
-  const trophyChange = 0; // Would need historical data to calculate
-  
-  if (trophyChange > 0) {
-    score += 25;
-    indicators.push("Trophy gains detected");
-  } else if (trophyChange >= -50) {
-    score += 5;
-    indicators.push("Stable trophy count");
-  }
-  
-  // Town Hall progress (0-20 points)
+  // 1. Hero Development (0-10 points)
   const th = getTownHallLevel(member);
-  if (th >= 14) {
-    score += 20;
-    indicators.push("High TH level");
-  } else if (th >= 11) {
-    score += 15;
-    indicators.push("Mid-high TH level");
-  } else if (th >= 8) {
-    score += 10;
-    indicators.push("Mid TH level");
-  } else {
-    score += 5;
-    indicators.push("Lower TH level");
-  }
-  
-  // Hero activity (0-15 points)
   const heroes = [member.bk, member.aq, member.gw, member.rc, member.mp];
   const hasHeroes = heroes.some(level => level && level > 0);
   
   if (hasHeroes) {
     const maxHeroes = getHeroCaps(th);
+    const heroKeys: Array<keyof HeroCaps> = ['bk', 'aq', 'gw', 'rc', 'mp'];
     const heroProgress = heroes.map((level, idx) => {
-      const heroKey = ['bk', 'aq', 'gw', 'rc', 'mp'][idx] as keyof HeroCaps;
+      const heroKey = heroKeys[idx];
       const max = maxHeroes[heroKey] || 0;
       return max > 0 ? ((level || 0) / max) * 100 : 0;
-    });
+    }).filter(p => p > 0); // Only count heroes that exist at this TH
     
-    const avgProgress = heroProgress.reduce((sum, p) => sum + p, 0) / heroProgress.length;
-    if (avgProgress > 50) {
-      score += 15;
-      indicators.push("Active hero development");
-    } else {
-      score += 5;
-      indicators.push("Heroes present");
+    if (heroProgress.length > 0) {
+      const avgProgress = heroProgress.reduce((sum, p) => sum + p, 0) / heroProgress.length;
+      if (avgProgress >= 80) {
+        score += 10;
+        indicators.push("Excellent hero development (80%+)");
+      } else if (avgProgress >= 60) {
+        score += 8;
+        indicators.push("Strong hero development (60%+)");
+      } else if (avgProgress >= 40) {
+        score += 5;
+        indicators.push("Moderate hero development (40%+)");
+      } else {
+        score += 2;
+        indicators.push("Heroes present");
+      }
     }
   }
   
-  // Clan role activity (0-10 points)
+  // 2. Clan Role (0-10 points)
   const role = member.role?.toLowerCase() ?? '';
   if (role === 'leader' || role === 'coleader') {
     score += 10;
@@ -281,15 +269,29 @@ export const calculateActivityScore = (member: Member): ActivityEvidence => {
     indicators.push("Elder role");
   }
   
-  // Determine activity level
+  // 3. Trophy Activity (0-10 points) - PLACEHOLDER
+  // Future: Implement trophy change tracking when historical data is available
+  // For now, we give minimal points based on current trophy count as a proxy
+  const trophies = member.trophies ?? 0;
+  if (trophies >= 5000) {
+    score += 5;
+    indicators.push("High trophy count (5000+)");
+  } else if (trophies >= 4000) {
+    score += 3;
+    indicators.push("Strong trophy count (4000+)");
+  } else if (trophies >= 3000) {
+    score += 1;
+  }
+  
+  // Determine final activity level based on total score
   let level: ActivityLevel;
-  if (score >= 80) {
+  if (score >= 85) {
     level = 'Very Active';
-  } else if (score >= 60) {
+  } else if (score >= 65) {
     level = 'Active';
-  } else if (score >= 40) {
+  } else if (score >= 45) {
     level = 'Moderate';
-  } else if (score >= 20) {
+  } else if (score >= 25) {
     level = 'Low';
   } else {
     level = 'Inactive';
