@@ -575,76 +575,84 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
             return (
             <div
               key={player.tag}
-              className="rounded-lg border border-brand-border bg-brand-surface shadow-md p-4"
+              className="rounded-lg border border-brand-border bg-brand-surface shadow-sm p-3"
             >
-              {/* Player Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <Link
-                    href={`/simple-player/${player.tag.replace('#', '')}`}
-                    className="text-lg font-semibold text-brand-accent hover:text-brand-accent-hover hover:underline"
-                  >
-                    {player.name}
-                  </Link>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div title={`Town Hall ${player.townHallLevel}`}>
-                      <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
+              {/* Compact Header - Single Row */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div title={`Town Hall ${player.townHallLevel}`} className="flex-shrink-0">
+                    <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
+                  </div>
+                  {player.rankedLeagueName && (
+                    <div title={leagueTooltip} className="cursor-help flex-shrink-0">
+                      <LeagueBadge 
+                        league={player.rankedLeagueName} 
+                        trophies={player.trophies}
+                        size="sm" 
+                        showText={false}
+                      />
                     </div>
-                    <span 
-                      title={roleTooltip}
-                      className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-help ${
-                      player.role === 'leader' 
-                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
-                        : player.role === 'coLeader'
-                        ? 'bg-orange-100 text-orange-800 border border-orange-200'
-                        : player.role === 'admin'
-                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                        : 'bg-gray-100 text-gray-800 border border-gray-200'
-                    }`}>
-                      {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
-                    </span>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <Link
+                      href={`/simple-player/${player.tag.replace('#', '')}`}
+                      className="text-sm font-semibold text-brand-accent hover:text-brand-accent-hover hover:underline block truncate"
+                    >
+                      {player.name}
+                    </Link>
                   </div>
                 </div>
-                {player.rankedLeagueName && (
-                  <div title={leagueTooltip} className="cursor-help">
-                    <LeagueBadge 
-                      league={player.rankedLeagueName} 
-                      trophies={player.trophies}
-                      size="md" 
-                      showText={false}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Player Stats */}
-              <div className="grid grid-cols-2 gap-3 text-sm mb-3">
-                <div title={`Current trophy count: ${player.trophies.toLocaleString()}`} className="cursor-help">
-                  <p className="text-brand-text-tertiary text-xs mb-1">Trophies</p>
-                  <p className="font-mono font-semibold text-brand-text-primary">{player.trophies.toLocaleString()}</p>
-                </div>
-                <div title={rushTooltip} className="cursor-help">
-                  <p className="text-brand-text-tertiary text-xs mb-1">Rush %</p>
-                  <p className={`font-mono font-semibold ${rushColor}`}>{rushPercent}%</p>
-                </div>
-                <div title={donationTooltip} className="cursor-help">
-                  <p className="text-brand-text-tertiary text-xs mb-1">Donated</p>
-                  <p className="font-mono font-semibold text-green-600">{player.donations}</p>
-                </div>
-                <div title={donationTooltip} className="cursor-help">
-                  <p className="text-brand-text-tertiary text-xs mb-1">Received</p>
-                  <p className="font-mono font-semibold text-blue-600">{player.donationsReceived}</p>
-                </div>
-              </div>
-
-              {/* Activity Badge */}
-              <div className="flex justify-center">
                 <span 
-                  title={activityTooltip}
-                  className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border cursor-help ${activityColor}`}
-                >
-                  {activity.level}
+                  title={roleTooltip}
+                  className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium cursor-help flex-shrink-0 ml-2 ${
+                  player.role === 'leader' 
+                    ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
+                    : player.role === 'coLeader'
+                    ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                    : player.role === 'admin'
+                    ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                    : 'bg-gray-100 text-gray-800 border border-gray-200'
+                }`}>
+                  {player.role === 'leader' ? 'Lead' : player.role === 'coLeader' ? 'Co-L' : player.role === 'admin' ? 'Elder' : 'Mem'}
                 </span>
+              </div>
+
+              {/* Compact Stats Grid - 3 columns */}
+              <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                <div title={`Current trophy count: ${player.trophies.toLocaleString()}`} className="cursor-help">
+                  <p className="text-brand-text-tertiary text-[10px] mb-0.5">Trophies</p>
+                  <p className="font-mono font-semibold text-brand-text-primary text-xs">{player.trophies.toLocaleString()}</p>
+                </div>
+                <div title={rushTooltip} className="cursor-help text-center">
+                  <p className="text-brand-text-tertiary text-[10px] mb-0.5">Rush</p>
+                  <p className={`font-mono font-semibold text-xs ${rushColor}`}>{rushPercent}%</p>
+                </div>
+                <div title={activityTooltip} className="cursor-help text-right">
+                  <p className="text-brand-text-tertiary text-[10px] mb-0.5">Activity</p>
+                  <span 
+                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${activityColor}`}
+                  >
+                    {activity.level === 'Very Active' ? 'V.Active' : activity.level}
+                  </span>
+                </div>
+              </div>
+
+              {/* Compact Donations - Single Row */}
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-brand-border/30">
+                <div title={donationTooltip} className="cursor-help flex items-baseline gap-1">
+                  <span className="text-brand-text-tertiary text-[10px]">Donated:</span>
+                  <span className="font-mono font-semibold text-green-600">{player.donations}</span>
+                </div>
+                <div title={donationTooltip} className="cursor-help flex items-baseline gap-1">
+                  <span className="text-brand-text-tertiary text-[10px]">Received:</span>
+                  <span className="font-mono font-semibold text-blue-600">{player.donationsReceived}</span>
+                </div>
+                <div title={donationTooltip} className="cursor-help flex items-baseline gap-1">
+                  <span className="text-brand-text-tertiary text-[10px]">Bal:</span>
+                  <span className={`font-mono font-semibold ${donationBalance > 0 ? 'text-red-600' : donationBalance < 0 ? 'text-green-600' : 'text-brand-text-tertiary'}`}>
+                    {donationBalance > 0 ? '+' : ''}{donationBalance}
+                  </span>
+                </div>
               </div>
             </div>
             );
