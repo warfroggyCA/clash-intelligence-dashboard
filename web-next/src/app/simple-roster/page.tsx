@@ -140,23 +140,13 @@ export default function SimpleRosterPage() {
     <DashboardLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
-        <div className="mb-8 bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl p-6 border border-blue-500/20 shadow-2xl">
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-3xl">🏰</span>
-            </div>
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-yellow-400 via-orange-400 to-yellow-500 bg-clip-text text-transparent">
-                {roster.clanName}
-              </h1>
-              <div className="flex gap-6 mt-2 text-sm">
-                <p className="text-blue-300">
-                  <span className="text-gray-400">Updated:</span> {new Date(roster.date).toLocaleDateString()}
-                </p>
-                <p className="text-emerald-300">
-                  <span className="text-gray-400">Members:</span> {roster.members.length}
-                </p>
-              </div>
+              <h1 className="text-3xl font-bold text-clash-gold mb-2">Clan Roster</h1>
+              <p className="text-sm text-brand-text-secondary">
+                {roster.members.length} members · Updated {new Date(roster.date).toLocaleDateString()}
+              </p>
             </div>
           </div>
         </div>
