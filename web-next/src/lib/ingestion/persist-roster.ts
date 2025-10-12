@@ -202,8 +202,8 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       activity_score: null,
       rush_percent: rushPercent,
       extras: buildExtras(summary, detail),
-      ranked_league_id: summary.leagueTier?.id ?? detail?.leagueTier?.id ?? null,  // Use clan member summary (roster badge source)
-      ranked_league_name: summary.leagueTier?.name ?? detail?.leagueTier?.name ?? null,
+      ranked_league_id: detail?.leagueTier?.id ?? summary.leagueTier?.id ?? null,  // Use player detail as source of truth for roster badges
+      ranked_league_name: detail?.leagueTier?.name ?? summary.leagueTier?.name ?? null,
     };
   }).filter(Boolean) as any[];
 
