@@ -419,7 +419,9 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         </Link>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        <span 
+                          title={roleTooltip}
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help ${
                           player.role === 'leader' 
                             ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
                             : player.role === 'coLeader'
@@ -433,47 +435,66 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </td>
                       <td className="px-4 py-3 text-center">
                         <div className="flex justify-center">
-                          <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
+                          <div title={`Town Hall ${player.townHallLevel}`}>
+                            <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
+                          </div>
                         </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
                           {player.rankedLeagueName ? (
-                            <LeagueBadge 
-                              league={player.rankedLeagueName} 
-                              trophies={player.trophies}
-                              size="sm" 
-                              showText={false}
-                            />
+                            <div title={leagueTooltip} className="cursor-help">
+                              <LeagueBadge 
+                                league={player.rankedLeagueName} 
+                                trophies={player.trophies}
+                                size="sm" 
+                                showText={false}
+                              />
+                            </div>
                           ) : (
-                            <span className="text-xs text-brand-text-tertiary">Unranked</span>
+                            <span title={leagueTooltip} className="text-xs text-brand-text-tertiary cursor-help">Unranked</span>
                           )}
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-brand-text-primary font-medium">
+                        <span 
+                          title={`Current trophy count: ${player.trophies.toLocaleString()}`}
+                          className="font-mono text-sm text-brand-text-primary font-medium cursor-help"
+                        >
                           {player.trophies.toLocaleString()}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className={`font-mono text-sm font-semibold ${rushColor}`}>
+                        <span 
+                          title={rushTooltip}
+                          className={`font-mono text-sm font-semibold cursor-help ${rushColor}`}
+                        >
                           {rushPercent}%
                         </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${activityColor}`}>
+                          <span 
+                            title={activityTooltip}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-help ${activityColor}`}
+                          >
                             {activity.level}
                           </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-green-600 font-medium">
+                        <span 
+                          title={donationTooltip}
+                          className="font-mono text-sm text-green-600 font-medium cursor-help"
+                        >
                           {player.donations}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-mono text-sm text-blue-600 font-medium">
+                        <span 
+                          title={donationTooltip}
+                          className="font-mono text-sm text-blue-600 font-medium cursor-help"
+                        >
                           {player.donationsReceived}
                         </span>
                       </td>
