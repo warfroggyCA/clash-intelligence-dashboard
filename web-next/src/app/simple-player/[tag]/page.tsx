@@ -109,7 +109,7 @@ export default function SimplePlayerPage() {
     );
   }
 
-  if (!profile) {
+  if (!player) {
     return (
       <div className="min-h-screen bg-gray-900 text-white p-8">
         <div className="max-w-4xl mx-auto">
@@ -125,7 +125,17 @@ export default function SimplePlayerPage() {
     );
   }
 
-  const { summary, heroes } = profile;
+  // Build heroes array from the player data
+  const heroes = [];
+  if (player.bk) heroes.push({ name: 'Barbarian King', level: player.bk });
+  if (player.aq) heroes.push({ name: 'Archer Queen', level: player.aq });
+  if (player.gw) heroes.push({ name: 'Grand Warden', level: player.gw });
+  if (player.rc) heroes.push({ name: 'Royal Champion', level: player.rc });
+  if (player.mp) heroes.push({ name: 'Minion Prince', level: player.mp });
+
+  const donations = player.donations || 0;
+  const donationsReceived = player.donationsReceived || 0;
+  const donationBalance = donations - donationsReceived;
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
@@ -141,103 +151,93 @@ export default function SimplePlayerPage() {
         <div className="bg-gray-800 rounded-lg p-6 mb-6">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <h1 className="text-4xl font-bold mb-2">{summary.name}</h1>
-              <p className="text-gray-400 font-mono">{summary.tag}</p>
-              <p className="text-gray-400">{summary.clanName}</p>
+              <h1 className="text-4xl font-bold mb-2">{player.name}</h1>
+              <p className="text-gray-400 font-mono">{player.tag}</p>
+              {player.clan?.name && <p className="text-gray-400">{player.clan.name}</p>}
             </div>
             <div className="text-right">
               <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-600 rounded-lg text-2xl font-bold mb-2">
-                {summary.townHallLevel}
+                {player.townHallLevel}
               </div>
               <p className="text-xs text-gray-400">Town Hall</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-gray-700 rounded p-3">
-              <p className="text-xs text-gray-400 mb-1">Role</p>
-              <p className="text-lg font-semibold capitalize">{summary.role}</p>
-            </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {player.role && (
+              <div className="bg-gray-700 rounded p-3">
+                <p className="text-xs text-gray-400 mb-1">Role</p>
+                <p className="text-lg font-semibold capitalize">{player.role}</p>
+              </div>
+            )}
             <div className="bg-gray-700 rounded p-3">
               <p className="text-xs text-gray-400 mb-1">Trophies</p>
-              <p className="text-lg font-semibold">{summary.trophies.toLocaleString()}</p>
+              <p className="text-lg font-semibold">{player.trophies.toLocaleString()}</p>
             </div>
             <div className="bg-gray-700 rounded p-3">
-              <p className="text-xs text-gray-400 mb-1">Activity</p>
-              <p className="text-lg font-semibold">{summary.activityLevel}</p>
-            </div>
-            <div className="bg-gray-700 rounded p-3">
-              <p className="text-xs text-gray-400 mb-1">Rush Score</p>
-              <p className="text-lg font-semibold">{summary.rushScore}%</p>
+              <p className="text-xs text-gray-400 mb-1">Donations</p>
+              <p className="text-lg font-semibold text-green-400">{donations}</p>
             </div>
           </div>
         </div>
 
         {/* League */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">League</h2>
-          <div className="flex items-center gap-4">
-            {summary.rankedLeague?.name && (
-              <div className="bg-gray-700 rounded p-4 flex-1">
-                <p className="text-xs text-gray-400 mb-1">⚔️ Ranked League</p>
-                <p className="text-lg font-semibold">{summary.rankedLeague.name}</p>
-              </div>
-            )}
-            {summary.league?.name && (
-              <div className="bg-gray-700 rounded p-4 flex-1">
-                <p className="text-xs text-gray-400 mb-1">Trophy League</p>
-                <p className="text-lg font-semibold">{summary.league.name}</p>
-              </div>
-            )}
-            {!summary.rankedLeague?.name && !summary.league?.name && (
-              <div className="bg-gray-700 rounded p-4 flex-1">
-                <p className="text-gray-400">Unranked</p>
-              </div>
-            )}
+        {(player.rankedLeague || player.league) && (
+          <div className="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 className="text-2xl font-bold mb-4">League</h2>
+            <div className="flex items-center gap-4">
+              {player.rankedLeague?.name && (
+                <div className="bg-gray-700 rounded p-4 flex-1">
+                  <p className="text-xs text-gray-400 mb-1">⚔️ Ranked League</p>
+                  <p className="text-lg font-semibold">{player.rankedLeague.name}</p>
+                </div>
+              )}
+              {player.league?.name && (
+                <div className="bg-gray-700 rounded p-4 flex-1">
+                  <p className="text-xs text-gray-400 mb-1">Trophy League</p>
+                  <p className="text-lg font-semibold">{player.league.name}</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Donations */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <h2 className="text-2xl font-bold mb-4">Donations</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div className="bg-gray-700 rounded p-4">
-              <p className="text-xs text-gray-400 mb-1">Given</p>
-              <p className="text-2xl font-bold text-green-400">{summary.donationBalance.given}</p>
-            </div>
-            <div className="bg-gray-700 rounded p-4">
-              <p className="text-xs text-gray-400 mb-1">Received</p>
-              <p className="text-2xl font-bold text-blue-400">{summary.donationBalance.received}</p>
-            </div>
-            <div className="bg-gray-700 rounded p-4">
-              <p className="text-xs text-gray-400 mb-1">Balance</p>
-              <p className={`text-2xl font-bold ${
-                summary.donationBalance.balance > 0 ? 'text-green-400' : 
-                summary.donationBalance.balance < 0 ? 'text-red-400' : 
-                'text-gray-400'
-              }`}>
-                {summary.donationBalance.balance > 0 ? '+' : ''}{summary.donationBalance.balance}
-              </p>
+        {(donations > 0 || donationsReceived > 0) && (
+          <div className="bg-gray-800 rounded-lg p-6 mb-6">
+            <h2 className="text-2xl font-bold mb-4">Donations</h2>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-gray-700 rounded p-4">
+                <p className="text-xs text-gray-400 mb-1">Given</p>
+                <p className="text-2xl font-bold text-green-400">{donations}</p>
+              </div>
+              <div className="bg-gray-700 rounded p-4">
+                <p className="text-xs text-gray-400 mb-1">Received</p>
+                <p className="text-2xl font-bold text-blue-400">{donationsReceived}</p>
+              </div>
+              <div className="bg-gray-700 rounded p-4">
+                <p className="text-xs text-gray-400 mb-1">Balance</p>
+                <p className={`text-2xl font-bold ${
+                  donationBalance > 0 ? 'text-green-400' : 
+                  donationBalance < 0 ? 'text-red-400' : 
+                  'text-gray-400'
+                }`}>
+                  {donationBalance > 0 ? '+' : ''}{donationBalance}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Heroes */}
-        {heroes && heroes.length > 0 && (
+        {heroes.length > 0 && (
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-2xl font-bold mb-4">Heroes</h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {heroes.map((hero) => (
                 <div key={hero.name} className="bg-gray-700 rounded p-4 text-center">
                   <p className="text-sm text-gray-400 mb-2">{hero.name}</p>
-                  <p className="text-3xl font-bold mb-1">{hero.level}</p>
-                  <p className="text-xs text-gray-500">Max: {hero.maxForTH}</p>
-                  <div className="mt-2 bg-gray-600 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-amber-500 h-full"
-                      style={{ width: `${(hero.level / hero.maxForTH) * 100}%` }}
-                    />
-                  </div>
+                  <p className="text-3xl font-bold">{hero.level}</p>
                 </div>
               ))}
             </div>
