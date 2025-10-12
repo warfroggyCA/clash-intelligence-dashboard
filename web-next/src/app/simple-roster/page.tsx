@@ -234,6 +234,6 @@ export default function SimpleRosterPage() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
