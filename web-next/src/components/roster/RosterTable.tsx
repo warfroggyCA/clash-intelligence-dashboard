@@ -272,7 +272,7 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 
 export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
   // CRITICAL FIX: Use selective subscriptions instead of whole-store destructuring
-  const roster = useDashboardStore((state) => state.roster);
+  const roster = useDashboardStore(useShallow((state) => state.roster));
   const sortKey = useDashboardStore((state) => state.sortKey);
   const sortDir = useDashboardStore((state) => state.sortDir);
   const setSortKey = useDashboardStore((state) => state.setSortKey);
