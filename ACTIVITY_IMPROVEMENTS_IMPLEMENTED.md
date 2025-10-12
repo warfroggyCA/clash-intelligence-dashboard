@@ -152,9 +152,9 @@ if (trophies >= 3000)  score += 1;
 - Member role: +0
 - Hero development: +5
 - Trophy level: +0
-- **Total: ~10 points = Inactive** ✅
+- **Total: ~10 points = Low** ✅ (Updated threshold)
 
-**Result:** Shows as "Inactive" in UI ✅
+**Result:** Shows as "Low" in UI ✅
 
 ---
 
