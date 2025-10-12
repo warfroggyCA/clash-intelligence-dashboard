@@ -197,6 +197,7 @@ export async function fetchFullClanSnapshot(
       clanRank: member.clanRank,
       previousClanRank: member.previousClanRank,
       league: member.league ?? detail?.league,
+      leagueTier: member.leagueTier ?? detail?.leagueTier,  // Source of truth for ranked participation
       extras: detail?.extras ?? null,
     };
   });
