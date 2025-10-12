@@ -11,9 +11,9 @@ interface LeagueBadgeProps {
 }
 
 const imageDimensions = {
-  sm: { width: 20, height: 20 },
-  md: { width: 24, height: 24 },
-  lg: { width: 32, height: 32 },
+  sm: { width: 48, height: 48 },
+  md: { width: 64, height: 64 },
+  lg: { width: 80, height: 80 },
   xl: { width: 96, height: 96 },
   xxl: { width: 128, height: 128 }
 };
