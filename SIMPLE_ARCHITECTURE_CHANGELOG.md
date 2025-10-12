@@ -302,6 +302,138 @@ The nginx config may be lost on container restart. Recreate:
 
 ---
 
+## Changes Log (Continued)
+
+### 7. Sortable Columns with Rush % and Activity
+
+**Date:** October 12, 2025
+
+**Features Added:**
+- ✅ Client-side column sorting for ALL columns
+- ✅ Rush % column with color coding
+- ✅ Activity column with status badges
+- ✅ Default sort: League tier → Trophy count
+- ✅ Sortable headers with ↑↓ indicators
+- ✅ Mobile cards updated to show Rush % and Activity
+
+**Why These Features:**
+Based on user requirement analysis, these were identified as actionable metrics:
+- **Sorting**: Essential for quickly finding players by different criteria
+- **Rush %**: Key indicator of player development (heroes vs TH level)
+- **Activity**: Important for identifying inactive players
+- **NOT added**: Search (clan too small), Filters (killed), Average stats (not actionable)
+
+**Implementation Details:**
+
+**League Tier Ranking:**
+```typescript
+const LEAGUE_TIERS: Record<string, number> = {
+  'Legend League': 12,
+  'Titan League': 11,
+  'Electro League': 10,
+  'Dragon League': 9,
+  'PEKKA League': 8,
+  'Golem League': 7,
+  'Valkyrie League': 6,
+  'Witch League': 5,
+  'Wizard League': 4,
+  'Archer League': 3,
+  'Barbarian League': 2,
+  'Skeleton League': 1,
+};
+```
+
+**Default Sort Logic:**
+1. Primary: Ranked Battle League tier (high to low)
+2. Secondary: Trophy count within same tier (descending)
+3. Tertiary: Unranked players sort by trophy count at bottom
+
+Example: Electro 33 > Electro 32 (because 33 has more trophies within Electro League)
+
+**Rush % Calculation:**
+- Uses `calculateRushPercentage()` from `/lib/business/calculations.ts`
+- Formula: `(maxHeroLevels - currentHeroLevels) / maxHeroLevels * 100`
+- Color coding:
+  - 🟢 Green: <40% (Not Rushed)
+  - 🟡 Yellow: 40-69% (Rushed)
+  - 🔴 Red: 70%+ (Very Rushed)
+
+**Activity Calculation:**
+- Uses `calculateActivityScore()` from `/lib/business/calculations.ts`
+- Factors: Donations, last seen, war attacks, TH progress, hero levels, role
+- Levels with badge colors:
+  - Very Active: Green (80+ score)
+  - Active: Blue (60-79 score)
+  - Moderate: Yellow (40-59 score)
+  - Low: Orange (20-39 score)
+  - Inactive: Red (<20 score)
+
+**Column Order (Final):**
+1. Player (name, clickable)
+2. TH (icon + level)
+3. Role (badge)
+4. League (icon, sortable by tier)
+5. Trophies (number)
+6. Rush % (color-coded)
+7. Activity (badge)
+8. Donated (green)
+9. Received (blue)
+
+**Sorting Implementation:**
+- Client-side only (lightweight, <20 members)
+- Click column header to sort
+- Click again to reverse direction
+- Arrow indicators show current sort
+- Uses `useMemo` for performance (stable dependencies)
+
+**Mobile Responsive:**
+- Cards show all data: Trophies, Rush %, Donated, Received
+- Activity badge displayed at bottom of card
+- 2x2 grid for stats, badge centered below
+- Color coding preserved (green donations, red rush %, etc.)
+
+**Hero Data Required:**
+- Added hero level properties to RosterMember interface
+- `bk`, `aq`, `gw`, `rc`, `mp` (optional numbers)
+- API must provide hero data for Rush % calculation
+- Falls back to 0 if not provided
+
+**Performance:**
+- Sorting is O(n log n) with ~20 members = negligible
+- `useMemo` prevents unnecessary re-sorts
+- No API calls on sort (data pre-loaded)
+- Calculations cached per render
+
+---
+
+### 8. Backend Proxy Persistence Fix
+
+**Date:** October 12, 2025
+
+**Problem:**
+The nginx backend proxy configuration kept getting deleted on container/service restarts, causing 502 errors.
+
+**Root Cause:**
+- `/etc/nginx/backend-proxy.conf` not persisted across restarts
+- `/etc` directory not mounted as volume
+- File recreated manually each time
+
+**Solution:**
+- Moved config to `/app/nginx-backend-proxy.conf` (persistent directory)
+- Updated supervisor to reference `/app/nginx-backend-proxy.conf`
+- `/app` directory is mounted and persists across restarts
+
+**Files Updated:**
+- Created: `/app/nginx-backend-proxy.conf`
+- Updated: `/etc/supervisor/conf.d/supervisord_backend_proxy.conf`
+
+**Impact:**
+- Backend proxy now survives restarts
+- No more manual recreation needed
+- 502 errors resolved permanently
+
+---
+
 ## Future Enhancements (Planned)
 
 ### Phase 1 - Core Features:
