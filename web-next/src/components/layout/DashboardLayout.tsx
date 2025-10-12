@@ -301,8 +301,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
               </div>
             )}
 
-            <ThemeToggle size="sm" />
-
             {/* New snapshot indicator (manual refresh) */}
             <NewSnapshotIndicator />
 
