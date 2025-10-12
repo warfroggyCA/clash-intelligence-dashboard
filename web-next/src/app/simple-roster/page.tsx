@@ -35,13 +35,26 @@ export default function SimpleRosterPage() {
     async function loadRoster() {
       try {
         setLoading(true);
+        console.log('[SimpleRoster] Fetching roster data from /api/v2/roster');
         const response = await fetch('/api/v2/roster');
         
+        console.log('[SimpleRoster] Response status:', response.status);
+        console.log('[SimpleRoster] Response headers:', Object.fromEntries(response.headers.entries()));
+        
         if (!response.ok) {
-          throw new Error(`Failed to load roster: ${response.status}`);
+          const errorText = await response.text();
+          console.error('[SimpleRoster] Error response:', errorText);
+          throw new Error(`Failed to load roster: ${response.status} - ${errorText.substring(0, 100)}`);
         }
         
         const apiData = await response.json();
+        console.log('[SimpleRoster] API data structure:', {
+          success: apiData.success,
+          hasData: !!apiData.data,
+          hasClan: !!apiData.data?.clan,
+          hasMembers: !!apiData.data?.members,
+          memberCount: apiData.data?.members?.length
+        });
         
         // Transform API response to our format
         if (apiData.success && apiData.data) {
@@ -59,11 +72,17 @@ export default function SimpleRosterPage() {
             clanName: apiData.data.clan.name,
             date: apiData.data.snapshot.fetchedAt
           };
+          console.log('[SimpleRoster] Transformed roster:', {
+            clanName: transformed.clanName,
+            memberCount: transformed.members.length
+          });
           setRoster(transformed);
         } else {
+          console.error('[SimpleRoster] Invalid API response format:', apiData);
           throw new Error('Invalid API response format');
         }
       } catch (err) {
+        console.error('[SimpleRoster] Load error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load roster');
       } finally {
         setLoading(false);
