@@ -531,6 +531,47 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                                  activity.level === 'Low' ? 'bg-orange-100 text-orange-800 border-orange-200' :
                                  'bg-red-100 text-red-800 border-red-200';
             
+            // Mobile tooltips (same as desktop)
+            const activityTooltip = `Activity Score: ${activity.score}/65 pts
+• ${activity.indicators.join('\n• ')}
+
+Scoring:
+• Ranked battles (0-20 pts)
+• Donations (0-15 pts)
+• Hero development (0-10 pts)
+• Leadership role (0-10 pts)
+• Trophy level (0-10 pts)`;
+
+            const rushTooltip = `Rush: ${rushPercent}%
+Heroes are ${rushPercent}% below max for TH${player.townHallLevel}.
+
+Heroes: BK ${player.bk || 0}, AQ ${player.aq || 0}, GW ${player.gw || 0}, RC ${player.rc || 0}
+
+Lower is better (0% = maxed)`;
+
+            const leagueTooltip = player.rankedLeagueName 
+              ? `${player.rankedLeagueName}
+${player.trophies} trophies
+
+Actively participating in ranked battles this season.`
+              : `Not participating in ranked battles
+Player is enrolled but hasn't earned trophies yet this season.`;
+
+            const roleTooltip = player.role === 'leader' 
+              ? 'Clan Leader - Full clan management permissions'
+              : player.role === 'coLeader'
+              ? 'Co-Leader - Can invite, promote, and manage wars'
+              : player.role === 'admin'
+              ? 'Elder - Can invite and donate to clan members'
+              : 'Member - Standard clan member';
+
+            const donationBalance = player.donationsReceived - player.donations;
+            const donationTooltip = `Donated: ${player.donations}
+Received: ${player.donationsReceived}
+Balance: ${donationBalance > 0 ? '+' : ''}${donationBalance}
+
+${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Gives more than receives' : 'Balanced donations'}`;
+            
             return (
             <div
               key={player.tag}
