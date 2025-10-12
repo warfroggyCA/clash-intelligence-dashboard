@@ -24,6 +24,10 @@ export interface PlayerProfileSummary {
     name?: string;
     trophies?: number;
   } | null;
+  rankedLeague: {
+    id?: number;
+    name?: string;
+  } | null;
   trophies: number;
   joinDate?: string;
   activityLevel: 'Very Active' | 'Active' | 'Moderate' | 'Low' | 'Inactive';
