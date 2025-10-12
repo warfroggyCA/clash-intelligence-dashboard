@@ -521,7 +521,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span 
-                          title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk}\n${maxHeroes.bk > 0 ? `Progress: ${Math.round(((player.bk || 0) / maxHeroes.bk) * 100)}%` : 'Not available at this TH'}`}
+                          title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk || 0}\n${(maxHeroes.bk || 0) > 0 ? `Progress: ${Math.round(((player.bk || 0) / (maxHeroes.bk || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
                         >
                           {player.bk || '-'}
@@ -529,7 +529,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span 
-                          title={`Archer Queen: ${player.aq || 0}/${maxHeroes.aq}\n${maxHeroes.aq > 0 ? `Progress: ${Math.round(((player.aq || 0) / maxHeroes.aq) * 100)}%` : 'Not available at this TH'}`}
+                          title={`Archer Queen: ${player.aq || 0}/${maxHeroes.aq || 0}\n${(maxHeroes.aq || 0) > 0 ? `Progress: ${Math.round(((player.aq || 0) / (maxHeroes.aq || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
                         >
                           {player.aq || '-'}
@@ -537,7 +537,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span 
-                          title={`Grand Warden: ${player.gw || 0}/${maxHeroes.gw}\n${maxHeroes.gw > 0 ? `Progress: ${Math.round(((player.gw || 0) / maxHeroes.gw) * 100)}%` : 'Not available at this TH'}`}
+                          title={`Grand Warden: ${player.gw || 0}/${maxHeroes.gw || 0}\n${(maxHeroes.gw || 0) > 0 ? `Progress: ${Math.round(((player.gw || 0) / (maxHeroes.gw || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
                         >
                           {player.gw || '-'}
@@ -545,7 +545,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span 
-                          title={`Royal Champion: ${player.rc || 0}/${maxHeroes.rc}\n${maxHeroes.rc > 0 ? `Progress: ${Math.round(((player.rc || 0) / maxHeroes.rc) * 100)}%` : 'Not available at this TH'}`}
+                          title={`Royal Champion: ${player.rc || 0}/${maxHeroes.rc || 0}\n${(maxHeroes.rc || 0) > 0 ? `Progress: ${Math.round(((player.rc || 0) / (maxHeroes.rc || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
                         >
                           {player.rc || '-'}
@@ -553,7 +553,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span 
-                          title={`Minion Prince: ${player.mp || 0}/${maxHeroes.mp}\n${maxHeroes.mp > 0 ? `Progress: ${Math.round(((player.mp || 0) / maxHeroes.mp) * 100)}%` : 'Not available at this TH'}`}
+                          title={`Minion Prince: ${player.mp || 0}/${maxHeroes.mp || 0}\n${(maxHeroes.mp || 0) > 0 ? `Progress: ${Math.round(((player.mp || 0) / (maxHeroes.mp || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
                         >
                           {player.mp || '-'}
