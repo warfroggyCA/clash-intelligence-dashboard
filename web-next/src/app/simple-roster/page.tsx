@@ -589,8 +589,18 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                   </Link>
                   <div className="flex items-center gap-2 mt-0.5">
                     <div title={`Town Hall ${player.townHallLevel}`} className="flex items-center gap-1 cursor-help">
-                      <TownHallBadge level={player.townHallLevel} size="xs" showLevel={false} showBox={false} />
-                      <span className="text-xs text-brand-text-tertiary">{player.townHallLevel}</span>
+                      <div className="w-5 h-5 relative">
+                        <img 
+                          src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
+                          alt={`TH${player.townHallLevel}`}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            e.currentTarget.parentElement!.innerHTML = '🏰';
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs text-brand-text-tertiary font-medium">{player.townHallLevel}</span>
                     </div>
                     <span 
                       title={roleTooltip}
