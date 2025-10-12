@@ -185,7 +185,8 @@ export default function SimpleRosterPage() {
               trophies: m.trophies,
               donations: m.donations,
               donationsReceived: m.donationsReceived,
-              rankedLeagueName: m.rankedLeagueName,
+              // Only show ranked league if they have trophies (actively participating)
+              rankedLeagueName: (m.trophies && m.trophies > 0) ? m.rankedLeagueName : null,
               // Hero levels for rush calculation
               bk: m.bk,
               aq: m.aq,
