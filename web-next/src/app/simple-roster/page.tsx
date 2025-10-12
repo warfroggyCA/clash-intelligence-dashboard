@@ -653,7 +653,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
               <div className="flex items-start gap-3 mb-3">
                 {/* Left: Name, Role, Badges */}
                 <div className="flex-1 min-w-0">
-                  {/* Name with Level and Role */}
+                  {/* Name with Role */}
                   <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                     <Link
                       href={`/simple-player/${player.tag.replace('#', '')}`}
@@ -662,8 +662,6 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     >
                       {player.name}
                     </Link>
-                    <span className="text-sm text-brand-text-tertiary">•</span>
-                    <span className="text-sm text-brand-text-secondary font-medium">{player.townHallLevel}</span>
                     <span className="text-sm text-brand-text-tertiary">•</span>
                     <span 
                       title={roleTooltip}
