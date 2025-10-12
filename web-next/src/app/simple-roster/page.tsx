@@ -185,8 +185,8 @@ export default function SimpleRosterPage() {
               trophies: m.trophies,
               donations: m.donations,
               donationsReceived: m.donationsReceived,
-              // Only show ranked league if they have trophies (actively participating)
-              rankedLeagueName: (m.trophies && m.trophies > 0) ? m.rankedLeagueName : null,
+              // Only show ranked league if they're not in the "Unranked" tier (ID: 105000000)
+              rankedLeagueName: (m.rankedLeagueId && m.rankedLeagueId !== 105000000) ? m.rankedLeagueName : null,
               // Hero levels for rush calculation
               bk: m.bk,
               aq: m.aq,
