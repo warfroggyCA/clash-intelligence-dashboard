@@ -1,30 +1,30 @@
 {
   "summary": {
-    "total": 10,
-    "passed": 5,
-    "failed": 5,
-    "success_rate": 50.0
+    "total": 34,
+    "passed": 33,
+    "failed": 1,
+    "success_rate": 97.05882352941177
   },
   "results": [
     {
       "test": "Health Endpoint Basic",
       "success": true,
-      "details": "Health check successful. CoC API: False, OpenAI: False",
-      "timestamp": "2025-10-11T21:15:14.326882",
+      "details": "Health check successful. CoC API: True, OpenAI: True",
+      "timestamp": "2025-10-12T21:52:02.896515",
       "response_data": {
         "success": true,
         "data": {
-          "hasCoC": false,
-          "hasOpenAI": false
+          "hasCoC": true,
+          "hasOpenAI": true
         },
-        "requestId": "n7zg6oj6"
+        "requestId": "whzwykvi"
       }
     },
     {
       "test": "Health Endpoint MCP",
       "success": true,
       "details": "MCP health check successful with 2 tools",
-      "timestamp": "2025-10-11T21:15:14.340918",
+      "timestamp": "2025-10-12T21:52:02.908282",
       "response_data": {
         "success": true,
         "data": {
@@ -62,65 +62,690 @@
             "member-analytics"
           ]
         },
-        "requestId": "7jujmi2j"
+        "requestId": "qo6zwe6i"
       }
     },
     {
       "test": "V2 Roster API Structure",
-      "success": false,
-      "details": "Roster API returned 500: {\"success\":false,\"error\":\"Supabase service role credentials are not configured\"}",
-      "timestamp": "2025-10-11T21:15:14.494521",
-      "response_data": null
+      "success": true,
+      "details": "Roster API returned 20 members with proper structure. Clan: ...HeCk YeAh...",
+      "timestamp": "2025-10-12T21:52:05.526060",
+      "response_data": {
+        "member_count": 20,
+        "clan_name": "...HeCk YeAh...",
+        "snapshot_id": "084b86c3-5284-4520-a02a-9369ecf5895e"
+      }
+    },
+    {
+      "test": "V2 Roster Member Data",
+      "success": true,
+      "details": "Member data quality check. Required fields: True, Activity fields present: True",
+      "timestamp": "2025-10-12T21:52:05.526098",
+      "response_data": {
+        "sample_member": "andrew",
+        "has_required": true,
+        "has_activity_data": true,
+        "available_fields": [
+          "id",
+          "tag",
+          "name",
+          "townHallLevel",
+          "role",
+          "trophies",
+          "donations",
+          "donationsReceived",
+          "heroLevels",
+          "bk",
+          "aq",
+          "gw",
+          "rc",
+          "mp",
+          "activityScore",
+          "rushPercent",
+          "extras",
+          "league",
+          "builderLeague",
+          "leagueId",
+          "leagueName",
+          "leagueTrophies",
+          "leagueIconSmall",
+          "leagueIconMedium",
+          "battleModeTrophies",
+          "rankedTrophies",
+          "rankedLeagueId",
+          "rankedLeagueName",
+          "rankedModifier",
+          "seasonResetAt",
+          "equipmentFlags",
+          "metrics",
+          "memberCreatedAt",
+          "memberUpdatedAt",
+          "tenure_days",
+          "tenure_as_of"
+        ]
+      }
     },
     {
       "test": "V2 Roster API with ClanTag",
-      "success": false,
-      "details": "Roster API with clan tag failed: 500",
-      "timestamp": "2025-10-11T21:15:14.508154",
-      "response_data": null
-    },
-    {
-      "test": "Player History API",
-      "success": false,
-      "details": "No player tag available for testing (roster API may have failed)",
-      "timestamp": "2025-10-11T21:15:14.508197",
-      "response_data": null
-    },
-    {
-      "test": "Player Comparison API",
-      "success": false,
-      "details": "No player tag available for testing (roster API may have failed)",
-      "timestamp": "2025-10-11T21:15:14.508204",
-      "response_data": null
-    },
-    {
-      "test": "Insights API Structure",
-      "success": false,
-      "details": "HTTP 500: {\"success\":false,\"error\":\"Supabase client not initialized\",\"requestId\":\"venopozc\"}",
-      "timestamp": "2025-10-11T21:15:14.793615",
-      "response_data": null
-    },
-    {
-      "test": "Insights API Validation",
       "success": true,
-      "details": "API correctly requires clanTag parameter",
-      "timestamp": "2025-10-11T21:15:14.802242",
+      "details": "Roster API works with specific clan tag parameter",
+      "timestamp": "2025-10-12T21:52:06.721991",
+      "response_data": null
+    },
+    {
+      "test": "Activity Data Availability",
+      "success": true,
+      "details": "Found 20 members with activity data out of 20 total members",
+      "timestamp": "2025-10-12T21:52:06.722049",
+      "response_data": {
+        "total_members": 20,
+        "members_with_data": 20
+      }
+    },
+    {
+      "test": "Expected Members Found",
+      "success": true,
+      "details": "Found 3 expected test members: ['andrew', 'DoubleD', 'warfroggy']",
+      "timestamp": "2025-10-12T21:52:06.722076",
+      "response_data": {
+        "andrew": {
+          "id": "077040d0-e2f3-44c1-9411-1dca5ba816ee",
+          "tag": "#UU9GJ9QQ",
+          "name": "andrew",
+          "townHallLevel": 14,
+          "role": "member",
+          "trophies": 0,
+          "donations": 0,
+          "donationsReceived": 0,
+          "heroLevels": {
+            "aq": 74,
+            "bk": 68,
+            "gw": 45,
+            "mp": 47,
+            "rc": 16
+          },
+          "bk": 68,
+          "aq": 74,
+          "gw": 45,
+          "rc": 16,
+          "mp": 47,
+          "activityScore": null,
+          "rushPercent": 24,
+          "extras": {
+            "clanRank": null,
+            "builderTrophies": null,
+            "builderHallLevel": 9,
+            "previousClanRank": null,
+            "townHallWeaponLevel": 1
+          },
+          "league": null,
+          "builderLeague": {
+            "id": 44000024,
+            "name": "Iron League II"
+          },
+          "leagueId": null,
+          "leagueName": null,
+          "leagueTrophies": null,
+          "leagueIconSmall": null,
+          "leagueIconMedium": null,
+          "battleModeTrophies": null,
+          "rankedTrophies": null,
+          "rankedLeagueId": 105000014,
+          "rankedLeagueName": "Valkyrie League 14",
+          "rankedModifier": null,
+          "seasonResetAt": null,
+          "equipmentFlags": null,
+          "metrics": {
+            "rush_percent": {
+              "value": 24,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 2729,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donation_balance": {
+              "value": 0,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 2729,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donations_given": {
+              "value": 0,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 2729,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donations_received": {
+              "value": 0,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 2729,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            }
+          },
+          "memberCreatedAt": "2025-09-24T00:21:00.18494+00:00",
+          "memberUpdatedAt": "2025-10-12T19:22:48.439+00:00",
+          "tenure_days": 1,
+          "tenure_as_of": "2025-09-06"
+        },
+        "DoubleD": {
+          "id": "0a4653db-102e-4e01-baee-5500e0ab340e",
+          "tag": "#VGQVRLRL",
+          "name": "DoubleD",
+          "townHallLevel": 14,
+          "role": "coLeader",
+          "trophies": 239,
+          "donations": 0,
+          "donationsReceived": 0,
+          "heroLevels": {
+            "aq": 76,
+            "bk": 67,
+            "gw": 55,
+            "mp": 57,
+            "rc": 30
+          },
+          "bk": 67,
+          "aq": 76,
+          "gw": 55,
+          "rc": 30,
+          "mp": 57,
+          "activityScore": null,
+          "rushPercent": 8,
+          "extras": {
+            "clanRank": null,
+            "builderTrophies": null,
+            "builderHallLevel": 10,
+            "previousClanRank": null,
+            "townHallWeaponLevel": 1
+          },
+          "league": null,
+          "builderLeague": {
+            "id": 44000026,
+            "name": "Steel League III"
+          },
+          "leagueId": null,
+          "leagueName": null,
+          "leagueTrophies": null,
+          "leagueIconSmall": null,
+          "leagueIconMedium": null,
+          "battleModeTrophies": null,
+          "rankedTrophies": null,
+          "rankedLeagueId": 105000016,
+          "rankedLeagueName": "Witch League 16",
+          "rankedModifier": null,
+          "seasonResetAt": null,
+          "equipmentFlags": null,
+          "metrics": {
+            "rush_percent": {
+              "value": 8,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 207,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donation_balance": {
+              "value": 0,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 207,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donations_given": {
+              "value": 0,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 207,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donations_received": {
+              "value": 0,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 207,
+                "donations": 0,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            }
+          },
+          "memberCreatedAt": "2025-09-24T00:21:00.18494+00:00",
+          "memberUpdatedAt": "2025-10-12T19:22:48.439+00:00",
+          "tenure_days": 1,
+          "tenure_as_of": "2025-09-06"
+        },
+        "warfroggy": {
+          "id": "d20ea819-9cd8-4e29-b4df-c250b69cd619",
+          "tag": "#G9QVRYC2Y",
+          "name": "warfroggy",
+          "townHallLevel": 13,
+          "role": "leader",
+          "trophies": 380,
+          "donations": 72,
+          "donationsReceived": 0,
+          "heroLevels": {
+            "aq": 74,
+            "bk": 73,
+            "gw": 50,
+            "mp": 50,
+            "rc": 15
+          },
+          "bk": 73,
+          "aq": 74,
+          "gw": 50,
+          "rc": 15,
+          "mp": 50,
+          "activityScore": null,
+          "rushPercent": 9,
+          "extras": {
+            "clanRank": null,
+            "builderTrophies": null,
+            "builderHallLevel": 10,
+            "previousClanRank": null,
+            "townHallWeaponLevel": 1
+          },
+          "league": null,
+          "builderLeague": {
+            "id": 44000024,
+            "name": "Iron League II"
+          },
+          "leagueId": null,
+          "leagueName": null,
+          "leagueTrophies": null,
+          "leagueIconSmall": null,
+          "leagueIconMedium": null,
+          "battleModeTrophies": null,
+          "rankedTrophies": null,
+          "rankedLeagueId": 105000013,
+          "rankedLeagueName": "Valkyrie League 13",
+          "rankedModifier": null,
+          "seasonResetAt": null,
+          "equipmentFlags": null,
+          "metrics": {
+            "rush_percent": {
+              "value": 9,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 354,
+                "donations": 72,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donation_balance": {
+              "value": 72,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 354,
+                "donations": 72,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donations_given": {
+              "value": 72,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 354,
+                "donations": 72,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            },
+            "donations_received": {
+              "value": 0,
+              "metadata": {
+                "leagueId": null,
+                "trophies": 354,
+                "donations": 72,
+                "snapshotId": "f0736e0e-d423-4ddb-8833-e55b239a5aa5",
+                "donationsReceived": 0
+              }
+            }
+          },
+          "memberCreatedAt": "2025-09-24T00:21:00.18494+00:00",
+          "memberUpdatedAt": "2025-10-12T19:22:48.439+00:00",
+          "tenure_days": 1,
+          "tenure_as_of": "2025-09-06"
+        }
+      }
+    },
+    {
+      "test": "Activity Score - andrew",
+      "success": true,
+      "details": "Member 'andrew' - Role: member, Trophies: 0, Donations: 0, Calculated Score: 10, Level: Inactive, Expected: Inactive",
+      "timestamp": "2025-10-12T21:52:06.722093",
+      "response_data": {
+        "member_name": "andrew",
+        "role": "member",
+        "trophies": 0,
+        "donations": 0,
+        "ranked_league_id": 105000014,
+        "calculated_score": 10,
+        "activity_level": "Inactive",
+        "expected_range": [
+          10,
+          15
+        ],
+        "expected_level": "Inactive",
+        "score_in_range": true,
+        "level_matches": true
+      }
+    },
+    {
+      "test": "Activity Score - DoubleD",
+      "success": true,
+      "details": "Member 'DoubleD' - Role: coleader, Trophies: 239, Donations: 0, Calculated Score: 35, Level: Low, Expected: Low",
+      "timestamp": "2025-10-12T21:52:06.722103",
+      "response_data": {
+        "member_name": "DoubleD",
+        "role": "coleader",
+        "trophies": 239,
+        "donations": 0,
+        "ranked_league_id": 105000016,
+        "calculated_score": 35,
+        "activity_level": "Low",
+        "expected_range": [
+          35,
+          40
+        ],
+        "expected_level": "Low",
+        "score_in_range": true,
+        "level_matches": true
+      }
+    },
+    {
+      "test": "Activity Score - warfroggy",
+      "success": false,
+      "details": "Member 'warfroggy' - Role: leader, Trophies: 380, Donations: 72, Calculated Score: 42, Level: Low, Expected: Moderate",
+      "timestamp": "2025-10-12T21:52:06.722112",
+      "response_data": {
+        "member_name": "warfroggy",
+        "role": "leader",
+        "trophies": 380,
+        "donations": 72,
+        "ranked_league_id": 105000013,
+        "calculated_score": 42,
+        "activity_level": "Low",
+        "expected_range": [
+          45,
+          50
+        ],
+        "expected_level": "Moderate",
+        "score_in_range": false,
+        "level_matches": false
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'andrew' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722118",
+      "response_data": {
+        "member": "andrew",
+        "trophies": 0,
+        "ranked_league_id": 105000014
+      }
+    },
+    {
+      "test": "Edge Case - Ranked No Donations",
+      "success": true,
+      "details": "Found member 'DoubleD' with ranked participation but 0 donations",
+      "timestamp": "2025-10-12T21:52:06.722122",
+      "response_data": {
+        "member": "DoubleD",
+        "trophies": 239,
+        "donations": 0,
+        "ranked_league_id": 105000016
+      }
+    },
+    {
+      "test": "Edge Case - Ranked No Donations",
+      "success": true,
+      "details": "Found member 'Headhuntress' with ranked participation but 0 donations",
+      "timestamp": "2025-10-12T21:52:06.722127",
+      "response_data": {
+        "member": "Headhuntress",
+        "trophies": 371,
+        "donations": 0,
+        "ranked_league_id": 105000012
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'Mate\u0438238' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722131",
+      "response_data": {
+        "member": "Mate\u0438238",
+        "trophies": 0,
+        "ranked_league_id": 105000008
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'Zouboul' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722134",
+      "response_data": {
+        "member": "Zouboul",
+        "trophies": 0,
+        "ranked_league_id": 105000010
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'Argon' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722139",
+      "response_data": {
+        "member": "Argon",
+        "trophies": 0,
+        "ranked_league_id": 105000008
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'Binh\u0110en24' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722143",
+      "response_data": {
+        "member": "Binh\u0110en24",
+        "trophies": 0,
+        "ranked_league_id": 105000009
+      }
+    },
+    {
+      "test": "Edge Case - Ranked No Donations",
+      "success": true,
+      "details": "Found member 'MD.Soudho$$' with ranked participation but 0 donations",
+      "timestamp": "2025-10-12T21:52:06.722148",
+      "response_data": {
+        "member": "MD.Soudho$$",
+        "trophies": 134,
+        "donations": 0,
+        "ranked_league_id": 105000013
+      }
+    },
+    {
+      "test": "Edge Case - Ranked No Donations",
+      "success": true,
+      "details": "Found member 'War.Frog' with ranked participation but 0 donations",
+      "timestamp": "2025-10-12T21:52:06.722153",
+      "response_data": {
+        "member": "War.Frog",
+        "trophies": 431,
+        "donations": 0,
+        "ranked_league_id": 105000013
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'ethan' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722156",
+      "response_data": {
+        "member": "ethan",
+        "trophies": 0,
+        "ranked_league_id": 105000008
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member '\u00c0RSENIC' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722160",
+      "response_data": {
+        "member": "\u00c0RSENIC",
+        "trophies": 0,
+        "ranked_league_id": 105000006
+      }
+    },
+    {
+      "test": "Edge Case - Ranked No Donations",
+      "success": true,
+      "details": "Found member 'se' with ranked participation but 0 donations",
+      "timestamp": "2025-10-12T21:52:06.722164",
+      "response_data": {
+        "member": "se",
+        "trophies": 120,
+        "donations": 0,
+        "ranked_league_id": 105000009
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'JPSavke' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722170",
+      "response_data": {
+        "member": "JPSavke",
+        "trophies": 0,
+        "ranked_league_id": 105000008
+      }
+    },
+    {
+      "test": "Edge Case - Ranked No Donations",
+      "success": true,
+      "details": "Found member 'Tigress' with ranked participation but 0 donations",
+      "timestamp": "2025-10-12T21:52:06.722174",
+      "response_data": {
+        "member": "Tigress",
+        "trophies": 274,
+        "donations": 0,
+        "ranked_league_id": 105000012
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'OLESCHAK' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722178",
+      "response_data": {
+        "member": "OLESCHAK",
+        "trophies": 0,
+        "ranked_league_id": 105000009
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'A.Ar1an' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722182",
+      "response_data": {
+        "member": "A.Ar1an",
+        "trophies": 0,
+        "ranked_league_id": 105000008
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'fahad bd' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722185",
+      "response_data": {
+        "member": "fahad bd",
+        "trophies": 0,
+        "ranked_league_id": 105000011
+      }
+    },
+    {
+      "test": "Edge Case - Enrolled No Trophies",
+      "success": true,
+      "details": "Found member 'Sirojiddin' with ranked league but 0 trophies (enrolled but not battling)",
+      "timestamp": "2025-10-12T21:52:06.722189",
+      "response_data": {
+        "member": "Sirojiddin",
+        "trophies": 0,
+        "ranked_league_id": 105000011
+      }
+    },
+    {
+      "test": "Edge Cases Detection",
+      "success": true,
+      "details": "Successfully identified 18 edge cases in roster data",
+      "timestamp": "2025-10-12T21:52:06.722193",
+      "response_data": {
+        "edge_cases_found": 18
+      }
+    },
+    {
+      "test": "Regression - Roster API",
+      "success": true,
+      "details": "Roster API functionality confirmed in previous tests",
+      "timestamp": "2025-10-12T21:52:06.722199",
+      "response_data": null
+    },
+    {
+      "test": "Regression - No Crashes",
+      "success": true,
+      "details": "Activity calculations don't cause API crashes",
+      "timestamp": "2025-10-12T21:52:07.175309",
+      "response_data": null
+    },
+    {
+      "test": "Regression - TypeScript Compilation",
+      "success": true,
+      "details": "TypeScript compilation successful (API is running)",
+      "timestamp": "2025-10-12T21:52:07.175335",
       "response_data": null
     },
     {
       "test": "Error Handling - 404",
       "success": true,
       "details": "Non-existent endpoints return 404",
-      "timestamp": "2025-10-11T21:15:15.783709",
+      "timestamp": "2025-10-12T21:52:08.297143",
       "response_data": null
     },
     {
       "test": "Error Handling - Malformed",
       "success": true,
       "details": "Malformed requests handled properly (400)",
-      "timestamp": "2025-10-11T21:15:16.244833",
+      "timestamp": "2025-10-12T21:52:09.013079",
       "response_data": null
     }
   ],
-  "timestamp": "2025-10-11T21:15:16.245019"
+  "timestamp": "2025-10-12T21:52:09.013245"
 }
