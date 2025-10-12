@@ -373,11 +373,6 @@ export default function SimpleRosterPage() {
                           {player.name}
                         </Link>
                       </td>
-                      <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center">
-                          <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
-                        </div>
-                      </td>
                       <td className="px-4 py-3">
                         <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           player.role === 'leader' 
@@ -390,6 +385,11 @@ export default function SimpleRosterPage() {
                         }`}>
                           {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <div className="flex justify-center">
+                          <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
+                        </div>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
