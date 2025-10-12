@@ -72,6 +72,72 @@ export default function SimpleRosterPage() {
   const [sortKey, setSortKey] = useState<SortKey>('league');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
+  // Sorting function
+  const handleSort = (key: SortKey) => {
+    if (sortKey === key) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortKey(key);
+      setSortDirection('desc');
+    }
+  };
+
+  // Sorted members with memoization
+  const sortedMembers = useMemo(() => {
+    if (!roster) return [];
+    
+    const members = [...roster.members];
+    
+    members.sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortKey) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'th':
+          comparison = a.townHallLevel - b.townHallLevel;
+          break;
+        case 'role':
+          const roleOrder = { leader: 4, coLeader: 3, admin: 2, member: 1 };
+          comparison = (roleOrder[a.role as keyof typeof roleOrder] || 0) - 
+                      (roleOrder[b.role as keyof typeof roleOrder] || 0);
+          break;
+        case 'league':
+          // Primary: League tier, Secondary: Trophy count
+          const aTier = getLeagueTier(a.rankedLeagueName);
+          const bTier = getLeagueTier(b.rankedLeagueName);
+          if (aTier !== bTier) {
+            comparison = aTier - bTier;
+          } else {
+            comparison = a.trophies - b.trophies;
+          }
+          break;
+        case 'trophies':
+          comparison = a.trophies - b.trophies;
+          break;
+        case 'rush':
+          comparison = calculateRushPercentage(a) - calculateRushPercentage(b);
+          break;
+        case 'activity':
+          const aActivity = calculateActivityScore(a).score;
+          const bActivity = calculateActivityScore(b).score;
+          comparison = aActivity - bActivity;
+          break;
+        case 'donations':
+          comparison = a.donations - b.donations;
+          break;
+        case 'received':
+          comparison = a.donationsReceived - b.donationsReceived;
+          break;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    
+    return members;
+  }, [roster, sortKey, sortDirection]);
+
   useEffect(() => {
     async function loadRoster() {
       try {
