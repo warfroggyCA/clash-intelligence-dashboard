@@ -20,7 +20,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { shallow } from 'zustand/shallow';
+import { useShallow } from 'zustand/shallow';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Member, Roster, SortKey, SortDirection } from '@/types';
 import { safeLocaleTimeString } from '@/lib/date';
