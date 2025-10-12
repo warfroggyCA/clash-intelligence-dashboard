@@ -605,7 +605,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                  <div title={`Town Hall ${player.townHallLevel}`} className="w-6 h-6 relative cursor-help">
+                  <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
                     <img 
                       src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
                       alt={`TH${player.townHallLevel}`}
@@ -615,6 +615,12 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         e.currentTarget.parentElement!.innerHTML = '🏰';
                       }}
                     />
+                    <span 
+                      className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                      style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
+                    >
+                      {player.townHallLevel}
+                    </span>
                   </div>
                   {player.rankedLeagueName && (
                     <div title={leagueTooltip} className="cursor-help">
