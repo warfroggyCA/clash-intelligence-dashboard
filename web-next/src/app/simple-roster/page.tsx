@@ -453,7 +453,8 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       <td className="px-4 py-3">
                         <Link 
                           href={`/simple-player/${player.tag.replace('#', '')}`}
-                          className="text-brand-accent hover:text-brand-accent-hover font-medium hover:underline transition-colors"
+                          className="text-clash-gold hover:text-clash-gold/80 font-bold hover:underline transition-colors"
+                          style={{ fontFamily: "'Clash Display', sans-serif" }}
                         >
                           {player.name}
                         </Link>
@@ -461,15 +462,8 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       <td className="px-4 py-3">
                         <span 
                           title={roleTooltip}
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium cursor-help ${
-                          player.role === 'leader' 
-                            ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
-                            : player.role === 'coLeader'
-                            ? 'bg-orange-100 text-orange-800 border border-orange-200'
-                            : player.role === 'admin'
-                            ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                            : 'bg-gray-100 text-gray-800 border border-gray-200'
-                        }`}>
+                          className="text-sm text-brand-text-secondary cursor-help"
+                        >
                           {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
                         </span>
                       </td>
