@@ -17,7 +17,7 @@ import { calculateRushPercentage, calculateActivityScore, getTownHallLevel } fro
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
-interface Player {
+interface RosterMember {
   tag: string;
   name: string;
   townHallLevel: number;
@@ -26,13 +26,21 @@ interface Player {
   donations: number;
   donationsReceived: number;
   rankedLeagueName?: string;
+  bk?: number;
+  aq?: number;
+  gw?: number;
+  rc?: number;
+  mp?: number;
 }
 
 interface RosterData {
-  members: Player[];
+  members: RosterMember[];
   clanName: string;
   date: string;
 }
+
+type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'rush' | 'activity' | 'donations' | 'received';
+type SortDirection = 'asc' | 'desc';
 
 export default function SimpleRosterPage() {
   const [roster, setRoster] = useState<RosterData | null>(null);
