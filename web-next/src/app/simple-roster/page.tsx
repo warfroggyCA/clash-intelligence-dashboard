@@ -413,7 +413,21 @@ export default function SimpleRosterPage() {
 
         {/* Mobile Cards - Mobile Only */}
         <div className="md:hidden space-y-4">
-          {roster.members.map((player) => (
+          {sortedMembers.map((player) => {
+            const rushPercent = calculateRushPercentage(player);
+            const activity = calculateActivityScore(player);
+            
+            const rushColor = rushPercent >= 70 ? 'text-red-600' : 
+                             rushPercent >= 40 ? 'text-yellow-600' : 
+                             'text-green-600';
+            
+            const activityColor = activity.level === 'Very Active' ? 'bg-green-100 text-green-800 border-green-200' :
+                                 activity.level === 'Active' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                 activity.level === 'Moderate' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                 activity.level === 'Low' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                 'bg-red-100 text-red-800 border-red-200';
+            
+            return (
             <div
               key={player.tag}
               className="rounded-lg border border-brand-border bg-brand-surface shadow-md p-4"
