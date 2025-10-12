@@ -386,6 +386,7 @@ export default function SimpleRosterPage() {
                   const roleBadgeVariant = getRoleBadgeVariant(player.role);
                   const rushPercent = calculateRushPercentage(player);
                   const activity = calculateActivityScore(player);
+                  const maxHeroes = getHeroCaps(player.townHallLevel);
                   
                   // Rush color coding
                   const rushColor = rushPercent >= 70 ? 'text-red-600' : 
@@ -414,7 +415,7 @@ Scoring:
                   const rushTooltip = `Rush: ${rushPercent}%
 Heroes are ${rushPercent}% below max for TH${player.townHallLevel}.
 
-Heroes: BK ${player.bk || 0}, AQ ${player.aq || 0}, GW ${player.gw || 0}, RC ${player.rc || 0}
+Heroes: BK ${player.bk || 0}, AQ ${player.aq || 0}, GW ${player.gw || 0}, RC ${player.rc || 0}, MP ${player.mp || 0}
 
 Lower is better (0% = maxed)`;
 
