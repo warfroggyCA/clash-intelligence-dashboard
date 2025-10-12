@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Backend API Testing for Clash Intelligence Dashboard
-Tests the enhanced dashboard with new player analytics features
+Tests the improved activity calculation system implementation
 """
 
 import requests
@@ -15,6 +15,13 @@ import sys
 BASE_URL = "http://localhost:5050"
 TEST_CLAN_TAG = "2PR8R8V8P"  # Default clan tag from env
 TEST_PLAYER_TAG = "EXAMPLE123"  # Will be replaced with actual player from roster
+
+# Expected test members for activity validation
+EXPECTED_MEMBERS = {
+    "warfroggy": {"role": "leader", "trophies": 380, "donations": 72, "expected_score_range": (45, 50), "expected_level": "Moderate"},
+    "DoubleD": {"role": "coLeader", "trophies": 239, "donations": 0, "expected_score_range": (35, 40), "expected_level": "Low"},
+    "andrew": {"role": "member", "trophies": 0, "donations": 0, "expected_score_range": (10, 15), "expected_level": "Inactive"}
+}
 
 class APITester:
     def __init__(self, base_url: str):
