@@ -588,20 +588,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     {player.name}
                   </Link>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <div title={`Town Hall ${player.townHallLevel}`} className="flex items-center gap-1 cursor-help">
-                      <div className="w-5 h-5 relative">
-                        <img 
-                          src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
-                          alt={`TH${player.townHallLevel}`}
-                          className="w-full h-full object-contain"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.parentElement!.innerHTML = '🏰';
-                          }}
-                        />
-                      </div>
-                      <span className="text-xs text-brand-text-tertiary font-medium">{player.townHallLevel}</span>
-                    </div>
+                    <span className="text-xs">{player.townHallLevel}</span>
                     <span 
                       title={roleTooltip}
                       className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium cursor-help ${
@@ -617,7 +604,18 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
+                  <div title={`Town Hall ${player.townHallLevel}`} className="w-6 h-6 relative cursor-help">
+                    <img 
+                      src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
+                      alt={`TH${player.townHallLevel}`}
+                      className="w-full h-full object-contain"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        e.currentTarget.parentElement!.innerHTML = '🏰';
+                      }}
+                    />
+                  </div>
                   {player.rankedLeagueName && (
                     <div title={leagueTooltip} className="cursor-help">
                       <LeagueBadge 
