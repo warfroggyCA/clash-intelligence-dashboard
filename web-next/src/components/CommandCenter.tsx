@@ -23,24 +23,32 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const dataAgeHours = useDashboardStore(selectors.dataAge);
 
+  // CRITICAL FIX: Use primitive dependencies to prevent infinite loops
+  // Extract stable values before creating memoized computations
+  const memberCount = clanData?.members?.length ?? 0;
+  const hasWarData = Boolean(clanData?.snapshotDetails?.currentWar || clanData?.snapshotDetails?.warLog);
+  
   const members: Member[] = useMemo(() => {
     return clanData?.members || [];
-  }, [clanData]);
+  }, [memberCount]); // ✅ Use count instead of clanData
 
   const warData: WarData | undefined = useMemo(() => {
     return clanData?.snapshotDetails ? {
       currentWar: clanData.snapshotDetails.currentWar,
       warLog: clanData.snapshotDetails.warLog
     } : undefined;
-  }, [clanData]);
+  }, [hasWarData]); // ✅ Use boolean flag instead of clanData
 
-  const clanHealth = useMemo(() => calculateClanHealth(members), [members]);
-  const warMetrics = useMemo(() => calculateWarMetrics(members, warData), [members, warData]);
-  const alerts = useMemo(() => generateAlerts(members, warData), [members, warData]);
-  const topPerformers = useMemo(() => getTopPerformers(members, 3), [members]);
-  const watchlist = useMemo(() => generateWatchlist(members), [members]);
-  const momentum = useMemo(() => calculateMomentum(members), [members]);
-  const elderCandidates = useMemo(() => getElderPromotionCandidates(members), [members]);
+  // CRITICAL FIX: Use memberCount as dependency instead of members array
+  const clanHealth = useMemo(() => calculateClanHealth(members), [memberCount]);
+  const warMetrics = useMemo(() => calculateWarMetrics(members, warData), [memberCount, hasWarData]);
+  const alerts = useMemo(() => generateAlerts(members, warData), [memberCount, hasWarData]);
+  const topPerformers = useMemo(() => getTopPerformers(members, 3), [memberCount]);
+  const watchlist = useMemo(() => generateWatchlist(members), [memberCount]);
+  const momentum = useMemo(() => calculateMomentum(members), [memberCount]);
+  const elderCandidates = useMemo(() => getElderPromotionCandidates(members), [memberCount]);
+  
+  // These depend on warMetrics.memberPerformance, which is already stable
   const topWarPerformers = useMemo(() => getTopWarPerformers(warMetrics.memberPerformance, 5), [warMetrics.memberPerformance]);
   const membersNeedingWarCoaching = useMemo(() => getMembersNeedingCoaching(warMetrics.memberPerformance), [warMetrics.memberPerformance]);
 
