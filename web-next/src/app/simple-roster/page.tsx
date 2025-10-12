@@ -588,12 +588,10 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     {player.name}
                   </Link>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span 
-                      title={`Town Hall ${player.townHallLevel}`}
-                      className="text-xs text-brand-text-tertiary cursor-help"
-                    >
-                      TH{player.townHallLevel}
-                    </span>
+                    <div title={`Town Hall ${player.townHallLevel}`} className="flex items-center gap-1 cursor-help">
+                      <TownHallBadge level={player.townHallLevel} size="xs" showLevel={false} showBox={false} />
+                      <span className="text-xs text-brand-text-tertiary">{player.townHallLevel}</span>
+                    </div>
                     <span 
                       title={roleTooltip}
                       className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium cursor-help ${
