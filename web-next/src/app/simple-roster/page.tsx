@@ -236,6 +236,66 @@ export default function SimpleRosterPage() {
             </table>
           </div>
         </div>
+
+        {/* Mobile Cards - Mobile Only */}
+        <div className="md:hidden space-y-4">
+          {roster.members.map((player) => (
+            <div
+              key={player.tag}
+              className="rounded-lg border border-brand-border bg-brand-surface shadow-md p-4"
+            >
+              {/* Player Header */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <Link
+                    href={`/simple-player/${player.tag.replace('#', '')}`}
+                    className="text-lg font-semibold text-brand-accent hover:text-brand-accent-hover hover:underline"
+                  >
+                    {player.name}
+                  </Link>
+                  <div className="flex items-center gap-2 mt-1">
+                    <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      player.role === 'leader' 
+                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
+                        : player.role === 'coLeader'
+                        ? 'bg-orange-100 text-orange-800 border border-orange-200'
+                        : player.role === 'admin'
+                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                        : 'bg-gray-100 text-gray-800 border border-gray-200'
+                    }`}>
+                      {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
+                    </span>
+                  </div>
+                </div>
+                {player.rankedLeagueName && (
+                  <LeagueBadge 
+                    league={player.rankedLeagueName} 
+                    trophies={player.trophies}
+                    size="md" 
+                    showText={false}
+                  />
+                )}
+              </div>
+
+              {/* Player Stats */}
+              <div className="grid grid-cols-3 gap-3 text-sm">
+                <div>
+                  <p className="text-brand-text-tertiary text-xs mb-1">Trophies</p>
+                  <p className="font-mono font-semibold text-brand-text-primary">{player.trophies.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-brand-text-tertiary text-xs mb-1">Donated</p>
+                  <p className="font-mono font-semibold text-green-600">{player.donations}</p>
+                </div>
+                <div>
+                  <p className="text-brand-text-tertiary text-xs mb-1">Received</p>
+                  <p className="font-mono font-semibold text-blue-600">{player.donationsReceived}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </DashboardLayout>
   );
