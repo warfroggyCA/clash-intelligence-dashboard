@@ -138,64 +138,83 @@ export default function SimplePlayerPage() {
   const donationBalance = donations - donationsReceived;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-slate-900 to-gray-900 text-white p-8">
+      <div className="max-w-5xl mx-auto">
         <button 
           onClick={() => router.back()}
-          className="mb-4 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600"
+          className="mb-6 px-5 py-2.5 bg-gradient-to-r from-gray-700 to-gray-800 rounded-lg hover:from-gray-600 hover:to-gray-700 transition-all duration-200 shadow-lg hover:shadow-xl flex items-center gap-2 font-medium"
         >
-          ← Back
+          <span>←</span> Back to Roster
         </button>
 
         {/* Player Header */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <h1 className="text-4xl font-bold mb-2">{player.name}</h1>
-              <p className="text-gray-400 font-mono">{player.tag}</p>
-              {player.clan?.name && <p className="text-gray-400">{player.clan.name}</p>}
+        <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl p-8 mb-6 border border-blue-500/20 shadow-2xl">
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg text-3xl">
+                👤
+              </div>
+              <div>
+                <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2">
+                  {player.name}
+                </h1>
+                <p className="text-blue-300 font-mono text-lg">{player.tag}</p>
+                {player.clan?.name && (
+                  <p className="text-gray-300 flex items-center gap-2 mt-1">
+                    <span className="text-xl">🏰</span>
+                    {player.clan.name}
+                  </p>
+                )}
+              </div>
             </div>
-            <div className="text-right">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-amber-600 rounded-lg text-2xl font-bold mb-2">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl text-3xl font-bold mb-2 shadow-lg">
                 {player.townHallLevel}
               </div>
-              <p className="text-xs text-gray-400">Town Hall</p>
+              <p className="text-xs text-gray-300 font-semibold uppercase tracking-wider">Town Hall</p>
             </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {player.role && (
-              <div className="bg-gray-700 rounded p-3">
-                <p className="text-xs text-gray-400 mb-1">Role</p>
-                <p className="text-lg font-semibold capitalize">{player.role}</p>
+              <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50">
+                <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">Role</p>
+                <p className="text-xl font-bold capitalize text-yellow-400">{player.role}</p>
               </div>
             )}
-            <div className="bg-gray-700 rounded p-3">
-              <p className="text-xs text-gray-400 mb-1">Trophies</p>
-              <p className="text-lg font-semibold">{player.trophies.toLocaleString()}</p>
+            <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50">
+              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">🏆 Trophies</p>
+              <p className="text-xl font-bold text-yellow-400">{player.trophies.toLocaleString()}</p>
             </div>
-            <div className="bg-gray-700 rounded p-3">
-              <p className="text-xs text-gray-400 mb-1">Donations</p>
-              <p className="text-lg font-semibold text-green-400">{donations}</p>
+            <div className="bg-gray-800/60 backdrop-blur-sm rounded-xl p-4 border border-gray-700/50">
+              <p className="text-xs text-gray-400 mb-2 uppercase tracking-wider">📤 Donations</p>
+              <p className="text-xl font-bold text-green-400">{donations}</p>
             </div>
           </div>
         </div>
 
         {/* League */}
         {(player.rankedLeague || player.league) && (
-          <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-4">League</h2>
-            <div className="flex items-center gap-4">
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-gray-700/50 shadow-xl">
+            <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+              <span className="text-2xl">🎖️</span>
+              League
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {player.rankedLeague?.name && (
-                <div className="bg-gray-700 rounded p-4 flex-1">
-                  <p className="text-xs text-gray-400 mb-1">⚔️ Ranked League</p>
-                  <p className="text-lg font-semibold">{player.rankedLeague.name}</p>
+                <div className="bg-gradient-to-br from-red-900/40 to-orange-900/40 rounded-xl p-6 border border-red-500/30">
+                  <p className="text-sm text-red-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                    <span>⚔️</span> Ranked League
+                  </p>
+                  <p className="text-2xl font-bold text-red-200">{player.rankedLeague.name}</p>
                 </div>
               )}
               {player.league?.name && (
-                <div className="bg-gray-700 rounded p-4 flex-1">
-                  <p className="text-xs text-gray-400 mb-1">Trophy League</p>
-                  <p className="text-lg font-semibold">{player.league.name}</p>
+                <div className="bg-gradient-to-br from-blue-900/40 to-purple-900/40 rounded-xl p-6 border border-blue-500/30">
+                  <p className="text-sm text-blue-300 mb-2 uppercase tracking-wider flex items-center gap-2">
+                    <span>🏆</span> Trophy League
+                  </p>
+                  <p className="text-2xl font-bold text-blue-200">{player.league.name}</p>
                 </div>
               )}
             </div>
@@ -204,20 +223,29 @@ export default function SimplePlayerPage() {
 
         {/* Donations */}
         {(donations > 0 || donationsReceived > 0) && (
-          <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <h2 className="text-2xl font-bold mb-4">Donations</h2>
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 mb-6 border border-gray-700/50 shadow-xl">
+            <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+              <span className="text-2xl">🎁</span>
+              Donations
+            </h2>
             <div className="grid grid-cols-3 gap-4">
-              <div className="bg-gray-700 rounded p-4">
-                <p className="text-xs text-gray-400 mb-1">Given</p>
-                <p className="text-2xl font-bold text-green-400">{donations}</p>
+              <div className="bg-gradient-to-br from-green-900/40 to-emerald-900/40 rounded-xl p-6 border border-green-500/30">
+                <p className="text-sm text-green-300 mb-2 uppercase tracking-wider">📤 Given</p>
+                <p className="text-4xl font-bold text-green-400">{donations}</p>
               </div>
-              <div className="bg-gray-700 rounded p-4">
-                <p className="text-xs text-gray-400 mb-1">Received</p>
-                <p className="text-2xl font-bold text-blue-400">{donationsReceived}</p>
+              <div className="bg-gradient-to-br from-blue-900/40 to-cyan-900/40 rounded-xl p-6 border border-blue-500/30">
+                <p className="text-sm text-blue-300 mb-2 uppercase tracking-wider">📥 Received</p>
+                <p className="text-4xl font-bold text-blue-400">{donationsReceived}</p>
               </div>
-              <div className="bg-gray-700 rounded p-4">
-                <p className="text-xs text-gray-400 mb-1">Balance</p>
-                <p className={`text-2xl font-bold ${
+              <div className={`rounded-xl p-6 border ${
+                donationBalance > 0 
+                  ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/40 border-green-500/30' 
+                  : donationBalance < 0
+                  ? 'bg-gradient-to-br from-red-900/40 to-rose-900/40 border-red-500/30'
+                  : 'bg-gradient-to-br from-gray-900/40 to-slate-900/40 border-gray-500/30'
+              }`}>
+                <p className="text-sm text-gray-300 mb-2 uppercase tracking-wider">⚖️ Balance</p>
+                <p className={`text-4xl font-bold ${
                   donationBalance > 0 ? 'text-green-400' : 
                   donationBalance < 0 ? 'text-red-400' : 
                   'text-gray-400'
@@ -231,13 +259,18 @@ export default function SimplePlayerPage() {
 
         {/* Heroes */}
         {heroes.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-6">
-            <h2 className="text-2xl font-bold mb-4">Heroes</h2>
+          <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-6 border border-gray-700/50 shadow-xl">
+            <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+              <span className="text-2xl">⚔️</span>
+              Heroes
+            </h2>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
               {heroes.map((hero) => (
-                <div key={hero.name} className="bg-gray-700 rounded p-4 text-center">
-                  <p className="text-sm text-gray-400 mb-2">{hero.name}</p>
-                  <p className="text-3xl font-bold">{hero.level}</p>
+                <div key={hero.name} className="bg-gradient-to-br from-purple-900/40 to-pink-900/40 rounded-xl p-6 text-center border border-purple-500/30 hover:border-purple-400/50 transition-all duration-200">
+                  <p className="text-sm text-purple-300 mb-3 font-semibold">{hero.name}</p>
+                  <p className="text-5xl font-bold bg-gradient-to-r from-yellow-400 to-orange-400 bg-clip-text text-transparent">
+                    {hero.level}
+                  </p>
                 </div>
               ))}
             </div>
