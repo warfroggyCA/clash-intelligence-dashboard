@@ -115,7 +115,7 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
             </div>
             <div className="flex items-center gap-4">
               <div className="flex flex-col items-center gap-1">
-                {hasLeagueBadge || isNoLeague ? (
+                {hasLeagueBadge ? (
                   <LeagueBadge
                     league={leagueBadgeName}
                     trophies={leagueTrophies}
@@ -125,7 +125,10 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
                 ) : (
                   <span className="text-3xl" aria-hidden>🏆</span>
                 )}
-                <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">{leagueLabel}</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-slate-400">
+                  {hasRankedLeague && <span className="text-emerald-400">⚔️ </span>}
+                  {leagueLabel}
+                </span>
               </div>
               <div className="space-y-2">
                 <h1
