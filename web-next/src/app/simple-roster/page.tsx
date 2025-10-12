@@ -654,18 +654,18 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                 {/* Left: Name, Role, Badges */}
                 <div className="flex-1 min-w-0">
                   {/* Name with Role */}
-                  <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                  <div className="flex items-baseline gap-1.5 mb-2 flex-wrap">
                     <Link
                       href={`/simple-player/${player.tag.replace('#', '')}`}
-                      className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline truncate"
+                      className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline truncate leading-tight"
                       style={{ fontFamily: "'Clash Display', sans-serif" }}
                     >
                       {player.name}
                     </Link>
-                    <span className="text-sm text-brand-text-tertiary">•</span>
+                    <span className="text-sm text-brand-text-tertiary leading-tight">•</span>
                     <span 
                       title={roleTooltip}
-                      className="text-sm text-brand-text-tertiary cursor-help"
+                      className="text-sm text-brand-text-tertiary cursor-help leading-tight"
                     >
                       {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
                     </span>
