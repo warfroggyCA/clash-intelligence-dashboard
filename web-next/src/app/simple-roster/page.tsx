@@ -329,6 +329,36 @@ export default function SimpleRosterPage() {
                     Rush % {sortKey === 'rush' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
+                    title="Barbarian King level"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                  >
+                    BK
+                  </th>
+                  <th 
+                    title="Archer Queen level"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                  >
+                    AQ
+                  </th>
+                  <th 
+                    title="Grand Warden level"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                  >
+                    GW
+                  </th>
+                  <th 
+                    title="Royal Champion level"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                  >
+                    RC
+                  </th>
+                  <th 
+                    title="Minion Prince level"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                  >
+                    MP
+                  </th>
+                  <th 
                     onClick={() => handleSort('activity')}
                     title="Activity level based on: ranked battles (20 pts), donations (15 pts), hero progress (10 pts), role (10 pts), trophies (10 pts) - Click to sort"
                     className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
