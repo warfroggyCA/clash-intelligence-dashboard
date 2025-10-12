@@ -83,15 +83,17 @@ if (trophies >= 3000)  score += 1;
 
 ## 📊 New Activity Level Thresholds
 
-Updated thresholds to reflect the new scoring system:
+**UPDATED Oct 12, 2025:** Adjusted thresholds to fit achievable 0-65 point range (until war/raid data available):
 
 | Score Range | Activity Level | Description |
 |------------|---------------|-------------|
-| 85-100     | Very Active   | Multiple concurrent activity streams |
-| 65-84      | Active        | 2-3 activity streams regularly |
-| 45-64      | Moderate      | 1-2 activities, sporadic engagement |
-| 25-44      | Low           | Minimal participation |
-| 0-24       | Inactive      | Little to no recent activity |
+| 55-65      | Very Active   | Multiple concurrent activity streams, excellent engagement |
+| 40-54      | Active        | Strong participation in ranked/donations/leadership |
+| 25-39      | Moderate      | Regular engagement, 1-2 activity streams |
+| 10-24      | Low           | Minimal participation |
+| 0-9        | Inactive      | Little to no recent activity |
+
+**Rationale:** Current max achievable score is 65 points (ranked 20 + donations 15 + heroes 10 + role 10 + trophies 10). War/raids/clan games data (35 pts) will push max to 100 when available.
 
 ---
 
