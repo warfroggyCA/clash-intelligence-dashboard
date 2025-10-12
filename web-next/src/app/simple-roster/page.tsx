@@ -711,10 +711,10 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
 
                   {/* Activity */}
                   <div title={activityTooltip} className="cursor-help text-right">
-                    <div className="text-brand-text-tertiary text-[10px] mb-0.5">Activity</div>
-                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${activityColor}`}>
-                      {activity.level === 'Very Active' ? 'V.Active' : activity.level}
-                    </span>
+                    <div className="text-brand-text-tertiary text-[10px]">Activity</div>
+                    <div className="text-sm text-brand-text-secondary font-medium">
+                      {activity.level}
+                    </div>
                   </div>
 
                   {/* Donations */}
