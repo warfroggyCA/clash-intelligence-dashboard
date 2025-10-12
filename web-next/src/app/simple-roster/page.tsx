@@ -257,13 +257,60 @@ export default function SimpleRosterPage() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-brand-surface-secondary border-b border-brand-border">
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">Player</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">TH</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">Role</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">Trophies</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">Donated</th>
-                  <th className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">Received</th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">League</th>
+                  <th 
+                    onClick={() => handleSort('name')}
+                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Player {sortKey === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('th')}
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    TH {sortKey === 'th' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('role')}
+                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Role {sortKey === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('league')}
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    League {sortKey === 'league' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('trophies')}
+                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Trophies {sortKey === 'trophies' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('rush')}
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Rush % {sortKey === 'rush' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('activity')}
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Activity {sortKey === 'activity' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('donations')}
+                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Donated {sortKey === 'donations' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('received')}
+                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Received {sortKey === 'received' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/50">
