@@ -89,8 +89,8 @@ const RosterSummaryInner = () => {
 
   const [showAceModal, setShowAceModal] = useState(false);
   
-  // CRITICAL FIX: Don't subscribe to whole roster object - get individual fields
-  // Subscribing to the entire roster causes re-renders on EVERY store update
+  // CRITICAL FIX: Use a single stable subscription that only updates when roster data actually changes
+  // DO NOT subscribe to individual fields that might trigger on unrelated state changes
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const lastLoadInfo = useDashboardStore((state) => state.lastLoadInfo);
@@ -100,16 +100,25 @@ const RosterSummaryInner = () => {
   const refreshData = useDashboardStore((state) => state.refreshData);
   const triggerIngestion = useDashboardStore((state) => state.triggerIngestion);
   const currentClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
-  const memberCount = useDashboardStore((state) => state.roster?.members?.length ?? 0);
+  
+  // CRITICAL: Use latestSnapshotId as the ONLY dependency - this only changes when roster data changes
+  // Do NOT subscribe to memberCount or any other derived values
   const latestSnapshotId = useDashboardStore((state) => state.latestSnapshotId);
-  const rosterDate = useDashboardStore((state) => state.roster?.date);
   
-  // Get roster object ONLY when we need it (in useMemo), not via subscription
-  // This prevents component re-renders when unrelated store values change
-  const roster = useMemo(() => useDashboardStore.getState().roster, [latestSnapshotId, memberCount]);
+  // Get roster once based on latestSnapshotId only - this breaks the infinite loop
+  const roster = useMemo(() => {
+    const currentRoster = useDashboardStore.getState().roster;
+    if (RS_DEBUG_LOG) {
+      console.log('[RosterSummary] roster useMemo triggered', {
+        snapshotId: latestSnapshotId,
+        memberCount: currentRoster?.members?.length ?? 0
+      });
+    }
+    return currentRoster;
+  }, [latestSnapshotId, RS_DEBUG_LOG]);
   
-  // Combine snapshot ID + member count as stable key
-  const stableRosterKey = `${latestSnapshotId || rosterDate || ''}-${memberCount}`;
+  // Use latestSnapshotId as the ONLY stable key - this is the only thing that changes when data actually updates
+  const stableRosterKey = latestSnapshotId || roster?.date || 'no-snapshot';
   
   // Add canRunIngestion logic similar to CommandRail
   const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
