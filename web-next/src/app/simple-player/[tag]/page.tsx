@@ -53,13 +53,23 @@ export default function SimplePlayerPage() {
     async function loadProfile() {
       try {
         setLoading(true);
-        const response = await fetch(`/api/player/%23${tag}`);
+        console.log('[SimplePlayer] Fetching player data from /api/v2/player/', tag);
+        const response = await fetch(`/api/v2/player/${tag}`);
+        
+        console.log('[SimplePlayer] Response status:', response.status);
         
         if (!response.ok) {
-          throw new Error(`Failed to load player: ${response.status}`);
+          const errorText = await response.text();
+          console.error('[SimplePlayer] Error response:', errorText);
+          throw new Error(`Failed to load player: ${response.status} - ${errorText.substring(0, 100)}`);
         }
         
         const apiData = await response.json();
+        console.log('[SimplePlayer] API data:', {
+          success: apiData.success,
+          hasData: !!apiData.data,
+          playerName: apiData.data?.name
+        });
         
         if (apiData.success && apiData.data) {
           setPlayer(apiData.data);
@@ -67,6 +77,7 @@ export default function SimplePlayerPage() {
           throw new Error('Invalid API response');
         }
       } catch (err) {
+        console.error('[SimplePlayer] Load error:', err);
         setError(err instanceof Error ? err.message : 'Failed to load player profile');
       } finally {
         setLoading(false);
