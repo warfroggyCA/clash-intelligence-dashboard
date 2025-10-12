@@ -26,6 +26,8 @@ interface RosterMember {
   donations: number;
   donationsReceived: number;
   rankedLeagueName?: string;
+  rankedLeagueId?: number;
+  rankedTrophies?: number | null;
   bk?: number;
   aq?: number;
   gw?: number;
