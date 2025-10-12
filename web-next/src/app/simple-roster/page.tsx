@@ -107,9 +107,20 @@ export default function SimpleRosterPage() {
           // Primary: League tier, Secondary: Trophy count
           const aTier = getLeagueTier(a.rankedLeagueName);
           const bTier = getLeagueTier(b.rankedLeagueName);
-          if (aTier !== bTier) {
+          
+          // If one has league and other doesn't, ranked goes first
+          if (aTier > 0 && bTier === 0) {
+            comparison = 1; // a has league, goes first (higher value)
+          } else if (aTier === 0 && bTier > 0) {
+            comparison = -1; // b has league, goes first
+          } else if (aTier !== bTier) {
+            // Both have leagues, compare tiers
             comparison = aTier - bTier;
+          } else if (aTier > 0) {
+            // Same tier, compare trophies
+            comparison = a.trophies - b.trophies;
           } else {
+            // Both unranked, sort by trophies
             comparison = a.trophies - b.trophies;
           }
           break;
