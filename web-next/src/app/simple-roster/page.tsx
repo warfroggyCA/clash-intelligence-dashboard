@@ -288,54 +288,63 @@ export default function SimpleRosterPage() {
                 <tr className="bg-brand-surface-secondary border-b border-brand-border">
                   <th 
                     onClick={() => handleSort('name')}
+                    title="Player name - Click to sort"
                     className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Player {sortKey === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('role')}
+                    title="Clan role: Leader > Co-Leader > Elder > Member - Click to sort"
                     className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Role {sortKey === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('th')}
+                    title="Town Hall level - Higher TH unlocks more troops, defenses, and heroes - Click to sort"
                     className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     TH {sortKey === 'th' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('league')}
+                    title="Ranked battle league - Shows current competitive tier based on trophy count - Click to sort"
                     className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     League {sortKey === 'league' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('trophies')}
+                    title="Current trophy count from multiplayer battles - Higher trophies = harder opponents - Click to sort"
                     className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Trophies {sortKey === 'trophies' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('rush')}
+                    title="Rush % - Heroes below max for current TH level. Lower is better (0% = maxed) - Click to sort"
                     className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Rush % {sortKey === 'rush' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('activity')}
+                    title="Activity level based on: ranked battles (20 pts), donations (15 pts), hero progress (10 pts), role (10 pts), trophies (10 pts) - Click to sort"
                     className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Activity {sortKey === 'activity' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('donations')}
+                    title="Troops donated to clan members this season - Higher is better - Click to sort"
                     className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Donated {sortKey === 'donations' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('received')}
+                    title="Troops received from clan members this season - Compare with donated to see balance - Click to sort"
                     className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Received {sortKey === 'received' && (sortDirection === 'asc' ? '↑' : '↓')}
