@@ -546,15 +546,13 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           {player.mp || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3">
-                        <div className="flex justify-center">
-                          <span 
-                            title={activityTooltip}
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border cursor-help ${activityColor}`}
-                          >
-                            {activity.level}
-                          </span>
-                        </div>
+                      <td className="px-4 py-3 text-center">
+                        <span 
+                          title={activityTooltip}
+                          className="text-sm text-brand-text-secondary cursor-help"
+                        >
+                          {activity.level}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-right">
                         <span 
