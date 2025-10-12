@@ -653,8 +653,8 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
               <div className="flex items-start gap-3 mb-3">
                 {/* Left: Name, Role, Badges */}
                 <div className="flex-1 min-w-0">
-                  {/* Name with Level */}
-                  <div className="flex items-center gap-2 mb-1">
+                  {/* Name with Level and Role */}
+                  <div className="flex items-center gap-1.5 mb-2 flex-wrap">
                     <Link
                       href={`/simple-player/${player.tag.replace('#', '')}`}
                       className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline truncate"
@@ -664,19 +664,18 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     </Link>
                     <span className="text-sm text-brand-text-tertiary">•</span>
                     <span className="text-sm text-brand-text-secondary font-medium">{player.townHallLevel}</span>
+                    <span className="text-sm text-brand-text-tertiary">•</span>
+                    <span 
+                      title={roleTooltip}
+                      className="text-sm text-brand-text-tertiary cursor-help"
+                    >
+                      {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
+                    </span>
                   </div>
                   
-                  {/* Role */}
-                  <span 
-                    title={roleTooltip}
-                    className="text-xs text-brand-text-tertiary cursor-help"
-                  >
-                    {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
-                  </span>
-                  
-                  {/* TH & League Badges */}
-                  <div className="flex items-center gap-2 mt-2">
-                    <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '40px', height: '40px' }}>
+                  {/* TH & League Badges - Same Size */}
+                  <div className="flex items-center gap-2">
+                    <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
                       <img 
                         src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
                         alt={`TH${player.townHallLevel}`}
@@ -687,14 +686,14 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         }}
                       />
                       <span 
-                        className="absolute bottom-0 right-0 text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                        className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                       >
                         {player.townHallLevel}
                       </span>
                     </div>
                     {player.rankedLeagueName && (
-                      <div title={leagueTooltip} className="cursor-help" style={{ width: '40px', height: '40px' }}>
+                      <div title={leagueTooltip} className="cursor-help">
                         <LeagueBadge 
                           league={player.rankedLeagueName} 
                           trophies={player.trophies}
