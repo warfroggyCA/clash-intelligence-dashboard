@@ -409,13 +409,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   className = '',
   hideNavigation = false,
   hideCommandRail = false,
+  clanName: propClanName,
 }) => {
   const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
   const { permissions } = useLeadership();
   const canAccessLeadershipTools = permissions.canViewLeadershipFeatures;
   const showCommandRail = canAccessLeadershipTools && !hideCommandRail;
   const fallbackClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag || '');
-  const fallbackClanName = normalizeTag(fallbackClanTag) || fallbackClanTag;
+  const fallbackClanName = propClanName || normalizeTag(fallbackClanTag) || fallbackClanTag;
 
   useEffect(() => {
     if (!showCommandRail) return;
