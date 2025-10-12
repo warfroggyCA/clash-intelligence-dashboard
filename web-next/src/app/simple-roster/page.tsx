@@ -2,12 +2,17 @@
  * SIMPLE ROSTER TABLE
  * Clean implementation - just fetch and display
  * No complex state management, no Zustand, no infinite loops
+ * Wrapped in DashboardLayout for consistent look and feel
  */
 
 "use client";
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+
+// Lazy load DashboardLayout to avoid module-time side effects
+const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
 interface Player {
   tag: string;
