@@ -41,8 +41,28 @@ export default function SimpleRosterPage() {
           throw new Error(`Failed to load roster: ${response.status}`);
         }
         
-        const data = await response.json();
-        setRoster(data);
+        const apiData = await response.json();
+        
+        // Transform API response to our format
+        if (apiData.success && apiData.data) {
+          const transformed = {
+            members: apiData.data.members.map((m: any) => ({
+              tag: m.tag,
+              name: m.name,
+              townHallLevel: m.townHallLevel,
+              role: m.role,
+              trophies: m.trophies,
+              donations: m.donations,
+              donationsReceived: m.donationsReceived,
+              rankedLeagueName: m.rankedLeagueName
+            })),
+            clanName: apiData.data.clan.name,
+            date: apiData.data.snapshot.fetchedAt
+          };
+          setRoster(transformed);
+        } else {
+          throw new Error('Invalid API response format');
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load roster');
       } finally {
