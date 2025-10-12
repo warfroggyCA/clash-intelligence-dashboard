@@ -284,14 +284,15 @@ export const calculateActivityScore = (member: Member): ActivityEvidence => {
   }
   
   // Determine final activity level based on total score
+  // Adjusted thresholds for 0-65 achievable range (until war/raid data is available)
   let level: ActivityLevel;
-  if (score >= 85) {
+  if (score >= 55) {
     level = 'Very Active';
-  } else if (score >= 65) {
+  } else if (score >= 40) {
     level = 'Active';
-  } else if (score >= 45) {
-    level = 'Moderate';
   } else if (score >= 25) {
+    level = 'Moderate';
+  } else if (score >= 10) {
     level = 'Low';
   } else {
     level = 'Inactive';
