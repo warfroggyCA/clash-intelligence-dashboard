@@ -185,7 +185,13 @@ export default function SimpleRosterPage() {
               trophies: m.trophies,
               donations: m.donations,
               donationsReceived: m.donationsReceived,
-              rankedLeagueName: m.rankedLeagueName
+              rankedLeagueName: m.rankedLeagueName,
+              // Hero levels for rush calculation
+              bk: m.bk,
+              aq: m.aq,
+              gw: m.gw,
+              rc: m.rc,
+              mp: m.mp
             })),
             clanName: apiData.data.clan.name,
             date: apiData.data.snapshot.fetchedAt
