@@ -319,25 +319,102 @@ export const getActivityWeighting = (activity: ActivityLevel): number => {
 };
 
 /**
- * Calculate real-time activity (placeholder - would need actual implementation)
+ * Calculate real-time activity using multi-indicator approach
+ * 
+ * New scoring system (Jan 2025):
+ * - Ranked Battle Participation: 0-20 points (definitive real-time indicator)
+ * - Donations: 0-15 points (reduced from 50)
+ * - War/Raids/Clan Games: 0-35 points (placeholder for future implementation)
+ * - Hero Development: 0-10 points
+ * - Clan Role: 0-10 points
+ * - Trophy Activity: 0-10 points (placeholder)
  */
 export const calculateRealTimeActivity = (member: Member): {
   activity_level: ActivityLevel;
   confidence: 'definitive' | 'high' | 'medium' | 'weak';
+  score: number;
+  indicators: string[];
 } => {
-  // This is a simplified version - the actual implementation would be more complex
-  const donations = member.donations ?? 0;
-  const lastSeen = member.lastSeen;
+  let score = 0;
+  const indicators: string[] = [];
+  let indicatorCount = 0;
   
-  if (donations > 500) {
-    return { activity_level: 'Very Active', confidence: 'definitive' };
-  } else if (donations > 100) {
-    return { activity_level: 'Active', confidence: 'high' };
-  } else if (donations > 10) {
-    return { activity_level: 'Moderate', confidence: 'medium' };
-  } else {
-    return { activity_level: 'Inactive', confidence: 'weak' };
+  // 1. RANKED BATTLE PARTICIPATION (0-20 points) - Definitive real-time indicator
+  const rankedLeagueId = member.rankedLeagueId ?? (member.rankedLeague as any)?.id ?? member.leagueId;
+  const trophies = member.trophies ?? 0;
+  
+  if (rankedLeagueId && rankedLeagueId !== 105000000 && trophies > 0) {
+    // Has league assignment AND active trophies = definitely participating
+    score += 20;
+    indicators.push('Active ranked battles');
+    indicatorCount++;
+  } else if (rankedLeagueId && rankedLeagueId !== 105000000) {
+    // Has league but no trophies = enrolled but not active
+    score += 5;
+    indicators.push('Ranked enrolled (not battling)');
   }
+  
+  // 2. DONATIONS (0-15 points) - Reduced weight from 50
+  const donations = member.donations ?? 0;
+  if (donations >= 500) {
+    score += 15;
+    indicators.push('Heavy donator (500+)');
+    indicatorCount++;
+  } else if (donations >= 200) {
+    score += 12;
+    indicators.push('Strong donator (200+)');
+    indicatorCount++;
+  } else if (donations >= 100) {
+    score += 10;
+    indicators.push('Active donator (100+)');
+    indicatorCount++;
+  } else if (donations >= 50) {
+    score += 7;
+    indicators.push('Regular donator (50+)');
+  } else if (donations >= 10) {
+    score += 5;
+    indicators.push('Occasional donator (10+)');
+  } else if (donations > 0) {
+    score += 2;
+    indicators.push('Minimal donations');
+  }
+  
+  // 3. WAR/RAIDS/CLAN GAMES (0-35 points) - PLACEHOLDER
+  // Future: Implement when war/raid/clan games data is available
+  // For now, we don't add points here, but preserve the scoring space
+  
+  // Determine confidence level based on number of definitive indicators
+  let confidence: 'definitive' | 'high' | 'medium' | 'weak';
+  if (indicatorCount >= 2) {
+    confidence = 'definitive'; // Multiple strong indicators
+  } else if (indicatorCount === 1) {
+    confidence = 'high'; // Single strong indicator
+  } else if (indicators.length > 0) {
+    confidence = 'medium'; // Weak indicators present
+  } else {
+    confidence = 'weak'; // No indicators
+  }
+  
+  // Determine preliminary activity level based on real-time score
+  let activity_level: ActivityLevel;
+  if (score >= 30) {
+    activity_level = 'Very Active';
+  } else if (score >= 20) {
+    activity_level = 'Active';
+  } else if (score >= 10) {
+    activity_level = 'Moderate';
+  } else if (score >= 5) {
+    activity_level = 'Low';
+  } else {
+    activity_level = 'Inactive';
+  }
+  
+  return {
+    activity_level,
+    confidence,
+    score,
+    indicators
+  };
 };
 
 // =============================================================================
