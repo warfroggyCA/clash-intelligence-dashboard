@@ -649,76 +649,98 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
               key={player.tag}
               className="rounded-lg border border-brand-border bg-brand-surface shadow-sm p-3"
             >
-              {/* Header - Name First */}
-              <div className="flex items-start justify-between mb-2">
+              {/* Clean Header Layout */}
+              <div className="flex items-start gap-3 mb-3">
+                {/* Left: Name, Role, Badges */}
                 <div className="flex-1 min-w-0">
-                  <Link
-                    href={`/simple-player/${player.tag.replace('#', '')}`}
-                    className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline block truncate"
-                    style={{ fontFamily: "'Clash Display', sans-serif" }}
-                  >
-                    {player.name}
-                  </Link>
+                  {/* Name with Level */}
+                  <div className="flex items-center gap-2 mb-1">
+                    <Link
+                      href={`/simple-player/${player.tag.replace('#', '')}`}
+                      className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline truncate"
+                      style={{ fontFamily: "'Clash Display', sans-serif" }}
+                    >
+                      {player.name}
+                    </Link>
+                    <span className="text-sm text-brand-text-tertiary">•</span>
+                    <span className="text-sm text-brand-text-secondary font-medium">{player.townHallLevel}</span>
+                  </div>
+                  
+                  {/* Role */}
                   <span 
                     title={roleTooltip}
-                    className="text-xs text-brand-text-tertiary cursor-help inline-block mt-0.5"
+                    className="text-xs text-brand-text-tertiary cursor-help"
                   >
                     {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
                   </span>
+                  
+                  {/* TH & League Badges */}
+                  <div className="flex items-center gap-2 mt-2">
+                    <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '40px', height: '40px' }}>
+                      <img 
+                        src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
+                        alt={`TH${player.townHallLevel}`}
+                        className="w-full h-full object-contain"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                          e.currentTarget.parentElement!.innerHTML = '🏰';
+                        }}
+                      />
+                      <span 
+                        className="absolute bottom-0 right-0 text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
+                      >
+                        {player.townHallLevel}
+                      </span>
+                    </div>
+                    {player.rankedLeagueName && (
+                      <div title={leagueTooltip} className="cursor-help" style={{ width: '40px', height: '40px' }}>
+                        <LeagueBadge 
+                          league={player.rankedLeagueName} 
+                          trophies={player.trophies}
+                          size="sm" 
+                          showText={false}
+                        />
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
-                  <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
-                    <img 
-                      src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
-                      alt={`TH${player.townHallLevel}`}
-                      className="w-full h-full object-contain"
-                      onError={(e) => {
-                        e.currentTarget.style.display = 'none';
-                        e.currentTarget.parentElement!.innerHTML = '🏰';
-                      }}
-                    />
-                    <span 
-                      className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
-                      style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
-                    >
-                      {player.townHallLevel}
+
+                {/* Right: All Stats Organized */}
+                <div className="flex-shrink-0 text-xs space-y-2">
+                  {/* Trophies & Rush */}
+                  <div className="flex items-center gap-3">
+                    <div title={`Current trophy count: ${player.trophies.toLocaleString()}`} className="cursor-help text-right">
+                      <div className="text-brand-text-tertiary text-[10px]">Trophies</div>
+                      <div className="font-mono font-semibold text-brand-text-primary">{player.trophies.toLocaleString()}</div>
+                    </div>
+                    <div title={rushTooltip} className="cursor-help text-right">
+                      <div className="text-brand-text-tertiary text-[10px]">Rush</div>
+                      <div className={`font-mono font-semibold ${rushColor}`}>{rushPercent}%</div>
+                    </div>
+                  </div>
+
+                  {/* Activity */}
+                  <div title={activityTooltip} className="cursor-help text-right">
+                    <div className="text-brand-text-tertiary text-[10px] mb-0.5">Activity</div>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium border ${activityColor}`}>
+                      {activity.level === 'Very Active' ? 'V.Active' : activity.level}
                     </span>
                   </div>
-                  {player.rankedLeagueName && (
-                    <div title={leagueTooltip} className="cursor-help">
-                      <LeagueBadge 
-                        league={player.rankedLeagueName} 
-                        trophies={player.trophies}
-                        size="sm" 
-                        showText={false}
-                      />
-                    </div>
-                  )}
+
+                  {/* Donations */}
+                  <div title={donationTooltip} className="cursor-help text-right pt-1 border-t border-brand-border/30">
+                    <div className="text-brand-text-tertiary text-[10px]">Don: <span className="font-mono text-green-600 font-semibold">{player.donations}</span></div>
+                    <div className="text-brand-text-tertiary text-[10px]">Rec: <span className="font-mono text-blue-600 font-semibold">{player.donationsReceived}</span></div>
+                    <div className="text-brand-text-tertiary text-[10px]">Bal: <span className={`font-mono font-semibold ${donationBalance > 0 ? 'text-red-600' : donationBalance < 0 ? 'text-green-600' : 'text-brand-text-tertiary'}`}>
+                      {donationBalance > 0 ? '+' : ''}{donationBalance}
+                    </span></div>
+                  </div>
                 </div>
               </div>
 
-              {/* Compact Stats Grid - 3 columns */}
-              <div className="grid grid-cols-3 gap-2 text-xs mb-2">
-                <div title={`Current trophy count: ${player.trophies.toLocaleString()}`} className="cursor-help">
-                  <p className="text-brand-text-tertiary text-[10px] mb-0.5">Trophies</p>
-                  <p className="font-mono font-semibold text-brand-text-primary text-xs">{player.trophies.toLocaleString()}</p>
-                </div>
-                <div title={rushTooltip} className="cursor-help text-center">
-                  <p className="text-brand-text-tertiary text-[10px] mb-0.5">Rush</p>
-                  <p className={`font-mono font-semibold text-xs ${rushColor}`}>{rushPercent}%</p>
-                </div>
-                <div title={activityTooltip} className="cursor-help text-right">
-                  <p className="text-brand-text-tertiary text-[10px] mb-0.5">Activity</p>
-                  <span 
-                    className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${activityColor}`}
-                  >
-                    {activity.level === 'Very Active' ? 'V.Active' : activity.level}
-                  </span>
-                </div>
-              </div>
-
-              {/* Heroes Row */}
-              <div className="flex items-center justify-between text-xs mb-2 pb-2 border-b border-brand-border/30">
+              {/* Heroes Row - Bottom */}
+              <div className="flex items-center justify-between text-xs pt-2 border-t border-brand-border/30">
                 <div 
                   title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk}\n${maxHeroes.bk > 0 ? `Progress: ${Math.round(((player.bk || 0) / maxHeroes.bk) * 100)}%` : 'Not available at this TH'}`}
                   className="flex flex-col items-center cursor-help"
@@ -753,24 +775,6 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                 >
                   <span className="text-brand-text-tertiary text-[10px]">MP</span>
                   <span className="font-mono font-semibold text-brand-text-primary">{player.mp || '-'}</span>
-                </div>
-              </div>
-
-              {/* Compact Donations - Single Row */}
-              <div className="flex items-center justify-between text-xs pt-2 border-t border-brand-border/30">
-                <div title={donationTooltip} className="cursor-help flex items-baseline gap-1">
-                  <span className="text-brand-text-tertiary text-[10px]">Donated:</span>
-                  <span className="font-mono font-semibold text-green-600">{player.donations}</span>
-                </div>
-                <div title={donationTooltip} className="cursor-help flex items-baseline gap-1">
-                  <span className="text-brand-text-tertiary text-[10px]">Received:</span>
-                  <span className="font-mono font-semibold text-blue-600">{player.donationsReceived}</span>
-                </div>
-                <div title={donationTooltip} className="cursor-help flex items-baseline gap-1">
-                  <span className="text-brand-text-tertiary text-[10px]">Bal:</span>
-                  <span className={`font-mono font-semibold ${donationBalance > 0 ? 'text-red-600' : donationBalance < 0 ? 'text-green-600' : 'text-brand-text-tertiary'}`}>
-                    {donationBalance > 0 ? '+' : ''}{donationBalance}
-                  </span>
                 </div>
               </div>
             </div>
