@@ -710,11 +710,24 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
 
                 {/* Right: All Stats Organized */}
                 <div className="flex-shrink-0 text-xs space-y-2">
-                  {/* Trophies & Rush */}
-                  <div className="flex items-center gap-3">
-                    <div title={`Current trophy count: ${player.trophies.toLocaleString()}`} className="cursor-help text-right">
-                      <div className="text-brand-text-tertiary text-[10px]">Trophies</div>
-                      <div className="font-mono font-semibold text-brand-text-primary">{player.trophies.toLocaleString()}</div>
+                  {/* Trophy Icon & Rush */}
+                  <div className="flex items-center gap-2">
+                    <div 
+                      title={`Current trophy count: ${player.trophies.toLocaleString()}`}
+                      className="relative cursor-help" 
+                      style={{ width: '40px', height: '40px' }}
+                    >
+                      <img 
+                        src="/assets/clash/trophy.png"
+                        alt="Trophy"
+                        className="w-full h-full object-contain"
+                      />
+                      <span 
+                        className="absolute bottom-0 right-0 text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                        style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
+                      >
+                        {player.trophies >= 1000 ? `${(player.trophies / 1000).toFixed(1)}k` : player.trophies}
+                      </span>
                     </div>
                     <div title={rushTooltip} className="cursor-help text-right">
                       <div className="text-brand-text-tertiary text-[10px]">Rush</div>
