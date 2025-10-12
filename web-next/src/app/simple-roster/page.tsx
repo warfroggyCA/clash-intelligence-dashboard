@@ -190,9 +190,14 @@ export default function SimpleRosterPage() {
               donationsReceived: m.donationsReceived,
               rankedLeagueId: m.rankedLeagueId,
               rankedTrophies: m.rankedTrophies,
-              // Only show ranked league if they're not in the "Unranked" tier (ID: 105000000)
-              // The leagueTier from clan members API is the source of truth for badge display
-              rankedLeagueName: (m.rankedLeagueId && m.rankedLeagueId !== 105000000) ? m.rankedLeagueName : null,
+              // Only show ranked league badge if:
+              // 1. They have a non-Unranked league tier (ID !== 105000000)
+              // 2. AND they have trophies > 0 (indicating actual participation)
+              rankedLeagueName: (
+                m.rankedLeagueId && 
+                m.rankedLeagueId !== 105000000 && 
+                m.trophies > 0
+              ) ? m.rankedLeagueName : null,
               // Hero levels for rush calculation
               bk: m.bk,
               aq: m.aq,
