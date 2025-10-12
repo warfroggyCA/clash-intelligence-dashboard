@@ -7,11 +7,12 @@
 
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { TownHallBadge, LeagueBadge } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
+import { calculateRushPercentage, calculateActivityScore, getTownHallLevel } from '@/lib/business/calculations';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
