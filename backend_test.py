@@ -691,17 +691,19 @@ class APITester:
     
     def run_all_tests(self):
         """Run all test suites"""
-        print("🚀 Starting Clash Intelligence Dashboard API Tests")
+        print("🚀 Starting Activity Calculation System Tests")
         print(f"Base URL: {self.base_url}")
         print(f"Test Clan Tag: {TEST_CLAN_TAG}")
         print("=" * 60)
         
-        # Run tests in logical order
+        # Initialize roster_members attribute
+        self.roster_members = []
+        
+        # Run tests in logical order - focus on activity calculation system
         self.test_health_endpoint()
         self.test_v2_roster_api()
-        self.test_player_history_api()
-        self.test_player_comparison_api()
-        self.test_insights_api()
+        self.test_activity_calculations()
+        self.test_no_regressions()
         self.test_error_handling()
         
         # Summary
