@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import type { PlayerProfileSummary } from '@/lib/player-profile';
 import { LeagueBadge, TownHallBadge, Button } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
 import type { AceScoreResult } from '@/lib/ace-score';
 
@@ -13,7 +13,7 @@ interface PlayerSummaryHeaderProps {
 }
 
 export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summary }) => {
-  const roster = useDashboardStore((state) => state.roster);
+  const roster = useDashboardStore(useShallow((state) => state.roster));
   const badge = getRoleBadgeVariant(summary.role);
   const cleanTag = summary.tag.replace('#', '').toUpperCase();
   const joinDate = summary.joinDate ? new Date(summary.joinDate) : null;

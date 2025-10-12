@@ -13,7 +13,7 @@ const subtitleClass = "text-sm text-gray-500";
 export default function ClanAnalytics() {
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
-  const roster = useDashboardStore((state) => state.roster);
+  const roster = useDashboardStore(useShallow((state) => state.roster));
   const snapshotAgeHours = useDashboardStore(selectors.dataAge);
 
   const memberCount = snapshotMetadata?.memberCount ?? roster?.members?.length ?? 0;

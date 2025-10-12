@@ -4,7 +4,7 @@ import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { HeroLevel } from '@/components/ui';
 import type { ClanHeroBenchmarks, PlayerHeroProgressItem } from '@/lib/player-profile';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 import type { Member } from '@/types';
 
 interface PlayerHeroProgressProps {
@@ -32,7 +32,7 @@ const HERO_ICON_MAP: Record<HeroShortLabel, { src: string; alt: string }> = {
 };
 
 export const PlayerHeroProgress: React.FC<PlayerHeroProgressProps> = ({ heroes, clanHeroBenchmarks }) => {
-  const rosterMembers = useDashboardStore((state) => state.roster?.members ?? EMPTY_MEMBERS);
+  const rosterMembers = useDashboardStore(useShallow((state) => state.roster?.members ?? EMPTY_MEMBERS));
 
   const storeBenchmarks = useMemo<ClanHeroBenchmarks>(() => {
     if (!rosterMembers.length) {

@@ -9,7 +9,7 @@ import {
   AlertTriangle,
 } from 'lucide-react';
 import { GlassCard } from '@/components/ui';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 import { calculatePlayerDNA } from '@/lib/player-dna';
 import { evaluateRoster, buildReportLine } from '@/lib/elder/evaluator';
 import { parseCsv } from '@/lib/elder/rawInputs';
@@ -49,7 +49,7 @@ const safeNumber = (value: number | undefined | null): number => {
 };
 
 export function ElderAssessmentCard() {
-  const roster = useDashboardStore((state) => state.roster);
+  const roster = useDashboardStore(useShallow((state) => state.roster));
   const [csvInput, setCsvInput] = useState('');
   const [results, setResults] = useState<ElderRecommendation[]>([]);
   const [error, setError] = useState<string | null>(null);

@@ -25,7 +25,7 @@ const navigateTo = (tab: TabType, setActiveTab: (tab: TabType) => void) => () =>
 
 export const InsightsDashboard: React.FC = () => {
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
-  const roster = useDashboardStore((state) => state.roster);
+  const roster = useDashboardStore(useShallow((state) => state.roster));
   const setActiveTab = useDashboardStore((state) => state.setActiveTab);
 
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);

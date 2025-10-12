@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
 import { X } from 'lucide-react';
 import { safeLocaleDateString } from '@/lib/date';
@@ -43,7 +43,7 @@ function addLocalReturnNote(tag: string, name: string, noteText?: string, awardT
 
 export default function ReturningPlayerReview() {
   const clanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
-  const roster = useDashboardStore((s) => s.roster);
+  const roster = useDashboardStore(useShallow((s) => s.roster));
   // Use a stable fingerprint; avoid volatile client-side timestamps
   const snapshotFingerprint = useDashboardStore((s) =>
     s.latestSnapshotVersion ||
