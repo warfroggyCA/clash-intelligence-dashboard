@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Loader2, PanelRightClose, PanelRightOpen, ShieldCheck } from 'lucide-react';
 import { Button, GlassCard } from '@/components/ui';
