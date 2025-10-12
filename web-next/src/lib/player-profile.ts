@@ -264,9 +264,11 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   const hasLeague = Boolean(playerDetail.league && (playerDetail.league.name || typeof playerDetail.league.id === 'number'));
   
   // Use ranked league data (new competitive mode)
+  // Safely access ranked league properties with type assertion
+  const memberWithRanked = member as any;
   const hasRankedLeague = Boolean(
-    (member.rankedLeagueId && member.rankedLeagueId !== 105000000) || // Not "Unranked" 
-    (member.rankedLeagueName && member.rankedLeagueName !== 'Unranked')
+    (memberWithRanked.rankedLeagueId && memberWithRanked.rankedLeagueId !== 105000000) || // Not "Unranked" 
+    (memberWithRanked.rankedLeagueName && memberWithRanked.rankedLeagueName !== 'Unranked')
   );
 
   return {
@@ -285,8 +287,8 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
         : null,
       rankedLeague: hasRankedLeague
         ? {
-            id: member.rankedLeagueId ?? undefined,
-            name: member.rankedLeagueName ?? undefined,
+            id: memberWithRanked.rankedLeagueId ?? undefined,
+            name: memberWithRanked.rankedLeagueName ?? undefined,
           }
         : null,
       trophies,
