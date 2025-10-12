@@ -58,6 +58,7 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
   
   const dataAgeHours = useDashboardStore(selectors.dataAge);
   const hasInitialized = useRef(false);
+  const [showSimpleBanner, setShowSimpleBanner] = useState(true);
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
