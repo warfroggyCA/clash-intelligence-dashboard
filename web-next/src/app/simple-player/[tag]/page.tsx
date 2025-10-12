@@ -293,6 +293,6 @@ export default function SimplePlayerPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardLayout>
   );
 }
