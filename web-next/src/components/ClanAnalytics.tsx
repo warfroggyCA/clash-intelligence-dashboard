@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { useDashboardStore, selectors } from "@/lib/stores/dashboard-store";
+import { useDashboardStore, selectors, useShallow } from "@/lib/stores/dashboard-store";
 import { safeLocaleString } from '@/lib/date';
 
 const sectionClass =
