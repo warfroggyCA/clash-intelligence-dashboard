@@ -1704,6 +1704,8 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
  * Example:
  * const roster = useDashboardStoreShallow((state) => state.roster);
  */
-export const useDashboardStoreShallow = <T>(
+export function useDashboardStoreShallow<T>(
   selector: (state: DashboardState) => T
-) => useDashboardStore(selector, shallow);
+): T {
+  return useDashboardStore(selector as any, shallow as any) as T;
+}
