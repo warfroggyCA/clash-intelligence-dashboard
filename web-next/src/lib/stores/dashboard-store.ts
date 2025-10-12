@@ -9,6 +9,7 @@
  */
 
 import { create } from 'zustand';
+import { shallow } from 'zustand/shallow';
 import { devtools, subscribeWithSelector } from 'zustand/middleware';
 import { flushSync } from 'react-dom';
 import {
