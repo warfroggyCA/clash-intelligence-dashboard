@@ -114,9 +114,9 @@ if (trophies >= 3000)  score += 1;
 - Leader role: +10
 - Hero development (high): +8
 - Trophy level: +1
-- **Total: ~46 points = Moderate** ✅
+- **Total: ~46 points = Active** ✅ (Updated threshold)
 
-**Result:** Shows as "Moderate" in UI ✅
+**Result:** Shows as "Active" in UI ✅
 
 ### Test Case 2: Co-Leader with Ranked, No Donations
 **Player:** DoubleD  
