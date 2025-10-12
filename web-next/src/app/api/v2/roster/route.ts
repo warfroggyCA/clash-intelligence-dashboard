@@ -401,6 +401,14 @@ export async function GET(req: NextRequest) {
       const enrichedHeroLevels = stat.hero_levels ?? (pDetail ? extractHeroLevels(pDetail) : null);
       const enrichedTh = stat.th_level ?? (pSummary?.townHallLevel ?? pDetail?.townHallLevel ?? null);
 
+      // Extract individual hero levels
+      const heroes = enrichedHeroLevels ?? {};
+      const bk = typeof heroes === 'object' ? (heroes.bk ?? heroes.BK ?? null) : null;
+      const aq = typeof heroes === 'object' ? (heroes.aq ?? heroes.AQ ?? null) : null;
+      const gw = typeof heroes === 'object' ? (heroes.gw ?? heroes.GW ?? null) : null;
+      const rc = typeof heroes === 'object' ? (heroes.rc ?? heroes.RC ?? null) : null;
+      const mp = typeof heroes === 'object' ? (heroes.mp ?? heroes.MP ?? null) : null;
+
       return {
         id: stat.member_id,
         tag: member.tag ?? null,
@@ -411,6 +419,12 @@ export async function GET(req: NextRequest) {
         donations: stat.donations,
         donationsReceived: stat.donations_received,
         heroLevels: enrichedHeroLevels ?? null,
+        // Add individual hero levels for easy access
+        bk,
+        aq,
+        gw,
+        rc,
+        mp,
         activityScore: stat.activity_score ?? null,
         rushPercent: stat.rush_percent ?? null,
         extras: stat.extras ?? null,
