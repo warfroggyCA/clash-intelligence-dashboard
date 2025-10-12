@@ -179,7 +179,7 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
           }}
         />
         {(tier ?? parsedTier) ? (
-          <span className="absolute -bottom-1 -right-1 rounded-full border border-black/20 bg-black/70 px-1.5 text-[10px] font-semibold text-white shadow-md">
+          <span className="absolute -bottom-1 -right-1 text-sm font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
             {tier ?? parsedTier}
           </span>
         ) : null}
@@ -212,7 +212,7 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
           }}
         />
         {(tier ?? parsedTier) ? (
-          <span className="absolute -bottom-1 -right-1 rounded-full border border-black/20 bg-black/70 px-1.5 text-[10px] font-semibold text-white shadow-md">
+          <span className="absolute -bottom-1 -right-1 text-sm font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]">
             {tier ?? parsedTier}
           </span>
         ) : null}
