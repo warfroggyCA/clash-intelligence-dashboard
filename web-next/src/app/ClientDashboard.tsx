@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, selectors, useShallow } from '@/lib/stores/dashboard-store';
 import { Roster } from '@/types';
 
 // Lazy-load all heavy/child components to avoid module-time side effects
@@ -50,7 +50,7 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
   const activeTab = useDashboardStore((state) => state.activeTab);
   const homeClan = useDashboardStore((state) => state.homeClan);
   const clanTag = useDashboardStore((state) => state.clanTag);
-  const roster = useDashboardStore((state) => state.roster);
+  const roster = useDashboardStore(useShallow((state) => state.roster));
   const status = useDashboardStore((state) => state.status);
   
   // Actions don't change, so they're safe to destructure

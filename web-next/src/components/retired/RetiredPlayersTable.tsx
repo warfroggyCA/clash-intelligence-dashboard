@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
 import { safeLocaleDateString } from '@/lib/date';
 
@@ -18,7 +18,7 @@ type DepartureRecord = {
 
 export default function RetiredPlayersTable() {
   const clanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
-  const roster = useDashboardStore((s) => s.roster);
+  const roster = useDashboardStore(useShallow((s) => s.roster));
   // CRITICAL FIX: Use member count instead of roster object
   const memberCount = roster?.members?.length ?? 0;
   const currentTags = useMemo(() => new Set((roster?.members || []).map(m => normalizeTag(m.tag))), [memberCount]);

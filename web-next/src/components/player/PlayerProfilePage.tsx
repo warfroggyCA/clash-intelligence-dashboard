@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, ChevronRight, Home, TrendingUp, BarChart3, Activity, RefreshCw } from 'lucide-react';
 import type { PlayerProfileData } from '@/lib/player-profile';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
 import type { Member } from '@/types';
 import PlayerSummaryHeader from './PlayerSummaryHeader';
@@ -25,7 +25,7 @@ const EMPTY_MEMBERS: Member[] = [];
 
 export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) => {
   const router = useRouter();
-  const rosterMembers = useDashboardStore((state) => state.roster?.members ?? EMPTY_MEMBERS);
+  const rosterMembers = useDashboardStore(useShallow((state) => state.roster?.members ?? EMPTY_MEMBERS));
   
   const [historicalData, setHistoricalData] = useState<any[]>([]);
   const [comparisonData, setComparisonData] = useState<any>(null);
