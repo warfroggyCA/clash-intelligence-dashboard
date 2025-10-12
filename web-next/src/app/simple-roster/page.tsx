@@ -360,6 +360,51 @@ export default function SimpleRosterPage() {
                                        activity.level === 'Low' ? 'bg-orange-100 text-orange-800 border-orange-200' :
                                        'bg-red-100 text-red-800 border-red-200';
                   
+                  // Build detailed activity tooltip
+                  const activityTooltip = `Activity Score: ${activity.score}/65 pts
+• ${activity.indicators.join('\n• ')}
+
+Scoring:
+• Ranked battles (0-20 pts)
+• Donations (0-15 pts)
+• Hero development (0-10 pts)
+• Leadership role (0-10 pts)
+• Trophy level (0-10 pts)`;
+
+                  // Rush percentage tooltip
+                  const rushTooltip = `Rush: ${rushPercent}%
+Heroes are ${rushPercent}% below max for TH${player.townHallLevel}.
+
+Heroes: BK ${player.bk || 0}, AQ ${player.aq || 0}, GW ${player.gw || 0}, RC ${player.rc || 0}
+
+Lower is better (0% = maxed)`;
+
+                  // League tooltip
+                  const leagueTooltip = player.rankedLeagueName 
+                    ? `${player.rankedLeagueName}
+${player.trophies} trophies
+
+Actively participating in ranked battles this season.`
+                    : `Not participating in ranked battles
+Player is enrolled but hasn't earned trophies yet this season.`;
+
+                  // Role tooltip
+                  const roleTooltip = player.role === 'leader' 
+                    ? 'Clan Leader - Full clan management permissions'
+                    : player.role === 'coLeader'
+                    ? 'Co-Leader - Can invite, promote, and manage wars'
+                    : player.role === 'admin'
+                    ? 'Elder - Can invite and donate to clan members'
+                    : 'Member - Standard clan member';
+
+                  // Donation tooltip
+                  const donationBalance = player.donationsReceived - player.donations;
+                  const donationTooltip = `Donated: ${player.donations}
+Received: ${player.donationsReceived}
+Balance: ${donationBalance > 0 ? '+' : ''}${donationBalance}
+
+${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Gives more than receives' : 'Balanced donations'}`;
+                  
                   return (
                     <tr 
                       key={player.tag} 
