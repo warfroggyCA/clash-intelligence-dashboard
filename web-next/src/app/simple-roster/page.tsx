@@ -42,10 +42,35 @@ interface RosterData {
 type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'rush' | 'activity' | 'donations' | 'received';
 type SortDirection = 'asc' | 'desc';
 
+// League tier ranking for sorting (highest to lowest)
+const LEAGUE_TIERS: Record<string, number> = {
+  'Legend League': 12,
+  'Titan League': 11,
+  'Electro League': 10,
+  'Dragon League': 9,
+  'PEKKA League': 8,
+  'Golem League': 7,
+  'Valkyrie League': 6,
+  'Witch League': 5,
+  'Wizard League': 4,
+  'Archer League': 3,
+  'Barbarian League': 2,
+  'Skeleton League': 1,
+};
+
+const getLeagueTier = (leagueName?: string): number => {
+  if (!leagueName) return 0;
+  // Extract base league name (e.g., "Electro League 33" -> "Electro League")
+  const baseName = leagueName.split(' ').slice(0, 2).join(' ');
+  return LEAGUE_TIERS[baseName] || 0;
+};
+
 export default function SimpleRosterPage() {
   const [roster, setRoster] = useState<RosterData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>('league');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   useEffect(() => {
     async function loadRoster() {
