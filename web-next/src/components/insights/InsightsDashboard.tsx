@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from 'react';
-import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, selectors, useShallow } from '@/lib/stores/dashboard-store';
 import { GlassCard, Button } from '@/components/ui';
 import TodaysBriefing from '@/components/TodaysBriefing';
 import LeadershipGuard from '@/components/LeadershipGuard';
