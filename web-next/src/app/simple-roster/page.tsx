@@ -512,19 +512,44 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-mono text-sm text-brand-text-primary">{player.bk || '-'}</span>
+                        <span 
+                          title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk}\n${maxHeroes.bk > 0 ? `Progress: ${Math.round(((player.bk || 0) / maxHeroes.bk) * 100)}%` : 'Not available at this TH'}`}
+                          className="font-mono text-sm text-brand-text-primary cursor-help"
+                        >
+                          {player.bk || '-'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-mono text-sm text-brand-text-primary">{player.aq || '-'}</span>
+                        <span 
+                          title={`Archer Queen: ${player.aq || 0}/${maxHeroes.aq}\n${maxHeroes.aq > 0 ? `Progress: ${Math.round(((player.aq || 0) / maxHeroes.aq) * 100)}%` : 'Not available at this TH'}`}
+                          className="font-mono text-sm text-brand-text-primary cursor-help"
+                        >
+                          {player.aq || '-'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-mono text-sm text-brand-text-primary">{player.gw || '-'}</span>
+                        <span 
+                          title={`Grand Warden: ${player.gw || 0}/${maxHeroes.gw}\n${maxHeroes.gw > 0 ? `Progress: ${Math.round(((player.gw || 0) / maxHeroes.gw) * 100)}%` : 'Not available at this TH'}`}
+                          className="font-mono text-sm text-brand-text-primary cursor-help"
+                        >
+                          {player.gw || '-'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-mono text-sm text-brand-text-primary">{player.rc || '-'}</span>
+                        <span 
+                          title={`Royal Champion: ${player.rc || 0}/${maxHeroes.rc}\n${maxHeroes.rc > 0 ? `Progress: ${Math.round(((player.rc || 0) / maxHeroes.rc) * 100)}%` : 'Not available at this TH'}`}
+                          className="font-mono text-sm text-brand-text-primary cursor-help"
+                        >
+                          {player.rc || '-'}
+                        </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <span className="font-mono text-sm text-brand-text-primary">{player.mp || '-'}</span>
+                        <span 
+                          title={`Minion Prince: ${player.mp || 0}/${maxHeroes.mp}\n${maxHeroes.mp > 0 ? `Progress: ${Math.round(((player.mp || 0) / maxHeroes.mp) * 100)}%` : 'Not available at this TH'}`}
+                          className="font-mono text-sm text-brand-text-primary cursor-help"
+                        >
+                          {player.mp || '-'}
+                        </span>
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
