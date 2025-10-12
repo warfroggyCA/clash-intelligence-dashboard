@@ -195,7 +195,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       member_id: memberId,
       th_level: summary.townHallLevel ?? detail?.townHallLevel ?? null,
       role: summary.role ?? null,
-      trophies: summary.trophies ?? detail?.trophies ?? null,
+      trophies: detail?.trophies ?? summary.trophies ?? null,  // detail.trophies = ranked battle trophies (correct for new system)
       donations: summary.donations ?? null,
       donations_received: summary.donationsReceived ?? null,
       hero_levels: heroLevels,
