@@ -690,6 +690,30 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                 </div>
               </div>
 
+              {/* Heroes Row */}
+              <div className="flex items-center justify-between text-xs mb-2 pb-2 border-b border-brand-border/30">
+                <div title="Barbarian King" className="flex flex-col items-center cursor-help">
+                  <span className="text-brand-text-tertiary text-[10px]">BK</span>
+                  <span className="font-mono font-semibold text-brand-text-primary">{player.bk || '-'}</span>
+                </div>
+                <div title="Archer Queen" className="flex flex-col items-center cursor-help">
+                  <span className="text-brand-text-tertiary text-[10px]">AQ</span>
+                  <span className="font-mono font-semibold text-brand-text-primary">{player.aq || '-'}</span>
+                </div>
+                <div title="Grand Warden" className="flex flex-col items-center cursor-help">
+                  <span className="text-brand-text-tertiary text-[10px]">GW</span>
+                  <span className="font-mono font-semibold text-brand-text-primary">{player.gw || '-'}</span>
+                </div>
+                <div title="Royal Champion" className="flex flex-col items-center cursor-help">
+                  <span className="text-brand-text-tertiary text-[10px]">RC</span>
+                  <span className="font-mono font-semibold text-brand-text-primary">{player.rc || '-'}</span>
+                </div>
+                <div title="Minion Prince" className="flex flex-col items-center cursor-help">
+                  <span className="text-brand-text-tertiary text-[10px]">MP</span>
+                  <span className="font-mono font-semibold text-brand-text-primary">{player.mp || '-'}</span>
+                </div>
+              </div>
+
               {/* Compact Donations - Single Row */}
               <div className="flex items-center justify-between text-xs pt-2 border-t border-brand-border/30">
                 <div title={donationTooltip} className="cursor-help flex items-baseline gap-1">
