@@ -541,4 +541,51 @@ Stable ✅
 
 ---
 
+### 9. Fixed Fake Ranked League Data
+
+**Date:** October 12, 2025
+
+**Problem:**
+Multiple players (andrew, fahad bd, BinhDen24, Oleschak, A.Arian, Maten238, JPSavke) showed ranked league names even though they've never participated in ranked battles.
+
+**Root Cause:**
+- Database had `rankedLeagueName` populated for players with `rankedTrophies = null`
+- Data ingestion bug confused old trophy leagues with new ranked battle leagues
+- Example: andrew showed "Valkyrie League 14" but has never done ranked battles
+
+**Why This Matters:**
+- New ranked battle system (Oct 2024) is separate from trophy leagues
+- Players must actively participate to have ranked league status
+- Showing fake leagues is misleading for roster analysis
+
+**Solution:**
+Filter out fake ranked league data at display time:
+```typescript
+rankedLeagueName: (m.rankedTrophies && m.rankedTrophies > 0) 
+  ? m.rankedLeagueName 
+  : null
+```
+
+**Logic:**
+- If `rankedTrophies` is null or 0 → Show "Unranked"
+- If `rankedTrophies` > 0 → Show actual ranked league name
+- This ensures only players who've participated show ranked status
+
+**Impact:**
+- ✅ andrew: "Unranked" (was showing "Valkyrie League 14")
+- ✅ fahad bd: "Unranked" (was showing fake data)
+- ✅ BinhDen24: "Unranked" (was showing fake data)
+- ✅ OLESCHAK: "Unranked" (was showing fake data)
+- ✅ Sorting now correct: unranked players sort by trophies at bottom
+
+**Files Modified:**
+- `/app/web-next/src/app/simple-roster/page.tsx` - Added rankedTrophies check
+
+**Note:**
+The underlying database still has bad `rankedLeagueName` data. This fix is at the display layer. A future data cleanup migration could fix the database, but this display fix is sufficient for now.
+
+**Status:** Data now truthful and accurate! 🎯
+
+---
+
 **End of Changelog**
