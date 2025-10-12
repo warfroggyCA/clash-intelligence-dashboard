@@ -12,7 +12,9 @@ export async function GET(
   try {
     const supabase = getSupabaseServerClient();
     const tag = params.tag;
-    const normalizedTag = normalizeTag(tag);
+    // Ensure tag has # prefix before normalizing
+    const tagWithHash = tag.startsWith('#') ? tag : `#${tag}`;
+    const normalizedTag = normalizeTag(tagWithHash);
 
     // Get the clan tag from config
     const { cfg } = await import('@/lib/config');
