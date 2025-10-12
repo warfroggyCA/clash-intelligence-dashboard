@@ -587,22 +587,12 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                   >
                     {player.name}
                   </Link>
-                  <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-xs">{player.townHallLevel}</span>
-                    <span 
-                      title={roleTooltip}
-                      className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium cursor-help ${
-                      player.role === 'leader' 
-                        ? 'bg-yellow-100 text-yellow-800 border border-yellow-200' 
-                        : player.role === 'coLeader'
-                        ? 'bg-orange-100 text-orange-800 border border-orange-200'
-                        : player.role === 'admin'
-                        ? 'bg-purple-100 text-purple-800 border border-purple-200'
-                        : 'bg-gray-100 text-gray-800 border border-gray-200'
-                    }`}>
-                      {player.role === 'leader' ? 'Lead' : player.role === 'coLeader' ? 'Co-L' : player.role === 'admin' ? 'Elder' : 'Mem'}
-                    </span>
-                  </div>
+                  <span 
+                    title={roleTooltip}
+                    className="text-xs text-brand-text-tertiary cursor-help inline-block mt-0.5"
+                  >
+                    {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0 ml-2">
                   <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
