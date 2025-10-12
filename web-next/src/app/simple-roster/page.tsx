@@ -718,23 +718,38 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
 
               {/* Heroes Row */}
               <div className="flex items-center justify-between text-xs mb-2 pb-2 border-b border-brand-border/30">
-                <div title="Barbarian King" className="flex flex-col items-center cursor-help">
+                <div 
+                  title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk}\n${maxHeroes.bk > 0 ? `Progress: ${Math.round(((player.bk || 0) / maxHeroes.bk) * 100)}%` : 'Not available at this TH'}`}
+                  className="flex flex-col items-center cursor-help"
+                >
                   <span className="text-brand-text-tertiary text-[10px]">BK</span>
                   <span className="font-mono font-semibold text-brand-text-primary">{player.bk || '-'}</span>
                 </div>
-                <div title="Archer Queen" className="flex flex-col items-center cursor-help">
+                <div 
+                  title={`Archer Queen: ${player.aq || 0}/${maxHeroes.aq}\n${maxHeroes.aq > 0 ? `Progress: ${Math.round(((player.aq || 0) / maxHeroes.aq) * 100)}%` : 'Not available at this TH'}`}
+                  className="flex flex-col items-center cursor-help"
+                >
                   <span className="text-brand-text-tertiary text-[10px]">AQ</span>
                   <span className="font-mono font-semibold text-brand-text-primary">{player.aq || '-'}</span>
                 </div>
-                <div title="Grand Warden" className="flex flex-col items-center cursor-help">
+                <div 
+                  title={`Grand Warden: ${player.gw || 0}/${maxHeroes.gw}\n${maxHeroes.gw > 0 ? `Progress: ${Math.round(((player.gw || 0) / maxHeroes.gw) * 100)}%` : 'Not available at this TH'}`}
+                  className="flex flex-col items-center cursor-help"
+                >
                   <span className="text-brand-text-tertiary text-[10px]">GW</span>
                   <span className="font-mono font-semibold text-brand-text-primary">{player.gw || '-'}</span>
                 </div>
-                <div title="Royal Champion" className="flex flex-col items-center cursor-help">
+                <div 
+                  title={`Royal Champion: ${player.rc || 0}/${maxHeroes.rc}\n${maxHeroes.rc > 0 ? `Progress: ${Math.round(((player.rc || 0) / maxHeroes.rc) * 100)}%` : 'Not available at this TH'}`}
+                  className="flex flex-col items-center cursor-help"
+                >
                   <span className="text-brand-text-tertiary text-[10px]">RC</span>
                   <span className="font-mono font-semibold text-brand-text-primary">{player.rc || '-'}</span>
                 </div>
-                <div title="Minion Prince" className="flex flex-col items-center cursor-help">
+                <div 
+                  title={`Minion Prince: ${player.mp || 0}/${maxHeroes.mp}\n${maxHeroes.mp > 0 ? `Progress: ${Math.round(((player.mp || 0) / maxHeroes.mp) * 100)}%` : 'Not available at this TH'}`}
+                  className="flex flex-col items-center cursor-help"
+                >
                   <span className="text-brand-text-tertiary text-[10px]">MP</span>
                   <span className="font-mono font-semibold text-brand-text-primary">{player.mp || '-'}</span>
                 </div>
