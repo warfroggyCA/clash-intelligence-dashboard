@@ -15,7 +15,7 @@ import NewSnapshotIndicator from './NewSnapshotIndicator';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
-import { ThemeToggle, GlassCard } from '@/components/ui';
+import { GlassCard } from '@/components/ui';
 import { AuthGate } from './AuthGuard';
 import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
