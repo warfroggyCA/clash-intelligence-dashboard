@@ -1692,3 +1692,18 @@ if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_DISABLE_STORE_HYDRA
   // For now, users can manually refresh when needed
   // This keeps the app stable and functional
 }
+
+// =============================================================================
+// EMERGENCY FIX: Shallow Comparison Hook
+// =============================================================================
+
+/**
+ * USE THIS INSTEAD OF useDashboardStore for subscribing to objects/arrays
+ * This prevents infinite loops by using shallow comparison
+ * 
+ * Example:
+ * const roster = useDashboardStoreShallow((state) => state.roster);
+ */
+export const useDashboardStoreShallow = <T>(
+  selector: (state: DashboardState) => T
+) => useDashboardStore(selector, shallow);
