@@ -136,6 +136,50 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
   const renderTabContent = () => {
     const disableRosterSummary = process.env.NEXT_PUBLIC_DISABLE_ROSTER_SUMMARY === 'true';
     const disableRosterTable = process.env.NEXT_PUBLIC_DISABLE_ROSTER_TABLE === 'true';
+    
+    // SIMPLE VERSION BANNER
+    if (showSimpleBanner && activeTab === 'roster') {
+      return (
+        <div>
+          <div className="mb-6 bg-gradient-to-r from-emerald-900/40 to-blue-900/40 border-2 border-emerald-500/50 rounded-xl p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="text-2xl font-bold text-emerald-300 mb-2">
+                  ✨ New Simple Version Available
+                </h3>
+                <p className="text-emerald-100 mb-4">
+                  Try the clean, fast, crash-free version of the roster and player pages. 
+                  No complex state management. No infinite loops. Just works.
+                </p>
+                <div className="flex gap-3">
+                  <a
+                    href="/simple-roster"
+                    className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
+                  >
+                    🚀 Try Simple Roster
+                  </a>
+                  <button
+                    onClick={() => setShowSimpleBanner(false)}
+                    className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+          {/* Original content below */}
+          <div>
+            {!disableRosterSummary && <RosterSummary />}
+            {!disableRosterTable && <RosterTable />}
+            <div className="mt-8">
+              <TournamentCard />
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
     switch (activeTab) {
       case 'roster':
         return (
