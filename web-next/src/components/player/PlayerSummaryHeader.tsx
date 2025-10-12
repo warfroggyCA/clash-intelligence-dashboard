@@ -18,11 +18,17 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
   const cleanTag = summary.tag.replace('#', '').toUpperCase();
   const joinDate = summary.joinDate ? new Date(summary.joinDate) : null;
   const lastSeen = summary.lastSeen ? new Date(summary.lastSeen) : null;
+  // Prioritize ranked league over regular league (competitive mode is more relevant)
+  const rankedLeagueName = summary.rankedLeague?.name?.trim() ?? '';
+  const hasRankedLeague = summary.rankedLeague !== null && rankedLeagueName.length > 0 && rankedLeagueName !== 'Unranked';
+  
   const rawLeagueName = summary.league?.name?.trim() ?? '';
-  const isNoLeague = summary.league === null || rawLeagueName.length === 0;
-  const leagueLabel = isNoLeague ? 'Unranked' : rawLeagueName;
-  const leagueBadgeName = isNoLeague ? 'Unranked' : rawLeagueName;
-  const hasLeagueBadge = !isNoLeague;
+  const hasRegularLeague = summary.league !== null && rawLeagueName.length > 0;
+  
+  // Use ranked league if available, otherwise fall back to regular league
+  const leagueLabel = hasRankedLeague ? rankedLeagueName : (hasRegularLeague ? rawLeagueName : 'Unranked');
+  const leagueBadgeName = hasRankedLeague ? rankedLeagueName : (hasRegularLeague ? rawLeagueName : 'Unranked');
+  const hasLeagueBadge = hasRankedLeague || hasRegularLeague;
   const leagueTrophies = hasLeagueBadge ? summary.league?.trophies : undefined;
 
   const handleCopy = (value: string) => {
