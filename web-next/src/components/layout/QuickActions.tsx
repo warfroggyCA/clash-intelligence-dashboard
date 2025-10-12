@@ -18,7 +18,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, selectors, useShallow } from '@/lib/stores/dashboard-store';
 import { Button } from '@/components/ui';
 import { api } from '@/lib/api/client';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
