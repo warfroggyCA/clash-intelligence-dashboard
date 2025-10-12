@@ -32,6 +32,7 @@ export interface DashboardLayoutProps extends ComponentWithChildren {
   className?: string;
   hideNavigation?: boolean;
   hideCommandRail?: boolean;
+  clanName?: string;
 }
 
 // =============================================================================
