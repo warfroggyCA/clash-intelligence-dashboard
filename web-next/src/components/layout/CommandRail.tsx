@@ -33,7 +33,22 @@ const smartInsightsState = (status: ReturnType<typeof selectors.smartInsightsSta
   return 'Fresh';
 };
 
-const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
+const CommandRailInner: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
+  // EMERGENCY FIX: Return minimal placeholder until full rebuild
+  return (
+    <div className={`command-rail ${isOpen ? 'open' : 'closed'}`}>
+      <div className="p-4 text-yellow-200 bg-yellow-900/20 border border-yellow-500/70 rounded">
+        <p className="text-sm">⚠️ Command Rail temporarily disabled (React 185 fix in progress)</p>
+      </div>
+    </div>
+  );
+};
+
+const CommandRail = React.memo(CommandRailInner);
+export default CommandRail;
+
+/* DISABLED CODE - NEEDS COMPLETE REWRITE
+const CommandRailOLD: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
   // CRITICAL FIX: Don't subscribe to entire roster object - only get what we need
   const memberCount = useDashboardStore((state) => state.roster?.members?.length ?? 0);
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
