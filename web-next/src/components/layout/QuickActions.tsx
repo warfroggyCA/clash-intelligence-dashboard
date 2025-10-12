@@ -36,17 +36,16 @@ export interface QuickActionsProps {
 // =============================================================================
 
 export const useQuickActions = () => {
-  const {
-    roster,
-    clanTag,
-    selectedSnapshot,
-    refreshData,
-    setMessage,
-    setStatus,
-    snapshotMetadata,
-    snapshotDetails,
-    loadSmartInsights,
-  } = useDashboardStore();
+  // CRITICAL FIX: Don't destructure entire store - subscribe to each field individually
+  const roster = useDashboardStore(useShallow((state) => state.roster));
+  const clanTag = useDashboardStore((state) => state.clanTag);
+  const selectedSnapshot = useDashboardStore((state) => state.selectedSnapshot);
+  const refreshData = useDashboardStore((state) => state.refreshData);
+  const setMessage = useDashboardStore((state) => state.setMessage);
+  const setStatus = useDashboardStore((state) => state.setStatus);
+  const snapshotMetadata = useDashboardStore((state) => state.snapshotMetadata);
+  const snapshotDetails = useDashboardStore(useShallow((state) => state.snapshotDetails));
+  const loadSmartInsights = useDashboardStore((state) => state.loadSmartInsights);
   const smartInsights = useDashboardStore(selectors.smartInsights);
   const smartInsightsStatus = useDashboardStore(selectors.smartInsightsStatus);
   const smartInsightsError = useDashboardStore(selectors.smartInsightsError);
