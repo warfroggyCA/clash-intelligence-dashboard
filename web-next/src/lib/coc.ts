@@ -45,6 +45,10 @@ type CoCClanMembersResp = {
     trophies?: number;
     donations?: number;
     donationsReceived?: number;
+    leagueTier?: {
+      id: number;
+      name: string;
+    };
   }>;
 };
 
