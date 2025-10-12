@@ -9,33 +9,33 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 
-interface PlayerProfile {
-  summary: {
+interface PlayerData {
+  name: string;
+  tag: string;
+  role?: string;
+  townHallLevel: number;
+  trophies: number;
+  donations?: number;
+  donationsReceived?: number;
+  league?: {
     name: string;
-    tag: string;
-    role: string;
-    clanName: string;
-    townHallLevel: number;
-    trophies: number;
-    rankedLeague?: {
-      name: string;
-    } | null;
-    league?: {
-      name: string;
-    } | null;
-    donationBalance: {
-      given: number;
-      received: number;
-      balance: number;
-    };
-    rushScore: number;
-    activityLevel: string;
   };
-  heroes: Array<{
+  rankedLeague?: {
+    name: string;
+  };
+  heroes?: Array<{
     name: string;
     level: number;
-    maxForTH: number;
+    maxLevel?: number;
   }>;
+  bk?: number;
+  aq?: number;
+  gw?: number;
+  rc?: number;
+  mp?: number;
+  clan?: {
+    name: string;
+  };
 }
 
 export default function SimplePlayerPage() {
@@ -43,7 +43,7 @@ export default function SimplePlayerPage() {
   const router = useRouter();
   const tag = params?.tag as string;
   
-  const [profile, setProfile] = useState<PlayerProfile | null>(null);
+  const [player, setPlayer] = useState<PlayerData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,8 +59,13 @@ export default function SimplePlayerPage() {
           throw new Error(`Failed to load player: ${response.status}`);
         }
         
-        const data = await response.json();
-        setProfile(data);
+        const apiData = await response.json();
+        
+        if (apiData.success && apiData.data) {
+          setPlayer(apiData.data);
+        } else {
+          throw new Error('Invalid API response');
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to load player profile');
       } finally {
