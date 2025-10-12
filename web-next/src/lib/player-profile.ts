@@ -706,6 +706,10 @@ function buildMockProfile(normalized: string): PlayerProfileData {
         name: 'Champion League',
         trophies: 2577,
       },
+      rankedLeague: {
+        id: 105000012,
+        name: 'Wizard League 12',
+      },
       joinDate: '2024-02-16T00:00:00.000Z',
       activityLevel: 'Very Active',
       rushScore: 22.5,
