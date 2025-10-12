@@ -151,8 +151,8 @@ export default function SimpleRosterPage() {
           </div>
         </div>
 
-        {/* Roster Table */}
-        <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden">
+        {/* Roster Table - Desktop */}
+        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
