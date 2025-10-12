@@ -34,7 +34,8 @@ const smartInsightsState = (status: ReturnType<typeof selectors.smartInsightsSta
 };
 
 const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
-  const roster = useDashboardStore((state) => state.roster);
+  // CRITICAL FIX: Don't subscribe to entire roster object - only get what we need
+  const memberCount = useDashboardStore((state) => state.roster?.members?.length ?? 0);
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
   const dataAgeHours = useDashboardStore(selectors.dataAge);
@@ -54,8 +55,6 @@ const CommandRail: React.FC<CommandRailProps> = ({ isOpen, onToggle }) => {
     smartInsightsError,
     smartInsightsIsStale,
   } = useQuickActions();
-
-  const memberCount = roster?.members?.length ?? 0;
   const snapshotDateLabel = snapshotMetadata?.snapshotDate
     ? safeLocaleDateString(snapshotMetadata.snapshotDate, {
         fallback: snapshotMetadata.snapshotDate,
