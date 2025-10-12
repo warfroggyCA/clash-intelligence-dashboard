@@ -314,8 +314,23 @@ export default function SimpleRosterPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/50">
-                {roster.members.map((player, index) => {
+                {sortedMembers.map((player, index) => {
                   const roleBadgeVariant = getRoleBadgeVariant(player.role);
+                  const rushPercent = calculateRushPercentage(player);
+                  const activity = calculateActivityScore(player);
+                  
+                  // Rush color coding
+                  const rushColor = rushPercent >= 70 ? 'text-red-600' : 
+                                   rushPercent >= 40 ? 'text-yellow-600' : 
+                                   'text-green-600';
+                  
+                  // Activity color coding
+                  const activityColor = activity.level === 'Very Active' ? 'bg-green-100 text-green-800 border-green-200' :
+                                       activity.level === 'Active' ? 'bg-blue-100 text-blue-800 border-blue-200' :
+                                       activity.level === 'Moderate' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                                       activity.level === 'Low' ? 'bg-orange-100 text-orange-800 border-orange-200' :
+                                       'bg-red-100 text-red-800 border-red-200';
+                  
                   return (
                     <tr 
                       key={player.tag} 
