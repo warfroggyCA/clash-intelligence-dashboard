@@ -467,10 +467,14 @@ export default function SimpleRosterPage() {
               </div>
 
               {/* Player Stats */}
-              <div className="grid grid-cols-3 gap-3 text-sm">
+              <div className="grid grid-cols-2 gap-3 text-sm mb-3">
                 <div>
                   <p className="text-brand-text-tertiary text-xs mb-1">Trophies</p>
                   <p className="font-mono font-semibold text-brand-text-primary">{player.trophies.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-brand-text-tertiary text-xs mb-1">Rush %</p>
+                  <p className={`font-mono font-semibold ${rushColor}`}>{rushPercent}%</p>
                 </div>
                 <div>
                   <p className="text-brand-text-tertiary text-xs mb-1">Donated</p>
@@ -481,8 +485,16 @@ export default function SimpleRosterPage() {
                   <p className="font-mono font-semibold text-blue-600">{player.donationsReceived}</p>
                 </div>
               </div>
+
+              {/* Activity Badge */}
+              <div className="flex justify-center">
+                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${activityColor}`}>
+                  {activity.level}
+                </span>
+              </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </DashboardLayout>
