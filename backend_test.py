@@ -94,8 +94,8 @@ class APITester:
             self.log_test("Health Endpoint Basic", False, f"Health endpoint error: {str(e)}")
     
     def test_v2_roster_api(self):
-        """Test the core v2/roster API"""
-        print("\n=== Testing V2 Roster API ===")
+        """Test the core v2/roster API with activity calculation focus"""
+        print("\n=== Testing V2 Roster API with Activity Calculations ===")
         
         try:
             # Test without clan tag (should use default)
@@ -132,18 +132,31 @@ class APITester:
                             }
                         )
                         
-                        # Test member data quality
+                        # Test member data quality with focus on activity calculation fields
                         if members:
                             sample_member = members[0]
-                            member_fields = ['tag', 'name', 'trophies', 'donations', 'donationsReceived']
+                            member_fields = ['tag', 'name', 'trophies', 'donations', 'donationsReceived', 'role']
                             has_required_fields = all(field in sample_member for field in member_fields)
+                            
+                            # Check for activity-related fields
+                            activity_fields = ['rankedLeagueId', 'rankedTrophies', 'bk', 'aq', 'gw', 'rc', 'mp']
+                            has_activity_fields = any(field in sample_member for field in activity_fields)
                             
                             self.log_test(
                                 "V2 Roster Member Data",
                                 has_required_fields,
-                                f"Member data quality check. Sample member has required fields: {has_required_fields}",
-                                sample_member
+                                f"Member data quality check. Required fields: {has_required_fields}, Activity fields present: {has_activity_fields}",
+                                {
+                                    'sample_member': sample_member.get('name', 'Unknown'),
+                                    'has_required': has_required_fields,
+                                    'has_activity_data': has_activity_fields,
+                                    'available_fields': list(sample_member.keys())
+                                }
                             )
+                            
+                            # Store members for activity testing
+                            self.roster_members = members
+                            
                         else:
                             self.log_test("V2 Roster Member Data", False, "No members found in roster")
                             
