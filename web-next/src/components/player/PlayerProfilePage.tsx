@@ -62,43 +62,54 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
 
   // Fetch historical data
   useEffect(() => {
+    let isMounted = true; // Track if component is still mounted
+    
     const fetchData = async () => {
       setLoading(true);
       try {
         // Fetch historical data
         const historyResponse = await fetch(`/api/player/${normalizedTag}/history?days=${daysFilter}`);
+        if (!isMounted) return; // Prevent state updates after unmount
+        
         if (historyResponse.ok) {
           const historyResult = await historyResponse.json();
-          setHistoricalData(historyResult.data || []);
+          if (isMounted) setHistoricalData(historyResult.data || []);
         } else {
           console.warn('History API failed:', historyResponse.status, historyResponse.statusText);
         }
 
         // Fetch comparison data
         const comparisonResponse = await fetch(`/api/player/${normalizedTag}/comparison`);
+        if (!isMounted) return; // Prevent state updates after unmount
+        
         if (comparisonResponse.ok) {
           const comparisonResult = await comparisonResponse.json();
           if (comparisonResult.success && comparisonResult.data) {
-            setComparisonData(comparisonResult.data);
+            if (isMounted) setComparisonData(comparisonResult.data);
           } else {
             console.warn('Comparison API returned unsuccessful:', comparisonResult);
-            setComparisonData(null);
+            if (isMounted) setComparisonData(null);
           }
         } else {
           console.error('Comparison API failed:', comparisonResponse.status, comparisonResponse.statusText);
           const errorText = await comparisonResponse.text();
           console.error('Error response:', errorText);
-          setComparisonData(null);
+          if (isMounted) setComparisonData(null);
         }
       } catch (error) {
         console.error('Error fetching player analytics:', error);
-        setComparisonData(null);
+        if (isMounted) setComparisonData(null);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
 
     fetchData();
+    
+    // Cleanup: prevent state updates after unmount
+    return () => {
+      isMounted = false;
+    };
   }, [normalizedTag, daysFilter]);
 
   useEffect(() => {
