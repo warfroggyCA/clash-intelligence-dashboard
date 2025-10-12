@@ -43,6 +43,7 @@ type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'rush' | 'activi
 type SortDirection = 'asc' | 'desc';
 
 // League tier ranking for sorting (highest to lowest)
+// Based on Clash of Clans ranked league hierarchy
 const LEAGUE_TIERS: Record<string, number> = {
   'Legend League': 12,
   'Titan League': 11,
@@ -50,8 +51,8 @@ const LEAGUE_TIERS: Record<string, number> = {
   'Dragon League': 9,
   'PEKKA League': 8,
   'Golem League': 7,
-  'Valkyrie League': 6,
-  'Witch League': 5,
+  'Witch League': 6,        // Witch is higher than Valkyrie
+  'Valkyrie League': 5,
   'Wizard League': 4,
   'Archer League': 3,
   'Barbarian League': 2,
