@@ -130,9 +130,26 @@ export async function GET(
             .order('snapshot_id', { ascending: true });
 
           if (statsData && !statsError) {
-            // Build historical data points
+            // Build historical data points with data carry-forward for missing values
             let previousData: HistoricalDataPoint | null = null;
             const snapshotMap = new Map(snapshots.map(s => [s.id, s]));
+
+            // Track last known values for carry-forward
+            const lastKnown = {
+              trophies: null as number | null,
+              rankedTrophies: null as number | null,
+              donations: null as number | null,
+              donationsReceived: null as number | null,
+              heroLevels: {
+                bk: null as number | null,
+                aq: null as number | null,
+                gw: null as number | null,
+                rc: null as number | null,
+                mp: null as number | null,
+              },
+              townHallLevel: null as number | null,
+              role: null as string | null,
+            };
 
             for (const stat of statsData) {
               const snapshot = snapshotMap.get(stat.snapshot_id);
@@ -140,25 +157,53 @@ export async function GET(
 
               const heroLevels: HeroLevels = stat.hero_levels || {};
               
+              // Use current value or carry forward from last known
+              const trophies = stat.trophies ?? lastKnown.trophies;
+              const rankedTrophies = stat.ranked_trophies ?? stat.trophies ?? lastKnown.rankedTrophies;
+              const donations = stat.donations ?? lastKnown.donations ?? 0;
+              const donationsReceived = stat.donations_received ?? lastKnown.donationsReceived ?? 0;
+              const townHallLevel = stat.th_level ?? lastKnown.townHallLevel;
+              const role = stat.role ?? lastKnown.role;
+              
+              const bk = heroLevels.bk ?? lastKnown.heroLevels.bk;
+              const aq = heroLevels.aq ?? lastKnown.heroLevels.aq;
+              const gw = heroLevels.gw ?? lastKnown.heroLevels.gw;
+              const rc = heroLevels.rc ?? lastKnown.heroLevels.rc;
+              const mp = heroLevels.mp ?? lastKnown.heroLevels.mp;
+              
+              // Update last known values when we have new data
+              if (stat.trophies !== null) lastKnown.trophies = stat.trophies;
+              if (stat.ranked_trophies !== null) lastKnown.rankedTrophies = stat.ranked_trophies;
+              else if (stat.trophies !== null) lastKnown.rankedTrophies = stat.trophies;
+              if (stat.donations !== null) lastKnown.donations = stat.donations;
+              if (stat.donations_received !== null) lastKnown.donationsReceived = stat.donations_received;
+              if (stat.th_level !== null) lastKnown.townHallLevel = stat.th_level;
+              if (stat.role !== null) lastKnown.role = stat.role;
+              if (heroLevels.bk !== null && heroLevels.bk !== undefined) lastKnown.heroLevels.bk = heroLevels.bk;
+              if (heroLevels.aq !== null && heroLevels.aq !== undefined) lastKnown.heroLevels.aq = heroLevels.aq;
+              if (heroLevels.gw !== null && heroLevels.gw !== undefined) lastKnown.heroLevels.gw = heroLevels.gw;
+              if (heroLevels.rc !== null && heroLevels.rc !== undefined) lastKnown.heroLevels.rc = heroLevels.rc;
+              if (heroLevels.mp !== null && heroLevels.mp !== undefined) lastKnown.heroLevels.mp = heroLevels.mp;
+              
               const currentData: HistoricalDataPoint = {
                 date: snapshot.fetched_at.split('T')[0], // YYYY-MM-DD
                 fetchedAt: snapshot.fetched_at,
-                townHallLevel: stat.th_level,
-                role: stat.role,
-                trophies: stat.trophies,
-                rankedTrophies: stat.ranked_trophies || stat.trophies,
+                townHallLevel,
+                role,
+                trophies,
+                rankedTrophies,
                 rankedLeagueId: stat.ranked_league_id,
                 rankedLeagueName: stat.ranked_league_name,
-                donations: stat.donations,
-                donationsReceived: stat.donations_received,
+                donations,
+                donationsReceived,
                 warStars: null, // Not in member_snapshot_stats yet
                 clanCapitalContributions: null, // Not in member_snapshot_stats yet
                 heroLevels: {
-                  bk: heroLevels.bk ?? null,
-                  aq: heroLevels.aq ?? null,
-                  gw: heroLevels.gw ?? null,
-                  rc: heroLevels.rc ?? null,
-                  mp: heroLevels.mp ?? null,
+                  bk,
+                  aq,
+                  gw,
+                  rc,
+                  mp,
                 },
                 rushPercent: stat.rush_percent,
                 activityScore: stat.activity_score,
