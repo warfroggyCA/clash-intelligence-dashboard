@@ -315,13 +315,23 @@ export async function GET(
       }
     }
 
+    // Sort by date (oldest first) and deduplicate by date (keep latest entry per day)
+    historicalData.sort((a, b) => a.fetchedAt.localeCompare(b.fetchedAt));
+    
+    // Deduplicate: keep only the latest snapshot per day
+    const uniqueByDate = new Map<string, HistoricalDataPoint>();
+    for (const point of historicalData) {
+      uniqueByDate.set(point.date, point); // Later entries overwrite earlier ones for same date
+    }
+    const deduplicatedData = Array.from(uniqueByDate.values());
+
     return NextResponse.json({
       success: true,
-      data: historicalData,
+      data: deduplicatedData,
       meta: {
         playerTag,
         days,
-        dataPointsFound: historicalData.length,
+        dataPointsFound: deduplicatedData.length,
         dataSource,
         includeDeltas,
       }
