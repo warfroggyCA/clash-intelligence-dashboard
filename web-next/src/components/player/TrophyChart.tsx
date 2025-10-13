@@ -82,21 +82,6 @@ export default function TrophyChart({ data }: TrophyChartProps) {
               stroke="#94a3b8"
               style={{ fontSize: '12px' }}
             />
-            {rankedModeEntry && (
-              <ReferenceLine 
-                x={rankedModeEntry.date} 
-                stroke="hsl(142, 76%, 50%)"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                label={{ 
-                  value: "Ranked Mode Start", 
-                  position: "top",
-                  fill: "hsl(142, 76%, 50%)",
-                  fontSize: 12,
-                  fontWeight: 600
-                }}
-              />
-            )}
             <ChartTooltip content={<ChartTooltipContent />} />
             <Area 
               type="monotone" 
