@@ -86,12 +86,11 @@ export async function GET(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    // TEMPORARY: Check all data (cutoff disabled for investigation)
-    // Clean data cutoff: Don't show data before Oct 6, 2025 (ranked mode launch)
-    // const cleanDataCutoff = new Date('2025-10-06T00:00:00Z');
-    // if (startDate < cleanDataCutoff) {
-    //   startDate.setTime(cleanDataCutoff.getTime());
-    // }
+    // Clean data cutoff: Don't show sparse pre-October data
+    const cleanDataCutoff = new Date('2025-10-01T00:00:00Z');
+    if (startDate < cleanDataCutoff) {
+      startDate.setTime(cleanDataCutoff.getTime());
+    }
 
     // First, try the NEW data structure (roster_snapshots + member_snapshot_stats)
     const clanTag = normalizeTag(cfg.homeClanTag || '');
