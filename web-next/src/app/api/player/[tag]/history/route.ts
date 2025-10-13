@@ -2,25 +2,59 @@ import { NextRequest, NextResponse } from "next/server";
 import { normalizeTag, isValidTag } from "@/lib/tags";
 import { createApiContext } from "@/lib/api/route-helpers";
 import { getSupabaseAdminClient } from "@/lib/supabase-admin";
+import { cfg } from "@/lib/config";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+interface HeroLevels {
+  bk?: number | null;
+  aq?: number | null;
+  gw?: number | null;
+  rc?: number | null;
+  mp?: number | null;
+}
+
 interface HistoricalDataPoint {
   date: string;
-  trophies: number;
-  donations: number;
-  donationsReceived: number;
-  warStars: number;
-  clanCapitalContributions: number;
-  townHallLevel: number;
-  role: string;
+  fetchedAt: string;
+  
+  // Town Hall & Role
+  townHallLevel: number | null;
+  role: string | null;
+  
+  // Trophies
+  trophies: number | null;
+  rankedTrophies: number | null;
+  rankedLeagueId: number | null;
+  rankedLeagueName: string | null;
+  
+  // Donations
+  donations: number | null;
+  donationsReceived: number | null;
+  
+  // War & Capital
+  warStars: number | null;
+  clanCapitalContributions: number | null;
+  
+  // Heroes
+  heroLevels: HeroLevels | null;
+  
+  // Progression Metrics
+  rushPercent: number | null;
+  activityScore: number | null;
+  
+  // Deltas (changes from previous snapshot)
   deltas?: {
     trophies: number;
+    rankedTrophies: number;
     donations: number;
     donationsReceived: number;
     warStars: number;
     clanCapitalContributions: number;
+    heroUpgrades: string[]; // e.g., ["bk: 79 → 80", "aq: 79 → 80"]
+    townHallUpgrade: boolean;
+    roleChange: boolean;
   };
 }
 
