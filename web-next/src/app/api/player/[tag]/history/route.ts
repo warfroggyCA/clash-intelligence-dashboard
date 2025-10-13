@@ -86,8 +86,8 @@ export async function GET(
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
     
-    // Clean data cutoff: Don't show data before Oct 5, 2025 (pre-ranked mode, sparse snapshots)
-    const cleanDataCutoff = new Date('2025-10-05T00:00:00Z');
+    // Clean data cutoff: Don't show data before Oct 9, 2025 (when daily ranked tracking began)
+    const cleanDataCutoff = new Date('2025-10-09T00:00:00Z');
     if (startDate < cleanDataCutoff) {
       startDate.setTime(cleanDataCutoff.getTime());
     }
