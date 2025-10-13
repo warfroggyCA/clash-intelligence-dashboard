@@ -332,11 +332,26 @@ export async function GET(
     }
     const deduplicatedData = Array.from(uniqueByDate.values());
 
+    // Extract player name if available
+    let playerName = playerTag;
+    if (deduplicatedData.length > 0 && dataSource === 'roster_snapshots') {
+      // Try to get name from member row if we have it
+      const { data: memberRow } = await supabase
+        .from('members')
+        .select('name')
+        .eq('tag', playerTag)
+        .maybeSingle();
+      if (memberRow?.name) {
+        playerName = memberRow.name;
+      }
+    }
+
     return NextResponse.json({
       success: true,
       data: deduplicatedData,
       meta: {
         playerTag,
+        playerName,
         days,
         dataPointsFound: deduplicatedData.length,
         dataSource,
