@@ -42,9 +42,9 @@ export default function TrophyChart({ data }: TrophyChartProps) {
     rankedTrophies: point.rankedTrophies ?? 0,
   }));
 
-  // Find the index for Oct 6, 2025 (ranked mode start)
+  // Find the date label for Oct 6, 2025 (ranked mode start)
   const rankedModeStartDate = '2025-10-06';
-  const rankedModeStartIndex = chartData.findIndex(d => d.fullDate >= rankedModeStartDate);
+  const rankedModeEntry = chartData.find(d => d.fullDate === rankedModeStartDate);
 
   return (
     <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
@@ -61,7 +61,7 @@ export default function TrophyChart({ data }: TrophyChartProps) {
       </CardHeader>
       <CardContent className="pt-6">
         <ChartContainer config={chartConfig} className="h-[320px] w-full">
-          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 20, right: 10, left: 10, bottom: 0 }}>
             <defs>
               <linearGradient id="colorTrophies" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="5%" stopColor="hsl(48, 96%, 53%)" stopOpacity={0.4}/>
@@ -84,20 +84,20 @@ export default function TrophyChart({ data }: TrophyChartProps) {
               stroke="#94a3b8"
               style={{ fontSize: '12px' }}
             />
-            {rankedModeStartIndex >= 0 && (
+            {rankedModeEntry && (
               <ReferenceLine 
-                x={chartData[rankedModeStartIndex]?.date} 
+                x={rankedModeEntry.date} 
                 stroke="hsl(142, 76%, 50%)"
                 strokeWidth={2}
                 strokeDasharray="5 5"
-              >
-                <Label 
-                  value="Ranked Mode Start" 
-                  position="top" 
-                  fill="hsl(142, 76%, 50%)"
-                  style={{ fontSize: '12px', fontWeight: 'bold' }}
-                />
-              </ReferenceLine>
+                label={{ 
+                  value: "Ranked Mode Start", 
+                  position: "top",
+                  fill: "hsl(142, 76%, 50%)",
+                  fontSize: 12,
+                  fontWeight: 600
+                }}
+              />
             )}
             <ChartTooltip content={<ChartTooltipContent />} />
             <Area 
