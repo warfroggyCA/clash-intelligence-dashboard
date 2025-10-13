@@ -39,22 +39,12 @@ export default function DonationChart({ data }: DonationChartProps) {
     );
   }
 
-  // Format data for chart - carry forward last known values
-  let lastDonations = 0;
-  let lastReceived = 0;
-  const chartData = data.map(point => {
-    const donations = point.donations ?? lastDonations;
-    const donationsReceived = point.donationsReceived ?? lastReceived;
-    
-    if (point.donations !== null) lastDonations = point.donations;
-    if (point.donationsReceived !== null) lastReceived = point.donationsReceived;
-    
-    return {
-      date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      donations,
-      donationsReceived,
-    };
-  });
+  // Format data for chart (backend already handles carry-forward)
+  const chartData = data.map(point => ({
+    date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    donations: point.donations ?? 0,
+    donationsReceived: point.donationsReceived ?? 0,
+  }));
 
   return (
     <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
