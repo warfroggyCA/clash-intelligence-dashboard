@@ -64,12 +64,10 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
 
   // Webpack config override to disable CSS minification
-  webpack: (config, { isServer }) => {
-    if (!isServer) {
-      // Remove CSS minimizer plugin to avoid build errors
-      config.optimization.minimizer = config.optimization.minimizer.filter(
-        (plugin) => plugin.constructor.name !== 'CssMinimizerPlugin'
-      );
+  webpack: (config, { isServer, dev }) => {
+    if (!isServer && !dev) {
+      // Completely disable CSS minification
+      config.optimization.minimize = false;
     }
     return config;
   },
