@@ -54,32 +54,14 @@ export default function HeroProgressionChart({ data }: HeroProgressionChartProps
     );
   }
 
-  // Clean data - carry forward last known values and filter out completely empty records
-  let lastKnownValues = { bk: null as number | null, aq: null as number | null, gw: null as number | null, rc: null as number | null };
-  
-  const chartData = data
-    .map(point => {
-      // Get current values or use last known
-      const bk = point.heroLevels?.bk ?? lastKnownValues.bk;
-      const aq = point.heroLevels?.aq ?? lastKnownValues.aq;
-      const gw = point.heroLevels?.gw ?? lastKnownValues.gw;
-      const rc = point.heroLevels?.rc ?? lastKnownValues.rc;
-      
-      // Update last known values if we have new data
-      if (point.heroLevels?.bk) lastKnownValues.bk = point.heroLevels.bk;
-      if (point.heroLevels?.aq) lastKnownValues.aq = point.heroLevels.aq;
-      if (point.heroLevels?.gw) lastKnownValues.gw = point.heroLevels.gw;
-      if (point.heroLevels?.rc) lastKnownValues.rc = point.heroLevels.rc;
-      
-      return {
-        date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        bk: bk ?? undefined,
-        aq: aq ?? undefined,
-        gw: gw ?? undefined,
-        rc: rc ?? undefined,
-      };
-    })
-    .filter(point => point.bk || point.aq || point.gw || point.rc); // Only keep points with at least one hero
+  // Format data for chart (backend already handles carry-forward)
+  const chartData = data.map(point => ({
+    date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    bk: point.heroLevels?.bk ?? undefined,
+    aq: point.heroLevels?.aq ?? undefined,
+    gw: point.heroLevels?.gw ?? undefined,
+    rc: point.heroLevels?.rc ?? undefined,
+  }));
 
   if (chartData.length === 0) {
     return (
