@@ -148,6 +148,12 @@ body {
   border: 1px solid rgba(148, 163, 184, 0.35);
 }
 
+/* Show tooltips BELOW for table headers since they're at the top */
+thead th.tooltip-trigger[data-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + 0.5rem);
+}
+
 .tooltip-trigger[data-tooltip]:hover::after,
 .tooltip-trigger[data-tooltip]:focus-visible::after {
   opacity: 1;
