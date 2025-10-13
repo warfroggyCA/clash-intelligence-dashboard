@@ -515,7 +515,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           <div 
                             title={`Current trophy count: ${player.trophies.toLocaleString()}`}
                             className="relative cursor-help" 
-                            style={{ width: '48px', height: '48px' }}
+                            style={{ width: '40px', height: '40px' }}
                           >
                             <img 
                               src="/assets/clash/trophy.png"
@@ -523,7 +523,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                               className="w-full h-full object-contain"
                             />
                             <span 
-                              className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                              className="absolute bottom-0 right-0 text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                               style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                             >
                               {player.trophies >= 1000 ? `${(player.trophies / 1000).toFixed(1)}k` : player.trophies}
