@@ -85,6 +85,9 @@ export default async function PlayerHistoryPage({ params, searchParams }: Player
           <DonationChart data={data} />
         </div>
 
+        {/* Hero Upgrade History */}
+        <HeroUpgradeHistory data={data} />
+
         {/* Data Source Info */}
         <div className="bg-slate-800/50 rounded-lg p-4">
           <p className="text-sm text-slate-400">
