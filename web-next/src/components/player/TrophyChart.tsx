@@ -38,13 +38,8 @@ export default function TrophyChart({ data }: TrophyChartProps) {
   // Format data for chart (backend already handles carry-forward)
   const chartData = data.map(point => ({
     date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    fullDate: point.date,
     rankedTrophies: point.rankedTrophies ?? 0,
   }));
-
-  // Find the closest date on or after Oct 6, 2025 (ranked mode start)
-  const rankedModeStartDate = new Date('2025-10-06');
-  const rankedModeEntry = chartData.find(d => new Date(d.fullDate) >= rankedModeStartDate);
 
   return (
     <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
