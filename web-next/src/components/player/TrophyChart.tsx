@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, ReferenceLine, Label } from 'recharts';
 import { Trophy } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
@@ -38,8 +38,13 @@ export default function TrophyChart({ data }: TrophyChartProps) {
   // Format data for chart (backend already handles carry-forward)
   const chartData = data.map(point => ({
     date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    fullDate: point.date,
     rankedTrophies: point.rankedTrophies ?? 0,
   }));
+
+  // Find the index for Oct 6, 2025 (ranked mode start)
+  const rankedModeStartDate = '2025-10-06';
+  const rankedModeStartIndex = chartData.findIndex(d => d.fullDate >= rankedModeStartDate);
 
   return (
     <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
@@ -51,7 +56,7 @@ export default function TrophyChart({ data }: TrophyChartProps) {
           Trophy Progression
         </CardTitle>
         <CardDescription className="text-slate-300">
-          Your ranked battle trophy journey
+          Your ranked battle trophy journey • Ranked mode started Oct 6, 2025
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
@@ -79,6 +84,21 @@ export default function TrophyChart({ data }: TrophyChartProps) {
               stroke="#94a3b8"
               style={{ fontSize: '12px' }}
             />
+            {rankedModeStartIndex >= 0 && (
+              <ReferenceLine 
+                x={chartData[rankedModeStartIndex]?.date} 
+                stroke="hsl(142, 76%, 50%)"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+              >
+                <Label 
+                  value="Ranked Mode Start" 
+                  position="top" 
+                  fill="hsl(142, 76%, 50%)"
+                  style={{ fontSize: '12px', fontWeight: 'bold' }}
+                />
+              </ReferenceLine>
+            )}
             <ChartTooltip content={<ChartTooltipContent />} />
             <Area 
               type="monotone" 
