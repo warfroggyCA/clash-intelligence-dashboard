@@ -57,6 +57,9 @@ export default function DonationChart({ data }: DonationChartProps) {
         </CardTitle>
         <CardDescription className="text-slate-300">
           Track your clan generosity and support received
+          <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded-md bg-amber-500/20 text-amber-400 text-xs font-semibold">
+            ⚠️ Resets each season
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
