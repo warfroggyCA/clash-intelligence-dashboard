@@ -344,34 +344,39 @@ export default function SimpleRosterPage() {
                     Rush % {sortKey === 'rush' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
-                    title="Barbarian King level"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                    onClick={() => handleSort('bk')}
+                    title="Barbarian King level - Click to sort"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
-                    BK
+                    BK {sortKey === 'bk' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
-                    title="Archer Queen level"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                    onClick={() => handleSort('aq')}
+                    title="Archer Queen level - Click to sort"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
-                    AQ
+                    AQ {sortKey === 'aq' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
-                    title="Grand Warden level"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                    onClick={() => handleSort('gw')}
+                    title="Grand Warden level - Click to sort"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
-                    GW
+                    GW {sortKey === 'gw' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
-                    title="Royal Champion level"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                    onClick={() => handleSort('rc')}
+                    title="Royal Champion level - Click to sort"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
-                    RC
+                    RC {sortKey === 'rc' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
-                    title="Minion Prince level"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider"
+                    onClick={() => handleSort('mp')}
+                    title="Minion Prince level - Click to sort"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
-                    MP
+                    MP {sortKey === 'mp' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('activity')}
