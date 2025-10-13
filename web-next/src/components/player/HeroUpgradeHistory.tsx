@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { Swords, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface HeroLevels {
   bk?: number | null;
