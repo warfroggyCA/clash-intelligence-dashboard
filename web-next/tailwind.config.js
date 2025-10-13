@@ -1,6 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
-  content: ["./src/**/*.{ts,tsx}"],
+    darkMode: ["class"],
+    content: ["./src/**/*.{ts,tsx}"],
   safelist: [
     // Dynamic gradient classes used in RosterStatsPanel - use patterns to catch all variations
     { pattern: /^from-(blue|indigo|purple|amber|orange)-400\/40$/ },
@@ -36,51 +37,106 @@ module.exports = {
     'transition', 'duration-300', 'hover:-translate-y-0.5', 'hover:shadow-glow',
   ],
   theme: {
-    extend: {
-      fontFamily: {
-        heading: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
-        display: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
-        body: ['"Plus Jakarta Sans"', 'ui-sans-serif', 'system-ui'],
-      },
-      colors: {
-        brand: {
-          primary: '#5B7FFF',
-          secondary: '#7A5BFF',
-          accent: '#F2B35E',
-          surface: '#101728',
-          surfaceRaised: '#151F32',
-          surfaceSubtle: '#19243A',
-          border: 'rgba(148, 163, 184, 0.14)',
-        },
-        clash: {
-          gold: '#FFD700',
-          'gold-dark': '#B8860B',
-          orange: '#FF6B0A',
-          'orange-dark': '#CC5500',
-          purple: '#5227FF',
-          'purple-dark': '#3D1A78',
-          blue: '#4A90E2',
-          red: '#E74C3C',
-          green: '#27AE60',
-        },
-        text: {
-          primary: '#FFFFFF',
-          secondary: '#E2E8F0',
-          muted: '#94A3B8',
-          accent: '#FFD700',
-        },
-      },
-      boxShadow: {
-        glow: '0 22px 45px -28px rgba(91, 127, 255, 0.45)',
-        card: '0 24px 48px -30px rgba(8, 15, 31, 0.65)',
-      },
-      backdropBlur: {
-        xs: '3px',
-      },
-      borderRadius: {
-        '4xl': '2rem',
-      },
-    }
+  	extend: {
+  		fontFamily: {
+  			heading: [
+  				'Plus Jakarta Sans"',
+  				'ui-sans-serif',
+  				'system-ui'
+  			],
+  			display: [
+  				'Plus Jakarta Sans"',
+  				'ui-sans-serif',
+  				'system-ui'
+  			],
+  			body: [
+  				'Plus Jakarta Sans"',
+  				'ui-sans-serif',
+  				'system-ui'
+  			]
+  		},
+  		colors: {
+  			brand: {
+  				primary: '#5B7FFF',
+  				secondary: '#7A5BFF',
+  				accent: '#F2B35E',
+  				surface: '#101728',
+  				surfaceRaised: '#151F32',
+  				surfaceSubtle: '#19243A',
+  				border: 'rgba(148, 163, 184, 0.14)'
+  			},
+  			clash: {
+  				gold: '#FFD700',
+  				'gold-dark': '#B8860B',
+  				orange: '#FF6B0A',
+  				'orange-dark': '#CC5500',
+  				purple: '#5227FF',
+  				'purple-dark': '#3D1A78',
+  				blue: '#4A90E2',
+  				red: '#E74C3C',
+  				green: '#27AE60'
+  			},
+  			text: {
+  				primary: '#FFFFFF',
+  				secondary: '#E2E8F0',
+  				muted: '#94A3B8',
+  				accent: '#FFD700'
+  			},
+  			background: 'hsl(var(--background))',
+  			foreground: 'hsl(var(--foreground))',
+  			card: {
+  				DEFAULT: 'hsl(var(--card))',
+  				foreground: 'hsl(var(--card-foreground))'
+  			},
+  			popover: {
+  				DEFAULT: 'hsl(var(--popover))',
+  				foreground: 'hsl(var(--popover-foreground))'
+  			},
+  			primary: {
+  				DEFAULT: 'hsl(var(--primary))',
+  				foreground: 'hsl(var(--primary-foreground))'
+  			},
+  			secondary: {
+  				DEFAULT: 'hsl(var(--secondary))',
+  				foreground: 'hsl(var(--secondary-foreground))'
+  			},
+  			muted: {
+  				DEFAULT: 'hsl(var(--muted))',
+  				foreground: 'hsl(var(--muted-foreground))'
+  			},
+  			accent: {
+  				DEFAULT: 'hsl(var(--accent))',
+  				foreground: 'hsl(var(--accent-foreground))'
+  			},
+  			destructive: {
+  				DEFAULT: 'hsl(var(--destructive))',
+  				foreground: 'hsl(var(--destructive-foreground))'
+  			},
+  			border: 'hsl(var(--border))',
+  			input: 'hsl(var(--input))',
+  			ring: 'hsl(var(--ring))',
+  			chart: {
+  				'1': 'hsl(var(--chart-1))',
+  				'2': 'hsl(var(--chart-2))',
+  				'3': 'hsl(var(--chart-3))',
+  				'4': 'hsl(var(--chart-4))',
+  				'5': 'hsl(var(--chart-5))'
+  			}
+  		},
+  		boxShadow: {
+  			glow: '0 22px 45px -28px rgba(91, 127, 255, 0.45)',
+  			card: '0 24px 48px -30px rgba(8, 15, 31, 0.65)'
+  		},
+  		backdropBlur: {
+  			xs: '3px'
+  		},
+  		borderRadius: {
+  			'4xl': '2rem',
+  			lg: 'var(--radius)',
+  			md: 'calc(var(--radius) - 2px)',
+  			sm: 'calc(var(--radius) - 4px)'
+  		}
+  	}
   },
-  plugins: []
+  plugins: [require("tailwindcss-animate")]
 };
