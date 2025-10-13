@@ -4,7 +4,8 @@ import { runStagedIngestionJob } from '@/lib/ingestion/run-staged-ingestion';
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-export async function POST(request: NextRequest) {
+// Vercel Cron Jobs use GET requests, not POST
+export async function GET(request: NextRequest) {
   // Verify this is coming from Vercel's cron service
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
@@ -16,13 +17,13 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    console.log('[Cron] Starting daily ingestion job');
+    console.log('[Cron] Starting daily ingestion job at', new Date().toISOString());
     
     const results = await runStagedIngestionJob({ 
       clanTag: '#2PR8R8V8P'
     });
     
-    console.log('[Cron] Daily ingestion completed:', results);
+    console.log('[Cron] Daily ingestion completed successfully:', results);
     
     return NextResponse.json({ 
       success: true, 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
   } catch (error: any) {
-    console.error('[Cron] Daily ingestion failed:', error);
+    console.error('[Cron] Daily ingestion FAILED:', error);
     return NextResponse.json(
       { 
         success: false, 
