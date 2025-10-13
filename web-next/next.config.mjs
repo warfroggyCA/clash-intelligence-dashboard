@@ -63,6 +63,11 @@ const nextConfig = {
   // Disable production source maps for faster builds
   productionBrowserSourceMaps: false,
 
+  // Experimental: Skip CSS minification to avoid build errors
+  experimental: {
+    optimizeCss: false,
+  },
+
   // Security headers
   async headers() {
     if (!isProd) return [];
