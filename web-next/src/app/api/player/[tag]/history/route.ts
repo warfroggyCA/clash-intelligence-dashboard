@@ -85,6 +85,12 @@ export async function GET(
     const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - days);
+    
+    // Clean data cutoff: Don't show data before Oct 5, 2025 (pre-ranked mode, sparse snapshots)
+    const cleanDataCutoff = new Date('2025-10-05T00:00:00Z');
+    if (startDate < cleanDataCutoff) {
+      startDate.setTime(cleanDataCutoff.getTime());
+    }
 
     // First, try the NEW data structure (roster_snapshots + member_snapshot_stats)
     const clanTag = normalizeTag(cfg.homeClanTag || '');
