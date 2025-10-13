@@ -181,15 +181,98 @@ Track the effectiveness of these new features by measuring:
 
 ---
 
-## VI. Related Documentation
+## VI. ACE Score Evolution: From Season-Long to Weekly Competitive Index (WCI)
+
+### Current ACE Score Limitations
+
+The existing ACE Score (All-Mode Clan Excellence), as defined in the application specification, serves as a comprehensive player metric composed of weighted components: Offense vs Expectation (OVA), Defense (DVA), Participation (PAR), Capital Raids (CAP), and Donations/Balance (DON). This score undergoes robust standardization, shrinkage by sample size, weighted summation, logistic squash, and an availability multiplier.
+
+Given the revolutionary changes introduced by the October 2025 update—specifically the splitting of multiplayer into Ranked Mode (Competitive) and Battle Mode (Farming), along with the creation of the 34-tier League System—the current ACE Score is likely insufficient to definitively determine the "top player in the clan" for a given week.
+
+**Critical Shortcomings:**
+
+1. **War Skew**: The current components heavily weigh traditional Clan Wars (OVA, DVA, PAR) and Clan Capital (CAP). While important, these are now overshadowed by the weekly Ranked Tournament Cycle, which dictates a player's current standing within the new 34-tier competitive structure.
+
+2. **Obsolete Trophy Relevance**: Since trophies are now only earned/lost in Ranked Battles and reset after each weekly League Tournament, the old measurement of a player's trophies (which updates in real-time) is no longer a proxy for competitive skill but rather a snapshot of recent Ranked performance.
+
+3. **Lack of Progression Context**: While the dashboard tracks Rush Percentage, the ACE Score fails to fully integrate the cost/time efficiency gains (Progression Velocity) with competitive performance, meaning a highly rushed player who is performing exceptionally well in their mandated League Floor might be scored too low simply due to their Rush% metric.
+
+### Proposed: Weekly Competitive Index (WCI)
+
+To accurately identify the "top player in the clan for a given week," the ACE Score should be restructured into a **Weekly Competitive Index (WCI)** that prioritizes time-gated, skill-based activities tied to the tournament cycle.
+
+The WCI focuses on **Competitive Performance (Ranked)** and **Account Progression/Support (Farming/Clan)**.
+
+#### I. Competitive Performance (CP) Score (60% Weight)
+
+This component measures objective skill execution in the weekly Ranked Tournament (Tuesday 5 AM – Monday 5 AM UTC).
+
+| Proposed Metric | Data Source & Calculation | Competitive Insight |
+| :--- | :--- | :--- |
+| **1. Tournament Utilization Rate (TUR)** | Attacks Used / League-Allowed Attacks per Week. A player must maximize their 6-30 limited attacks based on their league tier. | Measures Weekly Dedication/Participation in the core competitive event, directly addressing the penalty for not attacking. |
+| **2. Tournament Trophy Efficiency (TTE)** | (Trophies Earned Offense + Trophies Earned Defense) / Max Potential Trophies (40 trophies/attack). | Measures Offensive and Defensive Mastery. Tripling is critical (40 trophies), whereas a 99% two-star yields only 16-32 trophies, making 3-star efficiency paramount. |
+| **3. League Advancement Index (LAI)** | Score for achieving Promotion Zone (or avoiding Demotion) within the 100-player weekly tournament group. | Measures Climbing Success and prestige. This is the central goal of the new Ranked Mode. |
+| **4. Defense Resilience Score (DRS)** | Total Trophies Gained on Defense / Total Trophies Potential Lost (40 x Defenses Taken). | Quantifies the success of the member's weekly defensive snapshot, especially critical since successful defense earns trophies. |
+
+#### II. Progression & Support (PS) Score (40% Weight)
+
+This component addresses long-term account health and the traditional clan support roles.
+
+| Proposed Metric | Data Source & Calculation | Supporting Insight |
+| :--- | :--- | :--- |
+| **1. Progression Debt Reduction (PDR)** | Inverse calculation of Rush Percentage vs. expected progression velocity derived from the massive permanent hero time/cost reductions. | Rewards players who actively utilize the accelerated upgrade path (now that heroes are crucial for Ranked success) to fix their bases quickly. |
+| **2. Donation & Resource Support (DRS)** | Donations Given / (Donations Received + Clan Capital Contributions). | Maintains the existing "Donation Balance" calculation but adds the Capital Contribution (a critical weekly resource funnel). Ensures the "top player" is not purely a solo competitor but a core clan asset. |
+| **3. Star Bonus Completion (SBC)** | Frequency/consistency of completing the Star Bonus which contributes resources and Starry Ore (beginning at Archer League, League 8) and can be completed in both Battle and Ranked modes. | Measures Consistent Daily Engagement beyond just the mandatory Ranked attacks. |
+
+### Implementation Strategy
+
+**Data Capture Requirements:**
+- Track Ranked Mode trophy changes (currently available via `leagueTier` in player data)
+- Monitor weekly tournament cycles (Tuesday 5 AM – Monday 5 AM UTC)
+- Calculate attack utilization against league-specific limits (6-30 attacks/week)
+- Track defensive snapshot performance separately from offense
+
+**Calculation Pipeline:**
+1. Run WCI calculations weekly on Monday after tournament reset
+2. Store historical WCI scores for trend analysis
+3. Maintain separate tables for CP and PS components
+4. Generate weekly leaderboard for clan members
+
+**UI/UX Enhancements:**
+- Weekly "Top Competitor" badge based on highest WCI
+- Trend graphs showing WCI over multiple weeks
+- Breakdowns showing CP vs PS contributions
+- Tournament utilization tracker (attacks used vs available)
+
+### Conclusion on ACE Score Evolution
+
+The original ACE Score needs to evolve from merely aggregating five metrics to weighting performance based on the game's new focal point: **Weekly Competitive Tournaments**.
+
+By pivoting to the Weekly Competitive Index (WCI), the dashboard can immediately provide clan leaders with a highly relevant score demonstrating who is:
+- Maximizing their skill potential in Ranked Mode
+- Coordinating their limited attacks effectively
+- Optimizing their base defenses for the snapshot system
+- Making rapid progression on their heroes
+- Contributing to clan support activities
+
+This new WCI directly utilizes the complex mechanics introduced in the October 2025 overhaul to accurately reflect the true "top player" status in the contemporary version of Clash of Clans.
+
+---
+
+## VII. Related Documentation
 
 - `COC_API_MASTER_INDEX.md` - Complete API reference
 - `COC_API_REAL_DATA_EXAMPLES.json` - Real data samples
 - `docs/architecture/data-spine.md` - Current data architecture
-- `web-next/src/lib/calculations.ts` - Existing metric calculations
+- `web-next/src/lib/calculations.ts` - Existing metric calculations (includes current ACE Score implementation)
 - `AUTOMATED_CRON_FOREVER.md` - Ingestion pipeline documentation
 
 ---
 
-**Next Steps**: Review this document with stakeholders and prioritize Phase 1 implementation items for the next development sprint.
+## VIII. Next Steps
+
+1. **Immediate**: Review this document with stakeholders and prioritize Phase 1 implementation items
+2. **Short-term**: Begin WCI prototype development alongside existing ACE Score
+3. **Medium-term**: A/B test WCI vs ACE Score with clan leaders for effectiveness
+4. **Long-term**: Fully transition to WCI as primary competitive metric once validated
 
