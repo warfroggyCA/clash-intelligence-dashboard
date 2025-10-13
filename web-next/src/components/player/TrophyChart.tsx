@@ -56,7 +56,10 @@ export default function TrophyChart({ data }: TrophyChartProps) {
           Trophy Progression
         </CardTitle>
         <CardDescription className="text-slate-300">
-          Your ranked battle trophy journey • Ranked mode started Oct 6, 2025
+          Your ranked battle trophy journey
+          <span className="inline-flex items-center ml-2 px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
+            ⚔️ Ranked mode started Oct 6, 2025
+          </span>
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
