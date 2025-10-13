@@ -55,29 +55,25 @@ export default function HeroUpgradeHistory({ data }: HeroUpgradeHistoryProps) {
 
   if (upgradeEvents.length === 0) {
     return (
-      <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700">
-        <CardContent className="flex flex-col items-center justify-center min-h-[200px]">
-          <Swords className="w-12 h-12 mb-3 text-slate-600" />
-          <p className="text-slate-400">No hero upgrades recorded in this period</p>
-        </CardContent>
-      </Card>
+      <div className="bg-slate-800/50 rounded-lg p-8 text-center">
+        <Swords className="w-12 h-12 mx-auto mb-3 text-slate-600" />
+        <p className="text-slate-400">No hero upgrades recorded in this period</p>
+      </div>
     );
   }
 
   return (
-    <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
-      <CardHeader className="bg-gradient-to-r from-orange-500/10 via-pink-500/10 to-purple-500/10 border-b border-slate-700">
-        <CardTitle className="flex items-center gap-2 text-white">
-          <div className="p-2 bg-orange-500/20 rounded-lg">
-            <TrendingUp className="w-5 h-5 text-orange-400" />
-          </div>
-          Hero Upgrade History
-        </CardTitle>
-        <CardDescription className="text-slate-300">
+    <div className="bg-slate-800/50 rounded-lg overflow-hidden">
+      <div className="p-6 border-b border-slate-700">
+        <div className="flex items-center gap-3 mb-2">
+          <TrendingUp className="w-6 h-6 text-orange-400" />
+          <h2 className="text-xl font-semibold text-white">Hero Upgrade History</h2>
+        </div>
+        <p className="text-sm text-slate-400">
           {upgradeEvents.length} upgrade{upgradeEvents.length !== 1 ? 's' : ''} recorded
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-6">
+        </p>
+      </div>
+      <div className="p-6">
         <div className="space-y-4">
           {upgradeEvents.map((event, idx) => (
             <div 
