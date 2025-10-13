@@ -1,0 +1,1049 @@
+{
+  "_meta": {
+    "title": "Clash of Clans API - Complete Data Reference",
+    "description": "Comprehensive documentation of ALL data points, endpoints, and fields available in the CoC API",
+    "api_version": "v1",
+    "base_url": "https://api.clashofclans.com/v1",
+    "authentication": "Bearer token (JWT) in Authorization header",
+    "created": "2025-01-26",
+    "rate_limits": {
+      "developer_silver": "Throttled per IP/token",
+      "allowed_ips": "Must whitelist IPs in developer portal"
+    }
+  },
+  
+  "endpoints": {
+    "clans": {
+      "search": {
+        "method": "GET",
+        "path": "/clans",
+        "description": "Search for clans by name or filter criteria",
+        "query_parameters": {
+          "name": "Clan name search (3+ characters)",
+          "warFrequency": "Filter by war frequency (always, moreThanOncePerWeek, oncePerWeek, lessThanOncePerWeek, never, unknown)",
+          "locationId": "Filter by location ID",
+          "minMembers": "Minimum number of members",
+          "maxMembers": "Maximum number of members",
+          "minClanPoints": "Minimum clan points",
+          "minClanLevel": "Minimum clan level",
+          "limit": "Number of results (default 10, max 100)",
+          "after": "Pagination cursor",
+          "before": "Pagination cursor",
+          "labelIds": "Comma-separated list of label IDs"
+        },
+        "returns": "Paginated list of clan summaries"
+      },
+      
+      "get_clan": {
+        "method": "GET",
+        "path": "/clans/{clanTag}",
+        "description": "Get detailed information about a specific clan",
+        "parameters": {
+          "clanTag": "Clan tag with URL-encoded # (e.g., %232PR8R8V8P)"
+        },
+        "response_fields": {
+          "tag": "string - Clan tag (e.g., #2PR8R8V8P)",
+          "name": "string - Clan name",
+          "type": "string - Clan type (open, inviteOnly, closed)",
+          "description": "string - Clan description text",
+          "location": {
+            "id": "number - Location ID",
+            "name": "string - Location name",
+            "isCountry": "boolean - Is it a country or region",
+            "countryCode": "string - 2-letter country code"
+          },
+          "isFamilyFriendly": "boolean - Family friendly flag",
+          "badgeUrls": {
+            "small": "string - URL to small badge image",
+            "medium": "string - URL to medium badge image",
+            "large": "string - URL to large badge image"
+          },
+          "clanLevel": "number - Clan level (1-20+)",
+          "clanPoints": "number - Total clan points",
+          "clanVersusPoints": "number - Builder base clan points",
+          "clanCapitalPoints": "number - Clan capital points",
+          "capitalLeague": {
+            "id": "number - Capital league ID",
+            "name": "string - Capital league name"
+          },
+          "requiredTrophies": "number - Minimum trophies to join",
+          "requiredTownhallLevel": "number - Minimum TH level to join",
+          "requiredVersusTrophies": "number - Minimum builder trophies",
+          "warFrequency": "string - War frequency setting",
+          "warWinStreak": "number - Current war win streak",
+          "warWins": "number - Total war wins",
+          "warTies": "number - Total war ties",
+          "warLosses": "number - Total war losses",
+          "isWarLogPublic": "boolean - Is war log public",
+          "warLeague": {
+            "id": "number - War league ID",
+            "name": "string - War league name (e.g., Crystal League II)"
+          },
+          "members": "number - Current member count",
+          "memberList": [
+            {
+              "tag": "string - Player tag",
+              "name": "string - Player name",
+              "role": "string - member, admin, coLeader, leader",
+              "expLevel": "number - Experience level",
+              "league": {
+                "id": "number - League ID",
+                "name": "string - League name",
+                "iconUrls": "object - League icon URLs"
+              },
+              "trophies": "number - Current trophies",
+              "versusTrophies": "number - Builder base trophies",
+              "clanRank": "number - Rank in clan (by trophies)",
+              "previousClanRank": "number - Previous season rank",
+              "donations": "number - Troops donated this season",
+              "donationsReceived": "number - Troops received this season",
+              "playerHouse": {
+                "elements": "array - Player house decoration elements"
+              }
+            }
+          ],
+          "labels": [
+            {
+              "id": "number - Label ID",
+              "name": "string - Label name",
+              "iconUrls": "object - Label icon URLs"
+            }
+          ],
+          "chatLanguage": {
+            "id": "number - Language ID",
+            "name": "string - Language name",
+            "languageCode": "string - 2-letter language code"
+          },
+          "clanCapital": {
+            "capitalHallLevel": "number - Capital hall level (1-10)",
+            "districts": [
+              {
+                "id": "number - District ID",
+                "name": "string - District name",
+                "districtHallLevel": "number - District hall level"
+              }
+            ]
+          }
+        }
+      },
+      
+      "get_clan_members": {
+        "method": "GET",
+        "path": "/clans/{clanTag}/members",
+        "description": "Get list of clan members (same data as memberList in get_clan)",
+        "note": "Returns same member data as /clans/{clanTag} but paginated"
+      },
+      
+      "get_clan_warlog": {
+        "method": "GET",
+        "path": "/clans/{clanTag}/warlog",
+        "description": "Get clan's war log history",
+        "requires": "Public war log enabled",
+        "response_fields": {
+          "items": [
+            {
+              "result": "string - win, lose, tie, or null (ongoing)",
+              "endTime": "string - ISO 8601 timestamp",
+              "teamSize": "number - Players per side",
+              "attacksPerMember": "number - Attacks allowed per member",
+              "clan": {
+                "tag": "string - Clan tag",
+                "name": "string - Clan name",
+                "badgeUrls": "object - Badge URLs",
+                "clanLevel": "number - Clan level",
+                "attacks": "number - Total attacks used",
+                "stars": "number - Total stars earned",
+                "destructionPercentage": "number - Total destruction %",
+                "expEarned": "number - XP earned from war"
+              },
+              "opponent": {
+                "tag": "string - Opponent clan tag (may be hidden)",
+                "name": "string - Opponent clan name",
+                "badgeUrls": "object - Badge URLs",
+                "clanLevel": "number - Clan level",
+                "stars": "number - Total stars earned",
+                "destructionPercentage": "number - Total destruction %"
+              }
+            }
+          ],
+          "paging": {
+            "cursors": "object - Pagination cursors"
+          }
+        }
+      },
+      
+      "get_current_war": {
+        "method": "GET",
+        "path": "/clans/{clanTag}/currentwar",
+        "description": "Get current war information (regular war, not CWL)",
+        "response_fields": {
+          "state": "string - notInWar, preparation, inWar, warEnded",
+          "teamSize": "number - Players per side",
+          "attacksPerMember": "number - Attacks per member (usually 2)",
+          "preparationStartTime": "string - ISO 8601 timestamp",
+          "startTime": "string - ISO 8601 timestamp",
+          "endTime": "string - ISO 8601 timestamp",
+          "clan": {
+            "tag": "string - Clan tag",
+            "name": "string - Clan name",
+            "badgeUrls": "object - Badge URLs",
+            "clanLevel": "number - Clan level",
+            "attacks": "number - Total attacks used",
+            "stars": "number - Total stars earned",
+            "destructionPercentage": "number - Total destruction %",
+            "members": [
+              {
+                "tag": "string - Player tag",
+                "name": "string - Player name",
+                "townhallLevel": "number - TH level",
+                "mapPosition": "number - War map position (1-50)",
+                "opponentAttacks": "number - Times attacked by opponent",
+                "attacks": [
+                  {
+                    "order": "number - Attack sequence number",
+                    "attackerTag": "string - Attacker's player tag",
+                    "defenderTag": "string - Defender's player tag",
+                    "stars": "number - Stars earned (0-3)",
+                    "destructionPercentage": "number - Destruction % (0-100)",
+                    "duration": "number - Attack duration in seconds"
+                  }
+                ],
+                "bestOpponentAttack": {
+                  "order": "number",
+                  "attackerTag": "string",
+                  "defenderTag": "string",
+                  "stars": "number",
+                  "destructionPercentage": "number",
+                  "duration": "number"
+                }
+              }
+            ]
+          },
+          "opponent": "object - Same structure as clan"
+        }
+      },
+      
+      "get_cwl_group": {
+        "method": "GET",
+        "path": "/clans/{clanTag}/currentwar/leaguegroup",
+        "description": "Get Clan War League group information",
+        "note": "Only available during CWL season",
+        "response_fields": {
+          "state": "string - notInWar, preparation, war, ended",
+          "season": "string - Season identifier (e.g., 2025-01)",
+          "clans": [
+            {
+              "tag": "string - Clan tag",
+              "name": "string - Clan name",
+              "clanLevel": "number - Clan level",
+              "badgeUrls": "object - Badge URLs",
+              "members": [
+                {
+                  "tag": "string - Player tag",
+                  "name": "string - Player name",
+                  "townHallLevel": "number - TH level"
+                }
+              ]
+            }
+          ],
+          "rounds": [
+            {
+              "warTags": [
+                "string - War tag IDs for this round"
+              ]
+            }
+          ]
+        }
+      },
+      
+      "get_cwl_war": {
+        "method": "GET",
+        "path": "/clanwarleagues/wars/{warTag}",
+        "description": "Get specific CWL war by war tag",
+        "note": "War tags obtained from leaguegroup rounds",
+        "response_fields": "Similar structure to /currentwar but for CWL wars"
+      },
+      
+      "get_capital_raid_seasons": {
+        "method": "GET",
+        "path": "/clans/{clanTag}/capitalraidseasons",
+        "description": "Get clan's capital raid weekend history",
+        "query_parameters": {
+          "limit": "Number of seasons to return"
+        },
+        "response_fields": {
+          "items": [
+            {
+              "state": "string - ongoing or ended",
+              "startTime": "string - ISO 8601 timestamp",
+              "endTime": "string - ISO 8601 timestamp",
+              "capitalTotalLoot": "number - Total capital gold looted",
+              "raidsCompleted": "number - Number of raids completed",
+              "totalAttacks": "number - Total attacks made",
+              "enemyDistrictsDestroyed": "number - Enemy districts destroyed",
+              "offensiveReward": "number - Offensive raid medals earned",
+              "defensiveReward": "number - Defensive raid medals earned",
+              "members": [
+                {
+                  "tag": "string - Player tag",
+                  "name": "string - Player name",
+                  "attacks": "number - Attacks made",
+                  "attackLimit": "number - Attack limit",
+                  "bonusAttackLimit": "number - Bonus attacks available",
+                  "capitalResourcesLooted": "number - Capital gold looted"
+                }
+              ],
+              "attackLog": [
+                {
+                  "attacker": {
+                    "tag": "string - Attacker tag",
+                    "name": "string - Attacker name"
+                  },
+                  "defenderTag": "string - Defender clan tag",
+                  "defenderName": "string - Defender clan name",
+                  "districts": [
+                    {
+                      "id": "number - District ID",
+                      "name": "string - District name",
+                      "stars": "number - Stars earned",
+                      "destructionPercent": "number - Destruction %",
+                      "attacks": "number - Attacks on this district"
+                    }
+                  ]
+                }
+              ],
+              "defenseLog": [
+                {
+                  "attacker": {
+                    "tag": "string - Attacker clan tag",
+                    "name": "string - Attacker clan name"
+                  },
+                  "attackCount": "number - Total attacks received",
+                  "districtCount": "number - Districts attacked",
+                  "districtsDestroyed": "number - Districts destroyed",
+                  "districts": [
+                    {
+                      "id": "number - District ID",
+                      "name": "string - District name",
+                      "stars": "number - Stars lost",
+                      "destructionPercent": "number - Destruction %",
+                      "attackCount": "number - Attacks received"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    
+    "players": {
+      "get_player": {
+        "method": "GET",
+        "path": "/players/{playerTag}",
+        "description": "Get complete player profile information",
+        "parameters": {
+          "playerTag": "Player tag with URL-encoded # (e.g., %23VGQVRLRL)"
+        },
+        "response_fields": {
+          "tag": "string - Player tag",
+          "name": "string - Player name",
+          "townHallLevel": "number - Town Hall level (1-16)",
+          "townHallWeaponLevel": "number - Town Hall weapon level",
+          "expLevel": "number - Experience level",
+          "trophies": "number - Current trophies",
+          "bestTrophies": "number - All-time highest trophies",
+          "warStars": "number - Total war stars earned",
+          "attackWins": "number - Total attack wins",
+          "defenseWins": "number - Total defense wins",
+          "builderHallLevel": "number - Builder Hall level (1-10)",
+          "builderBaseTrophies": "number - Builder base trophies",
+          "bestBuilderBaseTrophies": "number - Best builder trophies",
+          "role": "string - member, admin, coLeader, leader (if in clan)",
+          "warPreference": "string - in or out",
+          "donations": "number - Troops donated this season",
+          "donationsReceived": "number - Troops received this season",
+          "clanCapitalContributions": "number - Capital gold contributed",
+          "clan": {
+            "tag": "string - Clan tag",
+            "name": "string - Clan name",
+            "clanLevel": "number - Clan level",
+            "badgeUrls": "object - Badge URLs"
+          },
+          "league": {
+            "id": "number - League ID",
+            "name": "string - League name",
+            "iconUrls": {
+              "small": "string - Small icon URL",
+              "tiny": "string - Tiny icon URL",
+              "medium": "string - Medium icon URL"
+            }
+          },
+          "builderBaseLeague": {
+            "id": "number - Builder league ID",
+            "name": "string - Builder league name"
+          },
+          "achievements": [
+            {
+              "name": "string - Achievement name",
+              "stars": "number - Stars earned (0-3)",
+              "value": "number - Current progress value",
+              "target": "number - Target value for completion",
+              "info": "string - Achievement description",
+              "completionInfo": "string - Completion description",
+              "village": "string - home or builderBase"
+            }
+          ],
+          "playerHouse": {
+            "elements": [
+              {
+                "id": "number - Element ID",
+                "type": "string - Element type (ground, walls, roof, decoration)"
+              }
+            ]
+          },
+          "labels": [
+            {
+              "id": "number - Label ID",
+              "name": "string - Label name",
+              "iconUrls": "object - Label icon URLs"
+            }
+          ],
+          "troops": [
+            {
+              "name": "string - Troop name (e.g., Barbarian)",
+              "level": "number - Current level",
+              "maxLevel": "number - Max level for player's TH",
+              "village": "string - home or builderBase",
+              "superTroopIsActive": "boolean - Is super troop active (7 days)"
+            }
+          ],
+          "heroes": [
+            {
+              "name": "string - Hero name (e.g., Barbarian King)",
+              "level": "number - Current level",
+              "maxLevel": "number - Max level for player's TH",
+              "village": "string - home or builderBase",
+              "equipment": [
+                {
+                  "name": "string - Equipment name",
+                  "level": "number - Equipment level",
+                  "maxLevel": "number - Max equipment level",
+                  "village": "string - home"
+                }
+              ]
+            }
+          ],
+          "heroEquipment": [
+            {
+              "name": "string - Equipment name",
+              "level": "number - Current level",
+              "maxLevel": "number - Max level",
+              "village": "string - home"
+            }
+          ],
+          "spells": [
+            {
+              "name": "string - Spell name (e.g., Lightning Spell)",
+              "level": "number - Current level",
+              "maxLevel": "number - Max level for player's TH",
+              "village": "string - home or builderBase"
+            }
+          ],
+          "legendStatistics": {
+            "legendTrophies": "number - Legend league trophies",
+            "bestSeason": {
+              "id": "string - Season ID",
+              "rank": "number - Global rank",
+              "trophies": "number - Trophies earned"
+            },
+            "currentSeason": {
+              "rank": "number - Current rank",
+              "trophies": "number - Current trophies"
+            },
+            "previousSeason": {
+              "id": "string - Season ID",
+              "rank": "number - Final rank",
+              "trophies": "number - Final trophies"
+            }
+          }
+        }
+      },
+      
+      "verify_player_token": {
+        "method": "POST",
+        "path": "/players/{playerTag}/verifytoken",
+        "description": "Verify player API token (for linking accounts)",
+        "body": {
+          "token": "string - Player API token from in-game settings"
+        },
+        "response": {
+          "status": "string - ok or invalid",
+          "tag": "string - Player tag"
+        }
+      }
+    },
+    
+    "leagues": {
+      "list_leagues": {
+        "method": "GET",
+        "path": "/leagues",
+        "description": "Get list of all trophy leagues",
+        "response_fields": {
+          "items": [
+            {
+              "id": "number - League ID (29000000-29000021)",
+              "name": "string - League name (Unranked through Legend)",
+              "iconUrls": {
+                "small": "string",
+                "tiny": "string",
+                "medium": "string"
+              }
+            }
+          ]
+        }
+      },
+      
+      "get_league": {
+        "method": "GET",
+        "path": "/leagues/{leagueId}",
+        "description": "Get specific league information",
+        "response": "Same as league object in list_leagues"
+      },
+      
+      "get_league_seasons": {
+        "method": "GET",
+        "path": "/leagues/{leagueId}/seasons",
+        "description": "Get available seasons for a league (Legend only)",
+        "note": "Only works for Legend League (ID: 29000022)",
+        "response_fields": {
+          "items": [
+            {
+              "id": "string - Season ID (YYYY-MM format)"
+            }
+          ]
+        }
+      },
+      
+      "get_league_season_rankings": {
+        "method": "GET",
+        "path": "/leagues/{leagueId}/seasons/{seasonId}",
+        "description": "Get player rankings for a league season",
+        "note": "Only works for Legend League",
+        "query_parameters": {
+          "limit": "Results per page (max 200)",
+          "after": "Pagination cursor",
+          "before": "Pagination cursor"
+        },
+        "response_fields": {
+          "items": [
+            {
+              "tag": "string - Player tag",
+              "name": "string - Player name",
+              "expLevel": "number - Experience level",
+              "trophies": "number - Season trophies",
+              "attackWins": "number - Attack wins",
+              "defenseWins": "number - Defense wins",
+              "rank": "number - Global rank",
+              "previousRank": "number - Previous rank",
+              "clan": {
+                "tag": "string - Clan tag",
+                "name": "string - Clan name",
+                "badgeUrls": "object"
+              }
+            }
+          ]
+        }
+      }
+    },
+    
+    "war_leagues": {
+      "list_war_leagues": {
+        "method": "GET",
+        "path": "/warleagues",
+        "description": "Get list of all Clan War Leagues",
+        "response_fields": {
+          "items": [
+            {
+              "id": "number - War league ID (48000000-48000018)",
+              "name": "string - League name (Unranked through Champion I)"
+            }
+          ]
+        }
+      },
+      
+      "get_war_league": {
+        "method": "GET",
+        "path": "/warleagues/{leagueId}",
+        "description": "Get specific war league information"
+      }
+    },
+    
+    "capital_leagues": {
+      "list_capital_leagues": {
+        "method": "GET",
+        "path": "/capitalleagues",
+        "description": "Get list of all Clan Capital leagues",
+        "response_fields": {
+          "items": [
+            {
+              "id": "number - Capital league ID (85000000-85000022)",
+              "name": "string - League name (Unranked through Champion I)"
+            }
+          ]
+        }
+      },
+      
+      "get_capital_league": {
+        "method": "GET",
+        "path": "/capitalleagues/{leagueId}",
+        "description": "Get specific capital league information"
+      }
+    },
+    
+    "builder_base_leagues": {
+      "list_builder_leagues": {
+        "method": "GET",
+        "path": "/builderbaseleagues",
+        "description": "Get list of all Builder Base leagues",
+        "response_fields": {
+          "items": [
+            {
+              "id": "number - Builder league ID (44000000-44000030)",
+              "name": "string - League name (Wood through Titan I)"
+            }
+          ]
+        }
+      },
+      
+      "get_builder_league": {
+        "method": "GET",
+        "path": "/builderbaseleagues/{leagueId}",
+        "description": "Get specific builder base league information"
+      }
+    },
+    
+    "locations": {
+      "list_locations": {
+        "method": "GET",
+        "path": "/locations",
+        "description": "Get list of all available locations (countries/regions)",
+        "response_fields": {
+          "items": [
+            {
+              "id": "number - Location ID (32000000+)",
+              "name": "string - Location name",
+              "isCountry": "boolean - Is it a country",
+              "countryCode": "string - 2-letter country code"
+            }
+          ]
+        }
+      },
+      
+      "get_location": {
+        "method": "GET",
+        "path": "/locations/{locationId}",
+        "description": "Get specific location information"
+      },
+      
+      "get_clan_rankings": {
+        "method": "GET",
+        "path": "/locations/{locationId}/rankings/clans",
+        "description": "Get clan rankings for a location",
+        "query_parameters": {
+          "limit": "Results per page (max 200)"
+        },
+        "response_fields": {
+          "items": [
+            {
+              "tag": "string - Clan tag",
+              "name": "string - Clan name",
+              "location": "object - Location details",
+              "badgeUrls": "object - Badge URLs",
+              "clanLevel": "number - Clan level",
+              "clanPoints": "number - Clan points",
+              "members": "number - Member count",
+              "rank": "number - Current rank",
+              "previousRank": "number - Previous rank"
+            }
+          ]
+        }
+      },
+      
+      "get_player_rankings": {
+        "method": "GET",
+        "path": "/locations/{locationId}/rankings/players",
+        "description": "Get player rankings for a location",
+        "response": "Similar to clan rankings but for players"
+      },
+      
+      "get_versus_clan_rankings": {
+        "method": "GET",
+        "path": "/locations/{locationId}/rankings/clans-versus",
+        "description": "Get builder base clan rankings"
+      },
+      
+      "get_versus_player_rankings": {
+        "method": "GET",
+        "path": "/locations/{locationId}/rankings/players-versus",
+        "description": "Get builder base player rankings"
+      },
+      
+      "get_capital_rankings": {
+        "method": "GET",
+        "path": "/locations/{locationId}/rankings/capitals",
+        "description": "Get clan capital rankings"
+      }
+    },
+    
+    "labels": {
+      "list_clan_labels": {
+        "method": "GET",
+        "path": "/labels/clans",
+        "description": "Get list of available clan labels/tags",
+        "response_fields": {
+          "items": [
+            {
+              "id": "number - Label ID",
+              "name": "string - Label name (e.g., Clan Wars, Clan Games)",
+              "iconUrls": {
+                "small": "string",
+                "medium": "string"
+              }
+            }
+          ]
+        }
+      },
+      
+      "list_player_labels": {
+        "method": "GET",
+        "path": "/labels/players",
+        "description": "Get list of available player labels/tags",
+        "response_fields": {
+          "items": [
+            {
+              "id": "number - Label ID",
+              "name": "string - Label name (e.g., Clan Wars, Trophy Pushing)",
+              "iconUrls": {
+                "small": "string",
+                "medium": "string"
+              }
+            }
+          ]
+        }
+      }
+    },
+    
+    "goldpass": {
+      "get_current_goldpass": {
+        "method": "GET",
+        "path": "/goldpass/seasons/current",
+        "description": "Get current Gold Pass season information",
+        "response_fields": {
+          "startTime": "string - ISO 8601 timestamp",
+          "endTime": "string - ISO 8601 timestamp"
+        }
+      }
+    }
+  },
+  
+  "game_data": {
+    "troop_categories": {
+      "home_village_troops": [
+        "Barbarian", "Archer", "Giant", "Goblin", "Wall Breaker", "Balloon",
+        "Wizard", "Healer", "Dragon", "P.E.K.K.A", "Baby Dragon", "Miner",
+        "Electro Dragon", "Yeti", "Dragon Rider", "Electro Titan", "Root Rider"
+      ],
+      "home_village_dark_troops": [
+        "Minion", "Hog Rider", "Valkyrie", "Golem", "Witch", "Lava Hound",
+        "Bowler", "Ice Golem", "Headhunter"
+      ],
+      "home_village_super_troops": [
+        "Super Barbarian", "Super Archer", "Super Giant", "Sneaky Goblin",
+        "Super Wall Breaker", "Rocket Balloon", "Super Wizard", "Super Dragon",
+        "Inferno Dragon", "Super Minion", "Super Valkyrie", "Super Witch",
+        "Ice Hound", "Super Bowler", "Super Miner"
+      ],
+      "siege_machines": [
+        "Wall Wrecker", "Battle Blimp", "Stone Slammer", "Siege Barracks",
+        "Log Launcher", "Flame Flinger", "Battle Drill"
+      ],
+      "builder_base_troops": [
+        "Raged Barbarian", "Sneaky Archer", "Boxer Giant", "Beta Minion",
+        "Bomber", "Baby Dragon", "Cannon Cart", "Night Witch", "Drop Ship",
+        "Super P.E.K.K.A", "Hog Glider", "Electrofire Wizard"
+      ]
+    },
+    
+    "hero_categories": {
+      "home_village_heroes": [
+        {
+          "name": "Barbarian King",
+          "max_level_by_th": {
+            "7": 5, "8": 10, "9": 30, "10": 40, "11": 50,
+            "12": 65, "13": 75, "14": 80, "15": 90, "16": 95
+          },
+          "equipment_slots": 2
+        },
+        {
+          "name": "Archer Queen",
+          "max_level_by_th": {
+            "9": 30, "10": 40, "11": 50, "12": 65, "13": 75,
+            "14": 80, "15": 90, "16": 95
+          },
+          "equipment_slots": 2
+        },
+        {
+          "name": "Grand Warden",
+          "max_level_by_th": {
+            "11": 20, "12": 40, "13": 50, "14": 55, "15": 65, "16": 70
+          },
+          "equipment_slots": 2,
+          "modes": ["Ground", "Air"]
+        },
+        {
+          "name": "Royal Champion",
+          "max_level_by_th": {
+            "13": 25, "14": 30, "15": 40, "16": 45
+          },
+          "equipment_slots": 2
+        }
+      ],
+      "builder_base_heroes": [
+        {
+          "name": "Battle Machine",
+          "max_level": 35
+        }
+      ]
+    },
+    
+    "hero_equipment": {
+      "categories": [
+        "Barbarian King Equipment",
+        "Archer Queen Equipment",
+        "Grand Warden Equipment",
+        "Royal Champion Equipment"
+      ],
+      "equipment_list": [
+        "Barbarian Puppet", "Rage Vial", "Earthquake Boots", "Vampstache",
+        "Giant Gauntlet", "Spiky Ball", "Archer Puppet", "Invisibility Vial",
+        "Giant Arrow", "Healer Puppet", "Frozen Arrow", "Eternal Tome",
+        "Life Gem", "Rage Gem", "Healing Tome", "Seeking Shield",
+        "Royal Gem", "Haste Vial", "Rocket Spear", "Hog Rider Puppet"
+      ]
+    },
+    
+    "spell_categories": {
+      "home_village_spells": [
+        "Lightning Spell", "Healing Spell", "Rage Spell", "Jump Spell",
+        "Freeze Spell", "Clone Spell", "Invisibility Spell", "Recall Spell",
+        "Overgrowth Spell"
+      ],
+      "home_village_dark_spells": [
+        "Poison Spell", "Earthquake Spell", "Haste Spell", "Skeleton Spell",
+        "Bat Spell"
+      ],
+      "builder_base_spells": [
+        "None currently implemented"
+      ]
+    },
+    
+    "achievements": {
+      "categories": [
+        "Home Village Progress",
+        "Home Village Army",
+        "Home Village War",
+        "Builder Base",
+        "Clan Capital",
+        "Special"
+      ],
+      "total_count": 60
+    },
+    
+    "town_hall_levels": {
+      "home_village": {
+        "min": 1,
+        "max": 16,
+        "weapon_levels": {
+          "12": 5,
+          "13": 5,
+          "14": 5,
+          "15": 5,
+          "16": 5
+        }
+      },
+      "builder_hall": {
+        "min": 1,
+        "max": 10
+      },
+      "clan_capital": {
+        "min": 1,
+        "max": 10
+      }
+    },
+    
+    "clan_capital_districts": [
+      "Capital Peak",
+      "Barbarian Camp",
+      "Wizard Valley",
+      "Balloon Lagoon",
+      "Builder's Workshop",
+      "Dragon Cliffs",
+      "Golem Quarry",
+      "Skeleton Park",
+      "Goblin Mines"
+    ],
+    
+    "war_types": {
+      "regular_war": {
+        "team_sizes": [5, 10, 15, 20, 25, 30, 40, 50],
+        "preparation_hours": 23,
+        "battle_hours": 24,
+        "attacks_per_member": 2
+      },
+      "clan_war_league": {
+        "team_size": 15,
+        "rounds": 7,
+        "attacks_per_member": 1,
+        "leagues": [
+          "Unranked", "Bronze III", "Bronze II", "Bronze I",
+          "Silver III", "Silver II", "Silver I",
+          "Gold III", "Gold II", "Gold I",
+          "Crystal III", "Crystal II", "Crystal I",
+          "Master III", "Master II", "Master I",
+          "Champion III", "Champion II", "Champion I"
+        ]
+      },
+      "capital_raid_weekend": {
+        "duration_hours": 72,
+        "attacks_per_member": 5,
+        "bonus_attack_limit": 1
+      }
+    },
+    
+    "league_system": {
+      "trophy_leagues": [
+        {"name": "Unranked", "min_trophies": 0},
+        {"name": "Bronze III", "min_trophies": 400},
+        {"name": "Bronze II", "min_trophies": 500},
+        {"name": "Bronze I", "min_trophies": 600},
+        {"name": "Silver III", "min_trophies": 800},
+        {"name": "Silver II", "min_trophies": 1000},
+        {"name": "Silver I", "min_trophies": 1200},
+        {"name": "Gold III", "min_trophies": 1400},
+        {"name": "Gold II", "min_trophies": 1600},
+        {"name": "Gold I", "min_trophies": 1800},
+        {"name": "Crystal III", "min_trophies": 2000},
+        {"name": "Crystal II", "min_trophies": 2200},
+        {"name": "Crystal I", "min_trophies": 2400},
+        {"name": "Master III", "min_trophies": 2600},
+        {"name": "Master II", "min_trophies": 2800},
+        {"name": "Master I", "min_trophies": 3000},
+        {"name": "Champion III", "min_trophies": 3200},
+        {"name": "Champion II", "min_trophies": 3400},
+        {"name": "Champion I", "min_trophies": 3600},
+        {"name": "Titan III", "min_trophies": 3800},
+        {"name": "Titan II", "min_trophies": 4100},
+        {"name": "Titan I", "min_trophies": 4400},
+        {"name": "Legend League", "min_trophies": 5000}
+      ]
+    }
+  },
+  
+  "api_best_practices": {
+    "rate_limiting": {
+      "strategy": "Token bucket per IP/key",
+      "recommendation": "Implement exponential backoff on 429 errors",
+      "typical_limit": "~10-30 requests per second (varies by tier)"
+    },
+    "caching": {
+      "player_data": "Cache for 5-15 minutes (updates slowly)",
+      "clan_member_list": "Cache for 5-15 minutes",
+      "war_data": "Cache for 1-5 minutes (updates frequently during war)",
+      "static_data": "Cache for 24 hours (leagues, locations, labels)",
+      "rankings": "Cache for 1-6 hours (updated periodically)"
+    },
+    "tag_handling": {
+      "format": "Tags start with # (e.g., #2PR8R8V8P)",
+      "url_encoding": "Always URL-encode the # as %23",
+      "normalization": "Remove # prefix, uppercase all letters for storage",
+      "validation": "Tags contain only: 0289PYLQGRJCUV"
+    },
+    "error_handling": {
+      "400": "Bad request - Check tag format and URL encoding",
+      "403": "Access denied - Check API key and IP whitelist",
+      "404": "Not found - Player/clan doesn't exist or tag is incorrect",
+      "429": "Rate limit exceeded - Implement backoff",
+      "500": "Server error - Retry with exponential backoff",
+      "503": "Maintenance - Wait and retry"
+    },
+    "pagination": {
+      "method": "Cursor-based pagination",
+      "parameters": "Use 'after' and 'before' cursors",
+      "max_limit": 200,
+      "default_limit": 10
+    }
+  },
+  
+  "data_update_frequency": {
+    "player_profile": "Real-time (updates immediately after changes)",
+    "clan_member_list": "Real-time",
+    "war_attacks": "Near real-time (1-2 minute delay)",
+    "war_log": "Updates after war ends",
+    "donations": "Real-time",
+    "trophies": "Real-time",
+    "clan_games_progress": "Real-time during event",
+    "capital_raid": "Real-time during raid weekend",
+    "rankings": "Updated hourly",
+    "legend_league_rankings": "Updated daily at season end"
+  },
+  
+  "common_use_cases": {
+    "clan_management": {
+      "endpoints": [
+        "/clans/{tag}",
+        "/clans/{tag}/members",
+        "/clans/{tag}/warlog"
+      ],
+      "data_points": [
+        "donations", "donations_received", "last_seen",
+        "war_attacks", "clan_games_participation"
+      ]
+    },
+    "war_tracking": {
+      "endpoints": [
+        "/clans/{tag}/currentwar",
+        "/clans/{tag}/currentwar/leaguegroup",
+        "/clanwarleagues/wars/{warTag}"
+      ],
+      "data_points": [
+        "attacks", "stars", "destruction_percentage",
+        "war_preference", "map_position"
+      ]
+    },
+    "player_progress": {
+      "endpoints": [
+        "/players/{tag}"
+      ],
+      "data_points": [
+        "townhall_level", "troop_levels", "hero_levels",
+        "achievements", "trophies", "attack_wins"
+      ]
+    },
+    "statistics_dashboard": {
+      "endpoints": [
+        "/clans/{tag}",
+        "/clans/{tag}/capitalraidseasons",
+        "/players/{tag}"
+      ],
+      "aggregations": [
+        "Total donations", "Average trophies", "War win rate",
+        "Capital gold contributions", "Attack success rate"
+      ]
+    }
+  }
+}
+
+
+
