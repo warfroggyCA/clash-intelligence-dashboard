@@ -4,6 +4,7 @@ import { normalizeTag } from '@/lib/tags';
 import { notFound } from 'next/navigation';
 import TrophyChart from '@/components/player/TrophyChart';
 import DonationChart from '@/components/player/DonationChart';
+import HeroUpgradeHistory from '@/components/player/HeroUpgradeHistory';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
