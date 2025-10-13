@@ -41,7 +41,7 @@ interface RosterData {
   date: string;
 }
 
-type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'rush' | 'activity' | 'donations' | 'received';
+type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
 type SortDirection = 'asc' | 'desc';
 
 // League tier ranking for sorting (highest to lowest)
