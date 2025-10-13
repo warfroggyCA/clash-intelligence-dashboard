@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { Trophy } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, ChartConfig } from '@/components/ui/chart';
@@ -17,79 +17,88 @@ interface TrophyChartProps {
 }
 
 const chartConfig = {
-  trophies: {
-    label: 'Regular Trophies',
-    color: 'hsl(48, 96%, 53%)', // Yellow
-  },
   rankedTrophies: {
     label: 'Ranked Trophies',
-    color: 'hsl(217, 91%, 60%)', // Blue
+    color: 'hsl(48, 96%, 53%)', // Gold
   },
 } satisfies ChartConfig;
 
 export default function TrophyChart({ data }: TrophyChartProps) {
   if (!data || data.length === 0) {
     return (
-      <Card>
+      <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700">
         <CardContent className="flex flex-col items-center justify-center min-h-[300px]">
-          <Trophy className="w-12 h-12 mb-3 text-muted-foreground" />
-          <p className="text-muted-foreground">No trophy history available</p>
+          <Trophy className="w-12 h-12 mb-3 text-slate-600" />
+          <p className="text-slate-400">No trophy history available</p>
         </CardContent>
       </Card>
     );
   }
 
-  // Format data for chart
-  const chartData = data.map(point => ({
-    date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    trophies: point.trophies ?? 0,
-    rankedTrophies: point.rankedTrophies ?? 0,
-  }));
+  // Format data for chart - carry forward last known value for missing data
+  let lastKnownTrophies = null as number | null;
+  const chartData = data.map(point => {
+    const trophies = point.rankedTrophies ?? lastKnownTrophies ?? 0;
+    if (point.rankedTrophies !== null) {
+      lastKnownTrophies = point.rankedTrophies;
+    }
+    return {
+      date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      rankedTrophies: trophies,
+    };
+  });
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Trophy className="w-5 h-5 text-yellow-500" />
+    <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
+      <CardHeader className="bg-gradient-to-r from-yellow-500/10 to-amber-500/10 border-b border-slate-700">
+        <CardTitle className="flex items-center gap-2 text-white">
+          <div className="p-2 bg-yellow-500/20 rounded-lg">
+            <Trophy className="w-5 h-5 text-yellow-400" />
+          </div>
           Trophy Progression
         </CardTitle>
-        <CardDescription>
-          Track your trophy journey over the last {data.length} days
+        <CardDescription className="text-slate-300">
+          Your ranked battle trophy journey
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <ChartContainer config={chartConfig} className="h-[300px] w-full">
-          <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
+      <CardContent className="pt-6">
+        <ChartContainer config={chartConfig} className="h-[320px] w-full">
+          <AreaChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+            <defs>
+              <linearGradient id="colorTrophies" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(48, 96%, 53%)" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="hsl(48, 96%, 53%)" stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
             <XAxis 
               dataKey="date" 
               tickLine={false}
               axisLine={false}
               tickMargin={8}
+              stroke="#94a3b8"
+              style={{ fontSize: '12px' }}
             />
             <YAxis 
               tickLine={false}
               axisLine={false}
               tickMargin={8}
+              stroke="#94a3b8"
+              style={{ fontSize: '12px' }}
             />
             <ChartTooltip content={<ChartTooltipContent />} />
-            <Line 
-              type="monotone" 
-              dataKey="trophies" 
-              stroke="var(--color-trophies)"
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
-            />
-            <Line 
+            <Area 
               type="monotone" 
               dataKey="rankedTrophies" 
               stroke="var(--color-rankedTrophies)"
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
+              fillOpacity={1}
+              fill="url(#colorTrophies)"
+              strokeWidth={3}
+              dot={{ fill: 'hsl(48, 96%, 53%)', r: 4, strokeWidth: 2, stroke: '#1e293b' }}
+              activeDot={{ r: 7, strokeWidth: 2 }}
+              connectNulls
             />
-          </LineChart>
+          </AreaChart>
         </ChartContainer>
       </CardContent>
     </Card>
