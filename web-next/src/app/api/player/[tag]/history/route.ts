@@ -229,17 +229,19 @@ export async function GET(
                 
                 // Only check upgrades if current snapshot has actual hero data
                 if (currentHeroData && Object.keys(currentHeroData).length > 0) {
-                  const prevHeroes = previousData.heroLevels || {};
-                  const currHeroes = currentData.heroLevels || {};
-                  
                   for (const hero of heroNames) {
                     // Only report upgrade if current snapshot has this hero's data
                     if (currentHeroData[hero] !== null && currentHeroData[hero] !== undefined) {
-                      const prevLevel = prevHeroes[hero] ?? 0;
-                      const currLevel = currHeroes[hero] ?? 0;
-                      if (currLevel > prevLevel && prevLevel > 0) {
-                        heroUpgrades.push(`${heroLabels[hero]}: ${prevLevel} → ${currLevel}`);
+                      const prevRealLevel = lastRealHeroLevels[hero];
+                      const currLevel = currentHeroData[hero]!;
+                      
+                      // Only report if we have a previous real level AND there's an actual increase
+                      if (prevRealLevel !== null && currLevel > prevRealLevel) {
+                        heroUpgrades.push(`${heroLabels[hero]}: ${prevRealLevel} → ${currLevel}`);
                       }
+                      
+                      // Update last real level
+                      lastRealHeroLevels[hero] = currLevel;
                     }
                   }
                 }
