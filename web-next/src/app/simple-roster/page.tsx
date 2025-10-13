@@ -506,7 +506,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                               />
                             </div>
                           ) : (
-                            <span title={leagueTooltip} className="text-xs text-brand-text-tertiary cursor-help">Unranked</span>
+                            <span title={leagueTooltip} className="text-xs text-brand-text-tertiary cursor-help">Inactive</span>
                           )}
                         </div>
                       </td>
