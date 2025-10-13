@@ -296,8 +296,8 @@ export default function SimpleRosterPage() {
         </div>
 
         {/* Roster Table - Desktop */}
-        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
+        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-visible">
+          <div className="overflow-x-auto overflow-y-visible">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-brand-surface-secondary border-b border-brand-border">
