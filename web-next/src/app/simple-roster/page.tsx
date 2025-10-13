@@ -681,7 +681,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                   {/* Name with Role */}
                   <div className="flex items-baseline gap-1.5 mb-2 flex-wrap">
                     <Link
-                      href={`/simple-player/${player.tag.replace('#', '')}`}
+                      href={`/player/${player.tag.replace('#', '')}/history`}
                       className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline truncate leading-tight"
                       style={{ fontFamily: "'Clash Display', sans-serif" }}
                     >
