@@ -63,9 +63,15 @@ const nextConfig = {
   // Disable production source maps for faster builds
   productionBrowserSourceMaps: false,
 
-  // Experimental: Skip CSS minification to avoid build errors
-  experimental: {
-    optimizeCss: false,
+  // Webpack config override to disable CSS minification
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // Remove CSS minimizer plugin to avoid build errors
+      config.optimization.minimizer = config.optimization.minimizer.filter(
+        (plugin) => plugin.constructor.name !== 'CssMinimizerPlugin'
+      );
+    }
+    return config;
   },
 
   // Security headers
