@@ -213,18 +213,25 @@ export async function GET(
               if (includeDeltas && previousData) {
                 const heroUpgrades: string[] = [];
                 
-                // Check for hero upgrades
-                const prevHeroes = previousData.heroLevels || {};
-                const currHeroes = currentData.heroLevels || {};
-                
+                // Check for hero upgrades - ONLY if we have REAL new data (not carried forward)
+                const currentHeroData = stat.hero_levels || {};
                 const heroNames: (keyof HeroLevels)[] = ['bk', 'aq', 'gw', 'rc', 'mp'];
                 const heroLabels = { bk: 'BK', aq: 'AQ', gw: 'GW', rc: 'RC', mp: 'MP' };
                 
-                for (const hero of heroNames) {
-                  const prevLevel = prevHeroes[hero] ?? 0;
-                  const currLevel = currHeroes[hero] ?? 0;
-                  if (currLevel > prevLevel) {
-                    heroUpgrades.push(`${heroLabels[hero]}: ${prevLevel} → ${currLevel}`);
+                // Only check upgrades if current snapshot has actual hero data
+                if (currentHeroData && Object.keys(currentHeroData).length > 0) {
+                  const prevHeroes = previousData.heroLevels || {};
+                  const currHeroes = currentData.heroLevels || {};
+                  
+                  for (const hero of heroNames) {
+                    // Only report upgrade if current snapshot has this hero's data
+                    if (currentHeroData[hero] !== null && currentHeroData[hero] !== undefined) {
+                      const prevLevel = prevHeroes[hero] ?? 0;
+                      const currLevel = currHeroes[hero] ?? 0;
+                      if (currLevel > prevLevel && prevLevel > 0) {
+                        heroUpgrades.push(`${heroLabels[hero]}: ${prevLevel} → ${currLevel}`);
+                      }
+                    }
                   }
                 }
 
