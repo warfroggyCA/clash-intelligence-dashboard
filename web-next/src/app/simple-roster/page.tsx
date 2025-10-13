@@ -472,7 +472,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     >
                       <td className="px-4 py-3">
                         <Link 
-                          href={`/simple-player/${player.tag.replace('#', '')}`}
+                          href={`/player/${player.tag.replace('#', '')}/history`}
                           className="text-clash-gold hover:text-clash-gold/80 font-bold hover:underline transition-colors"
                           style={{ fontFamily: "'Clash Display', sans-serif" }}
                         >
