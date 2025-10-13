@@ -114,7 +114,7 @@ export default function HeroUpgradeHistory({ data }: HeroUpgradeHistoryProps) {
             </div>
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
