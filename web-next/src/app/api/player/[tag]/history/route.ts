@@ -151,6 +151,15 @@ export async function GET(
               role: null as string | null,
             };
 
+            // Track last REAL (non-carried-forward) hero levels for delta comparison
+            const lastRealHeroLevels = {
+              bk: null as number | null,
+              aq: null as number | null,
+              gw: null as number | null,
+              rc: null as number | null,
+              mp: null as number | null,
+            };
+
             for (const stat of statsData) {
               const snapshot = snapshotMap.get(stat.snapshot_id);
               if (!snapshot) continue;
