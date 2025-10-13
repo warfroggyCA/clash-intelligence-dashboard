@@ -133,6 +133,21 @@ export default function SimpleRosterPage() {
         case 'rush':
           comparison = calculateRushPercentage(a) - calculateRushPercentage(b);
           break;
+        case 'bk':
+          comparison = (a.bk || 0) - (b.bk || 0);
+          break;
+        case 'aq':
+          comparison = (a.aq || 0) - (b.aq || 0);
+          break;
+        case 'gw':
+          comparison = (a.gw || 0) - (b.gw || 0);
+          break;
+        case 'rc':
+          comparison = (a.rc || 0) - (b.rc || 0);
+          break;
+        case 'mp':
+          comparison = (a.mp || 0) - (b.mp || 0);
+          break;
         case 'activity':
           const aActivity = calculateActivityScore(a).score;
           const bActivity = calculateActivityScore(b).score;
