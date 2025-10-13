@@ -232,15 +232,17 @@ export async function GET(
                   for (const hero of heroNames) {
                     // Only report upgrade if current snapshot has this hero's data
                     if (currentHeroData[hero] !== null && currentHeroData[hero] !== undefined) {
-                      const prevRealLevel = lastRealHeroLevels[hero];
                       const currLevel = currentHeroData[hero]!;
+                      const prevRealLevel = lastRealHeroLevels[hero];
                       
-                      // Only report if we have a previous real level AND there's an actual increase
+                      // Only report upgrade if:
+                      // 1. We have a previous real level (not first data point)
+                      // 2. There's an actual increase
                       if (prevRealLevel !== null && currLevel > prevRealLevel) {
                         heroUpgrades.push(`${heroLabels[hero]}: ${prevRealLevel} → ${currLevel}`);
                       }
                       
-                      // Update last real level
+                      // Always update last real level when we have actual data
                       lastRealHeroLevels[hero] = currLevel;
                     }
                   }
