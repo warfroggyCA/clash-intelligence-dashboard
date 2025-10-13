@@ -35,18 +35,11 @@ export default function TrophyChart({ data }: TrophyChartProps) {
     );
   }
 
-  // Format data for chart - carry forward last known value for missing data
-  let lastKnownTrophies = null as number | null;
-  const chartData = data.map(point => {
-    const trophies = point.rankedTrophies ?? lastKnownTrophies ?? 0;
-    if (point.rankedTrophies !== null) {
-      lastKnownTrophies = point.rankedTrophies;
-    }
-    return {
-      date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-      rankedTrophies: trophies,
-    };
-  });
+  // Format data for chart (backend already handles carry-forward)
+  const chartData = data.map(point => ({
+    date: new Date(point.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+    rankedTrophies: point.rankedTrophies ?? 0,
+  }));
 
   return (
     <Card className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 border-slate-700 overflow-hidden">
