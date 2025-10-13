@@ -1,28 +1,17 @@
 /**
- * Clash Intelligence Dashboard - Main Dashboard
+ * Clash Intelligence Dashboard - Main Page
  * 
- * A comprehensive Clash of Clans clan management dashboard featuring:
- * - Live roster data from CoC API with rate limiting
- * - Hero level tracking with TH-appropriate max levels
- * - Rush percentage calculation (peer-relative)
- * - Donation balance tracking (shows deficit when receiving more than giving)
- * - Tenure tracking with append-only ledger
- * - Player notes and custom fields
- * - AI-powered coaching and summaries
- * - Snapshot versioning for historical data
- * - Modern UI with gradients and responsive design
+ * Redirects to /simple-roster (the new clean roster view)
  * 
- * Version: 1.0.0 (New Architecture)
- * Last Updated: January 2025
+ * Version: 2.0.0 (Simplified Architecture)
+ * Last Updated: October 2025
  */
 
-import React from 'react';
-export const dynamic = 'force-dynamic';
-import dynamicImport from 'next/dynamic';
-const ClientAppShellNoSSR = dynamicImport(() => import('@/components/ClientAppShell'), { ssr: false });
-import { cfg } from '@/lib/config';
-import type { Roster } from '@/types';
-import { buildRosterSnapshotFirst } from '@/lib/roster';
+import { redirect } from 'next/navigation';
+
+export default function Home() {
+  redirect('/simple-roster');
+}
 
 // =============================================================================
 // BEAUTIFUL PLACEHOLDER COMPONENTS
