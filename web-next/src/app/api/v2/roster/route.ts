@@ -108,6 +108,29 @@ export async function GET(req: NextRequest) {
       throw metricsError;
     }
 
+    // Fetch last week's trophy data (most recent Monday snapshot before weekly reset)
+    // Monday DOW = 1, captured at 4:30 AM UTC before Tuesday 5 AM reset
+    let lastWeekTrophies = new Map<string, number>();
+    if (memberIds.length > 0) {
+      const { data: mondaySnapshotRows, error: mondayError } = await supabase
+        .from('member_snapshot_stats')
+        .select('member_id, trophies, snapshot_date')
+        .in('member_id', memberIds)
+        .filter('snapshot_date', 'gte', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()) // Last 30 days to find historical Mondays
+        .order('snapshot_date', { ascending: false });
+
+      if (!mondayError && mondaySnapshotRows) {
+        // Find most recent Monday (DOW=1) for each member
+        for (const row of mondaySnapshotRows) {
+          const snapshotDate = new Date(row.snapshot_date);
+          const dayOfWeek = snapshotDate.getUTCDay();
+          if (dayOfWeek === 1 && !lastWeekTrophies.has(row.member_id)) {
+            lastWeekTrophies.set(row.member_id, row.trophies ?? 0);
+          }
+        }
+      }
+    }
+
     const metricsByMember = new Map<string, Record<string, { value: number; metadata?: Record<string, any> | null }>>();
     for (const metric of metricsRows ?? []) {
       if (!metric?.member_id || !metric.metric_name) continue;
@@ -162,6 +185,12 @@ export async function GET(req: NextRequest) {
         const leagueTrophies = typeof league === 'object' ? league?.trophies ?? null : null;
         const leagueIconSmall = typeof league === 'object' ? league?.iconUrls?.small ?? null : null;
         const leagueIconMedium = typeof league === 'object' ? league?.iconUrls?.medium ?? null : null;
+        
+        // Extract leagueTier (new Oct 2025 ranked system) - CRITICAL for sorting
+        const leagueTier = summary.leagueTier || detail?.leagueTier || null;
+        const leagueTierId = typeof leagueTier === 'object' ? leagueTier?.id : null;
+        const leagueTierName = typeof leagueTier === 'object' ? leagueTier?.name : null;
+        
         return {
           id: `clan:${tag}`,
           tag,
@@ -169,6 +198,7 @@ export async function GET(req: NextRequest) {
           townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
           role: summary.role ?? null,
           trophies: summary.trophies ?? detail?.trophies ?? null,
+          lastWeekTrophies: null, // Not available in clan snapshot fallback
           donations: summary.donations ?? null,
           donationsReceived: summary.donationsReceived ?? null,
           heroLevels,
@@ -184,8 +214,8 @@ export async function GET(req: NextRequest) {
           leagueIconMedium,
           battleModeTrophies: leagueTrophies ?? null,
           rankedTrophies: leagueTrophies ?? null,
-          rankedLeagueId: leagueId,
-          rankedLeagueName: leagueName,
+          rankedLeagueId: leagueTierId || leagueId, // Use leagueTier.id first, fallback to legacy
+          rankedLeagueName: leagueTierName || leagueName,
           rankedModifier: null,
           seasonResetAt: null,
           equipmentFlags: detail?.equipment ?? null,
@@ -260,6 +290,11 @@ export async function GET(req: NextRequest) {
         const leagueIconSmall = typeof league === 'object' ? league?.iconUrls?.small ?? null : null;
         const leagueIconMedium = typeof league === 'object' ? league?.iconUrls?.medium ?? null : null;
 
+        // Extract leagueTier (new Oct 2025 ranked system) - CRITICAL for sorting
+        const leagueTier = summary.leagueTier || detail?.leagueTier || null;
+        const leagueTierId = typeof leagueTier === 'object' ? leagueTier?.id : null;
+        const leagueTierName = typeof leagueTier === 'object' ? leagueTier?.name : null;
+
         return {
           id: `fallback:${tag}`,
           tag,
@@ -267,6 +302,7 @@ export async function GET(req: NextRequest) {
           townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
           role: summary.role ?? null,
           trophies: summary.trophies ?? detail?.trophies ?? null,
+          lastWeekTrophies: null, // Not available in payload fallback
           donations: summary.donations ?? null,
           donationsReceived: summary.donationsReceived ?? null,
           heroLevels: heroLevels,
@@ -282,8 +318,8 @@ export async function GET(req: NextRequest) {
           leagueIconMedium,
           battleModeTrophies: leagueTrophies ?? null,
           rankedTrophies: leagueTrophies ?? null,
-          rankedLeagueId: leagueId,
-          rankedLeagueName: leagueName,
+          rankedLeagueId: leagueTierId || leagueId, // Use leagueTier.id first, fallback to legacy
+          rankedLeagueName: leagueTierName || leagueName,
           rankedModifier: null,
           seasonResetAt: null,
           equipmentFlags: detail?.equipment ?? null,
@@ -416,6 +452,7 @@ export async function GET(req: NextRequest) {
         townHallLevel: enrichedTh ?? member.th_level ?? null,
         role: stat.role ?? member.role ?? null,
         trophies: stat.trophies,
+        lastWeekTrophies: lastWeekTrophies.get(stat.member_id) ?? null,
         donations: stat.donations,
         donationsReceived: stat.donations_received,
         heroLevels: enrichedHeroLevels ?? null,

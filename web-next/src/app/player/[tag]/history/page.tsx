@@ -22,7 +22,9 @@ interface PlayerHistoryPageProps {
 }
 
 async function fetchPlayerHistory(tag: string, days: number = 30) {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const port = process.env.PORT || '3333';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+    || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : `http://localhost:${port}`);
   const response = await fetch(
     `${baseUrl}/api/player/${encodeURIComponent(tag)}/history?days=${days}`,
     { cache: 'no-store' }

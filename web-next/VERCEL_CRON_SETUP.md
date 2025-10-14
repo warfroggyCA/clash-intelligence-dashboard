@@ -11,12 +11,14 @@
   "crons": [
     {
       "path": "/api/cron/daily-ingestion",
-      "schedule": "0 3 * * *"
+      "schedule": "30 4 * * *"
     }
   ]
 }
 ```
-- **Runs daily at 3:00 AM UTC**
+- **Runs daily at 4:30 AM UTC**
+- **Strategic timing**: Captures data 30 minutes before the weekly Ranked League reset (5:00 AM UTC Tuesday)
+- **Monday snapshots** represent final weekly tournament results before reset
 - **Production only** (Vercel cron jobs do NOT run on preview deployments)
 
 ### 2. API Endpoint
@@ -108,7 +110,7 @@ curl -X GET "http://localhost:3000/api/cron/daily-ingestion" \
 3. Functions → Look for logs starting with `[Cron]`
 
 ### Look for these log messages:
-- ✅ `[Cron] Starting daily ingestion job at 2025-01-15T03:00:00.000Z`
+- ✅ `[Cron] Starting daily ingestion job at 2025-01-15T04:30:00.000Z`
 - ✅ `[Cron] Daily ingestion completed successfully`
 - ❌ `[Cron] Daily ingestion FAILED`
 - ❌ `[Cron] Unauthorized access attempt`
@@ -146,6 +148,9 @@ curl -X GET "http://localhost:3000/api/cron/daily-ingestion" \
 ## Additional Notes
 
 - **Timezone**: All cron schedules are in UTC
+- **Weekly Reset Timing**: Ranked League tournaments reset Tuesday 5:00 AM UTC
+  - Cron at 4:30 AM captures final weekly results (30-minute buffer)
+  - Monday snapshots can be used for weekly performance tracking
 - **Timeout**: Max execution time is 60 seconds (configured in vercel.json)
 - **Memory**: 1024 MB allocated (configured in vercel.json)
 - **Retries**: Vercel does NOT automatically retry failed cron jobs
@@ -154,13 +159,14 @@ curl -X GET "http://localhost:3000/api/cron/daily-ingestion" \
 ## Next Steps
 
 1. ✅ Fix applied: Changed POST to GET in endpoint
-2. 🔄 Deploy to production: `vercel deploy --prod`
-3. 🔄 Verify CRON_SECRET is set in Vercel
-4. 🔄 Wait for next scheduled run (3 AM UTC)
-5. 🔄 Check logs to confirm successful execution
+2. ✅ Timing optimized: Changed from 3:00 AM to 4:30 AM UTC
+3. 🔄 Deploy to production: `vercel deploy --prod`
+4. 🔄 Verify CRON_SECRET is set in Vercel
+5. 🔄 Wait for next scheduled run (4:30 AM UTC)
+6. 🔄 Check logs to confirm successful execution
 
 ---
 
-**Last Updated**: 2025-01-15  
-**Status**: CRITICAL FIX APPLIED - Ready for deployment
+**Last Updated**: 2025-01-14  
+**Status**: OPTIMIZED for weekly Ranked League tracking
 

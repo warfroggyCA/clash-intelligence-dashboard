@@ -776,6 +776,7 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
       return {
         snapshot_id: latestSnapshot.id,
         member_id: memberId,
+        snapshot_date: snapshot.fetchedAt, // Add snapshot_date for weekly tracking
         th_level: member.townHallLevel,
         role: member.role,
         trophies: member.trophies ?? 0,
