@@ -23,6 +23,7 @@ interface RosterMember {
   townHallLevel: number;
   role: string;
   trophies: number;
+  lastWeekTrophies?: number;
   donations: number;
   donationsReceived: number;
   rankedLeagueName?: string;
@@ -41,7 +42,7 @@ interface RosterData {
   date: string;
 }
 
-type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
+type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
 type SortDirection = 'asc' | 'desc';
 
 // League tier ranking for sorting (highest to lowest)
