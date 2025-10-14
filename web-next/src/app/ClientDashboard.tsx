@@ -153,7 +153,7 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
                 </p>
                 <div className="flex gap-3">
                   <a
-                    href="/simple-roster"
+                    href="/"
                     className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
                   >
                     🚀 Try Simple Roster

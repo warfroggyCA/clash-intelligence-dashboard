@@ -1,14 +1,15 @@
 /**
  * Clash Intelligence Dashboard - Main Page
- * 
- * Redirects to /simple-roster (the new clean roster view)
- * 
- * Version: 2.0.0 (Simplified Architecture)
+ *
+ * Renders the simplified roster experience directly at `/`
+ * while keeping `/simple-roster` as a legacy redirect.
+ *
+ * Version: 3.0.0 (Simplified Architecture)
  * Last Updated: October 2025
  */
 
-import { redirect } from 'next/navigation';
+import SimpleRosterPage from './simple-roster/RosterPage';
 
 export default function Home() {
-  redirect('/simple-roster');
+  return <SimpleRosterPage />;
 }
