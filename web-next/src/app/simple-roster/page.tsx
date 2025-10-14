@@ -107,28 +107,35 @@ export default function SimpleRosterPage() {
                       (roleOrder[b.role as keyof typeof roleOrder] || 0);
           break;
         case 'league':
-          // Primary: League tier, Secondary: Trophy count
-          const aTier = getLeagueTier(a.rankedLeagueName);
-          const bTier = getLeagueTier(b.rankedLeagueName);
+          // The Infallible Three-Tiered Sorting Logic
+          // Tier 1: Competitive Eligibility (Primary Filter)
+          // Players with rankedLeagueId !== 105000000 are seeded in competitive system
+          const aCompetitiveFlag = (a.rankedLeagueId && a.rankedLeagueId !== 105000000) ? 1 : 0;
+          const bCompetitiveFlag = (b.rankedLeagueId && b.rankedLeagueId !== 105000000) ? 1 : 0;
           
-          // If one has league and other doesn't, ranked goes first
-          if (aTier > 0 && bTier === 0) {
-            comparison = 1; // a has league, goes first (higher value)
-          } else if (aTier === 0 && bTier > 0) {
-            comparison = -1; // b has league, goes first
-          } else if (aTier !== bTier) {
-            // Both have leagues, compare tiers
-            comparison = aTier - bTier;
-          } else if (aTier > 0) {
-            // Same tier, compare trophies
-            comparison = a.trophies - b.trophies;
+          // Primary sort: Competitive players first (descending)
+          if (aCompetitiveFlag !== bCompetitiveFlag) {
+            comparison = aCompetitiveFlag - bCompetitiveFlag; // 1 comes before 0 (descending)
+          } else if (aCompetitiveFlag === 1) {
+            // Tier 2: Both are competitive - sort by league tier ID (descending)
+            const aLeagueTier = a.rankedLeagueId || 0;
+            const bLeagueTier = b.rankedLeagueId || 0;
+            comparison = aLeagueTier - bLeagueTier; // Higher ID = higher tier
+            
+            // Tier 2b: If same league, sort by last week trophies (descending)
+            if (comparison === 0) {
+              comparison = (a.lastWeekTrophies ?? 0) - (b.lastWeekTrophies ?? 0);
+            }
           } else {
-            // Both unranked, sort by trophies
+            // Tier 3: Both are unranked - sort by legacy trophies (descending)
             comparison = a.trophies - b.trophies;
           }
           break;
         case 'trophies':
           comparison = a.trophies - b.trophies;
+          break;
+        case 'lastWeek':
+          comparison = (a.lastWeekTrophies ?? 0) - (b.lastWeekTrophies ?? 0);
           break;
         case 'rush':
           comparison = calculateRushPercentage(a) - calculateRushPercentage(b);
@@ -201,18 +208,17 @@ export default function SimpleRosterPage() {
               townHallLevel: m.townHallLevel,
               role: m.role,
               trophies: m.trophies,
+              lastWeekTrophies: m.lastWeekTrophies,
               donations: m.donations,
               donationsReceived: m.donationsReceived,
               rankedLeagueId: m.rankedLeagueId,
               rankedTrophies: m.rankedTrophies,
-              // Only show ranked league badge if:
-              // 1. They have a non-Unranked league tier (ID !== 105000000)
-              // 2. AND they have trophies > 0 (indicating actual participation)
-              rankedLeagueName: (
-                m.rankedLeagueId && 
-                m.rankedLeagueId !== 105000000 && 
-                m.trophies > 0
-              ) ? m.rankedLeagueName : null,
+              // Show league badge only if player is seeded in ranked system
+              // rankedLeagueId === 105000000 means truly unranked (not registered)
+              // rankedLeagueId !== 105000000 means seeded in new 34-tier competitive system
+              rankedLeagueName: (m.rankedLeagueId && m.rankedLeagueId !== 105000000) 
+                ? m.rankedLeagueName 
+                : null,
               // Hero levels for rush calculation
               bk: m.bk,
               aq: m.aq,
@@ -282,7 +288,7 @@ export default function SimpleRosterPage() {
 
   return (
     <DashboardLayout clanName={roster.clanName}>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
@@ -296,7 +302,7 @@ export default function SimpleRosterPage() {
         </div>
 
         {/* Roster Table - Desktop */}
-        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-visible">
+        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-visible w-full">
           <div className="overflow-x-auto overflow-y-visible">
             <table className="w-full border-collapse">
               <thead>
@@ -332,9 +338,16 @@ export default function SimpleRosterPage() {
                   <th 
                     onClick={() => handleSort('trophies')}
                     title="Current trophy count from multiplayer battles - Higher trophies = harder opponents - Click to sort"
-                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Trophies {sortKey === 'trophies' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('lastWeek')}
+                    title="Last week's final trophy count (Monday 4:30 AM UTC snapshot before Tuesday reset) - Shows previous week's competitive performance - Click to sort"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    Last Week {sortKey === 'lastWeek' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('rush')}
@@ -472,7 +485,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     >
                       <td className="px-4 py-3">
                         <Link 
-                          href={`/player/${player.tag.replace('#', '')}/history`}
+                          href={`/player/${player.tag.replace('#', '')}`}
                           className="text-clash-gold hover:text-clash-gold/80 font-bold hover:underline transition-colors"
                           style={{ fontFamily: "'Clash Display', sans-serif" }}
                         >
@@ -530,6 +543,18 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                             </span>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {player.lastWeekTrophies !== null && player.lastWeekTrophies !== undefined ? (
+                          <span 
+                            title={`Last week's final trophy count: ${player.lastWeekTrophies.toLocaleString()}`}
+                            className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
+                          >
+                            {player.lastWeekTrophies.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-brand-text-muted">–</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         <span 
@@ -681,7 +706,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                   {/* Name with Role */}
                   <div className="flex items-baseline gap-1.5 mb-2 flex-wrap">
                     <Link
-                      href={`/player/${player.tag.replace('#', '')}/history`}
+                      href={`/player/${player.tag.replace('#', '')}`}
                       className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline truncate leading-tight"
                       style={{ fontFamily: "'Clash Display', sans-serif" }}
                     >

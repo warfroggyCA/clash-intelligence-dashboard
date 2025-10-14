@@ -628,6 +628,72 @@ th { @apply text-left font-semibold; }
   background-color: transparent;
 }
 
+/* Full-width responsive roster table container */
+.roster-table-container {
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+}
+
+.roster-table-container .clash-card {
+  width: 100%;
+  min-width: 100%;
+}
+
+.roster-table-container .clash-table {
+  width: 100%;
+  min-width: max-content;
+  table-layout: auto;
+}
+
+/* Smooth horizontal scrolling on desktop */
+@media (min-width: 1024px) {
+  .roster-table-container {
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.5) rgba(15, 23, 42, 0.3);
+  }
+
+  .roster-table-container::-webkit-scrollbar {
+    height: 12px;
+  }
+
+  .roster-table-container::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.3);
+    border-radius: 6px;
+  }
+
+  .roster-table-container::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.5);
+    border-radius: 6px;
+    border: 2px solid rgba(15, 23, 42, 0.3);
+  }
+
+  .roster-table-container::-webkit-scrollbar-thumb:hover {
+    background: rgba(148, 163, 184, 0.7);
+  }
+}
+
+/* Light theme scrollbar */
+[data-theme="light"] .roster-table-container {
+  scrollbar-color: rgba(100, 116, 139, 0.5) rgba(226, 232, 240, 0.5);
+}
+
+[data-theme="light"] .roster-table-container::-webkit-scrollbar-track {
+  background: rgba(226, 232, 240, 0.5);
+}
+
+[data-theme="light"] .roster-table-container::-webkit-scrollbar-thumb {
+  background: rgba(100, 116, 139, 0.5);
+  border-color: rgba(226, 232, 240, 0.5);
+}
+
+[data-theme="light"] .roster-table-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 116, 139, 0.7);
+}
+
 /* Light theme table styles */
 [data-theme="light"] .clash-table th {
   background-color: #F3F6FF;

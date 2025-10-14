@@ -587,9 +587,9 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
         </div>
       ) : (
         <>
-          <div className="hidden lg:block overflow-x-auto">
-            <div className="clash-card overflow-hidden">
-              <table className="clash-table" role="table" aria-label="Clan member roster">
+          <div className="hidden lg:block w-full overflow-x-auto roster-table-container">
+            <div className="clash-card overflow-hidden min-w-full">
+              <table className="clash-table min-w-full" role="table" aria-label="Clan member roster">
                 <caption className="sr-only">
                   Clan member roster showing {paginatedMembers.length} of {filteredMembers.length} members.
                   {hasActiveFilters && ' Filters are active.'}
