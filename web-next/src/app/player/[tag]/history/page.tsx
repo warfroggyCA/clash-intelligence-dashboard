@@ -65,7 +65,7 @@ export default async function PlayerHistoryPage({ params, searchParams }: Player
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link 
-              href="/simple-roster"
+              href="/"
               className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
             >
               <ArrowLeft className="w-5 h-5 text-slate-400" />
