@@ -457,7 +457,7 @@ export const TableRow: React.FC<TableRowProps> = ({
                 handleOpenProfile();
               }}
               className="player-name-link font-heading font-semibold text-left transition-colors focus-ring-inset tooltip-trigger"
-              style={{ color: 'var(--player-name-color, #1e40af)' }}
+              style={{ color: 'var(--player-name-color, #ffffff)' }}
               data-tooltip="View player profile"
             >
               {member.name}
@@ -484,18 +484,15 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Town Hall Column */}
       <TableCell className="text-center border-r border-slate-700/40" isActiveSort={isActiveColumn('th')}>
-        <div className="flex items-center justify-center gap-2">
-          <div className="relative">
-            <TownHallBadge
-              level={th}
-              size="sm"
-              showLevel={false}
-              showBox={false}
-              className="drop-shadow-md"
-            />
-            <span className="absolute -bottom-1.5 -right-1.5 h-6 w-6 rounded-full bg-slate-900/95" aria-hidden />
-          </div>
-          <span className="font-semibold text-white">{th}</span>
+        <div className="flex items-center justify-center">
+          <TownHallBadge
+            level={th}
+            size="sm"
+            showBox={false}
+            showLevel
+            className="drop-shadow-md"
+            levelBadgeClassName="rounded-full border-0 bg-slate-950/95 px-1.5 text-sm font-bold text-high-contrast shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+          />
         </div>
       </TableCell>
 

@@ -493,7 +493,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       <td className="px-4 py-3">
                         <Link 
                           href={`/player/${player.tag.replace('#', '')}`}
-                          className="text-clash-gold hover:text-clash-gold/80 font-bold hover:underline transition-colors"
+                          className="text-white hover:text-slate-200 font-bold hover:underline transition-colors"
                           style={{ fontFamily: "'Clash Display', sans-serif" }}
                         >
                           {player.name}
@@ -508,10 +508,14 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <div className="flex justify-center">
-                          <div title={`Town Hall ${player.townHallLevel}`}>
-                            <TownHallBadge level={player.townHallLevel} size="sm" showLevel={true} showBox={false} />
-                          </div>
+                        <div className="flex items-center justify-center" title={`Town Hall ${player.townHallLevel}`}>
+                          <TownHallBadge
+                            level={player.townHallLevel}
+                            size="sm"
+                            showLevel
+                            showBox={false}
+                            levelBadgeClassName="rounded-full border-0 bg-slate-950/95 px-1.5 text-sm font-bold text-brand-text-primary shadow-[0_2px_4px_rgba(0,0,0,0.5)]"
+                          />
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -724,11 +728,11 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                 <div className="flex-1 min-w-0">
                   {/* Name with Role */}
                   <div className="flex items-baseline gap-1.5 mb-2 flex-wrap">
-                    <Link
-                      href={`/player/${player.tag.replace('#', '')}`}
-                      className="text-base font-bold text-clash-gold hover:text-clash-gold/80 hover:underline truncate leading-tight"
-                      style={{ fontFamily: "'Clash Display', sans-serif" }}
-                    >
+                      <Link
+                        href={`/player/${player.tag.replace('#', '')}`}
+                        className="text-base font-bold text-white hover:text-slate-200 hover:underline truncate leading-tight"
+                        style={{ fontFamily: "'Clash Display', sans-serif" }}
+                      >
                       {player.name}
                     </Link>
                     <span className="text-sm text-brand-text-tertiary leading-tight">•</span>

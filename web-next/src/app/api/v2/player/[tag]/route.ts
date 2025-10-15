@@ -547,6 +547,24 @@ export async function GET(
 
     const timelineEvents = buildTimelineEvents(recentSnapshots ?? []);
 
+    const primaryStats = statsRow ?? recentSnapshots?.[0] ?? null;
+    const heroLevels = coerceHeroLevels(primaryStats?.hero_levels ?? null);
+
+    const rankedPrimary =
+      toNumber(primaryStats?.ranked_trophies) ??
+      toNumber(memberRow.ranked_trophies) ??
+      toNumber(primaryStats?.trophies) ??
+      toNumber(memberRow.league_trophies);
+    const trophies = rankedPrimary ?? 0;
+    const rankedTrophies = rankedPrimary ?? null;
+    const donations = toNumber(primaryStats?.donations);
+    const donationsReceived = toNumber(primaryStats?.donations_received);
+
+    const rankedLeagueId =
+      primaryStats?.ranked_league_id ?? memberRow.ranked_league_id ?? null;
+    const rankedLeagueName =
+      primaryStats?.ranked_league_name ?? memberRow.ranked_league_name ?? null;
+
     const seasonStartDate = new Date(SEASON_START_ISO);
     let lastWeekTrophies: number | null = null;
     let seasonTotalTrophies = 0;
@@ -575,24 +593,6 @@ export async function GET(
       }
     }
     seasonTotalTrophies += trophies;
-
-    const primaryStats = statsRow ?? recentSnapshots?.[0] ?? null;
-    const heroLevels = coerceHeroLevels(primaryStats?.hero_levels ?? null);
-
-    const rankedPrimary =
-      toNumber(primaryStats?.ranked_trophies) ??
-      toNumber(memberRow.ranked_trophies) ??
-      toNumber(primaryStats?.trophies) ??
-      toNumber(memberRow.league_trophies);
-    const trophies = rankedPrimary ?? 0;
-    const rankedTrophies = rankedPrimary ?? null;
-    const donations = toNumber(primaryStats?.donations);
-    const donationsReceived = toNumber(primaryStats?.donations_received);
-
-    const rankedLeagueId =
-      primaryStats?.ranked_league_id ?? memberRow.ranked_league_id ?? null;
-    const rankedLeagueName =
-      primaryStats?.ranked_league_name ?? memberRow.ranked_league_name ?? null;
 
     const enrichedForMember: MemberEnriched = {
       petLevels: primaryStats?.pet_levels ?? null,

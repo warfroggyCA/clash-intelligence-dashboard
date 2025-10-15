@@ -270,9 +270,15 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
         <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl p-8 border border-blue-500/20 shadow-2xl">
           <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-8">
             <div className="flex items-center gap-5">
-              <div className="flex items-center gap-3">
-                <TownHallBadge level={player.townHallLevel} size="lg" showBox={false} showLevel={false} />
-                <span className="text-lg font-semibold text-white">TH {player.townHallLevel}</span>
+              <div className="flex items-center">
+                <TownHallBadge
+                  level={player.townHallLevel}
+                  size="lg"
+                  showBox={false}
+                  showLevel
+                  className="drop-shadow-2xl"
+                  levelBadgeClassName="rounded-full border-0 bg-slate-950/95 px-2 text-lg font-bold text-white shadow-[0_3px_8px_rgba(0,0,0,0.55)]"
+                />
               </div>
               <div>
                 <h1
