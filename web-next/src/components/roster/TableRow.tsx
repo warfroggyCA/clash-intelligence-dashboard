@@ -24,7 +24,7 @@ import { safeLocaleDateString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
   calculateDonationBalance, 
-  calculateActivityScore,
+  getMemberActivity,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
@@ -196,7 +196,7 @@ export const TableRow: React.FC<TableRowProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = calculateActivityScore(member);
+  const activity = getMemberActivity(member);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
@@ -484,14 +484,18 @@ export const TableRow: React.FC<TableRowProps> = ({
 
       {/* Town Hall Column */}
       <TableCell className="text-center border-r border-slate-700/40" isActiveSort={isActiveColumn('th')}>
-        <div className="flex items-center justify-center">
-          <TownHallBadge
-            level={th}
-            size="sm"
-            showLevel={true}
-            showBox={false}
-            className="drop-shadow-md"
-          />
+        <div className="flex items-center justify-center gap-2">
+          <div className="relative">
+            <TownHallBadge
+              level={th}
+              size="sm"
+              showLevel={false}
+              showBox={false}
+              className="drop-shadow-md"
+            />
+            <span className="absolute -bottom-1.5 -right-1.5 h-6 w-6 rounded-full bg-slate-900/95" aria-hidden />
+          </div>
+          <span className="font-semibold text-white">{th}</span>
         </div>
       </TableCell>
 
@@ -501,9 +505,9 @@ export const TableRow: React.FC<TableRowProps> = ({
         title="Current trophies"
         isActiveSort={isActiveColumn('trophies')}
       >
-        <div className="flex items-center justify-center">
+        <div className="flex items-center justify-center gap-2">
           <span className="font-semibold text-clash-gold">
-            {formatNumber((member as any).rankedTrophies ?? member.trophies ?? 0)}
+            {formatNumber((member as any).rankedTrophies ?? member.trophies ?? undefined)}
           </span>
           {isRushedPlayer && (
             <span
@@ -514,6 +518,17 @@ export const TableRow: React.FC<TableRowProps> = ({
             </span>
           )}
         </div>
+      </TableCell>
+
+      {/* Season Total Column */}
+      <TableCell
+        className="text-center border-r border-gray-400"
+        title="Season cumulative trophies since Oct 2025"
+        isActiveSort={isActiveColumn('season')}
+      >
+        <span className="font-semibold text-clash-gold">
+          {formatNumber((member as any).seasonTotalTrophies ?? undefined)}
+        </span>
       </TableCell>
 
 

@@ -12,28 +12,22 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { TownHallBadge, LeagueBadge } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
-import { calculateRushPercentage, calculateActivityScore, getTownHallLevel, getHeroCaps } from '@/lib/business/calculations';
+import { calculateRushPercentage, getMemberActivity, getTownHallLevel, getHeroCaps } from '@/lib/business/calculations';
+import type { Member } from '@/types';
+import type { Member } from '@/types';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
-interface RosterMember {
+interface RosterMember extends Member {
   tag: string;
   name: string;
   townHallLevel: number;
   role: string;
   trophies: number;
-  lastWeekTrophies?: number;
   donations: number;
   donationsReceived: number;
-  rankedLeagueName?: string;
-  rankedLeagueId?: number;
-  rankedTrophies?: number;
-  bk?: number;
-  aq?: number;
-  gw?: number;
-  rc?: number;
-  mp?: number;
+  lastWeekTrophies?: number;
 }
 
 interface RosterData {
@@ -42,7 +36,7 @@ interface RosterData {
   date: string;
 }
 
-type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
+type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'season' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
 type SortDirection = 'asc' | 'desc';
 
 // League tier ranking for sorting (highest to lowest)
@@ -138,6 +132,9 @@ export default function SimpleRosterPage() {
         case 'lastWeek':
           comparison = (a.lastWeekTrophies ?? 0) - (b.lastWeekTrophies ?? 0);
           break;
+        case 'season':
+          comparison = (a.seasonTotalTrophies ?? 0) - (b.seasonTotalTrophies ?? 0);
+          break;
         case 'rush':
           comparison = calculateRushPercentage(a) - calculateRushPercentage(b);
           break;
@@ -157,8 +154,8 @@ export default function SimpleRosterPage() {
           comparison = (a.mp || 0) - (b.mp || 0);
           break;
         case 'activity':
-          const aActivity = calculateActivityScore(a).score;
-          const bActivity = calculateActivityScore(b).score;
+          const aActivity = getMemberActivity(a).score;
+          const bActivity = getMemberActivity(b).score;
           comparison = aActivity - bActivity;
           break;
         case 'donations':
@@ -225,7 +222,9 @@ export default function SimpleRosterPage() {
               aq: m.aq,
               gw: m.gw,
               rc: m.rc,
-              mp: m.mp
+              mp: m.mp,
+              seasonTotalTrophies: m.seasonTotalTrophies ?? null,
+              activity: m.activity ?? null,
             })),
             clanName: apiData.data.clan.name,
             date: apiData.data.snapshot.fetchedAt
@@ -343,15 +342,22 @@ export default function SimpleRosterPage() {
                   >
                     Trophies {sortKey === 'trophies' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th 
-                    onClick={() => handleSort('lastWeek')}
-                    title="Last week's final trophy count (Monday 4:30 AM UTC snapshot before Tuesday reset) - Shows previous week's competitive performance - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
-                  >
-                    Last Week {sortKey === 'lastWeek' && (sortDirection === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th 
-                    onClick={() => handleSort('rush')}
+                <th 
+                  onClick={() => handleSort('lastWeek')}
+                  title="Last week's final trophy count (Monday 4:30 AM UTC snapshot before Tuesday reset) - Shows previous week's competitive performance - Click to sort"
+                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                >
+                  Last Week {sortKey === 'lastWeek' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  onClick={() => handleSort('season')}
+                  title="Cumulative trophy total via Monday finals since season start"
+                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                >
+                  Season Total {sortKey === 'season' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  onClick={() => handleSort('rush')}
                     title="Rush % - Heroes below max for current TH level. Lower is better (0% = maxed) - Click to sort"
                     className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
@@ -419,7 +425,7 @@ export default function SimpleRosterPage() {
                 {sortedMembers.map((player, index) => {
                   const roleBadgeVariant = getRoleBadgeVariant(player.role);
                   const rushPercent = calculateRushPercentage(player);
-                  const activity = calculateActivityScore(player);
+                  const activity = getMemberActivity(player);
                   const maxHeroes = getHeroCaps(player.townHallLevel);
                   
                   // Rush color coding
@@ -540,7 +546,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                               className="absolute bottom-0 right-0 text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                               style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                             >
-                              {player.trophies >= 1000 ? `${(player.trophies / 1000).toFixed(1)}k` : player.trophies}
+                              {player.trophies.toLocaleString()}
                             </span>
                           </div>
                         </div>
@@ -552,6 +558,18 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                             className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
                           >
                             {player.lastWeekTrophies.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-brand-text-muted">–</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {player.seasonTotalTrophies !== null && player.seasonTotalTrophies !== undefined ? (
+                          <span 
+                            title={`Season total trophies (sum of weekly finals): ${player.seasonTotalTrophies.toLocaleString()}`}
+                            className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
+                          >
+                            {player.seasonTotalTrophies.toLocaleString()}
                           </span>
                         ) : (
                           <span className="text-xs text-brand-text-muted">–</span>
@@ -641,7 +659,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
         <div className="md:hidden space-y-4">
           {sortedMembers.map((player) => {
             const rushPercent = calculateRushPercentage(player);
-            const activity = calculateActivityScore(player);
+            const activity = getMemberActivity(player);
             const maxHeroes = getHeroCaps(player.townHallLevel);
             
             const rushColor = rushPercent >= 70 ? 'text-red-600' : 

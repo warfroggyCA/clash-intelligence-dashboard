@@ -81,6 +81,15 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Current trophy count'
   },
   {
+    key: 'season',
+    label: 'Season Total',
+    shortLabel: 'Season',
+    group: 'Basic Info',
+    sortable: true,
+    className: 'text-center border-r border-gray-400',
+    description: 'Cumulative Monday trophy totals since season start'
+  },
+  {
     key: 'bk',
     label: 'BK',
     shortLabel: 'BK',
@@ -203,7 +212,7 @@ interface GroupConfig {
 const GROUP_CONFIGS: GroupConfig[] = [
   {
     name: 'Basic Info',
-    columns: 4,
+    columns: 5,
     className: 'border-r border-slate-400'
   },
   {

@@ -7,7 +7,7 @@ import { TownHallBadge, LeagueBadge, HeroLevel, Button, GlassCard } from '@/comp
 import {
   calculateRushPercentage,
   calculateDonationBalance,
-  calculateActivityScore,
+  getMemberActivity,
   getTownHallLevel,
 } from '@/lib/business/calculations';
 import { HERO_MAX_LEVELS } from '@/types';
@@ -22,13 +22,16 @@ interface PlayerCardProps {
 export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
   const rushPercent = calculateRushPercentage(member);
   const donations = calculateDonationBalance(member);
-  const activity = calculateActivityScore(member);
+  const activity = getMemberActivity(member);
   const th = getTownHallLevel(member);
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const roleVariant = getRoleBadgeVariant(member.role);
   const showRoleBadge = roleVariant.tone !== 'member';
   const router = useRouter();
   const leagueInfo = resolveMemberLeague(member);
+  const seasonTotalDisplay = (member as any).seasonTotalTrophies != null
+    ? ((member as any).seasonTotalTrophies as number).toLocaleString()
+    : '—';
 
   const handleClick = () => {
     if (onSelect) {
@@ -70,6 +73,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
       <div className="grid grid-cols-2 gap-3">
         <StatChip label="Trophies" value={(member as any).rankedTrophies ?? member.trophies ?? 0} icon="🏆" />
         <StatChip label="Rush" value={`${rushPercent.toFixed(1)}%`} icon={rushPercent >= 70 ? '🔥' : rushPercent >= 40 ? '⚠️' : '✅'} />
+        <StatChip label="Season" value={seasonTotalDisplay} icon="⭐" tone="positive" />
         <StatChip label="Donated" value={member.donations ?? 0} icon="💝" tone="positive" />
         <StatChip
           label="Received"

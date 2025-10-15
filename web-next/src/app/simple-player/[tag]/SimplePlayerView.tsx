@@ -5,8 +5,8 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { TownHallBadge, LeagueBadge, HeroLevel } from '@/components/ui';
-import { calculateRushPercentage, calculateActivityScore, getHeroCaps } from '@/lib/business/calculations';
-import type { Member, PlayerActivityTimelineEvent, MemberEnriched } from '@/types';
+import { calculateRushPercentage, getHeroCaps } from '@/lib/business/calculations';
+import type { Member, PlayerActivityTimelineEvent, MemberEnriched, ActivityEvidence } from '@/types';
 
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
@@ -18,6 +18,7 @@ interface PlayerData {
   trophies: number;
   lastWeekTrophies?: number | null;
   rankedTrophies?: number | null;
+  seasonTotalTrophies?: number | null;
   donations?: number;
   donationsReceived?: number;
   rankedLeagueId?: number | null;
@@ -31,6 +32,7 @@ interface PlayerData {
   mp?: number | null;
   clan?: { name: string } | null;
   activityTimeline?: PlayerActivityTimelineEvent[];
+  activity?: ActivityEvidence | null;
   enriched?: MemberEnriched | null;
 }
 
@@ -107,6 +109,14 @@ const EVENT_STYLE_MAP: Record<TimelineEventType, { background: string; accent: s
     accent: 'bg-slate-600',
     label: 'Upcoming snapshot',
   },
+};
+
+const EMPTY_ACTIVITY: ActivityEvidence = {
+  last_active_at: new Date(0).toISOString(),
+  confidence: 'weak',
+  indicators: [],
+  score: 0,
+  level: 'Inactive',
 };
 
 interface SimplePlayerViewProps {
@@ -197,14 +207,16 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
     rankedLeagueId: player.rankedLeagueId ?? undefined,
     rankedLeagueName: player.rankedLeagueName ?? undefined,
     rankedTrophies: player.rankedTrophies ?? undefined,
+    seasonTotalTrophies: player.seasonTotalTrophies ?? undefined,
     donations: player.donations ?? undefined,
     donationsReceived: player.donationsReceived ?? undefined,
     bk: player.bk ?? undefined,
     aq: player.aq ?? undefined,
     gw: player.gw ?? undefined,
-    rc: player.rc ?? undefined,
-    mp: player.mp ?? undefined,
-    enriched: player.enriched ?? null,
+   rc: player.rc ?? undefined,
+   mp: player.mp ?? undefined,
+   enriched: player.enriched ?? null,
+    activity: player.activity ?? null,
   } as Member;
 
   const rushPercent = calculateRushPercentage(memberLike);
@@ -212,26 +224,12 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
   const activityTimeline = (player.activityTimeline ?? []).map((event) => ({
     ...event,
     heroUpgrades: event.heroUpgrades ?? [],
-    petUpgrades: event.petUpgrades ?? [],
-    equipmentUpgrades: event.equipmentUpgrades ?? [],
-    superTroopsActivated: event.superTroopsActivated ?? [],
-    superTroopsDeactivated: event.superTroopsDeactivated ?? [],
-    warStarsDelta: event.warStarsDelta ?? 0,
-    attackWinsDelta: event.attackWinsDelta ?? 0,
-    defenseWinsDelta: event.defenseWinsDelta ?? 0,
-    capitalContributionDelta: event.capitalContributionDelta ?? 0,
-    builderHallDelta: event.builderHallDelta ?? 0,
-    versusBattleWinsDelta: event.versusBattleWinsDelta ?? 0,
-    maxTroopDelta: event.maxTroopDelta ?? 0,
-    maxSpellDelta: event.maxSpellDelta ?? 0,
-    achievementDelta: event.achievementDelta ?? 0,
-    expLevelDelta: event.expLevelDelta ?? 0,
     trophyDelta: event.trophyDelta ?? 0,
     rankedTrophyDelta: event.rankedTrophyDelta ?? 0,
     donationsDelta: event.donationsDelta ?? 0,
     donationsReceivedDelta: event.donationsReceivedDelta ?? 0,
   }));
-  const activity = calculateActivityScore(memberLike, { timeline: activityTimeline });
+  const activity = player.activity ?? EMPTY_ACTIVITY;
   const activityDetails = activity.indicators.length
     ? activity.indicators.map((indicator: string) => `• ${indicator}`).join('\n')
     : 'No recent activity indicators yet.';
@@ -272,7 +270,10 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
         <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl p-8 border border-blue-500/20 shadow-2xl">
           <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-8">
             <div className="flex items-center gap-5">
-              <TownHallBadge level={player.townHallLevel} size="lg" showBox={false} />
+              <div className="flex items-center gap-3">
+                <TownHallBadge level={player.townHallLevel} size="lg" showBox={false} showLevel={false} />
+                <span className="text-lg font-semibold text-white">TH {player.townHallLevel}</span>
+              </div>
               <div>
                 <h1
                   className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent mb-2"
@@ -303,7 +304,7 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="mt-8 grid grid-cols-1 md:grid-cols-4 gap-6">
             <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 shadow-inner">
               <p className="text-xs text-blue-200/70 uppercase tracking-wider mb-1">Current Week</p>
               <p className="text-3xl font-mono font-bold text-clash-gold">{(player.trophies ?? 0).toLocaleString()}</p>
@@ -319,6 +320,15 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
                   : '—'}
               </p>
               <p className="text-xs text-blue-100/60 mt-2">Monday snapshot (4:30 AM UTC) before Tuesday reset.</p>
+            </div>
+            <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 shadow-inner">
+              <p className="text-xs text-blue-200/70 uppercase tracking-wider mb-1">Season Total</p>
+              <p className="text-3xl font-mono font-bold text-clash-gold">
+                {player.seasonTotalTrophies !== null && player.seasonTotalTrophies !== undefined
+                  ? player.seasonTotalTrophies.toLocaleString()
+                  : '—'}
+              </p>
+              <p className="text-xs text-blue-100/60 mt-2">Cumulative Monday finals since the ranked season reset.</p>
             </div>
             <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 shadow-inner">
               <p className="text-xs text-blue-200/70 uppercase tracking-wider mb-1">Ranked League</p>

@@ -512,6 +512,16 @@ export const calculateActivityScore = (
   };
 };
 
+export const getMemberActivity = (
+  member: Member,
+  options?: ActivityScoreOptions
+): ActivityEvidence => {
+  if (member.activity) {
+    return member.activity;
+  }
+  return calculateActivityScore(member, options);
+};
+
 /**
  * Get activity weighting for manual overrides
  */

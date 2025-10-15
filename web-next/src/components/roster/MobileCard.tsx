@@ -11,7 +11,7 @@ import { safeLocaleDateString } from '@/lib/date';
 import {
   calculateRushPercentage,
   calculateDonationBalance,
-  calculateActivityScore,
+  getMemberActivity,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
@@ -78,7 +78,7 @@ export const MobileCard: React.FC<MobileCardProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = calculateActivityScore(member);
+  const activity = getMemberActivity(member);
   const rushWarning = isRushed(member);
   const rushSevere = isVeryRushed(member);
   const netReceiver = isNetReceiver(member);
@@ -220,6 +220,10 @@ export const MobileCard: React.FC<MobileCardProps> = ({
           <span className="text-white/50">Received</span>
           <span className="font-semibold text-sky-300">{formatNumber(member.donationsReceived)}</span>
           {netReceiver && <span className="text-xs text-amber-200" title="Net receiver">📥</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-white/50">Season</span>
+          <span className="font-semibold text-white">{formatNumber((member as any).seasonTotalTrophies ?? undefined)}</span>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-white/50">Tenure</span>

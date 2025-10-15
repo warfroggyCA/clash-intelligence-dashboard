@@ -27,7 +27,7 @@ import { safeLocaleTimeString } from '@/lib/date';
 import { 
   calculateRushPercentage, 
   calculateDonationBalance, 
-  calculateActivityScore,
+  getMemberActivity,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
@@ -167,6 +167,10 @@ const sortMembers = (
         aValue = (a as any).rankedTrophies ?? a.trophies ?? 0;
         bValue = (b as any).rankedTrophies ?? b.trophies ?? 0;
         break;
+      case 'season':
+        aValue = (a as any).seasonTotalTrophies ?? 0;
+        bValue = (b as any).seasonTotalTrophies ?? 0;
+        break;
       case 'donations':
         aValue = a.donations || 0;
         bValue = b.donations || 0;
@@ -180,8 +184,8 @@ const sortMembers = (
         bValue = b.tenure_days || b.tenure || 0;
         break;
       case 'activity':
-        aValue = calculateActivityScore(a).score;
-        bValue = calculateActivityScore(b).score;
+        aValue = getMemberActivity(a).score;
+        bValue = getMemberActivity(b).score;
         break;
       default:
         return 0;
@@ -242,7 +246,7 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 
     // Activity level filter
     if (filters.activityLevel && filters.activityLevel !== 'all') {
-      const activity = calculateActivityScore(member);
+      const activity = getMemberActivity(member);
       if (activity.level.toLowerCase() !== filters.activityLevel) return false;
     }
 
