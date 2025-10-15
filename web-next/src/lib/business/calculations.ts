@@ -19,6 +19,7 @@ import {
   WarAnalytics,
   WarPerformanceData,
   TownHallLevel,
+  PlayerActivityTimelineEvent,
   HERO_MAX_LEVELS,
   HERO_MIN_TH
 } from '@/types';
@@ -200,110 +201,314 @@ export const isLowDonator = (member: Member): boolean => {
 // ACTIVITY CALCULATIONS
 // =============================================================================
 
+export interface ActivityScoreOptions {
+  timeline?: PlayerActivityTimelineEvent[];
+  lookbackDays?: number;
+}
+
+const confidenceToPoints = (confidence: ActivityEvidence['confidence']): number => {
+  switch (confidence) {
+    case 'definitive':
+      return 4;
+    case 'high':
+      return 2.5;
+    case 'medium':
+      return 1.2;
+    default:
+      return 0;
+  }
+};
+
+const pointsToConfidence = (points: number): ActivityEvidence['confidence'] => {
+  if (points >= 4) return 'definitive';
+  if (points >= 2.5) return 'high';
+  if (points >= 1) return 'medium';
+  return 'weak';
+};
+
 /**
- * Calculate activity score based on various factors
- * 
- * NEW MULTI-INDICATOR SCORING SYSTEM (Jan 2025):
- * Total: 0-100 points
- * 
- * Tier 1: Definitive Real-Time Indicators (0-70 points)
- * - Ranked Battle Participation: 0-20 points (definitive)
- * - War/Raids/Clan Games: 0-35 points (future - placeholder)
- * - Donations: 0-15 points
- * 
- * Tier 2: Supporting Indicators (0-30 points)
- * - Hero Development: 0-10 points
- * - Clan Role: 0-10 points
- * - Trophy Activity: 0-10 points (future - placeholder)
+ * Calculate activity score using real-time signals plus recent timeline events.
+ * The optional `timeline` parameter lets callers feed in the last N days of
+ * snapshot deltas so we can reward war participation, raid contributions,
+ * builder-base play, pet/equipment upgrades, and other enriched metrics.
  */
-export const calculateActivityScore = (member: Member): ActivityEvidence => {
-  let score = 0;
-  const indicators: string[] = [];
-  
-  // TIER 1: Real-time activity indicators (0-70 points)
+export const calculateActivityScore = (
+  member: Member,
+  options?: ActivityScoreOptions
+): ActivityEvidence => {
+  const timeline = options?.timeline ?? [];
+  const lookbackDays = options?.lookbackDays ?? 7;
+  const lookbackCutoff = Date.now() - lookbackDays * 86_400_000;
+
   const realTimeActivity = calculateRealTimeActivity(member);
-  score += realTimeActivity.score;
-  indicators.push(...realTimeActivity.indicators);
-  
-  // TIER 2: Supporting indicators (0-30 points)
-  
-  // 1. Hero Development (0-10 points)
+  let score = realTimeActivity.score;
+  let confidencePoints = confidenceToPoints(realTimeActivity.confidence);
+  const indicatorSet = new Set<string>(realTimeActivity.indicators);
+
+  const aggregate = {
+    heroUpgrades: 0,
+    petUpgrades: 0,
+    equipmentUpgrades: 0,
+    warStarsDelta: 0,
+    attackWinsDelta: 0,
+    defenseWinsDelta: 0,
+    capitalContributionDelta: 0,
+    builderHallDelta: 0,
+    builderWinsDelta: 0,
+    donationDelta: 0,
+    donationReceivedDelta: 0,
+    trophyDelta: 0,
+    rankedTrophyDelta: 0,
+    maxTroopDelta: 0,
+    maxSpellDelta: 0,
+    achievementDelta: 0,
+    expLevelDelta: 0,
+    superTroopsActivated: new Set<string>(),
+  };
+
+  let lastEventTs: number | null = null;
+
+  for (const event of timeline) {
+    const eventTs = event.date ? new Date(event.date).getTime() : Number.NaN;
+    if (!Number.isNaN(eventTs)) {
+      if (lastEventTs === null || eventTs > lastEventTs) {
+        lastEventTs = eventTs;
+      }
+    }
+    if (Number.isNaN(eventTs) || eventTs < lookbackCutoff) {
+      continue;
+    }
+
+    aggregate.heroUpgrades += event.heroUpgrades?.length ?? 0;
+    aggregate.petUpgrades += event.petUpgrades?.length ?? 0;
+    aggregate.equipmentUpgrades += event.equipmentUpgrades?.length ?? 0;
+    aggregate.warStarsDelta += Math.max(0, event.warStarsDelta ?? 0);
+    aggregate.attackWinsDelta += Math.max(0, event.attackWinsDelta ?? 0);
+    aggregate.defenseWinsDelta += Math.max(0, event.defenseWinsDelta ?? 0);
+    aggregate.capitalContributionDelta += Math.max(0, event.capitalContributionDelta ?? 0);
+    aggregate.builderHallDelta += Math.max(0, event.builderHallDelta ?? 0);
+    aggregate.builderWinsDelta += Math.max(0, event.versusBattleWinsDelta ?? 0);
+    aggregate.donationDelta += Math.max(0, event.donationsDelta ?? 0);
+    aggregate.donationReceivedDelta += Math.max(0, event.donationsReceivedDelta ?? 0);
+    aggregate.trophyDelta += Math.abs(event.trophyDelta ?? 0);
+    aggregate.rankedTrophyDelta += Math.abs(event.rankedTrophyDelta ?? 0);
+    aggregate.maxTroopDelta += Math.max(0, event.maxTroopDelta ?? 0);
+    aggregate.maxSpellDelta += Math.max(0, event.maxSpellDelta ?? 0);
+    aggregate.achievementDelta += Math.max(0, event.achievementDelta ?? 0);
+    aggregate.expLevelDelta += Math.max(0, event.expLevelDelta ?? 0);
+    (event.superTroopsActivated ?? []).forEach((troop) =>
+      aggregate.superTroopsActivated.add(troop)
+    );
+  }
+
+  if (aggregate.warStarsDelta > 0 || aggregate.attackWinsDelta > 0) {
+    score += 15;
+    const warParts: string[] = [];
+    if (aggregate.warStarsDelta > 0) warParts.push(`+${aggregate.warStarsDelta}⭐`);
+    if (aggregate.attackWinsDelta > 0) warParts.push(`+${aggregate.attackWinsDelta} atk`);
+    indicatorSet.add(`War activity (${warParts.join(', ')})`);
+    confidencePoints += 2;
+  }
+
+  if (aggregate.defenseWinsDelta > 0) {
+    score += 4;
+    indicatorSet.add('Defense win recorded');
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.capitalContributionDelta > 0) {
+    score += Math.min(12, 6 + Math.floor(aggregate.capitalContributionDelta / 200));
+    indicatorSet.add(
+      `Capital contributed +${aggregate.capitalContributionDelta.toLocaleString()}`
+    );
+    confidencePoints += 1.5;
+  }
+
+  if (aggregate.builderHallDelta > 0 || aggregate.builderWinsDelta >= 3) {
+    score += 8;
+    const builderParts: string[] = [];
+    if (aggregate.builderHallDelta > 0) builderParts.push(`BH +${aggregate.builderHallDelta}`);
+    if (aggregate.builderWinsDelta > 0) builderParts.push(`+${aggregate.builderWinsDelta} wins`);
+    indicatorSet.add(`Builder base activity (${builderParts.join(', ')})`);
+    confidencePoints += 1;
+  }
+
+  if (aggregate.heroUpgrades > 0) {
+    score += 6;
+    indicatorSet.add(
+      aggregate.heroUpgrades === 1
+        ? 'Hero upgrade completed'
+        : `${aggregate.heroUpgrades} hero upgrades`
+    );
+    confidencePoints += 1;
+  }
+
+  if (aggregate.petUpgrades > 0) {
+    score += 5;
+    indicatorSet.add(
+      aggregate.petUpgrades === 1
+        ? 'Pet upgrade completed'
+        : `${aggregate.petUpgrades} pet upgrades`
+    );
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.equipmentUpgrades > 0) {
+    score += 5;
+    indicatorSet.add(
+      aggregate.equipmentUpgrades === 1
+        ? 'Equipment upgrade completed'
+        : `${aggregate.equipmentUpgrades} equipment upgrades`
+    );
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.maxTroopDelta > 0 || aggregate.maxSpellDelta > 0) {
+    score += 4;
+    const labParts: string[] = [];
+    if (aggregate.maxTroopDelta > 0) {
+      labParts.push(
+        `${aggregate.maxTroopDelta} troop${aggregate.maxTroopDelta > 1 ? 's' : ''}`
+      );
+    }
+    if (aggregate.maxSpellDelta > 0) {
+      labParts.push(
+        `${aggregate.maxSpellDelta} spell${aggregate.maxSpellDelta > 1 ? 's' : ''}`
+      );
+    }
+    indicatorSet.add(`Lab upgrades (${labParts.join(', ')})`);
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.achievementDelta > 0) {
+    score += 3;
+    indicatorSet.add(
+      aggregate.achievementDelta === 1
+        ? 'Achievement completed'
+        : `${aggregate.achievementDelta} achievements`
+    );
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.expLevelDelta > 0) {
+    score += 3;
+    indicatorSet.add(
+      `Gained ${aggregate.expLevelDelta} XP level${
+        aggregate.expLevelDelta > 1 ? 's' : ''
+      }`
+    );
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.superTroopsActivated.size > 0) {
+    score += 2;
+    indicatorSet.add(
+      `Activated ${Array.from(aggregate.superTroopsActivated).join(', ')}`
+    );
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.trophyDelta >= 100 || aggregate.rankedTrophyDelta >= 100) {
+    score += 4;
+    indicatorSet.add('Significant trophy swing');
+    confidencePoints += 0.5;
+  }
+
+  if (aggregate.donationDelta >= 100 || aggregate.donationReceivedDelta >= 100) {
+    score += 4;
+    indicatorSet.add('Donation burst');
+    confidencePoints += 0.5;
+  }
+
+  // Hero development weighting
   const th = getTownHallLevel(member);
   const heroes = [member.bk, member.aq, member.gw, member.rc, member.mp];
-  const hasHeroes = heroes.some(level => level && level > 0);
-  
+  const hasHeroes = heroes.some((level) => level && level > 0);
+
   if (hasHeroes) {
     const maxHeroes = getHeroCaps(th);
     const heroKeys: Array<keyof HeroCaps> = ['bk', 'aq', 'gw', 'rc', 'mp'];
-    const heroProgress = heroes.map((level, idx) => {
-      const heroKey = heroKeys[idx];
-      const max = maxHeroes[heroKey] || 0;
-      return max > 0 ? ((level || 0) / max) * 100 : 0;
-    }).filter(p => p > 0); // Only count heroes that exist at this TH
-    
+    const heroProgress = heroes
+      .map((level, idx) => {
+        const heroKey = heroKeys[idx];
+        const max = maxHeroes[heroKey] || 0;
+        return max > 0 ? ((level || 0) / max) * 100 : 0;
+      })
+      .filter((p) => p > 0);
+
     if (heroProgress.length > 0) {
-      const avgProgress = heroProgress.reduce((sum, p) => sum + p, 0) / heroProgress.length;
+      const avgProgress =
+        heroProgress.reduce((sum, p) => sum + p, 0) / heroProgress.length;
       if (avgProgress >= 80) {
-        score += 10;
-        indicators.push("Excellent hero development (80%+)");
+        score += 6;
+        indicatorSet.add('Heroes near cap (80%+)');
       } else if (avgProgress >= 60) {
-        score += 8;
-        indicators.push("Strong hero development (60%+)");
+        score += 4;
+        indicatorSet.add('Strong hero development (60%+)');
       } else if (avgProgress >= 40) {
-        score += 5;
-        indicators.push("Moderate hero development (40%+)");
+        score += 3;
+        indicatorSet.add('Heroes improving (40%+)');
       } else {
-        score += 2;
-        indicators.push("Heroes present");
+        score += 1;
+        indicatorSet.add('Heroes active');
       }
     }
   }
-  
-  // 2. Clan Role (0-10 points)
+
+  // Clan role weighting
   const role = member.role?.toLowerCase() ?? '';
-  if (role === 'leader' || role === 'coleader') {
-    score += 10;
-    indicators.push("Leadership role");
+  if (role === 'leader') {
+    score += 8;
+    indicatorSet.add('Clan leader');
+  } else if (role === 'coleader') {
+    score += 7;
+    indicatorSet.add('Co-leader role');
   } else if (role === 'elder') {
-    score += 5;
-    indicators.push("Elder role");
+    score += 4;
+    indicatorSet.add('Elder responsibilities');
   }
-  
-  // 3. Trophy Activity (0-10 points) - PLACEHOLDER
-  // Future: Implement trophy change tracking when historical data is available
-  // For now, we give minimal points based on current trophy count as a proxy
+
+  // Trophy context
   const trophies = member.trophies ?? 0;
   if (trophies >= 5000) {
-    score += 5;
-    indicators.push("High trophy count (5000+)");
-  } else if (trophies >= 4000) {
+    score += 4;
+    indicatorSet.add('Legend-tier trophies (5000+)');
+  } else if (trophies >= 4200) {
     score += 3;
-    indicators.push("Strong trophy count (4000+)");
+    indicatorSet.add('High trophy count (4200+)');
+  } else if (trophies >= 3600) {
+    score += 2;
+    indicatorSet.add('Competitive trophy range (3600+)');
   } else if (trophies >= 3000) {
     score += 1;
   }
-  
-  // Determine final activity level based on total score
-  // Adjusted thresholds for 0-65 achievable range (until war/raid data is available)
+
+  score = Math.max(0, score);
+  const finalScore = Math.round(score);
+  const confidence = pointsToConfidence(confidencePoints);
+
   let level: ActivityLevel;
-  if (score >= 55) {
+  if (finalScore >= 70) {
     level = 'Very Active';
-  } else if (score >= 40) {
+  } else if (finalScore >= 45) {
     level = 'Active';
-  } else if (score >= 25) {
+  } else if (finalScore >= 28) {
     level = 'Moderate';
-  } else if (score >= 10) {
+  } else if (finalScore >= 15) {
     level = 'Low';
   } else {
     level = 'Inactive';
   }
-  
+
+  const lastActiveAt =
+    lastEventTs !== null ? new Date(lastEventTs).toISOString() : new Date().toISOString();
+
   return {
-    last_active_at: new Date().toISOString(),
-    confidence: realTimeActivity.confidence,
-    indicators,
-    score,
-    level
+    last_active_at: lastActiveAt,
+    confidence,
+    indicators: Array.from(indicatorSet),
+    score: finalScore,
+    level,
   };
 };
 
@@ -327,7 +532,7 @@ export const getActivityWeighting = (activity: ActivityLevel): number => {
  * New scoring system (Jan 2025):
  * - Ranked Battle Participation: 0-20 points (definitive real-time indicator)
  * - Donations: 0-15 points (reduced from 50)
- * - War/Raids/Clan Games: 0-35 points (placeholder for future implementation)
+ * - War/Raids/Builder play: scored via timeline enrichment (see calculateActivityScore)
  * - Hero Development: 0-10 points
  * - Clan Role: 0-10 points
  * - Trophy Activity: 0-10 points (placeholder)
