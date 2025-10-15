@@ -14,7 +14,6 @@ import { TownHallBadge, LeagueBadge } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 import { calculateRushPercentage, getMemberActivity, getTownHallLevel, getHeroCaps } from '@/lib/business/calculations';
 import type { Member } from '@/types';
-import type { Member } from '@/types';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
