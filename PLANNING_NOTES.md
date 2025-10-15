@@ -162,6 +162,7 @@
 - [ ] **Clan Capital Progress** - Track total loot per season
 - [ ] **Membership and Town Hall Evolution** - Timeline of clan changes
 - [ ] **Performance vs Opposition Level** - Stars relative to enemy strength
+- [ ] **Player history scrub timeline** - Security-camera style timeline with event markers and hover popups for player history review
 
 ## Revolutionary Analytics Vision (Phase 4)
 - [ ] **Player DNA Fingerprinting System** - Multi-dimensional player classification
@@ -179,12 +180,17 @@
 
 ## Phase 1 – Dashboard Cleanup (In Progress)
 
-- [ ] **Command Rail**
-  - [ ] Finalize trimmed scope: snapshot freshness, quick refresh, links into Insights/History
-  - [ ] Confirm the command rail only reads from: `selectors.snapshotMetadata`, `selectors.dataAge`, `lastLoadInfo`, and `smartInsights` selectors
-  - [ ] Provide navigation actions that call `setActiveTab` instead of duplicating content (Insights → `coaching`, History → `changes`)
-  - [ ] Move departure alerts, change summary previews, and exports into their new homes (Roster/Insights tabs)
-  - [ ] Write regression checklist (render counts stay low, no Zustand warning logs) before/after refactor
+- [x] **Command Rail**
+  - [x] Retired legacy rail component and removed toggle from header
+  - [x] Relocated manual refresh/exports into the new Leadership Dashboard (`/leadership`)
+- [x] **Quick Actions Bar**
+  - [x] Removed from primary layout to keep roster view lightweight
+  - [x] Re-homed quick actions within the Leadership Dashboard card
+- [ ] **Leadership Dashboard Build-Out**
+  - [x] Create `/leadership` route gated by leadership permissions
+  - [x] Centralize QuickActions and ingestion monitor controls there
+  - [ ] Move departure manager, access manager, and Discord publishing tooling into this console
+  - [ ] Update header/menus to link leadership roles to the new dashboard and prune redundant controls
 
 - [ ] **Roster Tab Consolidation**
   - [ ] Move `RosterStatsPanel` and `RosterHighlightsPanel` content into the roster tab
