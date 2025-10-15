@@ -73,7 +73,7 @@ export default function LeadershipDashboard() {
                   <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
                     <div className="text-xs uppercase tracking-wider text-blue-200/70">Last Snapshot</div>
                     <div className="text-base text-white">
-                      {new Date(leadershipSummary.updatedAt).toLocaleString()}
+                      {leadershipSummary.updatedAt ? new Date(leadershipSummary.updatedAt).toLocaleString() : 'Never'}
                     </div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
