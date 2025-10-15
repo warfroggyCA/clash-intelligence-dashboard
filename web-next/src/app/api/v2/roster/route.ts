@@ -301,7 +301,7 @@ export async function GET(req: NextRequest) {
           tenure_days: null,
           tenure_as_of: null,
           seasonTotalTrophies: seasonTotal,
-          enriched: enrichedForMember,
+          enriched: memberForActivity.enriched,
         } as any;
       });
 
