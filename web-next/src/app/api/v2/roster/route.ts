@@ -240,7 +240,7 @@ export async function GET(req: NextRequest) {
           clanCapitalContributions: detail?.capitalContributions ?? null,
           versusTrophies: detail?.versusTrophies ?? null,
           league: league,
-          builderBaseLeague: detail?.builderBaseLeague ?? null,
+          builderLeague: detail?.builderBaseLeague ?? null,
           leagueTier: leagueTier,
           enriched: {
             petLevels: detail?.pets ? Object.fromEntries(
