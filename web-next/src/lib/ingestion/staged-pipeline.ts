@@ -227,6 +227,24 @@ interface SnapshotStats {
   equipment_flags?: any;
   tenure_days?: number | null;
   tenure_as_of?: string | null;
+  // Enriched fields (October 2025 data enrichment)
+  pet_levels?: Record<string, number> | null;
+  builder_hall_level?: number | null;
+  versus_trophies?: number | null;
+  versus_battle_wins?: number | null;
+  builder_league_id?: number | null;
+  war_stars?: number | null;
+  attack_wins?: number | null;
+  defense_wins?: number | null;
+  capital_contributions?: number | null;
+  max_troop_count?: number | null;
+  max_spell_count?: number | null;
+  super_troops_active?: string[] | null;
+  achievement_count?: number | null;
+  achievement_score?: number | null;
+  exp_level?: number | null;
+  best_trophies?: number | null;
+  best_versus_trophies?: number | null;
 }
 
 function getAchievementValue(detail: any, name: string): number | null {
@@ -774,6 +792,11 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
        }
        const normalizedTenure = tenureDays != null ? Math.max(1, Math.round(tenureDays)) : null;
 
+      // Extract enriched fields from player detail
+      const normalized = normalizeTag(member.tag);
+      const detail = snapshot.playerDetails?.[normalized];
+      const enriched = extractEnrichedFields(detail);
+
       return {
         snapshot_id: latestSnapshot.id,
         member_id: memberId,
@@ -795,9 +818,27 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         ranked_trophies: member.ranked_trophies,
         ranked_league_id: member.ranked_league_id,
         ranked_modifier: member.ranked_modifier,
-        equipment_flags: member.equipment_flags,
+        equipment_flags: enriched.equipmentLevels ?? member.equipment_flags, // Use enriched equipment levels
         tenure_days: normalizedTenure,
         tenure_as_of: tenureAsOf,
+        // Enriched fields (October 2025 data enrichment)
+        pet_levels: enriched.petLevels,
+        builder_hall_level: enriched.builderHallLevel,
+        versus_trophies: enriched.versusTrophies,
+        versus_battle_wins: enriched.versusBattleWins,
+        builder_league_id: enriched.builderLeagueId,
+        war_stars: enriched.warStars,
+        attack_wins: enriched.attackWins,
+        defense_wins: enriched.defenseWins,
+        capital_contributions: enriched.capitalContributions,
+        max_troop_count: enriched.maxTroopCount,
+        max_spell_count: enriched.maxSpellCount,
+        super_troops_active: enriched.superTroopsActive,
+        achievement_count: enriched.achievementCount,
+        achievement_score: enriched.achievementScore,
+        exp_level: enriched.expLevel,
+        best_trophies: enriched.bestTrophies,
+        best_versus_trophies: enriched.bestVersusTrophies,
       };
     }).filter(Boolean) as SnapshotStats[];
 
