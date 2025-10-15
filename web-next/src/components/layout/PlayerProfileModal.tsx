@@ -24,7 +24,7 @@ import LeadershipGuard from '@/components/LeadershipGuard';
 import { 
   calculateRushPercentage, 
   calculateDonationBalance, 
-  calculateActivityScore,
+  getMemberActivity,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
@@ -112,7 +112,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = calculateActivityScore(member);
+  const activity = getMemberActivity(member);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);

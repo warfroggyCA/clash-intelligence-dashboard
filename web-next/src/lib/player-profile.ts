@@ -4,7 +4,7 @@ import { cfg } from './config';
 import { normalizeTag, safeTagForFilename } from './tags';
 import type { FullClanSnapshot } from './full-snapshot';
 import { convertFullSnapshotToDailySnapshot } from './snapshots';
-import { calculateActivityScore, calculateRushPercentage, getMemberAceScore, getMemberAceAvailability } from './business/calculations';
+import { getMemberActivity, calculateRushPercentage, getMemberAceScore, getMemberAceAvailability } from './business/calculations';
 import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
 import { HERO_MAX_LEVELS } from '@/types';
 import type { HeroCaps, Roster } from '@/types';
@@ -201,7 +201,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   console.log('[RCA] ✅ SUCCESS: Player found in both members and playerDetails');
 
   const calcMember = mapMemberForCalculations(member);
-  const activity = calculateActivityScore(calcMember);
+  const activity = getMemberActivity(calcMember);
   const rushScore = calculateRushPercentage(calcMember);
   const townHallLevel = calcMember.townHallLevel ?? playerDetail.townHallLevel ?? 0;
 
@@ -555,8 +555,8 @@ function buildActivityTrend(snapshots: FullClanSnapshot[], playerTag: string): P
       const member = daily.members.find((m) => normalizeTag(m.tag) === playerTag);
       if (!member) return null;
 
-      const playerScore = calculateActivityScore(mapMemberForCalculations(member)).score;
-      const clanScores = daily.members.map((m) => calculateActivityScore(mapMemberForCalculations(m)).score);
+      const playerScore = getMemberActivity(mapMemberForCalculations(member)).score;
+      const clanScores = daily.members.map((m) => getMemberActivity(mapMemberForCalculations(m)).score);
       const clanAverage = clanScores.length > 0 ? clanScores.reduce((sum, value) => sum + value, 0) / clanScores.length : 0;
 
       return {

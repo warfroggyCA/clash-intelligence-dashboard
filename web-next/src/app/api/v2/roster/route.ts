@@ -6,6 +6,9 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { readTenureDetails } from '@/lib/tenure';
 import { extractHeroLevels } from '@/lib/coc';
 import { daysSinceToDate } from '@/lib/date';
+import { calculateActivityScore } from '@/lib/business/calculations';
+import type { Member, MemberEnriched } from '@/types';
+import { extractEnrichedFields } from '@/lib/ingestion/field-extractors';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Disable all caching
@@ -13,6 +16,8 @@ export const revalidate = 0; // Disable all caching
 const querySchema = z.object({
   clanTag: z.string().optional(),
 });
+
+const SEASON_START_ISO = '2025-10-01T00:00:00Z';
 
 export async function GET(req: NextRequest) {
   try {
@@ -131,6 +136,35 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    const seasonTotalMap = new Map<string, number>();
+    if (memberIds.length > 0) {
+      const seasonDaySeenByMember = new Map<string, Set<string>>();
+      const { data: seasonRows, error: seasonError } = await supabase
+        .from('member_snapshot_stats')
+        .select('member_id, trophies, snapshot_date')
+        .in('member_id', memberIds)
+        .gte('snapshot_date', SEASON_START_ISO)
+        .order('snapshot_date', { ascending: false });
+
+      if (!seasonError && seasonRows) {
+        for (const row of seasonRows) {
+          if (!row.snapshot_date) continue;
+          const snapshotDate = new Date(row.snapshot_date);
+          if (Number.isNaN(snapshotDate.valueOf())) continue;
+          if (snapshotDate.getUTCDay() === 1) {
+            const dayKey = snapshotDate.toISOString().slice(0, 10);
+            const seenSet = seasonDaySeenByMember.get(row.member_id) ?? new Set<string>();
+            if (!seenSet.has(dayKey)) {
+              const current = seasonTotalMap.get(row.member_id) ?? 0;
+              seasonTotalMap.set(row.member_id, current + (row.trophies ?? 0));
+              seenSet.add(dayKey);
+              seasonDaySeenByMember.set(row.member_id, seenSet);
+            }
+          }
+        }
+      }
+    }
+
     const metricsByMember = new Map<string, Record<string, { value: number; metadata?: Record<string, any> | null }>>();
     for (const metric of metricsRows ?? []) {
       if (!metric?.member_id || !metric.metric_name) continue;
@@ -191,6 +225,8 @@ export async function GET(req: NextRequest) {
         const leagueTierId = typeof leagueTier === 'object' ? leagueTier?.id : null;
         const leagueTierName = typeof leagueTier === 'object' ? leagueTier?.name : null;
         
+        const seasonTotal = (summary.trophies ?? detail?.trophies ?? 0);
+
         return {
           id: `clan:${tag}`,
           tag,
@@ -202,7 +238,8 @@ export async function GET(req: NextRequest) {
           donations: summary.donations ?? null,
           donationsReceived: summary.donationsReceived ?? null,
           heroLevels,
-          activityScore: null,
+          activity: activityEvidence,
+          activityScore: activityEvidence.score,
           rushPercent: null,
           extras: null,
           league,
@@ -222,6 +259,8 @@ export async function GET(req: NextRequest) {
           metrics: {},
           tenure_days: null,
           tenure_as_of: null,
+          seasonTotalTrophies: seasonTotal,
+          enriched: enrichedForMember,
         } as any;
       });
 
@@ -295,6 +334,45 @@ export async function GET(req: NextRequest) {
         const leagueTierId = typeof leagueTier === 'object' ? leagueTier?.id : null;
         const leagueTierName = typeof leagueTier === 'object' ? leagueTier?.name : null;
 
+        const extracted = detail ? extractEnrichedFields(detail) : null;
+        const enrichedForMember: MemberEnriched = {
+          petLevels: extracted?.petLevels ?? null,
+          builderHallLevel: extracted?.builderHallLevel ?? null,
+          versusTrophies: extracted?.versusTrophies ?? null,
+          versusBattleWins: extracted?.versusBattleWins ?? null,
+          builderLeagueId: extracted?.builderLeagueId ?? null,
+          warStars: extracted?.warStars ?? null,
+          attackWins: extracted?.attackWins ?? null,
+          defenseWins: extracted?.defenseWins ?? null,
+          capitalContributions: extracted?.capitalContributions ?? null,
+          maxTroopCount: extracted?.maxTroopCount ?? null,
+          maxSpellCount: extracted?.maxSpellCount ?? null,
+          superTroopsActive: extracted?.superTroopsActive ?? null,
+          achievementCount: extracted?.achievementCount ?? null,
+          achievementScore: extracted?.achievementScore ?? null,
+          expLevel: extracted?.expLevel ?? null,
+          bestTrophies: extracted?.bestTrophies ?? null,
+          bestVersusTrophies: extracted?.bestVersusTrophies ?? null,
+          equipmentLevels: extracted?.equipmentLevels ?? null,
+        };
+
+        const memberForActivity: Member = {
+          name: summary.name ?? tag,
+          tag,
+          role: summary.role ?? undefined,
+          townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? undefined,
+          trophies: summary.trophies ?? detail?.trophies ?? undefined,
+          rankedLeagueId: (leagueTierId || leagueId || undefined) ?? undefined,
+          rankedLeagueName: leagueTierName || leagueName || undefined,
+          rankedTrophies: (leagueTrophies ?? undefined) ?? undefined,
+          donations: summary.donations ?? undefined,
+          donationsReceived: summary.donationsReceived ?? undefined,
+          seasonTotalTrophies: (summary.trophies ?? detail?.trophies ?? 0),
+          enriched: enrichedForMember,
+        };
+
+        const activityEvidence = calculateActivityScore(memberForActivity);
+
         return {
           id: `fallback:${tag}`,
           tag,
@@ -306,7 +384,8 @@ export async function GET(req: NextRequest) {
           donations: summary.donations ?? null,
           donationsReceived: summary.donationsReceived ?? null,
           heroLevels: heroLevels,
-          activityScore: null,
+          activity: activityEvidence,
+          activityScore: activityEvidence.score,
           rushPercent: null,
           extras: null,
           league,
@@ -326,6 +405,8 @@ export async function GET(req: NextRequest) {
           metrics: {},
           tenure_days: null,
           tenure_as_of: null,
+          seasonTotalTrophies: (summary.trophies ?? detail?.trophies ?? 0),
+          enriched: enrichedForMember,
         } as any;
       });
 
@@ -445,6 +526,51 @@ export async function GET(req: NextRequest) {
       const rc = typeof heroes === 'object' ? (heroes.rc ?? heroes.RC ?? null) : null;
       const mp = typeof heroes === 'object' ? (heroes.mp ?? heroes.MP ?? null) : null;
 
+      const enrichedForMember: MemberEnriched = {
+        petLevels: (stat as any).pet_levels ?? null,
+        builderHallLevel: (stat as any).builder_hall_level ?? null,
+        versusTrophies: (stat as any).versus_trophies ?? null,
+        versusBattleWins: (stat as any).versus_battle_wins ?? null,
+        builderLeagueId: (stat as any).builder_league_id ?? null,
+        warStars: (stat as any).war_stars ?? null,
+        attackWins: (stat as any).attack_wins ?? null,
+        defenseWins: (stat as any).defense_wins ?? null,
+        capitalContributions: (stat as any).capital_contributions ?? null,
+        maxTroopCount: (stat as any).max_troop_count ?? null,
+        maxSpellCount: (stat as any).max_spell_count ?? null,
+        superTroopsActive: (stat as any).super_troops_active ?? null,
+        achievementCount: (stat as any).achievement_count ?? null,
+        achievementScore: (stat as any).achievement_score ?? null,
+        expLevel: (stat as any).exp_level ?? null,
+        bestTrophies: (stat as any).best_trophies ?? null,
+        bestVersusTrophies: (stat as any).best_versus_trophies ?? null,
+        equipmentLevels: (stat as any).equipment_flags ?? null,
+      };
+
+      const seasonTotal = (seasonTotalMap.get(stat.member_id) ?? 0) + (stat.trophies ?? 0);
+
+      const memberForActivity: Member = {
+        name: member.name ?? member.tag ?? '',
+        tag: member.tag ?? (normalizedTag ?? ''),
+        role: stat.role ?? member.role ?? undefined,
+        townHallLevel: enrichedTh ?? member.th_level ?? undefined,
+        trophies: stat.trophies ?? undefined,
+        rankedLeagueId: rankedLeagueId ?? undefined,
+        rankedLeagueName: (rankedLeagueNameFromStat ?? member.ranked_league_name ?? rankedNameFromDetail ?? undefined) || undefined,
+        rankedTrophies: rankedTrophies ?? undefined,
+        donations: stat.donations ?? undefined,
+        donationsReceived: stat.donations_received ?? undefined,
+        bk: bk ?? undefined,
+        aq: aq ?? undefined,
+        gw: gw ?? undefined,
+        rc: rc ?? undefined,
+        mp: mp ?? undefined,
+        seasonTotalTrophies: seasonTotal,
+        enriched: enrichedForMember,
+      };
+
+      const activityEvidence = calculateActivityScore(memberForActivity);
+
       return {
         id: stat.member_id,
         tag: member.tag ?? null,
@@ -462,7 +588,8 @@ export async function GET(req: NextRequest) {
         gw,
         rc,
         mp,
-        activityScore: stat.activity_score ?? null,
+        activity: activityEvidence,
+        activityScore: activityEvidence.score,
         rushPercent: stat.rush_percent ?? null,
         extras: stat.extras ?? null,
         league: member.league ?? null,
@@ -485,6 +612,8 @@ export async function GET(req: NextRequest) {
         // Add tenure data
         tenure_days: computedTenure ?? null,
         tenure_as_of: tenureAsOf,
+        seasonTotalTrophies: seasonTotal,
+        enriched: enrichedForMember,
       };
     });
 

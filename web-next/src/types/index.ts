@@ -37,6 +37,7 @@ export interface Member {
   versusTrophies?: number;
   donations?: number;
   donationsReceived?: number;
+  seasonTotalTrophies?: number | null;
   warStars?: number;
   clanCapitalContributions?: number;
   leagueId?: number;
@@ -108,6 +109,7 @@ export interface Member {
     value: number;
     metadata?: Record<string, any> | null;
   }>;
+  activity?: ActivityEvidence | null;
 }
 
 export interface MemberEnriched {
@@ -322,6 +324,11 @@ export interface PlayerActivityTimelineEvent {
   expLevelDelta: number;
   summary: string;
   eventTypes?: string[];
+}
+
+export interface ActivityEnabledMember extends Member {
+  activity?: ActivityEvidence | null;
+  enriched?: MemberEnriched | null;
 }
 
 // =============================================================================
@@ -587,6 +594,7 @@ export type SortKey =
   | "rush"
   | "ace"
   | "trophies"
+  | "season"
   | "donations"
   | "donationsReceived"
   | "donationBalance"

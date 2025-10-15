@@ -1,10 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { calculateActivityScore } from '@/lib/business/calculations';
+import type { Member, MemberEnriched } from '@/types';
 import type { PlayerActivityTimelineEvent } from '@/types';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+const SEASON_START_ISO = '2025-10-01T00:00:00Z';
 
 type HeroKey = 'bk' | 'aq' | 'gw' | 'rc' | 'mp';
 
@@ -543,7 +547,10 @@ export async function GET(
 
     const timelineEvents = buildTimelineEvents(recentSnapshots ?? []);
 
+    const seasonStartDate = new Date(SEASON_START_ISO);
     let lastWeekTrophies: number | null = null;
+    let seasonTotalTrophies = 0;
+    const seasonDaysSeen = new Set<string>();
     if (recentSnapshots) {
       for (const snapshot of recentSnapshots) {
         if (!snapshot.snapshot_date) continue;
@@ -553,12 +560,21 @@ export async function GET(
           const mondayTrophies =
             toNumber(snapshot.ranked_trophies) ?? toNumber(snapshot.trophies);
           if (mondayTrophies !== null) {
-            lastWeekTrophies = mondayTrophies;
-            break;
+            if (lastWeekTrophies === null) {
+              lastWeekTrophies = mondayTrophies;
+            }
+            if (snapshotDate >= seasonStartDate) {
+              const dayKey = snapshotDate.toISOString().slice(0, 10);
+              if (!seasonDaysSeen.has(dayKey)) {
+                seasonTotalTrophies += mondayTrophies;
+                seasonDaysSeen.add(dayKey);
+              }
+            }
           }
         }
       }
     }
+    seasonTotalTrophies += trophies;
 
     const primaryStats = statsRow ?? recentSnapshots?.[0] ?? null;
     const heroLevels = coerceHeroLevels(primaryStats?.hero_levels ?? null);
@@ -577,6 +593,49 @@ export async function GET(
       primaryStats?.ranked_league_id ?? memberRow.ranked_league_id ?? null;
     const rankedLeagueName =
       primaryStats?.ranked_league_name ?? memberRow.ranked_league_name ?? null;
+
+    const enrichedForMember: MemberEnriched = {
+      petLevels: primaryStats?.pet_levels ?? null,
+      builderHallLevel: primaryStats?.builder_hall_level ?? null,
+      versusTrophies: primaryStats?.versus_trophies ?? null,
+      versusBattleWins: primaryStats?.versus_battle_wins ?? null,
+      builderLeagueId: primaryStats?.builder_league_id ?? null,
+      warStars: primaryStats?.war_stars ?? null,
+      attackWins: primaryStats?.attack_wins ?? null,
+      defenseWins: primaryStats?.defense_wins ?? null,
+      capitalContributions: primaryStats?.capital_contributions ?? null,
+      maxTroopCount: primaryStats?.max_troop_count ?? null,
+      maxSpellCount: primaryStats?.max_spell_count ?? null,
+      superTroopsActive: primaryStats?.super_troops_active ?? null,
+      achievementCount: primaryStats?.achievement_count ?? null,
+      achievementScore: primaryStats?.achievement_score ?? null,
+      expLevel: primaryStats?.exp_level ?? null,
+      bestTrophies: primaryStats?.best_trophies ?? null,
+      bestVersusTrophies: primaryStats?.best_versus_trophies ?? null,
+      equipmentLevels: primaryStats?.equipment_flags ?? null,
+    };
+
+    const memberForActivity: Member = {
+      name: memberRow.name ?? normalizedTag,
+      tag: memberRow.tag,
+      role: primaryStats?.role ?? memberRow.role ?? undefined,
+      townHallLevel: primaryStats?.th_level ?? memberRow.th_level ?? undefined,
+      trophies,
+      rankedTrophies: rankedTrophies ?? undefined,
+      rankedLeagueId: rankedLeagueId ?? undefined,
+      rankedLeagueName: rankedLeagueName ?? undefined,
+      donations: donations ?? undefined,
+      donationsReceived: donationsReceived ?? undefined,
+      bk: heroLevels.bk ?? undefined,
+      aq: heroLevels.aq ?? undefined,
+      gw: heroLevels.gw ?? undefined,
+      rc: heroLevels.rc ?? undefined,
+      mp: heroLevels.mp ?? undefined,
+      seasonTotalTrophies,
+      enriched: enrichedForMember,
+    };
+
+    const activityEvidence = calculateActivityScore(memberForActivity, { timeline: timelineEvents });
 
     const responseData = {
       name: memberRow.name ?? normalizedTag,
@@ -606,27 +665,10 @@ export async function GET(
       mp: heroLevels.mp,
       clan: clanRow ? { name: clanRow.name } : null,
       activityTimeline: timelineEvents,
+      activity: activityEvidence,
+      seasonTotalTrophies,
       // Enriched data (October 2025)
-      enriched: {
-        petLevels: primaryStats?.pet_levels ?? null,
-        builderHallLevel: primaryStats?.builder_hall_level ?? null,
-        versusTrophies: primaryStats?.versus_trophies ?? null,
-        versusBattleWins: primaryStats?.versus_battle_wins ?? null,
-        warStars: primaryStats?.war_stars ?? null,
-        attackWins: primaryStats?.attack_wins ?? null,
-        defenseWins: primaryStats?.defense_wins ?? null,
-        capitalContributions: primaryStats?.capital_contributions ?? null,
-        maxTroopCount: primaryStats?.max_troop_count ?? null,
-        maxSpellCount: primaryStats?.max_spell_count ?? null,
-        superTroopsActive: primaryStats?.super_troops_active ?? null,
-        achievementCount: primaryStats?.achievement_count ?? null,
-        achievementScore: primaryStats?.achievement_score ?? null,
-        expLevel: primaryStats?.exp_level ?? null,
-        bestTrophies: primaryStats?.best_trophies ?? null,
-        bestVersusTrophies: primaryStats?.best_versus_trophies ?? null,
-        builderLeagueId: primaryStats?.builder_league_id ?? null,
-        equipmentLevels: primaryStats?.equipment_flags ?? null,
-      },
+      enriched: enrichedForMember,
     };
 
     return NextResponse.json({ success: true, data: responseData });
