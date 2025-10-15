@@ -191,8 +191,8 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
     const rawDonations = toNumber(row.donations);
     const rawDonationsReceived = toNumber(row.donations_received);
 
-    const donations = rawDonations ?? previous?.donations ?? 0;
-    const donationsReceived = rawDonationsReceived ?? previous?.donationsReceived ?? 0;
+    const donations: number = rawDonations ?? previous?.donations ?? 0;
+    const donationsReceived: number = rawDonationsReceived ?? previous?.donationsReceived ?? 0;
 
     const activityScore = toNumber(row.activity_score);
 
@@ -205,44 +205,44 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
         ? rawDonationsReceived - previous.donationsReceived
         : 0;
 
-    const warStars = toNumber(row.war_stars) ?? previous?.warStars ?? 0;
+    const warStars: number = toNumber(row.war_stars) ?? previous?.warStars ?? 0;
     const warStarsDelta = previous ? warStars - previous.warStars : 0;
 
-    const attackWins = toNumber(row.attack_wins) ?? previous?.attackWins ?? 0;
+    const attackWins: number = toNumber(row.attack_wins) ?? previous?.attackWins ?? 0;
     const attackWinsDelta = previous ? attackWins - previous.attackWins : 0;
 
-    const defenseWins = toNumber(row.defense_wins) ?? previous?.defenseWins ?? 0;
+    const defenseWins: number = toNumber(row.defense_wins) ?? previous?.defenseWins ?? 0;
     const defenseWinsDelta = previous ? defenseWins - previous.defenseWins : 0;
 
-    const capitalContributions =
+    const capitalContributions: number =
       toNumber(row.capital_contributions) ?? previous?.capitalContributions ?? 0;
     const capitalContributionDelta =
       previous ? capitalContributions - previous.capitalContributions : 0;
 
-    const versusBattleWins =
+    const versusBattleWins: number =
       toNumber(row.versus_battle_wins) ?? previous?.versusBattleWins ?? 0;
     const versusBattleWinsDelta =
       previous ? versusBattleWins - previous.versusBattleWins : 0;
 
-    const builderHallLevel =
+    const builderHallLevel: number | null =
       toNumber(row.builder_hall_level) ?? previous?.builderHallLevel ?? null;
     const builderHallDelta =
       previous && previous.builderHallLevel !== null && builderHallLevel !== null
         ? builderHallLevel - previous.builderHallLevel
         : 0;
 
-    const maxTroopCount = toNumber(row.max_troop_count) ?? previous?.maxTroopCount ?? 0;
+    const maxTroopCount: number = toNumber(row.max_troop_count) ?? previous?.maxTroopCount ?? 0;
     const maxTroopDelta = previous ? maxTroopCount - previous.maxTroopCount : 0;
 
-    const maxSpellCount = toNumber(row.max_spell_count) ?? previous?.maxSpellCount ?? 0;
+    const maxSpellCount: number = toNumber(row.max_spell_count) ?? previous?.maxSpellCount ?? 0;
     const maxSpellDelta = previous ? maxSpellCount - previous.maxSpellCount : 0;
 
-    const achievementCount =
+    const achievementCount: number =
       toNumber(row.achievement_count) ?? previous?.achievementCount ?? 0;
     const achievementDelta =
       previous ? achievementCount - previous.achievementCount : 0;
 
-    const expLevel = toNumber(row.exp_level) ?? previous?.expLevel ?? 0;
+    const expLevel: number = toNumber(row.exp_level) ?? previous?.expLevel ?? 0;
     const expLevelDelta = previous ? expLevel - previous.expLevel : 0;
 
     const superTroopsActive = Array.isArray(row.super_troops_active)
