@@ -6,7 +6,7 @@ This document inventories all Clash of Clans API fields available in `playerDeta
 
 **Status**: Phase 1 - Field Inventory ✅  
 **Next**: Phase 2 - Schema Design  
-**Date**: January 2025  
+**Date**: October 12, 2024  
 **Version**: 1.0
 
 ---

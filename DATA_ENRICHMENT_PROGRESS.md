@@ -270,7 +270,7 @@ return {
 
 ---
 
-**Last Updated**: January 15, 2025  
+**Last Updated**: October 12, 2024  
 **Maintained By**: Clash Intelligence Team  
 **Status**: Active Development 🚧
 
