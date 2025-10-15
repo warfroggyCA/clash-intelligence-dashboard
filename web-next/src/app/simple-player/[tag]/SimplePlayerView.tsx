@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { TownHallBadge, LeagueBadge, HeroLevel } from '@/components/ui';
 import { calculateRushPercentage, calculateActivityScore, getHeroCaps } from '@/lib/business/calculations';
-import { Member } from '@/types';
+import type { Member, PlayerActivityTimelineEvent, MemberEnriched } from '@/types';
 
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
@@ -31,21 +31,7 @@ interface PlayerData {
   mp?: number | null;
   clan?: { name: string } | null;
   activityTimeline?: PlayerActivityTimelineEvent[];
-}
-
-interface PlayerActivityTimelineEvent {
-  date: string | null;
-  trophies: number;
-  rankedTrophies: number | null;
-  donations: number;
-  donationsReceived: number;
-  activityScore: number | null;
-  trophyDelta: number;
-  rankedTrophyDelta: number;
-  donationsDelta: number;
-  donationsReceivedDelta: number;
-  summary: string;
-  heroUpgrades: Array<{ hero: keyof typeof HERO_ICON_MAP; from: number | null; to: number }>;
+  enriched?: MemberEnriched | null;
 }
 
 const HERO_ICON_MAP = {
@@ -218,18 +204,37 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
     gw: player.gw ?? undefined,
     rc: player.rc ?? undefined,
     mp: player.mp ?? undefined,
+    enriched: player.enriched ?? null,
   } as Member;
 
   const rushPercent = calculateRushPercentage(memberLike);
   const heroCaps = getHeroCaps(player.townHallLevel);
-  const activity = calculateActivityScore(memberLike);
-  const activityDetails = activity.indicators.length
-    ? activity.indicators.map((indicator: string) => `• ${indicator}`).join('\n')
-    : 'No recent activity indicators yet.';
   const activityTimeline = (player.activityTimeline ?? []).map((event) => ({
     ...event,
     heroUpgrades: event.heroUpgrades ?? [],
+    petUpgrades: event.petUpgrades ?? [],
+    equipmentUpgrades: event.equipmentUpgrades ?? [],
+    superTroopsActivated: event.superTroopsActivated ?? [],
+    superTroopsDeactivated: event.superTroopsDeactivated ?? [],
+    warStarsDelta: event.warStarsDelta ?? 0,
+    attackWinsDelta: event.attackWinsDelta ?? 0,
+    defenseWinsDelta: event.defenseWinsDelta ?? 0,
+    capitalContributionDelta: event.capitalContributionDelta ?? 0,
+    builderHallDelta: event.builderHallDelta ?? 0,
+    versusBattleWinsDelta: event.versusBattleWinsDelta ?? 0,
+    maxTroopDelta: event.maxTroopDelta ?? 0,
+    maxSpellDelta: event.maxSpellDelta ?? 0,
+    achievementDelta: event.achievementDelta ?? 0,
+    expLevelDelta: event.expLevelDelta ?? 0,
+    trophyDelta: event.trophyDelta ?? 0,
+    rankedTrophyDelta: event.rankedTrophyDelta ?? 0,
+    donationsDelta: event.donationsDelta ?? 0,
+    donationsReceivedDelta: event.donationsReceivedDelta ?? 0,
   }));
+  const activity = calculateActivityScore(memberLike, { timeline: activityTimeline });
+  const activityDetails = activity.indicators.length
+    ? activity.indicators.map((indicator: string) => `• ${indicator}`).join('\n')
+    : 'No recent activity indicators yet.';
 
   const rankedLeagueId = player.rankedLeagueId ?? player.rankedLeague?.id ?? null;
   const rankedLeagueName = player.rankedLeagueName ?? player.rankedLeague?.name ?? null;

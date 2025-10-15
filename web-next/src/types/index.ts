@@ -20,6 +20,9 @@ export interface Member {
   name: string;
   tag: string;
   
+  // Enriched historical data (October 2025 rollout)
+  enriched?: MemberEnriched | null;
+  
   // Town Hall & Heroes
   townHallLevel?: number | null;
   th?: number; // Alias for townHallLevel
@@ -105,6 +108,27 @@ export interface Member {
     value: number;
     metadata?: Record<string, any> | null;
   }>;
+}
+
+export interface MemberEnriched {
+  petLevels?: Record<string, number> | null;
+  builderHallLevel?: number | null;
+  versusTrophies?: number | null;
+  versusBattleWins?: number | null;
+  builderLeagueId?: number | null;
+  warStars?: number | null;
+  attackWins?: number | null;
+  defenseWins?: number | null;
+  capitalContributions?: number | null;
+  maxTroopCount?: number | null;
+  maxSpellCount?: number | null;
+  superTroopsActive?: string[] | null;
+  achievementCount?: number | null;
+  achievementScore?: number | null;
+  expLevel?: number | null;
+  bestTrophies?: number | null;
+  bestVersusTrophies?: number | null;
+  equipmentLevels?: Record<string, number> | null;
 }
 
 /**
@@ -258,6 +282,46 @@ export interface ActivityEvidence {
   indicators: string[];
   score: number;
   level: ActivityLevel;
+}
+
+export interface PlayerActivityTimelineEvent {
+  date: string | null;
+  trophies: number;
+  rankedTrophies: number | null;
+  donations: number;
+  donationsReceived: number;
+  activityScore: number | null;
+  trophyDelta: number;
+  rankedTrophyDelta: number;
+  donationsDelta: number;
+  donationsReceivedDelta: number;
+  heroUpgrades: Array<{ hero: keyof HeroCaps; from: number | null; to: number }>;
+  petUpgrades: Array<{ pet: string; from: number | null; to: number }>;
+  equipmentUpgrades: Array<{ equipment: string; from: number | null; to: number }>;
+  superTroopsActivated: string[];
+  superTroopsDeactivated: string[];
+  warStars: number;
+  warStarsDelta: number;
+  attackWins: number;
+  attackWinsDelta: number;
+  defenseWins: number;
+  defenseWinsDelta: number;
+  capitalContributions: number;
+  capitalContributionDelta: number;
+  builderHallLevel: number | null;
+  builderHallDelta: number;
+  versusBattleWins: number;
+  versusBattleWinsDelta: number;
+  maxTroopCount: number | null;
+  maxTroopDelta: number;
+  maxSpellCount: number | null;
+  maxSpellDelta: number;
+  achievementCount: number | null;
+  achievementDelta: number;
+  expLevel: number | null;
+  expLevelDelta: number;
+  summary: string;
+  eventTypes?: string[];
 }
 
 // =============================================================================
