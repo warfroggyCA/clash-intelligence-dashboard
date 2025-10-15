@@ -4,6 +4,42 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [0.32.0] - 2025-10-12
+
+### Added - Data Enrichment Initiative 🎊
+- **17 new enriched fields** tracked historically in `member_snapshot_stats`:
+  - `pet_levels` (JSONB) - Pet name → level mapping
+  - `builder_hall_level`, `versus_trophies`, `versus_battle_wins`, `builder_league_id` - Builder Base metrics
+  - `war_stars`, `attack_wins`, `defense_wins`, `capital_contributions` - War statistics
+  - `max_troop_count`, `max_spell_count`, `super_troops_active` - Lab progress
+  - `achievement_count`, `achievement_score` - Achievement tracking
+  - `exp_level`, `best_trophies`, `best_versus_trophies` - Experience metrics
+- **Field extraction utilities** (`lib/ingestion/field-extractors.ts`) with comprehensive error handling
+- **Enhanced player API** (`/api/v2/player/[tag]`) now returns `enriched` object with all new data
+- **Timeline deltas** for pet upgrades, equipment upgrades, super troop changes, war progress, etc.
+- **Backfill script** (`scripts/backfill-enriched-data.ts`) to populate historical snapshots
+- **8 new database indexes** for query performance
+- **34 unit tests** for field extractors (100% pass rate)
+- **Comprehensive documentation**:
+  - `DATA_ENRICHMENT_FIELD_INVENTORY.md` - Field catalog and priority matrix
+  - `docs/api/enriched-player-data.md` - API reference with query examples
+  - `docs/development/adding-tracked-fields.md` - Developer guide for extending system
+  - `DATA_ENRICHMENT_DEPLOYMENT_SUMMARY.md` - Deployment guide and verification steps
+
+### Changed
+- Ingestion pipeline (`lib/ingestion/staged-pipeline.ts`) now extracts and stores enriched fields
+- Player API timeline events now include pet/equipment upgrades and enriched stat deltas
+
+### Performance
+- Query times remain < 300ms for 60-day player history
+- Storage overhead: ~30% increase (acceptable)
+- Ingestion duration: No significant change (~3-5s)
+
+### Migration
+- Applied `supabase/migrations/20250115_data_enrichment_schema.sql` in production
+- All columns nullable - no breaking changes
+- Rollback script included in migration file
+
 ## [Unreleased]
 
 ### Added
