@@ -41,6 +41,20 @@ interface RawSnapshotRow {
   th_level?: number | null;
   ranked_league_id?: number | null;
   ranked_league_name?: string | null;
+  // Enriched fields (October 2025)
+  pet_levels?: Record<string, number> | null;
+  builder_hall_level?: number | null;
+  versus_trophies?: number | null;
+  versus_battle_wins?: number | null;
+  war_stars?: number | null;
+  attack_wins?: number | null;
+  capital_contributions?: number | null;
+  max_troop_count?: number | null;
+  max_spell_count?: number | null;
+  achievement_count?: number | null;
+  achievement_score?: number | null;
+  exp_level?: number | null;
+  best_trophies?: number | null;
 }
 
 interface MemberRow {
@@ -349,7 +363,7 @@ export async function GET(
       throw new Error(statsError.message);
     }
 
-    const { data: recentSnapshots, error: recentSnapshotsError } = await supabase
+    const { data: recentSnapshots, error: recentSnapshotsError} = await supabase
       .from('member_snapshot_stats')
       .select(
         `
@@ -364,7 +378,20 @@ export async function GET(
           role,
           th_level,
           ranked_league_id,
-          ranked_league_name
+          ranked_league_name,
+          pet_levels,
+          builder_hall_level,
+          versus_trophies,
+          versus_battle_wins,
+          war_stars,
+          attack_wins,
+          capital_contributions,
+          max_troop_count,
+          max_spell_count,
+          achievement_count,
+          achievement_score,
+          exp_level,
+          best_trophies
         `
       )
       .eq('member_id', memberRow.id)
@@ -440,6 +467,22 @@ export async function GET(
       mp: heroLevels.mp,
       clan: clanRow ? { name: clanRow.name } : null,
       activityTimeline: timelineEvents,
+      // Enriched data (October 2025)
+      enriched: {
+        petLevels: primaryStats?.pet_levels ?? null,
+        builderHallLevel: primaryStats?.builder_hall_level ?? null,
+        versusTrophies: primaryStats?.versus_trophies ?? null,
+        versusBattleWins: primaryStats?.versus_battle_wins ?? null,
+        warStars: primaryStats?.war_stars ?? null,
+        attackWins: primaryStats?.attack_wins ?? null,
+        capitalContributions: primaryStats?.capital_contributions ?? null,
+        maxTroopCount: primaryStats?.max_troop_count ?? null,
+        maxSpellCount: primaryStats?.max_spell_count ?? null,
+        achievementCount: primaryStats?.achievement_count ?? null,
+        achievementScore: primaryStats?.achievement_score ?? null,
+        expLevel: primaryStats?.exp_level ?? null,
+        bestTrophies: primaryStats?.best_trophies ?? null,
+      },
     };
 
     return NextResponse.json({ success: true, data: responseData });
