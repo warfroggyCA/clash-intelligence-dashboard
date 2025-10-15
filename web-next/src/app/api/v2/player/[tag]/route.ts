@@ -205,50 +205,50 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
         ? rawDonationsReceived - previous.donationsReceived
         : 0;
 
-    const warStars: number = toNumber(row.war_stars) ?? previous?.warStars ?? 0;
+    const warStars: number = toNumber(row.war_stars) ?? (previous ? previous.warStars : 0);
     const warStarsDelta = previous ? warStars - previous.warStars : 0;
 
-    const attackWins: number = toNumber(row.attack_wins) ?? previous?.attackWins ?? 0;
+    const attackWins: number = toNumber(row.attack_wins) ?? (previous ? previous.attackWins : 0);
     const attackWinsDelta = previous ? attackWins - previous.attackWins : 0;
 
-    const defenseWins: number = toNumber(row.defense_wins) ?? previous?.defenseWins ?? 0;
+    const defenseWins: number = toNumber(row.defense_wins) ?? (previous ? previous.defenseWins : 0);
     const defenseWinsDelta = previous ? defenseWins - previous.defenseWins : 0;
 
     const capitalContributions: number =
-      toNumber(row.capital_contributions) ?? previous?.capitalContributions ?? 0;
+      toNumber(row.capital_contributions) ?? (previous ? previous.capitalContributions : 0);
     const capitalContributionDelta =
       previous ? capitalContributions - previous.capitalContributions : 0;
 
     const versusBattleWins: number =
-      toNumber(row.versus_battle_wins) ?? previous?.versusBattleWins ?? 0;
+      toNumber(row.versus_battle_wins) ?? (previous ? previous.versusBattleWins : 0);
     const versusBattleWinsDelta =
       previous ? versusBattleWins - previous.versusBattleWins : 0;
 
     const builderHallLevel: number | null =
-      toNumber(row.builder_hall_level) ?? previous?.builderHallLevel ?? null;
+      toNumber(row.builder_hall_level) ?? (previous ? previous.builderHallLevel : null) ?? null;
     const builderHallDelta =
       previous && previous.builderHallLevel !== null && builderHallLevel !== null
         ? builderHallLevel - previous.builderHallLevel
         : 0;
 
-    const maxTroopCount: number = toNumber(row.max_troop_count) ?? previous?.maxTroopCount ?? 0;
+    const maxTroopCount: number = toNumber(row.max_troop_count) ?? (previous ? previous.maxTroopCount : 0);
     const maxTroopDelta = previous ? maxTroopCount - previous.maxTroopCount : 0;
 
-    const maxSpellCount: number = toNumber(row.max_spell_count) ?? previous?.maxSpellCount ?? 0;
+    const maxSpellCount: number = toNumber(row.max_spell_count) ?? (previous ? previous.maxSpellCount : 0);
     const maxSpellDelta = previous ? maxSpellCount - previous.maxSpellCount : 0;
 
     const achievementCount: number =
-      toNumber(row.achievement_count) ?? previous?.achievementCount ?? 0;
+      toNumber(row.achievement_count) ?? (previous ? previous.achievementCount : 0);
     const achievementDelta =
       previous ? achievementCount - previous.achievementCount : 0;
 
-    const expLevel: number = toNumber(row.exp_level) ?? previous?.expLevel ?? 0;
+    const expLevel: number = toNumber(row.exp_level) ?? (previous ? previous.expLevel : 0);
     const expLevelDelta = previous ? expLevel - previous.expLevel : 0;
 
     const superTroopsActive = Array.isArray(row.super_troops_active)
       ? row.super_troops_active.filter((name) => typeof name === 'string')
       : [];
-    const prevSuperTroops = previous?.superTroopsActive ?? [];
+    const prevSuperTroops = previous ? previous.superTroopsActive : [];
     const superTroopsActivated = superTroopsActive.filter(
       (name) => !prevSuperTroops.includes(name)
     );
@@ -269,9 +269,10 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
 
     const petUpgrades: PlayerActivityTimelineEvent['petUpgrades'] = [];
     if (petLevels) {
-      const prev = previous?.petLevels ?? {};
+      const prev = previous ? previous.petLevels : null;
+      const prevLevels = prev || {};
       for (const [pet, level] of Object.entries(petLevels)) {
-        const before = typeof prev[pet] === 'number' ? prev[pet] : null;
+        const before = typeof prevLevels[pet] === 'number' ? prevLevels[pet] : null;
         if (before !== null && level > before) {
           petUpgrades.push({ pet, from: before, to: level });
         } else if (before === null && level > 0 && previous) {
@@ -282,9 +283,10 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
 
     const equipmentUpgrades: PlayerActivityTimelineEvent['equipmentUpgrades'] = [];
     if (equipmentLevels) {
-      const prev = previous?.equipmentLevels ?? {};
+      const prev = previous ? previous.equipmentLevels : null;
+      const prevLevels = prev || {};
       for (const [equipment, level] of Object.entries(equipmentLevels)) {
-        const before = typeof prev[equipment] === 'number' ? prev[equipment] : null;
+        const before = typeof prevLevels[equipment] === 'number' ? prevLevels[equipment] : null;
         if (before !== null && level > before) {
           equipmentUpgrades.push({ equipment, from: before, to: level });
         } else if (before === null && level > 0 && previous) {
