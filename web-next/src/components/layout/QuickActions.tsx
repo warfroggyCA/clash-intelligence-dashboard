@@ -408,7 +408,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
     hasData,
   } = useQuickActions();
 
-  const actionButtonClasses = 'quick-action-btn inline-flex items-center justify-center gap-2 rounded-full border border-brand-border/60 !bg-brand-surfaceRaised/80 !text-slate-100 px-3 py-2 text-xs font-semibold shadow-none transition-colors duration-150 hover:!bg-brand-surfaceSubtle/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary/40';
+  const actionButtonBaseClasses =
+    'quick-action-btn inline-flex items-center justify-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-blue-400';
+  const linkButtonClasses = `${actionButtonBaseClasses} bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 text-white shadow-xl hover:shadow-2xl hover:from-blue-600 hover:via-indigo-600 hover:to-purple-600 border border-blue-400/30 backdrop-blur-sm no-underline`;
 
   const statusLabel = smartInsightsStatus === 'loading'
     ? 'Refreshing'
@@ -467,9 +469,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             onClick={handleRefreshAll}
             disabled={!hasData || isRefreshingAll}
             loading={isRefreshingAll}
-            variant="ghost"
+            variant="primary"
             size="sm"
-            className={`${actionButtonClasses} w-full sm:w-auto`}
+            className={`${actionButtonBaseClasses} w-full sm:w-auto`}
             title="Refresh snapshot data and smart insights"
           >
             <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -484,7 +486,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
           </Button>
           <a
             href="/war/prep"
-            className={`${actionButtonClasses} w-full sm:w-auto inline-flex`}
+            className={`${linkButtonClasses} w-full sm:w-auto inline-flex`}
             title="Open War Prep to analyze an opponent (opens new page)"
           >
             <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -498,9 +500,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             onClick={handleCopySnapshotSummary}
             disabled={!hasData || isCopyingSnapshot}
             loading={isCopyingSnapshot}
-            variant="ghost"
+            variant="primary"
             size="sm"
-            className={`${actionButtonClasses} w-full sm:w-auto`}
+            className={`${actionButtonBaseClasses} w-full sm:w-auto`}
             title="Copy snapshot summary (war status, capital raids, etc.)"
           >
             <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -513,9 +515,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             <Button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={!hasData || isExporting}
-              variant="ghost"
+              variant="primary"
               size="sm"
-              className={`${actionButtonClasses} w-full pr-8 sm:w-auto`}
+              className={`${actionButtonBaseClasses} w-full pr-8 sm:w-auto`}
               title="Export snapshot data in various formats"
             >
               <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -577,9 +579,9 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             onClick={handleGenerateInsightsSummary}
             disabled={!hasData || isGeneratingSummary || !insightsEnabled}
             loading={isGeneratingSummary}
-            variant="ghost"
+            variant="primary"
             size="sm"
-            className={`${actionButtonClasses} w-full sm:w-auto`}
+            className={`${actionButtonBaseClasses} w-full sm:w-auto`}
             title={insightsEnabled ? "Generate daily summary with automated insights of changes since last snapshot" : "Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)"}
           >
             <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">

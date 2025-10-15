@@ -19,9 +19,6 @@ import { GlassCard } from '@/components/ui';
 import { AuthGate } from './AuthGuard';
 import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
-import CommandRail from './CommandRail';
-import { QuickActions } from './QuickActions';
-import { useLeadership } from '@/hooks/useLeadership';
 
 
 // =============================================================================
@@ -31,7 +28,6 @@ import { useLeadership } from '@/hooks/useLeadership';
 export interface DashboardLayoutProps extends ComponentWithChildren {
   className?: string;
   hideNavigation?: boolean;
-  hideCommandRail?: boolean;
   clanName?: string;
 }
 
@@ -40,13 +36,11 @@ export interface DashboardLayoutProps extends ComponentWithChildren {
 // =============================================================================
 
 interface DashboardHeaderProps {
-  onToggleCommandRail: () => void;
-  isCommandRailOpen: boolean;
-  canUseCommandRail: boolean;
   fallbackClanName?: string;
+  explicitClanName?: string;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, isCommandRailOpen, canUseCommandRail, fallbackClanName }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, explicitClanName }) => {
   const {
     clanTag,
     homeClan,
@@ -207,7 +201,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
 
   // Simplified logo loading - use the known working logo
   const logoSrc = '/clans/2pr8r8v8p.png';
-  const headerTitle = clanName || fallbackClanName || normalizeTag(clanTag || homeClan || cfg.homeClanTag || '') || 'Clash Intelligence';
+  const headerTitle =
+    (explicitClanName && explicitClanName.trim().length > 0 ? explicitClanName.trim() : '') ||
+    (clanName && clanName.trim().length > 0 ? clanName.trim() : '') ||
+    (fallbackClanName && fallbackClanName.trim().length > 0 ? fallbackClanName.trim() : '') ||
+    'Clash Intelligence';
 
   return (
     <header
@@ -305,16 +303,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
             {/* New snapshot indicator (manual refresh) */}
             <NewSnapshotIndicator />
 
-            {canUseCommandRail && (
-              <button
-                onClick={onToggleCommandRail}
-                className="hidden lg:inline-flex h-9 items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
-              >
-                {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
-                <span className={`h-2 w-2 rounded-full ${isCommandRailOpen ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-              </button>
-            )}
-
             <div className="relative group">
               <button 
                 className="h-8 w-8 flex items-center justify-center rounded-md border border-brand-border/70 bg-brand-surfaceRaised/80 text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
@@ -326,14 +314,6 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ onToggleCommandRail, 
                 className="absolute right-0 top-full mt-1 w-52 rounded-2xl border border-brand-border/70 bg-brand-surfaceRaised/95 p-2 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)] opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100"
               >
                 <div className="space-y-1">
-                  {canUseCommandRail && (
-                    <button
-                      onClick={onToggleCommandRail}
-                      className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
-                    >
-                      🧰 {isCommandRailOpen ? 'Hide Command Rail' : 'Show Command Rail'}
-                    </button>
-                  )}
                   <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>
                     <button
                       onClick={() => setShowAccessManager(true)}
@@ -408,32 +388,12 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   children,
   className = '',
   hideNavigation = false,
-  hideCommandRail = false,
   clanName: propClanName,
 }) => {
-  const [isCommandRailOpen, setIsCommandRailOpen] = useState(false);
-  const { permissions } = useLeadership();
-  const canAccessLeadershipTools = permissions.canViewLeadershipFeatures;
-  const showCommandRail = canAccessLeadershipTools && !hideCommandRail;
   const fallbackClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag || '');
-  const fallbackClanName = propClanName || normalizeTag(fallbackClanTag) || fallbackClanTag;
-
-  useEffect(() => {
-    if (!showCommandRail) return;
-    if (typeof window === 'undefined') return;
-    const handleResize = () => {
-      if (window.innerWidth >= 1280) {
-        setIsCommandRailOpen(true);
-      }
-    };
-    handleResize();
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [showCommandRail]);
+  const fallbackClanName = propClanName && propClanName.trim().length > 0 ? propClanName.trim() : '';
 
   const disableTabNavigation = process.env.NEXT_PUBLIC_DISABLE_TAB_NAV === 'true';
-  const disableCommandRail = process.env.NEXT_PUBLIC_DISABLE_COMMAND_RAIL === 'true';
-  const disableQuickActions = process.env.NEXT_PUBLIC_DISABLE_QUICK_ACTIONS === 'true';
 
   return (
     <div className={`min-h-screen w-full ${className}`}>
@@ -446,12 +406,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       </a>
       
       {/* Header */}
-      <DashboardHeader
-        onToggleCommandRail={() => setIsCommandRailOpen((prev) => !prev)}
-        isCommandRailOpen={isCommandRailOpen}
-        canUseCommandRail={showCommandRail}
-        fallbackClanName={fallbackClanName}
-      />
+      <DashboardHeader fallbackClanName={fallbackClanName} explicitClanName={propClanName} />
       
       {/* Command Toolbar */}
       {!hideNavigation && (
@@ -464,26 +419,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
                 <TabNavigation className="px-2" />
               )}
             </div>
-            {canAccessLeadershipTools && !disableQuickActions && (
-              <QuickActions className="!border-brand-border/60 !bg-brand-surfaceRaised/90 !text-slate-100 shadow-[0_12px_30px_-20px_rgba(8,15,31,0.6)]" />
-            )}
           </div>
         </div>
       )}
       
       {/* Main Content */}
       <main id="main-content" role="main" tabIndex={-1} className="dashboard-main min-h-screen w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
-        <div className="flex flex-col gap-6 xl:flex-row xl:items-start">
-          <div className="flex-1 space-y-6">
-            {children}
-          </div>
-
-          {showCommandRail && !disableCommandRail && (
-            <CommandRail
-              isOpen={isCommandRailOpen}
-              onToggle={() => setIsCommandRailOpen((prev) => !prev)}
-            />
-          )}
+        <div className="space-y-6">
+          {children}
         </div>
       </main>
       

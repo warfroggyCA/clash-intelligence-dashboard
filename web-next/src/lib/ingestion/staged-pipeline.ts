@@ -10,6 +10,7 @@ import { FullClanSnapshot, MemberSummary } from '@/lib/full-snapshot';
 import { appendJobLog, createJobRecord, updateJobStatus, IngestionJobLogEntry } from './job-store';
 import { readTenureDetails } from '@/lib/tenure';
 import { daysSinceToDate } from '@/lib/date';
+import { extractEnrichedFields } from './field-extractors';
 
 export interface StagedIngestionResult {
   success: boolean;
