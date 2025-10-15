@@ -227,6 +227,35 @@ export async function GET(req: NextRequest) {
         
         const seasonTotal = (summary.trophies ?? detail?.trophies ?? 0);
 
+        // Create member object for activity calculation
+        const memberForActivity: Member = {
+          tag,
+          name: summary.name ?? tag,
+          role: summary.role ?? null,
+          townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
+          trophies: summary.trophies ?? detail?.trophies ?? null,
+          donations: summary.donations ?? null,
+          donationsReceived: summary.donationsReceived ?? null,
+          warStars: detail?.warStars ?? null,
+          attackWins: detail?.attackWins ?? null,
+          defenseWins: detail?.defenseWins ?? null,
+          capitalContributions: detail?.capitalContributions ?? null,
+          versusBattleWins: detail?.versusBattleWins ?? null,
+          builderHallLevel: detail?.builderHallLevel ?? null,
+          expLevel: detail?.expLevel ?? null,
+          league: league,
+          builderBaseLeague: detail?.builderBaseLeague ?? null,
+          leagueTier: leagueTier,
+          equipment: detail?.equipment ?? null,
+          pets: detail?.pets ?? null,
+          troops: detail?.troops ?? null,
+          spells: detail?.spells ?? null,
+          heroes: detail?.heroes ?? null,
+          achievements: detail?.achievements ?? null,
+        };
+
+        const activityEvidence = calculateActivityScore(memberForActivity);
+
         return {
           id: `clan:${tag}`,
           tag,
