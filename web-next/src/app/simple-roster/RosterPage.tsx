@@ -639,7 +639,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           title={donationTooltip}
                           className="font-mono text-sm text-green-600 font-medium cursor-help"
                         >
-                          {player.donations}
+                          {player.donations === 0 ? '—' : player.donations}
                         </span>
                       </td>
                       <td className="px-4 py-3 text-right">
@@ -647,7 +647,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           title={donationTooltip}
                           className="font-mono text-sm text-blue-600 font-medium cursor-help"
                         >
-                          {player.donationsReceived}
+                          {player.donationsReceived === 0 ? '—' : player.donationsReceived}
                         </span>
                       </td>
                     </tr>
@@ -812,8 +812,8 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
 
                   {/* Donations */}
                   <div title={donationTooltip} className="cursor-help text-right pt-1 border-t border-brand-border/30">
-                    <div className="text-brand-text-tertiary text-[10px]">Don: <span className="font-mono text-green-600 font-semibold">{player.donations}</span></div>
-                    <div className="text-brand-text-tertiary text-[10px]">Rec: <span className="font-mono text-blue-600 font-semibold">{player.donationsReceived}</span></div>
+                    <div className="text-brand-text-tertiary text-[10px]">Don: <span className="font-mono text-green-600 font-semibold">{player.donations === 0 ? '—' : player.donations}</span></div>
+                    <div className="text-brand-text-tertiary text-[10px]">Rec: <span className="font-mono text-blue-600 font-semibold">{player.donationsReceived === 0 ? '—' : player.donationsReceived}</span></div>
                     <div className="text-brand-text-tertiary text-[10px]">Bal: <span className={`font-mono font-semibold ${donationBalance > 0 ? 'text-red-600' : donationBalance < 0 ? 'text-green-600' : 'text-brand-text-tertiary'}`}>
                       {donationBalance > 0 ? '+' : ''}{donationBalance}
                     </span></div>
