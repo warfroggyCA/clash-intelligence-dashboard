@@ -392,7 +392,7 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
               const heroKey = key as keyof typeof HERO_ICON_MAP;
               const icon = HERO_ICON_MAP[heroKey];
               const label = HERO_LABEL_MAP[heroKey];
-              const level = (player as Record<string, number | null | undefined>)[heroKey] ?? null;
+              const level = player[heroKey] ?? null;
               const maxLevel = (heroCaps as Record<string, number | undefined>)[heroKey] ?? 0;
               return (
                 <div key={heroKey} className="flex items-center gap-4 rounded-2xl border border-gray-700/60 bg-gray-900/70 p-4">
