@@ -1,4 +1,5 @@
 -- Data Enrichment Schema Migration
+-- Date: October 12, 2024
 -- Adds columns to member_snapshot_stats for historizing:
 -- - Pets (JSONB)
 -- - Builder Base metrics
