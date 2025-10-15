@@ -19,6 +19,7 @@
     "env:check": "node scripts/check-env.js",
     "ingest:run": "tsx scripts/ingest/run.ts",
     "setup:storage": "tsx scripts/setup-supabase-storage.ts",
+    "backfill-enriched-data": "tsx scripts/backfill-enriched-data.ts",
     "release:patch": "npm version patch && git push && git push --tags",
     "release:minor": "npm version minor && git push && git push --tags",
     "release:major": "npm version major && git push && git push --tags",
