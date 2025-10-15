@@ -241,7 +241,7 @@ export async function GET(req: NextRequest) {
           versusTrophies: detail?.versusTrophies ?? null,
           league: league,
           builderLeague: detail?.builderBaseLeague ?? null,
-          leagueTier: leagueTier,
+          rankedLeague: leagueTier,
           enriched: {
             petLevels: detail?.pets ? Object.fromEntries(
               (detail.pets as any[] || []).map((pet: any) => [pet.name, pet.level])
