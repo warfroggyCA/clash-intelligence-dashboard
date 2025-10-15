@@ -185,7 +185,7 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
         : null;
 
     const rankedPrimary = toNumber(row.ranked_trophies) ?? toNumber(row.trophies);
-    const trophies = rankedPrimary ?? previous?.trophies ?? 0;
+    const trophies: number = rankedPrimary ?? previous?.trophies ?? 0;
     const rankedTrophies = trophies;
 
     const rawDonations = toNumber(row.donations);
