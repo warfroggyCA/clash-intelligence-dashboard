@@ -553,13 +553,13 @@ th { @apply text-left font-semibold; }
 }
 
 .player-name-link {
-  color: var(--player-name-color, #1e40af);
+  color: var(--player-name-color, #ffffff);
   text-decoration: none;
 }
 
 .player-name-link:hover,
 .player-name-link:focus {
-  color: var(--player-name-hover, #1e3a8a);
+  color: var(--player-name-hover, #e2e8f0);
 }
 
 .theme-input {
@@ -830,8 +830,8 @@ th { @apply text-left font-semibold; }
 }
 
 [data-theme="dark"] {
-  --player-name-color: #fbbf24; /* Amber highlight for dark mode */
-  --player-name-hover: #fcd34d;
+  --player-name-color: #ffffff; /* High contrast for dark mode */
+  --player-name-hover: #e2e8f0;
   --text-primary: #f1f5f9; /* Default light text for dark mode */
   --text-secondary: #cbd5e1; /* Secondary text color for dark mode */
   --text-muted: #94a3b8; /* Muted text color for dark mode */
@@ -1235,4 +1235,3 @@ button:has(svg:only-child) {
   color: rgba(241, 245, 249, 0.90) !important;
   font-weight: 600;
 }
-

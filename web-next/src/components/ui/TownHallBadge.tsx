@@ -7,6 +7,7 @@ interface TownHallBadgeProps {
   showLevel?: boolean;
   showBox?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  levelBadgeClassName?: string;
 }
 
 const sizePixels: Record<'sm' | 'md' | 'lg' | 'xl', number> = {
@@ -28,11 +29,19 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
   className = '',
   showLevel = true,
   showBox = true,
-  size = 'md'
+  size = 'md',
+  levelBadgeClassName = ''
 }) => {
   const safeLevel = Math.max(1, Number(level) || 1);
   const thImage = `/assets/clash/Townhalls/TH${safeLevel}.png`;
   const dimension = sizePixels[size];
+  const hasCustomLevelStyles = Boolean(levelBadgeClassName.trim());
+  const baseLevelBadgeClasses =
+    'rounded-full border border-brand-border/70 bg-brand-accent px-1.5 text-center font-semibold text-brand-surface shadow-md';
+  const levelBadgeClasses = hasCustomLevelStyles
+    ? levelBadgeClassName
+    : `${baseLevelBadgeClasses} ${textSizeClasses[size]}`;
+  const levelBadgeStyle = hasCustomLevelStyles ? undefined : { minWidth: '1.4em' };
   
   if (!showBox) {
     return (
@@ -60,8 +69,8 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
         />
         {showLevel && (
           <span
-            className={`absolute -bottom-1 -right-1 rounded-full border border-brand-border/70 bg-brand-accent px-1.5 text-center font-semibold text-brand-surface ${textSizeClasses[size]} shadow-md`}
-            style={{ minWidth: '1.4em' }}
+            className={`absolute -bottom-1 -right-1 ${levelBadgeClasses}`}
+            style={levelBadgeStyle}
           >
             {level}
           </span>
@@ -97,8 +106,8 @@ export const TownHallBadge: React.FC<TownHallBadgeProps> = ({
       </div>
       {showLevel && (
         <span
-          className={`absolute -bottom-1 -right-1 rounded-full border border-brand-border/70 bg-brand-accent px-1.5 text-center font-semibold text-brand-surface ${textSizeClasses[size]} shadow-md`}
-          style={{ minWidth: '1.4em' }}
+          className={`absolute -bottom-1 -right-1 ${levelBadgeClasses}`}
+          style={levelBadgeStyle}
         >
           {level}
         </span>
