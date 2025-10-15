@@ -237,21 +237,33 @@ export async function GET(req: NextRequest) {
           donations: summary.donations ?? null,
           donationsReceived: summary.donationsReceived ?? null,
           warStars: detail?.warStars ?? null,
-          attackWins: detail?.attackWins ?? null,
-          defenseWins: detail?.defenseWins ?? null,
-          capitalContributions: detail?.capitalContributions ?? null,
-          versusBattleWins: detail?.versusBattleWins ?? null,
-          builderHallLevel: detail?.builderHallLevel ?? null,
-          expLevel: detail?.expLevel ?? null,
+          clanCapitalContributions: detail?.capitalContributions ?? null,
+          versusTrophies: detail?.versusTrophies ?? null,
           league: league,
           builderBaseLeague: detail?.builderBaseLeague ?? null,
           leagueTier: leagueTier,
-          equipment: detail?.equipment ?? null,
-          pets: detail?.pets ?? null,
-          troops: detail?.troops ?? null,
-          spells: detail?.spells ?? null,
-          heroes: detail?.heroes ?? null,
-          achievements: detail?.achievements ?? null,
+          enriched: {
+            petLevels: detail?.pets ? Object.fromEntries(
+              (detail.pets as any[] || []).map((pet: any) => [pet.name, pet.level])
+            ) : null,
+            builderHallLevel: detail?.builderHallLevel ?? null,
+            versusBattleWins: detail?.versusBattleWins ?? null,
+            warStars: detail?.warStars ?? null,
+            attackWins: detail?.attackWins ?? null,
+            defenseWins: detail?.defenseWins ?? null,
+            capitalContributions: detail?.capitalContributions ?? null,
+            maxTroopCount: detail?.maxTroopCount ?? null,
+            maxSpellCount: detail?.maxSpellCount ?? null,
+            superTroopsActive: detail?.superTroopsActive ?? null,
+            achievementCount: detail?.achievementCount ?? null,
+            achievementScore: detail?.achievementScore ?? null,
+            expLevel: detail?.expLevel ?? null,
+            bestTrophies: detail?.bestTrophies ?? null,
+            bestVersusTrophies: detail?.bestVersusTrophies ?? null,
+            equipmentLevels: detail?.equipment ? Object.fromEntries(
+              (detail.equipment as any[] || []).map((eq: any) => [eq.name, eq.level])
+            ) : null,
+          },
         };
 
         const activityEvidence = calculateActivityScore(memberForActivity);
