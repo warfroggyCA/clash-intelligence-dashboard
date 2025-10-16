@@ -1455,7 +1455,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                         onClick={() => {
                           const reason = prompt('Departure reason:');
                           const type = prompt('Type (voluntary/involuntary/inactive):');
-                          if (reason && ['voluntary', 'involuntary', 'inactive'].includes(type)) {
+                          if (reason && type && ['voluntary', 'involuntary', 'inactive'].includes(type)) {
                             addDepartureAction(selectedPlayer.tag, reason, type as any, 'Current Leader');
                           }
                         }}
