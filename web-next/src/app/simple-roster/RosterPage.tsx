@@ -87,7 +87,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
               Copy Tag
             </button>
             
-            <LeadershipGuard>
+            <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
               <button
                 onClick={(e) => {
                   onManageNotes(e, player);
