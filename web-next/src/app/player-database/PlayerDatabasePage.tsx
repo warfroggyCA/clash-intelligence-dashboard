@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, RefreshCw, User, Calendar, MessageSquare, X } from "lucide-react";
 import dynamic from 'next/dynamic';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
+import { Modal } from '@/components/ui/Modal';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { GlassCard } from '@/components/ui/GlassCard';
 
 // Lazy load components to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -13,6 +17,7 @@ interface PlayerNote {
   timestamp: string;
   note: string;
   customFields: Record<string, string>;
+  createdBy?: string;
 }
 
 interface PlayerWarning {
@@ -32,7 +37,7 @@ interface DepartureAction {
   timestamp: string;
   reason: string;
   recordedBy?: string;
-  type: 'voluntary' | 'involuntary' | 'inactive';
+  type: 'voluntary' | 'kicked: inactive' | 'kicked: other';
 }
 
 interface TimelineEvent {
@@ -75,11 +80,31 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
   const [newPlayerTag, setNewPlayerTag] = useState('');
   const [newPlayerName, setNewPlayerName] = useState('');
   const [warningNoteText, setWarningNoteText] = useState('');
-  const [sortBy, setSortBy] = useState<'name' | 'lastUpdated' | 'noteCount'>('lastUpdated');
+  const [editingEvent, setEditingEvent] = useState<TimelineEvent | null>(null);
+  const [showEditEventModal, setShowEditEventModal] = useState(false);
+  const [editEventData, setEditEventData] = useState<{
+    type: string;
+    description: string;
+    details: Record<string, any>;
+  }>({ type: '', description: '', details: {} });
+  const [sortBy, setSortBy] = useState<'name' | 'lastUpdated' | 'noteCount' | 'status'>('lastUpdated');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
+  const [showArchived, setShowArchived] = useState(false);
   const [currentMembers, setCurrentMembers] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'current' | 'former'>('all');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Handle column sorting
+  const handleSort = (field: 'name' | 'lastUpdated' | 'noteCount' | 'status') => {
+    if (sortBy === field) {
+      // Toggle sort order if clicking the same field
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      // Set new sort field and default to ascending
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
 
   // Function to fetch current clan members
   const fetchCurrentMembers = useCallback(async () => {
@@ -97,109 +122,25 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     return [];
   }, []);
 
-  // Function to load player data from localStorage (your existing data)
-  const loadFromLocalStorage = useCallback(() => {
-    if (typeof window === 'undefined') return { players: [], notes: [], warnings: [], actions: [], playerNames: {} };
-    
-    const players: PlayerRecord[] = [];
-    const notes: any[] = [];
-    const warnings: any[] = [];
-    const actions: any[] = [];
-    
-    // Get all localStorage keys
-    const keys = Object.keys(localStorage);
-    
-    // Load player notes
-    keys.forEach(key => {
-      if (key.startsWith('player_notes_')) {
-        const playerTag = key.replace('player_notes_', '');
-        try {
-          const notesData = JSON.parse(localStorage.getItem(key) || '[]');
-          notesData.forEach((note: any) => {
-            notes.push({
-              ...note,
-              playerTag,
-              source: 'localStorage'
-            });
-          });
-        } catch (e) {
-          console.error('Error parsing notes for', playerTag, e);
-        }
-      }
-    });
-    
-    // Load player names
-    const playerNames: Record<string, string> = {};
-    keys.forEach(key => {
-      if (key.startsWith('player_name_')) {
-        const playerTag = key.replace('player_name_', '');
-        playerNames[playerTag] = localStorage.getItem(key) || 'Unknown Player';
-      }
-    });
-    
-    // Load warnings
-    keys.forEach(key => {
-      if (key.startsWith('player_warning_')) {
-        const playerTag = key.replace('player_warning_', '');
-        try {
-          const warningData = JSON.parse(localStorage.getItem(key) || '{}');
-          if (warningData.timestamp && warningData.warningNote) {
-            warnings.push({
-              ...warningData,
-              playerTag,
-              source: 'localStorage'
-            });
-          }
-        } catch (e) {
-          console.error('Error parsing warning for', playerTag, e);
-        }
-      }
-    });
-    
-    // Load tenure actions
-    keys.forEach(key => {
-      if (key.startsWith('player_tenure_')) {
-        const playerTag = key.replace('player_tenure_', '');
-        try {
-          const tenureData = JSON.parse(localStorage.getItem(key) || '[]');
-          tenureData.forEach((action: any) => {
-            actions.push({
-              ...action,
-              playerTag,
-              actionType: 'tenure',
-              source: 'localStorage'
-            });
-          });
-        } catch (e) {
-          console.error('Error parsing tenure for', playerTag, e);
-        }
-      }
-    });
-    
-    // Load departure actions
-    keys.forEach(key => {
-      if (key.startsWith('player_departure_')) {
-        const playerTag = key.replace('player_departure_', '');
-        try {
-          const departureData = JSON.parse(localStorage.getItem(key) || '[]');
-          departureData.forEach((action: any) => {
-            actions.push({
-              ...action,
-              playerTag,
-              actionType: 'departure',
-              source: 'localStorage'
-            });
-          });
-        } catch (e) {
-          console.error('Error parsing departure for', playerTag, e);
-        }
-      }
-    });
-    
-    return { players, notes, warnings, actions, playerNames };
-  }, []);
+  // Function to load player data from Supabase only
+  const loadFromSupabase = useCallback(async () => {
+    const clanTag = '#2PR8R8V8P'; // Your clan tag
 
-  // Function to load player database from Supabase
+    // Fetch from Supabase APIs
+    const [notesResponse, warningsResponse, actionsResponse] = await Promise.all([
+      fetch(`/api/player-notes?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}`),
+      fetch(`/api/player-warnings?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}`),
+      fetch(`/api/player-actions?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}`)
+    ]);
+
+    const notesData = notesResponse.ok ? await notesResponse.json() : { success: false, data: [] };
+    const warningsData = warningsResponse.ok ? await warningsResponse.json() : { success: false, data: [] };
+    const actionsData = actionsResponse.ok ? await actionsResponse.json() : { success: false, data: [] };
+
+    return { notesData, warningsData, actionsData };
+  }, [showArchived]);
+
+  // Function to load player database from Supabase only
   const loadPlayerDatabase = useCallback(async () => {
     if (typeof window === 'undefined') return;
 
@@ -212,22 +153,10 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
       const playerRecords: PlayerRecord[] = [];
       const clanTag = '#2PR8R8V8P'; // Your clan tag
 
-      // First, try to load from localStorage (your existing data)
-      const localStorageData = loadFromLocalStorage();
-      const playerNames = localStorageData.playerNames;
-      
-      // Then fetch from Supabase APIs (new data)
-      const [notesResponse, warningsResponse, actionsResponse] = await Promise.all([
-        fetch(`/api/player-notes?clanTag=${encodeURIComponent(clanTag)}`),
-        fetch(`/api/player-warnings?clanTag=${encodeURIComponent(clanTag)}`),
-        fetch(`/api/player-actions?clanTag=${encodeURIComponent(clanTag)}`)
-      ]);
+      // Fetch from Supabase APIs only
+      const { notesData, warningsData, actionsData } = await loadFromSupabase();
 
-      const notesData = notesResponse.ok ? await notesResponse.json() : { data: [] };
-      const warningsData = warningsResponse.ok ? await warningsResponse.json() : { data: [] };
-      const actionsData = actionsResponse.ok ? await actionsResponse.json() : { data: [] };
-
-      // Group data by player tag (combine localStorage and Supabase data)
+      // Group data by player tag (Supabase only)
       const playerDataMap = new Map<string, {
         notes: any[];
         warnings: any[];
@@ -237,95 +166,40 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         lastUpdated: string;
       }>();
 
-      // First, process localStorage data
-      localStorageData.notes.forEach((note: any) => {
-        const tag = note.playerTag;
-        if (!playerDataMap.has(tag)) {
-          playerDataMap.set(tag, {
-            notes: [],
-            warnings: [],
-            tenureActions: [],
-            departureActions: [],
-            name: playerNames[tag] || 'Unknown Player',
-            lastUpdated: note.timestamp
-          });
+      // Load player names from roster data and localStorage player_name_ keys
+      const playerNames: Record<string, string> = {};
+      
+      // First, load from current roster
+      try {
+        const rosterData = localStorage.getItem('lastRoster:v3:#2PR8R8V8P');
+        if (rosterData) {
+          const roster = JSON.parse(rosterData);
+          if (roster.roster && roster.roster.members) {
+            roster.roster.members.forEach((member: any) => {
+              playerNames[member.tag] = member.name;
+            });
+          }
         }
-        const playerData = playerDataMap.get(tag)!;
-        playerData.notes.push({
-          id: `local_${Date.now()}_${Math.random()}`,
-          timestamp: note.timestamp,
-          note: note.note,
-          customFields: note.customFields || {},
-          source: 'localStorage'
+      } catch (e) {
+        console.error('Error loading roster data for names:', e);
+      }
+      
+      // Then, load from localStorage player_name_ keys (for departed players)
+      try {
+        const allKeys = Object.keys(localStorage);
+        const playerNameKeys = allKeys.filter(key => key.startsWith('player_name_'));
+        playerNameKeys.forEach(key => {
+          const playerTag = key.replace('player_name_', '');
+          const name = localStorage.getItem(key);
+          if (name) {
+            playerNames[playerTag] = name;
+          }
         });
-        if (note.timestamp > playerData.lastUpdated) {
-          playerData.lastUpdated = note.timestamp;
-        }
-      });
+      } catch (e) {
+        console.error('Error loading player names from localStorage:', e);
+      }
 
-      localStorageData.warnings.forEach((warning: any) => {
-        const tag = warning.playerTag;
-        if (!playerDataMap.has(tag)) {
-          playerDataMap.set(tag, {
-            notes: [],
-            warnings: [],
-            tenureActions: [],
-            departureActions: [],
-            name: playerNames[tag] || 'Unknown Player',
-            lastUpdated: warning.timestamp
-          });
-        }
-        const playerData = playerDataMap.get(tag)!;
-        playerData.warnings.push({
-          id: `local_warning_${Date.now()}_${Math.random()}`,
-          timestamp: warning.timestamp,
-          warningNote: warning.warningNote,
-          isActive: warning.isActive,
-          source: 'localStorage'
-        });
-        if (warning.timestamp > playerData.lastUpdated) {
-          playerData.lastUpdated = warning.timestamp;
-        }
-      });
-
-      localStorageData.actions.forEach((action: any) => {
-        const tag = action.playerTag;
-        if (!playerDataMap.has(tag)) {
-          playerDataMap.set(tag, {
-            notes: [],
-            warnings: [],
-            tenureActions: [],
-            departureActions: [],
-            name: playerNames[tag] || 'Unknown Player',
-            lastUpdated: action.timestamp
-          });
-        }
-        const playerData = playerDataMap.get(tag)!;
-        if (action.actionType === 'tenure') {
-          playerData.tenureActions.push({
-            id: `local_tenure_${Date.now()}_${Math.random()}`,
-            timestamp: action.timestamp,
-            action: action.action,
-            reason: action.reason,
-            grantedBy: action.grantedBy,
-            source: 'localStorage'
-          });
-        } else if (action.actionType === 'departure') {
-          playerData.departureActions.push({
-            id: `local_departure_${Date.now()}_${Math.random()}`,
-            timestamp: action.timestamp,
-            reason: action.reason,
-            recordedBy: action.recordedBy,
-            type: action.type,
-            source: 'localStorage'
-          });
-        }
-        if (action.timestamp > playerData.lastUpdated) {
-          playerData.lastUpdated = action.timestamp;
-        }
-      });
-
-      // Then process Supabase data (merge with localStorage)
+      // Process Supabase data only
       if (notesData.success && notesData.data) {
         notesData.data.forEach((note: any) => {
           const tag = note.player_tag;
@@ -335,31 +209,29 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: note.player_name || 'Unknown Player',
+              name: playerNames[tag] || note.player_name || 'Unknown Player',
               lastUpdated: note.created_at
             });
           }
           const playerData = playerDataMap.get(tag)!;
-          // Only add if not already present from localStorage
-          const existingNote = playerData.notes.find(n => 
-            n.source === 'localStorage' && n.timestamp === note.created_at
-          );
-          if (!existingNote) {
-            playerData.notes.push({
-              id: note.id,
-              timestamp: note.created_at,
-              note: note.note,
-              customFields: note.custom_fields || {},
-              source: 'supabase'
-            });
-          }
+          
+          // Add Supabase note
+          playerData.notes.push({
+            id: note.id,
+            timestamp: note.created_at,
+            note: note.note,
+            customFields: note.custom_fields || {},
+            createdBy: note.created_by || 'Unknown',
+            source: 'supabase'
+          });
+          
           if (note.created_at > playerData.lastUpdated) {
             playerData.lastUpdated = note.created_at;
           }
         });
       }
 
-      // Process Supabase warnings (merge with localStorage)
+      // Process Supabase warnings
       if (warningsData.success && warningsData.data) {
         warningsData.data.forEach((warning: any) => {
           const tag = warning.player_tag;
@@ -369,25 +241,22 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: warning.player_name || 'Unknown Player',
+              name: playerNames[tag] || warning.player_name || 'Unknown Player',
               lastUpdated: warning.created_at
             });
           }
           const playerData = playerDataMap.get(tag)!;
+          
           if (warning.is_active) {
-            // Only add if not already present from localStorage
-            const existingWarning = playerData.warnings.find(w => 
-              w.source === 'localStorage' && w.timestamp === warning.created_at
-            );
-            if (!existingWarning) {
-              playerData.warnings.push({
-                id: warning.id,
-                timestamp: warning.created_at,
-                warningNote: warning.warning_note,
-                isActive: true,
-                source: 'supabase'
-              });
-            }
+            // Add Supabase warning
+            playerData.warnings.push({
+              id: warning.id,
+              timestamp: warning.created_at,
+              warningNote: warning.warning_note,
+              isActive: true,
+              source: 'supabase'
+            });
+            
             if (warning.created_at > playerData.lastUpdated) {
               playerData.lastUpdated = warning.created_at;
             }
@@ -395,7 +264,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         });
       }
 
-      // Process Supabase actions (merge with localStorage)
+      // Process Supabase actions
       if (actionsData.success && actionsData.data) {
         actionsData.data.forEach((action: any) => {
           const tag = action.player_tag;
@@ -405,42 +274,32 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: action.player_name || 'Unknown Player',
+              name: playerNames[tag] || action.player_name || 'Unknown Player',
               lastUpdated: action.created_at
             });
           }
           const playerData = playerDataMap.get(tag)!;
           
           if (action.action_type === 'tenure') {
-            // Only add if not already present from localStorage
-            const existingAction = playerData.tenureActions.find(a => 
-              a.source === 'localStorage' && a.timestamp === action.created_at
-            );
-            if (!existingAction) {
-              playerData.tenureActions.push({
-                id: action.id,
-                timestamp: action.created_at,
-                action: action.action,
-                reason: action.reason,
-                grantedBy: action.granted_by,
-                source: 'supabase'
-              });
-            }
+            // Add Supabase tenure action
+            playerData.tenureActions.push({
+              id: action.id,
+              timestamp: action.created_at,
+              action: action.action,
+              reason: action.reason,
+              grantedBy: action.granted_by,
+              source: 'supabase'
+            });
           } else if (action.action_type === 'departure') {
-            // Only add if not already present from localStorage
-            const existingAction = playerData.departureActions.find(a => 
-              a.source === 'localStorage' && a.timestamp === action.created_at
-            );
-            if (!existingAction) {
-              playerData.departureActions.push({
-                id: action.id,
-                timestamp: action.created_at,
-                reason: action.reason,
-                type: action.departure_type,
-                recordedBy: action.recorded_by,
-                source: 'supabase'
-              });
-            }
+            // Add Supabase departure action
+            playerData.departureActions.push({
+              id: action.id,
+              timestamp: action.created_at,
+              reason: action.reason,
+              type: action.departure_type,
+              recordedBy: action.recorded_by,
+              source: 'supabase'
+            });
           }
           
           if (action.created_at > playerData.lastUpdated) {
@@ -465,34 +324,22 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         });
       });
 
-      // Also add players from roster data who don't have notes yet
-      try {
-        const rosterData = localStorage.getItem('lastRoster:v3:#2PR8R8V8P');
-        if (rosterData) {
-          const roster = JSON.parse(rosterData);
-          if (roster.roster && roster.roster.members) {
-            roster.roster.members.forEach((member: any) => {
-              const tag = member.tag;
-              // Only add if not already in playerDataMap
-              if (!playerDataMap.has(tag)) {
-                const isCurrentMember = membersToCheck.includes(tag);
-                playerRecords.push({
-                  tag,
-                  name: member.name,
-                  notes: [],
-                  warning: undefined,
-                  tenureActions: [],
-                  departureActions: [],
-                  lastUpdated: roster.roster.date || '2025-10-09',
-                  isCurrentMember
-                });
-              }
-            });
-          }
+
+      // Add current members who don't have any data yet
+      membersToCheck.forEach((tag: string) => {
+        if (!playerDataMap.has(tag)) {
+          playerRecords.push({
+            tag,
+            name: playerNames[tag] || 'Unknown Player',
+            notes: [],
+            warning: undefined,
+            tenureActions: [],
+            departureActions: [],
+            lastUpdated: new Date().toISOString(),
+            isCurrentMember: true
+          });
         }
-      } catch (e) {
-        console.error('Error loading roster data:', e);
-      }
+      });
 
       // Sort by last updated
       playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
@@ -508,12 +355,20 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     loadPlayerDatabase();
   }, [loadPlayerDatabase]);
 
-  // Cleanup effect to restore body scroll if component unmounts
+  // Ensure body scroll is enabled on mount and cleanup on unmount
   useEffect(() => {
+    // Reset body overflow on mount in case it was left in a bad state
+    document.body.style.overflow = 'unset';
+    
     return () => {
       document.body.style.overflow = 'unset';
     };
   }, []);
+
+  // Ensure body overflow is reset whenever the component updates
+  useEffect(() => {
+    document.body.style.overflow = 'unset';
+  });
 
   // Filter and sort players
   const filteredAndSortedPlayers = players
@@ -523,7 +378,8 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         player.tag.toLowerCase().includes(searchTerm.toLowerCase()) ||
         player.notes.some(note => 
           note.note.toLowerCase().includes(searchTerm.toLowerCase())
-        );
+        ) ||
+        (player.warning && player.warning.warningNote.toLowerCase().includes(searchTerm.toLowerCase()));
 
       // Status filter
       const matchesStatus = statusFilter === 'all' || 
@@ -545,6 +401,16 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         case 'noteCount':
           comparison = a.notes.length - b.notes.length;
           break;
+        case 'status':
+          // Sort by status: Current members first, then Former members
+          if (a.isCurrentMember && !b.isCurrentMember) {
+            comparison = -1; // Current comes before Former
+          } else if (!a.isCurrentMember && b.isCurrentMember) {
+            comparison = 1; // Former comes after Current
+          } else {
+            comparison = 0; // Same status, maintain original order
+          }
+          break;
       }
       
       return sortOrder === 'asc' ? comparison : -comparison;
@@ -562,6 +428,181 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     setShowPlayerModal(false);
     // Restore body scroll when modal is closed
     document.body.style.overflow = 'unset';
+  };
+
+  // Event editing functions
+  const openEditEventModal = (event: TimelineEvent) => {
+    setEditingEvent(event);
+    setEditEventData({
+      type: event.type,
+      description: event.description,
+      details: event.details || {}
+    });
+    setShowEditEventModal(true);
+    document.body.style.overflow = 'hidden';
+  };
+
+  const closeEditEventModal = () => {
+    setEditingEvent(null);
+    setEditEventData({ type: '', description: '', details: {} });
+    setShowEditEventModal(false);
+    document.body.style.overflow = 'unset';
+  };
+
+  const updateTimelineEvent = async () => {
+    if (!editingEvent || !selectedPlayer) {
+      console.log('Missing editingEvent or selectedPlayer:', { editingEvent, selectedPlayer });
+      return;
+    }
+
+    console.log('Updating timeline event:', { editingEvent, editEventData });
+
+    try {
+      const clanTag = '#2PR8R8V8P';
+      
+      // For now, let's just update the local data since the API might not support PUT
+      // This is a temporary solution until we can implement proper API updates
+      
+      // Update the local player data
+      setPlayers(prevPlayers => {
+        return prevPlayers.map(player => {
+          if (player.tag === selectedPlayer.tag) {
+            // Update the specific event in the player's data
+            if (editingEvent.type === 'note') {
+              const updatedNotes = player.notes.map(note => {
+                if (note.timestamp === editingEvent.timestamp) {
+                  return {
+                    ...note,
+                    note: editEventData.description,
+                    createdBy: editEventData.details.createdBy || note.createdBy
+                  };
+                }
+                return note;
+              });
+              return { ...player, notes: updatedNotes };
+            } else if (editingEvent.type === 'departure') {
+              const updatedDepartures = player.departureActions?.map(departure => {
+                if (departure.timestamp === editingEvent.timestamp) {
+                  return {
+                    ...departure,
+                    type: editEventData.details.type || departure.type,
+                    reason: editEventData.description,
+                    recordedBy: editEventData.details.recordedBy || departure.recordedBy
+                  };
+                }
+                return departure;
+              });
+              return { ...player, departureActions: updatedDepartures };
+            } else if (editingEvent.type === 'tenure') {
+              const updatedTenure = player.tenureActions?.map(tenure => {
+                if (tenure.timestamp === editingEvent.timestamp) {
+                  return {
+                    ...tenure,
+                    action: editEventData.details.action || tenure.action,
+                    reason: editEventData.description,
+                    grantedBy: editEventData.details.grantedBy || tenure.grantedBy
+                  };
+                }
+                return tenure;
+              });
+              return { ...player, tenureActions: updatedTenure };
+            }
+          }
+          return player;
+        });
+      });
+
+      // Close the modal and show success
+      closeEditEventModal();
+      setErrorMessage(null);
+      
+      // Force refresh the selected player data to update the modal
+      setTimeout(() => {
+        setPlayers(currentPlayers => {
+          const updatedPlayer = currentPlayers.find(p => p.tag === selectedPlayer.tag);
+          if (updatedPlayer) {
+            setSelectedPlayer(updatedPlayer);
+          }
+          return currentPlayers;
+        });
+      }, 100);
+      
+      console.log('Successfully updated timeline event locally');
+      
+    } catch (error) {
+      console.error('Error updating timeline event:', error);
+      setErrorMessage(`Failed to update ${editingEvent.type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const deleteTimelineEvent = async () => {
+    if (!editingEvent || !selectedPlayer) {
+      console.log('Missing editingEvent or selectedPlayer for delete:', { editingEvent, selectedPlayer });
+      return;
+    }
+
+    // Show confirmation dialog
+    const eventTypeName = editingEvent.type === 'note' ? 'note' : 
+                         editingEvent.type === 'departure' ? 'departure record' :
+                         editingEvent.type === 'tenure' ? 'tenure record' :
+                         editingEvent.type === 'warning' ? 'warning' : 'event';
+    
+    const confirmed = window.confirm(`Are you sure you want to archive this ${eventTypeName}? It will be hidden but can be restored later.`);
+    
+    if (!confirmed) {
+      return; // User cancelled the archiving
+    }
+
+    console.log('Deleting timeline event:', { editingEvent });
+
+    try {
+      // Update the local player data to remove the event
+      setPlayers(prevPlayers => {
+        return prevPlayers.map(player => {
+          if (player.tag === selectedPlayer.tag) {
+            // Remove the specific event from the player's data
+            if (editingEvent.type === 'note') {
+              const updatedNotes = player.notes.filter(note => 
+                note.timestamp !== editingEvent.timestamp
+              );
+              return { ...player, notes: updatedNotes };
+            } else if (editingEvent.type === 'departure') {
+              const updatedDepartures = player.departureActions?.filter(departure => 
+                departure.timestamp !== editingEvent.timestamp
+              );
+              return { ...player, departureActions: updatedDepartures };
+            } else if (editingEvent.type === 'tenure') {
+              const updatedTenure = player.tenureActions?.filter(tenure => 
+                tenure.timestamp !== editingEvent.timestamp
+              );
+              return { ...player, tenureActions: updatedTenure };
+            }
+          }
+          return player;
+        });
+      });
+
+      // Close the modal and show success
+      closeEditEventModal();
+      setErrorMessage(null);
+      
+      // Force refresh the selected player data to update the modal
+      setTimeout(() => {
+        setPlayers(currentPlayers => {
+          const updatedPlayer = currentPlayers.find(p => p.tag === selectedPlayer.tag);
+          if (updatedPlayer) {
+            setSelectedPlayer(updatedPlayer);
+          }
+          return currentPlayers;
+        });
+      }, 100);
+      
+      console.log('Successfully deleted timeline event locally');
+      
+    } catch (error) {
+      console.error('Error deleting timeline event:', error);
+      setErrorMessage(`Failed to delete ${editingEvent.type}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   const handleRefresh = () => {
@@ -830,7 +871,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
   }, [selectedPlayer, loadPlayerDatabase]);
 
   // Departure management functions
-  const addDepartureAction = useCallback(async (playerTag: string, reason: string, type: 'voluntary' | 'involuntary' | 'inactive', recordedBy?: string) => {
+  const addDepartureAction = useCallback(async (playerTag: string, reason: string, type: 'voluntary' | 'kicked: inactive' | 'kicked: other', recordedBy?: string) => {
     try {
       const clanTag = '#2PR8R8V8P';
       const playerName = selectedPlayer?.name || 'Unknown Player';
@@ -864,56 +905,11 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     }
   }, [selectedPlayer, loadPlayerDatabase]);
 
-  // Fetch tenure data from the main system
-  const fetchTenureData = useCallback(async (playerTag: string) => {
-    try {
-      // Try to get tenure data from the main system's localStorage
-      const tenureKey = `tenure_${playerTag}`;
-      const tenureData = localStorage.getItem(tenureKey);
-      if (tenureData) {
-        return JSON.parse(tenureData);
-      }
-
-      // Also check for tenure in the main roster data
-      const response = await fetch('/api/v2/roster');
-      if (response.ok) {
-        const data = await response.json();
-        const member = data.members?.find((m: any) => m.tag === playerTag);
-        if (member && member.tenure_days > 0) {
-          return {
-            days: member.tenure_days,
-            as_of: member.tenure_as_of,
-            source: 'roster'
-          };
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch tenure data:', error);
-    }
-    return null;
-  }, []);
-
-  // Check for existing notes from the main system
-  const checkForExistingNotes = useCallback((playerTag: string) => {
-    try {
-      // Check if there are notes in the main system's localStorage
-      const mainNotesKey = `player_notes_${playerTag}`;
-      const mainNotes = localStorage.getItem(mainNotesKey);
-      if (mainNotes) {
-        const notes = JSON.parse(mainNotes);
-        if (Array.isArray(notes) && notes.length > 0) {
-          return notes;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to check for existing notes:', error);
-    }
-    return [];
-  }, []);
 
   // Generate timeline from player data
   const generatePlayerTimeline = useCallback((player: PlayerRecord): TimelineEvent[] => {
     const events: TimelineEvent[] = [];
+
 
     // Add notes
     player.notes.forEach((note, index) => {
@@ -924,7 +920,8 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         title: 'Note Added',
         description: note.note,
         icon: '📝',
-        color: 'blue'
+        color: 'blue',
+        details: { createdBy: note.createdBy }
       });
     });
 
@@ -950,7 +947,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
           timestamp: tenure.timestamp,
           title: `Tenure ${tenure.action === 'granted' ? 'Granted' : 'Revoked'}`,
           description: tenure.reason || `Tenure ${tenure.action} by ${tenure.grantedBy || 'leader'}`,
-          icon: tenure.action === 'granted' ? '🏆' : '❌',
+          icon: tenure.action === 'granted' ? '🕐' : '❌',
           color: tenure.action === 'granted' ? 'green' : 'red',
           details: { action: tenure.action, grantedBy: tenure.grantedBy }
         });
@@ -960,21 +957,39 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     // Add departure actions
     if (player.departureActions) {
       player.departureActions.forEach((departure, index) => {
+        // Determine if this was a kick or voluntary departure based on reason
+        const isKick = departure.reason.toLowerCase().includes('kicked');
+        const isVoluntary = departure.reason.toLowerCase().includes('voluntarily') || 
+                           departure.reason.toLowerCase().includes('left voluntarily');
+        
         const typeEmoji = {
           'voluntary': '👋',
-          'involuntary': '🚫',
-          'inactive': '😴'
+          'kicked: inactive': '👢',
+          'kicked: other': '👢'
         };
+        
+        // Create a more descriptive title
+        let title = 'Departure Recorded';
+        if (isKick) {
+          title = 'Player Kicked';
+        } else if (isVoluntary) {
+          title = 'Player Left Voluntarily';
+        } else {
+          title = `Departure Recorded (${departure.type})`;
+        }
+        
+        // Use the departure timestamp, or fall back to a reasonable date
+        const departureTimestamp = departure.timestamp || new Date().toISOString();
         
         events.push({
           id: `departure-${index}`,
           type: 'departure',
-          timestamp: departure.timestamp,
-          title: `Departure Recorded (${departure.type})`,
+          timestamp: departureTimestamp,
+          title: title,
           description: departure.reason,
-          icon: typeEmoji[departure.type] || '👋',
-          color: departure.type === 'voluntary' ? 'blue' : departure.type === 'involuntary' ? 'red' : 'orange',
-          details: { type: departure.type, recordedBy: departure.recordedBy }
+          icon: isKick ? '👢' : isVoluntary ? '👋' : (typeEmoji[departure.type] || '👋'),
+          color: isKick ? 'red' : isVoluntary ? 'blue' : (departure.type === 'voluntary' ? 'blue' : departure.type.startsWith('kicked:') ? 'red' : 'orange'),
+          details: { type: departure.type, recordedBy: departure.recordedBy, isKick, isVoluntary }
         });
       });
     }
@@ -997,21 +1012,34 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         color: 'green'
       });
     } else {
-      // If former member, add a "left" event (using most recent note date or current date)
-      const mostRecentNote = player.notes.reduce((newest, note) => 
-        note.timestamp > newest ? note.timestamp : newest, 
-        player.notes[0]?.timestamp || new Date().toISOString()
-      );
+      // If former member, only add a "left" event if there are no specific departure records
+      const hasSpecificDeparture = player.departureActions && player.departureActions.length > 0;
       
-      events.push({
-        id: 'former-leave',
-        type: 'leave',
-        timestamp: mostRecentNote,
-        title: 'Left Clan',
-        description: 'No longer an active member',
-        icon: '❌',
-        color: 'orange'
-      });
+      if (!hasSpecificDeparture) {
+        // Only create a generic "Left Clan" event if no specific departure records exist
+        // Use the most recent note date, but only if it's reasonable (not today)
+        const mostRecentNote = player.notes.reduce((newest, note) => 
+          note.timestamp > newest ? note.timestamp : newest, 
+          player.notes[0]?.timestamp || new Date().toISOString()
+        );
+        
+        // Only add if the most recent note is not from today (to avoid false "left today" events)
+        const noteDate = new Date(mostRecentNote);
+        const today = new Date();
+        const isFromToday = noteDate.toDateString() === today.toDateString();
+        
+        if (!isFromToday) {
+          events.push({
+            id: 'former-leave',
+            type: 'leave',
+            timestamp: mostRecentNote,
+            title: 'Left Clan',
+            description: 'No longer an active member',
+            icon: '🚪',
+            color: 'orange'
+          });
+        }
+      }
     }
 
     // Sort by timestamp (newest first)
@@ -1035,34 +1063,36 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     <DashboardLayout>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-brand-text-primary">Player Database</h1>
-            <p className="text-brand-text-secondary mt-1">
-              View notes and history for all clan members (current and former)
-            </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleRefresh}
-              className="flex items-center space-x-2 px-4 py-2 bg-brand-surface-primary border border-brand-border rounded-lg hover:bg-brand-surface-hover transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
-            </button>
-            <button 
-              onClick={openAddPlayerModal}
-              className="flex items-center space-x-2 px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Player</span>
-            </button>
-          </div>
-        </div>
+        <GlassCard 
+          title="Player Database"
+          subtitle="View notes and history for all clan members (current and former)"
+          actions={
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleRefresh}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Refresh</span>
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={openAddPlayerModal}
+                className="flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Player</span>
+              </Button>
+            </div>
+          }
+        />
 
         {/* Error Message */}
         {errorMessage && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <GlassCard className="border-red-200 bg-red-50/10">
             <div className="flex items-center">
               <div className="flex-shrink-0">
                 <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
@@ -1084,144 +1114,157 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                 </button>
               </div>
             </div>
-          </div>
+          </GlassCard>
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-brand-text-secondary">Total Players</p>
-                <p className="text-xl font-semibold text-brand-text-primary">{players.length}</p>
+                <p className="text-sm text-muted">Total Players</p>
+                <p className="text-xl font-semibold text-high-contrast">{players.length}</p>
               </div>
             </div>
-          </div>
+          </GlassCard>
           
-          <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-4">
+          <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-green-100 rounded-lg">
                 <User className="w-5 h-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-brand-text-secondary">Current Members</p>
-                <p className="text-xl font-semibold text-brand-text-primary">
+                <p className="text-sm text-muted">Current Members</p>
+                <p className="text-xl font-semibold text-high-contrast">
                   {players.filter(p => p.isCurrentMember).length}
                 </p>
               </div>
             </div>
-          </div>
+          </GlassCard>
           
-          <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-4">
+          <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-orange-100 rounded-lg">
                 <User className="w-5 h-5 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-brand-text-secondary">Former Members</p>
-                <p className="text-xl font-semibold text-brand-text-primary">
+                <p className="text-sm text-muted">Former Members</p>
+                <p className="text-xl font-semibold text-high-contrast">
                   {players.filter(p => !p.isCurrentMember).length}
                 </p>
               </div>
             </div>
-          </div>
+          </GlassCard>
           
-          <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-4">
+          <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-blue-100 rounded-lg">
                 <User className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-brand-text-secondary">Players with Notes</p>
-                <p className="text-xl font-semibold text-brand-text-primary">
+                <p className="text-sm text-muted">Players with Notes</p>
+                <p className="text-xl font-semibold text-high-contrast">
                   {players.filter(p => p.notes.length > 0).length}
                 </p>
               </div>
             </div>
-          </div>
+          </GlassCard>
           
-          <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-4">
+          <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <MessageSquare className="w-5 h-5 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-brand-text-secondary">Total Notes</p>
-                <p className="text-xl font-semibold text-brand-text-primary">
+                <p className="text-sm text-gray-600 dark:text-gray-400">Total Notes</p>
+                <p className="text-xl font-semibold text-high-contrast">
                   {players.reduce((sum, p) => sum + p.notes.length, 0)}
                 </p>
               </div>
             </div>
-          </div>
+          </GlassCard>
         </div>
 
         {/* Filters and Search */}
-        <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-4">
+        <GlassCard>
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0 lg:space-x-4">
             {/* Search */}
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-brand-text-tertiary" />
-              <input
+              <Input
                 type="text"
                 placeholder="Search players, tags, or notes..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-brand-background border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent"
+                leftIcon={<Search className="w-4 h-4" />}
+                className="w-full"
               />
             </div>
 
             {/* Filters */}
             <div className="flex items-center space-x-4">
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-brand-text-secondary">Status:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Status:</span>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as 'all' | 'current' | 'former')}
-                  className="bg-brand-background border border-brand-border rounded-lg px-3 py-2 text-sm"
+                  className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 text-sm text-white dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-300"
                 >
-                  <option value="all">All Players</option>
-                  <option value="current">Current Members</option>
-                  <option value="former">Former Members</option>
+                  <option value="all" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">All Players</option>
+                  <option value="current" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">Current Members</option>
+                  <option value="former" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">Former Members</option>
                 </select>
               </div>
 
               <div className="flex items-center space-x-2">
-                <span className="text-sm text-brand-text-secondary">Sort by:</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Sort by:</span>
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as 'name' | 'lastUpdated' | 'noteCount')}
-                  className="bg-brand-background border border-brand-border rounded-lg px-3 py-2 text-sm"
+                  className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg px-3 py-2 text-sm text-white dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder:text-gray-500 dark:placeholder:text-gray-300"
                 >
-                  <option value="lastUpdated">Last Updated</option>
-                  <option value="name">Name</option>
-                  <option value="noteCount">Note Count</option>
+                  <option value="lastUpdated" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">Last Updated</option>
+                  <option value="name" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">Name</option>
+                  <option value="noteCount" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">Note Count</option>
                 </select>
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="p-2 hover:bg-brand-surface-hover rounded-lg transition-colors"
                   title={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
+                  className="p-2 relative z-50"
                 >
                   <svg className={`w-4 h-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
                   </svg>
-                </button>
+                </Button>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant={showArchived ? "primary" : "outline"}
+                  size="sm"
+                  onClick={() => setShowArchived(!showArchived)}
+                  className="text-sm"
+                >
+                  {showArchived ? 'Hide Archived' : 'Show Archived'}
+                </Button>
               </div>
             </div>
           </div>
-        </div>
+        </GlassCard>
 
         {/* Players Table */}
-        <div className="bg-brand-surface-primary border border-brand-border rounded-lg overflow-hidden">
+        <GlassCard>
           {filteredAndSortedPlayers.length === 0 ? (
             <div className="text-center py-12">
-              <User className="w-12 h-12 text-brand-text-tertiary mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-brand-text-primary mb-2">
+              <User className="w-12 h-12 text-muted mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-high-contrast mb-2">
                 {searchTerm ? 'No players found' : 'No players in database'}
               </h3>
-              <p className="text-brand-text-secondary">
+              <p className="text-muted">
                 {searchTerm 
                   ? 'Try adjusting your search terms'
                   : 'No players with notes found. Add notes to track player history and status.'
@@ -1231,53 +1274,95 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-brand-surface-secondary border-b border-brand-border">
+                <thead className="border-b border-white/10">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-brand-text-secondary uppercase tracking-wider">
-                      Player
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider cursor-pointer hover:text-high-contrast transition-colors"
+                      onClick={() => handleSort('name')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Player</span>
+                        {sortBy === 'name' && (
+                          <span className="text-xs">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-brand-text-secondary uppercase tracking-wider">
-                      Status
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider cursor-pointer hover:text-high-contrast transition-colors"
+                      onClick={() => handleSort('status')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Status</span>
+                        {sortBy === 'status' && (
+                          <span className="text-xs">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-center text-xs font-medium text-brand-text-secondary uppercase tracking-wider">
+                    <th className="px-6 py-3 text-center text-xs font-medium text-muted uppercase tracking-wider">
                       Warning
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-brand-text-secondary uppercase tracking-wider">
-                      Notes
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider cursor-pointer hover:text-high-contrast transition-colors"
+                      onClick={() => handleSort('noteCount')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Notes</span>
+                        {sortBy === 'noteCount' && (
+                          <span className="text-xs">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-brand-text-secondary uppercase tracking-wider">
-                      Last Updated
+                    <th 
+                      className="px-6 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider cursor-pointer hover:text-high-contrast transition-colors"
+                      onClick={() => handleSort('lastUpdated')}
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>Last Updated</span>
+                        {sortBy === 'lastUpdated' && (
+                          <span className="text-xs">
+                            {sortOrder === 'asc' ? '↑' : '↓'}
+                          </span>
+                        )}
+                      </div>
                     </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-brand-text-secondary uppercase tracking-wider">
+                    <th className="px-6 py-3 text-right text-xs font-medium text-muted uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-brand-border">
+                <tbody className="divide-y divide-white/10">
                   {filteredAndSortedPlayers.map((player) => (
                     <tr 
                       key={player.tag}
-                      className="hover:bg-brand-surface-hover transition-colors cursor-pointer"
+                      className="hover:bg-white/5 transition-colors cursor-pointer"
                       onClick={() => openPlayerModal(player)}
                     >
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-sm font-medium text-brand-text-primary">
+                          <div className="text-sm font-medium text-high-contrast">
                             {player.name}
                           </div>
-                          <div className="text-sm text-brand-text-tertiary">
+                          <div className="text-xs text-muted opacity-75">
                             {player.tag}
                           </div>
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          player.isCurrentMember 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-orange-100 text-orange-800'
-                        }`}>
-                          {player.isCurrentMember ? 'Current' : 'Former'}
-                        </span>
+                        {player.isCurrentMember ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Current
+                          </span>
+                        ) : (
+                          <span className="text-sm text-muted">
+                            Former
+                          </span>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-center">
                         {player.warning?.isActive ? (
@@ -1287,35 +1372,37 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                             </span>
                           </div>
                         ) : (
-                          <span className="text-brand-text-tertiary text-xs">—</span>
+                          <span className="text-muted text-xs">—</span>
                         )}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
-                          <MessageSquare className="w-4 h-4 text-brand-text-tertiary" />
-                          <span className="text-sm text-brand-text-primary">
+                          <MessageSquare className="w-4 h-4 text-muted" />
+                          <span className="text-sm text-high-contrast">
                             {player.notes.length}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center space-x-2">
-                          <Calendar className="w-4 h-4 text-brand-text-tertiary" />
-                          <span className="text-sm text-brand-text-primary">
+                          <Calendar className="w-4 h-4 text-muted" />
+                          <span className="text-sm text-high-contrast">
                             {safeLocaleDateString(new Date(player.lastUpdated))}
                           </span>
                         </div>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            openPlayerModal(player);
-                          }}
-                          className="text-brand-primary hover:text-brand-primary-hover text-sm font-medium"
-                        >
-                          View Details
-                        </button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                openPlayerModal(player);
+              }}
+              className="text-sm text-white dark:text-white border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              View Details
+            </Button>
                       </td>
                     </tr>
                   ))}
@@ -1323,35 +1410,27 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
               </table>
             </div>
           )}
-        </div>
+        </GlassCard>
 
         {/* Player Modal */}
-        {showPlayerModal && selectedPlayer && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50"
-            style={{ overscrollBehavior: 'contain' }}
-          >
-            <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto overscroll-contain shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-xl font-semibold text-brand-text-primary">
-                  {selectedPlayer.name}
-                </h2>
-                <button
-                  onClick={closePlayerModal}
-                  className="text-brand-text-tertiary hover:text-brand-text-primary"
-                >
-                  <X className="w-6 h-6" />
-                </button>
-              </div>
+        <Modal
+          isOpen={showPlayerModal}
+          onClose={closePlayerModal}
+          title={selectedPlayer?.name}
+          size="full"
+          closeOnOverlayClick={false}
+        >
+          {selectedPlayer && (
+            <div className="space-y-4">
               
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-brand-text-secondary">Player Tag</p>
-                  <p className="text-brand-text-primary font-mono">{selectedPlayer.tag}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Player Tag</p>
+                  <p className="text-gray-900 dark:text-white font-mono">{selectedPlayer.tag}</p>
                 </div>
                 
                 <div>
-                  <p className="text-sm text-brand-text-secondary">Status</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
                   <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                     selectedPlayer.isCurrentMember 
                       ? 'bg-green-100 text-green-800' 
@@ -1362,7 +1441,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                 </div>
 
                 <div>
-                  <p className="text-sm text-brand-text-secondary mb-2">Warn on Return</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Warn on Return</p>
                   <div className="flex items-center space-x-3">
                     <label className="flex items-center space-x-2 cursor-pointer">
                       <input
@@ -1375,25 +1454,27 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                             removePlayerWarning(selectedPlayer.tag);
                           }
                         }}
-                        className="w-4 h-4 text-brand-primary bg-brand-background border-brand-border rounded focus:ring-brand-primary focus:ring-2"
+                        className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
                       />
-                      <span className="text-sm text-brand-text-primary">
+                      <span className="text-sm text-gray-900 dark:text-white">
                         {selectedPlayer.warning?.isActive ? 'Warning Active' : 'No Warning Set'}
                       </span>
                     </label>
                     {selectedPlayer.warning?.isActive && (
-                      <button
+                      <Button
+                        variant="danger"
+                        size="sm"
                         onClick={() => removePlayerWarning(selectedPlayer.tag)}
-                        className="text-xs text-red-500 hover:text-red-700 transition-colors"
+                        className="text-xs"
                       >
                         Remove Warning
-                      </button>
+                      </Button>
                     )}
                   </div>
                   {selectedPlayer.warning?.isActive && (
                     <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-sm text-red-800 font-medium mb-1">Warning Note:</p>
-                      <p className="text-sm text-red-700">{selectedPlayer.warning.warningNote}</p>
+                      <p className="text-sm text-red-700 break-words overflow-wrap-anywhere">{selectedPlayer.warning.warningNote}</p>
                       <p className="text-xs text-red-600 mt-1">
                         Set on {safeLocaleString(new Date(selectedPlayer.warning.timestamp))}
                       </p>
@@ -1401,167 +1482,94 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                   )}
                 </div>
 
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-sm text-brand-text-secondary">Notes ({selectedPlayer.notes.length})</p>
-                    <div className="flex items-center space-x-2">
-                      <button
-                        onClick={openAddNoteModal}
-                        className="flex items-center space-x-1 px-3 py-1 bg-brand-primary text-white text-xs rounded-lg hover:bg-brand-primary-hover transition-colors"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Add Note</span>
-                      </button>
-                    </div>
-                  </div>
                   
                   {/* Quick Actions for Leaders */}
-                  <div className="mb-4 p-3 bg-brand-surface-secondary border border-brand-border rounded-lg">
-                    <p className="text-xs text-brand-text-secondary mb-2">Quick Actions</p>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={async () => {
-                          // Import existing data from main system
-                          const existingNotes = checkForExistingNotes(selectedPlayer.tag);
-                          const tenureData = await fetchTenureData(selectedPlayer.tag);
-                          
-                          if (existingNotes.length > 0) {
-                            // Merge existing notes with current notes
-                            const currentNotes = selectedPlayer.notes || [];
-                            const mergedNotes = [...existingNotes, ...currentNotes];
-                            
-                            // Remove duplicates based on timestamp and note content
-                            const uniqueNotes = mergedNotes.filter((note, index, self) => 
-                              index === self.findIndex(n => n.timestamp === note.timestamp && n.note === note.note)
-                            );
-                            
-                            // Update localStorage
-                            const notesKey = `player_notes_${selectedPlayer.tag}`;
-                            localStorage.setItem(notesKey, JSON.stringify(uniqueNotes));
-                            
-                            alert(`Imported ${existingNotes.length} existing notes from main system`);
-                          }
-                          
-                          if (tenureData && tenureData.days > 0) {
-                            // Add tenure action if not already recorded
-                            const hasExistingTenure = selectedPlayer.tenureActions?.some(t => t.action === 'granted');
-                            if (!hasExistingTenure) {
-                              addTenureAction(selectedPlayer.tag, 'granted', `Imported from main system (${tenureData.days} days)`, 'System Import');
-                              alert(`Imported tenure data: ${tenureData.days} days`);
-                            }
-                          }
-                          
-                          if (existingNotes.length === 0 && (!tenureData || tenureData.days === 0)) {
-                            alert('No existing data found in main system');
-                          }
-                          
-                          // Reload the player database
-                          loadPlayerDatabase();
-                        }}
-                        className="flex items-center space-x-1 px-2 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
-                      >
-                        <span>🔄</span>
-                        <span>Import Existing Data</span>
-                      </button>
-                      <button
+                  <div className="mb-4 p-3 bg-white/5 border border-white/10 rounded-lg">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quick Actions</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        const action = prompt('Edit Tenure:\n\n1. Grant tenure\n2. Revoke tenure\n\nEnter 1 or 2:');
+                        if (!action || (action !== '1' && action !== '2')) return;
+                        const reason = prompt(`Reason for ${action === '1' ? 'granting' : 'revoking'} tenure:`);
+                        if (!reason) return;
+                        addTenureAction(
+                          selectedPlayer.tag,
+                          action === '1' ? 'granted' : 'revoked',
+                          reason,
+                          'Current Leader'
+                        );
+                      }}
+                      className="flex items-center justify-center space-x-1 text-xs"
+                    >
+                      <span>🛠️</span>
+                      <span>Edit Tenure</span>
+                    </Button>
+                    <Button
+                        variant="warning"
+                        size="sm"
                         onClick={() => {
-                          const reason = prompt('Reason for granting tenure:');
-                          if (reason) {
-                            addTenureAction(selectedPlayer.tag, 'granted', reason, 'Current Leader');
+                          // Show a more detailed departure recording dialog
+                          const departureType = prompt(
+                            'How did this player leave?\n\n' +
+                            '1. Left voluntarily\n' +
+                            '2. Kicked for inactivity\n' +
+                            '3. Kicked for behavior\n' +
+                            '4. Kicked for war performance\n' +
+                            '5. Kicked for other reasons\n\n' +
+                            'Enter number (1-5):'
+                          );
+                          
+                          if (!departureType || !['1', '2', '3', '4', '5'].includes(departureType)) {
+                            return;
                           }
+                          
+                          const reasonMap: Record<string, string> = {
+                            '1': 'Left voluntarily',
+                            '2': 'Kicked for inactivity', 
+                            '3': 'Kicked for behavior',
+                            '4': 'Kicked for war performance',
+                            '5': 'Kicked for other reasons'
+                          };
+                          
+                          const additionalNotes = prompt('Additional notes (optional):');
+                          const fullReason = additionalNotes ? 
+                            `${reasonMap[departureType]} - ${additionalNotes}` : 
+                            reasonMap[departureType];
+                          
+                          const type = departureType === '1' ? 'voluntary' : 'kicked: other';
+                          
+                          addDepartureAction(selectedPlayer.tag, fullReason, type as any, 'Current Leader');
                         }}
-                        className="flex items-center space-x-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+                      className="flex items-center justify-center space-x-1 text-xs"
                       >
-                        <span>🏆</span>
-                        <span>Grant Tenure</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          const reason = prompt('Reason for revoking tenure:');
-                          if (reason) {
-                            addTenureAction(selectedPlayer.tag, 'revoked', reason, 'Current Leader');
-                          }
-                        }}
-                        className="flex items-center space-x-1 px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                      >
-                        <span>❌</span>
-                        <span>Revoke Tenure</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          const reason = prompt('Departure reason:');
-                          const type = prompt('Type (voluntary/involuntary/inactive):');
-                          if (reason && type && ['voluntary', 'involuntary', 'inactive'].includes(type)) {
-                            addDepartureAction(selectedPlayer.tag, reason, type as any, 'Current Leader');
-                          }
-                        }}
-                        className="flex items-center space-x-1 px-2 py-1 bg-orange-600 text-white text-xs rounded hover:bg-orange-700 transition-colors"
-                      >
-                        <span>👋</span>
-                        <span>Record Departure</span>
-                      </button>
+                      <span>👋</span>
+                      <span>Record Departure</span>
+                      </Button>
                     </div>
                   </div>
-                  <div className="space-y-3">
-                    {selectedPlayer.notes.map((note, index) => (
-                      <div key={index} className="bg-brand-background border border-brand-border rounded-lg p-3">
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs text-brand-text-tertiary">
-                            {safeLocaleString(new Date(note.timestamp))}
-                          </span>
-                          <div className="flex items-center space-x-1">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openEditNoteModal(note);
-                              }}
-                              className="p-1 text-brand-text-tertiary hover:text-brand-primary transition-colors"
-                              title="Edit note"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                              </svg>
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (confirm('Are you sure you want to delete this note?')) {
-                                  deleteNote(selectedPlayer.tag, index);
-                                }
-                              }}
-                              className="p-1 text-brand-text-tertiary hover:text-red-500 transition-colors"
-                              title="Delete note"
-                            >
-                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                              </svg>
-                            </button>
-                          </div>
-                        </div>
-                        <p className="text-sm text-brand-text-primary">{note.note}</p>
-                        {Object.keys(note.customFields).length > 0 && (
-                          <div className="mt-2 space-y-1">
-                            {Object.entries(note.customFields).map(([key, value]) => (
-                              <div key={key} className="text-xs">
-                                <span className="text-brand-text-secondary">{key}:</span>
-                                <span className="text-brand-text-primary ml-1">{value}</span>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
                 {/* Player Timeline */}
                 <div>
-                  <p className="text-sm text-brand-text-secondary mb-3">Player History</p>
-                  <div className="max-h-64 overflow-y-auto border border-brand-border rounded-lg bg-brand-background">
-                    <div className="p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Player History</p>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={openAddNoteModal}
+                      className="flex items-center space-x-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Note</span>
+                    </Button>
+                  </div>
+                  <div className="border border-white/10 rounded-lg bg-white/5">
+                    <div className="p-4 max-w-full">
                       {generatePlayerTimeline(selectedPlayer).map((event, index) => (
-                        <div key={event.id} className="relative">
-                          <div className="flex items-start space-x-3 pb-4">
+                        <div key={event.id} className={`relative border-b border-gray-200 dark:border-gray-700 pb-4 ${index % 2 === 0 ? 'bg-gray-50/50 dark:bg-gray-800/20' : ''}`}>
+                          <div className="flex items-start space-x-3">
                             <div className="relative flex-shrink-0">
                               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
                                 event.color === 'green' ? 'bg-green-100 text-green-600' :
@@ -1569,31 +1577,48 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                                 event.color === 'orange' ? 'bg-orange-100 text-orange-600' :
                                 'bg-blue-100 text-blue-600'
                               }`}>
-                                {event.icon}
+                                <div className="w-2 h-2 rounded-full bg-current"></div>
                               </div>
                               {index < generatePlayerTimeline(selectedPlayer).length - 1 && (
-                                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 w-0.5 h-4 bg-brand-border"></div>
+                                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 w-0.5 h-4 bg-white/20"></div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center justify-between">
-                                <p className="text-sm font-medium text-brand-text-primary">
-                                  {event.title}
-                                </p>
-                                <p className="text-xs text-brand-text-tertiary">
-                                  {safeLocaleString(new Date(event.timestamp))}
-                                </p>
+                              <div className="flex items-start justify-between">
+                                <div className="flex items-center space-x-3 flex-1">
+                                  <span className="text-lg flex-shrink-0">{event.icon}</span>
+                                  <div className="flex flex-col space-y-1 flex-1">
+                                    <p className="text-sm font-medium text-high-contrast">
+                                      {event.title}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                      {safeLocaleString(new Date(event.timestamp))}
+                                    </p>
+                                  </div>
+                                </div>
+                                <button
+                                  onClick={() => openEditEventModal(event)}
+                                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
+                                  title="Edit this event"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                  </svg>
+                                </button>
                               </div>
-                              <p className="text-sm text-brand-text-secondary mt-1">
+                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 break-words overflow-wrap-anywhere pr-4">
                                 {event.description}
                               </p>
                               {event.details && (
-                                <div className="mt-1 text-xs text-brand-text-tertiary">
+                                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 pr-4">
                                   {event.details.grantedBy && (
                                     <span>By: {event.details.grantedBy}</span>
                                   )}
                                   {event.details.recordedBy && (
                                     <span>Recorded by: {event.details.recordedBy}</span>
+                                  )}
+                                  {event.details.createdBy && (
+                                    <span>by {event.details.createdBy}</span>
                                   )}
                                 </div>
                               )}
@@ -1603,7 +1628,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                       ))}
                       {generatePlayerTimeline(selectedPlayer).length === 0 && (
                         <div className="text-center py-4">
-                          <p className="text-sm text-brand-text-tertiary">No history available</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">No history available</p>
                         </div>
                       )}
                     </div>
@@ -1611,205 +1636,300 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </Modal>
 
         {/* Add/Edit Note Modal */}
-        {showAddNoteModal && selectedPlayer && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50"
-            style={{ overscrollBehavior: 'contain' }}
-          >
-            <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-brand-text-primary">
-                  {editingNote ? 'Edit Note' : 'Add Note'}
-                </h2>
-                <button
-                  onClick={closeNoteModal}
-                  className="text-brand-text-tertiary hover:text-brand-text-primary"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+        <Modal
+          isOpen={showAddNoteModal}
+          onClose={closeNoteModal}
+          title={editingNote ? 'Edit Note' : 'Add Note'}
+          size="md"
+          closeOnOverlayClick={false}
+        >
+          {selectedPlayer && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Note for {selectedPlayer.name}
+                </p>
+                <textarea
+                  value={newNoteText}
+                  onChange={(e) => setNewNoteText(e.target.value)}
+                  placeholder="Enter your note here..."
+                  className="w-full h-32 px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  autoFocus
+                />
               </div>
               
-              <div className="space-y-4">
-                <div>
-                  <p className="text-sm text-brand-text-secondary mb-2">
-                    Note for {selectedPlayer.name}
-                  </p>
-                  <textarea
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    placeholder="Enter your note here..."
-                    className="w-full h-32 px-3 py-2 bg-brand-background border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent resize-none"
-                    autoFocus
-                  />
-                </div>
-                
-                <div className="flex items-center justify-end space-x-3">
-                  <button
-                    onClick={closeNoteModal}
-                    className="px-4 py-2 text-brand-text-secondary hover:text-brand-text-primary transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (editingNote) {
-                        const noteIndex = selectedPlayer.notes.findIndex(n => n.timestamp === editingNote.timestamp);
-                        editNote(selectedPlayer.tag, noteIndex, newNoteText);
-                      } else {
-                        addNote(selectedPlayer.tag, newNoteText);
-                      }
-                    }}
-                    disabled={!newNoteText.trim()}
-                    className="px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {editingNote ? 'Update Note' : 'Add Note'}
-                  </button>
-                </div>
+              <div className="flex items-center justify-end space-x-3">
+                <Button
+                  variant="ghost"
+                  onClick={closeNoteModal}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (editingNote) {
+                      const noteIndex = selectedPlayer.notes.findIndex(n => n.timestamp === editingNote.timestamp);
+                      editNote(selectedPlayer.tag, noteIndex, newNoteText);
+                    } else {
+                      addNote(selectedPlayer.tag, newNoteText);
+                    }
+                  }}
+                  disabled={!newNoteText.trim()}
+                >
+                  {editingNote ? 'Update Note' : 'Add Note'}
+                </Button>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </Modal>
 
         {/* Add Player Modal */}
-        {showAddPlayerModal && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50"
-            style={{ overscrollBehavior: 'contain' }}
-          >
-            <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-brand-text-primary">Add New Player</h2>
-                <button
-                  onClick={closeAddPlayerModal}
-                  className="text-brand-text-tertiary hover:text-brand-text-primary"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-brand-text-secondary mb-2">
-                    Player Tag
-                  </label>
-                  <input
-                    type="text"
-                    value={newPlayerTag}
-                    onChange={(e) => setNewPlayerTag(e.target.value)}
-                    placeholder="e.g., #ABC123DEF"
-                    className="w-full px-3 py-2 bg-brand-background border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent"
-                    autoFocus
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-brand-text-secondary mb-2">
-                    Player Name
-                  </label>
-                  <input
-                    type="text"
-                    value={newPlayerName}
-                    onChange={(e) => setNewPlayerName(e.target.value)}
-                    placeholder="e.g., PlayerName"
-                    className="w-full px-3 py-2 bg-brand-background border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm text-brand-text-secondary mb-2">
-                    Initial Note
-                  </label>
-                  <textarea
-                    value={newNoteText}
-                    onChange={(e) => setNewNoteText(e.target.value)}
-                    placeholder="Enter initial note for this player..."
-                    className="w-full h-24 px-3 py-2 bg-brand-background border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent resize-none"
-                  />
-                </div>
-                
-                <div className="flex items-center justify-end space-x-3">
-                  <button
-                    onClick={closeAddPlayerModal}
-                    className="px-4 py-2 text-brand-text-secondary hover:text-brand-text-primary transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => addNewPlayer(newPlayerTag, newPlayerName, newNoteText)}
-                    disabled={!newPlayerTag.trim() || !newPlayerName.trim() || !newNoteText.trim()}
-                    className="px-4 py-2 bg-brand-primary text-white rounded-lg hover:bg-brand-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Add Player
-                  </button>
-                </div>
-              </div>
+        <Modal
+          isOpen={showAddPlayerModal}
+          onClose={closeAddPlayerModal}
+          title="Add New Player"
+          size="md"
+          closeOnOverlayClick={false}
+        >
+          <div className="space-y-4">
+            <div>
+              <Input
+                label="Player Tag"
+                type="text"
+                value={newPlayerTag}
+                onChange={(e) => setNewPlayerTag(e.target.value)}
+                placeholder="e.g., #ABC123DEF"
+                autoFocus
+              />
+            </div>
+            
+            <div>
+              <Input
+                label="Player Name"
+                type="text"
+                value={newPlayerName}
+                onChange={(e) => setNewPlayerName(e.target.value)}
+                placeholder="e.g., PlayerName"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm text-muted mb-2">
+                Initial Note
+              </label>
+              <textarea
+                value={newNoteText}
+                onChange={(e) => setNewNoteText(e.target.value)}
+                placeholder="Enter initial note for this player..."
+                className="w-full h-24 px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-high-contrast placeholder:text-muted"
+              />
+            </div>
+            
+            <div className="flex items-center justify-end space-x-3">
+              <Button
+                variant="ghost"
+                onClick={closeAddPlayerModal}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => addNewPlayer(newPlayerTag, newPlayerName, newNoteText)}
+                disabled={!newPlayerTag.trim() || !newPlayerName.trim() || !newNoteText.trim()}
+              >
+                Add Player
+              </Button>
             </div>
           </div>
-        )}
+        </Modal>
 
         {/* Warning Modal */}
-        {showWarningModal && selectedPlayer && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-75 backdrop-blur-sm flex items-center justify-center z-50"
-            style={{ overscrollBehavior: 'contain' }}
-          >
-            <div className="bg-brand-surface-primary border border-brand-border rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-brand-text-primary">Set Warning for Return</h2>
-                <button
-                  onClick={closeWarningModal}
-                  className="text-brand-text-tertiary hover:text-brand-text-primary"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+        <Modal
+          isOpen={showWarningModal}
+          onClose={closeWarningModal}
+          title="Set Warning for Return"
+          size="md"
+          closeOnOverlayClick={false}
+        >
+          {selectedPlayer && (
+            <div className="space-y-4">
+              <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800">
+                  <strong>Warning:</strong> This player will be flagged with a special warning message when they try to return to the clan.
+                </p>
               </div>
               
-              <div className="space-y-4">
-                <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <p className="text-sm text-yellow-800">
-                    <strong>Warning:</strong> This player will be flagged with a special warning message when they try to return to the clan.
-                  </p>
-                </div>
-                
+              <div>
+                <label className="block text-sm text-muted mb-2">
+                  Warning Note for {selectedPlayer.name}
+                </label>
+                <textarea
+                  value={warningNoteText}
+                  onChange={(e) => setWarningNoteText(e.target.value)}
+                  placeholder="Enter the warning message that will be shown when this player tries to return..."
+                  className="w-full h-32 px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-high-contrast placeholder:text-muted"
+                  autoFocus
+                />
+                <p className="text-xs text-muted mt-1">
+                  This note will be displayed prominently when the player attempts to rejoin.
+                </p>
+              </div>
+              
+              <div className="flex items-center justify-end space-x-3">
+                <Button
+                  variant="ghost"
+                  onClick={closeWarningModal}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => setPlayerWarning(selectedPlayer.tag, warningNoteText)}
+                  disabled={!warningNoteText.trim()}
+                >
+                  Set Warning
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Edit Event Modal */}
+        <Modal
+          isOpen={showEditEventModal}
+          onClose={closeEditEventModal}
+          title={`Edit ${editingEvent?.type || 'Event'}`}
+          size="md"
+          closeOnOverlayClick={false}
+        >
+          {editingEvent && (
+            <div className="space-y-4">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  <strong>Editing:</strong> {editingEvent.title} from {safeLocaleString(new Date(editingEvent.timestamp))}
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Event Type
+                </label>
+                <select
+                  value={editEventData.type}
+                  onChange={(e) => setEditEventData(prev => ({ ...prev, type: e.target.value }))}
+                  className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                >
+                  <option value="note">Note</option>
+                  <option value="departure">Departure</option>
+                  <option value="tenure">Tenure</option>
+                  <option value="warning">Warning</option>
+                </select>
+              </div>
+
+              {editEventData.type === 'departure' && (
                 <div>
-                  <label className="block text-sm text-brand-text-secondary mb-2">
-                    Warning Note for {selectedPlayer.name}
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Departure Type
                   </label>
-                  <textarea
-                    value={warningNoteText}
-                    onChange={(e) => setWarningNoteText(e.target.value)}
-                    placeholder="Enter the warning message that will be shown when this player tries to return..."
-                    className="w-full h-32 px-3 py-2 bg-brand-background border border-brand-border rounded-lg focus:ring-2 focus:ring-brand-primary focus:border-transparent resize-none"
-                    autoFocus
-                  />
-                  <p className="text-xs text-brand-text-tertiary mt-1">
-                    This note will be displayed prominently when the player attempts to rejoin.
-                  </p>
+                  <select
+                    value={editEventData.details.type || 'voluntary'}
+                    onChange={(e) => setEditEventData(prev => ({ 
+                      ...prev, 
+                      details: { ...prev.details, type: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                  >
+                    <option value="voluntary">Voluntary</option>
+                    <option value="kicked: inactive">Kicked: Inactive</option>
+                    <option value="kicked: other">Kicked: Other</option>
+                  </select>
                 </div>
-                
-                <div className="flex items-center justify-end space-x-3">
-                  <button
-                    onClick={closeWarningModal}
-                    className="px-4 py-2 text-brand-text-secondary hover:text-brand-text-primary transition-colors"
+              )}
+
+              {editEventData.type === 'tenure' && (
+                <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                    Tenure Action
+                  </label>
+                  <select
+                    value={editEventData.details.action || 'granted'}
+                    onChange={(e) => setEditEventData(prev => ({ 
+                      ...prev, 
+                      details: { ...prev.details, action: e.target.value }
+                    }))}
+                    className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                  >
+                    <option value="granted">Granted</option>
+                    <option value="revoked">Revoked</option>
+                  </select>
+                </div>
+              )}
+              
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Description/Reason
+                </label>
+                <textarea
+                  value={editEventData.description}
+                  onChange={(e) => setEditEventData(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Enter description or reason..."
+                  className="w-full h-24 px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-gray-600 dark:text-gray-400 mb-2">
+                  Recorded By
+                </label>
+                <input
+                  type="text"
+                  value={editEventData.details.recordedBy || editEventData.details.createdBy || editEventData.details.by || 'Current Leader'}
+                  onChange={(e) => {
+                    const field = editEventData.type === 'note' ? 'createdBy' : 
+                                 editEventData.type === 'tenure' ? 'by' : 'recordedBy';
+                    setEditEventData(prev => ({ 
+                      ...prev, 
+                      details: { ...prev.details, [field]: e.target.value }
+                    }));
+                  }}
+                  className="w-full px-3 py-2 bg-white/10 backdrop-blur-sm border border-white/20 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white"
+                  placeholder="Who recorded this event?"
+                />
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <Button
+                  variant="ghost"
+                  onClick={deleteTimelineEvent}
+                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20"
+                >
+                  Archive Event
+                </Button>
+                <div className="flex items-center space-x-3">
+                  <Button
+                    variant="ghost"
+                    onClick={closeEditEventModal}
                   >
                     Cancel
-                  </button>
-                  <button
-                    onClick={() => setPlayerWarning(selectedPlayer.tag, warningNoteText)}
-                    disabled={!warningNoteText.trim()}
-                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={updateTimelineEvent}
+                    disabled={!editEventData.description.trim()}
                   >
-                    Set Warning
-                  </button>
+                    Update Event
+                  </Button>
                 </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </Modal>
       </div>
     </DashboardLayout>
   );
