@@ -73,7 +73,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
       <div className="grid grid-cols-2 gap-3">
         <StatChip label="Trophies" value={(member as any).rankedTrophies ?? member.trophies ?? 0} icon="🏆" />
         <StatChip label="Rush" value={`${rushPercent.toFixed(1)}%`} icon={rushPercent >= 70 ? '🔥' : rushPercent >= 40 ? '⚠️' : '✅'} />
-        <StatChip label="Season" value={seasonTotalDisplay} icon="⭐" tone="positive" />
+        <StatChip label="Running" value={seasonTotalDisplay} icon="⭐" tone="positive" />
         <StatChip label="Donated" value={member.donations ?? 0} icon="💝" tone="positive" />
         <StatChip
           label="Received"

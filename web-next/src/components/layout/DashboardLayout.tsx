@@ -311,7 +311,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                 ⋯
               </button>
               <div 
-                className="absolute right-0 top-full mt-1 w-52 rounded-2xl border border-brand-border/70 bg-brand-surfaceRaised/95 p-2 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)] opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100"
+                className="actions-menu-panel absolute right-0 top-full mt-1 w-52 rounded-2xl border border-brand-border/70 p-2 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)] opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100"
               >
                 <div className="space-y-1">
                   <LeadershipGuard requiredPermission="canManageAccess" fallback={null}>

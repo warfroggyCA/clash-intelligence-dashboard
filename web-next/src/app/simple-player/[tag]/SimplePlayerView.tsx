@@ -328,7 +328,7 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
               <p className="text-xs text-blue-100/60 mt-2">Monday snapshot (4:30 AM UTC) before Tuesday reset.</p>
             </div>
             <div className="bg-gray-900/60 border border-gray-700/60 rounded-xl p-5 shadow-inner">
-              <p className="text-xs text-blue-200/70 uppercase tracking-wider mb-1">Season Total</p>
+              <p className="text-xs text-blue-200/70 uppercase tracking-wider mb-1">Running Total</p>
               <p className="text-3xl font-mono font-bold text-clash-gold">
                 {player.seasonTotalTrophies !== null && player.seasonTotalTrophies !== undefined
                   ? player.seasonTotalTrophies.toLocaleString()
