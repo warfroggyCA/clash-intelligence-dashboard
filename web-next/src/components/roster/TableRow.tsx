@@ -808,14 +808,46 @@ const ActionsMenu: React.FC<{
         ⋯
       </button>
       {open && (
-        <div className="actions-menu-panel absolute right-0 mt-2 min-w-[12rem] whitespace-nowrap bg-white border border-slate-200 rounded-md shadow-xl ring-1 ring-black/5 z-[1000] overflow-hidden">
-          <button onClick={(e) => { onViewProfile(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">View Profile</button>
-          <button onClick={(e) => { onCopyTag(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Copy Tag</button>
+        <div 
+          className="actions-menu-panel absolute right-0 mt-1 min-w-[12rem] whitespace-nowrap rounded-2xl border border-brand-border/70 p-2 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)] z-[1000] overflow-hidden"
+        >
+          <button 
+            onClick={(e) => { onViewProfile(e); setOpen(false); }} 
+            className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+          >
+            View Profile
+          </button>
+          <button 
+            onClick={(e) => { onCopyTag(e); setOpen(false); }} 
+            className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+          >
+            Copy Tag
+          </button>
           <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
-            <button onClick={(e) => { onManageNotes(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Manage Notes</button>
-            <button onClick={(e) => { onDeparture(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Record Departure</button>
-            <button onClick={(e) => { onGrantTenure(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Grant Tenure</button>
-            <button onClick={(e) => { onEditTenure(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Edit Tenure</button>
+            <button 
+              onClick={(e) => { onManageNotes(e); setOpen(false); }} 
+              className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+            >
+              Manage Notes
+            </button>
+            <button 
+              onClick={(e) => { onDeparture(e); setOpen(false); }} 
+              className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+            >
+              Record Departure
+            </button>
+            <button 
+              onClick={(e) => { onGrantTenure(e); setOpen(false); }} 
+              className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+            >
+              Grant Tenure
+            </button>
+            <button 
+              onClick={(e) => { onEditTenure(e); setOpen(false); }} 
+              className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+            >
+              Edit Tenure
+            </button>
           </LeadershipGuard>
         </div>
       )}

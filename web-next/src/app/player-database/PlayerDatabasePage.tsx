@@ -1229,17 +1229,6 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
                   <option value="name" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">Name</option>
                   <option value="noteCount" className="text-gray-900 dark:text-white bg-white dark:bg-gray-800">Note Count</option>
                 </select>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  title={`Sort ${sortOrder === 'asc' ? 'descending' : 'ascending'}`}
-                  className="p-2 relative z-50"
-                >
-                  <svg className={`w-4 h-4 transition-transform ${sortOrder === 'desc' ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11l5-5m0 0l5 5m-5-5v12" />
-                  </svg>
-                </Button>
               </div>
 
               <div className="flex items-center space-x-2">

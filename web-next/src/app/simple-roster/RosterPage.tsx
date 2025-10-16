@@ -509,7 +509,7 @@ export default function SimpleRosterPage() {
                   title="Cumulative trophy total via Monday finals since season start"
                   className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                 >
-                  Season Total {sortKey === 'season' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  Running Total {sortKey === 'season' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th 
                   onClick={() => handleSort('rush')}
@@ -728,7 +728,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       <td className="px-4 py-3 text-center">
                         {player.seasonTotalTrophies !== null && player.seasonTotalTrophies !== undefined ? (
                           <span 
-                            title={`Season total trophies (sum of weekly finals): ${player.seasonTotalTrophies.toLocaleString()}`}
+                            title={`Running total trophies (sum of weekly finals): ${player.seasonTotalTrophies.toLocaleString()}`}
                             className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
                           >
                             {player.seasonTotalTrophies.toLocaleString()}

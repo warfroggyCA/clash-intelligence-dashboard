@@ -183,9 +183,9 @@ thead th.tooltip-trigger[data-tooltip]::after {
 }
 
 [data-theme="dark"] .actions-menu-panel {
-  background-color: #0F172A !important;
+  background-color: #1E293B !important;
   color: #E2E8F0 !important;
-  border-color: rgba(148,163,184,0.3) !important;
+  border-color: rgba(148,163,184,0.5) !important;
 }
 
 [data-theme="light"] .actions-menu-item {
@@ -194,6 +194,39 @@ thead th.tooltip-trigger[data-tooltip]::after {
 
 [data-theme="dark"] .actions-menu-item {
   color: #E2E8F0 !important;
+}
+
+/* Fallback for dark mode - more aggressive targeting */
+.dark .actions-menu-panel {
+  background-color: #1E293B !important;
+  color: #E2E8F0 !important;
+  border-color: rgba(148,163,184,0.5) !important;
+}
+
+.dark .actions-menu-item {
+  color: #E2E8F0 !important;
+}
+
+/* Even more aggressive fallback */
+.actions-menu-panel {
+  background-color: rgba(30, 41, 59, 0.95) !important;
+  backdrop-filter: blur(8px) !important;
+  color: #E2E8F0 !important;
+  border-color: rgba(148,163,184,0.5) !important;
+}
+
+/* Actions menu dropdowns - ensure opacity */
+.actions-menu-panel,
+[class*="actions-menu"] {
+  background-color: #1E293B !important;
+  opacity: 1 !important;
+  border: 1px solid #475569 !important;
+}
+
+.actions-menu-panel button,
+[class*="actions-menu"] button {
+  color: #E2E8F0 !important;
+  opacity: 1 !important;
 }
 
 h1, h2, h3, h4 {

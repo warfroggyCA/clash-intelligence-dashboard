@@ -82,8 +82,8 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
   },
   {
     key: 'season',
-    label: 'Season Total',
-    shortLabel: 'Season',
+    label: 'Running Total',
+    shortLabel: 'Running',
     group: 'Basic Info',
     sortable: true,
     className: 'text-center border-r border-gray-400',
