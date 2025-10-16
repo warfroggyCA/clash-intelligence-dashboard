@@ -70,6 +70,8 @@ export const MobileCard: React.FC<MobileCardProps> = ({
     loadRoster,
     clanTag: storeClanTag,
     homeClan,
+    setSelectedPlayer,
+    setShowPlayerProfile,
   } = useDashboardStore();
   const router = useRouter();
 
@@ -98,6 +100,12 @@ export const MobileCard: React.FC<MobileCardProps> = ({
   const openDepartureModal = () => {
     setSelectedMember(member);
     setShowDepartureModal(true);
+  };
+
+  const openManageNotes = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedPlayer(member);
+    setShowPlayerProfile(true);
   };
 
   const handleEditTenure = async (e: React.MouseEvent) => {
@@ -171,6 +179,15 @@ export const MobileCard: React.FC<MobileCardProps> = ({
           </span>
           <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
             <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-8 w-8 px-0 border-blue-400/40 text-blue-200 hover:bg-blue-500/10"
+                title="Manage notes"
+                onClick={openManageNotes}
+              >
+                📝
+              </Button>
               <Button
                 size="sm"
                 variant="outline"

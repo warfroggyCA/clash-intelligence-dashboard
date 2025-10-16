@@ -7,16 +7,130 @@
 
 "use client";
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { TownHallBadge, LeagueBadge } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 import { calculateRushPercentage, getMemberActivity, getTownHallLevel, getHeroCaps } from '@/lib/business/calculations';
+import LeadershipGuard from '@/components/LeadershipGuard';
 import type { Member } from '@/types';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+
+// Actions Menu Component
+interface ActionsMenuProps {
+  player: RosterMember;
+  onViewProfile: (e: React.MouseEvent, player: RosterMember) => void;
+  onCopyTag: (e: React.MouseEvent, player: RosterMember) => void;
+  onManageNotes: (e: React.MouseEvent, player: RosterMember) => void;
+  onDeparture: (e: React.MouseEvent, player: RosterMember) => void;
+  onGrantTenure: (e: React.MouseEvent, player: RosterMember) => void;
+  onEditTenure: (e: React.MouseEvent, player: RosterMember) => void;
+}
+
+const ActionsMenu: React.FC<ActionsMenuProps> = ({
+  player,
+  onViewProfile,
+  onCopyTag,
+  onManageNotes,
+  onDeparture,
+  onGrantTenure,
+  onEditTenure,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="p-1 text-brand-text-tertiary hover:text-brand-text-primary hover:bg-brand-surface-hover rounded transition-colors"
+        title="Actions"
+      >
+        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+          <path d="M10 6a2 2 0 110-4 2 2 0 010 4zM10 12a2 2 0 110-4 2 2 0 010 4zM10 18a2 2 0 110-4 2 2 0 010 4z" />
+        </svg>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-1 w-48 bg-brand-surface-primary border border-brand-border rounded-lg shadow-lg z-50">
+          <div className="py-1">
+            <button
+              onClick={(e) => {
+                onViewProfile(e, player);
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors"
+            >
+              View Profile
+            </button>
+            <button
+              onClick={(e) => {
+                onCopyTag(e, player);
+                setIsOpen(false);
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors"
+            >
+              Copy Tag
+            </button>
+            
+            <LeadershipGuard>
+              <button
+                onClick={(e) => {
+                  onManageNotes(e, player);
+                  setIsOpen(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors"
+              >
+                Manage Notes
+              </button>
+              <button
+                onClick={(e) => {
+                  onDeparture(e, player);
+                  setIsOpen(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors"
+              >
+                Record Departure
+              </button>
+              <button
+                onClick={(e) => {
+                  onGrantTenure(e, player);
+                  setIsOpen(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors"
+              >
+                Grant Tenure
+              </button>
+              <button
+                onClick={(e) => {
+                  onEditTenure(e, player);
+                  setIsOpen(false);
+                }}
+                className="w-full px-4 py-2 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors"
+              >
+                Edit Tenure
+              </button>
+            </LeadershipGuard>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
 
 interface RosterMember extends Member {
   tag: string;
@@ -77,6 +191,48 @@ export default function SimpleRosterPage() {
       setSortKey(key);
       setSortDirection('desc');
     }
+  };
+
+  // Action handlers
+  const handleViewProfile = (e: React.MouseEvent, player: RosterMember) => {
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(`/player/${player.tag.replace('#', '')}`, '_blank');
+  };
+
+  const handleCopyTag = (e: React.MouseEvent, player: RosterMember) => {
+    e.preventDefault();
+    e.stopPropagation();
+    navigator.clipboard.writeText(player.tag);
+    // You could add a toast notification here
+  };
+
+  const handleManageNotes = (e: React.MouseEvent, player: RosterMember) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // TODO: Implement notes management modal
+    console.log('Manage notes for:', player.name);
+  };
+
+  const handleDeparture = (e: React.MouseEvent, player: RosterMember) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // TODO: Implement departure recording
+    console.log('Record departure for:', player.name);
+  };
+
+  const handleGrantTenure = (e: React.MouseEvent, player: RosterMember) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // TODO: Implement tenure granting
+    console.log('Grant tenure for:', player.name);
+  };
+
+  const handleEditTenure = (e: React.MouseEvent, player: RosterMember) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // TODO: Implement tenure editing
+    console.log('Edit tenure for:', player.name);
   };
 
   // Sorted members with memoization
@@ -418,6 +574,9 @@ export default function SimpleRosterPage() {
                   >
                     Received {sortKey === 'received' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-brand-border/50">
@@ -492,7 +651,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       <td className="px-4 py-3">
                         <Link 
                           href={`/player/${player.tag.replace('#', '')}`}
-                          className="text-white hover:text-slate-200 font-bold hover:underline transition-colors"
+                          className="text-white hover:text-slate-200 hover:underline transition-colors"
                           style={{ fontFamily: "'Clash Display', sans-serif" }}
                         >
                           {player.name}
@@ -649,6 +808,17 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         >
                           {player.donationsReceived === 0 ? '—' : player.donationsReceived}
                         </span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <ActionsMenu 
+                          player={player}
+                          onViewProfile={handleViewProfile}
+                          onCopyTag={handleCopyTag}
+                          onManageNotes={handleManageNotes}
+                          onDeparture={handleDeparture}
+                          onGrantTenure={handleGrantTenure}
+                          onEditTenure={handleEditTenure}
+                        />
                       </td>
                     </tr>
                   );

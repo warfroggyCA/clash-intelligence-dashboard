@@ -334,6 +334,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                   >
                     🏰 Manage Clans
                   </button>
+                  <LeadershipGuard requiredPermission="canViewLeadershipFeatures" fallback={null}>
+                    <button
+                      onClick={() => router.push('/player-database')}
+                      className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                    >
+                      🗄️ Player Database
+                    </button>
+                  </LeadershipGuard>
                   <a 
                     href="/faq" 
                     className="block rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"

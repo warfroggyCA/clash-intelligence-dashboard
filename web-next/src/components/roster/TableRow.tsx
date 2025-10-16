@@ -189,6 +189,8 @@ export const TableRow: React.FC<TableRowProps> = ({
     loadRoster,
     clanTag: storeClanTag,
     homeClan,
+    setSelectedPlayer,
+    setShowPlayerProfile,
   } = store;
   const router = useRouter();
   const clanTagForActions = roster.clanTag || storeClanTag || homeClan || '';
@@ -368,6 +370,11 @@ export const TableRow: React.FC<TableRowProps> = ({
   const handleOpenProfile = () => {
     const normalizedTag = member.tag.startsWith('#') ? member.tag.slice(1) : member.tag;
     router.push(`/player/${normalizedTag}`);
+  };
+
+  const handleManageNotes = () => {
+    setSelectedPlayer(member);
+    setShowPlayerProfile(true);
   };
 
   const handleQuickDeparture = () => {
@@ -681,6 +688,7 @@ export const TableRow: React.FC<TableRowProps> = ({
         <div className="relative inline-block text-left tooltip-trigger" data-tooltip="Actions">
           <ActionsMenu 
             onViewProfile={(e) => { e.stopPropagation(); handleOpenProfile(); }}
+            onManageNotes={(e) => { e.stopPropagation(); handleManageNotes(); }}
             onCopyTag={(e) => { e.stopPropagation(); navigator.clipboard.writeText(member.tag).then(() => showToast('Tag copied','success')).catch(() => showToast('Copy failed','error')); }}
             onDeparture={(e) => { e.stopPropagation(); handleQuickDeparture(); }}
             onGrantTenure={async (e) => {
@@ -756,11 +764,12 @@ export const TableRow: React.FC<TableRowProps> = ({
 // Simple actions dropdown
 const ActionsMenu: React.FC<{
   onViewProfile: (e: React.MouseEvent) => void;
+  onManageNotes: (e: React.MouseEvent) => void;
   onCopyTag: (e: React.MouseEvent) => void;
   onDeparture: (e: React.MouseEvent) => void;
   onGrantTenure: (e: React.MouseEvent) => void;
   onEditTenure: (e: React.MouseEvent) => void;
-}> = ({ onViewProfile, onCopyTag, onDeparture, onGrantTenure, onEditTenure }) => {
+}> = ({ onViewProfile, onManageNotes, onCopyTag, onDeparture, onGrantTenure, onEditTenure }) => {
   const [open, setOpen] = useState(false);
   const ref = React.useRef<HTMLDivElement>(null);
 
@@ -803,6 +812,7 @@ const ActionsMenu: React.FC<{
           <button onClick={(e) => { onViewProfile(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">View Profile</button>
           <button onClick={(e) => { onCopyTag(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Copy Tag</button>
           <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+            <button onClick={(e) => { onManageNotes(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Manage Notes</button>
             <button onClick={(e) => { onDeparture(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Record Departure</button>
             <button onClick={(e) => { onGrantTenure(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Grant Tenure</button>
             <button onClick={(e) => { onEditTenure(e); setOpen(false); }} className="actions-menu-item block w-full text-left px-3 py-2 text-sm hover:bg-slate-50">Edit Tenure</button>
