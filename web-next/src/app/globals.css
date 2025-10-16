@@ -1235,3 +1235,14 @@ button:has(svg:only-child) {
   color: rgba(241, 245, 249, 0.90) !important;
   font-weight: 600;
 }
+
+/* Fix tooltip z-index issues */
+[title] {
+  position: relative;
+  z-index: 9999;
+}
+
+/* Ensure tooltips appear above all content */
+[title]:hover::after {
+  z-index: 10000 !important;
+}

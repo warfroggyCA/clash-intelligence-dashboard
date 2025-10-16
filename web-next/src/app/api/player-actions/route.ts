@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     const clanTag = searchParams.get('clanTag');
     const playerTag = searchParams.get('playerTag');
     const actionType = searchParams.get('type'); // 'tenure' or 'departure'
+    const includeArchived = searchParams.get('includeArchived') === 'true';
     
     if (!clanTag) {
       return json({ success: false, error: 'clanTag is required' }, { status: 400 });
@@ -29,6 +30,11 @@ export async function GET(request: NextRequest) {
         tenureQuery = tenureQuery.eq('player_tag', playerTag);
       }
       
+      // Filter out archived items unless explicitly requested
+      if (!includeArchived) {
+        tenureQuery = tenureQuery.is('archived_at', null);
+      }
+      
       const { data: tenureData, error: tenureError } = await tenureQuery;
       if (tenureError) {
         console.error('Error fetching tenure actions:', tenureError);
@@ -46,6 +52,11 @@ export async function GET(request: NextRequest) {
       
       if (playerTag) {
         departureQuery = departureQuery.eq('player_tag', playerTag);
+      }
+      
+      // Filter out archived items unless explicitly requested
+      if (!includeArchived) {
+        departureQuery = departureQuery.is('archived_at', null);
       }
       
       const { data: departureData, error: departureError } = await departureQuery;
@@ -139,6 +150,128 @@ export async function POST(request: NextRequest) {
     return json({ success: true, data });
   } catch (error: any) {
     console.error('Error in player-actions POST:', error);
+    return json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/player-actions');
+  
+  try {
+    const body = await request.json();
+    const { id, actionType, archivedBy } = body;
+    
+    if (!id || !actionType) {
+      return json({ success: false, error: 'id and actionType are required' }, { status: 400 });
+    }
+    
+    const supabase = getSupabaseAdminClient();
+    let data: any;
+    
+    if (actionType === 'tenure') {
+      const { data: result, error } = await supabase
+        .from('player_tenure_actions')
+        .update({
+          archived_at: new Date().toISOString(),
+          archived_by: archivedBy || 'System'
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error archiving tenure action:', error);
+        return json({ success: false, error: 'Failed to archive tenure action' }, { status: 500 });
+      }
+      
+      data = { ...result, action_type: 'tenure' };
+    } else if (actionType === 'departure') {
+      const { data: result, error } = await supabase
+        .from('player_departure_actions')
+        .update({
+          archived_at: new Date().toISOString(),
+          archived_by: archivedBy || 'System'
+        })
+        .eq('id', id)
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Error archiving departure action:', error);
+        return json({ success: false, error: 'Failed to archive departure action' }, { status: 500 });
+      }
+      
+      data = { ...result, action_type: 'departure' };
+    } else {
+      return json({ success: false, error: 'Invalid action type' }, { status: 400 });
+    }
+    
+    return json({ success: true, data });
+  } catch (error: any) {
+    console.error('Error in player-actions DELETE (archive):', error);
+    return json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PATCH(request: NextRequest) {
+  const { json } = createApiContext(request, '/api/player-actions');
+  
+  try {
+    const body = await request.json();
+    const { id, actionType, action } = body; // action: 'unarchive'
+    
+    if (!id || !actionType || !action) {
+      return json({ success: false, error: 'id, actionType, and action are required' }, { status: 400 });
+    }
+    
+    const supabase = getSupabaseAdminClient();
+    let data: any;
+    
+    if (action === 'unarchive') {
+      if (actionType === 'tenure') {
+        const { data: result, error } = await supabase
+          .from('player_tenure_actions')
+          .update({
+            archived_at: null,
+            archived_by: null
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error unarchiving tenure action:', error);
+          return json({ success: false, error: 'Failed to unarchive tenure action' }, { status: 500 });
+        }
+        
+        data = { ...result, action_type: 'tenure' };
+      } else if (actionType === 'departure') {
+        const { data: result, error } = await supabase
+          .from('player_departure_actions')
+          .update({
+            archived_at: null,
+            archived_by: null
+          })
+          .eq('id', id)
+          .select()
+          .single();
+        
+        if (error) {
+          console.error('Error unarchiving departure action:', error);
+          return json({ success: false, error: 'Failed to unarchive departure action' }, { status: 500 });
+        }
+        
+        data = { ...result, action_type: 'departure' };
+      } else {
+        return json({ success: false, error: 'Invalid action type' }, { status: 400 });
+      }
+    } else {
+      return json({ success: false, error: 'Invalid action' }, { status: 400 });
+    }
+    
+    return json({ success: true, data });
+  } catch (error: any) {
+    console.error('Error in player-actions PATCH:', error);
     return json({ success: false, error: error.message }, { status: 500 });
   }
 }
