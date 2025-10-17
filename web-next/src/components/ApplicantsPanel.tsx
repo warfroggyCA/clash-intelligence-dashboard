@@ -6,6 +6,8 @@ import { computeRushPercent } from '@/lib/applicants';
 import { Info } from 'lucide-react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
+import { getPlayerHistoryRecord, getPlayerHistoryForClan, upsertPlayerHistory } from '@/lib/player-history-service';
+import { syncLocalHistoryToSupabase } from '@/lib/player-history-sync';
 
 type EvalResult = {
   applicant: any;
@@ -54,6 +56,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
   const [roles, setRoles] = useState<Record<string, boolean>>({ member: true, elder: true, coleader: false, leader: false });
   const [applicants, setApplicants] = useState<StoredApplicant[]>([]);
   const [loadingApplicants, setLoadingApplicants] = useState(false);
+  const [historySynced, setHistorySynced] = useState(false);
 
   const resolvedClanTag = useMemo(() => normalizeTag(storeClan || defaultClanTag || '') || null, [storeClan, defaultClanTag]);
 
@@ -84,6 +87,14 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
     void loadApplicants();
   }, [loadApplicants]);
 
+  useEffect(() => {
+    if (!resolvedClanTag || historySynced) return;
+    setHistorySynced(true);
+    void syncLocalHistoryToSupabase(resolvedClanTag).catch((err) => {
+      console.warn('[ApplicantsPanel] Failed to sync local player history', err);
+    });
+  }, [resolvedClanTag, historySynced]);
+
   const onEvaluate = async () => {
     setLoading(true); setError(''); setResult(null);
     setHistoryNote(''); setHistoryLink(null);
@@ -101,48 +112,67 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
       setResult(json.data);
       setSaved(false);
 
-      // History / alias audit
+      // History / alias audit via Supabase
       try {
-        const a = json.data.applicant || {};
-        const nm = String(a.name || '');
-        const tg = String(a.tag || '');
-        const effClan = resolvedClanTag || (storeClan || defaultClanTag || '').trim();
+        const applicant = json.data.applicant || {};
+        const applicantTag = String(applicant.tag || '');
+        const applicantName = String(applicant.name || '');
+        const effClan = resolvedClanTag;
 
-        const norm = (s: string) => String(s || '').replace('#', '').toUpperCase();
+        const normalizedTag = normalizeTag(applicantTag);
 
-        // 1) Local history by tag or alias
-        try {
-          const mod = await import('@/lib/player-history-storage');
-          const rec = mod.loadHistory(tg, nm);
-          if (rec && (rec.status === 'departed' || rec.movements.some((m: any) => m.type === 'departed'))) {
-            setHistoryNote('Applicant appears in your history with a prior departure');
-            setHistoryLink(`/retired/${norm(tg)}`);
-          } else {
-            const byAlias = mod.findByAlias(nm);
-            if (byAlias) {
-              setHistoryNote(`Name matches previous alias for ${byAlias.primaryName}`);
-              setHistoryLink(`/retired/${norm(byAlias.tag)}`);
+        if (effClan && normalizedTag) {
+          const historyRecord = await getPlayerHistoryRecord(effClan, normalizedTag);
+          let historyMatched = false;
+
+          if (historyRecord) {
+            const hasDeparture = historyRecord.status === 'departed' || (historyRecord.movements || []).some((movement) => movement.type === 'departed');
+            const aliasMatch = (historyRecord.aliases || []).some((alias) => alias.name.toLowerCase().trim() === applicantName.toLowerCase().trim());
+
+            if (hasDeparture) {
+              setHistoryNote('Applicant appears in your history with a prior departure');
+              setHistoryLink(`/retired/${normalizedTag.replace('#', '')}`);
+              historyMatched = true;
+            } else if (aliasMatch) {
+              setHistoryNote(`Name matches previous alias for ${historyRecord.primary_name}`);
+              setHistoryLink(`/retired/${normalizedTag.replace('#', '')}`);
+              historyMatched = true;
             }
           }
-        } catch {}
 
-        // 2) Departures list on server
-        if (!historyNote && effClan) {
-          try {
-            const res2 = await fetch(`/api/departures?clanTag=${encodeURIComponent(effClan)}`, { cache: 'no-store' });
-            const j2 = await res2.json();
-            if (res2.ok && j2?.success) {
-              const items = Array.isArray(j2.data) ? j2.data : [];
-              const hit = items.find((d: any) => norm(d.memberTag) === norm(tg))
-                || items.find((d: any) => String(d.memberName || '').toLowerCase().trim() === nm.toLowerCase().trim());
-              if (hit) {
-                setHistoryNote('This tag/name appears in your departed list');
-                setHistoryLink(`/retired/${norm(hit.memberTag)}`);
-              }
+          if (!historyMatched) {
+            const clanHistory = await getPlayerHistoryForClan(effClan);
+            const aliasHit = clanHistory.find((record) =>
+              (record.aliases || []).some((alias) => alias.name.toLowerCase().trim() === applicantName.toLowerCase().trim())
+            );
+            if (aliasHit) {
+              setHistoryNote(`Name matches previous alias for ${aliasHit.primary_name}`);
+              setHistoryLink(`/retired/${aliasHit.player_tag.replace('#', '')}`);
+              historyMatched = true;
             }
-          } catch {}
+          }
+
+          if (!historyMatched) {
+            try {
+              const res2 = await fetch(`/api/departures?clanTag=${encodeURIComponent(effClan)}`, { cache: 'no-store' });
+              const j2 = await res2.json();
+              if (res2.ok && j2?.success) {
+                const items = Array.isArray(j2.data) ? j2.data : [];
+                const normalizedNoHash = normalizedTag.replace('#', '');
+                const hit = items.find((d: any) => normalizeTag(d.memberTag)?.replace('#', '') === normalizedNoHash);
+                if (hit) {
+                  setHistoryNote('This player tag appears in your departed list');
+                  setHistoryLink(`/retired/${normalizedNoHash}`);
+                }
+              }
+            } catch (departureError) {
+              console.warn('[ApplicantsPanel] Departures lookup failed', departureError);
+            }
+          }
         }
-      } catch {}
+      } catch (historyError) {
+        console.warn('[ApplicantsPanel] History lookup failed', historyError);
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to evaluate');
     } finally {
@@ -180,6 +210,24 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
       if (!res.ok || !json?.success) {
         throw new Error(json?.error || `Failed to save applicant (${res.status})`);
       }
+
+      try {
+        const existingHistory = await getPlayerHistoryRecord(resolvedClanTag, playerTag);
+        await upsertPlayerHistory({
+          clanTag: resolvedClanTag,
+          playerTag,
+          primaryName: result.applicant.name || existingHistory?.primary_name || playerTag,
+          status: status as 'active' | 'departed' | 'applicant' | 'rejected',
+          totalTenure: existingHistory?.total_tenure ?? 0,
+          currentStint: existingHistory?.current_stint ?? null,
+          movements: existingHistory?.movements ?? [],
+          aliases: existingHistory?.aliases ?? [],
+          notes: existingHistory?.notes ?? [],
+        });
+      } catch (historyError) {
+        console.warn('[ApplicantsPanel] Failed to sync player history', historyError);
+      }
+
       setSaved(true);
       await loadApplicants();
     } catch (e: any) {

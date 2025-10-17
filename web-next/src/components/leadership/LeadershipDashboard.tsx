@@ -1,14 +1,171 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { LeadershipOnly } from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
 import IngestionMonitor from '@/components/layout/IngestionMonitor';
+import ApplicantsPanel from '@/components/ApplicantsPanel';
 import { Button } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
+
+interface JoinerRecord {
+  id: string;
+  clan_tag: string;
+  player_tag: string;
+  detected_at: string;
+  status: 'pending' | 'reviewed';
+  metadata: Record<string, any>;
+  history: any | null;
+  notes: any[];
+  warnings: any[];
+}
+
+function JoinerReviewCard({ clanTag }: { clanTag: string | null }) {
+  const [loading, setLoading] = useState(false);
+  const [joiners, setJoiners] = useState<JoinerRecord[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadJoiners = useCallback(async () => {
+    if (!clanTag) return;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/joiners?clanTag=${encodeURIComponent(clanTag)}&status=pending&days=7`, {
+        cache: 'no-store',
+      });
+      const data = await res.json();
+      if (!res.ok || !data?.success) {
+        throw new Error(data?.error || `Failed to load joiners (${res.status})`);
+      }
+      setJoiners(data.data || []);
+    } catch (err: any) {
+      setError(err?.message || 'Failed to load joiner events');
+    } finally {
+      setLoading(false);
+    }
+  }, [clanTag]);
+
+  useEffect(() => {
+    void loadJoiners();
+  }, [loadJoiners]);
+
+  const handleMarkReviewed = async (id: string) => {
+    try {
+      const res = await fetch('/api/joiners', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status: 'reviewed' }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data?.error || `Failed to update joiner (${res.status})`);
+      }
+      setJoiners((existing) => existing.filter((joiner) => joiner.id !== id));
+    } catch (err: any) {
+      setError(err?.message || 'Failed to update joiner event');
+    }
+  };
+
+  if (!clanTag) {
+    return null;
+  }
+
+  return (
+    <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <h2 className="text-xl font-semibold text-white">
+            Recent Joiners
+          </h2>
+          <p className="text-sm text-blue-100/70">
+            Review new members detected in the last 7 days.
+          </p>
+        </div>
+        <Button
+          variant="ghost"
+          onClick={() => void loadJoiners()}
+          disabled={loading}
+        >
+          {loading ? 'Refreshing…' : 'Refresh'}
+        </Button>
+      </div>
+
+      {error && (
+        <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-200 mb-4">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="text-sm text-blue-100/70">Loading joiners…</div>
+      ) : joiners.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-gray-700/70 bg-gray-800/60 px-4 py-6 text-sm text-blue-100/70">
+          No pending joiners in the last week.
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {joiners.map((joiner) => {
+            const joinDate = new Date(joiner.detected_at).toLocaleString();
+            const history = joiner.history;
+            const lastDeparture = history?.movements?.filter((m: any) => m.type === 'departed')?.slice(-1)[0];
+            const hasWarnings = (joiner.warnings || []).length > 0;
+            const latestNote = joiner.notes?.[0];
+            return (
+              <div
+                key={joiner.id}
+                className="rounded-xl border border-gray-700/60 bg-gray-800/60 px-4 py-4 text-sm text-blue-100/80"
+              >
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div>
+                    <div className="flex items-center gap-2 text-white text-base font-semibold">
+                      <span>{joiner.player_tag}</span>
+                      {history?.primary_name && (
+                        <span className="text-blue-300 font-normal">({history.primary_name})</span>
+                      )}
+                    </div>
+                    <div className="text-xs text-blue-200/80">
+                      Joined: {joinDate}
+                    </div>
+                    {history && (
+                      <div className="text-xs text-blue-200/70 mt-1">
+                        Status: {history.status}{' '}
+                        {history.total_tenure ? `• Total tenure ${history.total_tenure} days` : ''}
+                        {lastDeparture ? ` • Last departed ${new Date(lastDeparture.date).toLocaleDateString()}` : ''}
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => handleMarkReviewed(joiner.id)}
+                    >
+                      Mark Reviewed
+                    </Button>
+                  </div>
+                </div>
+                {hasWarnings && (
+                  <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                    {joiner.warnings.length} active warning{joiner.warnings.length > 1 ? 's' : ''} on record.
+                  </div>
+                )}
+                {latestNote && (
+                  <div className="mt-3 rounded-lg border border-blue-400/40 bg-blue-500/10 px-3 py-2 text-xs text-blue-100/90">
+                    <div className="font-semibold text-blue-200">Latest Note</div>
+                    <div className="text-[11px] text-blue-100/80">{new Date(latestNote.created_at).toLocaleString()}</div>
+                    <div className="mt-1 text-blue-100">{latestNote.note}</div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function LeadershipDashboard() {
   const roster = useDashboardStore((state) => state.roster);
@@ -137,26 +294,14 @@ export default function LeadershipDashboard() {
           </div>
 
           <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
-            <h2 className="text-xl font-semibold text-white">Coming Soon</h2>
-            <p className="text-sm text-blue-100/70">
-              Additional leadership tooling will migrate here so the everyday roster view stays simple.
+            <h2 className="text-xl font-semibold text-white mb-4">Applicant Evaluation System</h2>
+            <p className="text-sm text-blue-100/70 mb-6">
+              Evaluate potential clan members and manage your applicant shortlist.
             </p>
-            <div className="mt-4 grid gap-3 text-sm text-blue-100/80 md:grid-cols-2 xl:grid-cols-4">
-              {[
-                '⏳ Departure manager & roster change review',
-                '⏳ Access management console',
-                '⏳ Discord publishing & insights summaries',
-                '⏳ War prep scheduling & alerts',
-              ].map((item) => (
-                <div
-                  key={item}
-                  className="rounded-xl border border-gray-700/50 bg-gray-800/60 px-4 py-3"
-                >
-                  {item}
-                </div>
-              ))}
-            </div>
+            <ApplicantsPanel defaultClanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
           </div>
+
+          <JoinerReviewCard clanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
         </div>
       </DashboardLayout>
     </LeadershipOnly>
