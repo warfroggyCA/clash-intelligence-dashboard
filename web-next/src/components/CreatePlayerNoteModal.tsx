@@ -1,20 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { X } from "lucide-react";
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { normalizeTag } from '@/lib/tags';
 
 interface CreatePlayerNoteModalProps {
   onClose: () => void;
   defaultTag?: string;
   defaultName?: string;
   lockTag?: boolean;
+  onSaved?: () => void;
 }
 
-export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName, lockTag = false }: CreatePlayerNoteModalProps) {
+export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName, lockTag = false, onSaved }: CreatePlayerNoteModalProps) {
   const [playerTag, setPlayerTag] = useState("");
   const [playerName, setPlayerName] = useState("");
   const [note, setNote] = useState("");
   const [customFields, setCustomFields] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const currentUser = useDashboardStore((state) => state.currentUser);
+  const storeClanTag = useDashboardStore((state) => state.clanTag || state.homeClan);
 
   // Initialize defaults when provided
   useEffect(() => {
@@ -25,7 +33,9 @@ export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName
     if (defaultName && !playerName) {
       setPlayerName(defaultName);
     }
-  }, [defaultTag, defaultName]);
+  }, [defaultTag, defaultName, playerTag, playerName]);
+
+  const resolvedClanTag = useMemo(() => normalizeTag(storeClanTag || '') || '#2PR8R8V8P', [storeClanTag]);
 
   const savePlayerNote = () => {
     if (!playerTag.trim() || !note.trim()) {
@@ -33,55 +43,48 @@ export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName
       return;
     }
 
-    try {
-      const timestamp = new Date().toISOString();
-      const noteData = {
-        timestamp,
-        note: note.trim(),
-        customFields: { ...customFields }
-      };
-
-      // Store in localStorage with timestamped notes
-      const notesKey = `player_notes_${playerTag.toUpperCase()}`;
-      let existingNotes = JSON.parse(localStorage.getItem(notesKey) || "[]");
-      
-      // Migration: If we have old single-note format, convert it
-      if (typeof existingNotes === "string" && existingNotes.trim()) {
-        // Old format: single string note
-        const oldNote = existingNotes;
-        const oldFieldsKey = `player_fields_${playerTag.toUpperCase()}`;
-        const oldFields = JSON.parse(localStorage.getItem(oldFieldsKey) || "{}");
-        
-        // Convert to new timestamped format
-        const migratedNote = {
-          timestamp: new Date().toISOString(),
-          note: oldNote,
-          customFields: oldFields
-        };
-        
-        existingNotes = [migratedNote];
-        
-        // Clean up old format
-        localStorage.removeItem(oldFieldsKey);
-        
-        console.log(`Migrated old note format for player ${playerTag}`);
-      }
-      
-      existingNotes.push(noteData);
-      localStorage.setItem(notesKey, JSON.stringify(existingNotes));
-
-      // Store player name for reference
-      const nameKey = `player_name_${playerTag.toUpperCase()}`;
-      if (playerName.trim()) {
-        localStorage.setItem(nameKey, playerName.trim());
-      }
-
-      alert("Player note saved successfully!");
-      onClose();
-    } catch (error) {
-      console.error('Failed to save player note:', error);
-      alert("Failed to save player note");
+    const normalizedTag = normalizeTag(playerTag);
+    if (!normalizedTag) {
+      setError("Player tag is invalid. Add a # and try again.");
+      return;
     }
+
+    setSaving(true);
+    setError(null);
+
+    const payload = {
+      clanTag: resolvedClanTag,
+      playerTag: normalizedTag,
+      playerName: playerName.trim() || undefined,
+      note: note.trim(),
+      customFields: Object.entries(customFields).reduce<Record<string, string>>((acc, [key, value]) => {
+        const trimmedKey = key.trim();
+        if (trimmedKey) {
+          acc[trimmedKey] = value.trim();
+        }
+        return acc;
+      }, {}),
+      createdBy: currentUser?.email || currentUser?.id || undefined,
+    };
+
+    fetch('/api/player-notes', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error || `Failed to create note (${res.status})`);
+        }
+        onSaved?.();
+        onClose();
+      })
+      .catch((err: any) => {
+        console.error('Failed to save player note:', err);
+        setError(err?.message || 'Failed to save player note');
+      })
+      .finally(() => setSaving(false));
   };
 
   const addCustomField = () => {
@@ -136,6 +139,10 @@ export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName
               />
             )}
           </div>
+
+          <p className="text-xs text-gray-500">
+            Notes are saved to Supabase for clan <span className="font-mono">{resolvedClanTag}</span>.
+          </p>
 
           <div>
             <label className="block text-sm font-medium mb-2">Player Name</label>
@@ -192,6 +199,12 @@ export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName
             </div>
           </div>
 
+          {error && (
+            <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              {error}
+            </div>
+          )}
+
           <div className="flex justify-end space-x-3 pt-4">
             <button
               onClick={onClose}
@@ -201,9 +214,10 @@ export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName
             </button>
             <button
               onClick={savePlayerNote}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              disabled={saving}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Save Note
+              {saving ? 'Saving...' : 'Save Note'}
             </button>
           </div>
         </div>

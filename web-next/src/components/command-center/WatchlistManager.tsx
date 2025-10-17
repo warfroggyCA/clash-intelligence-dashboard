@@ -37,7 +37,7 @@ export const WatchlistManager = ({ watchlist, onUpdateWatchlist }: WatchlistMana
     if (internalWatchlist.length === 0 && watchlist.length > 0) {
       setInternalWatchlist(watchlist);
     }
-  }, []); // Only on mount
+  }, [internalWatchlist.length, watchlist]);
 
   // Use internal watchlist if available, otherwise use prop
   const activeWatchlistData = internalWatchlist.length > 0 ? internalWatchlist : watchlist;

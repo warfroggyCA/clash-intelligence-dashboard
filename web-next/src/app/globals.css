@@ -215,16 +215,29 @@ thead th.tooltip-trigger[data-tooltip]::after {
   border-color: rgba(148,163,184,0.5) !important;
 }
 
-/* Actions menu dropdowns - ensure opacity */
-.actions-menu-panel,
-[class*="actions-menu"] {
+/* NUCLEAR OPTION - Force opacity on ALL dropdowns */
+div[class*="absolute"][class*="right-0"][class*="mt-"] {
   background-color: #1E293B !important;
   opacity: 1 !important;
-  border: 1px solid #475569 !important;
+  border: 2px solid #475569 !important;
 }
 
-.actions-menu-panel button,
-[class*="actions-menu"] button {
+/* Force all buttons in dropdowns to be opaque */
+div[class*="absolute"][class*="right-0"][class*="mt-"] button {
+  background-color: transparent !important;
+  color: #E2E8F0 !important;
+  opacity: 1 !important;
+}
+
+/* Also target dropdowns with top-full positioning */
+div[class*="absolute"][class*="right-0"][class*="top-full"] {
+  background-color: #1E293B !important;
+  opacity: 1 !important;
+  border: 2px solid #475569 !important;
+}
+
+div[class*="absolute"][class*="right-0"][class*="top-full"] button {
+  background-color: transparent !important;
   color: #E2E8F0 !important;
   opacity: 1 !important;
 }

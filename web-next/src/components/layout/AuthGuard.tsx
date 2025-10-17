@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from 'react';
+import Link from 'next/link';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Button } from '@/components/ui';
 import type { ClanRoleName } from '@/lib/auth/roles';
@@ -44,9 +45,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             You need to be signed in to access leadership tools.
           </p>
         </div>
-        <a href="/login">
+        <Link href="/login">
           <Button size="lg">Sign In</Button>
-        </a>
+        </Link>
       </div>
     );
   }

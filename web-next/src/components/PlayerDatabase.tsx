@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { X, Plus } from "lucide-react";
+import Link from "next/link";
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import CreatePlayerNoteModal from "./CreatePlayerNoteModal";
 import FontSizeControl from "./FontSizeControl";
@@ -352,14 +353,14 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
         </div>
         <div className="flex space-x-2">
           <FontSizeControl />
-          <a
+          <Link
             href="/retired"
             className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 flex items-center space-x-2"
             title="View retired players list"
           >
             <span>🏁</span>
             <span>Retired List</span>
-          </a>
+          </Link>
           <button
             onClick={() => setShowCreatePlayerNote(true)}
             className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
@@ -513,7 +514,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                     <option value="rejected">Rejected</option>
                   </select>
                   <span className="text-gray-400">•</span>
-                  <a
+                  <Link
                     href={`/retired/${(selectedPlayer.tag || '').replace('#', '')}`}
                     className="text-blue-600 hover:text-blue-700 underline"
                     title="Open simplified retired profile"
@@ -521,7 +522,7 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
                     rel="noreferrer"
                   >
                     Open Page
-                  </a>
+                  </Link>
                 </div>
               </div>
               <button 
@@ -604,7 +605,8 @@ export default function PlayerDatabase({ currentClanMembers = [] }: PlayerDataba
         <CreatePlayerNoteModal
           onClose={() => {
             setShowCreatePlayerNote(false);
-            // Refresh the database after creating a note
+          }}
+          onSaved={() => {
             loadPlayerDatabase();
           }}
           defaultTag={showPlayerModal && selectedPlayer ? selectedPlayer.tag : undefined}
