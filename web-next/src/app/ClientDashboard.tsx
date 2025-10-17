@@ -207,7 +207,7 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
         return <div>Changes Dashboard Component</div>;
       
       case 'database':
-        return <PlayerDatabase currentClanMembers={roster?.members?.map(m => m.tag) || []} />;
+        return <PlayerDatabase />;
       
       case 'coaching':
         return <CommandCenter clanData={roster} clanTag={clanTag || homeClan || initialClanTag} />;

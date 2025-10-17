@@ -38,7 +38,7 @@ export function loadHistory(tag: string, primaryName?: string): PlayerHistoryRec
     totalTenure: 0,
     currentStint: null,
     notes: [],
-    status: 'departed',
+    status: 'applicant',
     lastUpdated: nowIso(),
   };
   return record;
@@ -46,6 +46,12 @@ export function loadHistory(tag: string, primaryName?: string): PlayerHistoryRec
 
 export function saveHistory(record: PlayerHistoryRecord) {
   try { localStorage.setItem(keyFor(record.tag), JSON.stringify(record)); } catch {}
+}
+
+export function deleteHistory(tag: string) {
+  try {
+    localStorage.removeItem(keyFor(tag));
+  } catch {}
 }
 
 export function recordDeparture(dep: SimpleDeparture) {
@@ -98,4 +104,3 @@ export function getAllHistory(): PlayerHistoryRecord[] {
   } catch {}
   return out;
 }
-

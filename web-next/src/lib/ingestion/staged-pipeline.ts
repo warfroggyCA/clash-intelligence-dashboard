@@ -570,6 +570,32 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
       throw new Error(`Failed to upsert clan: ${clanError.message}`);
     }
 
+    const { data: existingMemberRows, error: existingMembersError } = await supabase
+      .from('members')
+      .select('tag')
+      .eq('clan_id', clanRow.id);
+
+    if (existingMembersError) {
+      throw new Error(`Failed to read existing members: ${existingMembersError.message}`);
+    }
+
+    const existingTags = new Set(
+      (existingMemberRows ?? [])
+        .map((row) => normalizeTag(row.tag))
+        .filter((tag): tag is string => Boolean(tag))
+    );
+
+    const memberMapByTag = new Map(
+      transformedData.memberData
+        .map((member) => {
+          const normalized = normalizeTag(member.tag);
+          return normalized ? [normalized, member] as const : null;
+        })
+        .filter((entry): entry is readonly [string, MemberData] => entry !== null)
+    );
+
+    const newlyJoinedTags = Array.from(memberMapByTag.keys()).filter((tag) => !existingTags.has(tag));
+
     // Upsert members with new typed fields
     const memberUpserts = transformedData.memberData.map((member) => ({
       clan_id: clanRow.id,
@@ -605,6 +631,15 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
       throw new Error(`Failed to upsert members: ${memberError.message}`);
     }
 
+    if (newlyJoinedTags.length > 0) {
+      await recordJoinerEvents({
+        supabase,
+        clanTag: transformedData.clanData.tag,
+        joinerTags: newlyJoinedTags,
+        memberLookup: memberMapByTag,
+      });
+    }
+
     const duration_ms = Date.now() - startTime;
     
     await logPhase(jobId, 'upsertMembers', 'info', 'Upsert members phase completed', {
@@ -626,6 +661,97 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
       duration_ms,
       error_message: error.message,
     };
+  }
+}
+
+async function recordJoinerEvents(params: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  clanTag: string;
+  joinerTags: string[];
+  memberLookup: Map<string, MemberData>;
+}) {
+  const { supabase, clanTag, joinerTags, memberLookup } = params;
+  if (!joinerTags.length) return;
+
+  const detectedAt = new Date().toISOString();
+
+  const { data: existingHistoryRows, error: historyError } = await supabase
+    .from('player_history')
+    .select('*')
+    .eq('clan_tag', clanTag)
+    .in('player_tag', joinerTags);
+
+  if (historyError) {
+    throw new Error(`Failed to load player history for joiners: ${historyError.message}`);
+  }
+
+  const historyMap = new Map(
+    (existingHistoryRows ?? []).map((row) => [row.player_tag, row])
+  );
+
+  const joinMovement = {
+    type: 'joined',
+    date: detectedAt,
+    notes: 'Detected by nightly roster ingestion',
+  };
+
+  const historyUpserts = joinerTags.map((tag) => {
+    const existing = historyMap.get(tag);
+    const member = memberLookup.get(tag);
+    const movements = Array.isArray(existing?.movements) ? [...existing.movements] : [];
+    const alreadyLogged = movements.some(
+      (movement: any) => movement?.type === 'joined' && movement?.date === detectedAt
+    );
+    if (!alreadyLogged) {
+      movements.push(joinMovement);
+    }
+
+    const aliases = Array.isArray(existing?.aliases) ? existing.aliases : [];
+    const notes = Array.isArray(existing?.notes) ? existing.notes : [];
+
+    return {
+      clan_tag: clanTag,
+      player_tag: tag,
+      primary_name: member?.name || existing?.primary_name || tag,
+      status: 'active' as const,
+      total_tenure: existing?.total_tenure ?? 0,
+      current_stint: { startDate: detectedAt, isActive: true },
+      movements,
+      aliases,
+      notes,
+    };
+  });
+
+  const { error: upsertHistoryError } = await supabase
+    .from('player_history')
+    .upsert(historyUpserts, { onConflict: 'clan_tag,player_tag' });
+
+  if (upsertHistoryError) {
+    throw new Error(`Failed to upsert player history for joiners: ${upsertHistoryError.message}`);
+  }
+
+  const joinerInserts = joinerTags.map((tag) => {
+    const member = memberLookup.get(tag);
+    return {
+      clan_tag: clanTag,
+      player_tag: tag,
+      detected_at: detectedAt,
+      source_snapshot_id: null,
+      metadata: {
+        name: member?.name ?? null,
+        role: member?.role ?? null,
+        townHallLevel: member?.townHallLevel ?? null,
+        trophies: member?.trophies ?? null,
+      },
+    };
+  });
+
+  const { error: joinerError } = await supabase
+    .from('joiner_events')
+    .upsert(joinerInserts, { onConflict: 'clan_tag,player_tag,detected_at' });
+
+  if (joinerError) {
+    throw new Error(`Failed to record joiner events: ${joinerError.message}`);
   }
 }
 
