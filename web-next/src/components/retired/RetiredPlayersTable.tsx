@@ -1,6 +1,9 @@
 "use client";
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useDashboardStore, useShallow } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
 import { safeLocaleDateString } from '@/lib/date';
@@ -133,13 +136,13 @@ export default function RetiredPlayersTable() {
                     {rec.notes || '—'}
                   </td>
                   <td className="px-4 py-2 whitespace-nowrap text-right">
-                    <a
+                    <Link
                       href={`/retired/${normalizeTag(rec.memberTag).replace('#','')}`}
                       className="text-blue-600 hover:text-blue-700 underline text-sm"
                       title="Open retired profile"
                     >
                       View
-                    </a>
+                    </Link>
                     {isBack && (
                       <button
                         className="ml-3 rounded bg-green-600 px-2 py-1 text-xs font-medium text-white hover:bg-green-700"
@@ -170,3 +173,5 @@ export default function RetiredPlayersTable() {
     </div>
   );
 }
+
+/* eslint-enable react-hooks/exhaustive-deps */

@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useDashboardStore, selectors, useShallow } from '@/lib/stores/dashboard-store';
 import { Roster } from '@/types';
 
@@ -152,12 +153,12 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
                   No complex state management. No infinite loops. Just works.
                 </p>
                 <div className="flex gap-3">
-                  <a
+                  <Link
                     href="/"
                     className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg transition-all duration-200 hover:scale-105 shadow-lg"
                   >
                     🚀 Try Simple Roster
-                  </a>
+                  </Link>
                   <button
                     onClick={() => setShowSimpleBanner(false)}
                     className="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded-lg transition-colors"

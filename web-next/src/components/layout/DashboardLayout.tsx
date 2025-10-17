@@ -2,6 +2,7 @@
 
 import React, { useEffect, useCallback, useState, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
@@ -342,12 +343,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                       🗄️ Player Database
                     </button>
                   </LeadershipGuard>
-                  <a 
+                  <Link 
                     href="/faq" 
                     className="block rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
                   >
                     ❓ FAQ
-                  </a>
+                  </Link>
                   <button 
                     onClick={handleRefresh}
                     className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
@@ -406,6 +407,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   return (
     <div className={`min-h-screen w-full ${className}`}>
       {/* Skip to main content link */}
+      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a 
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-6 focus:py-3 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-xl focus:font-semibold"

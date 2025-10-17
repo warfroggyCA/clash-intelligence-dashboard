@@ -51,13 +51,6 @@ export const CommandCenterSettings = ({ onSave, initialThresholds }: CommandCent
       // If no stored settings but initialThresholds provided, use those
       setThresholds({ ...DEFAULT_THRESHOLDS, ...initialThresholds });
     }
-  }, []); // Only run on mount
-
-  // Sync with initialThresholds changes (but don't trigger infinite updates)
-  useEffect(() => {
-    if (initialThresholds && !localStorage.getItem('commandCenterThresholds')) {
-      setThresholds(prev => ({ ...DEFAULT_THRESHOLDS, ...initialThresholds }));
-    }
   }, [initialThresholds]);
 
   const handleSave = () => {
@@ -109,7 +102,7 @@ export const CommandCenterSettings = ({ onSave, initialThresholds }: CommandCent
               className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
             />
             <p className="text-xs text-gray-500">
-              Alert when a member hasn't been active for this many days
+              Alert when a member hasn&apos;t been active for this many days
             </p>
           </div>
 
@@ -243,7 +236,7 @@ export const CommandCenterSettings = ({ onSave, initialThresholds }: CommandCent
 
           <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
             <p className="text-sm text-gray-300">
-              💡 <strong>Tip:</strong> Adjust these thresholds based on your clan's activity level 
+              💡 <strong>Tip:</strong> Adjust these thresholds based on your clan&apos;s activity level 
               and expectations. Settings are saved locally in your browser.
             </p>
           </div>

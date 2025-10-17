@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { computeRushPercent } from '@/lib/applicants';
 import { Info } from 'lucide-react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { normalizeTag } from '@/lib/tags';
 
 type EvalResult = {
   applicant: any;
@@ -11,10 +13,24 @@ type EvalResult = {
   requestId?: string;
 };
 
+type StoredApplicant = {
+  id: string;
+  clan_tag: string;
+  player_tag: string;
+  player_name: string | null;
+  status: string;
+  score: number | null;
+  recommendation: string | null;
+  rush_percent: number | null;
+  evaluation: Record<string, any>;
+  applicant: Record<string, any>;
+  created_at: string;
+  updated_at: string;
+};
+
 export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: string }) {
   const { roster, clanTag: storeClan } = useDashboardStore();
   const [tag, setTag] = useState<string>('');
-  const [clanTag, setClanTag] = useState<string>(storeClan || defaultClanTag || '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [result, setResult] = useState<EvalResult | null>(null);
@@ -36,6 +52,37 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
   const [minTrophies, setMinTrophies] = useState<number>(0);
   const [maxRush, setMaxRush] = useState<number>(0);
   const [roles, setRoles] = useState<Record<string, boolean>>({ member: true, elder: true, coleader: false, leader: false });
+  const [applicants, setApplicants] = useState<StoredApplicant[]>([]);
+  const [loadingApplicants, setLoadingApplicants] = useState(false);
+
+  const resolvedClanTag = useMemo(() => normalizeTag(storeClan || defaultClanTag || '') || null, [storeClan, defaultClanTag]);
+
+  const loadApplicants = useCallback(async () => {
+    if (!resolvedClanTag) {
+      setApplicants([]);
+      return [];
+    }
+    setLoadingApplicants(true);
+    try {
+      const res = await fetch(`/api/applicants/records?clanTag=${encodeURIComponent(resolvedClanTag)}`, { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || `Failed to load applicant records (${res.status})`);
+      }
+      const rows: StoredApplicant[] = Array.isArray(json.data) ? json.data : [];
+      setApplicants(rows);
+      return rows;
+    } catch (err) {
+      console.error('Failed to load applicants', err);
+      return [];
+    } finally {
+      setLoadingApplicants(false);
+    }
+  }, [resolvedClanTag]);
+
+  useEffect(() => {
+    void loadApplicants();
+  }, [loadApplicants]);
 
   const onEvaluate = async () => {
     setLoading(true); setError(''); setResult(null);
@@ -44,7 +91,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
       const qs = new URLSearchParams();
       qs.set('tag', tag.trim());
       // Always include current or default clan for Clan Fit context if available
-      const effectiveClan = (storeClan || clanTag || defaultClanTag || '').trim();
+      const effectiveClan = resolvedClanTag || (storeClan || defaultClanTag || '').trim();
       if (effectiveClan) qs.set('clanTag', effectiveClan);
       const res = await fetch(`/api/applicants/evaluate?${qs.toString()}`, { cache: 'no-store' });
       const json = await res.json();
@@ -59,7 +106,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
         const a = json.data.applicant || {};
         const nm = String(a.name || '');
         const tg = String(a.tag || '');
-        const effClan = (storeClan || clanTag || defaultClanTag || '').trim();
+        const effClan = resolvedClanTag || (storeClan || defaultClanTag || '').trim();
 
         const norm = (s: string) => String(s || '').replace('#', '').toUpperCase();
 
@@ -103,45 +150,41 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
     }
   };
 
-  const onSaveToPlayerDB = () => {
-    if (!result?.applicant || !result?.evaluation) return;
+  const onSaveToPlayerDB = async () => {
+    if (!result?.applicant || !result?.evaluation || !resolvedClanTag) return;
+    setError('');
     try {
-      const tagUpper = String(result.applicant.tag || '').toUpperCase();
-      if (!tagUpper) throw new Error('Missing applicant tag');
-      const notesKey = `player_notes_${tagUpper}`;
-      const nameKey = `player_name_${tagUpper}`;
-      const statusKey = `player_status_${tagUpper}`;
-      const notes = JSON.parse(localStorage.getItem(notesKey) || '[]');
-      const ts = new Date().toISOString();
-      const d = new Date();
-      const dateStr = `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
-      const a = result.applicant;
-      const evaln = result.evaluation;
-      const customFields: Record<string,string> = {
-        'Score': `${evaln.score}`,
-        'Recommendation': `${evaln.recommendation}`,
-        'Applicant Status': status,
-        'Town Hall': `${a.townHallLevel ?? ''}`,
-        'Trophies': `${a.trophies ?? ''}`,
-        'BK': `${a.bk ?? ''}`,
-        'AQ': `${a.aq ?? ''}`,
-        'GW': `${a.gw ?? ''}`,
-        'RC': `${a.rc ?? ''}`,
-        'MP': `${a.mp ?? ''}`,
-        'Clan Context': clanTag || 'N/A',
+      const playerTag = normalizeTag(result.applicant.tag || '');
+      if (!playerTag) {
+        throw new Error('Missing applicant tag');
+      }
+
+      const payload = {
+        clanTag: resolvedClanTag,
+        playerTag,
+        playerName: result.applicant.name ?? null,
+        status,
+        score: result.evaluation.score,
+        recommendation: result.evaluation.recommendation,
+        rushPercent: computeRushPercent(result.applicant),
+        evaluation: result.evaluation,
+        applicant: result.applicant,
       };
-      const note = {
-        timestamp: ts,
-        note: `Applicant evaluation - ${dateStr}`,
-        customFields,
-      };
-      notes.push(note);
-      localStorage.setItem(notesKey, JSON.stringify(notes));
-      if (a.name) localStorage.setItem(nameKey, a.name);
-      if (status) localStorage.setItem(statusKey, status);
+
+      const res = await fetch('/api/applicants/records', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || `Failed to save applicant (${res.status})`);
+      }
       setSaved(true);
+      await loadApplicants();
     } catch (e: any) {
       setError(e?.message || 'Failed to save applicant');
+      setSaved(false);
     }
   };
 
@@ -155,7 +198,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
     const heroStr = [hero('BK', a.bk), hero('AQ', a.aq), hero('GW', a.gw), hero('RC', a.rc)].filter(Boolean).join(' | ');
     const topTwo = [...e.breakdown].sort((x, y) => (y.points / y.maxPoints) - (x.points / x.maxPoints)).slice(0, 2).map(b => b.category).join(', ');
     const bottom = [...e.breakdown].sort((x, y) => (x.points / x.maxPoints) - (y.points / y.maxPoints)).slice(0, 1).map(b => `${b.category}: ${b.details}`).join('');
-    const ctx = clanTag ? ` for ${clanTag}` : '';
+    const ctx = resolvedClanTag ? ` for ${resolvedClanTag}` : '';
     const rush = computeRushPercent(a);
     return `Applicant${ctx}: ${a.name} (${a.tag})\n` +
       `TH${th} • Trophies ${trophies}${heroStr ? ` • ${heroStr}` : ''}\n` +
@@ -177,31 +220,27 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
     }
   };
 
-  const loadCandidateTagsFromLocal = (statuses = ['shortlisted','consider-later']) => {
-    try {
-      const keys = Object.keys(localStorage).filter(k => k.startsWith('player_notes_'));
-      const tags = keys.map(k => k.replace('player_notes_', '').toUpperCase());
-      return tags.filter(t => {
-        const st = localStorage.getItem(`player_status_${t}`) || '';
-        return statuses.length ? statuses.includes(st) : true;
-      });
-    } catch {
-      return [] as string[];
-    }
-  };
-
   const buildShortlist = async () => {
     setBuilding(true); setError(''); setShortlist([]);
     try {
-      const candidates = loadCandidateTagsFromLocal();
-      if (!candidates.length) throw new Error('No local candidates with status shortlisted or consider-later');
-      const effectiveClan = (storeClan || clanTag || defaultClanTag || '').trim();
+      if (!resolvedClanTag) {
+        throw new Error('Set a clan context before building a shortlist');
+      }
+      const sourceApplicants = applicants.length ? applicants : await loadApplicants();
+      const candidateTags = (sourceApplicants || [])
+        .filter((candidate) => ['shortlisted', 'consider-later'].includes(candidate.status))
+        .map((candidate) => candidate.player_tag)
+        .filter(Boolean);
+      if (!candidateTags.length) {
+        throw new Error('No stored candidates with status shortlisted or consider-later');
+      }
+      const effectiveClan = resolvedClanTag;
       const res = await fetch('/api/applicants/shortlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           clanTag: effectiveClan || undefined,
-          tags: candidates,
+          tags: candidateTags,
           top: topN,
           minTh: minTh || undefined,
           maxTh: maxTh || undefined,
@@ -224,7 +263,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
   const scanExternalClan = async () => {
     setScanning(true); setError(''); setScanResults([]);
     try {
-      const effectiveContext = (storeClan || clanTag || defaultClanTag || '').trim();
+      const effectiveContext = resolvedClanTag || '';
       const qs = new URLSearchParams();
       qs.set('sourceClanTag', scanTag.trim());
       if (effectiveContext) qs.set('contextClanTag', effectiveContext);
@@ -305,7 +344,9 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
               <div>{historyNote}</div>
               {historyLink && (
                 <div className="mt-1">
-                  <a href={historyLink} target="_blank" rel="noreferrer" className="underline text-amber-900 hover:text-amber-700">View retired profile</a>
+                  <Link href={historyLink} target="_blank" rel="noreferrer" className="underline text-amber-900 hover:text-amber-700">
+                    View retired profile
+                  </Link>
                 </div>
               )}
             </div>
@@ -356,11 +397,11 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                 </div>
                 <button 
                   onClick={onSaveToPlayerDB} 
-                  disabled={saved} 
+                  disabled={saved || loadingApplicants} 
                   className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors" 
-                  title="Save this evaluation as a note in Player Database"
+                  title="Save this evaluation for future reference"
                 >
-                  {saved ? '✓ Saved' : 'Save to Database'}
+                  {saved ? '✓ Saved' : loadingApplicants ? 'Saving…' : 'Save Applicant'}
                 </button>
                 <button 
                   onClick={onCopyDiscord} 
@@ -371,7 +412,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                 </button>
                 {saved && (
                   <span className="text-sm text-green-700 self-center bg-green-100 px-3 py-1 rounded-full">
-                    ✓ Saved locally
+                    ✓ Saved
                   </span>
                 )}
               </div>
@@ -409,7 +450,7 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             <h2 className="text-xl font-semibold text-gray-900">Shortlist Builder</h2>
           </div>
           
-          <p className="text-gray-600 mb-6">Build a ranked shortlist from locally saved candidates (status: shortlisted/consider-later). Apply filters to refine results.</p>
+          <p className="text-gray-600 mb-6">Build a ranked shortlist from saved candidates (status: shortlisted/consider-later). Apply filters to refine results.</p>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Filters */}

@@ -158,7 +158,7 @@ export default function PlayerActivityAnalytics({
           Daily Activity Analysis
         </h2>
         <p className="text-gray-600">
-          {playerName}'s activity scored based on daily contributions across key metrics
+          {playerName}&apos;s activity scored based on daily contributions across key metrics
         </p>
       </div>
 

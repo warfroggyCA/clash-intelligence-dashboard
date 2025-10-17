@@ -9,12 +9,17 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { TownHallBadge, LeagueBadge } from '@/components/ui';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 import { calculateRushPercentage, getMemberActivity, getTownHallLevel, getHeroCaps } from '@/lib/business/calculations';
+import { cfg } from '@/lib/config';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import type { Member } from '@/types';
+import RosterPlayerNotesModal from '@/components/leadership/RosterPlayerNotesModal';
+import RosterPlayerTenureModal from '@/components/leadership/RosterPlayerTenureModal';
+import RosterPlayerDepartureModal from '@/components/leadership/RosterPlayerDepartureModal';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -147,6 +152,7 @@ interface RosterData {
   members: RosterMember[];
   clanName: string;
   date: string;
+  clanTag: string;
 }
 
 type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'season' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
@@ -182,6 +188,11 @@ export default function SimpleRosterPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('league');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  type ActionModalState =
+    | { kind: 'notes'; player: RosterMember }
+    | { kind: 'departure'; player: RosterMember }
+    | { kind: 'tenure'; player: RosterMember; action: 'granted' | 'revoked' };
+  const [actionModal, setActionModal] = useState<ActionModalState | null>(null);
 
   // Sorting function
   const handleSort = (key: SortKey) => {
@@ -210,29 +221,25 @@ export default function SimpleRosterPage() {
   const handleManageNotes = (e: React.MouseEvent, player: RosterMember) => {
     e.preventDefault();
     e.stopPropagation();
-    // TODO: Implement notes management modal
-    console.log('Manage notes for:', player.name);
+    setActionModal({ kind: 'notes', player });
   };
 
   const handleDeparture = (e: React.MouseEvent, player: RosterMember) => {
     e.preventDefault();
     e.stopPropagation();
-    // TODO: Implement departure recording
-    console.log('Record departure for:', player.name);
+    setActionModal({ kind: 'departure', player });
   };
 
   const handleGrantTenure = (e: React.MouseEvent, player: RosterMember) => {
     e.preventDefault();
     e.stopPropagation();
-    // TODO: Implement tenure granting
-    console.log('Grant tenure for:', player.name);
+    setActionModal({ kind: 'tenure', player, action: 'granted' });
   };
 
   const handleEditTenure = (e: React.MouseEvent, player: RosterMember) => {
     e.preventDefault();
     e.stopPropagation();
-    // TODO: Implement tenure editing
-    console.log('Edit tenure for:', player.name);
+    setActionModal({ kind: 'tenure', player, action: 'revoked' });
   };
 
   // Sorted members with memoization
@@ -382,6 +389,7 @@ export default function SimpleRosterPage() {
               activity: m.activity ?? null,
             })),
             clanName: apiData.data.clan.name,
+            clanTag: apiData.data.clan.tag,
             date: apiData.data.snapshot.fetchedAt
           };
           console.log('[SimpleRoster] Transformed roster:', {
@@ -441,8 +449,11 @@ export default function SimpleRosterPage() {
     );
   }
 
+  const clanTag = roster?.clanTag ?? cfg.homeClanTag ?? '#UNKNOWN';
+
   return (
-    <DashboardLayout clanName={roster.clanName}>
+    <>
+      <DashboardLayout clanName={roster.clanName}>
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
         <div className="mb-6">
@@ -699,9 +710,11 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                             className="relative cursor-help" 
                             style={{ width: '40px', height: '40px' }}
                           >
-                            <img 
+                            <Image 
                               src="/assets/clash/trophy.png"
                               alt="Trophy"
+                              width={40}
+                              height={40}
                               className="w-full h-full object-contain"
                             />
                             <span 
@@ -920,9 +933,11 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       className="relative cursor-help" 
                       style={{ width: '48px', height: '48px' }}
                     >
-                      <img 
+                      <Image 
                         src="/assets/clash/trophy.png"
                         alt="Trophy"
+                        width={48}
+                        height={48}
                         className="w-full h-full object-contain"
                       />
                       <span 
@@ -933,9 +948,11 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </span>
                     </div>
                     <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
-                      <img 
+                      <Image 
                         src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
                         alt={`TH${player.townHallLevel}`}
+                        width={48}
+                        height={48}
                         className="w-full h-full object-contain"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -1035,5 +1052,36 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
         </div>
       </div>
     </DashboardLayout>
+
+      {actionModal?.kind === 'notes' && (
+        <RosterPlayerNotesModal
+          clanTag={clanTag}
+          playerTag={actionModal.player.tag}
+          playerName={actionModal.player.name}
+          onClose={() => setActionModal(null)}
+        />
+      )}
+
+      {actionModal?.kind === 'departure' && (
+        <RosterPlayerDepartureModal
+          clanTag={clanTag}
+          playerTag={actionModal.player.tag}
+          playerName={actionModal.player.name}
+          onClose={() => setActionModal(null)}
+          onSuccess={() => setActionModal(null)}
+        />
+      )}
+
+      {actionModal?.kind === 'tenure' && (
+        <RosterPlayerTenureModal
+          clanTag={clanTag}
+          playerTag={actionModal.player.tag}
+          playerName={actionModal.player.name}
+          defaultAction={actionModal.action}
+          onClose={() => setActionModal(null)}
+          onSuccess={() => setActionModal(null)}
+        />
+      )}
+    </>
   );
 }

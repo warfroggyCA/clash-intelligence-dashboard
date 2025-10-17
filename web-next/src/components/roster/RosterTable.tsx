@@ -17,6 +17,8 @@
  * Last Updated: January 2025
  */
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useMemo, useState, useCallback } from 'react';
 import { LayoutGrid, List } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -675,3 +677,5 @@ export const RosterTable: React.FC<RosterTableProps> = ({ className = '' }) => {
 };
 
 export default RosterTable;
+
+/* eslint-enable react-hooks/exhaustive-deps */

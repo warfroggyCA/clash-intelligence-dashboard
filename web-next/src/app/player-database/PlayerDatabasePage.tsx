@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, RefreshCw, User, Calendar, MessageSquare, X } from "lucide-react";
 import dynamic from 'next/dynamic';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
+import { normalizeTag } from '@/lib/tags';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -62,11 +63,7 @@ interface PlayerRecord {
   isCurrentMember?: boolean;
 }
 
-interface PlayerDatabasePageProps {
-  currentClanMembers?: string[];
-}
-
-export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDatabasePageProps) {
+export default function PlayerDatabasePage() {
   const [players, setPlayers] = useState<PlayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -90,7 +87,6 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
   const [sortBy, setSortBy] = useState<'name' | 'lastUpdated' | 'noteCount' | 'status'>('lastUpdated');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [showArchived, setShowArchived] = useState(false);
-  const [currentMembers, setCurrentMembers] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'current' | 'former'>('all');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -112,9 +108,11 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
       const response = await fetch('/api/v2/roster');
       if (response.ok) {
         const data = await response.json();
-        const memberTags = data.data?.members?.map((member: any) => member.tag) || [];
-        setCurrentMembers(memberTags);
-        return memberTags;
+        const members = Array.isArray(data.data?.members) ? data.data.members : [];
+        return members.map((member: any) => ({
+          tag: normalizeTag(member.tag) || member.tag,
+          name: member.name || member.tag || 'Unknown Player',
+        }));
       }
     } catch (error) {
       console.error('Failed to fetch current members:', error);
@@ -148,8 +146,16 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
       setLoading(true);
       
       // Always fetch current members fresh to ensure we have the latest data
-      const membersToCheck = await fetchCurrentMembers();
-      
+      const rosterMembers = await fetchCurrentMembers();
+      const currentMemberTagsSet = new Set<string>();
+      const playerNames: Record<string, string> = {};
+
+      rosterMembers.forEach((member: any) => {
+        if (!member.tag) return;
+        currentMemberTagsSet.add(member.tag);
+        playerNames[member.tag] = member.name;
+      });
+
       const playerRecords: PlayerRecord[] = [];
       const clanTag = '#2PR8R8V8P'; // Your clan tag
 
@@ -166,54 +172,25 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         lastUpdated: string;
       }>();
 
-      // Load player names from roster data and localStorage player_name_ keys
-      const playerNames: Record<string, string> = {};
-      
-      // First, load from current roster
-      try {
-        const rosterData = localStorage.getItem('lastRoster:v3:#2PR8R8V8P');
-        if (rosterData) {
-          const roster = JSON.parse(rosterData);
-          if (roster.roster && roster.roster.members) {
-            roster.roster.members.forEach((member: any) => {
-              playerNames[member.tag] = member.name;
-            });
-          }
-        }
-      } catch (e) {
-        console.error('Error loading roster data for names:', e);
-      }
-      
-      // Then, load from localStorage player_name_ keys (for departed players)
-      try {
-        const allKeys = Object.keys(localStorage);
-        const playerNameKeys = allKeys.filter(key => key.startsWith('player_name_'));
-        playerNameKeys.forEach(key => {
-          const playerTag = key.replace('player_name_', '');
-          const name = localStorage.getItem(key);
-          if (name) {
-            playerNames[playerTag] = name;
-          }
-        });
-      } catch (e) {
-        console.error('Error loading player names from localStorage:', e);
-      }
-
       // Process Supabase data only
       if (notesData.success && notesData.data) {
         notesData.data.forEach((note: any) => {
-          const tag = note.player_tag;
-          if (!playerDataMap.has(tag)) {
-            playerDataMap.set(tag, {
+          const tagKey = normalizeTag(note.player_tag) || note.player_tag;
+          if (!tagKey) return;
+          if (note.player_name && !playerNames[tagKey]) {
+            playerNames[tagKey] = note.player_name;
+          }
+          if (!playerDataMap.has(tagKey)) {
+            playerDataMap.set(tagKey, {
               notes: [],
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: playerNames[tag] || note.player_name || 'Unknown Player',
+              name: playerNames[tagKey] || note.player_name || 'Unknown Player',
               lastUpdated: note.created_at
             });
           }
-          const playerData = playerDataMap.get(tag)!;
+          const playerData = playerDataMap.get(tagKey)!;
           
           // Add Supabase note
           playerData.notes.push({
@@ -234,18 +211,22 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
       // Process Supabase warnings
       if (warningsData.success && warningsData.data) {
         warningsData.data.forEach((warning: any) => {
-          const tag = warning.player_tag;
-          if (!playerDataMap.has(tag)) {
-            playerDataMap.set(tag, {
+          const tagKey = normalizeTag(warning.player_tag) || warning.player_tag;
+          if (!tagKey) return;
+          if (warning.player_name && !playerNames[tagKey]) {
+            playerNames[tagKey] = warning.player_name;
+          }
+          if (!playerDataMap.has(tagKey)) {
+            playerDataMap.set(tagKey, {
               notes: [],
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: playerNames[tag] || warning.player_name || 'Unknown Player',
+              name: playerNames[tagKey] || warning.player_name || 'Unknown Player',
               lastUpdated: warning.created_at
             });
           }
-          const playerData = playerDataMap.get(tag)!;
+          const playerData = playerDataMap.get(tagKey)!;
           
           if (warning.is_active) {
             // Add Supabase warning
@@ -267,18 +248,22 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
       // Process Supabase actions
       if (actionsData.success && actionsData.data) {
         actionsData.data.forEach((action: any) => {
-          const tag = action.player_tag;
-          if (!playerDataMap.has(tag)) {
-            playerDataMap.set(tag, {
+          const tagKey = normalizeTag(action.player_tag) || action.player_tag;
+          if (!tagKey) return;
+          if (action.player_name && !playerNames[tagKey]) {
+            playerNames[tagKey] = action.player_name;
+          }
+          if (!playerDataMap.has(tagKey)) {
+            playerDataMap.set(tagKey, {
               notes: [],
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: playerNames[tag] || action.player_name || 'Unknown Player',
+              name: playerNames[tagKey] || action.player_name || 'Unknown Player',
               lastUpdated: action.created_at
             });
           }
-          const playerData = playerDataMap.get(tag)!;
+          const playerData = playerDataMap.get(tagKey)!;
           
           if (action.action_type === 'tenure') {
             // Add Supabase tenure action
@@ -310,7 +295,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
 
       // Convert to PlayerRecord format
       playerDataMap.forEach((data, tag) => {
-        const isCurrentMember = membersToCheck.includes(tag);
+        const isCurrentMember = currentMemberTagsSet.has(tag);
         
         playerRecords.push({
           tag,
@@ -326,11 +311,11 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
 
 
       // Add current members who don't have any data yet
-      membersToCheck.forEach((tag: string) => {
+      rosterMembers.forEach(({ tag, name }: any) => {
         if (!playerDataMap.has(tag)) {
           playerRecords.push({
             tag,
-            name: playerNames[tag] || 'Unknown Player',
+            name,
             notes: [],
             warning: undefined,
             tenureActions: [],
@@ -349,7 +334,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
       console.error('Failed to load player database:', error);
       setLoading(false);
     }
-  }, [fetchCurrentMembers]);
+  }, [fetchCurrentMembers, loadFromSupabase]);
 
   useEffect(() => {
     loadPlayerDatabase();
@@ -614,6 +599,11 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     if (!noteText.trim()) return;
 
     try {
+      const normalizedTag = normalizeTag(playerTag);
+      if (!normalizedTag) {
+        setErrorMessage('Player tag is invalid. Please include a # and only use valid characters.');
+        return;
+      }
       const clanTag = '#2PR8R8V8P';
       const playerName = selectedPlayer?.name || 'Unknown Player';
       
@@ -624,7 +614,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         },
         body: JSON.stringify({
           clanTag,
-          playerTag,
+          playerTag: normalizedTag,
           playerName,
           note: noteText.trim(),
           customFields: {},
@@ -725,6 +715,11 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
     if (!playerTag.trim() || !playerName.trim() || !noteText.trim()) return;
 
     try {
+      const normalizedTag = normalizeTag(playerTag);
+      if (!normalizedTag) {
+        setErrorMessage('Player tag is invalid. Please include a # and only use valid characters.');
+        return;
+      }
       const response = await fetch('/api/player-notes', {
         method: 'POST',
         headers: {
@@ -732,7 +727,7 @@ export default function PlayerDatabasePage({ currentClanMembers = [] }: PlayerDa
         },
         body: JSON.stringify({
           clanTag: '#2PR8R8V8P',
-          playerTag: playerTag.trim(),
+          playerTag: normalizedTag,
           playerName: playerName.trim(),
           note: noteText.trim(),
           customFields: {},
