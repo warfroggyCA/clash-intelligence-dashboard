@@ -18,9 +18,7 @@ export async function GET(request: NextRequest) {
       logger.error('Schema test failed', { error });
       return json({ 
         success: false, 
-        error: error.message,
-        code: error.code,
-        hint: error.hint
+        error: `Schema test failed: ${error.message} (code: ${error.code})`
       }, { status: 500 });
     }
     
