@@ -111,6 +111,7 @@ export async function runIngestionJob(options: RunIngestionOptions = {}): Promis
       }
 
       try {
+        await log(jobId, 'info', 'Syncing war and raid data to Supabase');
         await persistWarData(fullSnapshot);
         await log(jobId, 'info', 'War data synced to Supabase');
       } catch (warPersistError: any) {

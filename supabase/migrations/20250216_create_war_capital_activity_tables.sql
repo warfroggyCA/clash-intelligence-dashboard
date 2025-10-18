@@ -295,7 +295,7 @@ begin
       and policyname = 'Allow all operations on capital_raid_weekends'
   ) then
     create policy "Allow all operations on capital_raid_weekends"
-      on public.capital_raid_weekENDS
+      on public.capital_raid_weekends
       for all
       using (true)
       with check (true);
