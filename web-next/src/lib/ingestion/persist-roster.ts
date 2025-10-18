@@ -2,8 +2,8 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { normalizeTag } from '@/lib/tags';
 import type { FullClanSnapshot, MemberSummary } from '@/lib/full-snapshot';
 import { extractHeroLevels } from '@/lib/coc';
-import { calculateRushPercentage } from '@/lib/business/calculations';
-import type { HeroCaps } from '@/types';
+import { calculateRushPercentage, calculateActivityScore } from '@/lib/business/calculations';
+import type { HeroCaps, Member } from '@/types';
 import type { ClanRoleName } from '@/lib/auth/roles';
 
 type HeroLevels = Partial<Record<keyof HeroCaps, number | null>>;
@@ -70,6 +70,15 @@ function buildHeroLevels(detail: any): HeroLevels | null {
   }
 }
 
+function toNumeric(value: any): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
 function computeRushPercent(thLevel: number | undefined, heroLevels: HeroLevels | null): number | null {
   if (!thLevel || !heroLevels) return null;
   const syntheticMember = {
@@ -95,6 +104,11 @@ function buildExtras(summary: MemberSummary, detail: any) {
     builderTrophies: summary.builderTrophies ?? detail?.versusTrophies ?? null,
     clanRank: summary.clanRank ?? null,
     previousClanRank: summary.previousClanRank ?? null,
+    bestTrophies: detail?.bestTrophies ?? null,
+    bestVersusTrophies: detail?.bestVersusTrophies ?? null,
+    warStars: detail?.warStars ?? null,
+    attackWins: detail?.attackWins ?? null,
+    defenseWins: detail?.defenseWins ?? null,
   };
 }
 
@@ -190,6 +204,48 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
     const detail = snapshot.playerDetails?.[tag];
     const heroLevels = buildHeroLevels(detail);
     const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
+    const leagueId = summary.league?.id ?? detail?.league?.id ?? null;
+    const leagueName = summary.league?.name ?? detail?.league?.name ?? null;
+    const leagueTrophies =
+      toNumeric(summary.league?.trophies) ??
+      toNumeric(detail?.league?.trophies);
+    const rankedLeagueId = summary.leagueTier?.id ?? detail?.leagueTier?.id ?? leagueId ?? null;
+    const rankedLeagueName = summary.leagueTier?.name ?? detail?.leagueTier?.name ?? leagueName ?? null;
+    const rankedTrophies =
+      toNumeric(detail?.leagueTier?.trophies) ??
+      leagueTrophies ??
+      toNumeric(summary.trophies) ??
+      null;
+    const donationsGiven = toNumeric(summary.donations);
+    const donationsReceived = toNumeric(summary.donationsReceived);
+    const currentTrophies =
+      toNumeric(detail?.trophies) ??
+      toNumeric(summary.trophies) ??
+      null;
+
+    const memberForActivity: Member = {
+      name: summary.name ?? tag,
+      tag,
+      role: summary.role ?? undefined,
+      townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? undefined,
+      trophies: currentTrophies ?? undefined,
+      rankedTrophies: rankedTrophies ?? undefined,
+      rankedLeagueId: rankedLeagueId ?? undefined,
+      rankedLeagueName: rankedLeagueName ?? undefined,
+      donations: donationsGiven ?? undefined,
+      donationsReceived: donationsReceived ?? undefined,
+      seasonTotalTrophies: currentTrophies ?? undefined,
+      enriched: {
+        bestTrophies: detail?.bestTrophies ?? null,
+        bestVersusTrophies: detail?.bestVersusTrophies ?? null,
+        warStars: detail?.warStars ?? null,
+        attackWins: detail?.attackWins ?? null,
+        defenseWins: detail?.defenseWins ?? null,
+      },
+    } as Member;
+
+    const activityEvidence = calculateActivityScore(memberForActivity);
+
     return {
       snapshot_id: snapshotId,
       member_id: memberId,
@@ -199,15 +255,23 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       donations: summary.donations ?? null,
       donations_received: summary.donationsReceived ?? null,
       hero_levels: heroLevels,
-      activity_score: null,
+      activity_score: activityEvidence?.score ?? null,
       rush_percent: rushPercent,
       extras: buildExtras(summary, detail),
-      ranked_league_id: detail?.leagueTier?.id ?? summary.leagueTier?.id ?? null,  // Use player detail as source of truth for roster badges
-      ranked_league_name: detail?.leagueTier?.name ?? summary.leagueTier?.name ?? null,
+      league_id: leagueId,
+      league_name: leagueName,
+      league_trophies: leagueTrophies,
+      ranked_trophies: rankedTrophies,
+      ranked_league_id: rankedLeagueId,
+      ranked_league_name: rankedLeagueName,
+      battle_mode_trophies: rankedTrophies,
+      equipment_flags: detail?.equipment ?? null,
       // War stats from player details
       war_stars: detail?.warStars ?? null,
       attack_wins: detail?.attackWins ?? null,
       defense_wins: detail?.defenseWins ?? null,
+      best_trophies: detail?.bestTrophies ?? null,
+      best_versus_trophies: detail?.bestVersusTrophies ?? null,
     };
   }).filter(Boolean) as any[];
 
