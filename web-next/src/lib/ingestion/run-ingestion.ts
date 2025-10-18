@@ -8,6 +8,7 @@ import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } fr
 import { saveAISummary } from '@/lib/supabase';
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from '@/lib/full-snapshot';
 import { persistRosterSnapshotToDataSpine } from './persist-roster';
+import { persistWarData } from './persist-war-data';
 import {
   appendJobLog,
   createJobRecord,
@@ -107,6 +108,13 @@ export async function runIngestionJob(options: RunIngestionOptions = {}): Promis
         await log(jobId, 'info', 'Roster snapshot persisted to Supabase data spine');
       } catch (persistError: any) {
         await log(jobId, 'warn', 'Failed to persist roster snapshot to Supabase', { error: persistError?.message || persistError });
+      }
+
+      try {
+        await persistWarData(fullSnapshot);
+        await log(jobId, 'info', 'War data synced to Supabase');
+      } catch (warPersistError: any) {
+        await log(jobId, 'warn', 'Failed to persist war data to Supabase', { error: warPersistError?.message || warPersistError });
       }
     }
     await markStep(jobId, 'fetch-snapshot', 'completed', {

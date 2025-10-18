@@ -39,6 +39,30 @@
   - [x] Expose ingestion health API + dashboard card for latest run, durations, and anomalies
   - [ ] Add automated alerting (email/Slack) when ingestion fails or goes stale
 
+### ⚔️ War / Raid / Games Expansion (Feb 2025)
+- [ ] War ingestion job (`ingestion/war-log.ts`)
+  - [ ] Pull `/clans/{tag}/warlog` nightly (limit 10) + `/currentwar` hourly when active
+  - [ ] Persist `clan_wars`, `clan_war_clans`, `clan_war_members`, `clan_war_attacks`
+  - [ ] Emit `player_activity_events` entries: `war_attack`, `war_defense`, `war_participation`
+  - [ ] Surface war timeline card + member drill-down in leadership dashboard
+- [ ] Capital raid ingestion (`ingestion/capital-raids.ts`)
+  - [ ] Fetch `/capitalraidseasons` weekly + capture current weekend every 15m during raids
+  - [ ] Store `capital_raid_seasons`, `capital_raid_weekends`, `capital_raid_participants`
+  - [ ] Feed `player_activity_events` with `capital_attack` + `capital_bonus` entries
+  - [ ] Add weekend contribution widgets + leadership nudges
+- [ ] Clan games ingestion (`ingestion/clan-games.ts`)
+  - [ ] Apply watcher script when Supercell exposes season endpoint (fallback: manual upload)
+  - [ ] Write `clan_game_seasons`, `clan_game_participants`
+  - [ ] Activity events: `clan_game_points`, reward claim logging
+  - [ ] UI: monthly participation leaderboard, slackable reminders
+- [ ] Ranked / Legends & Builder Base backlog
+  - [ ] Daily `/players/{tag}/seasonrankedinfo` snapshot -> legend streak panel + WCI input
+  - [ ] Optional `/players/{tag}/versusbattlelog` ingestion for “all-mode” WCI bonus
+- [ ] Activity + WCI integration
+  - [ ] Normalize events -> rework `activity-calculator.ts` to consume `player_activity_events`
+  - [ ] WCI pillars: competitive (war/legend), service (capital, games), support (donations, attendance)
+  - [ ] Dashboard: activity timeline overlays, risk alerts when events go stale
+
 ## Season-Ready Spine Implementation (Completed Oct 2025)
 
 ### ✅ **Migration & Schema Updates**
