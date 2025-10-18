@@ -2,6 +2,7 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { normalizeTag } from '@/lib/tags';
 import type { FullClanSnapshot, MemberSummary } from '@/lib/full-snapshot';
 import { extractHeroLevels } from '@/lib/coc';
+import { extractEnrichedFields } from '@/lib/ingestion/field-extractors';
 import { calculateRushPercentage, calculateActivityScore } from '@/lib/business/calculations';
 import type { HeroCaps, Member } from '@/types';
 import type { ClanRoleName } from '@/lib/auth/roles';
@@ -202,6 +203,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
     const memberId = memberIdByTag.get(tag);
     if (!memberId) return null;
     const detail = snapshot.playerDetails?.[tag];
+    const enrichedFields = extractEnrichedFields(detail);
     const heroLevels = buildHeroLevels(detail);
     const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
     const leagueId = summary.league?.id ?? detail?.league?.id ?? null;
@@ -223,6 +225,27 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       toNumeric(summary.trophies) ??
       null;
 
+    const memberEnriched = {
+      petLevels: enrichedFields.petLevels,
+      builderHallLevel: enrichedFields.builderHallLevel,
+      versusTrophies: enrichedFields.versusTrophies ?? toNumeric(summary.builderTrophies) ?? null,
+      versusBattleWins: enrichedFields.versusBattleWins ?? null,
+      builderLeagueId: enrichedFields.builderLeagueId ?? null,
+      warStars: enrichedFields.warStars,
+      attackWins: enrichedFields.attackWins,
+      defenseWins: enrichedFields.defenseWins,
+      capitalContributions: enrichedFields.capitalContributions,
+      maxTroopCount: enrichedFields.maxTroopCount,
+      maxSpellCount: enrichedFields.maxSpellCount,
+      superTroopsActive: enrichedFields.superTroopsActive,
+      achievementCount: enrichedFields.achievementCount,
+      achievementScore: enrichedFields.achievementScore,
+      expLevel: enrichedFields.expLevel ?? detail?.expLevel ?? null,
+      bestTrophies: enrichedFields.bestTrophies ?? null,
+      bestVersusTrophies: enrichedFields.bestVersusTrophies ?? null,
+      equipmentLevels: enrichedFields.equipmentLevels ?? null,
+    };
+
     const memberForActivity: Member = {
       name: summary.name ?? tag,
       tag,
@@ -235,13 +258,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       donations: donationsGiven ?? undefined,
       donationsReceived: donationsReceived ?? undefined,
       seasonTotalTrophies: currentTrophies ?? undefined,
-      enriched: {
-        bestTrophies: detail?.bestTrophies ?? null,
-        bestVersusTrophies: detail?.bestVersusTrophies ?? null,
-        warStars: detail?.warStars ?? null,
-        attackWins: detail?.attackWins ?? null,
-        defenseWins: detail?.defenseWins ?? null,
-      },
+      enriched: memberEnriched,
     } as Member;
 
     const activityEvidence = calculateActivityScore(memberForActivity);
@@ -265,13 +282,25 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       ranked_league_id: rankedLeagueId,
       ranked_league_name: rankedLeagueName,
       battle_mode_trophies: rankedTrophies,
-      equipment_flags: detail?.equipment ?? null,
-      // War stats from player details
-      war_stars: detail?.warStars ?? null,
-      attack_wins: detail?.attackWins ?? null,
-      defense_wins: detail?.defenseWins ?? null,
-      best_trophies: detail?.bestTrophies ?? null,
-      best_versus_trophies: detail?.bestVersusTrophies ?? null,
+      equipment_flags: memberEnriched.equipmentLevels ?? detail?.equipment ?? null,
+      // War stats & enriched fields
+      war_stars: memberEnriched.warStars ?? detail?.warStars ?? null,
+      attack_wins: memberEnriched.attackWins ?? detail?.attackWins ?? null,
+      defense_wins: memberEnriched.defenseWins ?? detail?.defenseWins ?? null,
+      capital_contributions: memberEnriched.capitalContributions ?? detail?.clanCapitalContributions ?? null,
+      pet_levels: memberEnriched.petLevels ?? null,
+      builder_hall_level: memberEnriched.builderHallLevel ?? summary.builderHallLevel ?? null,
+      versus_trophies: memberEnriched.versusTrophies ?? toNumeric(summary.builderTrophies) ?? null,
+      versus_battle_wins: memberEnriched.versusBattleWins ?? null,
+      builder_league_id: memberEnriched.builderLeagueId ?? null,
+      max_troop_count: memberEnriched.maxTroopCount ?? null,
+      max_spell_count: memberEnriched.maxSpellCount ?? null,
+      super_troops_active: memberEnriched.superTroopsActive ?? null,
+      achievement_count: memberEnriched.achievementCount ?? null,
+      achievement_score: memberEnriched.achievementScore ?? null,
+      exp_level: memberEnriched.expLevel ?? detail?.expLevel ?? null,
+      best_trophies: memberEnriched.bestTrophies ?? detail?.bestTrophies ?? null,
+      best_versus_trophies: memberEnriched.bestVersusTrophies ?? detail?.bestVersusTrophies ?? null,
     };
   }).filter(Boolean) as any[];
 
