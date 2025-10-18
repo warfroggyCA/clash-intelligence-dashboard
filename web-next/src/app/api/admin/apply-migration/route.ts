@@ -28,14 +28,7 @@ export async function POST(request: NextRequest) {
       // We can't run DDL through the client, so we'll return instructions
       return json({ 
         success: false, 
-        error: 'Migration requires manual SQL execution',
-        instructions: 'Run this SQL in Supabase dashboard:',
-        sql: `
-ALTER TABLE public.member_snapshot_stats 
-ADD COLUMN IF NOT EXISTS war_stars int,
-ADD COLUMN IF NOT EXISTS attack_wins int,
-ADD COLUMN IF NOT EXISTS defense_wins int;
-        `
+        error: 'Migration requires manual SQL execution - Run this SQL in Supabase dashboard: ALTER TABLE public.member_snapshot_stats ADD COLUMN IF NOT EXISTS war_stars int, ADD COLUMN IF NOT EXISTS attack_wins int, ADD COLUMN IF NOT EXISTS defense_wins int;'
       }, { status: 400 });
     }
     
