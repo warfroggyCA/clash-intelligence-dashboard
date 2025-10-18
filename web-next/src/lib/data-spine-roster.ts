@@ -1,4 +1,4 @@
-import type { Roster, Member } from '@/types';
+import type { ActivityEvidence, MemberEnriched, Roster, Member } from '@/types';
 
 type LeagueValue = Record<string, any> | string | null;
 
@@ -49,6 +49,7 @@ interface ApiRosterMember {
   attackWins: number | null;
   defenseWins: number | null;
   lastSeen: string | number | null;
+  activity?: ActivityEvidence | null;
   heroLevels: Record<string, number | null> | null;
   activityScore: number | null;
   rushPercent: number | null;
@@ -71,6 +72,8 @@ interface ApiRosterMember {
   memberUpdatedAt?: string | null;
   tenure_days?: number | null;
   tenure_as_of?: string | null;
+  lastWeekTrophies?: number | null;
+  seasonTotalTrophies?: number | null;
   metrics?: Record<string, { value: number; metadata?: Record<string, any> | null }>;
   // Oct 2025 optional fields
   rankedLeague?: { id?: number; name?: string; tier?: number } | null;
@@ -92,6 +95,7 @@ interface ApiRosterMember {
     lootProtected: boolean;
     revengeAvailable: boolean;
   } | null;
+  enriched?: MemberEnriched | null;
 }
 
 interface ApiRosterResponse {
@@ -168,6 +172,11 @@ function mapMember(apiMember: ApiRosterMember): Member {
     attackWins: apiMember.attackWins ?? null,
     defenseWins: apiMember.defenseWins ?? null,
     lastSeen: apiMember.lastSeen ?? null,
+    activity: apiMember.activity ?? null,
+    activityScore:
+      typeof apiMember.activityScore === 'number'
+        ? apiMember.activityScore
+        : apiMember.activity?.score ?? null,
     // Hero levels
     bk: heroLevels.bk ?? null,
     aq: heroLevels.aq ?? null,
@@ -194,6 +203,9 @@ function mapMember(apiMember: ApiRosterMember): Member {
     builderLeague,
     extras: apiMember.extras ?? null,
     metrics: apiMember.metrics ?? null,
+    lastWeekTrophies: apiMember.lastWeekTrophies ?? null,
+    seasonTotalTrophies: apiMember.seasonTotalTrophies ?? null,
+    enriched: apiMember.enriched ?? null,
     // Map tenure data
     tenure_days: normalizedTenure ?? null,
     tenure_as_of: apiMember.tenure_as_of ?? null,

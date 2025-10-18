@@ -95,6 +95,8 @@ export interface Member {
   tenure?: number;      // Alias for tenure_days
   tenure_as_of?: string; // Date tenure base was last set
   lastSeen?: string | number;
+  lastWeekTrophies?: number | null;
+  activityScore?: number | null;
   
   // Clan Info
   role?: string;
