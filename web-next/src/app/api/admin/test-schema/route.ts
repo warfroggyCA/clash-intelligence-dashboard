@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 export async function GET(request: NextRequest) {
   const { json, logger } = createApiContext(request, '/api/admin/test-schema');

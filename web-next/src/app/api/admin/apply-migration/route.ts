@@ -1,9 +1,9 @@
 import { NextRequest } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 
 export async function POST(request: NextRequest) {
-  const { json } = createApiContext(request, '/api/admin/apply-migration');
+  const { json, logger } = createApiContext(request, '/api/admin/apply-migration');
   
   try {
     const body = await request.json().catch(() => ({}));
@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     
     if (error && error.code === 'PGRST116') {
       // Column doesn't exist, let's add it
-      console.log('Adding war stats columns to member_snapshot_stats table');
+      logger.info('Adding war stats columns to member_snapshot_stats table');
       
       // We can't run DDL through the client, so we'll return instructions
       return json({ 
@@ -40,15 +40,15 @@ ADD COLUMN IF NOT EXISTS defense_wins int;
     }
     
     if (error) {
-      console.error('Migration check failed', { error });
+      logger.error('Migration check failed', { error });
       return json({ success: false, error: error.message }, { status: 500 });
     }
     
-    console.log('Migration already applied - columns exist', { migration });
+    logger.info('Migration already applied - columns exist', { migration });
     return json({ success: true, message: 'Migration already applied - columns exist' });
     
   } catch (error: any) {
-    console.error('Migration error', { error: error.message });
+    logger.error('Migration error', { error: error.message });
     return json({ success: false, error: error.message }, { status: 500 });
   }
 }
