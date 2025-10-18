@@ -25,8 +25,7 @@ export async function GET(request: NextRequest) {
     logger.info('Schema test successful', { data });
     return json({ 
       success: true, 
-      message: 'War stats columns exist',
-      sampleData: data
+      message: `War stats columns exist. Sample data: ${JSON.stringify(data)}`
     });
     
   } catch (error: any) {
