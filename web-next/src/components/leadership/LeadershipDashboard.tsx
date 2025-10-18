@@ -23,6 +23,57 @@ interface JoinerRecord {
   warnings: any[];
 }
 
+interface HighlightItem {
+  key: string;
+  label: string;
+  value: string;
+  detail?: string | null;
+  badge?: string | null;
+}
+
+function InsightList({
+  title,
+  subtitle,
+  items,
+}: {
+  title: string;
+  subtitle: string;
+  items: HighlightItem[];
+}) {
+  return (
+    <div className="rounded-xl border border-gray-700/60 bg-gray-800/50 p-4">
+      <div className="text-xs uppercase tracking-wider text-blue-200/70">{title}</div>
+      <p className="mt-1 text-xs text-blue-100/70">{subtitle}</p>
+      {items.length ? (
+        <ul className="mt-3 space-y-3">
+          {items.map((item) => (
+            <li key={item.key} className="flex items-start justify-between gap-3">
+              <div className="flex flex-col gap-1 text-sm text-blue-100">
+                <div className="flex items-center gap-2">
+                  <span className="font-semibold text-white">{item.label}</span>
+                  {item.badge ? (
+                    <span className="rounded-full bg-blue-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-blue-200">
+                      {item.badge}
+                    </span>
+                  ) : null}
+                </div>
+                {item.detail ? (
+                  <span className="text-xs text-blue-200/70">{item.detail}</span>
+                ) : null}
+              </div>
+              <span className="whitespace-nowrap font-mono text-sm text-blue-200">{item.value}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="mt-3 rounded-lg border border-dashed border-gray-600/60 bg-gray-900/40 px-3 py-4 text-sm text-blue-200/70">
+          Enriched snapshot fields are still populating.
+        </div>
+      )}
+    </div>
+  );
+}
+
 function JoinerReviewCard({ clanTag }: { clanTag: string | null }) {
   const [loading, setLoading] = useState(false);
   const [joiners, setJoiners] = useState<JoinerRecord[]>([]);
@@ -182,6 +233,8 @@ export default function LeadershipDashboard() {
     });
   }, [roster, clanTag, loadRoster]);
 
+  const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
+
   const leadershipSummary = useMemo(() => {
     if (!roster) return null;
     return {
@@ -190,6 +243,125 @@ export default function LeadershipDashboard() {
       clanTag: roster.clanTag,
     };
   }, [roster]);
+
+  const enrichmentInsights = useMemo(() => {
+    if (!roster?.members?.length) return null;
+
+    const members = roster.members;
+    type MemberType = typeof members[number];
+
+    const formatName = (member: MemberType) => member.name || member.tag || 'Unknown';
+
+    const activityCandidates = members
+      .map((member) => {
+        const rawScore =
+          typeof member.activityScore === 'number'
+            ? member.activityScore
+            : typeof member.activity?.score === 'number'
+              ? member.activity.score
+              : null;
+        if (rawScore == null) return null;
+        return {
+          member,
+          score: Math.round(rawScore),
+          ranked:
+            typeof member.rankedTrophies === 'number'
+              ? Math.round(member.rankedTrophies)
+              : null,
+        };
+      })
+      .filter((entry): entry is { member: MemberType; score: number; ranked: number | null } => entry !== null);
+
+    const averageActivity = activityCandidates.length
+      ? Math.round(activityCandidates.reduce((sum, entry) => sum + entry.score, 0) / activityCandidates.length)
+      : null;
+
+    const topActivity: HighlightItem[] = [...activityCandidates]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map((entry, index) => ({
+        key: `${entry.member.tag || entry.member.name || index}-activity`,
+        label: formatName(entry.member),
+        value: `${entry.score}/100`,
+        detail: entry.ranked != null ? `${numberFormatter.format(entry.ranked)} ranked trophies` : null,
+        badge: index === 0 ? 'Top Pulse' : null,
+      }));
+
+    const rankedCandidates = members
+      .map((member) => {
+        const ranked =
+          typeof member.rankedTrophies === 'number'
+            ? Math.round(member.rankedTrophies)
+            : null;
+        if (ranked == null) return null;
+        return {
+          member,
+          ranked,
+          league: member.rankedLeagueName ?? member.leagueName ?? null,
+        };
+      })
+      .filter((entry): entry is { member: MemberType; ranked: number; league: string | null } => entry !== null);
+
+    const topRanked: HighlightItem[] = [...rankedCandidates]
+      .sort((a, b) => b.ranked - a.ranked)
+      .slice(0, 4)
+      .map((entry, index) => ({
+        key: `${entry.member.tag || entry.member.name || index}-ranked`,
+        label: formatName(entry.member),
+        value: numberFormatter.format(entry.ranked),
+        detail: entry.league,
+        badge: index === 0 ? 'League Lead' : null,
+      }));
+
+    const rankedLeader = rankedCandidates.length ? rankedCandidates[0].ranked : null;
+
+    const bestChaserCandidates = members
+      .map((member) => {
+        const best =
+          typeof member.enriched?.bestTrophies === 'number'
+            ? Math.round(member.enriched.bestTrophies)
+            : null;
+        const current =
+          typeof member.rankedTrophies === 'number'
+            ? Math.round(member.rankedTrophies)
+            : typeof member.trophies === 'number'
+              ? Math.round(member.trophies)
+              : null;
+        if (best == null || current == null) return null;
+        const gapRaw = best - current;
+        return {
+          member,
+          best,
+          current,
+          gap: gapRaw > 0 ? gapRaw : 0,
+          atBest: gapRaw <= 0,
+        };
+      })
+      .filter((entry): entry is { member: MemberType; best: number; current: number; gap: number; atBest: boolean } => entry !== null);
+
+    const bestChasers: HighlightItem[] = [...bestChaserCandidates]
+      .sort((a, b) => a.gap - b.gap)
+      .slice(0, 4)
+      .map((entry, index) => ({
+        key: `${entry.member.tag || entry.member.name || index}-personal-best`,
+        label: formatName(entry.member),
+        value: entry.atBest ? 'New personal best' : `${numberFormatter.format(entry.gap)} to record`,
+        detail: `Peak ${numberFormatter.format(entry.best)}`,
+        badge: entry.atBest ? 'Record' : null,
+      }));
+
+    if (!topActivity.length && !topRanked.length && !bestChasers.length) {
+      return null;
+    }
+
+    return {
+      topActivity,
+      topRanked,
+      bestChasers,
+      averageActivity,
+      rankedLeader,
+    };
+  }, [numberFormatter, roster]);
 
   return (
     <LeadershipOnly className="min-h-screen w-full">
@@ -290,8 +462,50 @@ export default function LeadershipDashboard() {
                   </div>
                 )}
               </div>
-            </div>
           </div>
+        </div>
+
+          {enrichmentInsights && (
+            <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-white">Roster Intelligence Pulse</h2>
+                  <p className="text-sm text-blue-100/70">
+                    Fresh signals surfaced from the enriched snapshot feed. Use this at-a-glance pulse before diving into player detail.
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {enrichmentInsights.averageActivity != null && (
+                    <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-mono text-blue-200">
+                      Avg activity {enrichmentInsights.averageActivity}/100
+                    </span>
+                  )}
+                  {enrichmentInsights.rankedLeader != null && (
+                    <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-mono text-purple-200">
+                      Top ranked {numberFormatter.format(enrichmentInsights.rankedLeader)}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+                <InsightList
+                  title="Activity Pulse Leaders"
+                  subtitle="Highest weighted activity scores across the roster."
+                  items={enrichmentInsights.topActivity}
+                />
+                <InsightList
+                  title="Ranked Surge"
+                  subtitle="Current ranked trophies since the most recent ingestion run."
+                  items={enrichmentInsights.topRanked}
+                />
+                <InsightList
+                  title="Personal Best Chase"
+                  subtitle="Players closest to matching their all-time trophy peak."
+                  items={enrichmentInsights.bestChasers}
+                />
+              </div>
+            </div>
+          )}
 
           <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
             <h2 className="text-xl font-semibold text-white mb-4">Applicant Evaluation System</h2>
