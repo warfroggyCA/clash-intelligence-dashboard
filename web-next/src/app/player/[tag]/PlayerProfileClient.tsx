@@ -1228,8 +1228,8 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                     className="bg-slate-900/70 border border-slate-800/80"
                   >
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                      <TrophyChart data={profile?.timeline?.map(point => ({
-                        date: point.snapshotDate,
+                      <TrophyChart data={profile?.timeline?.filter(point => point.snapshotDate).map(point => ({
+                        date: point.snapshotDate!,
                         trophies: point.trophies,
                         rankedTrophies: point.rankedTrophies
                       })) ?? []} />
