@@ -204,6 +204,10 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       extras: buildExtras(summary, detail),
       ranked_league_id: detail?.leagueTier?.id ?? summary.leagueTier?.id ?? null,  // Use player detail as source of truth for roster badges
       ranked_league_name: detail?.leagueTier?.name ?? summary.leagueTier?.name ?? null,
+      // War stats from player details
+      war_stars: detail?.warStars ?? null,
+      attack_wins: detail?.attackWins ?? null,
+      defense_wins: detail?.defenseWins ?? null,
     };
   }).filter(Boolean) as any[];
 

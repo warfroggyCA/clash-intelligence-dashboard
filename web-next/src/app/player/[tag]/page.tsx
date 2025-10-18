@@ -1,4 +1,4 @@
-import SimplePlayerView from '@/app/simple-player/[tag]/SimplePlayerView';
+import PlayerProfileClient from './PlayerProfileClient';
 
 interface PlayerPageProps {
   params: { tag: string };
@@ -9,5 +9,5 @@ export const revalidate = 0;
 
 export default function PlayerPage({ params }: PlayerPageProps) {
   const tag = params?.tag ?? '';
-  return <SimplePlayerView tag={tag} />;
+  return <PlayerProfileClient tag={tag} />;
 }

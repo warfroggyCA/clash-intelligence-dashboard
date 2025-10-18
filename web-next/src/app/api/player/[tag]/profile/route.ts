@@ -1,0 +1,233 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { normalizeTag } from '@/lib/tags';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+function toNumber(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+}
+
+export async function GET(request: NextRequest, { params }: { params: { tag: string } }) {
+  try {
+    const paramTag = params?.tag ?? '';
+    if (!paramTag) {
+      return NextResponse.json({ success: false, error: 'Player tag is required' }, { status: 400 });
+    }
+
+    const normalizedWithHash = normalizeTag(paramTag);
+    const supabase = getSupabaseServerClient();
+
+    const { data: memberRow, error: memberError } = await supabase
+      .from('members')
+      .select('id, clan_id, tag, name, th_level, role, league, league_id, league_name, league_trophies, league_icon_small, league_icon_medium, ranked_trophies, ranked_league_id, ranked_league_name, battle_mode_trophies, equipment_flags, tenure_days, tenure_as_of')
+      .eq('tag', normalizedWithHash)
+      .maybeSingle();
+
+    if (memberError) {
+      throw memberError;
+    }
+
+    if (!memberRow) {
+      return NextResponse.json({ success: false, error: 'Player not found' }, { status: 404 });
+    }
+
+    const { data: clanRow, error: clanError } = await supabase
+      .from('clans')
+      .select('id, tag, name, logo_url')
+      .eq('id', memberRow.clan_id)
+      .maybeSingle();
+
+    if (clanError) {
+      throw clanError;
+    }
+
+    const clanTag = clanRow?.tag ?? null;
+
+    const { data: snapshotRows, error: snapshotError } = await supabase
+      .from('member_snapshot_stats')
+      .select('snapshot_date, trophies, ranked_trophies, donations, donations_received, activity_score, hero_levels, war_stars, attack_wins, defense_wins, equipment_flags, best_trophies, best_versus_trophies')
+      .eq('member_id', memberRow.id)
+      .order('snapshot_date', { ascending: false })
+      .limit(90);
+
+    if (snapshotError) {
+      throw snapshotError;
+    }
+
+    const latestSnapshot = snapshotRows?.[0] ?? null;
+
+    const { data: historyRow, error: historyError } = clanTag
+      ? await supabase
+          .from('player_history')
+          .select('*')
+          .eq('clan_tag', clanTag)
+          .eq('player_tag', normalizedWithHash)
+          .maybeSingle()
+      : { data: null, error: null };
+
+    if (historyError) {
+      throw historyError;
+    }
+
+    const { data: notesRows, error: notesError } = clanTag
+      ? await supabase
+          .from('player_notes')
+          .select('id, created_at, note, custom_fields, created_by')
+          .eq('clan_tag', clanTag)
+          .eq('player_tag', normalizedWithHash)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+
+    if (notesError) {
+      throw notesError;
+    }
+
+    const { data: warningsRows, error: warningsError } = clanTag
+      ? await supabase
+          .from('player_warnings')
+          .select('id, created_at, warning_note, is_active, created_by')
+          .eq('clan_tag', clanTag)
+          .eq('player_tag', normalizedWithHash)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+
+    if (warningsError) {
+      throw warningsError;
+    }
+
+    const { data: tenureRows, error: tenureError } = clanTag
+      ? await supabase
+          .from('player_tenure_actions')
+          .select('id, created_at, action, reason, granted_by, created_by')
+          .eq('clan_tag', clanTag)
+          .eq('player_tag', normalizedWithHash)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+
+    if (tenureError) {
+      throw tenureError;
+    }
+
+    const { data: departureRows, error: departureError } = clanTag
+      ? await supabase
+          .from('player_departure_actions')
+          .select('id, created_at, reason, departure_type, recorded_by, created_by')
+          .eq('clan_tag', clanTag)
+          .eq('player_tag', normalizedWithHash)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+
+    if (departureError) {
+      throw departureError;
+    }
+
+    const { data: evaluationRows, error: evaluationError } = clanTag
+      ? await supabase
+          .from('applicant_evaluations')
+          .select('id, status, score, recommendation, rush_percent, evaluation, applicant, created_at, updated_at')
+          .eq('clan_tag', clanTag)
+          .eq('player_tag', normalizedWithHash)
+          .order('created_at', { ascending: false })
+      : { data: [], error: null };
+
+    if (evaluationError) {
+      throw evaluationError;
+    }
+
+    const { data: joinerRows, error: joinerError } = clanTag
+      ? await supabase
+          .from('joiner_events')
+          .select('id, detected_at, status, metadata')
+          .eq('clan_tag', clanTag)
+          .eq('player_tag', normalizedWithHash)
+          .order('detected_at', { ascending: false })
+      : { data: [], error: null };
+
+    if (joinerError) {
+      throw joinerError;
+    }
+
+    const summary = {
+      name: memberRow.name,
+      tag: memberRow.tag,
+      clanName: clanRow?.name ?? null,
+      clanTag,
+      role: memberRow.role,
+      townHallLevel: memberRow.th_level,
+      trophies: latestSnapshot?.trophies ?? memberRow.league_trophies ?? null,
+      rankedTrophies: latestSnapshot?.ranked_trophies ?? memberRow.ranked_trophies ?? null,
+      league: {
+        name: memberRow.league_name ?? (memberRow.league as any)?.name ?? null,
+        trophies: memberRow.league_trophies ?? null,
+        iconSmall: memberRow.league_icon_small ?? null,
+        iconMedium: memberRow.league_icon_medium ?? null,
+      },
+      rankedLeague: {
+        id: memberRow.ranked_league_id ?? null,
+        name: memberRow.ranked_league_name ?? null,
+      },
+      battleModeTrophies: memberRow.battle_mode_trophies ?? null,
+      donations: {
+        given: latestSnapshot?.donations ?? null,
+        received: latestSnapshot?.donations_received ?? null,
+        balance:
+          latestSnapshot?.donations != null && latestSnapshot?.donations_received != null
+            ? (latestSnapshot.donations ?? 0) - (latestSnapshot.donations_received ?? 0)
+            : null,
+      },
+      war: {
+        stars: latestSnapshot?.war_stars ?? null,
+        attackWins: latestSnapshot?.attack_wins ?? null,
+        defenseWins: latestSnapshot?.defense_wins ?? null,
+      },
+      activityScore: latestSnapshot?.activity_score ?? null,
+      lastSeen: null, // last_seen column doesn't exist in members table
+      tenureDays: memberRow.tenure_days ?? null,
+      tenureAsOf: memberRow.tenure_as_of ?? null,
+      heroLevels: latestSnapshot?.hero_levels ?? memberRow.equipment_flags ?? null,
+      bestTrophies: toNumber(latestSnapshot?.best_trophies) ?? null,
+      bestVersusTrophies: toNumber(latestSnapshot?.best_versus_trophies) ?? null,
+    };
+
+    const timeline = (snapshotRows ?? [])
+      .map((row) => ({
+        snapshotDate: row.snapshot_date,
+        trophies: toNumber(row.trophies),
+        rankedTrophies: toNumber(row.ranked_trophies),
+        donations: toNumber(row.donations),
+        donationsReceived: toNumber(row.donations_received),
+        activityScore: toNumber(row.activity_score),
+        heroLevels: row.hero_levels,
+        warStars: toNumber(row.war_stars),
+        attackWins: toNumber(row.attack_wins),
+        defenseWins: toNumber(row.defense_wins),
+      }))
+      .reverse();
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        summary,
+        timeline,
+        history: historyRow ?? null,
+        leadership: {
+          notes: notesRows ?? [],
+          warnings: warningsRows ?? [],
+          tenureActions: tenureRows ?? [],
+          departureActions: departureRows ?? [],
+        },
+        evaluations: evaluationRows ?? [],
+        joinerEvents: joinerRows ?? [],
+      },
+    });
+  } catch (error: any) {
+    return NextResponse.json({ success: false, error: error?.message || 'Failed to load player profile' }, { status: 500 });
+  }
+}
