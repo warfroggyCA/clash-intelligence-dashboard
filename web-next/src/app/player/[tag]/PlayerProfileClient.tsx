@@ -483,7 +483,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
         accent: activeWarning
           ? "from-rose-500 via-red-500 to-amber-500"
           : "from-slate-500 via-slate-600 to-emerald-500",
-        hint: activeWarning?.warningNote ?? (activeWarning ? undefined : "No active warnings"),
+        hint: activeWarning?.warningNote ?? (activeWarning ? null : "No active warnings"),
       });
     }
 
