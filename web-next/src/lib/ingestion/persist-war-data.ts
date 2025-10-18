@@ -270,26 +270,54 @@ export async function persistWarData(snapshot: FullClanSnapshot): Promise<void> 
   if (!wars.length) return;
   const supabase = getSupabaseAdminClient();
 
+  console.log('[persistWarData] persisting wars', {
+    clanTag: snapshot.clanTag,
+    wars: wars.length,
+  });
+
   for (const war of wars) {
     try {
-      const { data: warRow, error: warError } = await supabase
+      const { data: warRows, error: warError } = await supabase
         .from('clan_wars')
         .upsert(war.record, {
           onConflict: 'clan_tag,war_type,battle_start',
           ignoreDuplicates: false,
         })
-        .select('id')
-        .maybeSingle();
+        .select('id, clan_tag, war_type, battle_start');
 
       if (warError) {
         console.warn('[persistWarData] Failed to upsert clan_wars', war.record, warError.message);
         continue;
       }
-      if (!warRow?.id) {
-        console.warn('[persistWarData] Upsert clan_wars returned no id', war.record);
-        continue;
+      let warId: string | null = null;
+      if (Array.isArray(warRows) && warRows.length) {
+        warId = warRows[0]?.id ?? null;
+      } else if (warRows && typeof warRows === 'object') {
+        warId = (warRows as any).id ?? null;
       }
-      const warId = warRow.id;
+      if (!warId) {
+        let query = supabase
+          .from('clan_wars')
+          .select('id')
+          .eq('clan_tag', war.record.clan_tag)
+          .eq('war_type', war.record.war_type)
+          .limit(1);
+        if (war.record.battle_start) {
+          query = query.eq('battle_start', war.record.battle_start);
+        } else {
+          query = query.is('battle_start', null);
+        }
+        const { data: lookupRows, error: lookupError } = await query;
+        if (lookupError) {
+          console.warn('[persistWarData] Failed to lookup war id after upsert', lookupError.message);
+          continue;
+        }
+        warId = lookupRows?.[0]?.id ?? null;
+        if (!warId) {
+          console.warn('[persistWarData] Upsert clan_wars returned no id and lookup failed', war.record);
+          continue;
+        }
+      }
 
       const clanRecords = war.sides
         .map((side) => {
@@ -358,9 +386,9 @@ export async function persistWarData(snapshot: FullClanSnapshot): Promise<void> 
       }
     } catch (error: any) {
       console.warn('[persistWarData] Failed to persist war entry', {
-        error: error?.message || error,
         clanTag: war.clanTag,
         opponentTag: war.opponentTag,
+        error: error?.message || error,
       });
     }
   }
