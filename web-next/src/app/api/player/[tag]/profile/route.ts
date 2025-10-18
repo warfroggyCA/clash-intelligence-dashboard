@@ -52,7 +52,7 @@ export async function GET(request: NextRequest, { params }: { params: { tag: str
 
     const { data: snapshotRows, error: snapshotError } = await supabase
       .from('member_snapshot_stats')
-      .select('snapshot_date, trophies, ranked_trophies, donations, donations_received, activity_score, hero_levels, war_stars, attack_wins, defense_wins, equipment_flags, best_trophies, best_versus_trophies')
+      .select('snapshot_date, trophies, ranked_trophies, donations, donations_received, activity_score, hero_levels, war_stars, attack_wins, defense_wins, equipment_flags, best_trophies, best_versus_trophies, league_name, league_trophies, league_id, ranked_league_id, ranked_league_name, battle_mode_trophies, role, th_level')
       .eq('member_id', memberRow.id)
       .order('snapshot_date', { ascending: false })
       .limit(90);
@@ -154,46 +154,48 @@ export async function GET(request: NextRequest, { params }: { params: { tag: str
       throw joinerError;
     }
 
+    const latestStats = latestSnapshot ?? null;
+
     const summary = {
       name: memberRow.name,
       tag: memberRow.tag,
       clanName: clanRow?.name ?? null,
       clanTag,
-      role: memberRow.role,
-      townHallLevel: memberRow.th_level,
-      trophies: latestSnapshot?.trophies ?? memberRow.league_trophies ?? null,
-      rankedTrophies: latestSnapshot?.ranked_trophies ?? memberRow.ranked_trophies ?? null,
+      role: latestStats?.role ?? memberRow.role ?? null,
+      townHallLevel: latestStats?.th_level ?? memberRow.th_level ?? null,
+      trophies: toNumber(latestStats?.trophies) ?? memberRow.league_trophies ?? null,
+      rankedTrophies: toNumber(latestStats?.ranked_trophies) ?? memberRow.ranked_trophies ?? null,
       league: {
-        name: memberRow.league_name ?? (memberRow.league as any)?.name ?? null,
-        trophies: memberRow.league_trophies ?? null,
+        name: latestStats?.league_name ?? memberRow.league_name ?? (memberRow.league as any)?.name ?? null,
+        trophies: toNumber(latestStats?.league_trophies) ?? memberRow.league_trophies ?? null,
         iconSmall: memberRow.league_icon_small ?? null,
         iconMedium: memberRow.league_icon_medium ?? null,
       },
       rankedLeague: {
-        id: memberRow.ranked_league_id ?? null,
-        name: memberRow.ranked_league_name ?? null,
+        id: latestStats?.ranked_league_id ?? memberRow.ranked_league_id ?? null,
+        name: latestStats?.ranked_league_name ?? memberRow.ranked_league_name ?? null,
       },
-      battleModeTrophies: memberRow.battle_mode_trophies ?? null,
+      battleModeTrophies: toNumber(latestStats?.battle_mode_trophies) ?? memberRow.battle_mode_trophies ?? null,
       donations: {
-        given: latestSnapshot?.donations ?? null,
-        received: latestSnapshot?.donations_received ?? null,
+        given: toNumber(latestStats?.donations),
+        received: toNumber(latestStats?.donations_received),
         balance:
-          latestSnapshot?.donations != null && latestSnapshot?.donations_received != null
-            ? (latestSnapshot.donations ?? 0) - (latestSnapshot.donations_received ?? 0)
+          latestStats?.donations != null && latestStats?.donations_received != null
+            ? (toNumber(latestStats.donations) ?? 0) - (toNumber(latestStats.donations_received) ?? 0)
             : null,
       },
       war: {
-        stars: latestSnapshot?.war_stars ?? null,
-        attackWins: latestSnapshot?.attack_wins ?? null,
-        defenseWins: latestSnapshot?.defense_wins ?? null,
+        stars: toNumber(latestStats?.war_stars),
+        attackWins: toNumber(latestStats?.attack_wins),
+        defenseWins: toNumber(latestStats?.defense_wins),
       },
-      activityScore: latestSnapshot?.activity_score ?? null,
+      activityScore: toNumber(latestStats?.activity_score),
       lastSeen: null, // last_seen column doesn't exist in members table
       tenureDays: memberRow.tenure_days ?? null,
       tenureAsOf: memberRow.tenure_as_of ?? null,
-      heroLevels: latestSnapshot?.hero_levels ?? memberRow.equipment_flags ?? null,
-      bestTrophies: toNumber(latestSnapshot?.best_trophies) ?? null,
-      bestVersusTrophies: toNumber(latestSnapshot?.best_versus_trophies) ?? null,
+      heroLevels: latestStats?.hero_levels ?? memberRow.equipment_flags ?? null,
+      bestTrophies: toNumber(latestStats?.best_trophies),
+      bestVersusTrophies: toNumber(latestStats?.best_versus_trophies),
     };
 
     const timeline = (snapshotRows ?? [])
