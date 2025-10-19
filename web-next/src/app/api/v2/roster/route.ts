@@ -11,7 +11,7 @@ const querySchema = z.object({
   clanTag: z.string().optional(),
 });
 
-const SEASON_START_ISO = '2025-10-16T00:00:00Z'; // Try a date in between to get closer to expected values
+const SEASON_START_ISO = '2025-10-14T00:00:00Z'; // Try to get a few weeks of data
 
 export async function GET(req: NextRequest) {
   try {
@@ -175,8 +175,9 @@ export async function GET(req: NextRequest) {
           .order('snapshot_date', { ascending: true });
 
         if (!allSeasonError && allSeasonRows) {
-          const memberWeeks = new Map<string, Map<string, number>>(); // member_id -> week_start -> max_trophies
-
+          // Group by member and week, get one snapshot per week
+          const memberWeeks = new Map<string, Map<string, number>>(); // member_id -> week -> max_trophies
+          
           for (const row of allSeasonRows) {
           if (!row.snapshot_date) continue;
           const snapshotDate = new Date(row.snapshot_date);
@@ -204,7 +205,7 @@ export async function GET(req: NextRequest) {
             }
           }
 
-          // Calculate running total for each member: sum of weekly finals since season start
+          // Calculate running total for each member: sum of weekly finals
           for (const [memberId, weekMap] of memberWeeks.entries()) {
             let runningTotal = 0;
             for (const trophies of weekMap.values()) {
