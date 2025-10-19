@@ -283,7 +283,7 @@ export async function GET(req: NextRequest) {
       tenureDays: member.tenure_days || 0,
       tenureAsOf: member.tenure_as_of,
       lastWeekTrophies: lastWeekTrophies.get(member.tag) || 0,
-      seasonTotalTrophies: seasonTotalMap.get(member.tag) || 0,
+      seasonTotalTrophies: (lastWeekTrophies.get(member.tag) || 0) + (member.trophies || 0),
       league: {
         name: member.ranked_league_name,
         trophies: member.league_trophies,
