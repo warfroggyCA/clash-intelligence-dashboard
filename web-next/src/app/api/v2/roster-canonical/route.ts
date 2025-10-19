@@ -97,8 +97,8 @@ export async function GET(req: NextRequest) {
         ranked_league_name: ranked.leagueName,
         league_trophies: league.trophies,
         battle_mode_trophies: league.trophies,
-        donations: typeof member.donations === 'object' ? (member.donations?.given || 0) : (member.donations || 0),
-        donations_received: typeof member.donations === 'object' ? (member.donations?.received || 0) : (member.donationsReceived || 0),
+        donations: member.donations?.given || member.donations || 0,
+        donations_received: member.donations?.received || member.donationsReceived || 0,
         hero_levels: member.heroLevels,
         activity_score: member.activityScore,
         rush_percent: member.rushPercent,
@@ -126,107 +126,58 @@ export async function GET(req: NextRequest) {
       };
     });
 
-    // Calculate last week's trophies and running totals from member_snapshot_stats (historical data)
+    // Calculate last week's trophies and running totals from historical snapshots
     let lastWeekTrophies = new Map<string, number>();
     let seasonTotalMap = new Map<string, number>();
 
-    const memberIds = members.map(m => m.id).filter(Boolean);
-    
-    if (memberIds.length > 0) {
-      // Get member IDs from the canonical data for historical lookup
-      const { data: memberRows, error: memberError } = await supabase
-        .from('members')
-        .select('id, tag')
-        .in('tag', members.map(m => m.tag));
+    if (canonicalSnapshots.length > 0) {
+      // Get historical snapshots for calculations
+      const { data: historicalSnapshots, error: historicalError } = await supabase
+        .from('canonical_member_snapshots')
+        .select('player_tag, snapshot_date, payload')
+        .eq('clan_tag', clanTag)
+        .gte('snapshot_date', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)) // Last 30 days
+        .order('snapshot_date', { ascending: false });
 
-      if (!memberError && memberRows) {
-        const memberIdMap = new Map<string, string>();
-        for (const member of memberRows) {
-          memberIdMap.set(member.tag, member.id);
+      if (!historicalError && historicalSnapshots) {
+        // Group by player_tag
+        const playerSnapshots = new Map<string, any[]>();
+        for (const snapshot of historicalSnapshots) {
+          if (!playerSnapshots.has(snapshot.player_tag)) {
+            playerSnapshots.set(snapshot.player_tag, []);
+          }
+          playerSnapshots.get(snapshot.player_tag)!.push(snapshot);
         }
 
-        const historicalMemberIds = Array.from(memberIdMap.values());
+        // Calculate last week and season totals for each player
+        for (const [playerTag, snapshots] of playerSnapshots) {
+          // Last week: find snapshot from 7-14 days ago
+          const lastWeekSnapshot = snapshots.find(s => {
+            const snapshotDate = new Date(s.snapshot_date);
+            const daysAgo = (Date.now() - snapshotDate.getTime()) / (1000 * 60 * 60 * 24);
+            return daysAgo >= 7 && daysAgo <= 14;
+          });
+          if (lastWeekSnapshot) {
+            lastWeekTrophies.set(playerTag, lastWeekSnapshot.payload.member.trophies || 0);
+          }
 
-        // Fetch last week's trophy data from member_snapshot_stats
-        const { data: lastWeekSnapshotRows, error: lastWeekError } = await supabase
-          .from('member_snapshot_stats')
-          .select('member_id, trophies, snapshot_date')
-          .in('member_id', historicalMemberIds)
-          .filter('snapshot_date', 'gte', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()) // Last 14 days
-          .filter('snapshot_date', 'lt', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // But not in the last 7 days
-          .order('snapshot_date', { ascending: false });
-
-        if (!lastWeekError && lastWeekSnapshotRows) {
-          for (const row of lastWeekSnapshotRows) {
-            if (!lastWeekTrophies.has(row.member_id)) {
-              lastWeekTrophies.set(row.member_id, row.trophies ?? 0);
+          // Season total: sum all weekly finals since season start
+          let seasonTotal = 0;
+          const seenWeeks = new Set<string>();
+          for (const snapshot of snapshots) {
+            if (new Date(snapshot.snapshot_date) >= new Date(SEASON_START_ISO)) {
+              const weekStart = new Date(snapshot.snapshot_date);
+              weekStart.setUTCDate(weekStart.getUTCDate() - weekStart.getUTCDay() + 1);
+              const weekKey = weekStart.toISOString().slice(0, 10);
+              
+              if (!seenWeeks.has(weekKey)) {
+                seenWeeks.add(weekKey);
+                seasonTotal += snapshot.payload.member.trophies || 0;
+              }
             }
           }
+          seasonTotalMap.set(playerTag, seasonTotal);
         }
-
-        // Calculate running total from member_snapshot_stats
-        const { data: allSeasonRows, error: allSeasonError } = await supabase
-          .from('member_snapshot_stats')
-          .select('member_id, trophies, snapshot_date')
-          .in('member_id', historicalMemberIds)
-          .gte('snapshot_date', SEASON_START_ISO)
-          .order('snapshot_date', { ascending: false });
-
-        if (!allSeasonError && allSeasonRows) {
-          const weeklyFinals = new Map<string, Map<string, number>>(); // member_id -> week_start_date -> trophies
-
-          for (const row of allSeasonRows) {
-            if (!row.snapshot_date) continue;
-            const snapshotDate = new Date(row.snapshot_date);
-            if (Number.isNaN(snapshotDate.valueOf())) continue;
-
-            // Determine the start of the week (Monday) for the snapshot date
-            const dayOfWeek = snapshotDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
-            const diff = snapshotDate.getUTCDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1); // Adjust for Sunday
-            const weekStart = new Date(snapshotDate.setUTCDate(diff));
-            weekStart.setUTCHours(0, 0, 0, 0);
-            const weekStartISO = weekStart.toISOString().slice(0, 10);
-
-            if (!weeklyFinals.has(row.member_id)) {
-              weeklyFinals.set(row.member_id, new Map<string, number>());
-            }
-            const memberWeeks = weeklyFinals.get(row.member_id)!;
-
-            // Only store the latest trophy count for each week
-            if (!memberWeeks.has(weekStartISO) || (row.trophies ?? 0) > (memberWeeks.get(weekStartISO) ?? 0)) {
-              memberWeeks.set(weekStartISO, row.trophies ?? 0);
-            }
-          }
-
-          for (const [memberId, weeks] of weeklyFinals.entries()) {
-            let total = 0;
-            for (const trophies of weeks.values()) {
-              total += trophies;
-            }
-            seasonTotalMap.set(memberId, total);
-          }
-        }
-
-        // Map member IDs back to player tags for the final result
-        const finalLastWeekTrophies = new Map<string, number>();
-        const finalSeasonTotalMap = new Map<string, number>();
-        
-        for (const [memberId, trophies] of lastWeekTrophies) {
-          const memberTag = memberRows.find(m => m.id === memberId)?.tag;
-          if (memberTag) {
-            finalLastWeekTrophies.set(memberTag, trophies);
-          }
-        }
-        
-        for (const [memberId, total] of seasonTotalMap) {
-          const memberTag = memberRows.find(m => m.id === memberId)?.tag;
-          if (memberTag) {
-            finalSeasonTotalMap.set(memberTag, total);
-          }
-        }
-        
-        lastWeekTrophies = finalLastWeekTrophies;
-        seasonTotalMap = finalSeasonTotalMap;
       }
     }
 
@@ -246,11 +197,6 @@ export async function GET(req: NextRequest) {
       donations: member.donations || 0,
       donationsReceived: member.donations_received || 0,
       heroLevels: member.hero_levels,
-      bk: member.hero_levels?.bk || 0,
-      aq: member.hero_levels?.aq || 0,
-      gw: member.hero_levels?.gw || 0,
-      rc: member.hero_levels?.rc || 0,
-      mp: member.hero_levels?.mp || 0,
       activityScore: member.activity_score || 0,
       rushPercent: member.rush_percent || 0,
       bestTrophies: member.best_trophies || 0,

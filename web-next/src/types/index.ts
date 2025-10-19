@@ -775,6 +775,35 @@ export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
   17: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 },
 };
 
+/**
+ * Maximum equipment levels (estimated based on typical Clash of Clans equipment caps)
+ * These are rough estimates and may need adjustment based on actual game data
+ */
+export const EQUIPMENT_MAX_LEVELS: Record<string, number> = {
+  "Action Figure": 25,
+  "Rage Vial": 25,
+  "Vampstache": 25,
+  "Metal Pants": 25,
+  "Eternal Tome": 25,
+  "Henchmen Puppet": 25,
+  "Invisibility Vial": 25,
+  "Archer Puppet": 20,
+  "Life Gem": 20,
+  "Royal Gem": 20,
+  "Seeking Shield": 20,
+  "Giant Arrow": 18,
+  "Dark Orb": 15,
+  "Dark Crown": 15,
+  "Barbarian Puppet": 12,
+  "Earthquake Boots": 12,
+  "Rage Gem": 10,
+  "Noble Iron": 10,
+  "Spiky Ball": 10,
+  "Healing Tome": 10,
+  "Healer Puppet": 8,
+  "Hog Rider Puppet": 8,
+};
+
 // =============================================================================
 // UTILITY TYPES
 // =============================================================================

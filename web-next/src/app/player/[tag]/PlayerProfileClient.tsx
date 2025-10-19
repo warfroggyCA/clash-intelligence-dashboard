@@ -11,8 +11,13 @@ import {
   ArrowRight,
   BarChart3,
   Clipboard,
+  Coins,
   ExternalLink,
+  Flame,
+  Hammer,
   History,
+  Medal,
+  PawPrint,
   Plus,
   Sparkles,
   SquarePen,
@@ -30,11 +35,11 @@ import { showToast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
 import GlassCard from "@/components/ui/GlassCard";
 import { Modal } from "@/components/ui/Modal";
-import { TownHallBadge } from "@/components/ui/TownHallBadge";
+import { LeagueBadge, TownHallBadge } from "@/components/ui";
 import TrophyChart from "@/components/player/TrophyChart";
 import DonationChart from "@/components/player/DonationChart";
-import { HERO_MAX_LEVELS } from "@/types";
-import { HeroLevel } from "@/components/ui/HeroLevel";
+import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS } from "@/types";
+import { HeroLevel } from "@/components/ui";
 
 const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayout"), {
   ssr: false,
@@ -60,6 +65,11 @@ interface PlayerProfileClientProps {
 const formatNumber = (value: number | null | undefined) => {
   if (value == null || Number.isNaN(Number(value))) return "—";
   return new Intl.NumberFormat().format(Number(value));
+};
+
+const formatPercent = (value: number | null | undefined) => {
+  if (value == null || Number.isNaN(Number(value))) return "—";
+  return `${Number(value).toFixed(0)}%`;
 };
 
 const formatDate = (value: string | null | undefined) => {
@@ -345,6 +355,23 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
     ? summary.heroLevels
     : {};
 
+  const petEntries = useMemo(() => {
+    if (!summary?.pets) return [] as Array<[string, number]>;
+    return Object.entries(summary.pets).sort(
+      (a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0),
+    );
+  }, [summary?.pets]);
+
+  const equipmentEntries = useMemo(() => {
+    if (!summary?.equipmentLevels) return [] as Array<[string, number]>;
+    return Object.entries(summary.equipmentLevels).sort(
+      (a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0),
+    );
+  }, [summary?.equipmentLevels]);
+
+  const superTroopList = summary?.superTroopsActive ?? [];
+  const achievementSummary = summary?.achievements ?? { count: null, score: null };
+
   const handleCopySummary = useCallback(() => {
     if (!summary) return;
     const lines = [
@@ -352,10 +379,20 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
       summary.clanName ? `Clan: ${summary.clanName}` : null,
       summary.role ? `Role: ${summary.role}` : null,
       summary.townHallLevel ? `Town Hall ${summary.townHallLevel}` : null,
+      summary.seasonTotalTrophies != null
+        ? `Season total trophies: ${formatNumber(summary.seasonTotalTrophies)}`
+        : null,
+      summary.lastWeekTrophies != null
+        ? `Last Monday checkpoint: ${formatNumber(summary.lastWeekTrophies)}`
+        : null,
       summary.donations?.given != null
         ? `Donations: ${formatNumber(summary.donations.given)} given, ${formatNumber(summary.donations.received)} received`
         : null,
       summary.war?.stars != null ? `War stars: ${formatNumber(summary.war.stars)}` : null,
+      summary.capitalContributions != null
+        ? `Capital gold: ${formatNumber(summary.capitalContributions)}`
+        : null,
+      summary.rushPercent != null ? `Rush score: ${formatPercent(summary.rushPercent)}` : null,
       summary.activityScore != null ? `Activity score: ${summary.activityScore.toFixed(1)}` : null,
       history?.currentStint?.startDate
         ? `Current stint since ${formatDate(history.currentStint.startDate)}`
@@ -446,35 +483,67 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
 
   const statChips = useMemo(() => {
     if (!summary) return [];
-    const chips = [
-      {
-        label: "Season Donations",
-        value: summary.donations?.given != null ? formatNumber(summary.donations.given) : "—",
-        accent: "from-cyan-500 via-sky-500 to-indigo-500",
+    const chips: Array<{ label: string; value: string; accent: string; hint?: string | null }> = [];
+
+    if (summary.seasonTotalTrophies != null) {
+      chips.push({
+        label: "Season Ladder",
+        value: formatNumber(summary.seasonTotalTrophies),
+        accent: "from-indigo-500 via-purple-500 to-fuchsia-500",
         hint:
-          summary.donations?.received != null
-            ? `${formatNumber(summary.donations.received)} received`
+          summary.lastWeekTrophies != null
+            ? `Last Monday ${formatNumber(summary.lastWeekTrophies)}`
             : null,
-      },
-      {
-        label: "War Stars",
-        value: summary.war?.stars != null ? formatNumber(summary.war.stars) : "—",
-        accent: "from-amber-500 via-orange-500 to-red-500",
-        hint:
-          summary.war?.attackWins != null
-            ? `${formatNumber(summary.war.attackWins)} attack wins`
-            : null,
-      },
-      {
-        label: "Activity Score",
-        value:
-          summary.activityScore != null
-            ? summary.activityScore.toFixed(1)
-            : "Awaiting metrics",
-        accent: "from-emerald-500 via-lime-500 to-green-500",
-        hint: summary.lastSeen ? `Last seen ${formatRelative(summary.lastSeen)}` : null,
-      },
-    ];
+      });
+    }
+
+    chips.push({
+      label: "Season Donations",
+      value: summary.donations?.given != null ? formatNumber(summary.donations.given) : "—",
+      accent: "from-cyan-500 via-sky-500 to-indigo-500",
+      hint:
+        summary.donations?.received != null
+          ? `${formatNumber(summary.donations.received)} received`
+          : null,
+    });
+
+    chips.push({
+      label: "War Stars",
+      value: summary.war?.stars != null ? formatNumber(summary.war.stars) : "—",
+      accent: "from-amber-500 via-orange-500 to-red-500",
+      hint:
+        summary.war?.attackWins != null
+          ? `${formatNumber(summary.war.attackWins)} attack wins`
+          : null,
+    });
+
+    chips.push({
+      label: "Activity Score",
+      value:
+        summary.activityScore != null
+          ? summary.activityScore.toFixed(1)
+          : "Awaiting metrics",
+      accent: "from-emerald-500 via-lime-500 to-green-500",
+      hint: summary.lastSeen ? `Last seen ${formatRelative(summary.lastSeen)}` : null,
+    });
+
+    if (summary.capitalContributions != null) {
+      chips.push({
+        label: "Capital Gold",
+        value: formatNumber(summary.capitalContributions),
+        accent: "from-amber-400 via-yellow-500 to-orange-500",
+        hint: "Across latest snapshot",
+      });
+    }
+
+    if (summary.rushPercent != null) {
+      chips.push({
+        label: "Rush Score",
+        value: formatPercent(summary.rushPercent),
+        accent: "from-sky-500 via-blue-500 to-cyan-500",
+        hint: "0% = maxed, 100% = fully rushed",
+      });
+    }
 
     if (canViewLeadership) {
       chips.push({
@@ -531,7 +600,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
   return (
     <DashboardLayout>
       <div className="min-h-screen bg-slate-950/95 pb-20">
-        <div className="mx-auto w-full max-w-7xl px-4 pb-16 pt-10">
+        <div className="w-full px-4 pb-16 pt-10">
           <div className="mb-6 flex items-center gap-3 text-sm text-slate-400">
             <button
               type="button"
@@ -551,15 +620,25 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
               <div className="flex flex-1 flex-col gap-6">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
                   <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl">
+                    <div className="flex h-16 w-16 items-center justify-center">
                       {summary?.townHallLevel ? (
                         <TownHallBadge level={summary.townHallLevel} />
                       ) : (
                         <span className="text-slate-300">TH?</span>
                       )}
                     </div>
+                    {(summary?.rankedLeague?.name || summary?.league?.name) && (
+                      <div className="hidden sm:block">
+                        <LeagueBadge
+                          league={summary?.rankedLeague?.name ?? summary?.league?.name ?? undefined}
+                          trophies={summary?.rankedTrophies ?? summary?.league?.trophies ?? undefined}
+                          size="lg"
+                          showText={false}
+                        />
+                      </div>
+                    )}
                     <div>
-                      <h1 className="font-display text-3xl font-semibold text-white md:text-4xl">
+                      <h1 className="font-black text-3xl text-white md:text-4xl tracking-wider drop-shadow-2xl" style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: '700', letterSpacing: '0.05em' }}>
                         {summary?.name ?? "Unknown Player"}
                       </h1>
                       <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-300/80">
@@ -686,15 +765,18 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                         <div className="space-y-4">
                           <div>
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
-                              Current League
+                              Competitive League
                             </p>
-                            <div className="mt-2 flex items-center gap-3">
-                              {summary?.league?.name ? (
-                                <span className="rounded-full bg-white/10 px-3 py-1 text-sm text-slate-100">
-                                  {summary.league.name}
-                                </span>
+                            <div className="mt-3">
+                              {summary?.rankedLeague?.name || summary?.league?.name ? (
+                                <LeagueBadge
+                                  league={summary?.rankedLeague?.name ?? summary?.league?.name ?? undefined}
+                                  trophies={summary?.rankedTrophies ?? summary?.league?.trophies ?? undefined}
+                                  size="md"
+                                  showText={false}
+                                />
                               ) : (
-                                <span className="text-slate-400">Unknown</span>
+                                <span className="text-slate-400">Unranked</span>
                               )}
                             </div>
                           </div>
@@ -720,13 +802,18 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
-                              Battle Mode Trophies
+                              Season Total
                             </p>
                             <p className="mt-2 text-lg font-semibold text-slate-100">
-                              {summary?.battleModeTrophies != null
-                                ? formatNumber(summary.battleModeTrophies)
+                              {summary?.seasonTotalTrophies != null
+                                ? formatNumber(summary.seasonTotalTrophies)
                                 : "—"}
                             </p>
+                            {summary?.lastWeekTrophies != null && (
+                              <p className="text-xs text-slate-400">
+                                Last Monday {formatNumber(summary.lastWeekTrophies)}
+                              </p>
+                            )}
                           </div>
                         </div>
                         <div className="space-y-4">
@@ -742,16 +829,26 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                             <p className="text-xs text-slate-400">
                               {summary?.donations?.received != null
                                 ? `${formatNumber(summary.donations.received)} received`
-                                : "Received total not recorded"}
+                                : "Donation intake not tracked"}
                             </p>
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
-                              Balance
+                              Capital Gold
                             </p>
                             <p className="mt-2 text-lg font-semibold text-slate-100">
-                              {summary?.donations?.balance != null
-                                ? formatNumber(summary.donations.balance)
+                              {summary?.capitalContributions != null
+                                ? formatNumber(summary.capitalContributions)
+                                : "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                              Rush Score
+                            </p>
+                            <p className="mt-2 text-lg font-semibold text-slate-100">
+                              {summary?.rushPercent != null
+                                ? formatPercent(summary.rushPercent)
                                 : "—"}
                             </p>
                           </div>
@@ -774,26 +871,31 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                         <div className="space-y-4">
                           <div>
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
-                              War Summary
+                              Builder Hall Level
                             </p>
                             <p className="mt-2 text-lg font-semibold text-slate-100">
-                              {summary?.war?.stars != null
-                                ? `${formatNumber(summary.war.stars)} ⭐`
+                              {summary?.builderBase?.hallLevel != null
+                                ? `BH ${formatNumber(summary.builderBase.hallLevel)}`
                                 : "—"}
-                            </p>
-                            <p className="text-xs text-slate-400">
-                              {summary?.war?.attackWins != null
-                                ? `${formatNumber(summary.war.attackWins)} attack wins`
-                                : "Attack wins not tracked"}
                             </p>
                           </div>
                           <div>
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
-                              Best Versus Trophies
+                              Versus Trophies
                             </p>
                             <p className="mt-2 text-lg font-semibold text-slate-100">
-                              {summary?.bestVersusTrophies != null
-                                ? formatNumber(summary.bestVersusTrophies)
+                              {summary?.builderBase?.trophies != null
+                                ? formatNumber(summary.builderBase.trophies)
+                                : "—"}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                              Versus Battle Wins
+                            </p>
+                            <p className="mt-2 text-lg font-semibold text-slate-100">
+                              {summary?.builderBase?.battleWins != null
+                                ? formatNumber(summary.builderBase.battleWins)
                                 : "—"}
                             </p>
                           </div>
@@ -853,6 +955,216 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                         ))}
                       </div>
                     </GlassCard>
+
+                    {(summary?.builderBase?.hallLevel != null ||
+                      summary?.builderBase?.trophies != null ||
+                      summary?.builderBase?.battleWins != null ||
+                      summary?.capitalContributions != null) && (
+                      <GlassCard
+                        title="Builder Base & Capital"
+                        subtitle="Night Village momentum and gold contributions"
+                        icon={<Hammer className="h-5 w-5" />}
+                        className="bg-slate-900/70 border border-slate-800/80"
+                      >
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <Hammer className="h-5 w-5 text-slate-300" />
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                                  Builder Hall
+                                </p>
+                                <p className="mt-1 text-lg font-semibold text-slate-100">
+                                  {summary?.builderBase?.hallLevel != null
+                                    ? `BH ${formatNumber(summary.builderBase.hallLevel)}`
+                                    : "—"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <BarChart3 className="h-5 w-5 text-slate-300" />
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                                  Versus Trophies
+                                </p>
+                                <p className="mt-1 text-lg font-semibold text-slate-100">
+                                  {summary?.builderBase?.trophies != null
+                                    ? formatNumber(summary.builderBase.trophies)
+                                    : "—"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <Activity className="h-5 w-5 text-slate-300" />
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                                  Versus Battle Wins
+                                </p>
+                                <p className="mt-1 text-lg font-semibold text-slate-100">
+                                  {summary?.builderBase?.battleWins != null
+                                    ? formatNumber(summary.builderBase.battleWins)
+                                    : "—"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <div className="flex items-center gap-3">
+                              <Coins className="h-5 w-5 text-amber-300" />
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                                  Capital Gold
+                                </p>
+                                <p className="mt-1 text-lg font-semibold text-slate-100">
+                                  {summary?.capitalContributions != null
+                                    ? formatNumber(summary.capitalContributions)
+                                    : "—"}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    )}
+
+                    {(achievementSummary.count != null ||
+                      achievementSummary.score != null ||
+                      summary?.rushPercent != null ||
+                      summary?.expLevel != null) && (
+                      <GlassCard
+                        title="Progression Highlights"
+                        subtitle="Seasonal mastery scores"
+                        icon={<Medal className="h-5 w-5" />}
+                        className="bg-slate-900/70 border border-slate-800/80"
+                      >
+                        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                              Achievement Count
+                            </p>
+                            <p className="mt-2 text-lg font-semibold text-slate-100">
+                              {achievementSummary.count != null
+                                ? formatNumber(achievementSummary.count)
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                              Achievement Score
+                            </p>
+                            <p className="mt-2 text-lg font-semibold text-slate-100">
+                              {achievementSummary.score != null
+                                ? formatNumber(achievementSummary.score)
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                              Rush Score
+                            </p>
+                            <p className="mt-2 text-lg font-semibold text-slate-100">
+                              {summary?.rushPercent != null
+                                ? formatPercent(summary.rushPercent)
+                                : "—"}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                              Experience Level
+                            </p>
+                            <p className="mt-2 text-lg font-semibold text-slate-100">
+                              {summary?.expLevel != null ? formatNumber(summary.expLevel) : "—"}
+                            </p>
+                          </div>
+                        </div>
+                      </GlassCard>
+                    )}
+
+                    {(superTroopList.length > 0 || petEntries.length > 0) && (
+                      <GlassCard
+                        title="Super Troops & Pets"
+                        subtitle="Active boosts and companion levels"
+                        icon={<Flame className="h-5 w-5" />}
+                        className="bg-slate-900/70 border border-slate-800/80"
+                      >
+                        <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <div className="mb-2 flex items-center gap-2">
+                              <Flame className="h-4 w-4 text-amber-400" />
+                              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                                Active Super Troops
+                              </p>
+                            </div>
+                            {superTroopList.length ? (
+                              <div className="flex flex-wrap gap-2">
+                                {superTroopList.map((name) => (
+                                  <span
+                                    key={name}
+                                    className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200"
+                                  >
+                                    {name}
+                                  </span>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-400">
+                                No super troops boosted in the latest snapshot.
+                              </p>
+                            )}
+                          </div>
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                            <div className="mb-2 flex items-center gap-2">
+                              <PawPrint className="h-4 w-4 text-emerald-300" />
+                              <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
+                                Pet Levels
+                              </p>
+                            </div>
+                            {petEntries.length ? (
+                              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                                {petEntries.map(([pet, level]) => (
+                                  <div
+                                    key={pet}
+                                    className="flex items-center justify-between rounded-xl border border-emerald-500/30 bg-emerald-500/5 px-3 py-2 text-sm text-emerald-100"
+                                  >
+                                    <span>{pet}</span>
+                                    <span className="font-semibold">Lv {formatNumber(level)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="text-xs text-slate-400">No pets recorded yet.</p>
+                            )}
+                          </div>
+                        </div>
+                      </GlassCard>
+                    )}
+
+                    {equipmentEntries.length > 0 && (
+                      <GlassCard
+                        title="Signature Equipment"
+                        subtitle="Track hero gear levels"
+                        icon={<Sparkles className="h-5 w-5" />}
+                        className="bg-slate-900/70 border border-slate-800/80"
+                      >
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                          {equipmentEntries.map(([equipment, level]) => (
+                            <div
+                              key={equipment}
+                              className="flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-sm text-indigo-100"
+                            >
+                              <span>{equipment}</span>
+                              <span className="font-semibold">
+                                {formatNumber(level)}/{EQUIPMENT_MAX_LEVELS[equipment] || '?'}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </GlassCard>
+                    )}
 
                     <GlassCard
                       title="Availability & Signals"

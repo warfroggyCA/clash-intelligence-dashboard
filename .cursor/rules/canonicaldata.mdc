@@ -1,0 +1,20 @@
+{
+  "rules": [
+    {
+      "name": "Canonical Data Source Enforcement with Historical Data Consideration",
+      "description": "Ensure all new functions, pages, and features pull data exclusively from the canonical dataset, with historical data accessed via Supabase pulls. Prevent creation of redundant or non-canonical data pathways.",
+      "alwaysApply": true,
+      "severity": "error",
+      "behavior": [
+        "Use the canonical data source as the single source of truth for all current and non-historical data operations.",
+        "Access historical data only through Supabase pulls as the designated method.",
+        "Do not create new or duplicate data fetch paths; always use the canonical dataset or Supabase for historical data.",
+        "If required data is missing from the canonical or Supabase datasets, suggest extending those schemas rather than creating new data sources.",
+        "Use existing project interfaces and APIs for data access to maintain consistency.",
+        "Trace all data reads, transformations, or displays back to the canonical or Supabase sources.",
+        "Flag any use of non-canonical or non-Supabase data sources and recommend canonicalization or Supabase integration."
+      ],
+      "goal": "Ensure data consistency, maintainability, and reliability by strictly enforcing canonical data sources and Supabase for historical data across all code and features."
+    }
+  ]
+}

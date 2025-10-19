@@ -3,11 +3,32 @@ import { normalizeTag } from '@/lib/tags';
 import type { FullClanSnapshot, MemberSummary } from '@/lib/full-snapshot';
 import { extractHeroLevels } from '@/lib/coc';
 import { extractEnrichedFields } from '@/lib/ingestion/field-extractors';
+import { buildCanonicalMemberSnapshot } from '@/lib/canonical-member';
 import { calculateRushPercentage, calculateActivityScore } from '@/lib/business/calculations';
 import type { HeroCaps, Member } from '@/types';
 import type { ClanRoleName } from '@/lib/auth/roles';
 
 type HeroLevels = Partial<Record<keyof HeroCaps, number | null>>;
+
+type CanonicalSnapshotRow = {
+  clan_tag: string;
+  player_tag: string;
+  snapshot_id: string;
+  snapshot_date: string;
+  schema_version: string;
+  payload: ReturnType<typeof buildCanonicalMemberSnapshot>;
+};
+
+function getLeagueIcon(value: any, size: 'small' | 'medium'): string | null {
+  if (!value || typeof value !== 'object') return null;
+  const iconUrls = value.iconUrls ?? value.icon_urls ?? null;
+  if (iconUrls && typeof iconUrls === 'object') {
+    const candidate = iconUrls[size] ?? iconUrls[size.toUpperCase()];
+    if (typeof candidate === 'string') return candidate;
+  }
+  const fallbackKey = size === 'small' ? 'iconSmall' : 'iconMedium';
+  return typeof value[fallbackKey] === 'string' ? value[fallbackKey] : null;
+}
 
 function normalizeClanRole(role?: string | null): ClanRoleName {
   const value = (role || '').toLowerCase();
@@ -22,7 +43,7 @@ async function syncUserRolesForClan(clanId: string, tagRoleMap: Map<string, Clan
   const supabase = getSupabaseServerClient();
   const { data: existing, error } = await supabase
     .from('user_roles')
-    .select('id, player_tag')
+    .select('id, clan_id, user_id, player_tag, role')
     .eq('clan_id', clanId);
 
   if (error) {
@@ -30,12 +51,27 @@ async function syncUserRolesForClan(clanId: string, tagRoleMap: Map<string, Clan
     return;
   }
 
-  const updates: Array<{ id: string; role: ClanRoleName }> = [];
+  const updates: Array<{
+    id: string;
+    clan_id: string | null;
+    user_id: string | null;
+    player_tag: string | null;
+    role: ClanRoleName;
+  }> = [];
 
   for (const row of existing ?? []) {
     const tag = normalizeTag(row.player_tag || '');
     const role = tag ? tagRoleMap.get(tag) ?? 'viewer' : 'viewer';
-    updates.push({ id: row.id, role });
+    if (role === (row.role as ClanRoleName | null)) {
+      continue;
+    }
+    updates.push({
+      id: row.id,
+      clan_id: row.clan_id ?? null,
+      user_id: row.user_id ?? null,
+      player_tag: row.player_tag ?? null,
+      role,
+    });
   }
 
   if (!updates.length) return;
@@ -198,11 +234,16 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
     snapshotId = insertedSnapshot.id;
   }
 
+  const canonicalRows: CanonicalSnapshotRow[] = [];
+  const computedAt = (snapshot.metadata as any)?.computedAt ?? null;
+  const clanName = snapshot.clan?.name ?? null;
+
   const snapshotStats = snapshot.memberSummaries.map((summary) => {
     const tag = normalizeTag(summary.tag);
     const memberId = memberIdByTag.get(tag);
     if (!memberId) return null;
     const detail = snapshot.playerDetails?.[tag];
+    const memberName = summary.name ?? detail?.name ?? tag;
     const enrichedFields = extractEnrichedFields(detail);
     const heroLevels = buildHeroLevels(detail);
     const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
@@ -224,6 +265,13 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       toNumeric(detail?.trophies) ??
       toNumeric(summary.trophies) ??
       null;
+    const extras = buildExtras(summary, detail);
+    const leagueSource = (summary.league && typeof summary.league === 'object') ? summary.league : detail?.league;
+    const leagueIconSmall = getLeagueIcon(leagueSource, 'small');
+    const leagueIconMedium = getLeagueIcon(leagueSource, 'medium');
+    const rankedLeagueSource = detail?.leagueTier ?? null;
+    const rankedIconSmall = getLeagueIcon(rankedLeagueSource, 'small');
+    const rankedIconMedium = getLeagueIcon(rankedLeagueSource, 'medium');
 
     const memberEnriched = {
       petLevels: enrichedFields.petLevels,
@@ -247,7 +295,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
     };
 
     const memberForActivity: Member = {
-      name: summary.name ?? tag,
+      name: memberName,
       tag,
       role: summary.role ?? undefined,
       townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? undefined,
@@ -263,9 +311,87 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
 
     const activityEvidence = calculateActivityScore(memberForActivity);
 
+    const canonicalSnapshot = buildCanonicalMemberSnapshot({
+      clanTag,
+      clanName,
+      snapshotId,
+      fetchedAt: snapshot.fetchedAt,
+      computedAt,
+      memberCount: snapshot.metadata.memberCount,
+      totalTrophies,
+      totalDonations,
+      member: {
+        tag,
+        name: memberName ?? null,
+        role: summary.role ?? null,
+        townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
+        trophies: currentTrophies ?? null,
+        league: leagueSource
+          ? {
+              id: leagueId,
+              name: leagueName,
+              trophies: leagueTrophies,
+              iconSmall: leagueIconSmall,
+              iconMedium: leagueIconMedium,
+            }
+          : null,
+        ranked: {
+          trophies: rankedTrophies ?? null,
+          leagueId: rankedLeagueId ?? null,
+          leagueName: rankedLeagueName ?? null,
+          iconSmall: rankedIconSmall,
+          iconMedium: rankedIconMedium,
+        },
+        donations: {
+          given: donationsGiven ?? null,
+          received: donationsReceived ?? null,
+        },
+        activityScore: activityEvidence?.score ?? null,
+        heroLevels,
+        rushPercent,
+        war: {
+          stars: memberEnriched.warStars ?? null,
+          attackWins: memberEnriched.attackWins ?? null,
+          defenseWins: memberEnriched.defenseWins ?? null,
+        },
+        builderBase: {
+          hallLevel: memberEnriched.builderHallLevel ?? null,
+          trophies: memberEnriched.versusTrophies ?? null,
+          battleWins: memberEnriched.versusBattleWins ?? null,
+          leagueId: memberEnriched.builderLeagueId ?? null,
+        },
+        capitalContributions: memberEnriched.capitalContributions ?? null,
+        pets: memberEnriched.petLevels ?? null,
+        equipmentLevels: memberEnriched.equipmentLevels ?? null,
+        achievements: {
+          count: memberEnriched.achievementCount ?? null,
+          score: memberEnriched.achievementScore ?? null,
+        },
+        expLevel: memberEnriched.expLevel ?? null,
+        bestTrophies: memberEnriched.bestTrophies ?? null,
+        bestVersusTrophies: memberEnriched.bestVersusTrophies ?? null,
+        superTroopsActive: memberEnriched.superTroopsActive ?? null,
+        tenure: {
+          days: null,
+          asOf: null,
+        },
+        extras,
+      },
+    });
+
+    canonicalRows.push({
+      clan_tag: clanTag,
+      player_tag: tag,
+      snapshot_id: snapshotId,
+      snapshot_date: canonicalSnapshot.snapshotDate,
+      schema_version: canonicalSnapshot.schemaVersion,
+      payload: canonicalSnapshot,
+    });
+
     return {
       snapshot_id: snapshotId,
       member_id: memberId,
+      snapshot_date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : null,
       th_level: summary.townHallLevel ?? detail?.townHallLevel ?? null,
       role: summary.role ?? null,
       trophies: detail?.trophies ?? summary.trophies ?? null,  // detail.trophies = ranked battle trophies (correct for new system)
@@ -274,7 +400,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       hero_levels: heroLevels,
       activity_score: activityEvidence?.score ?? null,
       rush_percent: rushPercent,
-      extras: buildExtras(summary, detail),
+      extras,
       league_id: leagueId,
       league_name: leagueName,
       league_trophies: leagueTrophies,
@@ -311,6 +437,16 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
 
     if (statsError) {
       throw new Error(`[persist-roster] Failed to insert member snapshot stats: ${statsError.message}`);
+    }
+  }
+
+  if (canonicalRows.length) {
+    const { error: canonicalError } = await supabase
+      .from('canonical_member_snapshots')
+      .upsert(canonicalRows, { onConflict: 'snapshot_id,player_tag', ignoreDuplicates: false });
+
+    if (canonicalError) {
+      console.warn('[persist-roster] Failed to upsert canonical member snapshots', canonicalError);
     }
   }
 
