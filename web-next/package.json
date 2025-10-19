@@ -1,7 +1,7 @@
 {
   "name": "clash-intelligence",
   "private": true,
-  "version": "0.33.0",
+  "version": "0.34.0",
   "_forceRebuild": "2025-01-15-19:45:00",
   "scripts": {
     "dev": "NEXT_PUBLIC_APP_VERSION=$(node -p \"require('./package.json').version\") next dev -p 5050",
@@ -20,6 +20,8 @@
     "ingest:run": "tsx scripts/ingest/run.ts",
     "setup:storage": "tsx scripts/setup-supabase-storage.ts",
     "backfill-enriched-data": "tsx scripts/backfill-enriched-data.ts",
+    "backfill:player-day": "tsx scripts/backfill-player-day.ts",
+    "backfill:player-day-clan": "tsx scripts/backfill-player-day-from-clan.ts",
     "release:patch": "npm version patch && git push && git push --tags",
     "release:minor": "npm version minor && git push && git push --tags",
     "release:major": "npm version major && git push && git push --tags",

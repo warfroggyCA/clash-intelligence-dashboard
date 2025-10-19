@@ -19,6 +19,30 @@ interface CanonicalSnapshotRow {
   payload: CanonicalMemberSnapshotV1;
 }
 
+interface PlayerDaySupabaseRow {
+  date: string;
+  clan_tag: string;
+  player_tag: string;
+  th: number | null;
+  league: string | null;
+  trophies: number | null;
+  donations: number | null;
+  donations_rcv: number | null;
+  war_stars: number | null;
+  capital_contrib: number | null;
+  legend_attacks: number | null;
+  hero_levels: Record<string, unknown> | null;
+  equipment_levels: Record<string, number> | null;
+  pets: Record<string, number> | null;
+  super_troops_active: string[] | null;
+  achievements: { count?: number | null; score?: number | null } | null;
+  rush_percent: number | null;
+  exp_level: number | null;
+  deltas: Record<string, number> | null;
+  events: string[] | null;
+  notability: number | null;
+}
+
 interface TimelineComputation {
   timeline: PlayerTimelinePoint[];
   lastWeekTrophies: number | null;
@@ -37,6 +61,94 @@ function toNumber(value: unknown): number | null {
 function ensureArray<T>(value: T | T[] | null | undefined): T[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+function buildTimelineFromPlayerDay(rows: PlayerDaySupabaseRow[]): TimelineComputation {
+  if (!rows.length) {
+    return { timeline: [], lastWeekTrophies: null, seasonTotalTrophies: null };
+  }
+
+  const chronological = [...rows].sort((a, b) => {
+    const aMs = new Date(`${a.date}T00:00:00Z`).getTime();
+    const bMs = new Date(`${b.date}T00:00:00Z`).getTime();
+    return aMs - bMs;
+  });
+
+  const now = new Date();
+  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const seasonStart = new Date(SEASON_START_ISO);
+  const mondayKeys = new Set<string>();
+
+  let lastWeekTrophies: number | null = null;
+  let seasonTotal = 0;
+
+  const timeline: PlayerTimelinePoint[] = chronological.map((row) => {
+    const dateIso = row.date ?? null;
+    const dateObj = dateIso ? new Date(`${dateIso}T00:00:00Z`) : null;
+    const trophies = row.trophies ?? null;
+
+    if (dateObj) {
+      if (!lastWeekTrophies && dateObj >= fourteenDaysAgo && dateObj < sevenDaysAgo) {
+        lastWeekTrophies = trophies ?? null;
+      }
+
+      if (dateObj >= seasonStart && dateObj.getUTCDay() === 1 && dateIso) {
+        const key = `${row.player_tag}|${dateIso}`;
+        if (!mondayKeys.has(key)) {
+          seasonTotal += trophies ?? 0;
+          mondayKeys.add(key);
+        }
+      }
+    }
+
+    const achievements = row.achievements || {};
+
+    return {
+      snapshotDate: dateIso,
+      trophies,
+      rankedTrophies: trophies,
+      donations: row.donations ?? null,
+      donationsReceived: row.donations_rcv ?? null,
+      activityScore: null,
+      heroLevels: row.hero_levels ?? null,
+      warStars: row.war_stars ?? null,
+      attackWins: null,
+      defenseWins: null,
+      capitalContributions: row.capital_contrib ?? null,
+      builderHallLevel: null,
+      builderTrophies: null,
+      builderBattleWins: null,
+      bestTrophies: null,
+      bestVersusTrophies: null,
+      leagueName: row.league ?? null,
+      leagueTrophies: null,
+      leagueId: null,
+      rankedLeagueId: null,
+      rankedLeagueName: null,
+      superTroopsActive: row.super_troops_active ?? null,
+      petLevels: row.pets ?? null,
+      equipmentLevels: row.equipment_levels ?? null,
+      achievementCount: typeof achievements.count === 'number' ? achievements.count : null,
+      achievementScore: typeof achievements.score === 'number' ? achievements.score : null,
+      expLevel: row.exp_level ?? null,
+      rushPercent: row.rush_percent ?? null,
+      events: Array.isArray(row.events) ? row.events : [],
+      notability: row.notability ?? 0,
+      deltas: (row.deltas as Record<string, number> | null) ?? null,
+    } satisfies PlayerTimelinePoint;
+  });
+
+  const latest = chronological[chronological.length - 1];
+  if (latest?.trophies != null) {
+    seasonTotal += latest.trophies;
+  }
+
+  return {
+    timeline,
+    lastWeekTrophies,
+    seasonTotalTrophies: seasonTotal || seasonTotal === 0 ? seasonTotal : null,
+  };
 }
 
 function buildTimeline(rows: CanonicalSnapshotRow[]): TimelineComputation {
@@ -110,6 +222,9 @@ function buildTimeline(rows: CanonicalSnapshotRow[]): TimelineComputation {
       achievementScore: member.achievements.score ?? null,
       expLevel: member.expLevel ?? null,
       rushPercent: member.rushPercent ?? null,
+      events: null,
+      notability: null,
+      deltas: null,
     };
   });
 
@@ -272,7 +387,24 @@ export async function GET(
     const tenureDetails = await readTenureDetails(latestSnapshot.snapshotDate ?? undefined);
     const tenureInfo = tenureDetails[latestSnapshot.playerTag] ?? null;
 
-    const timelineStats = buildTimeline(filteredRows);
+    let timelineStats: TimelineComputation;
+
+    const { data: playerDayRows, error: playerDayError } = await supabase
+      .from('player_day')
+      .select('date, clan_tag, player_tag, th, league, trophies, donations, donations_rcv, war_stars, capital_contrib, legend_attacks, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability')
+      .eq('player_tag', normalizedTag)
+      .order('date', { ascending: true });
+
+    if (playerDayError && playerDayError.code !== 'PGRST116') {
+      throw playerDayError;
+    }
+
+    if (playerDayRows && playerDayRows.length) {
+      timelineStats = buildTimelineFromPlayerDay(playerDayRows as PlayerDaySupabaseRow[]);
+    } else {
+      timelineStats = buildTimeline(filteredRows);
+    }
+
     let summary = buildSummary(
       latestSnapshot,
       timelineStats,

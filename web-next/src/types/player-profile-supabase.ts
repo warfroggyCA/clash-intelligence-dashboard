@@ -88,6 +88,9 @@ export interface PlayerTimelinePoint {
   achievementScore: number | null;
   expLevel: number | null;
   rushPercent: number | null;
+  events: string[] | null;
+  notability: number | null;
+  deltas: Record<string, number> | null;
 }
 
 export interface PlayerHistoryRecordSupabase {

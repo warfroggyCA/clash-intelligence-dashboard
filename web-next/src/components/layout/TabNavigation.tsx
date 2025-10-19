@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { useDashboardStore } from "@/lib/stores/dashboard-store";
 import { useLeadership } from "@/hooks/useLeadership";
 import { getVisibleTabs } from "@/lib/tab-config";
@@ -10,6 +11,7 @@ interface TabNavigationProps {
 }
 
 export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) => {
+  const router = useRouter();
   const activeTab = useDashboardStore((state) => state.activeTab);
   const setActiveTab = useDashboardStore((state) => state.setActiveTab);
   const { permissions, check } = useLeadership();
@@ -46,10 +48,26 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
         const inactiveStyles =
           "border-transparent border-t-brand-border/40 text-slate-400 hover:border-brand-border/60 hover:bg-brand-surfaceSubtle/60 hover:text-slate-100";
 
+        const handleTabClick = () => {
+          setActiveTab(tab.id);
+          // Navigate to the appropriate page based on tab
+          if (tab.id === 'roster') {
+            router.push('/');
+          } else if (tab.id === 'changes') {
+            router.push('/changes');
+          } else if (tab.id === 'coaching') {
+            router.push('/coaching');
+          } else if (tab.id === 'database') {
+            router.push('/database');
+          } else if (tab.id === 'applicants') {
+            router.push('/applicants');
+          }
+        };
+
         return (
           <button
             key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
+            onClick={handleTabClick}
             className={`${baseStyles} ${isActive ? activeStyles : inactiveStyles} ${isActive ? 'active' : ''}`}
             title={tab.description}
             aria-label={tab.description}

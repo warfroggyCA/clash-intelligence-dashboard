@@ -6,6 +6,7 @@ import { extractEnrichedFields } from '@/lib/ingestion/field-extractors';
 import { buildCanonicalMemberSnapshot } from '@/lib/canonical-member';
 import { calculateRushPercentage, calculateActivityScore } from '@/lib/business/calculations';
 import type { HeroCaps, Member } from '@/types';
+import { generatePlayerDayRow, type CanonicalPlayerState } from '@/lib/player-day';
 import type { ClanRoleName } from '@/lib/auth/roles';
 
 type HeroLevels = Partial<Record<keyof HeroCaps, number | null>>;
@@ -235,6 +236,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
   }
 
   const canonicalRows: CanonicalSnapshotRow[] = [];
+  const playerDayStates: CanonicalPlayerState[] = [];
   const computedAt = (snapshot.metadata as any)?.computedAt ?? null;
   const clanName = snapshot.clan?.name ?? null;
 
@@ -388,6 +390,39 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       payload: canonicalSnapshot,
     });
 
+    const canonicalState: CanonicalPlayerState = {
+      date: canonicalSnapshot.snapshotDate,
+      clanTag,
+      playerTag: tag,
+      th: canonicalSnapshot.member.townHallLevel ?? null,
+      league: canonicalSnapshot.member.ranked.leagueName
+        ?? canonicalSnapshot.member.league?.name
+        ?? null,
+      trophies: canonicalSnapshot.member.ranked.trophies
+        ?? canonicalSnapshot.member.trophies
+        ?? null,
+      donations: canonicalSnapshot.member.donations.given ?? null,
+      donationsReceived: canonicalSnapshot.member.donations.received ?? null,
+      warStars: canonicalSnapshot.member.war.stars ?? null,
+      capitalContrib: canonicalSnapshot.member.capitalContributions ?? null,
+      legendAttacks: null,
+      heroLevels: heroLevels ?? null,
+      equipmentLevels: memberEnriched.equipmentLevels ?? null,
+      pets: memberEnriched.petLevels ?? null,
+      superTroopsActive: memberEnriched.superTroopsActive ?? null,
+      achievements:
+        memberEnriched.achievementCount != null || memberEnriched.achievementScore != null
+          ? {
+              count: memberEnriched.achievementCount ?? null,
+              score: memberEnriched.achievementScore ?? null,
+            }
+          : null,
+      rushPercent: rushPercent ?? null,
+      expLevel: memberEnriched.expLevel ?? null,
+    };
+
+    playerDayStates.push(canonicalState);
+
     return {
       snapshot_id: snapshotId,
       member_id: memberId,
@@ -447,6 +482,89 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
 
     if (canonicalError) {
       console.warn('[persist-roster] Failed to upsert canonical member snapshots', canonicalError);
+    }
+  }
+
+  if (playerDayStates.length) {
+    for (const state of playerDayStates) {
+      try {
+        let previousState: CanonicalPlayerState | undefined;
+        const { data: prevRow, error: prevError } = await supabase
+          .from('player_day')
+          .select(
+            'date, th, league, trophies, donations, donations_rcv, war_stars, capital_contrib, legend_attacks, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, snapshot_hash',
+          )
+          .eq('player_tag', state.playerTag)
+          .order('date', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (prevError && prevError.code !== 'PGRST116') {
+          console.warn('[persist-roster] Failed to load previous player_day row', { tag: state.playerTag, error: prevError.message });
+        }
+
+        if (prevRow) {
+          previousState = {
+            date: prevRow.date,
+            clanTag: state.clanTag,
+            playerTag: state.playerTag,
+            th: prevRow.th ?? null,
+            league: prevRow.league ?? null,
+            trophies: prevRow.trophies ?? null,
+            donations: prevRow.donations ?? null,
+            donationsReceived: prevRow.donations_rcv ?? null,
+            warStars: prevRow.war_stars ?? null,
+            capitalContrib: prevRow.capital_contrib ?? null,
+            legendAttacks: prevRow.legend_attacks ?? null,
+            heroLevels: (prevRow.hero_levels as any) ?? null,
+            equipmentLevels: (prevRow.equipment_levels as any) ?? null,
+            pets: (prevRow.pets as any) ?? null,
+            superTroopsActive: prevRow.super_troops_active ?? null,
+            achievements: (prevRow.achievements as any) ?? null,
+            rushPercent: prevRow.rush_percent ?? null,
+            expLevel: prevRow.exp_level ?? null,
+          };
+        }
+
+        const dayRow = generatePlayerDayRow(previousState, state);
+
+        if (prevRow?.snapshot_hash === dayRow.snapshotHash && dayRow.notability === 0) {
+          continue;
+        }
+
+        const { error: playerDayError } = await supabase
+          .from('player_day')
+          .upsert({
+            player_tag: dayRow.playerTag,
+            clan_tag: dayRow.clanTag,
+            date: dayRow.date,
+            th: dayRow.th,
+            league: dayRow.league,
+            trophies: dayRow.trophies,
+            donations: dayRow.donations,
+            donations_rcv: dayRow.donationsReceived,
+            war_stars: dayRow.warStars,
+            capital_contrib: dayRow.capitalContrib,
+            legend_attacks: dayRow.legendAttacks,
+            hero_levels: dayRow.heroLevels,
+            equipment_levels: dayRow.equipmentLevels,
+            pets: dayRow.pets,
+            super_troops_active: dayRow.superTroopsActive,
+            achievements: dayRow.achievements,
+            rush_percent: dayRow.rushPercent,
+            exp_level: dayRow.expLevel,
+            deltas: dayRow.deltas,
+            events: dayRow.events,
+            notability: dayRow.notability,
+            snapshot_hash: dayRow.snapshotHash,
+          }, { onConflict: 'player_tag,date', ignoreDuplicates: false });
+
+        if (playerDayError) {
+          console.warn('[persist-roster] Failed to upsert player_day row', { tag: state.playerTag, error: playerDayError.message });
+        }
+      } catch (error) {
+        console.warn('[persist-roster] Unexpected error writing player_day row', state.playerTag, error);
+      }
     }
   }
 
