@@ -40,6 +40,7 @@ import TrophyChart from "@/components/player/TrophyChart";
 import DonationChart from "@/components/player/DonationChart";
 import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS } from "@/types";
 import { HeroLevel } from "@/components/ui";
+import { getRoleBadgeVariant } from "@/lib/leadership";
 
 const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayout"), {
   ssr: false,
@@ -646,7 +647,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                           {normalizedTag || "No Tag"}
                         </span>
                         {summary?.role && (
-                          <span>{summary.role.replace(/([A-Z])/g, " $1").trim()}</span>
+                          <span>{getRoleBadgeVariant(summary.role).label}</span>
                         )}
                         {history?.status && <span>• {history.status.toUpperCase()}</span>}
                         {summary?.clanName && (
