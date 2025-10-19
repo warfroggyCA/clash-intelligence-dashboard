@@ -1158,8 +1158,11 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                               className="flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-sm text-indigo-100"
                             >
                               <span>{equipment}</span>
-                              <span className="font-semibold">
-                                {formatNumber(level)}/{EQUIPMENT_MAX_LEVELS[equipment] || '?'}
+                              <span 
+                                className="font-semibold cursor-help" 
+                                title={`Level ${formatNumber(level)} of ${EQUIPMENT_MAX_LEVELS[equipment] || '?'}`}
+                              >
+                                {formatNumber(level)}
                               </span>
                             </div>
                           ))}
