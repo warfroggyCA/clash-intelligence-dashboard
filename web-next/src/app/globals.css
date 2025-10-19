@@ -154,6 +154,21 @@ thead th.tooltip-trigger[data-tooltip]::after {
   top: calc(100% + 0.5rem);
 }
 
+.tooltip-trigger.tooltip-bottom[data-tooltip]::after {
+  bottom: auto;
+  top: calc(100% + 0.5rem);
+}
+
+.tooltip-trigger.tooltip-left[data-tooltip]::after {
+  bottom: auto;
+  top: 50%;
+  left: auto;
+  transform: translateY(-50%);
+  right: calc(100% + 0.5rem);
+  max-width: min(18rem, 70vw);
+  text-align: left;
+}
+
 .tooltip-trigger[data-tooltip]:hover::after,
 .tooltip-trigger[data-tooltip]:focus-visible::after {
   opacity: 1;

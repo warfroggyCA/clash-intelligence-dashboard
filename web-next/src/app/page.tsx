@@ -8,8 +8,8 @@
  * Last Updated: October 2025
  */
 
-import SimpleRosterPage from './simple-roster/RosterPage';
+import RosterPage from './simple-roster/RosterPage';
 
 export default function Home() {
-  return <SimpleRosterPage />;
+  return <RosterPage />;
 }

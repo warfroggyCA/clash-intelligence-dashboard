@@ -280,12 +280,58 @@ export type EventHistory = Record<string, PlayerEvent[]>; // playerTag -> events
 /**
  * Activity evidence for tracking member activity
  */
+export interface ActivityBreakdown {
+  realtime: number;
+  war: number;
+  donations: number;
+  capital: number;
+  builder: number;
+  upgrades: number;
+  lab: number;
+  achievements: number;
+  trophies: number;
+  heroProgress: number;
+  role: number;
+  superTroops: number;
+  other: number;
+}
+
+export interface ActivityMetrics {
+  lookbackDays: number;
+  timelineSampleSize: number;
+  realTimeScore: number;
+  warStarsDelta: number;
+  attackWinsDelta: number;
+  defenseWinsDelta: number;
+  capitalContributionDelta: number;
+  builderWinsDelta: number;
+  builderHallDelta: number;
+  donationDelta: number;
+  donationReceivedDelta: number;
+  trophyDelta: number;
+  rankedTrophyDelta: number;
+  heroUpgrades: number;
+  petUpgrades: number;
+  equipmentUpgrades: number;
+  labUpgradeDelta: number;
+  achievementDelta: number;
+  expLevelDelta: number;
+  superTroopsActivated: number;
+}
+
 export interface ActivityEvidence {
   last_active_at: string;
   confidence: 'definitive' | 'high' | 'medium' | 'weak';
   indicators: string[];
   score: number;
   level: ActivityLevel;
+  breakdown?: ActivityBreakdown;
+  metrics?: ActivityMetrics;
+  lookbackDays?: number;
+  evidence?: string[];
+  priority?: number;
+  activity_level?: ActivityLevel | 'Very High' | 'High' | 'Medium' | 'Low' | 'Inactive';
+  days_since_activity?: number;
 }
 
 export interface PlayerActivityTimelineEvent {
@@ -779,29 +825,38 @@ export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
  * Maximum equipment levels (estimated based on typical Clash of Clans equipment caps)
  * These are rough estimates and may need adjustment based on actual game data
  */
+export const EQUIPMENT_NAME_ALIASES: Record<string, string> = {
+  "Henchmen Puppet": "Hog Rider Puppet",
+};
+
 export const EQUIPMENT_MAX_LEVELS: Record<string, number> = {
-  "Action Figure": 25,
-  "Rage Vial": 25,
-  "Vampstache": 25,
-  "Metal Pants": 25,
-  "Eternal Tome": 25,
-  "Henchmen Puppet": 25,
-  "Invisibility Vial": 25,
-  "Archer Puppet": 20,
-  "Life Gem": 20,
-  "Royal Gem": 20,
-  "Seeking Shield": 20,
+  "Action Figure": 27,
+  "Archer Puppet": 18,
+  "Barbarian Puppet": 18,
+  "Dark Crown": 27,
+  "Dark Orb": 18,
+  "Earthquake Boots": 18,
+  "Electro Boots": 27,
+  "Eternal Tome": 18,
+  "Fireball": 18,
+  "Frozen Arrow": 27,
   "Giant Arrow": 18,
-  "Dark Orb": 15,
-  "Dark Crown": 15,
-  "Barbarian Puppet": 12,
-  "Earthquake Boots": 12,
-  "Rage Gem": 10,
-  "Noble Iron": 10,
-  "Spiky Ball": 10,
-  "Healing Tome": 10,
-  "Healer Puppet": 8,
-  "Hog Rider Puppet": 8,
+  "Giant Gauntlet": 27,
+  "Healer Puppet": 18,
+  "Healing Tome": 18,
+  "Heroic Torch": 18,
+  "Hog Rider Puppet": 18,
+  "Invisibility Vial": 18,
+  "Life Gem": 18,
+  "Metal Pants": 18,
+  "Noble Iron": 18,
+  "Rage Gem": 18,
+  "Rage Vial": 18,
+  "Rocket Spear": 27,
+  "Royal Gem": 18,
+  "Seeking Shield": 18,
+  "Spiky Ball": 27,
+  "Vampstache": 18,
 };
 
 // =============================================================================

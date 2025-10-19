@@ -7,7 +7,7 @@ import { readTenureDetails } from '@/lib/tenure';
 import { CANONICAL_MEMBER_SNAPSHOT_VERSION } from '@/types/canonical-member-snapshot';
 import type { CanonicalMemberSnapshotV1 } from '@/types/canonical-member-snapshot';
 import type { PlayerTimelinePoint, PlayerSummarySupabase } from '@/types/player-profile-supabase';
-import type { Member, MemberEnriched } from '@/types';
+import type { Member, MemberEnriched, PlayerActivityTimelineEvent } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -447,10 +447,14 @@ export async function GET(
       } as MemberEnriched,
     } as Member;
 
-    const activityEvidence = calculateActivityScore(memberForActivity);
+    const activityEvidence = calculateActivityScore(memberForActivity, {
+      timeline: timelineStats.timeline as unknown as PlayerActivityTimelineEvent[],
+      lookbackDays: 7,
+    });
     summary = {
       ...summary,
       activityScore: summary.activityScore ?? activityEvidence.score ?? null,
+      activity: activityEvidence,
     };
 
     // Calculate clan hero averages for comparison

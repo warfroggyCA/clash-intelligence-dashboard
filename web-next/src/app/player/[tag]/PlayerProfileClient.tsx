@@ -39,7 +39,8 @@ import { Modal } from "@/components/ui/Modal";
 import { LeagueBadge, TownHallBadge } from "@/components/ui";
 import TrophyChart from "@/components/player/TrophyChart";
 import DonationChart from "@/components/player/DonationChart";
-import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS } from "@/types";
+import PlayerActivityAnalytics from "@/components/player/PlayerActivityAnalytics";
+import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS, EQUIPMENT_NAME_ALIASES } from "@/types";
 import { HeroLevel } from "@/components/ui";
 import { getRoleBadgeVariant } from "@/lib/leadership";
 import Image from "next/image";
@@ -178,6 +179,147 @@ const HERO_DISPLAY_NAMES: Record<string, string> = {
   gw: "Grand Warden",
   rc: "Royal Champion",
   mp: "Minion Prince",
+};
+
+const EQUIPMENT_TOOLTIPS: Record<string, { hero: string; description: string; rarity: string; tier: string }> = {
+  "Giant Gauntlet": {
+    hero: "Barbarian King",
+    description: "Transforms the King massive for 17 seconds, granting extra area damage, increased health, and self-healing capabilities.",
+    rarity: "Epic",
+    tier: "A Tier"
+  },
+  "Eternal Tome": {
+    hero: "Grand Warden",
+    description: "Grants the Warden and nearby troops immunity to damage for up to 8.2 seconds when fully upgraded.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "S Tier"
+  },
+  "Archer Puppet": {
+    hero: "Archer Queen",
+    description: "Brings out 35 invisible Archers during fights; noted for low attack power and duration.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "C Tier"
+  },
+  "Barbarian Puppet": {
+    hero: "Barbarian King",
+    description: "Summons a swarm of Barbarians; provides satisfactory health regeneration and a commendable Hitpoint boost.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "C Tier"
+  },
+  "Invisibility Vial": {
+    hero: "Archer Queen",
+    description: "Makes the Archer Queen invisible to enemies, allowing her to land heavy hits and restoring some health.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "B Tier"
+  },
+  "Life Gem": {
+    hero: "Grand Warden",
+    description: "Blesses nearby allies with extra HP (1,025 extra HP per unit after buff).",
+    rarity: "Common (Max Lvl 18)",
+    tier: "C Tier"
+  },
+  "Fireball": {
+    hero: "Grand Warden",
+    description: "An active ability that can kill enemy heroes and destroy specific areas of the base using a powerful projectile.",
+    rarity: "Epic gear",
+    tier: "S Tier"
+  },
+  "Vampstache": {
+    hero: "Barbarian King",
+    description: "Recovers 300 Hitpoints for the King per attack, providing self-sustaining capability.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  },
+  "Royal Gem": {
+    hero: "Royal Champion",
+    description: "Only used to restore HP for the Royal Champion; considered situational.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "D Tier"
+  },
+  "Seeking Shield": {
+    hero: "Royal Champion",
+    description: "Throws her shield at four targets, allowing players to eliminate defenses selectively.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  },
+  "Rage Vial": {
+    hero: "Barbarian King",
+    description: "Makes the King enraged for 10 seconds, granting a damage boost, increased speed, and health regeneration.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "B Tier"
+  },
+  "Healer Puppet": {
+    hero: "Archer Queen",
+    description: "Allows three Healers to back up the Queen, gradually restoring her HP and extending her life span.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  },
+  "Dark Orb": {
+    hero: "Minion Prince",
+    description: "Throws projectiles that damage and slow down defensive buildings in the enemy base.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "S Tier"
+  },
+  "Rage Gem": {
+    hero: "Grand Warden",
+    description: "Creates an aura allowing nearby team troops to deal extra damage; works well with air armies.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "B Tier"
+  },
+  "Noble Iron": {
+    hero: "Minion Prince",
+    description: "Increases the Prince's range and power, letting him deal 770 extra damage quickly at the start.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  },
+  "Giant Arrow": {
+    hero: "Archer Queen",
+    description: "Active ability for the Queen to clear airbases and other building troops.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  },
+  "Metal Pants": {
+    hero: "Minion Prince",
+    description: "Provides a 70% damage reduction for 15 seconds.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "B Tier"
+  },
+  "Healing Tome": {
+    hero: "Grand Warden",
+    description: "Heals the Warden and nearby troops for 20 seconds with 150 HP/s, offering exceptional and consistent healing.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "S Tier"
+  },
+  "Heroic Torch": {
+    hero: "Grand Warden",
+    description: "Allows nearby troops to jump over walls, move faster, and attack more effectively for 11 to 20 seconds.",
+    rarity: "Common",
+    tier: "C Tier"
+  },
+  "Henchmen Puppet": {
+    hero: "Minion Prince",
+    description: "Drops two puppets to aid in battle and grants the Prince brief invisibility.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  },
+  "Earthquake Boots": {
+    hero: "Barbarian King",
+    description: "Creates an earthquake strong enough to bring down walls and buildings quickly.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "S Tier"
+  },
+  "Hog Rider Puppet": {
+    hero: "Royal Champion",
+    description: "Summons nine Hog Riders as duelists to soak damage while the RC is invisible.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  },
+  "Lavaloon Puppet": {
+    hero: "Barbarian King",
+    description: "Summons Lava Hounds and Balloons to support the King in battle.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "A Tier"
+  }
 };
 
 const toNumericDelta = (value: unknown): number | null => {
@@ -538,6 +680,7 @@ function buildTimeline(
       "rush_percent",
     ];
     const standardDeltaSet = new Set(standardDeltaOrder);
+    const processedStandardKeys = new Set<string>();
 
     const formatStandardDelta = (key: string, delta: number): string | null => {
       switch (key) {
@@ -604,12 +747,36 @@ function buildTimeline(
       }
     };
 
+    const trophiesDelta = enrichedDeltas.trophies;
+    const rankedDelta = enrichedDeltas.ranked_trophies;
+    const trophiesNowValue = toNumberValue(point.trophies);
+    const rankedNowValue = toNumberValue(point.rankedTrophies);
+
+    if (
+      trophiesDelta !== undefined &&
+      rankedDelta !== undefined &&
+      trophiesDelta === rankedDelta &&
+      trophiesNowValue != null &&
+      rankedNowValue != null &&
+      trophiesNowValue === rankedNowValue
+    ) {
+      const summary = formatStandardDelta("trophies", trophiesDelta);
+      if (summary) {
+        appendDescription("trophies", summary);
+        usedDeltaKeys.add("ranked_trophies");
+        processedStandardKeys.add("trophies");
+        processedStandardKeys.add("ranked_trophies");
+      }
+    }
+
     standardDeltaOrder.forEach((key) => {
+      if (processedStandardKeys.has(key)) return;
       const delta = enrichedDeltas[key];
       if (delta === undefined) return;
       const summary = formatStandardDelta(key, delta);
       if (summary) {
         appendDescription(key, summary);
+        processedStandardKeys.add(key);
       }
     });
 
@@ -874,6 +1041,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
   const [showWarningModal, setShowWarningModal] = useState(false);
   const [warningText, setWarningText] = useState("");
   const [warningSaving, setWarningSaving] = useState(false);
+  const [showEquipmentTierModal, setShowEquipmentTierModal] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!normalizedTag) return;
@@ -925,12 +1093,190 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
     : null;
   const latestNote = canViewLeadership ? profile?.leadership.notes[0] ?? null : null;
 
+  const activityEvidence = summary?.activity ?? null;
+  const activityScore = activityEvidence?.score ?? summary?.activityScore ?? null;
+  const activityTooltip = useMemo(() => {
+    if (!activityEvidence) return 'Activity score not yet calculated';
+    const segments: string[] = [];
+    segments.push(
+      `Score ${activityEvidence.score} (${activityEvidence.level}) • confidence ${activityEvidence.confidence}`,
+    );
+    if (activityEvidence.breakdown) {
+      const contributors = Object.entries(activityEvidence.breakdown)
+        .filter(([, value]) => value > 0)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([key, value]) => `${key}: ${value.toFixed(1)} pts`);
+      if (contributors.length) {
+        segments.push(`Top signals: ${contributors.join(', ')}`);
+      }
+    }
+    if (activityEvidence.indicators?.length) {
+      segments.push(`Indicators: ${activityEvidence.indicators.join('; ')}`);
+    }
+    if (activityEvidence.metrics?.lookbackDays) {
+      segments.push(`Lookback window: ${activityEvidence.metrics.lookbackDays} day(s)`);
+    }
+    return segments.join(' • ');
+  }, [activityEvidence]);
+
   const donationSeries = useMemo(() => deriveDonationSeries(profile), [profile]);
   const kudosSuggestion = useMemo(() => deriveKudos(profile), [profile]);
   const timelineItems = useMemo(
     () => buildTimeline(profile, canViewLeadership),
     [profile, canViewLeadership],
   );
+
+  const timelineInsights = useMemo(() => {
+    const insights: string[] = [];
+    const timelineArray = Array.isArray(profile?.timeline)
+      ? (profile?.timeline as TimelinePoint[])
+      : [];
+    const points = timelineArray
+      .filter((point) => point?.snapshotDate)
+      .sort((a, b) => {
+          const aTime = new Date(a.snapshotDate as string).getTime();
+          const bTime = new Date(b.snapshotDate as string).getTime();
+          return bTime - aTime;
+        })
+
+    if (!points.length) {
+      return insights;
+    }
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    // Donation streak analysis
+    let donationStreak = 0;
+    for (let i = 0; i < points.length; i += 1) {
+      const point = points[i];
+      if (!point?.snapshotDate) break;
+      const date = new Date(point.snapshotDate);
+      if (Number.isNaN(date.getTime())) break;
+      const deltas = (point?.deltas ?? {}) as Record<string, number>;
+      const donationDelta =
+        typeof deltas.donations === "number"
+          ? deltas.donations
+          : typeof deltas.donation_delta === "number"
+            ? deltas.donation_delta
+            : null;
+      if (donationDelta && donationDelta > 0) {
+        donationStreak += 1;
+      } else {
+        break;
+      }
+    }
+    if (donationStreak >= 3) {
+      insights.push(`Donation streak: ${donationStreak} day${donationStreak > 1 ? "s" : ""} in a row`);
+    }
+
+    // Trophy surge detection
+    const recentTrophies = points.slice(0, 3).map(p => p.trophies).filter((t): t is number => typeof t === 'number' && Number.isFinite(t));
+    if (recentTrophies.length >= 2) {
+      const currentTrophies = recentTrophies[0];
+      const previousTrophies = recentTrophies[recentTrophies.length - 1];
+      const trophyGain = currentTrophies - previousTrophies;
+      if (trophyGain > 100) {
+        insights.push(`Trophy surge: +${formatNumber(trophyGain)} trophies in recent activity`);
+      } else if (trophyGain < -100) {
+        insights.push(`Trophy drop: ${formatNumber(trophyGain)} trophies in recent activity`);
+      }
+    }
+
+    // Weekly totals and patterns
+    const lastWeekPoints = points.filter((point) => {
+      if (!point?.snapshotDate) return false;
+      const date = new Date(point.snapshotDate);
+      if (Number.isNaN(date.getTime())) return false;
+      return date >= sevenDaysAgo;
+    });
+    
+    if (lastWeekPoints.length) {
+      // Calculate weekly deltas for cumulative metrics
+      const newestPoint = lastWeekPoints[0];
+      const oldestPoint = lastWeekPoints[lastWeekPoints.length - 1];
+      
+      // Calculate weekly deltas for donations
+      const newestDonations = newestPoint?.donations;
+      const oldestDonations = oldestPoint?.donations;
+      const donationWeeklyDelta = (lastWeekPoints.length > 1 && newestDonations != null && oldestDonations != null)
+        ? newestDonations - oldestDonations
+        : 0;
+
+      // Calculate weekly deltas for war stars
+      const newestWarStars = newestPoint?.warStars;
+      const oldestWarStars = oldestPoint?.warStars;
+      const warStarsWeeklyDelta = (lastWeekPoints.length > 1 && newestWarStars != null && oldestWarStars != null)
+        ? newestWarStars - oldestWarStars
+        : 0;
+
+      // Calculate weekly deltas for capital contributions
+      const newestCapital = newestPoint?.capitalContributions;
+      const oldestCapital = oldestPoint?.capitalContributions;
+      const capitalWeeklyDelta = (lastWeekPoints.length > 1 && newestCapital != null && oldestCapital != null)
+        ? newestCapital - oldestCapital
+        : 0;
+
+      // Donation insights - use the corrected weekly delta
+      if (donationWeeklyDelta > 0) {
+        if (donationWeeklyDelta >= 200) {
+          insights.push(`Heavy donor: ${formatNumber(donationWeeklyDelta)} troops in the past week`);
+        } else {
+          insights.push(`Donated ${formatNumber(donationWeeklyDelta)} troops in the past week`);
+        }
+      }
+
+      // War performance insights - use the corrected weekly delta
+      if (warStarsWeeklyDelta > 0) {
+        if (warStarsWeeklyDelta >= 20) {
+          insights.push(`War star leader: ${formatNumber(warStarsWeeklyDelta)} stars over the past week`);
+        } else {
+          insights.push(`Earned ${formatNumber(warStarsWeeklyDelta)} war stars over the past week`);
+        }
+      }
+
+      // Capital contribution insights - use the corrected weekly delta
+      if (capitalWeeklyDelta > 0) {
+        if (capitalWeeklyDelta >= 10000000) {
+          insights.push(`Capital champion: ${formatNumber(capitalWeeklyDelta)} gold contributed this week`);
+        } else if (capitalWeeklyDelta >= 5000000) {
+          insights.push(`Heavy capital contributor: ${formatNumber(capitalWeeklyDelta)} gold this week`);
+        } else if (capitalWeeklyDelta >= 1000000) {
+          insights.push(`Active capital contributor: ${formatNumber(capitalWeeklyDelta)} gold this week`);
+        } else {
+          insights.push(`Capital contributor: ${formatNumber(capitalWeeklyDelta)} gold this week`);
+        }
+      }
+
+      // Lifetime capital contribution insight
+      if (newestCapital && newestCapital > 0) {
+        if (newestCapital >= 10000000) {
+          insights.push(`Capital legend: ${formatNumber(newestCapital)} gold contributed lifetime`);
+        } else if (newestCapital >= 5000000) {
+          insights.push(`Capital veteran: ${formatNumber(newestCapital)} gold contributed lifetime`);
+        } else if (newestCapital >= 1000000) {
+          insights.push(`Capital supporter: ${formatNumber(newestCapital)} gold contributed lifetime`);
+        }
+      }
+    }
+
+    // Activity consistency analysis
+    const activeDays = points.filter((point) => {
+      if (!point?.snapshotDate) return false;
+      const date = new Date(point.snapshotDate);
+      if (Number.isNaN(date.getTime())) return false;
+      return date >= sevenDaysAgo;
+    }).length;
+
+    if (activeDays >= 6) {
+      insights.push(`Highly active: ${activeDays} days of activity in the past week`);
+    } else if (activeDays >= 4) {
+      insights.push(`Regularly active: ${activeDays} days of activity in the past week`);
+    }
+
+    return insights;
+  }, [profile?.timeline]);
 
   const heroCaps = useMemo(() => {
     if (!summary?.townHallLevel) return null;
@@ -971,9 +1317,19 @@ const HERO_LABELS: Record<string, string> = {
 
   const equipmentEntries = useMemo(() => {
     if (!summary?.equipmentLevels) return [] as Array<[string, number]>;
-    return Object.entries(summary.equipmentLevels).sort(
-      (a, b) => (Number(b[1]) || 0) - (Number(a[1]) || 0),
-    );
+    const merged = new Map<string, number>();
+    Object.entries(summary.equipmentLevels).forEach(([rawName, rawLevel]) => {
+      const displayName = EQUIPMENT_NAME_ALIASES[rawName] ?? rawName;
+      const numericLevel = Number(rawLevel) || 0;
+      const current = merged.get(displayName);
+      if (current == null || numericLevel > current) {
+        merged.set(displayName, numericLevel);
+      }
+    });
+    return Array.from(merged.entries()).sort((a, b) => {
+      if (b[1] !== a[1]) return b[1] - a[1];
+      return a[0].localeCompare(b[0]);
+    });
   }, [summary?.equipmentLevels]);
 
   const superTroopList = summary?.superTroopsActive ?? [];
@@ -1170,45 +1526,91 @@ const HERO_LABELS: Record<string, string> = {
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="flex flex-1 flex-col gap-6">
                 <div className="flex flex-col gap-5">
-                  <div>
-                    <h1 className="font-black text-3xl text-white md:text-4xl tracking-wider drop-shadow-2xl" style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: '700', letterSpacing: '0.05em' }}>
-                      {loading ? "Loading player..." : (summary?.name ?? "Unknown Player")}
-                    </h1>
-                    <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-300/80">
-                      <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.32em] text-slate-200">
-                        {normalizedTag || "No Tag"}
-                      </span>
-                      {summary?.role && (
-                        <span>{getRoleBadgeVariant(summary.role).label}</span>
-                      )}
-                      {history?.status && <span>• {history.status.toUpperCase()}</span>}
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex flex-wrap items-center gap-4">
+                        <h1
+                          className="font-black text-3xl text-white md:text-4xl tracking-wider drop-shadow-2xl"
+                          style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: '700', letterSpacing: '0.05em' }}
+                        >
+                          {loading ? "Loading player..." : (summary?.name ?? "Unknown Player")}
+                        </h1>
+                        {(summary?.townHallLevel || summary?.rankedLeague?.name || summary?.league?.name) && (
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-14 w-14 items-center justify-center">
+                              {summary?.townHallLevel ? (
+                                <TownHallBadge
+                                  level={summary.townHallLevel}
+                                  size="lg"
+                                  levelBadgeClassName="absolute -bottom-1 -right-1 text-xs font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]"
+                                />
+                              ) : (
+                                <span className="text-slate-300">TH?</span>
+                              )}
+                            </div>
+                            {(summary?.rankedLeague?.name || summary?.league?.name) && (
+                              <div className="flex items-center">
+                                <LeagueBadge
+                                  league={summary?.rankedLeague?.name ?? summary?.league?.name ?? undefined}
+                                  trophies={summary?.rankedTrophies ?? summary?.league?.trophies ?? undefined}
+                                  size="lg"
+                                  showText={false}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 text-sm text-slate-300/80">
+                        <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.32em] text-slate-200">
+                          {normalizedTag || "No Tag"}
+                        </span>
+                        {summary?.role && (
+                          <span>{getRoleBadgeVariant(summary.role).label}</span>
+                        )}
+                        {history?.status && <span>• {history.status.toUpperCase()}</span>}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center">
-                      {summary?.townHallLevel ? (
-                        <TownHallBadge 
-                          level={summary.townHallLevel} 
-                          size="lg"
-                          levelBadgeClassName="absolute -bottom-1 -right-1 text-sm font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]"
-                        />
-                      ) : (
-                        <span className="text-slate-300">TH?</span>
-                      )}
-                    </div>
-                    {(summary?.rankedLeague?.name || summary?.league?.name) && (
-                      <div className="hidden sm:block">
-                        <LeagueBadge
-                          league={summary?.rankedLeague?.name ?? summary?.league?.name ?? undefined}
-                          trophies={summary?.rankedTrophies ?? summary?.league?.trophies ?? undefined}
-                          size="lg"
-                          showText={false}
-                        />
+                    {activityScore != null && (
+                      <div
+                        className="mt-4 lg:mt-0 rounded-3xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm max-w-sm tooltip-trigger tooltip-left"
+                        data-tooltip={activityTooltip || undefined}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="text-xs uppercase tracking-[0.32em] text-slate-300/80">
+                              Activity Score
+                            </p>
+                            <p className="mt-2 text-4xl font-black text-white drop-shadow-sm">
+                              {activityScore}
+                              <span className="ml-3 text-base font-semibold text-slate-300">
+                                {activityEvidence?.level ?? "—"}
+                              </span>
+                            </p>
+                          </div>
+                          <div
+                            className={`flex h-12 w-12 items-center justify-center rounded-full border ${
+                              activityScore >= 70
+                                ? "border-emerald-400/80 bg-emerald-500/20 text-emerald-200"
+                                : activityScore >= 45
+                                  ? "border-sky-400/80 bg-sky-500/20 text-sky-200"
+                                  : activityScore >= 28
+                                    ? "border-amber-400/80 bg-amber-500/20 text-amber-200"
+                                    : "border-rose-400/80 bg-rose-500/20 text-rose-200"
+                            }`}
+                          >
+                            <Activity className="h-6 w-6" />
+                          </div>
+                        </div>
+                        {activityEvidence?.confidence && (
+                          <p className="mt-2 text-xs text-slate-400">
+                            Confidence: {activityEvidence.confidence}
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-
               </div>
 
               <div className="flex flex-col items-stretch gap-3 max-w-xs">
@@ -1413,6 +1815,24 @@ const HERO_LABELS: Record<string, string> = {
                       </div>
                     </GlassCard>
 
+                    {timelineInsights.length > 0 && (
+                      <GlassCard
+                        title="Recent Activity Highlights"
+                        subtitle="Snapshot of the latest seven days"
+                        icon={<Activity className="h-5 w-5" />}
+                        className="bg-slate-900/70 border border-slate-800/80"
+                      >
+                        <ul className="space-y-2 text-sm text-slate-200">
+                          {timelineInsights.map((insight, index) => (
+                            <li key={index} className="flex items-start gap-2">
+                              <span className="mt-1 inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-emerald-400" />
+                              <span>{insight}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </GlassCard>
+                    )}
+
                     <GlassCard
                       title="Hero Progress"
                       subtitle="Track levels vs. Town Hall caps"
@@ -1429,6 +1849,39 @@ const HERO_LABELS: Record<string, string> = {
                           const maxLevel = heroCaps && key in heroCaps
                             ? Number((heroCaps as Record<string, unknown>)[key]) || 0
                             : 0;
+                          const clanAverageValue = clanHeroAverages && key in clanHeroAverages
+                            ? Number(clanHeroAverages[key])
+                            : null;
+                          const hasClanAverage =
+                            clanAverageValue !== null && Number.isFinite(clanAverageValue);
+                          const diffFromClan =
+                            hasClanAverage && Number.isFinite(level)
+                              ? level - (clanAverageValue as number)
+                              : null;
+                          const diffLabel =
+                            diffFromClan !== null && diffFromClan !== 0
+                              ? (() => {
+                                  const magnitudeLabel = Math.abs(diffFromClan).toFixed(1);
+                                  const pluralSuffix = magnitudeLabel === "1.0" ? "" : "s";
+                                  return diffFromClan > 0
+                                    ? `Ahead of clan pace by ${magnitudeLabel} level${pluralSuffix}`
+                                    : `Needs ${magnitudeLabel} level${pluralSuffix} to catch clan pace`;
+                                })()
+                              : hasClanAverage
+                                ? "Matches clan pace"
+                                : null;
+                          const tooltipText =
+                            hasClanAverage
+                              ? (() => {
+                                  const base = `${HERO_LABELS[heroKey]} level ${formatNumber(level)}. Clan average ${(clanAverageValue as number).toFixed(1)}.`;
+                                  if (diffFromClan === null || diffFromClan === 0) {
+                                    return base;
+                                  }
+                                  const magnitudeLabel = Math.abs(diffFromClan).toFixed(1);
+                                  const direction = diffFromClan > 0 ? "Ahead" : "Behind";
+                                  return `${base} ${direction} by ${magnitudeLabel}.`;
+                                })()
+                              : undefined;
                           
                           return (
                             <div key={key} className="flex items-start gap-3">
@@ -1455,10 +1908,13 @@ const HERO_LABELS: Record<string, string> = {
                                   maxLevel={maxLevel}
                                   showName
                                   size="lg"
-                                  clanAverage={clanHeroAverages[key]}
-                                  clanAverageCount={Object.keys(clanHeroAverages).length > 0 ? Math.max(...Object.values(clanHeroAverages).map(() => 1)) : 0}
+                                  clanAverage={hasClanAverage ? (clanAverageValue as number) : undefined}
                                   clanAverageSource="profile"
+                                  tooltip={tooltipText}
                                 />
+                                {diffLabel && (
+                                  <p className="mt-1 text-xs text-slate-400">{diffLabel}</p>
+                                )}
                               </div>
                             </div>
                           );
@@ -1677,22 +2133,110 @@ const HERO_LABELS: Record<string, string> = {
                         subtitle="Track hero gear levels"
                         icon={<Sparkles className="h-5 w-5" />}
                         className="bg-slate-900/70 border border-slate-800/80"
+                        actions={
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setShowEquipmentTierModal(true)}
+                            className="text-slate-300 hover:text-white hover:bg-slate-800/50"
+                          >
+                            More detail
+                          </Button>
+                        }
                       >
-                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                          {equipmentEntries.map(([equipment, level]) => (
-                            <div
-                              key={equipment}
-                              className="flex items-center justify-between rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-3 py-2 text-sm text-indigo-100"
-                            >
-                              <span>{equipment}</span>
-                              <span 
-                                className="font-semibold cursor-help" 
-                                title={`Level ${formatNumber(level)} of ${EQUIPMENT_MAX_LEVELS[equipment] || '?'}`}
-                              >
-                                {formatNumber(level)}
-                              </span>
-                            </div>
-                          ))}
+                        <div className="space-y-6">
+                          {(() => {
+                            // Group equipment by hero
+                            const equipmentByHero = new Map<string, Array<[string, number]>>();
+                            
+                            equipmentEntries.forEach(([equipment, level]) => {
+                              const tooltipData = EQUIPMENT_TOOLTIPS[equipment];
+                              const hero = tooltipData?.hero || 'Unknown Hero';
+                              
+                              if (!equipmentByHero.has(hero)) {
+                                equipmentByHero.set(hero, []);
+                              }
+                              equipmentByHero.get(hero)!.push([equipment, level]);
+                            });
+                            
+                            // Sort heroes by name for consistent display
+                            const sortedHeroes = Array.from(equipmentByHero.keys()).sort();
+                            
+                            return sortedHeroes.map((hero) => {
+                              const heroEquipment = equipmentByHero.get(hero)!;
+                              
+                              // Map hero names to image paths using the same mapping as Hero Progress
+                              const getHeroImage = (heroName: string) => {
+                                switch (heroName) {
+                                  case 'Barbarian King':
+                                    return '/assets/heroes/Barbarian_King.png';
+                                  case 'Archer Queen':
+                                    return '/assets/heroes/Archer_Queen.png';
+                                  case 'Grand Warden':
+                                    return '/assets/heroes/Grand_Warden.png';
+                                  case 'Royal Champion':
+                                    return '/assets/heroes/Royal_Champion.png';
+                                  case 'Minion Prince':
+                                    return '/assets/heroes/Minion_Prince.png';
+                                  default:
+                                    return '/assets/heroes/default.png';
+                                }
+                              };
+                              
+                              return (
+                                <div key={hero} className="rounded-xl border border-slate-600/50 bg-slate-800/30 p-4">
+                                  {/* Hero Header */}
+                                  <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-600/30">
+                                    <img 
+                                      src={getHeroImage(hero)}
+                                      alt={hero}
+                                      className="w-10 h-10 object-contain"
+                                      onError={(e) => {
+                                        // Fallback to text if image fails to load
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        const fallback = document.createElement('span');
+                                        fallback.textContent = hero.charAt(0);
+                                        fallback.className = 'w-10 h-10 flex items-center justify-center bg-slate-600 rounded text-sm font-bold text-white';
+                                        target.parentNode?.appendChild(fallback);
+                                      }}
+                                    />
+                                    <h4 className="text-lg font-semibold text-slate-200">{hero}</h4>
+                                  </div>
+
+                                  {/* Equipment Grid */}
+                                  <div className="grid grid-cols-2 gap-x-16 gap-y-4">
+                                    {heroEquipment.map(([equipment, level]) => {
+                                      const tooltipData = EQUIPMENT_TOOLTIPS[equipment];
+                                      const tooltipTitle = tooltipData 
+                                        ? `${tooltipData.hero} • ${tooltipData.tier} • ${tooltipData.rarity}\n\n${tooltipData.description}`
+                                        : `Level ${formatNumber(level)} of ${EQUIPMENT_MAX_LEVELS[equipment] || '?'}`;
+                                      
+                                      return (
+                                        <div
+                                          key={equipment}
+                                          className="flex justify-between items-center text-sm text-slate-200 gap-2"
+                                        >
+                                          <span 
+                                            className="cursor-help" 
+                                            title={tooltipTitle}
+                                          >
+                                            {equipment}
+                                          </span>
+                                          <span 
+                                            className="font-semibold cursor-help text-slate-300" 
+                                            title={`Level ${formatNumber(level)} of ${EQUIPMENT_MAX_LEVELS[equipment] || '?'}`}
+                                          >
+                                            {formatNumber(level)}
+                                          </span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            });
+                          })()}
                         </div>
                       </GlassCard>
                     )}
@@ -1882,6 +2426,28 @@ const HERO_LABELS: Record<string, string> = {
 
               {activeTab === "history" && (
                 <div className="space-y-6">
+                  {timelineInsights.length > 0 && (
+                    <GlassCard
+                      title="Activity Streaks & Highlights"
+                      subtitle="Recent performance patterns and milestones"
+                      icon={<Flame className="h-5 w-5" />}
+                      className="bg-slate-900/70 border border-slate-800/80"
+                    >
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {timelineInsights.map((insight, index) => (
+                          <div key={index} className="flex items-center gap-3 rounded-xl border border-slate-800/60 bg-slate-900/80 px-4 py-3">
+                            <div className="flex-shrink-0">
+                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/30">
+                                <Flame className="h-4 w-4 text-amber-400" />
+                              </div>
+                            </div>
+                            <p className="text-sm font-medium text-slate-200">{insight}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </GlassCard>
+                  )}
+
                   <GlassCard
                     title="Timeline"
                     subtitle="Movements, leadership actions, and joiner events"
@@ -2066,6 +2632,26 @@ const HERO_LABELS: Record<string, string> = {
               {activeTab === "metrics" && (
                 <div className="space-y-6">
                   <GlassCard
+                    title="Daily Activity Analysis"
+                    subtitle="Activity scoring with detailed breakdown and metrics"
+                    icon={<Activity className="h-5 w-5" />}
+                    className="bg-slate-900/70 border border-slate-800/80"
+                  >
+                    <PlayerActivityAnalytics 
+                      data={profile?.timeline?.filter(point => point.snapshotDate).map(point => ({
+                        date: point.snapshotDate!,
+                        deltas: {
+                          trophies: point.deltas?.trophies || 0,
+                          donations: point.deltas?.donations || 0,
+                          warStars: point.deltas?.war_stars || 0,
+                          clanCapitalContributions: point.deltas?.capital_contrib || 0,
+                        }
+                      })) ?? []}
+                      playerName={summary?.name || "Player"}
+                    />
+                  </GlassCard>
+
+                  <GlassCard
                     title="Trophy & Donation Trends"
                     subtitle="Ranked season snapshots via nightly ingestion"
                     icon={<BarChart3 className="h-5 w-5" />}
@@ -2241,6 +2827,95 @@ const HERO_LABELS: Record<string, string> = {
           </div>
         </Modal>
       )}
+
+      <Modal
+        isOpen={showEquipmentTierModal}
+        onClose={() => setShowEquipmentTierModal(false)}
+        title="Equipment Tier Guide"
+        size="lg"
+      >
+        <div className="space-y-6">
+          <p className="text-sm text-slate-600">
+            Equipment tiers are a competitive ranking system that assesses an equipment piece's effectiveness, utility, and priority for upgrade within the current meta.
+          </p>
+          
+          <div className="space-y-4">
+            <div className="rounded-xl border border-red-200 bg-red-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg font-bold text-red-600">S Tier</span>
+                <span className="text-sm text-red-500">Superior/Strategic</span>
+              </div>
+              <p className="text-sm text-red-700 mb-2">
+                The best and most powerful equipment available, providing the largest competitive edge and should be prioritized for maximum upgrades.
+              </p>
+              <p className="text-xs text-red-600">
+                Examples: Spiky Ball, Earthquake Boots, Magic Mirror, Dark Orb, Eternal Tome, Fireball, Healing Tome
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg font-bold text-orange-600">A Tier</span>
+                <span className="text-sm text-orange-500">Excellent/High Value</span>
+              </div>
+              <p className="text-sm text-orange-700 mb-2">
+                Highly effective and strong equipment, often serving as critical components in top strategies.
+              </p>
+              <p className="text-xs text-orange-600">
+                Examples: Giant Gauntlet, Seeking Shield, Vampstache, Giant Arrow, Healer Puppet, Hog Rider Puppet, Noble Iron
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg font-bold text-yellow-600">B Tier</span>
+                <span className="text-sm text-yellow-500">Average/Situational</span>
+              </div>
+              <p className="text-sm text-yellow-700 mb-2">
+                Decent equipment that is highly useful when paired with S-Tier items or specific armies.
+              </p>
+              <p className="text-xs text-yellow-600">
+                Examples: Rage Vial, Invisibility Vial, Rage Gem, Metal Pants, Haste Vial
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg font-bold text-blue-600">C Tier</span>
+                <span className="text-sm text-blue-500">Situational/Below Average</span>
+              </div>
+              <p className="text-sm text-blue-700 mb-2">
+                Equipment that is generally outclassed or highly inconsistent, making them low priority for valuable resources like Ore.
+              </p>
+              <p className="text-xs text-blue-600">
+                Examples: Archer Puppet, Barbarian Puppet, Life Gem, Frozen Arrow, Heroic Torch
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="text-lg font-bold text-gray-600">D Tier</span>
+                <span className="text-sm text-gray-500">Lowest Rank</span>
+              </div>
+              <p className="text-sm text-gray-700 mb-2">
+                Equipment pieces typically considered the least impactful, having the lowest DPS/HP even at max level, or serving only minor functions.
+              </p>
+              <p className="text-xs text-gray-600">
+                Examples: Royal Gem, Lavaloon Puppet
+              </p>
+            </div>
+          </div>
+
+          <div className="flex justify-end">
+            <Button
+              variant="primary"
+              onClick={() => setShowEquipmentTierModal(false)}
+            >
+              Got it
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
     </DashboardLayout>
   );
