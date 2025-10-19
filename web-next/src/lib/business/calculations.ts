@@ -325,138 +325,88 @@ export const calculateActivityScore = (
       continue;
     }
 
-    const eventDeltas =
-      event?.deltas && typeof event.deltas === 'object'
-        ? (event.deltas as Record<string, unknown>)
-        : undefined;
-
-    const heroUpgradeCount =
-      (Array.isArray(event.heroUpgrades) ? event.heroUpgrades.length : 0) +
-      (eventDeltas
-        ? Object.entries(eventDeltas).reduce((sum, [key, value]) => {
-            if (!key.startsWith('hero_')) return sum;
-            const numeric = toFiniteNumber(value);
-            return numeric && numeric > 0 ? sum + numeric : sum;
-          }, 0)
-        : 0);
+    const heroUpgradeCount = Array.isArray(event.heroUpgrades) ? event.heroUpgrades.length : 0;
     aggregate.heroUpgrades += heroUpgradeCount;
 
-    const petUpgradeCount =
-      (Array.isArray(event.petUpgrades) ? event.petUpgrades.length : 0) +
-      (eventDeltas
-        ? Object.entries(eventDeltas).reduce((sum, [key, value]) => {
-            if (!key.startsWith('pet_')) return sum;
-            const numeric = toFiniteNumber(value);
-            return numeric && numeric > 0 ? sum + numeric : sum;
-          }, 0)
-        : 0);
+    const petUpgradeCount = Array.isArray(event.petUpgrades) ? event.petUpgrades.length : 0;
     aggregate.petUpgrades += petUpgradeCount;
 
-    const equipmentUpgradeCount =
-      (Array.isArray(event.equipmentUpgrades) ? event.equipmentUpgrades.length : 0) +
-      (eventDeltas
-        ? Object.entries(eventDeltas).reduce((sum, [key, value]) => {
-            if (!key.startsWith('equipment_')) return sum;
-            const numeric = toFiniteNumber(value);
-            return numeric && numeric > 0 ? sum + numeric : sum;
-          }, 0)
-        : 0);
+    const equipmentUpgradeCount = Array.isArray(event.equipmentUpgrades) ? event.equipmentUpgrades.length : 0;
     aggregate.equipmentUpgrades += equipmentUpgradeCount;
 
     const warStarsDeltaValue = pickNumber(
       (event as any).warStarsDelta,
-      (event as any).warStarsChange,
-      eventDeltas?.war_stars
+      (event as any).warStarsChange
     );
     aggregate.warStarsDelta += Math.max(0, warStarsDeltaValue);
 
     const attackWinsDeltaValue = pickNumber(
       (event as any).attackWinsDelta,
-      (event as any).attack_wins_delta,
-      eventDeltas?.attack_wins
+      (event as any).attack_wins_delta
     );
     aggregate.attackWinsDelta += Math.max(0, attackWinsDeltaValue);
 
     const defenseWinsDeltaValue = pickNumber(
       (event as any).defenseWinsDelta,
-      (event as any).defense_wins_delta,
-      eventDeltas?.defense_wins
+      (event as any).defense_wins_delta
     );
     aggregate.defenseWinsDelta += Math.max(0, defenseWinsDeltaValue);
 
     const capitalDeltaValue = pickNumber(
       (event as any).capitalContributionDelta,
-      (event as any).capital_delta,
-      eventDeltas?.capital_contrib,
-      eventDeltas?.capital_contribution
+      (event as any).capital_delta
     );
     aggregate.capitalContributionDelta += Math.max(0, capitalDeltaValue);
 
     const builderHallDeltaValue = pickNumber(
-      (event as any).builderHallDelta,
-      eventDeltas?.builder_hall,
-      eventDeltas?.builder_hall_level,
-      eventDeltas?.bh
+      (event as any).builderHallDelta
     );
     aggregate.builderHallDelta += Math.max(0, builderHallDeltaValue);
 
     const builderWinsDeltaValue = pickNumber(
-      (event as any).versusBattleWinsDelta,
-      eventDeltas?.builder_battle_wins,
-      eventDeltas?.versus_battle_wins
+      (event as any).versusBattleWinsDelta
     );
     aggregate.builderWinsDelta += Math.max(0, builderWinsDeltaValue);
 
     const donationDeltaValue = pickNumber(
       (event as any).donationsDelta,
-      (event as any).donationDelta,
-      eventDeltas?.donations,
-      eventDeltas?.donations_delta,
-      eventDeltas?.donations_given
+      (event as any).donationDelta
     );
     aggregate.donationDelta += Math.max(0, donationDeltaValue);
 
     const donationReceivedDeltaValue = pickNumber(
-      (event as any).donationsReceivedDelta,
-      eventDeltas?.donations_rcv,
-      eventDeltas?.donations_received
+      (event as any).donationsReceivedDelta
     );
     aggregate.donationReceivedDelta += Math.max(0, donationReceivedDeltaValue);
 
     const trophyDeltaValue = pickNumber(
       (event as any).trophyDelta,
-      (event as any).trophiesDelta,
-      eventDeltas?.trophies
+      (event as any).trophiesDelta
     );
     aggregate.trophyDelta += Math.abs(trophyDeltaValue);
 
     const rankedTrophyDeltaValue = pickNumber(
-      (event as any).rankedTrophyDelta,
-      eventDeltas?.ranked_trophies
+      (event as any).rankedTrophyDelta
     );
     aggregate.rankedTrophyDelta += Math.abs(rankedTrophyDeltaValue);
 
     const maxTroopDeltaValue = pickNumber(
-      (event as any).maxTroopDelta,
-      eventDeltas?.max_troop_count
+      (event as any).maxTroopDelta
     );
     aggregate.maxTroopDelta += Math.max(0, maxTroopDeltaValue);
 
     const maxSpellDeltaValue = pickNumber(
-      (event as any).maxSpellDelta,
-      eventDeltas?.max_spell_count
+      (event as any).maxSpellDelta
     );
     aggregate.maxSpellDelta += Math.max(0, maxSpellDeltaValue);
 
     const achievementDeltaValue = pickNumber(
-      (event as any).achievementDelta,
-      eventDeltas?.achievement_count
+      (event as any).achievementDelta
     );
     aggregate.achievementDelta += Math.max(0, achievementDeltaValue);
 
     const expLevelDeltaValue = pickNumber(
-      (event as any).expLevelDelta,
-      eventDeltas?.exp_level
+      (event as any).expLevelDelta
     );
     aggregate.expLevelDelta += Math.max(0, expLevelDeltaValue);
     (event.superTroopsActivated ?? []).forEach((troop) =>
