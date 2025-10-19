@@ -11,7 +11,7 @@ const querySchema = z.object({
   clanTag: z.string().optional(),
 });
 
-const SEASON_START_ISO = '2025-10-14T00:00:00Z'; // Try to get a few weeks of data
+const SEASON_START_ISO = '2025-10-01T00:00:00Z'; // Start from beginning of October when ranked system started
 
 export async function GET(req: NextRequest) {
   try {
@@ -172,16 +172,16 @@ export async function GET(req: NextRequest) {
           .select('member_id, trophies, ranked_trophies, snapshot_date')
           .in('member_id', historicalMemberIds)
         .gte('snapshot_date', SEASON_START_ISO)
-          .order('snapshot_date', { ascending: true });
+          .order('snapshot_date', { ascending: false }); // Get most recent first
 
         if (!allSeasonError && allSeasonRows) {
           // Group by member and week, get one snapshot per week
           const memberWeeks = new Map<string, Map<string, number>>(); // member_id -> week -> max_trophies
           
           for (const row of allSeasonRows) {
-          if (!row.snapshot_date) continue;
-          const snapshotDate = new Date(row.snapshot_date);
-          if (Number.isNaN(snapshotDate.valueOf())) continue;
+            if (!row.snapshot_date) continue;
+            const snapshotDate = new Date(row.snapshot_date);
+            if (Number.isNaN(snapshotDate.valueOf())) continue;
 
             // Determine the start of the week (Monday) for the snapshot date
             const dayOfWeek = snapshotDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
@@ -198,14 +198,13 @@ export async function GET(req: NextRequest) {
             const trophyValue = row.ranked_trophies ?? row.trophies ?? 0;
             const memberWeekMap = memberWeeks.get(row.member_id)!;
             
-            // Keep the maximum trophy count for each week (weekly final)
-            const currentMax = memberWeekMap.get(weekStartISO) ?? 0;
-            if (trophyValue > currentMax) {
+            // Only add if we don't already have data for this week (since we're ordered by date desc)
+            if (!memberWeekMap.has(weekStartISO)) {
               memberWeekMap.set(weekStartISO, trophyValue);
             }
           }
 
-          // Calculate running total for each member: sum of weekly finals
+          // Calculate running total for each member: sum of weekly finals + current week
           for (const [memberId, weekMap] of memberWeeks.entries()) {
             let runningTotal = 0;
             for (const trophies of weekMap.values()) {
@@ -283,7 +282,7 @@ export async function GET(req: NextRequest) {
       tenureDays: member.tenure_days || 0,
       tenureAsOf: member.tenure_as_of,
       lastWeekTrophies: lastWeekTrophies.get(member.tag) || 0,
-      seasonTotalTrophies: (lastWeekTrophies.get(member.tag) || 0) + (member.trophies || 0),
+      seasonTotalTrophies: seasonTotalMap.get(member.tag) || 0,
       league: {
         name: member.ranked_league_name,
         trophies: member.league_trophies,
