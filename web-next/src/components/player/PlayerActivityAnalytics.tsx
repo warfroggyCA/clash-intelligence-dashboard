@@ -4,6 +4,8 @@ import { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 import { format } from 'date-fns';
 import { Activity, TrendingUp, TrendingDown, AlertCircle } from 'lucide-react';
+import { calculateActivityScore } from '@/lib/business/calculations';
+import type { ActivityBreakdown, Member, PlayerActivityTimelineEvent, HeroCaps } from '@/types';
 
 interface PlayerActivityAnalyticsProps {
   data: Array<{
@@ -16,31 +18,6 @@ interface PlayerActivityAnalyticsProps {
     };
   }>;
   playerName: string;
-}
-
-interface ActivityScore {
-  date: string;
-  score: number;
-  breakdown: {
-    donations: number;
-    trophies: number;
-    warStars: number;
-    capital: number;
-  };
-}
-
-function calculateActivityScore(deltas: any): ActivityScore['breakdown'] {
-  const donations = deltas?.donations || 0;
-  const trophies = Math.abs(deltas?.trophies || 0);
-  const warStars = deltas?.warStars || 0;
-  const capital = deltas?.clanCapitalContributions || 0;
-
-  return {
-    donations: Math.min(Math.max(donations / 2, 0), 30), // Max 30 points
-    trophies: Math.min(trophies / 5, 20), // Max 20 points  
-    warStars: Math.min(warStars * 15, 30), // Max 30 points
-    capital: Math.min(capital / 50, 20), // Max 20 points
-  };
 }
 
 function getScoreColor(score: number): string {
@@ -63,19 +40,128 @@ export default function PlayerActivityAnalytics({
   data, 
   playerName 
 }: PlayerActivityAnalyticsProps) {
+  const createEmptyBreakdown = (): ActivityBreakdown => ({
+    realtime: 0,
+    war: 0,
+    donations: 0,
+    capital: 0,
+    builder: 0,
+    upgrades: 0,
+    lab: 0,
+    achievements: 0,
+    trophies: 0,
+    heroProgress: 0,
+    role: 0,
+    superTroops: 0,
+    other: 0,
+  });
+
+  const stubMember: Member = useMemo(
+    () =>
+      ({
+        tag: `analytics-${playerName}`,
+        name: playerName,
+      } as Member),
+    [playerName],
+  );
+
+  const toActivityEvent = (point: PlayerActivityAnalyticsProps['data'][number]): PlayerActivityTimelineEvent => {
+    const deltas = point.deltas ?? {};
+
+    const extractDelta = (...keys: string[]): number => {
+      for (const key of keys) {
+        const value = deltas[key as keyof typeof deltas];
+        if (typeof value === 'number' && Number.isFinite(value)) return value;
+      }
+      return 0;
+    };
+
+    const heroUpgrades = Object.entries(deltas)
+      .filter(([key, value]) => key.startsWith('hero_') && typeof value === 'number' && value > 0)
+      .map(([key, value]) => ({
+        hero: key.replace('hero_', '') as keyof HeroCaps,
+        from: null,
+        to: value as number,
+      }));
+
+    const petUpgrades = Object.entries(deltas)
+      .filter(([key, value]) => key.startsWith('pet_') && typeof value === 'number' && value > 0)
+      .map(([key, value]) => ({
+        pet: key.replace('pet_', ''),
+        from: null,
+        to: value as number,
+      }));
+
+    const equipmentUpgrades = Object.entries(deltas)
+      .filter(([key, value]) => key.startsWith('equipment_') && typeof value === 'number' && value > 0)
+      .map(([key, value]) => ({
+        equipment: key.replace('equipment_', ''),
+        from: null,
+        to: value as number,
+      }));
+
+    return {
+      date: point.date,
+      trophies: 0,
+      rankedTrophies: null,
+      donations: 0,
+      donationsReceived: 0,
+      activityScore: null,
+      trophyDelta: extractDelta('trophies'),
+      rankedTrophyDelta: extractDelta('ranked_trophies'),
+      donationsDelta: extractDelta('donations'),
+      donationsReceivedDelta: extractDelta('donations_rcv', 'donations_received'),
+      heroUpgrades,
+      petUpgrades,
+      equipmentUpgrades,
+      superTroopsActivated: [],
+      superTroopsDeactivated: [],
+      warStars: 0,
+      warStarsDelta: extractDelta('war_stars'),
+      attackWins: 0,
+      attackWinsDelta: extractDelta('attack_wins'),
+      defenseWins: 0,
+      defenseWinsDelta: extractDelta('defense_wins'),
+      capitalContributions: 0,
+      capitalContributionDelta: extractDelta('capital_contrib', 'capital_contribution'),
+      builderHallLevel: null,
+      builderHallDelta: extractDelta('builder_hall', 'builder_hall_level', 'bh'),
+      versusBattleWins: 0,
+      versusBattleWinsDelta: extractDelta('builder_battle_wins', 'versus_battle_wins'),
+      maxTroopCount: null,
+      maxTroopDelta: extractDelta('max_troop_count'),
+      maxSpellCount: null,
+      maxSpellDelta: extractDelta('max_spell_count'),
+      achievementCount: null,
+      achievementDelta: extractDelta('achievement_count'),
+      expLevel: null,
+      expLevelDelta: extractDelta('exp_level'),
+      summary: '',
+    };
+  };
+
   const activityScores = useMemo(() => {
     return data.map(point => {
-      const breakdown = calculateActivityScore(point.deltas);
-      const totalScore = Object.values(breakdown).reduce((sum, val) => sum + val, 0);
-      
+      const event = toActivityEvent(point);
+      const evidence = calculateActivityScore(stubMember, { timeline: [event], lookbackDays: 1 });
+      const breakdownTotals = evidence.breakdown ?? createEmptyBreakdown();
+      const chartBreakdown = {
+        donations: breakdownTotals.donations,
+        trophies: breakdownTotals.trophies,
+        war: breakdownTotals.war,
+        capital: breakdownTotals.capital,
+      };
+      const totalScore = Object.values(breakdownTotals).reduce((sum, val) => sum + val, 0);
+      const roundedScore = Math.round(totalScore);
+
       return {
         date: format(new Date(point.date), 'MMM dd'),
-        score: Math.round(totalScore),
-        breakdown,
-        color: getScoreColor(totalScore)
+        score: roundedScore,
+        breakdown: chartBreakdown,
+        color: getScoreColor(roundedScore)
       };
     });
-  }, [data]);
+  }, [data, stubMember]);
 
   const analytics = useMemo(() => {
     if (activityScores.length === 0) {
@@ -132,19 +218,19 @@ export default function PlayerActivityAnalytics({
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
             <span>Donations:</span>
-            <span className="font-medium">{breakdown.donations.toFixed(1)}/30</span>
+            <span className="font-medium">{breakdown.donations.toFixed(1)} pts</span>
           </div>
           <div className="flex justify-between">
             <span>Trophies:</span>
-            <span className="font-medium">{breakdown.trophies.toFixed(1)}/20</span>
+            <span className="font-medium">{breakdown.trophies.toFixed(1)} pts</span>
           </div>
           <div className="flex justify-between">
-            <span>War Stars:</span>
-            <span className="font-medium">{breakdown.warStars.toFixed(1)}/30</span>
+            <span>War Contribution:</span>
+            <span className="font-medium">{breakdown.war.toFixed(1)} pts</span>
           </div>
           <div className="flex justify-between">
             <span>Capital:</span>
-            <span className="font-medium">{breakdown.capital.toFixed(1)}/20</span>
+            <span className="font-medium">{breakdown.capital.toFixed(1)} pts</span>
           </div>
         </div>
       </div>

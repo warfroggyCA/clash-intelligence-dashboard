@@ -1,3 +1,5 @@
+import type { ActivityEvidence } from '@/types';
+
 export interface PlayerLeagueSummary {
   id: number | null;
   name: string | null;
@@ -46,6 +48,7 @@ export interface PlayerSummarySupabase {
   builderBase: PlayerBuilderBaseSummary;
   capitalContributions: number | null;
   activityScore: number | null;
+  activity?: ActivityEvidence | null;
   lastSeen: string | null;
   tenureDays: number | null;
   tenureAsOf: string | null;

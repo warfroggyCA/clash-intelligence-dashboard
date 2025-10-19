@@ -9,11 +9,13 @@
  * Last Updated: January 2025
  */
 
-import { 
-  Member, 
-  HeroCaps, 
-  ActivityLevel, 
+import {
+  Member,
+  HeroCaps,
+  ActivityLevel,
   ActivityEvidence,
+  ActivityBreakdown,
+  ActivityMetrics,
   ActivityOption,
   PlayerArchetype,
   WarAnalytics,
@@ -21,7 +23,7 @@ import {
   TownHallLevel,
   PlayerActivityTimelineEvent,
   HERO_MAX_LEVELS,
-  HERO_MIN_TH
+  HERO_MIN_TH,
 } from '@/types';
 import { ACE_DEFAULT_LOGISTIC_ALPHA, computeAceLogistic } from '@/lib/ace-score';
 
@@ -240,8 +242,51 @@ export const calculateActivityScore = (
   const lookbackDays = options?.lookbackDays ?? 7;
   const lookbackCutoff = Date.now() - lookbackDays * 86_400_000;
 
+  const toFiniteNumber = (value: unknown): number | null => {
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string' && value.trim() !== '') {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const pickNumber = (...values: Array<unknown>): number => {
+    for (const candidate of values) {
+      const numeric = toFiniteNumber(candidate);
+      if (numeric !== null) return numeric;
+    }
+    return 0;
+  };
+
   const realTimeActivity = calculateRealTimeActivity(member);
-  let score = realTimeActivity.score;
+  const breakdown: ActivityBreakdown = {
+    realtime: 0,
+    war: 0,
+    donations: 0,
+    capital: 0,
+    builder: 0,
+    upgrades: 0,
+    lab: 0,
+    achievements: 0,
+    trophies: 0,
+    heroProgress: 0,
+    role: 0,
+    superTroops: 0,
+    other: 0,
+  };
+
+  let score = 0;
+  const addScore = (category: keyof ActivityBreakdown, value: number) => {
+    if (!value || Number.isNaN(value)) return;
+    const normalized = Math.max(0, value);
+    breakdown[category] += normalized;
+    score += normalized;
+  };
+
+  addScore('realtime', realTimeActivity.score);
   let confidencePoints = confidenceToPoints(realTimeActivity.confidence);
   const indicatorSet = new Set<string>(realTimeActivity.indicators);
 
@@ -269,7 +314,8 @@ export const calculateActivityScore = (
   let lastEventTs: number | null = null;
 
   for (const event of timeline) {
-    const eventTs = event.date ? new Date(event.date).getTime() : Number.NaN;
+    const eventDateValue = (event as any).date ?? (event as any).snapshotDate ?? null;
+    const eventTs = eventDateValue ? new Date(eventDateValue).getTime() : Number.NaN;
     if (!Number.isNaN(eventTs)) {
       if (lastEventTs === null || eventTs > lastEventTs) {
         lastEventTs = eventTs;
@@ -279,30 +325,148 @@ export const calculateActivityScore = (
       continue;
     }
 
-    aggregate.heroUpgrades += event.heroUpgrades?.length ?? 0;
-    aggregate.petUpgrades += event.petUpgrades?.length ?? 0;
-    aggregate.equipmentUpgrades += event.equipmentUpgrades?.length ?? 0;
-    aggregate.warStarsDelta += Math.max(0, event.warStarsDelta ?? 0);
-    aggregate.attackWinsDelta += Math.max(0, event.attackWinsDelta ?? 0);
-    aggregate.defenseWinsDelta += Math.max(0, event.defenseWinsDelta ?? 0);
-    aggregate.capitalContributionDelta += Math.max(0, event.capitalContributionDelta ?? 0);
-    aggregate.builderHallDelta += Math.max(0, event.builderHallDelta ?? 0);
-    aggregate.builderWinsDelta += Math.max(0, event.versusBattleWinsDelta ?? 0);
-    aggregate.donationDelta += Math.max(0, event.donationsDelta ?? 0);
-    aggregate.donationReceivedDelta += Math.max(0, event.donationsReceivedDelta ?? 0);
-    aggregate.trophyDelta += Math.abs(event.trophyDelta ?? 0);
-    aggregate.rankedTrophyDelta += Math.abs(event.rankedTrophyDelta ?? 0);
-    aggregate.maxTroopDelta += Math.max(0, event.maxTroopDelta ?? 0);
-    aggregate.maxSpellDelta += Math.max(0, event.maxSpellDelta ?? 0);
-    aggregate.achievementDelta += Math.max(0, event.achievementDelta ?? 0);
-    aggregate.expLevelDelta += Math.max(0, event.expLevelDelta ?? 0);
+    const eventDeltas =
+      event?.deltas && typeof event.deltas === 'object'
+        ? (event.deltas as Record<string, unknown>)
+        : undefined;
+
+    const heroUpgradeCount =
+      (Array.isArray(event.heroUpgrades) ? event.heroUpgrades.length : 0) +
+      (eventDeltas
+        ? Object.entries(eventDeltas).reduce((sum, [key, value]) => {
+            if (!key.startsWith('hero_')) return sum;
+            const numeric = toFiniteNumber(value);
+            return numeric && numeric > 0 ? sum + numeric : sum;
+          }, 0)
+        : 0);
+    aggregate.heroUpgrades += heroUpgradeCount;
+
+    const petUpgradeCount =
+      (Array.isArray(event.petUpgrades) ? event.petUpgrades.length : 0) +
+      (eventDeltas
+        ? Object.entries(eventDeltas).reduce((sum, [key, value]) => {
+            if (!key.startsWith('pet_')) return sum;
+            const numeric = toFiniteNumber(value);
+            return numeric && numeric > 0 ? sum + numeric : sum;
+          }, 0)
+        : 0);
+    aggregate.petUpgrades += petUpgradeCount;
+
+    const equipmentUpgradeCount =
+      (Array.isArray(event.equipmentUpgrades) ? event.equipmentUpgrades.length : 0) +
+      (eventDeltas
+        ? Object.entries(eventDeltas).reduce((sum, [key, value]) => {
+            if (!key.startsWith('equipment_')) return sum;
+            const numeric = toFiniteNumber(value);
+            return numeric && numeric > 0 ? sum + numeric : sum;
+          }, 0)
+        : 0);
+    aggregate.equipmentUpgrades += equipmentUpgradeCount;
+
+    const warStarsDeltaValue = pickNumber(
+      (event as any).warStarsDelta,
+      (event as any).warStarsChange,
+      eventDeltas?.war_stars
+    );
+    aggregate.warStarsDelta += Math.max(0, warStarsDeltaValue);
+
+    const attackWinsDeltaValue = pickNumber(
+      (event as any).attackWinsDelta,
+      (event as any).attack_wins_delta,
+      eventDeltas?.attack_wins
+    );
+    aggregate.attackWinsDelta += Math.max(0, attackWinsDeltaValue);
+
+    const defenseWinsDeltaValue = pickNumber(
+      (event as any).defenseWinsDelta,
+      (event as any).defense_wins_delta,
+      eventDeltas?.defense_wins
+    );
+    aggregate.defenseWinsDelta += Math.max(0, defenseWinsDeltaValue);
+
+    const capitalDeltaValue = pickNumber(
+      (event as any).capitalContributionDelta,
+      (event as any).capital_delta,
+      eventDeltas?.capital_contrib,
+      eventDeltas?.capital_contribution
+    );
+    aggregate.capitalContributionDelta += Math.max(0, capitalDeltaValue);
+
+    const builderHallDeltaValue = pickNumber(
+      (event as any).builderHallDelta,
+      eventDeltas?.builder_hall,
+      eventDeltas?.builder_hall_level,
+      eventDeltas?.bh
+    );
+    aggregate.builderHallDelta += Math.max(0, builderHallDeltaValue);
+
+    const builderWinsDeltaValue = pickNumber(
+      (event as any).versusBattleWinsDelta,
+      eventDeltas?.builder_battle_wins,
+      eventDeltas?.versus_battle_wins
+    );
+    aggregate.builderWinsDelta += Math.max(0, builderWinsDeltaValue);
+
+    const donationDeltaValue = pickNumber(
+      (event as any).donationsDelta,
+      (event as any).donationDelta,
+      eventDeltas?.donations,
+      eventDeltas?.donations_delta,
+      eventDeltas?.donations_given
+    );
+    aggregate.donationDelta += Math.max(0, donationDeltaValue);
+
+    const donationReceivedDeltaValue = pickNumber(
+      (event as any).donationsReceivedDelta,
+      eventDeltas?.donations_rcv,
+      eventDeltas?.donations_received
+    );
+    aggregate.donationReceivedDelta += Math.max(0, donationReceivedDeltaValue);
+
+    const trophyDeltaValue = pickNumber(
+      (event as any).trophyDelta,
+      (event as any).trophiesDelta,
+      eventDeltas?.trophies
+    );
+    aggregate.trophyDelta += Math.abs(trophyDeltaValue);
+
+    const rankedTrophyDeltaValue = pickNumber(
+      (event as any).rankedTrophyDelta,
+      eventDeltas?.ranked_trophies
+    );
+    aggregate.rankedTrophyDelta += Math.abs(rankedTrophyDeltaValue);
+
+    const maxTroopDeltaValue = pickNumber(
+      (event as any).maxTroopDelta,
+      eventDeltas?.max_troop_count
+    );
+    aggregate.maxTroopDelta += Math.max(0, maxTroopDeltaValue);
+
+    const maxSpellDeltaValue = pickNumber(
+      (event as any).maxSpellDelta,
+      eventDeltas?.max_spell_count
+    );
+    aggregate.maxSpellDelta += Math.max(0, maxSpellDeltaValue);
+
+    const achievementDeltaValue = pickNumber(
+      (event as any).achievementDelta,
+      eventDeltas?.achievement_count
+    );
+    aggregate.achievementDelta += Math.max(0, achievementDeltaValue);
+
+    const expLevelDeltaValue = pickNumber(
+      (event as any).expLevelDelta,
+      eventDeltas?.exp_level
+    );
+    aggregate.expLevelDelta += Math.max(0, expLevelDeltaValue);
     (event.superTroopsActivated ?? []).forEach((troop) =>
       aggregate.superTroopsActivated.add(troop)
     );
   }
 
   if (aggregate.warStarsDelta > 0 || aggregate.attackWinsDelta > 0) {
-    score += 15;
+    const warScore = 15;
+    addScore('war', warScore);
     const warParts: string[] = [];
     if (aggregate.warStarsDelta > 0) warParts.push(`+${aggregate.warStarsDelta}⭐`);
     if (aggregate.attackWinsDelta > 0) warParts.push(`+${aggregate.attackWinsDelta} atk`);
@@ -311,13 +475,15 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.defenseWinsDelta > 0) {
-    score += 4;
+    const defenseScore = 4;
+    addScore('war', defenseScore);
     indicatorSet.add('Defense win recorded');
     confidencePoints += 0.5;
   }
 
   if (aggregate.capitalContributionDelta > 0) {
-    score += Math.min(12, 6 + Math.floor(aggregate.capitalContributionDelta / 200));
+    const capitalScore = Math.min(12, 6 + Math.floor(aggregate.capitalContributionDelta / 200));
+    addScore('capital', capitalScore);
     indicatorSet.add(
       `Capital contributed +${aggregate.capitalContributionDelta.toLocaleString()}`
     );
@@ -325,7 +491,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.builderHallDelta > 0 || aggregate.builderWinsDelta >= 3) {
-    score += 8;
+    const builderScore = 8;
+    addScore('builder', builderScore);
     const builderParts: string[] = [];
     if (aggregate.builderHallDelta > 0) builderParts.push(`BH +${aggregate.builderHallDelta}`);
     if (aggregate.builderWinsDelta > 0) builderParts.push(`+${aggregate.builderWinsDelta} wins`);
@@ -334,7 +501,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.heroUpgrades > 0) {
-    score += 6;
+    const heroScore = 6;
+    addScore('upgrades', heroScore);
     indicatorSet.add(
       aggregate.heroUpgrades === 1
         ? 'Hero upgrade completed'
@@ -344,7 +512,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.petUpgrades > 0) {
-    score += 5;
+    const petScore = 5;
+    addScore('upgrades', petScore);
     indicatorSet.add(
       aggregate.petUpgrades === 1
         ? 'Pet upgrade completed'
@@ -354,7 +523,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.equipmentUpgrades > 0) {
-    score += 5;
+    const equipmentScore = 5;
+    addScore('upgrades', equipmentScore);
     indicatorSet.add(
       aggregate.equipmentUpgrades === 1
         ? 'Equipment upgrade completed'
@@ -364,7 +534,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.maxTroopDelta > 0 || aggregate.maxSpellDelta > 0) {
-    score += 4;
+    const labScore = 4;
+    addScore('lab', labScore);
     const labParts: string[] = [];
     if (aggregate.maxTroopDelta > 0) {
       labParts.push(
@@ -381,7 +552,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.achievementDelta > 0) {
-    score += 3;
+    const achievementScore = 3;
+    addScore('achievements', achievementScore);
     indicatorSet.add(
       aggregate.achievementDelta === 1
         ? 'Achievement completed'
@@ -391,7 +563,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.expLevelDelta > 0) {
-    score += 3;
+    const expScore = 3;
+    addScore('other', expScore);
     indicatorSet.add(
       `Gained ${aggregate.expLevelDelta} XP level${
         aggregate.expLevelDelta > 1 ? 's' : ''
@@ -401,7 +574,8 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.superTroopsActivated.size > 0) {
-    score += 2;
+    const superTroopScore = 2;
+    addScore('superTroops', superTroopScore);
     indicatorSet.add(
       `Activated ${Array.from(aggregate.superTroopsActivated).join(', ')}`
     );
@@ -409,13 +583,15 @@ export const calculateActivityScore = (
   }
 
   if (aggregate.trophyDelta >= 100 || aggregate.rankedTrophyDelta >= 100) {
-    score += 4;
+    const trophySwingScore = 4;
+    addScore('trophies', trophySwingScore);
     indicatorSet.add('Significant trophy swing');
     confidencePoints += 0.5;
   }
 
   if (aggregate.donationDelta >= 100 || aggregate.donationReceivedDelta >= 100) {
-    score += 4;
+    const donationBurstScore = 4;
+    addScore('donations', donationBurstScore);
     indicatorSet.add('Donation burst');
     confidencePoints += 0.5;
   }
@@ -440,16 +616,16 @@ export const calculateActivityScore = (
       const avgProgress =
         heroProgress.reduce((sum, p) => sum + p, 0) / heroProgress.length;
       if (avgProgress >= 80) {
-        score += 6;
+        addScore('heroProgress', 6);
         indicatorSet.add('Heroes near cap (80%+)');
       } else if (avgProgress >= 60) {
-        score += 4;
+        addScore('heroProgress', 4);
         indicatorSet.add('Strong hero development (60%+)');
       } else if (avgProgress >= 40) {
-        score += 3;
+        addScore('heroProgress', 3);
         indicatorSet.add('Heroes improving (40%+)');
       } else {
-        score += 1;
+        addScore('heroProgress', 1);
         indicatorSet.add('Heroes active');
       }
     }
@@ -458,33 +634,34 @@ export const calculateActivityScore = (
   // Clan role weighting
   const role = member.role?.toLowerCase() ?? '';
   if (role === 'leader') {
-    score += 8;
+    addScore('role', 8);
     indicatorSet.add('Clan leader');
   } else if (role === 'coleader') {
-    score += 7;
+    addScore('role', 7);
     indicatorSet.add('Co-leader role');
   } else if (role === 'elder') {
-    score += 4;
+    addScore('role', 4);
     indicatorSet.add('Elder responsibilities');
   }
 
   // Trophy context
   const trophies = member.trophies ?? 0;
   if (trophies >= 5000) {
-    score += 4;
+    addScore('trophies', 4);
     indicatorSet.add('Legend-tier trophies (5000+)');
   } else if (trophies >= 4200) {
-    score += 3;
+    addScore('trophies', 3);
     indicatorSet.add('High trophy count (4200+)');
   } else if (trophies >= 3600) {
-    score += 2;
+    addScore('trophies', 2);
     indicatorSet.add('Competitive trophy range (3600+)');
   } else if (trophies >= 3000) {
-    score += 1;
+    addScore('trophies', 1);
   }
 
   score = Math.max(0, score);
-  const finalScore = Math.round(score);
+  const breakdownTotal = score;
+  const finalScore = Math.round(breakdownTotal);
   const confidence = pointsToConfidence(confidencePoints);
 
   let level: ActivityLevel;
@@ -502,6 +679,28 @@ export const calculateActivityScore = (
 
   const lastActiveAt =
     lastEventTs !== null ? new Date(lastEventTs).toISOString() : new Date().toISOString();
+  const metrics: ActivityMetrics = {
+    lookbackDays,
+    timelineSampleSize: timeline.length,
+    realTimeScore: realTimeActivity.score,
+    warStarsDelta: aggregate.warStarsDelta,
+    attackWinsDelta: aggregate.attackWinsDelta,
+    defenseWinsDelta: aggregate.defenseWinsDelta,
+    capitalContributionDelta: aggregate.capitalContributionDelta,
+    builderWinsDelta: aggregate.builderWinsDelta,
+    builderHallDelta: aggregate.builderHallDelta,
+    donationDelta: aggregate.donationDelta,
+    donationReceivedDelta: aggregate.donationReceivedDelta,
+    trophyDelta: aggregate.trophyDelta,
+    rankedTrophyDelta: aggregate.rankedTrophyDelta,
+    heroUpgrades: aggregate.heroUpgrades,
+    petUpgrades: aggregate.petUpgrades,
+    equipmentUpgrades: aggregate.equipmentUpgrades,
+    labUpgradeDelta: aggregate.maxTroopDelta + aggregate.maxSpellDelta,
+    achievementDelta: aggregate.achievementDelta,
+    expLevelDelta: aggregate.expLevelDelta,
+    superTroopsActivated: aggregate.superTroopsActivated.size,
+  };
 
   return {
     last_active_at: lastActiveAt,
@@ -509,6 +708,9 @@ export const calculateActivityScore = (
     indicators: Array.from(indicatorSet),
     score: finalScore,
     level,
+    breakdown,
+    metrics,
+    lookbackDays,
   };
 };
 
