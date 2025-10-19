@@ -11,7 +11,7 @@ const querySchema = z.object({
   clanTag: z.string().optional(),
 });
 
-const SEASON_START_ISO = '2025-10-01T00:00:00Z';
+const SEASON_START_ISO = '2025-10-01T00:00:00Z'; // Back to original season start
 
 export async function GET(req: NextRequest) {
   try {
@@ -58,14 +58,14 @@ export async function GET(req: NextRequest) {
 
     if (!canonicalSnapshots || canonicalSnapshots.length === 0) {
       return NextResponse.json({
-        success: true,
-        data: {
+          success: true,
+          data: {
           clanTag: clanRow.tag,
           clanName: clanRow.name,
           logoUrl: clanRow.logo_url,
           lastUpdated: null,
-          members: [],
-        },
+            members: [],
+          },
       });
     }
 
@@ -149,12 +149,12 @@ export async function GET(req: NextRequest) {
 
         // Fetch last week's trophy data from member_snapshot_stats
         const { data: lastWeekSnapshotRows, error: lastWeekError } = await supabase
-          .from('member_snapshot_stats')
+        .from('member_snapshot_stats')
           .select('member_id, trophies, ranked_trophies, snapshot_date')
           .in('member_id', historicalMemberIds)
           .filter('snapshot_date', 'gte', new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()) // Last 14 days
           .filter('snapshot_date', 'lt', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()) // But not in the last 7 days
-          .order('snapshot_date', { ascending: false });
+        .order('snapshot_date', { ascending: false });
 
         if (!lastWeekError && lastWeekSnapshotRows) {
           for (const row of lastWeekSnapshotRows) {
@@ -166,21 +166,21 @@ export async function GET(req: NextRequest) {
           }
         }
 
-        // Calculate running total from member_snapshot_stats
+        // Calculate running total from member_snapshot_stats (weekly finals only)
         const { data: allSeasonRows, error: allSeasonError } = await supabase
-          .from('member_snapshot_stats')
+        .from('member_snapshot_stats')
           .select('member_id, trophies, ranked_trophies, snapshot_date')
           .in('member_id', historicalMemberIds)
-          .gte('snapshot_date', SEASON_START_ISO)
-          .order('snapshot_date', { ascending: true }); // Order by ascending to process chronologically
+        .gte('snapshot_date', SEASON_START_ISO)
+          .order('snapshot_date', { ascending: true });
 
         if (!allSeasonError && allSeasonRows) {
-          const memberChanges = new Map<string, number[]>(); // member_id -> array of weekly trophy changes
+          const memberWeeks = new Map<string, Map<string, number>>(); // member_id -> week_start -> max_trophies
 
           for (const row of allSeasonRows) {
-            if (!row.snapshot_date) continue;
-            const snapshotDate = new Date(row.snapshot_date);
-            if (Number.isNaN(snapshotDate.valueOf())) continue;
+          if (!row.snapshot_date) continue;
+          const snapshotDate = new Date(row.snapshot_date);
+          if (Number.isNaN(snapshotDate.valueOf())) continue;
 
             // Determine the start of the week (Monday) for the snapshot date
             const dayOfWeek = snapshotDate.getUTCDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
@@ -189,41 +189,29 @@ export async function GET(req: NextRequest) {
             weekStart.setUTCHours(0, 0, 0, 0);
             const weekStartISO = weekStart.toISOString().slice(0, 10);
 
-            if (!memberChanges.has(row.member_id)) {
-              memberChanges.set(row.member_id, []);
+            if (!memberWeeks.has(row.member_id)) {
+              memberWeeks.set(row.member_id, new Map<string, number>());
             }
             
             // Use ranked_trophies if available, otherwise fall back to trophies
             const trophyValue = row.ranked_trophies ?? row.trophies ?? 0;
+            const memberWeekMap = memberWeeks.get(row.member_id)!;
             
-            // Store weekly trophy changes (we'll process them chronologically)
-            memberChanges.get(row.member_id)!.push({
-              weekStart: weekStartISO,
-              trophies: trophyValue,
-              date: row.snapshot_date
-            });
+            // Keep the maximum trophy count for each week (weekly final)
+            const currentMax = memberWeekMap.get(weekStartISO) ?? 0;
+            if (trophyValue > currentMax) {
+              memberWeekMap.set(weekStartISO, trophyValue);
+            }
           }
 
-          // Calculate running total for each member
-          for (const [memberId, changes] of memberChanges.entries()) {
-            // Sort changes by date to process chronologically
-            changes.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-            
-            // Group by week and get the final trophy count for each week
-            const weeklyFinals = new Map<string, number>();
-            for (const change of changes) {
-              weeklyFinals.set(change.weekStart, change.trophies);
+          // Calculate running total for each member: sum of weekly finals since season start
+          for (const [memberId, weekMap] of memberWeeks.entries()) {
+            let runningTotal = 0;
+            for (const trophies of weekMap.values()) {
+              runningTotal += trophies;
             }
             
-            // Calculate running total: sum of all weekly trophy finals since season start
-            if (weeklyFinals.size > 0) {
-              let runningTotal = 0;
-              for (const trophies of weeklyFinals.values()) {
-                runningTotal += trophies;
-              }
-              
-              seasonTotalMap.set(memberId, runningTotal);
-            }
+            seasonTotalMap.set(memberId, runningTotal);
           }
         }
 
@@ -313,14 +301,14 @@ export async function GET(req: NextRequest) {
     const lastUpdated = members.length > 0 ? members[0].snapshot_date : null;
 
     return NextResponse.json({
-      success: true,
-      data: {
-        clan: clanRow,
+        success: true,
+        data: {
+          clan: clanRow,
         members: transformedMembers,
         seasonEnd: null,
         seasonId: null,
         seasonStart: null,
-        snapshot: {
+          snapshot: {
           id: null,
           fetched_at: lastUpdated,
           member_count: transformedMembers.length,
