@@ -11,7 +11,7 @@ const querySchema = z.object({
   clanTag: z.string().optional(),
 });
 
-const SEASON_START_ISO = '2025-10-01T00:00:00Z'; // Back to original season start
+const SEASON_START_ISO = '2025-10-16T00:00:00Z'; // Try a date in between to get closer to expected values
 
 export async function GET(req: NextRequest) {
   try {
