@@ -346,8 +346,9 @@ export async function GET(
           rosterRows.forEach((row) => {
             const payload = row.payload as CanonicalMemberSnapshotV1;
             if (payload?.member?.heroLevels) {
+              const heroLevels = payload.member.heroLevels;
               ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
-                const value = payload.member.heroLevels[heroKey as keyof typeof payload.member.heroLevels];
+                const value = heroLevels[heroKey as keyof typeof heroLevels];
                 if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
                   totals[heroKey].sum += value;
                   totals[heroKey].count += 1;
