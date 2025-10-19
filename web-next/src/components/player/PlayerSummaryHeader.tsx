@@ -19,8 +19,8 @@ export const PlayerSummaryHeader: React.FC<PlayerSummaryHeaderProps> = ({ summar
   const joinDate = summary.joinDate ? new Date(summary.joinDate) : null;
   const lastSeen = summary.lastSeen ? new Date(summary.lastSeen) : null;
   // Prioritize ranked league over regular league (competitive mode is more relevant)
-  const rankedLeagueName = summary.rankedLeagueName?.trim() ?? '';
-  const hasRankedLeague = summary.rankedLeagueName !== null && rankedLeagueName.length > 0 && rankedLeagueName !== 'Unranked';
+  const rankedLeagueName = summary.rankedLeague?.name?.trim() ?? '';
+  const hasRankedLeague = summary.rankedLeague !== null && rankedLeagueName.length > 0 && rankedLeagueName !== 'Unranked';
   
   const rawLeagueName = summary.league?.name?.trim() ?? '';
   const hasRegularLeague = summary.league !== null && rawLeagueName.length > 0;
