@@ -1,3 +1,23 @@
+export interface PlayerLeagueSummary {
+  id: number | null;
+  name: string | null;
+  trophies: number | null;
+  iconSmall: string | null;
+  iconMedium: string | null;
+}
+
+export interface PlayerBuilderBaseSummary {
+  hallLevel: number | null;
+  trophies: number | null;
+  battleWins: number | null;
+  leagueId: number | null;
+}
+
+export interface PlayerAchievementSummary {
+  count: number | null;
+  score: number | null;
+}
+
 export interface PlayerSummarySupabase {
   name: string | null;
   tag: string;
@@ -7,16 +27,11 @@ export interface PlayerSummarySupabase {
   townHallLevel: number | null;
   trophies: number | null;
   rankedTrophies: number | null;
-  league: {
-    name: string | null;
-    trophies: number | null;
-    iconSmall: string | null;
-    iconMedium: string | null;
-  };
-  rankedLeague: {
-    id: number | null;
-    name: string | null;
-  };
+  seasonTotalTrophies: number | null;
+  lastWeekTrophies: number | null;
+  rushPercent: number | null;
+  league: PlayerLeagueSummary;
+  rankedLeague: PlayerLeagueSummary;
   battleModeTrophies: number | null;
   donations: {
     given: number | null;
@@ -28,6 +43,8 @@ export interface PlayerSummarySupabase {
     attackWins: number | null;
     defenseWins: number | null;
   };
+  builderBase: PlayerBuilderBaseSummary;
+  capitalContributions: number | null;
   activityScore: number | null;
   lastSeen: string | null;
   tenureDays: number | null;
@@ -35,6 +52,11 @@ export interface PlayerSummarySupabase {
   heroLevels: Record<string, unknown> | null;
   bestTrophies: number | null;
   bestVersusTrophies: number | null;
+  pets: Record<string, number> | null;
+  superTroopsActive: string[] | null;
+  equipmentLevels: Record<string, number> | null;
+  achievements: PlayerAchievementSummary;
+  expLevel: number | null;
 }
 
 export interface PlayerTimelinePoint {
@@ -48,6 +70,24 @@ export interface PlayerTimelinePoint {
   warStars: number | null;
   attackWins: number | null;
   defenseWins: number | null;
+  capitalContributions: number | null;
+  builderHallLevel: number | null;
+  builderTrophies: number | null;
+  builderBattleWins: number | null;
+  bestTrophies: number | null;
+  bestVersusTrophies: number | null;
+  leagueName: string | null;
+  leagueTrophies: number | null;
+  leagueId: number | null;
+  rankedLeagueId: number | null;
+  rankedLeagueName: string | null;
+  superTroopsActive: string[] | null;
+  petLevels: Record<string, number> | null;
+  equipmentLevels: Record<string, number> | null;
+  achievementCount: number | null;
+  achievementScore: number | null;
+  expLevel: number | null;
+  rushPercent: number | null;
 }
 
 export interface PlayerHistoryRecordSupabase {
