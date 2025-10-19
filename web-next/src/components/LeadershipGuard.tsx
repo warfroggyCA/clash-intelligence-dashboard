@@ -1,6 +1,7 @@
 import React from 'react';
 import { useLeadership } from '../hooks/useLeadership';
 import { type RolePermissions } from '../lib/leadership';
+import { cfg } from '../lib/config';
 
 interface LeadershipGuardProps {
   children: React.ReactNode;
@@ -18,6 +19,11 @@ export default function LeadershipGuard({
   className = ""
 }: LeadershipGuardProps) {
   const { permissions, isLoading, error } = useLeadership();
+
+  // Bypass access control during development
+  if (cfg.isDevelopment) {
+    return <>{children}</>;
+  }
 
   if (isLoading) {
     return (
