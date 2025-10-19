@@ -321,6 +321,53 @@ export async function GET(
       activityScore: summary.activityScore ?? activityEvidence.score ?? null,
     };
 
+    // Calculate clan hero averages for comparison
+    let clanHeroAverages: Record<string, number> = {};
+    if (clanTag) {
+      try {
+        // Fetch current roster data for clan averages
+        const { data: rosterRows, error: rosterError } = await supabase
+          .from('canonical_member_snapshots')
+          .select('payload')
+          .eq('clan_tag', clanTag)
+          .order('snapshot_date', { ascending: false })
+          .limit(50); // Get recent snapshots
+
+        console.log('Clan averages calculation - rosterRows:', rosterRows?.length || 0);
+        if (!rosterError && rosterRows && rosterRows.length > 0) {
+          const totals: Record<string, { sum: number; count: number }> = {
+            bk: { sum: 0, count: 0 },
+            aq: { sum: 0, count: 0 },
+            gw: { sum: 0, count: 0 },
+            rc: { sum: 0, count: 0 },
+            mp: { sum: 0, count: 0 },
+          };
+
+          rosterRows.forEach((row) => {
+            const payload = row.payload as CanonicalMemberSnapshotV1;
+            if (payload?.member?.heroLevels) {
+              ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
+                const value = payload.member.heroLevels[heroKey as keyof typeof payload.member.heroLevels];
+                if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+                  totals[heroKey].sum += value;
+                  totals[heroKey].count += 1;
+                }
+              });
+            }
+          });
+
+          Object.entries(totals).forEach(([hero, data]) => {
+            if (data.count > 0) {
+              clanHeroAverages[hero] = data.sum / data.count;
+            }
+          });
+          console.log('Calculated clan hero averages:', clanHeroAverages);
+        }
+      } catch (error) {
+        console.warn('Failed to calculate clan hero averages:', error);
+      }
+    }
+
     const { data: historyRow, error: historyError } = clanTag
       ? await supabase
           .from('player_history')
@@ -409,6 +456,7 @@ export async function GET(
       summary,
       timeline: timelineStats.timeline,
       history: historyRow ?? null,
+      clanHeroAverages,
       leadership: {
         notes: ensureArray(notesRows),
         warnings: ensureArray(warningsRows),

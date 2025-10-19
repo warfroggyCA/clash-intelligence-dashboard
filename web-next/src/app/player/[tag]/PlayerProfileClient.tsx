@@ -41,6 +41,7 @@ import DonationChart from "@/components/player/DonationChart";
 import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS } from "@/types";
 import { HeroLevel } from "@/components/ui";
 import { getRoleBadgeVariant } from "@/lib/leadership";
+import Image from "next/image";
 
 const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayout"), {
   ssr: false,
@@ -356,6 +357,19 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
     ? summary.heroLevels
     : {};
 
+  // Get clan hero averages from the API response
+  const clanHeroAverages = profile?.clanHeroAverages || {};
+  console.log('Clan hero averages from API:', clanHeroAverages);
+
+  // Hero icon mapping
+  const HERO_ICON_MAP: Record<string, { src: string; alt: string }> = {
+    BK: { src: '/assets/heroes/Barbarian_King.png', alt: 'Barbarian King' },
+    AQ: { src: '/assets/heroes/Archer_Queen.png', alt: 'Archer Queen' },
+    GW: { src: '/assets/heroes/Grand_Warden.png', alt: 'Grand Warden' },
+    RC: { src: '/assets/heroes/Royal_Champion.png', alt: 'Royal Champion' },
+    MP: { src: '/assets/heroes/Minion_Prince.png', alt: 'Minion Prince' },
+  };
+
   const petEntries = useMemo(() => {
     if (!summary?.pets) return [] as Array<[string, number]>;
     return Object.entries(summary.pets).sort(
@@ -482,83 +496,6 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
     router.back();
   }, [router]);
 
-  const statChips = useMemo(() => {
-    if (!summary) return [];
-    const chips: Array<{ label: string; value: string; accent: string; hint?: string | null }> = [];
-
-    if (summary.seasonTotalTrophies != null) {
-      chips.push({
-        label: "Season Ladder",
-        value: formatNumber(summary.seasonTotalTrophies),
-        accent: "from-indigo-500 via-purple-500 to-fuchsia-500",
-        hint:
-          summary.lastWeekTrophies != null
-            ? `Last Monday ${formatNumber(summary.lastWeekTrophies)}`
-            : null,
-      });
-    }
-
-    chips.push({
-      label: "Season Donations",
-      value: summary.donations?.given != null ? formatNumber(summary.donations.given) : "—",
-      accent: "from-cyan-500 via-sky-500 to-indigo-500",
-      hint:
-        summary.donations?.received != null
-          ? `${formatNumber(summary.donations.received)} received`
-          : null,
-    });
-
-    chips.push({
-      label: "War Stars",
-      value: summary.war?.stars != null ? formatNumber(summary.war.stars) : "—",
-      accent: "from-amber-500 via-orange-500 to-red-500",
-      hint:
-        summary.war?.attackWins != null
-          ? `${formatNumber(summary.war.attackWins)} attack wins`
-          : null,
-    });
-
-    chips.push({
-      label: "Activity Score",
-      value:
-        summary.activityScore != null
-          ? summary.activityScore.toFixed(1)
-          : "Awaiting metrics",
-      accent: "from-emerald-500 via-lime-500 to-green-500",
-      hint: summary.lastSeen ? `Last seen ${formatRelative(summary.lastSeen)}` : null,
-    });
-
-    if (summary.capitalContributions != null) {
-      chips.push({
-        label: "Capital Gold",
-        value: formatNumber(summary.capitalContributions),
-        accent: "from-amber-400 via-yellow-500 to-orange-500",
-        hint: "Across latest snapshot",
-      });
-    }
-
-    if (summary.rushPercent != null) {
-      chips.push({
-        label: "Rush Score",
-        value: formatPercent(summary.rushPercent),
-        accent: "from-sky-500 via-blue-500 to-cyan-500",
-        hint: "0% = maxed, 100% = fully rushed",
-      });
-    }
-
-    if (canViewLeadership) {
-      chips.push({
-        label: "Warning Status",
-        value: activeWarning ? "Active" : "Clear",
-        accent: activeWarning
-          ? "from-rose-500 via-red-500 to-amber-500"
-          : "from-slate-500 via-slate-600 to-emerald-500",
-        hint: activeWarning?.warningNote ?? (activeWarning ? null : "No active warnings"),
-      });
-    }
-
-    return chips;
-  }, [summary, canViewLeadership, activeWarning]);
 
   const aliasList = history?.aliases ?? [];
 
@@ -615,118 +552,6 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
             <span className="text-slate-300">Player Profile</span>
           </div>
 
-          <div className="relative mb-10 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-900/80 to-slate-900 p-8 shadow-[0_40px_120px_-50px_rgba(79,70,229,0.6)]">
-            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.25),transparent_55%)]" />
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex flex-1 flex-col gap-6">
-                <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-16 w-16 items-center justify-center">
-                      {summary?.townHallLevel ? (
-                        <TownHallBadge level={summary.townHallLevel} />
-                      ) : (
-                        <span className="text-slate-300">TH?</span>
-                      )}
-                    </div>
-                    {(summary?.rankedLeague?.name || summary?.league?.name) && (
-                      <div className="hidden sm:block">
-                        <LeagueBadge
-                          league={summary?.rankedLeague?.name ?? summary?.league?.name ?? undefined}
-                          trophies={summary?.rankedTrophies ?? summary?.league?.trophies ?? undefined}
-                          size="lg"
-                          showText={false}
-                        />
-                      </div>
-                    )}
-                    <div>
-                      <h1 className="font-black text-3xl text-white md:text-4xl tracking-wider drop-shadow-2xl" style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: '700', letterSpacing: '0.05em' }}>
-                        {summary?.name ?? "Unknown Player"}
-                      </h1>
-                      <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-300/80">
-                        <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.32em] text-slate-200">
-                          {normalizedTag || "No Tag"}
-                        </span>
-                        {summary?.role && (
-                          <span>{getRoleBadgeVariant(summary.role).label}</span>
-                        )}
-                        {history?.status && <span>• {history.status.toUpperCase()}</span>}
-                        {summary?.clanName && (
-                          <span className="rounded-full bg-indigo-500/20 px-2 py-1 text-xs font-medium text-indigo-200">
-                            {summary.clanName}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  {statChips.map((chip) => (
-                    <div
-                      key={chip.label}
-                      className={`rounded-2xl border border-white/10 bg-gradient-to-br ${chip.accent} px-4 py-4 text-white shadow-[0_20px_45px_-28px_rgba(14,165,233,0.65)]`}
-                    >
-                      <p className="text-xs uppercase tracking-[0.28em] text-white/70">
-                        {chip.label}
-                      </p>
-                      <p className="mt-2 text-2xl font-semibold">{chip.value}</p>
-                      {chip.hint && (
-                        <p className="mt-1 text-xs text-white/80">{chip.hint}</p>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex flex-col items-stretch gap-3">
-                <Button
-                  variant="primary"
-                  className="justify-center gap-2"
-                  onClick={() => setShowNoteModal(true)}
-                  disabled={!canViewLeadership}
-                  title={
-                    canViewLeadership
-                      ? "Add a new leadership note"
-                      : "Leadership access required"
-                  }
-                >
-                  <Plus className="h-4 w-4" />
-                  Add Leadership Note
-                </Button>
-                <Button
-                  variant={activeWarning ? "warning" : "secondary"}
-                  className="justify-center gap-2"
-                  onClick={() => setShowWarningModal(true)}
-                  disabled={!canViewLeadership}
-                  title={
-                    canViewLeadership
-                      ? "Record or update a warning"
-                      : "Leadership access required"
-                  }
-                >
-                  <AlertTriangle className="h-4 w-4" />
-                  Mark Warning
-                </Button>
-                <Button
-                  variant="outline"
-                  className="justify-center gap-2 text-slate-100"
-                  onClick={handleCopySummary}
-                >
-                  <Clipboard className="h-4 w-4" />
-                  Copy Summary
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="justify-center gap-2 border border-white/10 text-white hover:bg-white/20"
-                  onClick={handleOpenInClash}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Open in Clash
-                </Button>
-              </div>
-            </div>
-          </div>
-
           <div className="mb-6 flex flex-wrap gap-2">
             {(["overview", "history", "evaluations", "metrics"] as TabKey[]).map((tab) => (
               <button
@@ -746,6 +571,69 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                 {tab}
               </button>
             ))}
+          </div>
+
+          <div className="relative mb-10 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-900/80 to-slate-900 p-8 shadow-[0_40px_120px_-50px_rgba(79,70,229,0.6)]">
+            <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.25),transparent_55%)]" />
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-1 flex-col gap-6">
+                <div className="flex flex-col gap-5">
+                  <div>
+                    <h1 className="font-black text-3xl text-white md:text-4xl tracking-wider drop-shadow-2xl" style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: '700', letterSpacing: '0.05em' }}>
+                      {summary?.name ?? "Unknown Player"}
+                    </h1>
+                    <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-300/80">
+                      <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.32em] text-slate-200">
+                        {normalizedTag || "No Tag"}
+                      </span>
+                      {summary?.role && (
+                        <span>{getRoleBadgeVariant(summary.role).label}</span>
+                      )}
+                      {history?.status && <span>• {history.status.toUpperCase()}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center">
+                      {summary?.townHallLevel ? (
+                        <TownHallBadge level={summary.townHallLevel} />
+                      ) : (
+                        <span className="text-slate-300">TH?</span>
+                      )}
+                    </div>
+                    {(summary?.rankedLeague?.name || summary?.league?.name) && (
+                      <div className="hidden sm:block">
+                        <LeagueBadge
+                          league={summary?.rankedLeague?.name ?? summary?.league?.name ?? undefined}
+                          trophies={summary?.rankedTrophies ?? summary?.league?.trophies ?? undefined}
+                          size="lg"
+                          showText={false}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+              </div>
+
+              <div className="flex flex-col items-stretch gap-3 max-w-xs">
+                <Button
+                  variant="outline"
+                  className="justify-center gap-2 text-slate-100"
+                  onClick={handleCopySummary}
+                >
+                  <Clipboard className="h-4 w-4" />
+                  Copy Summary
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="justify-center gap-2 border border-white/10 text-white hover:bg-white/20"
+                  onClick={handleOpenInClash}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Open in Clash
+                </Button>
+              </div>
+            </div>
           </div>
 
           {loading && renderLoading()}
@@ -936,25 +824,56 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                       className="bg-slate-900/70 border border-slate-800/80"
                     >
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        {(["bk", "aq", "gw", "rc", "mp"] as const).map((key) => (
-                          <HeroLevel
-                            key={key}
-                            hero={key.toUpperCase() as "BK" | "AQ" | "GW" | "RC" | "MP"}
-                            level={
-                              typeof heroLevels === "object" && heroLevels && key in heroLevels
-                                ? Number((heroLevels as Record<string, unknown>)[key]) || 0
-                                : 0
-                            }
-                            maxLevel={
-                              heroCaps && key in heroCaps
-                                ? Number((heroCaps as Record<string, unknown>)[key]) || 0
-                                : 0
-                            }
-                            showName
-                            size="lg"
-                          />
-                        ))}
+                        {(["bk", "aq", "gw", "rc", "mp"] as const).map((key) => {
+                          const heroKey = key.toUpperCase() as "BK" | "AQ" | "GW" | "RC" | "MP";
+                          const icon = HERO_ICON_MAP[heroKey];
+                          const level = typeof heroLevels === "object" && heroLevels && key in heroLevels
+                            ? Number((heroLevels as Record<string, unknown>)[key]) || 0
+                            : 0;
+                          const maxLevel = heroCaps && key in heroCaps
+                            ? Number((heroCaps as Record<string, unknown>)[key]) || 0
+                            : 0;
+                          
+                          return (
+                            <div key={key} className="flex items-start gap-3">
+              {icon && level > 0 && (
+                <div
+                  className="flex-shrink-0"
+                  style={{ width: '48px', height: '48px' }}
+                >
+                  <Image
+                    src={icon.src}
+                    alt={icon.alt}
+                    width={48}
+                    height={48}
+                    className="object-contain"
+                    style={{ width: '48px', height: '48px' }}
+                    priority
+                  />
+                </div>
+              )}
+                              <div className="flex-1">
+                                <HeroLevel
+                                  hero={heroKey}
+                                  level={level}
+                                  maxLevel={maxLevel}
+                                  showName
+                                  size="lg"
+                                  clanAverage={clanHeroAverages[key]}
+                                  clanAverageCount={Object.keys(clanHeroAverages).length > 0 ? Math.max(...Object.values(clanHeroAverages).map(() => 1)) : 0}
+                                  clanAverageSource="profile"
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
+                      {Object.keys(clanHeroAverages).length > 0 && (
+                        <div className="flex items-center gap-2 pt-3 text-xs text-slate-400 border-t border-slate-800/50">
+                          <span className="inline-flex h-2.5 w-2.5 items-center justify-center rounded-full border border-slate-900/80 bg-amber-300 shadow-[0_0_6px_rgba(251,191,36,0.75)]" aria-hidden="true" />
+                          <span>Clan average marker (hover for sample size and gap vs clan)</span>
+                        </div>
+                      )}
                     </GlassCard>
 
                     {(summary?.builderBase?.hallLevel != null ||
@@ -1043,7 +962,10 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                         className="bg-slate-900/70 border border-slate-800/80"
                       >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div 
+                            className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help"
+                            title="Total number of achievements completed. Includes all types: Builder Base, Capital, Clan Games, and general gameplay achievements."
+                          >
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                               Achievement Count
                             </p>
@@ -1053,7 +975,10 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                                 : "—"}
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div 
+                            className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help"
+                            title="Total achievement points earned. Higher scores indicate more challenging achievements completed and greater game mastery."
+                          >
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                               Achievement Score
                             </p>
@@ -1063,7 +988,10 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                                 : "—"}
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div 
+                            className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help"
+                            title="Rush percentage indicates how much of the base is rushed. 0% = fully maxed, 100% = completely rushed. Lower scores show better base optimization."
+                          >
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                               Rush Score
                             </p>
@@ -1073,7 +1001,10 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                                 : "—"}
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div 
+                            className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help"
+                            title="Player experience level gained through gameplay activities. Earned by attacking, donating troops, and participating in clan activities."
+                          >
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                               Experience Level
                             </p>
