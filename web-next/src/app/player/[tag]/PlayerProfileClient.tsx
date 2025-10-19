@@ -21,6 +21,7 @@ import {
   Plus,
   Sparkles,
   SquarePen,
+  Trophy,
   UserCheck,
   UserPlus,
 } from "lucide-react";
@@ -57,7 +58,25 @@ interface TimelineItem {
   title: string;
   description?: string;
   tone: TimelineTone;
-  icon: "join" | "depart" | "return" | "tenure" | "warning" | "note" | "joiner";
+  icon:
+    | "join"
+    | "depart"
+    | "return"
+    | "tenure"
+    | "warning"
+    | "note"
+    | "joiner"
+    | "upgrade"
+    | "hero"
+    | "pet"
+    | "equipment"
+    | "league"
+    | "trophy"
+    | "capital"
+    | "donation"
+    | "legend"
+    | "highlight"
+    | "war";
 }
 
 interface PlayerProfileClientProps {
@@ -73,6 +92,8 @@ const formatPercent = (value: number | null | undefined) => {
   if (value == null || Number.isNaN(Number(value))) return "—";
   return `${Number(value).toFixed(0)}%`;
 };
+
+const formatSignedNumber = (value: number) => (value > 0 ? `+${formatNumber(value)}` : formatNumber(value));
 
 const formatDate = (value: string | null | undefined) => {
   if (!value) return "—";
@@ -124,116 +145,679 @@ const TimelineIcon = ({ type }: { type: TimelineItem["icon"] }) => {
       return <SquarePen className={size} />;
     case "joiner":
       return <Sparkles className={size} />;
+    case "upgrade":
+      return <Hammer className={size} />;
+    case "hero":
+      return <Sparkles className={size} />;
+    case "pet":
+      return <PawPrint className={size} />;
+    case "equipment":
+      return <Sparkles className={size} />;
+    case "league":
+      return <Activity className={size} />;
+    case "trophy":
+      return <Trophy className={size} />;
+    case "capital":
+      return <Coins className={size} />;
+    case "donation":
+      return <Coins className={size} />;
+    case "legend":
+      return <Flame className={size} />;
+    case "highlight":
+      return <Sparkles className={size} />;
+    case "war":
+      return <Medal className={size} />;
     default:
       return <History className={size} />;
   }
+};
+
+const HERO_DISPLAY_NAMES: Record<string, string> = {
+  bk: "Barbarian King",
+  aq: "Archer Queen",
+  gw: "Grand Warden",
+  rc: "Royal Champion",
+  mp: "Minion Prince",
+};
+
+const toNumericDelta = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value) && value !== 0) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed !== 0 ? parsed : null;
+  }
+  return null;
+};
+
+const toNumberValue = (value: unknown): number | null => {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+  if (typeof value === "string" && value.trim() !== "") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+  return null;
+};
+
+const toTitleCase = (value: string) =>
+  value
+    .split("_")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+
+type TimelinePoint = SupabasePlayerProfilePayload["timeline"][number];
+
+const buildStatsContext = (point: TimelinePoint, usedDeltaKeys: Set<string>): string | null => {
+  const stats: string[] = [];
+  if (!usedDeltaKeys.has("trophies") && point.trophies != null) {
+    stats.push(`Trophies ${formatNumber(point.trophies)}`);
+  }
+  if (!usedDeltaKeys.has("donations") && point.donations != null) {
+    stats.push(`Donations ${formatNumber(point.donations)}`);
+  }
+  if (!usedDeltaKeys.has("donations_rcv") && point.donationsReceived != null) {
+    stats.push(`Received ${formatNumber(point.donationsReceived)}`);
+  }
+  if (!usedDeltaKeys.has("war_stars") && point.warStars != null) {
+    stats.push(`War stars ${formatNumber(point.warStars)}`);
+  }
+  if (!usedDeltaKeys.has("capital_contrib") && point.capitalContributions != null) {
+    stats.push(`Capital ${formatNumber(point.capitalContributions)}`);
+  }
+  if (!stats.length) return null;
+  return `Totals — ${stats.join(" • ")}`;
+};
+
+const summarizeEquipment = (levels: Record<string, number> | null | undefined, slice = 3) => {
+  if (!levels || typeof levels !== "object") return null;
+  const entries = Object.entries(levels)
+    .filter(([, value]) => typeof value === "number")
+    .sort((a, b) => Number(b[1] ?? 0) - Number(a[1] ?? 0))
+    .slice(0, slice);
+
+  if (!entries.length) return null;
+
+  return entries
+    .map(([name, level]) => `${toTitleCase(name)} ${formatNumber(Number(level))}`)
+    .join(", ");
+};
+
+const buildEventFallbackDescriptions = (
+  point: TimelinePoint,
+  primaryEvent: string,
+  otherEventLabels: string[],
+  enrichedDeltas: Record<string, number>,
+): string[] => {
+  const fallback: string[] = [];
+
+  switch (primaryEvent) {
+    case "donations_threshold": {
+      const delta = enrichedDeltas.donations ?? enrichedDeltas.donation_delta;
+      const total = point.donations != null ? formatNumber(point.donations) : null;
+      if (delta != null && total) {
+        fallback.push(`Donated ${formatSignedNumber(delta)} troops today (total ${total})`);
+      } else if (total) {
+        fallback.push(`Donations milestone reached at ${total} troops given`);
+      } else {
+        fallback.push("Donations milestone reached");
+      }
+      break;
+    }
+    case "equipment_upgrade": {
+      const summary = summarizeEquipment(point.equipmentLevels);
+      fallback.push(summary ? `Equipment loadout updated (${summary})` : "Equipment loadout updated");
+      break;
+    }
+    case "pet_level_up": {
+      const summary = summarizeEquipment(point.petLevels);
+      fallback.push(summary ? `Pet roster advanced (${summary})` : "Pet roster advanced");
+      break;
+    }
+    case "hero_level_up": {
+      const summary = summarizeEquipment(point.heroLevels as Record<string, number> | null | undefined);
+      fallback.push(summary ? `Hero levels improved (${summary})` : "Hero levels improved");
+      break;
+    }
+    case "th_level_up": {
+      if (point.rushPercent != null) {
+        fallback.push(`Town Hall upgrade logged (rush score now ${formatPercent(point.rushPercent)})`);
+      } else {
+        fallback.push("Town Hall upgrade logged");
+      }
+      break;
+    }
+    case "war_perf_day": {
+      const total = point.warStars != null ? formatNumber(point.warStars) : null;
+      fallback.push(total ? `War highlight — ${total} stars on record` : "War highlight recorded");
+      break;
+    }
+    case "capital_activity": {
+      const total = point.capitalContributions != null ? formatNumber(point.capitalContributions) : null;
+      fallback.push(total ? `Capital contributions now ${total}` : "Capital contribution recorded");
+      break;
+    }
+    case "legend_activity": {
+      fallback.push("Legend League activity logged");
+      break;
+    }
+    case "legend_reentry": {
+      fallback.push("Re-entered the Legend League bracket");
+      break;
+    }
+    case "league_change": {
+      const leagueName = point.leagueName ?? point.rankedLeagueName ?? null;
+      fallback.push(leagueName ? `Moved to ${leagueName}` : "League change recorded");
+      break;
+    }
+    case "trophies_big_delta": {
+      const total = point.trophies != null ? formatNumber(point.trophies) : null;
+      fallback.push(total ? `Major trophy swing (now ${total})` : "Major trophy swing recorded");
+      break;
+    }
+    default: {
+      if (primaryEvent && primaryEvent !== "highlight") {
+        fallback.push(`Event tagged: ${toTitleCase(primaryEvent)}`);
+      }
+      break;
+    }
+  }
+
+  return fallback;
+};
+
+const EVENT_META: Record<string, { title: string; icon: TimelineItem['icon']; tone: TimelineTone }> = {
+  th_level_up: { title: "Town Hall upgrade", icon: "upgrade", tone: "positive" },
+  hero_level_up: { title: "Hero upgrade", icon: "hero", tone: "positive" },
+  pet_level_up: { title: "Pet upgrade", icon: "pet", tone: "positive" },
+  equipment_upgrade: { title: "Equipment upgrade", icon: "equipment", tone: "positive" },
+  league_change: { title: "League change", icon: "league", tone: "positive" },
+  legend_reentry: { title: "Legend League re-entry", icon: "legend", tone: "positive" },
+  legend_activity: { title: "Legend League battles", icon: "legend", tone: "positive" },
+  trophies_big_delta: { title: "Major trophy swing", icon: "trophy", tone: "positive" },
+  war_perf_day: { title: "War highlight", icon: "war", tone: "positive" },
+  capital_activity: { title: "Capital contribution", icon: "capital", tone: "positive" },
+  donations_threshold: { title: "Donation milestone", icon: "donation", tone: "positive" },
+};
+
+const DEFAULT_EVENT_META: { title: string; icon: TimelineItem['icon']; tone: TimelineTone } = {
+  title: "Daily highlight",
+  icon: "highlight",
+  tone: "default",
 };
 
 function buildTimeline(
   profile: SupabasePlayerProfilePayload | null,
   includeLeadership: boolean,
 ): TimelineItem[] {
-  if (!profile?.history) return [];
   const items: TimelineItem[] = [];
+  const timelinePoints = profile?.timeline ?? [];
 
-  const push = (item: TimelineItem) => {
-    if (!item.date) return;
-    items.push(item);
-  };
+  const chronologicalPoints = timelinePoints
+    .filter((point): point is TimelinePoint & { snapshotDate: string } => Boolean(point?.snapshotDate))
+    .sort((a, b) => {
+      const aTime = new Date(a.snapshotDate as string).getTime();
+      const bTime = new Date(b.snapshotDate as string).getTime();
+      return aTime - bTime;
+    });
 
-  profile.history.movements.forEach((movement, index) => {
-    if (!movement?.date) return;
-    const title =
-      movement.type === "joined"
-        ? "Joined the clan"
-        : movement.type === "departed"
-          ? "Departed the clan"
-          : "Returned to the clan";
-    const descriptionParts: string[] = [];
-    if (movement.reason) descriptionParts.push(movement.reason);
-    if (movement.tenureAtDeparture != null) {
-      descriptionParts.push(`${movement.tenureAtDeparture} day tenure credited`);
+  chronologicalPoints.forEach((point, index) => {
+    const rawEvents = Array.isArray(point.events) ? point.events : [];
+    const notability = point.notability ?? 0;
+    const previousPoint = index > 0 ? chronologicalPoints[index - 1] : null;
+
+    const rawDeltas =
+      point?.deltas && typeof point.deltas === "object" ? (point.deltas as Record<string, unknown>) : {};
+    const enrichedDeltas = Object.entries(rawDeltas).reduce((acc, [key, rawValue]) => {
+      const numeric = toNumericDelta(rawValue);
+      if (numeric != null) {
+        acc[key] = numeric;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    const ensureDelta = (key: string, currentValue: unknown, previousValue: unknown) => {
+      if (enrichedDeltas[key] !== undefined) return;
+      const current = toNumberValue(currentValue);
+      const previous = toNumberValue(previousValue);
+      if (current == null || previous == null) return;
+      const delta = current - previous;
+      if (delta !== 0) {
+        enrichedDeltas[key] = delta;
+      }
+    };
+
+    if (previousPoint) {
+      ensureDelta("trophies", point.trophies, previousPoint.trophies);
+      ensureDelta("ranked_trophies", point.rankedTrophies, previousPoint.rankedTrophies);
+      ensureDelta("donations", point.donations, previousPoint.donations);
+      ensureDelta("donations_rcv", point.donationsReceived, previousPoint.donationsReceived);
+      ensureDelta("war_stars", point.warStars, previousPoint.warStars);
+      ensureDelta("attack_wins", point.attackWins, previousPoint.attackWins);
+      ensureDelta("defense_wins", point.defenseWins, previousPoint.defenseWins);
+      ensureDelta("capital_contrib", point.capitalContributions, previousPoint.capitalContributions);
+      ensureDelta("builder_trophies", point.builderTrophies, previousPoint.builderTrophies);
+      ensureDelta("builder_battle_wins", point.builderBattleWins, previousPoint.builderBattleWins);
+      ensureDelta("exp_level", point.expLevel, previousPoint.expLevel);
+      ensureDelta("rush_percent", point.rushPercent, previousPoint.rushPercent);
     }
-    if (movement.notes) descriptionParts.push(movement.notes);
-    push({
-      id: `movement-${index}-${movement.date}`,
-      date: movement.date,
-      title,
-      description: descriptionParts.join(" • ") || undefined,
-      tone:
-        movement.type === "departed"
-          ? "warning"
-          : movement.type === "returned"
-            ? "positive"
-            : "default",
-      icon:
-        movement.type === "joined"
-          ? "join"
-          : movement.type === "departed"
-            ? "depart"
-            : "return",
+
+    const heroLevelsRecord =
+      point?.heroLevels && typeof point.heroLevels === "object"
+        ? (point.heroLevels as Record<string, unknown>)
+        : null;
+    const prevHeroLevels =
+      previousPoint?.heroLevels && typeof previousPoint.heroLevels === "object"
+        ? (previousPoint.heroLevels as Record<string, unknown>)
+        : null;
+    if (heroLevelsRecord && prevHeroLevels) {
+      Object.keys(HERO_DISPLAY_NAMES).forEach((heroKey) => {
+        const current = toNumberValue(heroLevelsRecord[heroKey]);
+        const previous = toNumberValue(prevHeroLevels[heroKey]);
+        if (current == null || previous == null) return;
+        const delta = current - previous;
+        if (delta !== 0 && enrichedDeltas[`hero_${heroKey}`] === undefined) {
+          enrichedDeltas[`hero_${heroKey}`] = delta;
+        }
+      });
+    }
+
+    const petLevelsRecord =
+      point?.petLevels && typeof point.petLevels === "object"
+        ? (point.petLevels as Record<string, unknown>)
+        : null;
+    const prevPetLevels =
+      previousPoint?.petLevels && typeof previousPoint.petLevels === "object"
+        ? (previousPoint.petLevels as Record<string, unknown>)
+        : null;
+    if (petLevelsRecord && prevPetLevels) {
+      Object.keys(petLevelsRecord).forEach((petKey) => {
+        const current = toNumberValue(petLevelsRecord[petKey]);
+        const previous = toNumberValue(prevPetLevels[petKey]);
+        if (current == null || previous == null) return;
+        const delta = current - previous;
+        const deltaKey = `pet_${petKey}`;
+        if (delta !== 0 && enrichedDeltas[deltaKey] === undefined) {
+          enrichedDeltas[deltaKey] = delta;
+        }
+      });
+    }
+
+    const equipmentLevelsRecord =
+      point?.equipmentLevels && typeof point.equipmentLevels === "object"
+        ? (point.equipmentLevels as Record<string, unknown>)
+        : null;
+    const prevEquipmentLevels =
+      previousPoint?.equipmentLevels && typeof previousPoint.equipmentLevels === "object"
+        ? (previousPoint.equipmentLevels as Record<string, unknown>)
+        : null;
+    if (equipmentLevelsRecord && prevEquipmentLevels) {
+      Object.keys(equipmentLevelsRecord).forEach((equipmentKey) => {
+        const current = toNumberValue(equipmentLevelsRecord[equipmentKey]);
+        const previous = toNumberValue(prevEquipmentLevels[equipmentKey]);
+        if (current == null || previous == null) return;
+        const delta = current - previous;
+        const deltaKey = `equipment_${equipmentKey}`;
+        if (delta !== 0 && enrichedDeltas[deltaKey] === undefined) {
+          enrichedDeltas[deltaKey] = delta;
+        }
+      });
+    }
+
+    if (enrichedDeltas.th !== undefined && enrichedDeltas.th <= 0) {
+      delete enrichedDeltas.th;
+    }
+
+    Object.keys(enrichedDeltas).forEach((key) => {
+      if (
+        (key.startsWith("hero_") || key.startsWith("pet_") || key.startsWith("equipment_")) &&
+        enrichedDeltas[key] <= 0
+      ) {
+        delete enrichedDeltas[key];
+      }
+    });
+
+    const hasHeroUpgrade = Object.keys(enrichedDeltas).some((key) => key.startsWith("hero_"));
+    const hasPetUpgrade = Object.keys(enrichedDeltas).some((key) => key.startsWith("pet_"));
+    const hasEquipmentUpgrade = Object.keys(enrichedDeltas).some((key) => key.startsWith("equipment_"));
+
+    const normalizedEvents = rawEvents.filter((event) => {
+      switch (event) {
+        case "th_level_up":
+          return enrichedDeltas.th !== undefined;
+        case "hero_level_up":
+          return hasHeroUpgrade;
+        case "pet_level_up":
+          return hasPetUpgrade;
+        case "equipment_upgrade":
+          return hasEquipmentUpgrade;
+        default:
+          return true;
+      }
+    });
+
+    const hasDeltas = Object.keys(enrichedDeltas).length > 0;
+
+    if (!normalizedEvents.length && notability <= 0 && !hasDeltas) {
+      return;
+    }
+
+    const primaryEvent = normalizedEvents.find((event) => EVENT_META[event]) ?? (notability > 0 ? "highlight" : null);
+    if (!primaryEvent) return;
+
+    const meta = EVENT_META[primaryEvent] ?? DEFAULT_EVENT_META;
+    const otherEventLabels = normalizedEvents
+      .filter((event) => event !== primaryEvent && EVENT_META[event])
+      .map((event) => EVENT_META[event].title);
+
+    const descriptionParts: string[] = [];
+    const usedDeltaKeys = new Set<string>();
+
+    const appendDescription = (key: string | null, text: string | null | undefined) => {
+      if (!text) return;
+      descriptionParts.push(text);
+      if (key) usedDeltaKeys.add(key);
+    };
+
+    const standardDeltaOrder = [
+      "trophies",
+      "ranked_trophies",
+      "donations",
+      "donations_rcv",
+      "war_stars",
+      "capital_contrib",
+      "legend_attacks",
+      "attack_wins",
+      "defense_wins",
+      "builder_trophies",
+      "builder_battle_wins",
+      "exp_level",
+      "rush_percent",
+    ];
+    const standardDeltaSet = new Set(standardDeltaOrder);
+
+    const formatStandardDelta = (key: string, delta: number): string | null => {
+      switch (key) {
+        case "trophies": {
+          const now = point.trophies != null ? formatNumber(point.trophies) : null;
+          return now ? `Trophies ${formatSignedNumber(delta)} (now ${now})` : `Trophies ${formatSignedNumber(delta)}`;
+        }
+        case "ranked_trophies": {
+          const now = point.rankedTrophies != null ? formatNumber(point.rankedTrophies) : null;
+          return now
+            ? `Ranked trophies ${formatSignedNumber(delta)} (now ${now})`
+            : `Ranked trophies ${formatSignedNumber(delta)}`;
+        }
+        case "donations":
+          return point.donations != null
+            ? `Donations given ${formatSignedNumber(delta)} (now ${formatNumber(point.donations)})`
+            : `Donations given ${formatSignedNumber(delta)}`;
+        case "donations_rcv":
+          return point.donationsReceived != null
+            ? `Donations received ${formatSignedNumber(delta)} (now ${formatNumber(point.donationsReceived)})`
+            : `Donations received ${formatSignedNumber(delta)}`;
+        case "war_stars":
+          return point.warStars != null
+            ? `War stars ${formatSignedNumber(delta)} (now ${formatNumber(point.warStars)})`
+            : `War stars ${formatSignedNumber(delta)}`;
+        case "attack_wins":
+          return point.attackWins != null
+            ? `War attack wins ${formatSignedNumber(delta)} (now ${formatNumber(point.attackWins)})`
+            : `War attack wins ${formatSignedNumber(delta)}`;
+        case "defense_wins":
+          return point.defenseWins != null
+            ? `War defense wins ${formatSignedNumber(delta)} (now ${formatNumber(point.defenseWins)})`
+            : `War defense wins ${formatSignedNumber(delta)}`;
+        case "capital_contrib":
+          return point.capitalContributions != null
+            ? `Capital gold ${formatSignedNumber(delta)} (now ${formatNumber(point.capitalContributions)})`
+            : `Capital gold ${formatSignedNumber(delta)}`;
+        case "legend_attacks": {
+          const currentLegendAttacks = (point as any)?.legendAttacks;
+          return currentLegendAttacks != null
+            ? `Legend attacks ${formatSignedNumber(delta)} (now ${formatNumber(currentLegendAttacks)})`
+            : `Legend attacks ${formatSignedNumber(delta)}`;
+        }
+        case "builder_trophies":
+          return point.builderTrophies != null
+            ? `Builder trophies ${formatSignedNumber(delta)} (now ${formatNumber(point.builderTrophies)})`
+            : `Builder trophies ${formatSignedNumber(delta)}`;
+        case "builder_battle_wins":
+          return point.builderBattleWins != null
+            ? `Builder battle wins ${formatSignedNumber(delta)} (now ${formatNumber(point.builderBattleWins)})`
+            : `Builder battle wins ${formatSignedNumber(delta)}`;
+        case "exp_level":
+          return point.expLevel != null
+            ? `Account level ${formatSignedNumber(delta)} (now ${formatNumber(point.expLevel)})`
+            : `Account level ${formatSignedNumber(delta)}`;
+        case "rush_percent": {
+          const now = point.rushPercent != null ? formatPercent(point.rushPercent) : null;
+          return now
+            ? `Rush score ${formatSignedNumber(delta)} pts (now ${now})`
+            : `Rush score ${formatSignedNumber(delta)} pts`;
+        }
+        default:
+          return null;
+      }
+    };
+
+    standardDeltaOrder.forEach((key) => {
+      const delta = enrichedDeltas[key];
+      if (delta === undefined) return;
+      const summary = formatStandardDelta(key, delta);
+      if (summary) {
+        appendDescription(key, summary);
+      }
+    });
+
+    Object.entries(enrichedDeltas)
+      .filter(([key]) => key.startsWith("hero_"))
+      .forEach(([heroKey, delta]) => {
+        const shortKey = heroKey.replace("hero_", "");
+        const heroName = HERO_DISPLAY_NAMES[shortKey] ?? toTitleCase(shortKey);
+        const absolute = Math.abs(delta);
+        const levelLabel = absolute === 1 ? "level" : "levels";
+        const targetLevelValue =
+          heroLevelsRecord && shortKey in heroLevelsRecord ? toNumberValue(heroLevelsRecord[shortKey]) : null;
+        const nowText = targetLevelValue != null ? ` (now ${formatNumber(targetLevelValue)})` : "";
+        const changeVerb = delta > 0 ? "leveled up" : "dropped";
+        appendDescription(heroKey, `${heroName} ${changeVerb} ${formatNumber(absolute)} ${levelLabel}${nowText}`);
+      });
+
+    Object.entries(enrichedDeltas)
+      .filter(([key]) => key.startsWith("pet_"))
+      .forEach(([petKey, delta]) => {
+        const shortKey = petKey.replace("pet_", "");
+        const petName = toTitleCase(shortKey);
+        const absolute = Math.abs(delta);
+        const levelLabel = absolute === 1 ? "level" : "levels";
+        const currentLevel =
+          petLevelsRecord && shortKey in petLevelsRecord ? toNumberValue(petLevelsRecord[shortKey]) : null;
+        const nowText = currentLevel != null ? ` (now ${formatNumber(currentLevel)})` : "";
+        const changeVerb = delta > 0 ? "leveled up" : "dropped";
+        appendDescription(petKey, `${petName} ${changeVerb} ${formatNumber(absolute)} ${levelLabel}${nowText}`);
+      });
+
+    Object.entries(enrichedDeltas)
+      .filter(([key]) => key.startsWith("equipment_"))
+      .forEach(([equipmentKey, delta]) => {
+        const shortKey = equipmentKey.replace("equipment_", "");
+        const equipmentName = toTitleCase(shortKey);
+        const absolute = Math.abs(delta);
+        const levelLabel = absolute === 1 ? "level" : "levels";
+        const currentLevel =
+          equipmentLevelsRecord && shortKey in equipmentLevelsRecord
+            ? toNumberValue(equipmentLevelsRecord[shortKey])
+            : null;
+        const nowText = currentLevel != null ? ` (now ${formatNumber(currentLevel)})` : "";
+        const changeVerb = delta > 0 ? "upgraded" : "downgraded";
+        appendDescription(
+          equipmentKey,
+          `${equipmentName} ${changeVerb} ${formatNumber(absolute)} ${levelLabel}${nowText}`,
+        );
+      });
+
+    if (enrichedDeltas.th !== undefined) {
+      const changeMagnitude = Math.abs(enrichedDeltas.th);
+      const levelLabel = changeMagnitude === 1 ? "level" : "levels";
+      const changeDirection = enrichedDeltas.th > 0 ? "upgraded" : "downgraded";
+      appendDescription("th", `Town Hall ${changeDirection} ${formatNumber(changeMagnitude)} ${levelLabel}`);
+    }
+
+    Object.entries(enrichedDeltas).forEach(([key, delta]) => {
+      if (usedDeltaKeys.has(key)) return;
+      if (standardDeltaSet.has(key)) return;
+      if (key.startsWith("hero_") || key.startsWith("pet_") || key.startsWith("equipment_")) return;
+      appendDescription(key, `${toTitleCase(key)} ${formatSignedNumber(delta)}`);
+    });
+
+    if (!descriptionParts.length) {
+      const fallbackDescriptions = buildEventFallbackDescriptions(
+        point,
+        primaryEvent,
+        otherEventLabels,
+        enrichedDeltas,
+      );
+      if (fallbackDescriptions.length) {
+        descriptionParts.push(...fallbackDescriptions);
+      }
+    }
+
+    if (!descriptionParts.length) {
+      const statsContext = buildStatsContext(point, usedDeltaKeys);
+      if (statsContext) {
+        descriptionParts.push(statsContext);
+      }
+    }
+
+    if (!descriptionParts.length) {
+      return;
+    }
+
+    let specificTitle = meta.title;
+    if (enrichedDeltas.trophies !== undefined || enrichedDeltas.ranked_trophies !== undefined) {
+      const deltaValue = enrichedDeltas.trophies ?? enrichedDeltas.ranked_trophies ?? 0;
+      specificTitle = `Trophy ${deltaValue >= 0 ? "Gain" : "Loss"}`;
+    } else if (enrichedDeltas.donations !== undefined || enrichedDeltas.donations_rcv !== undefined) {
+      specificTitle = "Donation Activity";
+    } else if (enrichedDeltas.war_stars !== undefined) {
+      specificTitle = "War Performance";
+    } else if (enrichedDeltas.capital_contrib !== undefined) {
+      specificTitle = "Capital Contribution";
+    } else if (Object.keys(enrichedDeltas).some((key) => key.startsWith("hero_"))) {
+      specificTitle = "Hero Upgrade";
+    } else if (enrichedDeltas.th !== undefined) {
+      specificTitle = "Town Hall Upgrade";
+    }
+
+    items.push({
+      id: `canonical-${point.snapshotDate}-${index}`,
+      date: point.snapshotDate,
+      title: specificTitle,
+      description: descriptionParts.join(" • "),
+      tone: meta.tone,
+      icon: meta.icon,
     });
   });
 
-  if (includeLeadership) {
+  if (includeLeadership && profile?.history) {
+    profile.history.movements.forEach((movement, index) => {
+      if (!movement?.date) return;
+      const title =
+        movement.type === 'joined'
+          ? 'Joined the clan'
+          : movement.type === 'departed'
+            ? 'Departed the clan'
+            : 'Returned to the clan';
+      const descriptionParts: string[] = [];
+      if (movement.reason) descriptionParts.push(movement.reason);
+      if (movement.tenureAtDeparture != null) {
+        descriptionParts.push(`${movement.tenureAtDeparture} day tenure credited`);
+      }
+      if (movement.notes) descriptionParts.push(movement.notes);
+      items.push({
+        id: `movement-${index}-${movement.date}`,
+        date: movement.date,
+        title,
+        description: descriptionParts.join(' • ') || undefined,
+        tone:
+          movement.type === 'departed'
+            ? 'warning'
+            : movement.type === 'returned'
+              ? 'positive'
+              : 'default',
+        icon:
+          movement.type === 'joined'
+            ? 'join'
+            : movement.type === 'departed'
+              ? 'depart'
+              : 'return',
+      });
+    });
+
     profile.leadership.tenureActions.forEach((action) => {
       if (!action.createdAt) return;
-      const isGrant = action.action === "granted";
-      push({
+      const isGrant = action.action === 'granted';
+      items.push({
         id: `tenure-${action.id}`,
         date: action.createdAt,
-        title: isGrant ? "Tenure granted" : "Tenure revoked",
+        title: isGrant ? 'Tenure granted' : 'Tenure revoked',
         description: action.reason || undefined,
-        tone: isGrant ? "positive" : "warning",
-        icon: "tenure",
+        tone: isGrant ? 'positive' : 'warning',
+        icon: 'tenure',
       });
     });
 
     profile.leadership.warnings.forEach((warning) => {
       if (!warning.createdAt) return;
-      push({
+      items.push({
         id: `warning-${warning.id}`,
         date: warning.createdAt,
-        title: warning.isActive ? "Warning issued" : "Warning recorded",
+        title: warning.isActive ? 'Warning issued' : 'Warning recorded',
         description: warning.warningNote || undefined,
-        tone: "warning",
-        icon: "warning",
+        tone: 'warning',
+        icon: 'warning',
       });
     });
 
     profile.leadership.notes.forEach((note) => {
       if (!note.createdAt) return;
-      push({
+      items.push({
         id: `note-${note.id}`,
         date: note.createdAt,
-        title: "Leadership note",
+        title: 'Leadership note',
         description: note.note,
-        tone: "default",
-        icon: "note",
+        tone: 'default',
+        icon: 'note',
       });
     });
   }
 
-  profile.joinerEvents.forEach((event) => {
+  profile?.joinerEvents.forEach((event) => {
     if (!event.detectedAt) return;
-    push({
+    items.push({
       id: `joiner-${event.id}`,
       date: event.detectedAt,
-      title: event.status === "reviewed" ? "Joiner reviewed" : "New joiner detected",
+      title: event.status === 'reviewed' ? 'Joiner reviewed' : 'New joiner detected',
       description:
         event.metadata?.source_snapshot_id
           ? `Snapshot ${event.metadata.source_snapshot_id}`
           : undefined,
-      tone: event.status === "reviewed" ? "positive" : "default",
-      icon: "joiner",
+      tone: event.status === 'reviewed' ? 'positive' : 'default',
+      icon: 'joiner',
     });
   });
 
-  return items.sort((a, b) => {
+  const sortedItems = items.sort((a, b) => {
     const aTime = new Date(a.date).getTime();
     const bTime = new Date(b.date).getTime();
     return bTime - aTime;
   });
+  
+  return sortedItems;
 }
 
 function deriveDonationSeries(profile: SupabasePlayerProfilePayload | null) {
@@ -362,13 +946,21 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
   console.log('Clan hero averages from API:', clanHeroAverages);
 
   // Hero icon mapping
-  const HERO_ICON_MAP: Record<string, { src: string; alt: string }> = {
-    BK: { src: '/assets/heroes/Barbarian_King.png', alt: 'Barbarian King' },
-    AQ: { src: '/assets/heroes/Archer_Queen.png', alt: 'Archer Queen' },
-    GW: { src: '/assets/heroes/Grand_Warden.png', alt: 'Grand Warden' },
-    RC: { src: '/assets/heroes/Royal_Champion.png', alt: 'Royal Champion' },
-    MP: { src: '/assets/heroes/Minion_Prince.png', alt: 'Minion Prince' },
-  };
+const HERO_ICON_MAP: Record<string, { src: string; alt: string }> = {
+  BK: { src: '/assets/heroes/Barbarian_King.png', alt: 'Barbarian King' },
+  AQ: { src: '/assets/heroes/Archer_Queen.png', alt: 'Archer Queen' },
+  GW: { src: '/assets/heroes/Grand_Warden.png', alt: 'Grand Warden' },
+  RC: { src: '/assets/heroes/Royal_Champion.png', alt: 'Royal Champion' },
+  MP: { src: '/assets/heroes/Minion_Prince.png', alt: 'Minion Prince' },
+};
+
+const HERO_LABELS: Record<string, string> = {
+  BK: 'Barbarian King',
+  AQ: 'Archer Queen',
+  GW: 'Grand Warden',
+  RC: 'Royal Champion',
+  MP: 'Minion Prince',
+};
 
   const petEntries = useMemo(() => {
     if (!summary?.pets) return [] as Array<[string, number]>;
@@ -536,7 +1128,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
   );
 
   return (
-    <DashboardLayout>
+    <DashboardLayout clanName={summary?.clanName ?? undefined}>
       <div className="min-h-screen bg-slate-950/95 pb-20">
         <div className="w-full px-4 pb-16 pt-10">
           <div className="mb-6 flex items-center gap-3 text-sm text-slate-400">
@@ -580,7 +1172,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                 <div className="flex flex-col gap-5">
                   <div>
                     <h1 className="font-black text-3xl text-white md:text-4xl tracking-wider drop-shadow-2xl" style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: '700', letterSpacing: '0.05em' }}>
-                      {summary?.name ?? "Unknown Player"}
+                      {loading ? "Loading player..." : (summary?.name ?? "Unknown Player")}
                     </h1>
                     <div className="mt-1 flex flex-wrap items-center gap-3 text-sm text-slate-300/80">
                       <span className="rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.32em] text-slate-200">
@@ -595,7 +1187,11 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                   <div className="flex items-center gap-4">
                     <div className="flex h-16 w-16 items-center justify-center">
                       {summary?.townHallLevel ? (
-                        <TownHallBadge level={summary.townHallLevel} />
+                        <TownHallBadge 
+                          level={summary.townHallLevel} 
+                          size="lg"
+                          levelBadgeClassName="absolute -bottom-1 -right-1 text-sm font-bold text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)]"
+                        />
                       ) : (
                         <span className="text-slate-300">TH?</span>
                       )}
@@ -1168,6 +1764,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
                         )}
                       </div>
                     </GlassCard>
+
                   </div>
 
                   <div className="space-y-6">
@@ -1644,6 +2241,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
           </div>
         </Modal>
       )}
+
     </DashboardLayout>
   );
 }
