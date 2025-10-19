@@ -182,6 +182,7 @@ export interface SupabasePlayerProfilePayload {
   summary: PlayerSummarySupabase;
   timeline: PlayerTimelinePoint[];
   history: PlayerHistoryRecordSupabase | null;
+  clanHeroAverages?: Record<string, number>;
   leadership: PlayerLeadershipBundle;
   evaluations: PlayerEvaluationRecord[];
   joinerEvents: PlayerJoinerEventRecord[];
