@@ -3,6 +3,14 @@ import { z } from 'zod';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { calculateActivityScore } from '@/lib/business/calculations';
+import type { Member } from '@/types';
+import {
+  buildTimelineFromPlayerDay,
+  mapTimelinePointsToActivityEvents,
+  DEFAULT_SEASON_START_ISO,
+  type PlayerDayTimelineRow,
+} from '@/lib/activity/timeline';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Disable all caching
@@ -126,6 +134,91 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    type SnapshotMember = (typeof members)[number];
+
+    const timelineByPlayer = new Map<string, ReturnType<typeof buildTimelineFromPlayerDay>>();
+    try {
+      const sinceDate = new Date();
+      sinceDate.setDate(sinceDate.getDate() - 14);
+      const sinceIso = sinceDate.toISOString().slice(0, 10);
+
+      const { data: playerDayRows, error: playerDayError } = await supabase
+        .from('player_day')
+        .select(
+          'player_tag, date, clan_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability',
+        )
+        .eq('clan_tag', clanTag)
+        .gte('date', sinceIso)
+        .order('player_tag')
+        .order('date');
+
+      if (playerDayError) {
+        throw playerDayError;
+      }
+
+      if (playerDayRows && playerDayRows.length) {
+        const grouped = new Map<string, PlayerDayTimelineRow[]>();
+        for (const row of playerDayRows as PlayerDayTimelineRow[]) {
+          const tag = row.player_tag;
+          if (!grouped.has(tag)) {
+            grouped.set(tag, []);
+          }
+          grouped.get(tag)!.push(row);
+        }
+
+        for (const [playerTag, rows] of grouped) {
+          timelineByPlayer.set(playerTag, buildTimelineFromPlayerDay(rows, DEFAULT_SEASON_START_ISO));
+        }
+      }
+    } catch (error) {
+      console.warn('[Roster API] Failed to load player_day timelines', error);
+    }
+
+    const toMemberForActivity = (member: SnapshotMember): Member => {
+      const enriched = {
+        warStars: member.war_stars ?? null,
+        attackWins: member.attack_wins ?? null,
+        defenseWins: member.defense_wins ?? null,
+        capitalContributions: member.capital_contributions ?? null,
+        builderHallLevel: member.builder_hall_level ?? null,
+        versusTrophies: member.versus_trophies ?? null,
+        versusBattleWins: member.versus_battle_wins ?? null,
+        builderLeagueId: member.builder_league_id ?? null,
+        achievementCount: member.achievement_count ?? null,
+        achievementScore: member.achievement_score ?? null,
+        expLevel: member.exp_level ?? null,
+        equipmentLevels: member.equipment_flags ?? null,
+        petLevels: member.pet_levels ?? null,
+        superTroopsActive: member.super_troops_active ?? null,
+        maxTroopCount: member.max_troop_count ?? null,
+        maxSpellCount: member.max_spell_count ?? null,
+      };
+
+      return {
+        tag: member.tag ?? null,
+        name: member.name ?? member.tag ?? 'Unknown',
+        role: member.role ?? null,
+        townHallLevel: member.th_level ?? null,
+        trophies: member.trophies ?? null,
+        rankedTrophies: member.ranked_trophies ?? null,
+        rankedLeagueId: member.ranked_league_id ?? null,
+        rankedLeagueName: member.ranked_league_name ?? null,
+        donations: member.donations ?? null,
+        donationsReceived: member.donations_received ?? null,
+        warStars: member.war_stars ?? null,
+        attackWins: member.attack_wins ?? null,
+        defenseWins: member.defense_wins ?? null,
+        capitalContributions: member.capital_contributions ?? null,
+        builderHallLevel: member.builder_hall_level ?? null,
+        versusTrophies: member.versus_trophies ?? null,
+        versusBattleWins: member.versus_battle_wins ?? null,
+        superTroopsActive: member.super_troops_active ?? null,
+        expLevel: member.exp_level ?? null,
+        activity: null,
+        enriched: enriched as Member['enriched'],
+      } as Member;
+    };
+
     // Calculate last week's trophies and running totals from member_snapshot_stats (historical data)
     let lastWeekTrophies = new Map<string, number>();
     let seasonTotalMap = new Map<string, number>();
@@ -239,61 +332,93 @@ export async function GET(req: NextRequest) {
     }
 
     // Transform members to the expected format
-    const transformedMembers = members.map(member => ({
-      id: member.id,
-      tag: member.tag,
-      name: member.name,
-      role: member.role,
-      townHallLevel: member.th_level,
-      trophies: member.trophies || 0,
-      rankedTrophies: member.ranked_trophies || 0,
-      rankedLeagueId: member.ranked_league_id,
-      rankedLeagueName: member.ranked_league_name,
-      leagueTrophies: member.league_trophies || 0,
-      battleModeTrophies: member.battle_mode_trophies || 0,
-      donations: member.donations || 0,
-      donationsReceived: member.donations_received || 0,
-      heroLevels: member.hero_levels,
-      bk: member.hero_levels?.bk || 0,
-      aq: member.hero_levels?.aq || 0,
-      gw: member.hero_levels?.gw || 0,
-      rc: member.hero_levels?.rc || 0,
-      mp: member.hero_levels?.mp || 0,
-      activityScore: member.activity_score || 0,
-      rushPercent: member.rush_percent || 0,
-      bestTrophies: member.best_trophies || 0,
-      bestVersusTrophies: member.best_versus_trophies || 0,
-      warStars: member.war_stars || 0,
-      attackWins: member.attack_wins || 0,
-      defenseWins: member.defense_wins || 0,
-      capitalContributions: member.capital_contributions || 0,
-      petLevels: member.pet_levels,
-      builderHallLevel: member.builder_hall_level || 0,
-      versusTrophies: member.versus_trophies || 0,
-      versusBattleWins: member.versus_battle_wins || 0,
-      builderLeagueId: member.builder_league_id,
-      maxTroopCount: member.max_troop_count || 0,
-      maxSpellCount: member.max_spell_count || 0,
-      superTroopsActive: member.super_troops_active,
-      achievementCount: member.achievement_count || 0,
-      achievementScore: member.achievement_score || 0,
-      expLevel: member.exp_level || 0,
-      equipmentFlags: member.equipment_flags,
-      tenureDays: member.tenure_days || 0,
-      tenureAsOf: member.tenure_as_of,
-      lastWeekTrophies: lastWeekTrophies.get(member.tag) || 0,
-      seasonTotalTrophies: (seasonTotalMap.get(member.tag) || 0) + (lastWeekTrophies.get(member.tag) || 0),
-      league: {
-        name: member.ranked_league_name,
-        trophies: member.league_trophies,
-        iconSmall: null,
-        iconMedium: null,
-      },
-      rankedLeague: {
-        id: member.ranked_league_id,
-        name: member.ranked_league_name,
-      },
-    }));
+    const transformedMembers = members.map((member) => {
+      const memberTag = member.tag ?? '';
+      const timelineStats = timelineByPlayer.get(memberTag);
+      const timelinePoints = timelineStats?.timeline ?? [];
+      const activityTimeline = mapTimelinePointsToActivityEvents(timelinePoints);
+
+      const activityEvidence = calculateActivityScore(toMemberForActivity(member), {
+        timeline: activityTimeline,
+        lookbackDays: 7,
+      });
+
+      const activityScore = activityEvidence?.score ?? member.activity_score ?? 0;
+      const resolvedLastWeek =
+        lastWeekTrophies.get(memberTag) ??
+        timelineStats?.lastWeekTrophies ??
+        0;
+
+      let resolvedSeasonTotal: number;
+      if (seasonTotalMap.has(memberTag)) {
+        const base = seasonTotalMap.get(memberTag) ?? 0;
+        const weekly = lastWeekTrophies.get(memberTag) ?? 0;
+        resolvedSeasonTotal = base + weekly;
+      } else if (timelineStats?.seasonTotalTrophies != null) {
+        resolvedSeasonTotal = timelineStats.seasonTotalTrophies;
+      } else {
+        resolvedSeasonTotal = 0;
+      }
+
+      return {
+        id: member.id,
+        tag: member.tag,
+        name: member.name,
+        role: member.role,
+        townHallLevel: member.th_level,
+        trophies: member.trophies || 0,
+        rankedTrophies: member.ranked_trophies || 0,
+        rankedLeagueId: member.ranked_league_id,
+        rankedLeagueName: member.ranked_league_name,
+        leagueTrophies: member.league_trophies || 0,
+        battleModeTrophies: member.battle_mode_trophies || 0,
+        donations: member.donations || 0,
+        donationsReceived: member.donations_received || 0,
+        heroLevels: member.hero_levels,
+        bk: member.hero_levels?.bk || 0,
+        aq: member.hero_levels?.aq || 0,
+        gw: member.hero_levels?.gw || 0,
+        rc: member.hero_levels?.rc || 0,
+        mp: member.hero_levels?.mp || 0,
+        activityScore,
+        activity: activityEvidence,
+        rushPercent: member.rush_percent || 0,
+        bestTrophies: member.best_trophies || 0,
+        bestVersusTrophies: member.best_versus_trophies || 0,
+        warStars: member.war_stars || 0,
+        attackWins: member.attack_wins || 0,
+        defenseWins: member.defense_wins || 0,
+        capitalContributions: member.capital_contributions || 0,
+        petLevels: member.pet_levels,
+        builderHallLevel: member.builder_hall_level || 0,
+        versusTrophies: member.versus_trophies || 0,
+        versusBattleWins: member.versus_battle_wins || 0,
+        builderLeagueId: member.builder_league_id,
+        maxTroopCount: member.max_troop_count || 0,
+        maxSpellCount: member.max_spell_count || 0,
+        superTroopsActive: member.super_troops_active,
+        achievementCount: member.achievement_count || 0,
+        achievementScore: member.achievement_score || 0,
+        expLevel: member.exp_level || 0,
+        equipmentFlags: member.equipment_flags,
+        tenureDays: member.tenure_days ?? null,
+        tenure_days: member.tenure_days ?? null,
+        tenureAsOf: member.tenure_as_of ?? null,
+        tenure_as_of: member.tenure_as_of ?? null,
+        lastWeekTrophies: resolvedLastWeek,
+        seasonTotalTrophies: resolvedSeasonTotal,
+        league: {
+          name: member.ranked_league_name,
+          trophies: member.league_trophies,
+          iconSmall: null,
+          iconMedium: null,
+        },
+        rankedLeague: {
+          id: member.ranked_league_id,
+          name: member.ranked_league_name,
+        },
+      };
+    });
 
     // Sort by trophies descending
     transformedMembers.sort((a, b) => (b.trophies || 0) - (a.trophies || 0));

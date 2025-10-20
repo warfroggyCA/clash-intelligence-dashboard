@@ -10,6 +10,8 @@ import { Button } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
+import { getMemberActivity } from '@/lib/business/calculations';
+import type { ActivityEvidence } from '@/types';
 
 interface JoinerRecord {
   id: string;
@@ -254,23 +256,34 @@ export default function LeadershipDashboard() {
 
     const activityCandidates = members
       .map((member) => {
-        const rawScore =
-          typeof member.activityScore === 'number'
-            ? member.activityScore
-            : typeof member.activity?.score === 'number'
-              ? member.activity.score
-              : null;
-        if (rawScore == null) return null;
+        const evidence = getMemberActivity(member as any);
+        if (!evidence || typeof evidence.score !== 'number') return null;
+
+        let topSignal: string | null = null;
+        if (evidence.breakdown) {
+          const sorted = Object.entries(evidence.breakdown)
+            .filter(([, value]) => value > 0)
+            .sort((a, b) => b[1] - a[1]);
+          if (sorted.length) {
+            const [category, value] = sorted[0];
+            topSignal = `${category} ${value.toFixed(1)} pts`;
+          }
+        } else if (evidence.indicators?.length) {
+          topSignal = evidence.indicators[0];
+        }
+
         return {
           member,
-          score: Math.round(rawScore),
+          score: Math.round(evidence.score),
+          level: evidence.level,
+          topSignal,
           ranked:
             typeof member.rankedTrophies === 'number'
               ? Math.round(member.rankedTrophies)
               : null,
         };
       })
-      .filter((entry): entry is { member: MemberType; score: number; ranked: number | null } => entry !== null);
+      .filter((entry): entry is { member: MemberType; score: number; level: ActivityEvidence['level']; topSignal: string | null; ranked: number | null } => entry !== null);
 
     const averageActivity = activityCandidates.length
       ? Math.round(activityCandidates.reduce((sum, entry) => sum + entry.score, 0) / activityCandidates.length)
@@ -283,7 +296,13 @@ export default function LeadershipDashboard() {
         key: `${entry.member.tag || entry.member.name || index}-activity`,
         label: formatName(entry.member),
         value: `${entry.score}/100`,
-        detail: entry.ranked != null ? `${numberFormatter.format(entry.ranked)} ranked trophies` : null,
+        detail: [
+          entry.level ? `Level ${entry.level}` : null,
+          entry.topSignal,
+          entry.ranked != null ? `${numberFormatter.format(entry.ranked)} ranked trophies` : null,
+        ]
+          .filter(Boolean)
+          .join(' • ') || null,
         badge: index === 0 ? 'Top Pulse' : null,
       }));
 
@@ -350,7 +369,33 @@ export default function LeadershipDashboard() {
         badge: entry.atBest ? 'Record' : null,
       }));
 
-    if (!topActivity.length && !topRanked.length && !bestChasers.length) {
+    const tenureCandidates = members
+      .map((member) => {
+        const tenure =
+          typeof (member as any).tenure_days === 'number'
+            ? (member as any).tenure_days
+            : typeof (member as any).tenure === 'number'
+              ? (member as any).tenure
+              : null;
+        if (tenure == null || tenure <= 0) return null;
+        return { member, tenure: Math.round(tenure) };
+      })
+      .filter((entry): entry is { member: MemberType; tenure: number } => entry !== null);
+
+    const tenureLeaders: HighlightItem[] = [...tenureCandidates]
+      .sort((a, b) => b.tenure - a.tenure)
+      .slice(0, 4)
+      .map((entry, index) => ({
+        key: `${entry.member.tag || entry.member.name || index}-tenure`,
+        label: formatName(entry.member),
+        value: `${numberFormatter.format(entry.tenure)} days`,
+        detail: entry.member.tenure_as_of
+          ? `As of ${new Date(entry.member.tenure_as_of).toLocaleDateString()}`
+          : null,
+        badge: index === 0 ? 'Veteran' : null,
+      }));
+
+    if (!topActivity.length && !topRanked.length && !bestChasers.length && !tenureLeaders.length) {
       return null;
     }
 
@@ -358,6 +403,7 @@ export default function LeadershipDashboard() {
       topActivity,
       topRanked,
       bestChasers,
+      tenureLeaders,
       averageActivity,
       rankedLeader,
     };
@@ -487,7 +533,11 @@ export default function LeadershipDashboard() {
                   )}
                 </div>
               </div>
-              <div className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div
+                className={`mt-6 grid grid-cols-1 gap-4 ${
+                  enrichmentInsights.tenureLeaders.length ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+                }`}
+              >
                 <InsightList
                   title="Activity Pulse Leaders"
                   subtitle="Highest weighted activity scores across the roster."
@@ -503,6 +553,13 @@ export default function LeadershipDashboard() {
                   subtitle="Players closest to matching their all-time trophy peak."
                   items={enrichmentInsights.bestChasers}
                 />
+                {enrichmentInsights.tenureLeaders.length > 0 && (
+                  <InsightList
+                    title="Tenure Anchors"
+                    subtitle="Longest continuous roster presence (days credited)."
+                    items={enrichmentInsights.tenureLeaders}
+                  />
+                )}
               </div>
             </div>
           )}

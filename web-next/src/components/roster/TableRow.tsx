@@ -535,6 +535,21 @@ export const TableRow: React.FC<TableRowProps> = ({
         </span>
       </TableCell>
 
+      {/* Tenure Column */}
+      <TableCell className="text-center border-r border-slate-400" isActiveSort={isActiveColumn('tenure')}>
+        <span
+          className="tooltip-trigger font-semibold"
+          data-tooltip={member.tenure_as_of
+            ? `Tenure last set: ${safeLocaleDateString(member.tenure_as_of, {
+                fallback: 'Unknown Date',
+                context: 'RosterTableRow member.tenure_as_of'
+              })}`
+            : 'Tenure accrues daily from join or last set date'}
+        >
+          {formatDays(member.tenure_days || member.tenure)}
+        </span>
+      </TableCell>
+
 
       {/* Hero Columns */}
       <TableCell
@@ -666,22 +681,6 @@ export const TableRow: React.FC<TableRowProps> = ({
       >
         <span className="font-semibold text-clash-blue">{formatNumber(member.donationsReceived)}</span>
       </TableCell>
-
-      {/* Tenure Column */}
-      <TableCell className="text-center border-r border-slate-300" isActiveSort={isActiveColumn('tenure')}>
-        <span
-          className="tooltip-trigger font-semibold"
-          data-tooltip={member.tenure_as_of
-            ? `Tenure last set: ${safeLocaleDateString(member.tenure_as_of, {
-                fallback: 'Unknown Date',
-                context: 'RosterTableRow member.tenure_as_of'
-              })}`
-            : 'Tenure accrues daily from join or last set date'}
-        >
-          {formatDays(member.tenure_days || member.tenure)}
-        </span>
-      </TableCell>
-
 
       {/* Actions Menu */}
       <TableCell className="text-center" isActiveSort={isActiveColumn('actions')}>

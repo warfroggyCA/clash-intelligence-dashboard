@@ -90,6 +90,15 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Cumulative Monday trophy totals since season start'
   },
   {
+    key: 'tenure',
+    label: 'Tenure',
+    shortLabel: 'Tenure',
+    group: 'Basic Info',
+    sortable: true,
+    className: 'text-center border-r border-gray-400',
+    description: 'Days credited in clan (editable)'
+  },
+  {
     key: 'bk',
     label: 'BK',
     shortLabel: 'BK',
@@ -180,15 +189,6 @@ const COLUMN_CONFIGS: ColumnConfig[] = [
     description: 'Donations received this season'
   },
   {
-    key: 'tenure',
-    label: 'Tenure',
-    shortLabel: 'Tenure',
-    group: 'Stats',
-    sortable: true,
-    className: 'text-center border-r border-gray-300',
-    description: 'Days in clan'
-  },
-  {
     key: 'actions',
     label: 'Actions',
     shortLabel: 'Actions',
@@ -212,7 +212,7 @@ interface GroupConfig {
 const GROUP_CONFIGS: GroupConfig[] = [
   {
     name: 'Basic Info',
-    columns: 5,
+    columns: 6,
     className: 'border-r border-slate-400'
   },
   {
@@ -229,11 +229,6 @@ const GROUP_CONFIGS: GroupConfig[] = [
     name: 'Donations',
     columns: 2,
     className: 'border-r border-slate-400'
-  },
-  {
-    name: 'Stats',
-    columns: 1,
-    className: ''
   },
   {
     name: '',
