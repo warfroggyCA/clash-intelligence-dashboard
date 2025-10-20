@@ -22,7 +22,7 @@ interface PlayerCardProps {
 export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
   const rushPercent = calculateRushPercentage(member);
   const donations = calculateDonationBalance(member);
-  const activity = getMemberActivity(member);
+  const activity = member.activity ?? getMemberActivity(member);
   const th = getTownHallLevel(member);
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const roleVariant = getRoleBadgeVariant(member.role);

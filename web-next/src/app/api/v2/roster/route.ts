@@ -11,6 +11,7 @@ import {
   DEFAULT_SEASON_START_ISO,
   type PlayerDayTimelineRow,
 } from '@/lib/activity/timeline';
+import { readLedgerEffective } from '@/lib/tenure';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Disable all caching
@@ -85,6 +86,9 @@ export async function GET(req: NextRequest) {
       }
     }
 
+    // Get tenure data from the tenure ledger
+    const tenureMap = await readLedgerEffective();
+
     const members = Array.from(latestSnapshots.values()).map(snapshot => {
       const member = snapshot.payload.member;
       const ranked = member.ranked || {};
@@ -128,8 +132,8 @@ export async function GET(req: NextRequest) {
         achievement_score: 0, // Not available in canonical
         exp_level: member.expLevel,
         equipment_flags: member.equipmentLevels,
-        tenure_days: member.tenure?.days,
-        tenure_as_of: member.tenure?.asOf,
+        tenure_days: tenureMap[snapshot.player_tag] || null,
+        tenure_as_of: null, // Will be populated when tenure is updated
         snapshot_date: snapshot.snapshot_date,
       };
     });

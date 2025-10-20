@@ -112,7 +112,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = getMemberActivity(member);
+  const activity = member.activity ?? getMemberActivity(member);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
@@ -214,16 +214,28 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
       const res = await fetch('/api/tenure/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
+        body: JSON.stringify({
+          updates: [
+            {
+              tag: member.tag,
+              tenure_days: days,
+              clanTag: clanTagForActions,
+              player_name: member.name,
+            },
+          ],
+        }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
         const message = payload?.error || payload?.message || 'Failed to update tenure';
         throw new Error(message);
       }
-      setTenureDays(days);
-      setTenureInput(String(days));
-      updateLocalTenure(days, new Date().toISOString().slice(0, 10));
+      const result = payload?.data?.updates?.[0];
+      const tenureDays = typeof result?.tenureDays === 'number' ? result.tenureDays : days;
+      const asOf = result?.asOf ?? new Date().toISOString().slice(0, 10);
+      setTenureDays(tenureDays);
+      setTenureInput(String(tenureDays));
+      updateLocalTenure(tenureDays, asOf);
       showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
       await reloadRoster();
     } catch (error: any) {
@@ -251,11 +263,11 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
         const message = payload?.error || payload?.message || 'Failed to grant prior tenure';
         throw new Error(message);
       }
-      const base = Number(payload?.data?.base ?? tenureDays);
+      const grantedTenure = typeof payload?.data?.tenureDays === 'number' ? payload.data.tenureDays : tenureDays;
       const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
-      setTenureDays(base);
-      setTenureInput(String(base));
-      updateLocalTenure(base, asOf);
+      setTenureDays(grantedTenure);
+      setTenureInput(String(grantedTenure));
+      updateLocalTenure(grantedTenure, asOf);
       showToast('Granted prior tenure', 'success');
       await reloadRoster();
     } catch (error: any) {

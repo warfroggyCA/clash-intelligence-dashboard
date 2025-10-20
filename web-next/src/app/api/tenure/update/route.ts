@@ -5,12 +5,13 @@ export const runtime = "nodejs";
 import { NextResponse } from 'next/server';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { ymdNowUTC } from '@/lib/date';
-import { appendTenureLedgerEntry, readLedgerEffective } from '@/lib/tenure';
+import { readLedgerEffective } from '@/lib/tenure';
 import { readDepartures } from '@/lib/departures';
 import { cfg } from '@/lib/config';
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { createApiContext } from '@/lib/api/route-helpers';
+import { applyTenureAction } from '@/lib/services/tenure-service';
 
 type Body = {
   clanTag?: string;
@@ -58,9 +59,27 @@ export async function POST(req: Request) {
       base = map[memberTag] || 0;
     }
 
-    await appendTenureLedgerEntry(memberTag, base, asOf);
+    const result = await applyTenureAction({
+      clanTag,
+      playerTag: memberTag,
+      baseDays: base,
+      asOf,
+      reason: mode === 'grant-existing' ? 'Resuming tenure after return' : 'Reset tenure to day 1',
+      action: mode === 'grant-existing' ? 'granted' : 'revoked',
+    });
 
-    return json({ success: true, data: { clanTag, memberTag, mode, base, asOf, message: mode === 'grant-existing' ? 'Granted prior tenure starting today' : 'Reset tenure starting today' } });
+    return json({
+      success: true,
+      data: {
+        clanTag,
+        memberTag,
+        mode,
+        base,
+        asOf: result.asOf,
+        tenureDays: result.tenureDays,
+        message: mode === 'grant-existing' ? 'Granted prior tenure starting today' : 'Reset tenure starting today',
+      },
+    });
   } catch (e: any) {
     return json({ success: false, error: e?.message || 'Failed to update tenure' }, { status: 500 });
   }

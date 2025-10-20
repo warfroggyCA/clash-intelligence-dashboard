@@ -155,7 +155,7 @@ interface RosterData {
   clanTag: string;
 }
 
-type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'season' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
+type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'season' | 'tenure' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
 type SortDirection = 'asc' | 'desc';
 
 // League tier ranking for sorting (highest to lowest)
@@ -297,6 +297,9 @@ export default function SimpleRosterPage() {
         case 'season':
           comparison = (a.seasonTotalTrophies ?? 0) - (b.seasonTotalTrophies ?? 0);
           break;
+        case 'tenure':
+          comparison = (a.tenureDays ?? 0) - (b.tenureDays ?? 0);
+          break;
         case 'rush':
           comparison = calculateRushPercentage(a) - calculateRushPercentage(b);
           break;
@@ -387,6 +390,7 @@ export default function SimpleRosterPage() {
               mp: m.mp,
               seasonTotalTrophies: m.seasonTotalTrophies ?? null,
               activity: m.activity ?? null,
+              tenureDays: m.tenureDays ?? null,
             })),
             clanName: apiData.data.clan.name,
             clanTag: apiData.data.clan.tag,
@@ -469,7 +473,7 @@ export default function SimpleRosterPage() {
 
         {/* Roster Table - Desktop */}
         <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-visible w-full">
-          <div className="overflow-x-auto overflow-y-visible">
+          <div className="overflow-visible">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-brand-surface-secondary border-b border-brand-border">
@@ -521,6 +525,13 @@ export default function SimpleRosterPage() {
                   className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                 >
                   Running Total {sortKey === 'season' && (sortDirection === 'asc' ? '↑' : '↓')}
+                </th>
+                <th 
+                  onClick={() => handleSort('tenure')}
+                  title="Days since joining the clan - Click to sort"
+                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                >
+                  Tenure (days) {sortKey === 'tenure' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th 
                   onClick={() => handleSort('rush')}
@@ -745,6 +756,18 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                             className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
                           >
                             {player.seasonTotalTrophies.toLocaleString()}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-brand-text-muted">–</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {player.tenureDays !== null && player.tenureDays !== undefined ? (
+                          <span 
+                            title={`Tenure: ${player.tenureDays} days since joining`}
+                            className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
+                          >
+                            {player.tenureDays}
                           </span>
                         ) : (
                           <span className="text-xs text-brand-text-muted">–</span>

@@ -122,6 +122,8 @@ const resolveAceEntry = (
   );
 };
 
+const resolveActivityEvidence = (member: Member) => member.activity ?? getMemberActivity(member);
+
 const sortMembers = (
   members: Member[],
   sortKey: SortKey,
@@ -186,8 +188,8 @@ const sortMembers = (
         bValue = b.tenure_days || b.tenure || 0;
         break;
       case 'activity':
-        aValue = getMemberActivity(a).score;
-        bValue = getMemberActivity(b).score;
+        aValue = resolveActivityEvidence(a).score;
+        bValue = resolveActivityEvidence(b).score;
         break;
       default:
         return 0;
@@ -248,7 +250,7 @@ const filterMembers = (members: Member[], filters: TableFilters): Member[] => {
 
     // Activity level filter
     if (filters.activityLevel && filters.activityLevel !== 'all') {
-      const activity = getMemberActivity(member);
+      const activity = resolveActivityEvidence(member);
       if (activity.level.toLowerCase() !== filters.activityLevel) return false;
     }
 

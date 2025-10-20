@@ -169,7 +169,17 @@ export default function ReturningPlayerReview() {
           await fetch('/api/tenure/save', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ updates: [{ tag: current.memberTag, tenure_days: award }] }),
+            body: JSON.stringify({
+              updates: [
+                {
+                  tag: current.memberTag,
+                  tenure_days: award,
+                  clanTag,
+                  player_name: currentName,
+                  reason: 'Return award via review modal',
+                },
+              ],
+            }),
           });
         } catch {}
       }

@@ -21,9 +21,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Member, Roster, SortKey } from '@/types';
 import { safeLocaleDateString } from '@/lib/date';
-import { 
-  calculateRushPercentage, 
-  calculateDonationBalance, 
+import {
+  calculateRushPercentage,
+  calculateDonationBalance,
   getMemberActivity,
   getTownHallLevel,
   isRushed,
@@ -31,7 +31,7 @@ import {
   isNetReceiver,
   isLowDonator,
   getMemberAceScore,
-  getMemberAceAvailability
+  getMemberAceAvailability,
 } from '@/lib/business/calculations';
 import type { AceScoreResult } from '@/lib/ace-score';
 import { HERO_MAX_LEVELS, HERO_MIN_TH, HeroCaps } from '@/types';
@@ -198,7 +198,7 @@ export const TableRow: React.FC<TableRowProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = getMemberActivity(member);
+  const activity = useMemo(() => member.activity ?? getMemberActivity(member), [member]);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
@@ -417,15 +417,27 @@ export const TableRow: React.FC<TableRowProps> = ({
       const res = await fetch('/api/tenure/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
+        body: JSON.stringify({
+          updates: [
+            {
+              tag: member.tag,
+              tenure_days: days,
+              clanTag: clanTagForActions,
+              player_name: member.name,
+            },
+          ],
+        }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
         const message = payload?.error || payload?.message || 'Failed to update tenure';
         throw new Error(message);
       }
-      showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
-      updateLocalTenure(days, new Date().toISOString().slice(0, 10));
+      const result = payload?.data?.updates?.[0];
+      const tenureDays = typeof result?.tenureDays === 'number' ? result.tenureDays : days;
+      const asOf = result?.asOf ?? new Date().toISOString().slice(0, 10);
+      showToast(`Tenure updated to ${tenureDays} day${tenureDays === 1 ? '' : 's'}`, 'success');
+      updateLocalTenure(tenureDays, asOf);
       setTenureEditorOpen(false);
       if (clanTagForActions) {
         await loadRoster(clanTagForActions, { mode: 'live', force: true });
@@ -704,9 +716,9 @@ export const TableRow: React.FC<TableRowProps> = ({
                   throw new Error(message);
                 }
                 showToast('Granted prior tenure', 'success');
-                const baseDays = payload?.data?.base ?? currentTenureDays;
+                const tenureDays = typeof payload?.data?.tenureDays === 'number' ? payload.data.tenureDays : currentTenureDays;
                 const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
-                updateLocalTenure(baseDays, asOf);
+                updateLocalTenure(tenureDays, asOf);
                 if (clanTagForActions) {
                   await loadRoster(clanTagForActions, { mode: 'live', force: true });
                 }

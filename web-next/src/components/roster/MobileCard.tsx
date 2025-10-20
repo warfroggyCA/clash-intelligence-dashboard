@@ -80,7 +80,7 @@ export const MobileCard: React.FC<MobileCardProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = getMemberActivity(member);
+  const activity = member.activity ?? getMemberActivity(member);
   const rushWarning = isRushed(member);
   const rushSevere = isVeryRushed(member);
   const netReceiver = isNetReceiver(member);
@@ -126,7 +126,16 @@ export const MobileCard: React.FC<MobileCardProps> = ({
       const res = await fetch('/api/tenure/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ updates: [{ tag: member.tag, tenure_days: days }] }),
+        body: JSON.stringify({
+          updates: [
+            {
+              tag: member.tag,
+              tenure_days: days,
+              clanTag: clanTagForActions,
+              player_name: member.name,
+            },
+          ],
+        }),
       });
       const payload = await res.json().catch(() => null);
       if (!res.ok) {
