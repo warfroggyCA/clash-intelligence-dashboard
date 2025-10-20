@@ -761,8 +761,11 @@ export interface CoCPlayer {
   donations?: number;
   donationsReceived?: number;
   attackWins?: number;
+  defenseWins?: number;
   versusBattleWins?: number;
   versusTrophies?: number;
+  builderBaseTrophies?: number;
+  builderHallLevel?: number;
   warStars?: number;
   league?: {
     id: number;

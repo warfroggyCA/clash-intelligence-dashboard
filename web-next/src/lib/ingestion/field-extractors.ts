@@ -124,7 +124,7 @@ export function calculateAchievementScore(playerDetail: any): number | null {
 export function extractBuilderBaseMetrics(playerDetail: any) {
   return {
     builderHallLevel: playerDetail?.builderHallLevel ?? null,
-    versusTrophies: playerDetail?.versusTrophies ?? null,
+    versusTrophies: playerDetail?.builderBaseTrophies ?? playerDetail?.versusTrophies ?? null,
     versusBattleWins: playerDetail?.versusBattleWins ?? null,
     builderLeagueId: playerDetail?.builderBaseLeague?.id ?? null,
   };
