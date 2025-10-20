@@ -528,7 +528,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
 
         const dayRow = generatePlayerDayRow(previousState, state);
 
-        if (prevRow?.snapshot_hash === dayRow.snapshotHash && dayRow.notability === 0) {
+        if (prevRow?.date === dayRow.date && prevRow.snapshot_hash === dayRow.snapshotHash) {
           continue;
         }
 

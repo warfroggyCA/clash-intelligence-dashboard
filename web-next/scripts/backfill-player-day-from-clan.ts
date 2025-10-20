@@ -137,7 +137,7 @@ async function backfillPlayerDayFromClanSnapshots() {
         }
 
         // Skip if duplicate
-        if (existingRow?.snapshot_hash === dayRow.snapshotHash && dayRow.notability === 0) {
+        if (existingRow?.snapshot_hash === dayRow.snapshotHash) {
           console.log(`Skipping duplicate snapshot for ${member.tag} on ${clanSnapshot.snapshot_date}`);
           continue;
         }
