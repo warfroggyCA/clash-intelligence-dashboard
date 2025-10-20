@@ -77,7 +77,8 @@ interface TimelineItem {
     | "donation"
     | "legend"
     | "highlight"
-    | "war";
+    | "war"
+    | "builder";
 }
 
 interface PlayerProfileClientProps {
@@ -164,6 +165,8 @@ const TimelineIcon = ({ type }: { type: TimelineItem["icon"] }) => {
       return <Coins className={size} />;
     case "legend":
       return <Flame className={size} />;
+    case "builder":
+      return <Hammer className={size} />;
     case "highlight":
       return <Sparkles className={size} />;
     case "war":
@@ -437,9 +440,50 @@ const buildEventFallbackDescriptions = (
       fallback.push(total ? `War highlight — ${total} stars on record` : "War highlight recorded");
       break;
     }
+    case "war_activity": {
+      const warStarDelta =
+        typeof enrichedDeltas.war_stars === "number" ? enrichedDeltas.war_stars : null;
+      const attackDelta =
+        typeof enrichedDeltas.attack_wins === "number" ? enrichedDeltas.attack_wins : null;
+      const parts: string[] = [];
+      if (warStarDelta) {
+        parts.push(`+${formatNumber(warStarDelta)}⭐`);
+      }
+      if (attackDelta) {
+        parts.push(`+${formatNumber(attackDelta)} attack win${attackDelta > 1 ? "s" : ""}`);
+      }
+      fallback.push(parts.length ? `War activity ${parts.join(" • ")}` : "War activity recorded");
+      break;
+    }
     case "capital_activity": {
       const total = point.capitalContributions != null ? formatNumber(point.capitalContributions) : null;
       fallback.push(total ? `Capital contributions now ${total}` : "Capital contribution recorded");
+      break;
+    }
+    case "builder_activity": {
+      const winsDelta =
+        typeof enrichedDeltas.builder_battle_wins === "number"
+          ? enrichedDeltas.builder_battle_wins
+          : null;
+      const hallDelta =
+        typeof enrichedDeltas.builder_hall === "number" ? enrichedDeltas.builder_hall : null;
+      const trophyDelta =
+        typeof enrichedDeltas.builder_trophies === "number"
+          ? enrichedDeltas.builder_trophies
+          : null;
+      const parts: string[] = [];
+      if (hallDelta) {
+        parts.push(`BH +${formatNumber(Math.abs(hallDelta))}`);
+      }
+      if (winsDelta) {
+        parts.push(`+${formatNumber(winsDelta)} builder wins`);
+      }
+      if (trophyDelta) {
+        parts.push(
+          `${trophyDelta > 0 ? "+" : ""}${formatNumber(trophyDelta)} builder trophies`,
+        );
+      }
+      fallback.push(parts.length ? `Builder activity ${parts.join(" • ")}` : "Builder activity recorded");
       break;
     }
     case "legend_activity": {
@@ -481,8 +525,10 @@ const EVENT_META: Record<string, { title: string; icon: TimelineItem['icon']; to
   legend_activity: { title: "Legend League battles", icon: "legend", tone: "positive" },
   trophies_big_delta: { title: "Major trophy swing", icon: "trophy", tone: "positive" },
   war_perf_day: { title: "War highlight", icon: "war", tone: "positive" },
+  war_activity: { title: "War activity", icon: "war", tone: "positive" },
   capital_activity: { title: "Capital contribution", icon: "capital", tone: "positive" },
   donations_threshold: { title: "Donation milestone", icon: "donation", tone: "positive" },
+  builder_activity: { title: "Builder base push", icon: "builder", tone: "positive" },
 };
 
 const DEFAULT_EVENT_META: { title: string; icon: TimelineItem['icon']; tone: TimelineTone } = {
@@ -1130,153 +1176,219 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
   const timelineInsights = useMemo(() => {
     const insights: string[] = [];
     const timelineArray = Array.isArray(profile?.timeline)
-      ? (profile?.timeline as TimelinePoint[])
+      ? (profile.timeline as TimelinePoint[])
       : [];
     const points = timelineArray
-      .filter((point) => point?.snapshotDate)
+      .filter((point): point is TimelinePoint & { snapshotDate: string } => Boolean(point?.snapshotDate))
       .sort((a, b) => {
-          const aTime = new Date(a.snapshotDate as string).getTime();
-          const bTime = new Date(b.snapshotDate as string).getTime();
-          return bTime - aTime;
-        })
+        const aTime = new Date(a.snapshotDate as string).getTime();
+        const bTime = new Date(b.snapshotDate as string).getTime();
+        return bTime - aTime;
+      });
 
     if (!points.length) {
       return insights;
     }
 
+    const metrics = activityEvidence?.metrics ?? null;
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
-    // Donation streak analysis
+    const getDeltaValue = (point: TimelinePoint, candidates: string[]): number => {
+      if (!point?.deltas || typeof point.deltas !== "object") return 0;
+      const deltas = point.deltas as Record<string, unknown>;
+      for (const key of candidates) {
+        const value = deltas[key];
+        if (typeof value === "number" && Number.isFinite(value)) {
+          return value;
+        }
+      }
+      return 0;
+    };
+
+    const recentPoints = points.filter((point) => {
+      const date = new Date(point.snapshotDate as string);
+      return !Number.isNaN(date.getTime()) && date >= sevenDaysAgo;
+    });
+
+    const sumPositive = (keys: string[]): number => {
+      if (!recentPoints.length) return 0;
+      return recentPoints.reduce((sum, point) => {
+        const value = getDeltaValue(point, keys);
+        return value > 0 ? sum + value : sum;
+      }, 0);
+    };
+
+    const computeStreak = (keys: string[]): number => {
+      let streak = 0;
+      for (const point of points) {
+        const date = new Date(point.snapshotDate as string);
+        if (Number.isNaN(date.getTime()) || date < sevenDaysAgo) break;
+        const delta = getDeltaValue(point, keys);
+        if (delta > 0) {
+          streak += 1;
+        } else {
+          break;
+        }
+      }
+      return streak;
+    };
+
+    // Donation streak
     let donationStreak = 0;
-    for (let i = 0; i < points.length; i += 1) {
-      const point = points[i];
-      if (!point?.snapshotDate) break;
-      const date = new Date(point.snapshotDate);
-      if (Number.isNaN(date.getTime())) break;
-      const deltas = (point?.deltas ?? {}) as Record<string, number>;
-      const donationDelta =
-        typeof deltas.donations === "number"
-          ? deltas.donations
-          : typeof deltas.donation_delta === "number"
-            ? deltas.donation_delta
-            : null;
-      if (donationDelta && donationDelta > 0) {
+    for (const point of points) {
+      const date = new Date(point.snapshotDate as string);
+      if (Number.isNaN(date.getTime()) || date < sevenDaysAgo) break;
+      const donationDelta = getDeltaValue(point, ["donations", "donation_delta"]);
+      if (donationDelta > 0) {
         donationStreak += 1;
       } else {
         break;
       }
     }
     if (donationStreak >= 3) {
-      insights.push(`Donation streak: ${donationStreak} day${donationStreak > 1 ? "s" : ""} in a row`);
+      insights.push(`Donation streak: ${donationStreak} day${donationStreak > 1 ? "s" : ""} running`);
     }
 
-    // Trophy surge detection
-    const recentTrophies = points.slice(0, 3).map(p => p.trophies).filter((t): t is number => typeof t === 'number' && Number.isFinite(t));
+    // Trophy swings (latest 3 pulls)
+    const recentTrophies = points
+      .slice(0, 3)
+      .map((p) => (typeof p.trophies === "number" ? p.trophies : null))
+      .filter((t): t is number => t !== null);
     if (recentTrophies.length >= 2) {
       const currentTrophies = recentTrophies[0];
       const previousTrophies = recentTrophies[recentTrophies.length - 1];
       const trophyGain = currentTrophies - previousTrophies;
       if (trophyGain > 100) {
-        insights.push(`Trophy surge: +${formatNumber(trophyGain)} trophies in recent activity`);
+        insights.push(`Trophy surge: +${formatNumber(trophyGain)} trophies this week`);
       } else if (trophyGain < -100) {
-        insights.push(`Trophy drop: ${formatNumber(trophyGain)} trophies in recent activity`);
+        insights.push(`Trophy drop: ${formatNumber(trophyGain)} trophies this week`);
       }
     }
 
-    // Weekly totals and patterns
-    const lastWeekPoints = points.filter((point) => {
-      if (!point?.snapshotDate) return false;
-      const date = new Date(point.snapshotDate);
-      if (Number.isNaN(date.getTime())) return false;
-      return date >= sevenDaysAgo;
+    // War activity
+    const warStarsTotal = metrics?.warStarsDelta ?? sumPositive(["war_stars"]);
+    const attackWinsTotal = metrics?.attackWinsDelta ?? sumPositive(["attack_wins"]);
+    const defenseWinsTotal = metrics?.defenseWinsDelta ?? sumPositive(["defense_wins"]);
+    const warStreak = computeStreak(["war_stars", "attack_wins"]);
+    if (warStarsTotal > 0 || attackWinsTotal > 0 || defenseWinsTotal > 0) {
+      const parts: string[] = [];
+      if (warStarsTotal > 0) {
+        parts.push(`+${formatNumber(warStarsTotal)}⭐`);
+      }
+      if (attackWinsTotal > 0) {
+        parts.push(`+${formatNumber(attackWinsTotal)} attack win${attackWinsTotal === 1 ? "" : "s"}`);
+      }
+      if (defenseWinsTotal > 0) {
+        parts.push(`+${formatNumber(defenseWinsTotal)} defense hold${defenseWinsTotal === 1 ? "" : "s"}`);
+      }
+      const streakSuffix = warStreak >= 2 ? ` • ${warStreak}-day streak` : "";
+      insights.push(`War gains: ${parts.join(" • ")}${streakSuffix}`);
+    }
+
+    // Capital contributions
+    const capitalTotal =
+      metrics?.capitalContributionDelta ?? sumPositive(["capital_contrib", "capital_delta"]);
+    if (capitalTotal > 0) {
+      insights.push(`Capital invested: ${formatNumber(capitalTotal)} gold this week`);
+    }
+
+    // Builder activity
+    const builderWinsTotal =
+      metrics?.builderWinsDelta ?? sumPositive(["builder_battle_wins", "versus_battle_wins"]);
+    const builderHallDelta =
+      metrics?.builderHallDelta ?? sumPositive(["builder_hall", "builder_hall_level", "bh"]);
+    const builderTrophiesGain = sumPositive(["builder_trophies"]);
+    if (builderWinsTotal >= 3 || builderHallDelta > 0 || builderTrophiesGain >= 30) {
+      const parts: string[] = [];
+      if (builderHallDelta > 0) {
+        parts.push(`BH +${formatNumber(builderHallDelta)}`);
+      }
+      if (builderWinsTotal > 0) {
+        parts.push(`+${formatNumber(builderWinsTotal)} builder wins`);
+      }
+      if (builderTrophiesGain >= 30) {
+        parts.push(`+${formatNumber(builderTrophiesGain)} builder trophies`);
+      }
+      insights.push(`Builder push: ${parts.join(" • ")} over the past week`);
+    }
+
+    // Legend league check
+    const legendActivity = recentPoints.some((point) => {
+      const events = point.events ?? [];
+      return Array.isArray(events) && events.includes("legend_activity");
     });
-    
-    if (lastWeekPoints.length) {
-      // Calculate weekly deltas for cumulative metrics
-      const newestPoint = lastWeekPoints[0];
-      const oldestPoint = lastWeekPoints[lastWeekPoints.length - 1];
-      
-      // Calculate weekly deltas for donations
-      const newestDonations = newestPoint?.donations;
-      const oldestDonations = oldestPoint?.donations;
-      const donationWeeklyDelta = (lastWeekPoints.length > 1 && newestDonations != null && oldestDonations != null)
-        ? newestDonations - oldestDonations
-        : 0;
-
-      // Calculate weekly deltas for war stars
-      const newestWarStars = newestPoint?.warStars;
-      const oldestWarStars = oldestPoint?.warStars;
-      const warStarsWeeklyDelta = (lastWeekPoints.length > 1 && newestWarStars != null && oldestWarStars != null)
-        ? newestWarStars - oldestWarStars
-        : 0;
-
-      // Calculate weekly deltas for capital contributions
-      const newestCapital = newestPoint?.capitalContributions;
-      const oldestCapital = oldestPoint?.capitalContributions;
-      const capitalWeeklyDelta = (lastWeekPoints.length > 1 && newestCapital != null && oldestCapital != null)
-        ? newestCapital - oldestCapital
-        : 0;
-
-      // Donation insights - use the corrected weekly delta
-      if (donationWeeklyDelta > 0) {
-        if (donationWeeklyDelta >= 200) {
-          insights.push(`Heavy donor: ${formatNumber(donationWeeklyDelta)} troops in the past week`);
-        } else {
-          insights.push(`Donated ${formatNumber(donationWeeklyDelta)} troops in the past week`);
-        }
-      }
-
-      // War performance insights - use the corrected weekly delta
-      if (warStarsWeeklyDelta > 0) {
-        if (warStarsWeeklyDelta >= 20) {
-          insights.push(`War star leader: ${formatNumber(warStarsWeeklyDelta)} stars over the past week`);
-        } else {
-          insights.push(`Earned ${formatNumber(warStarsWeeklyDelta)} war stars over the past week`);
-        }
-      }
-
-      // Capital contribution insights - use the corrected weekly delta
-      if (capitalWeeklyDelta > 0) {
-        if (capitalWeeklyDelta >= 10000000) {
-          insights.push(`Capital champion: ${formatNumber(capitalWeeklyDelta)} gold contributed this week`);
-        } else if (capitalWeeklyDelta >= 5000000) {
-          insights.push(`Heavy capital contributor: ${formatNumber(capitalWeeklyDelta)} gold this week`);
-        } else if (capitalWeeklyDelta >= 1000000) {
-          insights.push(`Active capital contributor: ${formatNumber(capitalWeeklyDelta)} gold this week`);
-        } else {
-          insights.push(`Capital contributor: ${formatNumber(capitalWeeklyDelta)} gold this week`);
-        }
-      }
-
-      // Lifetime capital contribution insight
-      if (newestCapital && newestCapital > 0) {
-        if (newestCapital >= 10000000) {
-          insights.push(`Capital legend: ${formatNumber(newestCapital)} gold contributed lifetime`);
-        } else if (newestCapital >= 5000000) {
-          insights.push(`Capital veteran: ${formatNumber(newestCapital)} gold contributed lifetime`);
-        } else if (newestCapital >= 1000000) {
-          insights.push(`Capital supporter: ${formatNumber(newestCapital)} gold contributed lifetime`);
-        }
-      }
+    if (legendActivity) {
+      insights.push("Legend League battles logged this week");
     }
 
-    // Activity consistency analysis
-    const activeDays = points.filter((point) => {
-      if (!point?.snapshotDate) return false;
-      const date = new Date(point.snapshotDate);
-      if (Number.isNaN(date.getTime())) return false;
-      return date >= sevenDaysAgo;
-    }).length;
-
+    // Active day count
+    const activeDays = recentPoints.length;
     if (activeDays >= 6) {
-      insights.push(`Highly active: ${activeDays} days of activity in the past week`);
+      insights.push(`Highly active: ${activeDays} tracked days this week`);
     } else if (activeDays >= 4) {
-      insights.push(`Regularly active: ${activeDays} days of activity in the past week`);
+      insights.push(`Regularly active: ${activeDays} tracked days this week`);
     }
 
     return insights;
-  }, [profile?.timeline]);
+  }, [profile?.timeline, activityEvidence]);
+
+  const activityBreakdownRows = useMemo(() => {
+    if (!activityEvidence) return [];
+    const breakdown = activityEvidence.breakdown ?? {};
+    const metrics = activityEvidence.metrics ?? {};
+
+    const rows: Array<{ key: string; label: string; score: number; detail: string }> = [];
+    const pushRow = (key: string, label: string, scoreValue?: number, detail?: string) => {
+      const score = typeof scoreValue === "number" ? scoreValue : 0;
+      if (score <= 0 && (!detail || detail.trim() === "")) return;
+      rows.push({
+        key,
+        label,
+        score: Math.round(score),
+        detail: detail ?? "",
+      });
+    };
+
+    const warParts: string[] = [];
+    if (metrics.warStarsDelta) {
+      warParts.push(`+${formatNumber(metrics.warStarsDelta)}⭐`);
+    }
+    if (metrics.attackWinsDelta) {
+      warParts.push(`+${formatNumber(metrics.attackWinsDelta)} atk`);
+    }
+    if (metrics.defenseWinsDelta) {
+      warParts.push(`+${formatNumber(metrics.defenseWinsDelta)} def`);
+    }
+    pushRow("war", "War", breakdown.war, warParts.join(" • "));
+
+    const capitalDetail =
+      metrics.capitalContributionDelta && metrics.capitalContributionDelta > 0
+        ? `+${formatNumber(metrics.capitalContributionDelta)} capital`
+        : "";
+    pushRow("capital", "Capital", breakdown.capital, capitalDetail);
+
+    const builderParts: string[] = [];
+    if (metrics.builderWinsDelta) {
+      builderParts.push(`+${formatNumber(metrics.builderWinsDelta)} wins`);
+    }
+    if (metrics.builderHallDelta) {
+      builderParts.push(`BH +${formatNumber(metrics.builderHallDelta)}`);
+    }
+    pushRow("builder", "Builder", breakdown.builder, builderParts.join(" • "));
+
+    const donationParts: string[] = [];
+    if (metrics.donationDelta) {
+      donationParts.push(`+${formatNumber(metrics.donationDelta)} given`);
+    }
+    if (metrics.donationReceivedDelta) {
+      donationParts.push(`+${formatNumber(metrics.donationReceivedDelta)} received`);
+    }
+    pushRow("donations", "Donations", breakdown.donations, donationParts.join(" • "));
+
+    return rows;
+  }, [activityEvidence]);
 
   const heroCaps = useMemo(() => {
     if (!summary?.townHallLevel) return null;
@@ -1815,21 +1927,47 @@ const HERO_LABELS: Record<string, string> = {
                       </div>
                     </GlassCard>
 
-                    {timelineInsights.length > 0 && (
+                    {(timelineInsights.length > 0 || activityBreakdownRows.length > 0) && (
                       <GlassCard
                         title="Recent Activity Highlights"
                         subtitle="Snapshot of the latest seven days"
                         icon={<Activity className="h-5 w-5" />}
                         className="bg-slate-900/70 border border-slate-800/80"
                       >
-                        <ul className="space-y-2 text-sm text-slate-200">
-                          {timelineInsights.map((insight, index) => (
-                            <li key={index} className="flex items-start gap-2">
-                              <span className="mt-1 inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-emerald-400" />
-                              <span>{insight}</span>
-                            </li>
-                          ))}
-                        </ul>
+                        {timelineInsights.length > 0 && (
+                          <ul className="space-y-2 text-sm text-slate-200">
+                            {timelineInsights.map((insight, index) => (
+                              <li key={index} className="flex items-start gap-2">
+                                <span className="mt-1 inline-flex h-2 w-2 flex-shrink-0 rounded-full bg-emerald-400" />
+                                <span>{insight}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        {activityBreakdownRows.length > 0 && (
+                          <div
+                            className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${
+                              timelineInsights.length > 0 ? "mt-4" : ""
+                            }`}
+                          >
+                            {activityBreakdownRows.map((row) => (
+                              <div
+                                key={row.key}
+                                className="flex items-center justify-between rounded-xl border border-emerald-400/10 bg-slate-900/60 px-3 py-2"
+                              >
+                                <div>
+                                  <p className="text-xs uppercase tracking-[0.24em] text-slate-400">{row.label}</p>
+                                  {row.detail ? (
+                                    <p className="mt-1 text-xs text-slate-300">{row.detail}</p>
+                                  ) : null}
+                                </div>
+                                <span className="text-sm font-semibold text-slate-100">
+                                  {row.score > 0 ? row.score : "—"}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </GlassCard>
                     )}
 
@@ -2426,25 +2564,53 @@ const HERO_LABELS: Record<string, string> = {
 
               {activeTab === "history" && (
                 <div className="space-y-6">
-                  {timelineInsights.length > 0 && (
+                  {(timelineInsights.length > 0 || activityBreakdownRows.length > 0) && (
                     <GlassCard
                       title="Activity Streaks & Highlights"
                       subtitle="Recent performance patterns and milestones"
                       icon={<Flame className="h-5 w-5" />}
                       className="bg-slate-900/70 border border-slate-800/80"
                     >
-                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                        {timelineInsights.map((insight, index) => (
-                          <div key={index} className="flex items-center gap-3 rounded-xl border border-slate-800/60 bg-slate-900/80 px-4 py-3">
-                            <div className="flex-shrink-0">
-                              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/30">
-                                <Flame className="h-4 w-4 text-amber-400" />
+                      {timelineInsights.length > 0 && (
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          {timelineInsights.map((insight, index) => (
+                            <div key={index} className="flex items-center gap-3 rounded-xl border border-slate-800/60 bg-slate-900/80 px-4 py-3">
+                              <div className="flex-shrink-0">
+                                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-500/20 border border-amber-500/30">
+                                  <Flame className="h-4 w-4 text-amber-400" />
+                                </div>
                               </div>
+                              <p className="text-sm font-medium text-slate-200">{insight}</p>
                             </div>
-                            <p className="text-sm font-medium text-slate-200">{insight}</p>
-                          </div>
-                        ))}
-                      </div>
+                          ))}
+                        </div>
+                      )}
+                      {activityBreakdownRows.length > 0 && (
+                        <div
+                          className={`grid grid-cols-1 gap-3 sm:grid-cols-2 ${
+                            timelineInsights.length > 0 ? "mt-4" : ""
+                          }`}
+                        >
+                          {activityBreakdownRows.map((row) => (
+                            <div
+                              key={row.key}
+                              className="flex items-center justify-between rounded-xl border border-emerald-400/10 bg-slate-900/60 px-4 py-3"
+                            >
+                              <div>
+                                <p className="text-xs uppercase tracking-[0.24em] text-slate-400">
+                                  {row.label}
+                                </p>
+                                {row.detail ? (
+                                  <p className="mt-1 text-xs text-slate-300">{row.detail}</p>
+                                ) : null}
+                              </div>
+                              <span className="text-sm font-semibold text-slate-100">
+                                {row.score > 0 ? row.score : "—"}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </GlassCard>
                   )}
 
@@ -2836,7 +3002,7 @@ const HERO_LABELS: Record<string, string> = {
       >
         <div className="space-y-6">
           <p className="text-sm text-slate-600">
-            Equipment tiers are a competitive ranking system that assesses an equipment piece's effectiveness, utility, and priority for upgrade within the current meta.
+          Equipment tiers are a competitive ranking system that assesses an equipment piece&rsquo;s effectiveness, utility, and priority for upgrade within the current meta.
           </p>
           
           <div className="space-y-4">

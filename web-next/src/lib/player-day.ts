@@ -14,8 +14,13 @@ export interface CanonicalPlayerState {
   donations?: number | null;
   donationsReceived?: number | null;
   warStars?: number | null;
+  attackWins?: number | null;
+  defenseWins?: number | null;
   capitalContrib?: number | null;
   legendAttacks?: number | null;
+  builderHallLevel?: number | null;
+  builderWins?: number | null;
+  builderTrophies?: number | null;
   heroLevels?: HeroLevels | null;
   equipmentLevels?: Record<string, number> | null;
   pets?: Record<string, number> | null;
@@ -35,8 +40,13 @@ export interface PlayerDayRow {
   donations: number | null;
   donationsReceived: number | null;
   warStars: number | null;
+  attackWins: number | null;
+  defenseWins: number | null;
   capitalContrib: number | null;
   legendAttacks: number | null;
+  builderHallLevel: number | null;
+  builderBattleWins: number | null;
+  builderTrophies: number | null;
   heroLevels: HeroLevels | null;
   equipmentLevels: Record<string, number> | null;
   pets: Record<string, number> | null;
@@ -54,6 +64,8 @@ const TROPHY_DELTA_THRESHOLD = 100;
 const DONATION_THRESHOLD = 50;
 const WAR_STAR_THRESHOLD = 4;
 const LEGEND_REENTRY = 'Legend League';
+const BUILDER_WIN_STREAK_THRESHOLD = 3;
+const BUILDER_TROPHY_THRESHOLD = 30;
 
 const EVENT_CATEGORY: Record<string, string> = {
   th_level_up: 'upgrade',
@@ -64,9 +76,11 @@ const EVENT_CATEGORY: Record<string, string> = {
   legend_reentry: 'league',
   trophies_big_delta: 'trophies',
   war_perf_day: 'war',
+  war_activity: 'war',
   capital_activity: 'capital',
   donations_threshold: 'donations',
   legend_activity: 'activity',
+  builder_activity: 'builder',
 };
 
 function md5(value: string): string {
@@ -126,6 +140,16 @@ export function generatePlayerDayRow(
     deltas.war_stars = warStarsDelta;
   }
 
+  const attackWinsDelta = diffNumber(prev?.attackWins ?? null, curr.attackWins ?? null);
+  if (attackWinsDelta !== null) {
+    deltas.attack_wins = attackWinsDelta;
+  }
+
+  const defenseWinsDelta = diffNumber(prev?.defenseWins ?? null, curr.defenseWins ?? null);
+  if (defenseWinsDelta !== null) {
+    deltas.defense_wins = defenseWinsDelta;
+  }
+
   const capitalDelta = diffNumber(prev?.capitalContrib ?? null, curr.capitalContrib ?? null);
   if (capitalDelta !== null) {
     deltas.capital_contrib = capitalDelta;
@@ -134,6 +158,21 @@ export function generatePlayerDayRow(
   const legendAttackDelta = diffNumber(prev?.legendAttacks ?? null, curr.legendAttacks ?? null);
   if (legendAttackDelta !== null) {
     deltas.legend_attacks = legendAttackDelta;
+  }
+
+  const builderHallDelta = diffNumber(prev?.builderHallLevel ?? null, curr.builderHallLevel ?? null);
+  if (builderHallDelta !== null) {
+    deltas.builder_hall = builderHallDelta;
+  }
+
+  const builderWinsDelta = diffNumber(prev?.builderWins ?? null, curr.builderWins ?? null);
+  if (builderWinsDelta !== null) {
+    deltas.builder_battle_wins = builderWinsDelta;
+  }
+
+  const builderTrophiesDelta = diffNumber(prev?.builderTrophies ?? null, curr.builderTrophies ?? null);
+  if (builderTrophiesDelta !== null) {
+    deltas.builder_trophies = builderTrophiesDelta;
   }
 
   if (typeof prev?.th === 'number' && typeof curr.th === 'number' && curr.th !== prev.th) {
@@ -173,12 +212,29 @@ export function generatePlayerDayRow(
     events.push('war_perf_day');
   }
 
+  if ((warStarsDelta ?? 0) > 0 || (attackWinsDelta ?? 0) > 0 || (defenseWinsDelta ?? 0) > 0) {
+    if (!events.includes('war_activity')) {
+      events.push('war_activity');
+    }
+  }
+
   if (typeof curr.capitalContrib === 'number' && curr.capitalContrib > 0) {
     events.push('capital_activity');
   }
 
   if (typeof curr.legendAttacks === 'number' && curr.legendAttacks > 0) {
     events.push('legend_activity');
+  }
+
+  const builderEventTriggered =
+    (builderHallDelta ?? 0) > 0 ||
+    (builderWinsDelta ?? 0) >= BUILDER_WIN_STREAK_THRESHOLD ||
+    Math.abs(builderTrophiesDelta ?? 0) >= BUILDER_TROPHY_THRESHOLD;
+
+  if (builderEventTriggered) {
+    if (!events.includes('builder_activity')) {
+      events.push('builder_activity');
+    }
   }
 
   const categories = new Set<string>();
@@ -194,8 +250,13 @@ export function generatePlayerDayRow(
     donations: curr.donations ?? null,
     donations_rcv: curr.donationsReceived ?? null,
     war_stars: curr.warStars ?? null,
+    attack_wins: curr.attackWins ?? null,
+    defense_wins: curr.defenseWins ?? null,
     capital_contrib: curr.capitalContrib ?? null,
     legend_attacks: curr.legendAttacks ?? null,
+    builder_hall_level: curr.builderHallLevel ?? null,
+    builder_battle_wins: curr.builderWins ?? null,
+    builder_trophies: curr.builderTrophies ?? null,
     hero_levels: curr.heroLevels ?? null,
     equipment_levels: curr.equipmentLevels ?? null,
     pets: curr.pets ?? null,
@@ -217,8 +278,13 @@ export function generatePlayerDayRow(
     donations: curr.donations ?? null,
     donationsReceived: curr.donationsReceived ?? null,
     warStars: curr.warStars ?? null,
+    attackWins: curr.attackWins ?? null,
+    defenseWins: curr.defenseWins ?? null,
     capitalContrib: curr.capitalContrib ?? null,
     legendAttacks: curr.legendAttacks ?? null,
+    builderHallLevel: curr.builderHallLevel ?? null,
+    builderBattleWins: curr.builderWins ?? null,
+    builderTrophies: curr.builderTrophies ?? null,
     heroLevels: curr.heroLevels ?? null,
     equipmentLevels: curr.equipmentLevels ?? null,
     pets: curr.pets ?? null,

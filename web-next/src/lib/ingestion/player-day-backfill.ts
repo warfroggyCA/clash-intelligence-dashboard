@@ -58,6 +58,11 @@ function toCanonicalPlayerState(snapshot: CanonicalSnapshot): CanonicalPlayerSta
     achievements: member.achievements ?? null,
     rushPercent: member.rushPercent ?? null,
     expLevel: member.expLevel ?? null,
+    attackWins: member.war?.attackWins ?? null,
+    defenseWins: member.war?.defenseWins ?? null,
+    builderHallLevel: member.builderBase?.hallLevel ?? null,
+    builderWins: member.builderBase?.battleWins ?? null,
+    builderTrophies: member.builderBase?.trophies ?? null,
   };
 }
 
@@ -164,8 +169,13 @@ export async function backfillPlayerDay(options: PlayerDayBackfillOptions = {}):
               donations: dayRow.donations,
               donations_rcv: dayRow.donationsReceived,
               war_stars: dayRow.warStars,
+              attack_wins: dayRow.attackWins,
+              defense_wins: dayRow.defenseWins,
               capital_contrib: dayRow.capitalContrib,
               legend_attacks: dayRow.legendAttacks,
+              builder_hall_level: dayRow.builderHallLevel,
+              builder_battle_wins: dayRow.builderBattleWins,
+              builder_trophies: dayRow.builderTrophies,
               hero_levels: dayRow.heroLevels,
               equipment_levels: dayRow.equipmentLevels,
               pets: dayRow.pets,
