@@ -34,7 +34,7 @@ export function PlayerDetailDrawer({ member, onClose }: PlayerDetailDrawerProps)
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donations = calculateDonationBalance(member);
-  const activity = getMemberActivity(member);
+  const activity = member.activity ?? getMemberActivity(member);
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const leagueInfo = resolveMemberLeague(member);
 

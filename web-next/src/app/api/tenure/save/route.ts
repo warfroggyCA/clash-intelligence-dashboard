@@ -7,10 +7,16 @@ import { cfg } from "../../../../lib/config";
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { createApiContext } from '@/lib/api/route-helpers';
-import { appendTenureLedgerEntry } from '@/lib/tenure';
-import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { applyTenureAction } from '@/lib/services/tenure-service';
 
-type Update = { tag: string; tenure_days: number };
+type Update = {
+  tag: string;
+  tenure_days: number;
+  clanTag?: string | null;
+  player_name?: string | null;
+  as_of?: string | null;
+  reason?: string | null;
+};
 const TAG_RE = /^#[0289PYLQGRJCUV]{5,}$/;
 
 function ymdUTC(d = new Date()): string {
@@ -21,7 +27,18 @@ export async function POST(req: Request) {
   const { json } = createApiContext(req, '/api/tenure/save');
   try {
     const body = await req.json().catch(() => ({}));
-    const Schema = z.object({ updates: z.array(z.object({ tag: z.string(), tenure_days: z.number() })) });
+    const Schema = z.object({
+      updates: z.array(
+        z.object({
+          tag: z.string(),
+          tenure_days: z.number(),
+          clanTag: z.string().optional(),
+          player_name: z.string().optional(),
+          as_of: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+          reason: z.string().optional(),
+        }),
+      ),
+    });
     const parsed = Schema.safeParse(body);
     if (!parsed.success) return json({ success: false, error: "No updates" }, { status: 400 });
     const updates: Update[] = parsed.data.updates;
@@ -31,33 +48,44 @@ export async function POST(req: Request) {
       const tag = String(u.tag || "").trim().toUpperCase();
       const base = Math.max(0, Math.min(20000, Math.round(Number(u.tenure_days))));
       if (!TAG_RE.test(tag)) invalid.push(tag || "(empty)");
-      return { tag, base };
+      const asOf = u.as_of || ymdUTC();
+      return {
+        tag,
+        base,
+        clanTag: u.clanTag ?? cfg.homeClanTag ?? null,
+        playerName: u.player_name ?? null,
+        asOf,
+        reason: u.reason ?? 'Manual tenure override',
+      };
     });
     if (invalid.length) return json({ success: false, error: `Invalid tag(s): ${invalid.join(", ")}` }, { status: 400 });
 
-    const as_of = ymdUTC();
-    const supabase = cfg.useSupabase ? getSupabaseAdminClient() : null;
-
+    const results = [];
     for (const c of cleaned) {
-      await appendTenureLedgerEntry(c.tag, c.base, as_of);
-
-      if (supabase) {
-        const { error } = await supabase
-          .from('members')
-          .update({
-            tenure_days: c.base,
-            tenure_as_of: as_of,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('tag', c.tag);
-
-        if (error) {
-          console.warn('[api/tenure/save] Failed to update members tenure column', error);
-        }
-      }
+      const result = await applyTenureAction({
+        clanTag: c.clanTag,
+        playerTag: c.tag,
+        playerName: c.playerName ?? null,
+        baseDays: c.base,
+        asOf: c.asOf,
+        reason: c.reason,
+      });
+      results.push({
+        tag: result.playerTag,
+        clanTag: result.clanTag,
+        tenureDays: result.tenureDays,
+        asOf: result.asOf,
+        action: result.action,
+      });
     }
 
-    return json({ success: true, data: { count: cleaned.length, as_of } });
+    return json({
+      success: true,
+      data: {
+        count: results.length,
+        updates: results,
+      },
+    });
   } catch (e: any) {
     return json({ success: false, error: e?.message || "Save failed" }, { status: 500 });
   }

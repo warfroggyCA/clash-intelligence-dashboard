@@ -256,7 +256,7 @@ export default function LeadershipDashboard() {
 
     const activityCandidates = members
       .map((member) => {
-        const evidence = getMemberActivity(member as any);
+        const evidence = member.activity ?? getMemberActivity(member as any);
         if (!evidence || typeof evidence.score !== 'number') return null;
 
         let topSignal: string | null = null;
