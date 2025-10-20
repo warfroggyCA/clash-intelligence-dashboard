@@ -1336,8 +1336,8 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
 
   const activityBreakdownRows = useMemo(() => {
     if (!activityEvidence) return [];
-    const breakdown = activityEvidence.breakdown ?? {};
-    const metrics = activityEvidence.metrics ?? {};
+    const breakdown = activityEvidence.breakdown ?? {} as any;
+    const metrics = activityEvidence.metrics ?? {} as any;
 
     const rows: Array<{ key: string; label: string; score: number; detail: string }> = [];
     const pushRow = (key: string, label: string, scoreValue?: number, detail?: string) => {
