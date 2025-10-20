@@ -27,6 +27,7 @@ export interface ApplyTenureResult {
   asOf: string;
   tenureDays: number;
   action: TenureAction;
+  tenureAction?: Record<string, any> | null;
 }
 
 /**
@@ -46,10 +47,11 @@ export async function applyTenureAction(options: ApplyTenureOptions): Promise<Ap
 
   await appendTenureLedgerEntry(playerTag, baseDays, asOf);
 
+  let tenureAction: Record<string, any> | null = null;
   if (cfg.useSupabase && cfg.database.serviceRoleKey) {
     try {
       const supabase = getSupabaseAdminClient();
-      await supabase
+      const { data, error } = await supabase
         .from('player_tenure_actions')
         .insert({
           clan_tag: clanTag,
@@ -59,7 +61,14 @@ export async function applyTenureAction(options: ApplyTenureOptions): Promise<Ap
           reason: options.reason ?? null,
           granted_by: options.grantedBy ?? null,
           created_by: options.createdBy ?? null,
-        });
+        })
+        .select()
+        .single();
+      if (error) {
+        console.warn('[tenure-service] Failed to insert player_tenure_actions record', error);
+      } else {
+        tenureAction = data ?? null;
+      }
     } catch (error) {
       console.warn('[tenure-service] Failed to insert player_tenure_actions record', error);
     }
@@ -77,5 +86,6 @@ export async function applyTenureAction(options: ApplyTenureOptions): Promise<Ap
     asOf,
     tenureDays,
     action,
+    tenureAction,
   };
 }

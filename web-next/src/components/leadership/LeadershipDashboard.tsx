@@ -10,7 +10,7 @@ import { Button } from '@/components/ui';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
-import { getMemberActivity } from '@/lib/business/calculations';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 import type { ActivityEvidence } from '@/types';
 
 interface JoinerRecord {
@@ -256,7 +256,7 @@ export default function LeadershipDashboard() {
 
     const activityCandidates = members
       .map((member) => {
-        const evidence = member.activity ?? getMemberActivity(member as any);
+        const evidence = resolveMemberActivity(member as any);
         if (!evidence || typeof evidence.score !== 'number') return null;
 
         let topSignal: string | null = null;

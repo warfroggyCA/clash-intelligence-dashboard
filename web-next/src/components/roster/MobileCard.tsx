@@ -11,7 +11,6 @@ import { safeLocaleDateString } from '@/lib/date';
 import {
   calculateRushPercentage,
   calculateDonationBalance,
-  getMemberActivity,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
@@ -22,6 +21,7 @@ import { Button } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { showToast } from '@/lib/toast';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 
 export interface MobileCardProps {
   member: Member;
@@ -72,6 +72,7 @@ export const MobileCard: React.FC<MobileCardProps> = ({
     homeClan,
     setSelectedPlayer,
     setShowPlayerProfile,
+    updateRosterMemberTenure,
   } = useDashboardStore();
   const router = useRouter();
 
@@ -80,7 +81,7 @@ export const MobileCard: React.FC<MobileCardProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = member.activity ?? getMemberActivity(member);
+  const activity = resolveMemberActivity(member);
   const rushWarning = isRushed(member);
   const rushSevere = isVeryRushed(member);
   const netReceiver = isNetReceiver(member);
@@ -141,7 +142,13 @@ export const MobileCard: React.FC<MobileCardProps> = ({
       if (!res.ok) {
         throw new Error(payload?.error || payload?.message || 'Failed to update tenure');
       }
-      showToast(`Tenure updated to ${days} day${days === 1 ? '' : 's'}`, 'success');
+      const result = payload?.data?.updates?.[0];
+      const tenureDays = typeof result?.tenureDays === 'number' ? result.tenureDays : days;
+      const asOf = result?.asOf ?? new Date().toISOString().slice(0, 10);
+      if (typeof updateRosterMemberTenure === 'function') {
+        updateRosterMemberTenure(member.tag, tenureDays, asOf);
+      }
+      showToast(`Tenure updated to ${tenureDays} day${tenureDays === 1 ? '' : 's'}`, 'success');
       if (clanTagForActions) {
         await loadRoster(clanTagForActions);
       }

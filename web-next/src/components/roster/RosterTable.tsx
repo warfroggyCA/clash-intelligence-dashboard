@@ -26,15 +26,14 @@ import { useShallow } from 'zustand/shallow';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Member, Roster, SortKey, SortDirection } from '@/types';
 import { safeLocaleTimeString } from '@/lib/date';
-import { 
-  calculateRushPercentage, 
-  calculateDonationBalance, 
-  getMemberActivity,
+import {
+  calculateRushPercentage,
+  calculateDonationBalance,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
   isNetReceiver,
-  isLowDonator
+  isLowDonator,
 } from '@/lib/business/calculations';
 import { TableHeader } from './TableHeader';
 import { TableRow } from './TableRow';
@@ -46,6 +45,7 @@ import { Button, Input, TownHallBadge, LeagueBadge, ResourceDisplay, HeroLevel }
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
 import type { AceScoreResult } from '@/lib/ace-score';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 
 // =============================================================================
 // TYPES
@@ -122,7 +122,7 @@ const resolveAceEntry = (
   );
 };
 
-const resolveActivityEvidence = (member: Member) => member.activity ?? getMemberActivity(member);
+const resolveActivityEvidence = (member: Member) => resolveMemberActivity(member);
 
 const sortMembers = (
   members: Member[],

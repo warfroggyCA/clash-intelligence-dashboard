@@ -6,13 +6,13 @@ import { Button, HeroLevel, LeagueBadge, TownHallBadge } from '@/components/ui';
 import {
   calculateRushPercentage,
   calculateDonationBalance,
-  getMemberActivity,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
 } from '@/lib/business/calculations';
 import { HERO_MAX_LEVELS } from '@/types';
 import { resolveMemberLeague } from '@/lib/member-league';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 
 interface PlayerDetailDrawerProps {
   member: Member | null;
@@ -34,7 +34,7 @@ export function PlayerDetailDrawer({ member, onClose }: PlayerDetailDrawerProps)
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donations = calculateDonationBalance(member);
-  const activity = member.activity ?? getMemberActivity(member);
+  const activity = resolveMemberActivity(member);
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const leagueInfo = resolveMemberLeague(member);
 
