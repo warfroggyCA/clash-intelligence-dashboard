@@ -9,6 +9,7 @@ import { saveAISummary } from '@/lib/supabase';
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from '@/lib/full-snapshot';
 import { persistRosterSnapshotToDataSpine } from './persist-roster';
 import { persistWarData } from './persist-war-data';
+import { backfillPlayerDay } from './player-day-backfill';
 import {
   appendJobLog,
   createJobRecord,
@@ -116,6 +117,22 @@ export async function runIngestionJob(options: RunIngestionOptions = {}): Promis
         await log(jobId, 'info', 'War data synced to Supabase');
       } catch (warPersistError: any) {
         await log(jobId, 'warn', 'Failed to persist war data to Supabase', { error: warPersistError?.message || warPersistError });
+      }
+
+      try {
+        await log(jobId, 'info', 'Backfilling player_day data');
+        await backfillPlayerDay({ 
+          supabase: undefined, // Will use service role client
+          clanTag,
+          onPlayerProcessed: ({ playerTag, snapshots, inserted, updated, skipped }) => {
+            if (inserted > 0 || updated > 0) {
+              log(jobId, 'info', `Player_day updated for ${playerTag}`, { inserted, updated, skipped });
+            }
+          }
+        });
+        await log(jobId, 'info', 'Player_day backfill completed');
+      } catch (playerDayError: any) {
+        await log(jobId, 'warn', 'Failed to backfill player_day data', { error: playerDayError?.message || playerDayError });
       }
     }
     await markStep(jobId, 'fetch-snapshot', 'completed', {

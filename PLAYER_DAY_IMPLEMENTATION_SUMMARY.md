@@ -32,17 +32,17 @@
   - Fetches previous day's state for delta calculation
   - Generates player day rows with deltas and events
   - Upserts to player_day table with conflict resolution
-  - Skips duplicate snapshots (same hash + zero notability)
+  - Skips only repeat writes for the same date/snapshot hash so quiet days are still recorded
 
 ### 4. Backfill Infrastructure
+- **Helper**: `backfillPlayerDay()` in `web-next/src/lib/ingestion/player-day-backfill.ts`
 - **Script**: `web-next/scripts/backfill-player-day.ts`
 - **Command**: `npm run backfill:player-day`
 - **Features**:
-  - Processes all historical canonical snapshots
-  - Maintains chronological order per player
-  - Skips duplicate entries
-  - Progress tracking and error handling
-  - Batch processing for efficiency
+  - Processes historical canonical snapshots (per-player chronological order)
+  - Reuses shared helper for CLI, cron, or manual triggers
+  - Skips duplicate entries for the same date while preserving daily ledger
+  - Progress callbacks for logging and monitoring
 
 ## 🔄 Next Steps
 
@@ -57,6 +57,11 @@ npm run backfill:player-day
 - Verify delta calculations are correct
 - Confirm event categorization works
 - Test notability scoring
+
+### 2a. Nightly Refresh Expectations
+- Each nightly ingestion now writes a `player_day` row per player even on quiet days
+- Validate with: `select player_tag, date from player_day order by player_tag, date desc limit 20;`
+- Spot-check donors with no changes to ensure dates progress daily
 
 ### 3. UI/API Migration
 - Update player profile pages to use player_day data
@@ -123,7 +128,7 @@ npm run backfill:player-day
 ## 🔧 Technical Notes
 
 - **Conflict Resolution**: Uses `player_tag,date` primary key with upsert
-- **Deduplication**: Skips rows with same snapshot_hash and zero notability
+- **Deduplication**: Skips re-writing identical rows for the same date while retaining quiet-day entries
 - **Error Handling**: Graceful handling of missing previous states
 - **Performance**: Indexed on `clan_tag,date` and `player_tag,date`
 - **Security**: RLS policies for service role and authenticated access
