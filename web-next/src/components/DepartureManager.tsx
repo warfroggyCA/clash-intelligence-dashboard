@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { AlertCircle, UserX, UserCheck, Clock, MessageSquare, X } from "lucide-react";
 import { safeLocaleDateString } from '@/lib/date';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
 
 interface DepartureRecord {
   memberTag: string;
@@ -46,6 +47,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
   const [editingDeparture, setEditingDeparture] = useState<DepartureRecord | null>(null);
   const [notes, setNotes] = useState("");
   const [reason, setReason] = useState("");
+  const updateRosterMemberTenure = useDashboardStore((state) => state.updateRosterMemberTenure);
 
   const loadNotifications = useCallback(async () => {
     try {
@@ -273,7 +275,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                       <button
                         onClick={async () => {
                           try {
-                            await fetch('/api/tenure/update', {
+                            const res = await fetch('/api/tenure/update', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
@@ -282,7 +284,17 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                                 mode: 'grant-existing'
                               })
                             });
-                          } catch (e) { console.error(e); }
+                            const payload = await res.json().catch(() => null);
+                            if (res.ok) {
+                              const tenureDays = typeof payload?.data?.tenureDays === 'number' ? payload.data.tenureDays : null;
+                              const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
+                              if (tenureDays !== null && typeof updateRosterMemberTenure === 'function') {
+                                updateRosterMemberTenure(rejoin.memberTag, tenureDays, asOf);
+                              }
+                            }
+                          } catch (error) {
+                            console.error('Failed to update tenure for returning member', error);
+                          }
                           await markRejoinResolved(rejoin.memberTag);
                         }}
                         className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
@@ -293,7 +305,7 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                       <button
                         onClick={async () => {
                           try {
-                            await fetch('/api/tenure/update', {
+                            const res = await fetch('/api/tenure/update', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
                               body: JSON.stringify({
@@ -302,6 +314,11 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                                 mode: 'reset'
                               })
                             });
+                            const payload = await res.json().catch(() => null);
+                            if (res.ok && typeof updateRosterMemberTenure === 'function') {
+                              const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
+                              updateRosterMemberTenure(rejoin.memberTag, 0, asOf);
+                            }
                           } catch (e) { console.error(e); }
                           await markRejoinResolved(rejoin.memberTag);
                         }}

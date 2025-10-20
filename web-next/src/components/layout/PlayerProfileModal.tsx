@@ -21,21 +21,21 @@ import { Member, Roster } from '@/types';
 import { Modal } from '@/components/ui';
 import { Button, SuccessButton, DangerButton } from '@/components/ui';
 import LeadershipGuard from '@/components/LeadershipGuard';
-import { 
-  calculateRushPercentage, 
-  calculateDonationBalance, 
-  getMemberActivity,
+import {
+  calculateRushPercentage,
+  calculateDonationBalance,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
   isNetReceiver,
-  isLowDonator
+  isLowDonator,
 } from '@/lib/business/calculations';
 import { HERO_MAX_LEVELS, HeroCaps } from '@/types';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { showToast } from '@/lib/toast';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 
 // =============================================================================
 // TYPES
@@ -112,7 +112,7 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = member.activity ?? getMemberActivity(member);
+  const activity = resolveMemberActivity(member);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
@@ -177,15 +177,19 @@ export const PlayerProfileModal: React.FC<PlayerProfileModalProps> = ({
   }, [member.tag, member.tenure_days, member.tenure]);
 
   const updateLocalTenure = (days: number, asOf?: string) => {
-    useDashboardStore.setState((state) => {
-      if (!state.roster) return {};
-      const members = state.roster.members.map((m) =>
-        normalizeTag(m.tag) === normalizedMemberTag
-          ? { ...m, tenure_days: days, tenure_as_of: asOf ?? m.tenure_as_of }
-          : m
-      );
-      return { roster: { ...state.roster, members } } as Partial<typeof state>;
-    });
+    if (typeof store.updateRosterMemberTenure === 'function') {
+      store.updateRosterMemberTenure(member.tag, days, asOf);
+    } else {
+      useDashboardStore.setState((state) => {
+        if (!state.roster) return {};
+        const members = state.roster.members.map((m) =>
+          normalizeTag(m.tag) === normalizedMemberTag
+            ? { ...m, tenure_days: days, tenure_as_of: asOf ?? m.tenure_as_of }
+            : m
+        );
+        return { roster: { ...state.roster, members } } as Partial<typeof state>;
+      });
+    }
   };
 
   const reloadRoster = async () => {

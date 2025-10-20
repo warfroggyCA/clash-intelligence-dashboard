@@ -20,6 +20,7 @@ import type { Member } from '@/types';
 import RosterPlayerNotesModal from '@/components/leadership/RosterPlayerNotesModal';
 import RosterPlayerTenureModal from '@/components/leadership/RosterPlayerTenureModal';
 import RosterPlayerDepartureModal from '@/components/leadership/RosterPlayerDepartureModal';
+import { normalizeTag } from '@/lib/tags';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -146,6 +147,8 @@ interface RosterMember extends Member {
   donations: number;
   donationsReceived: number;
   lastWeekTrophies?: number;
+  tenureDays?: number | null; // Mapped from API tenureDays field
+  tenureAsOf?: string | null;
 }
 
 interface RosterData {
@@ -391,6 +394,8 @@ export default function SimpleRosterPage() {
               seasonTotalTrophies: m.seasonTotalTrophies ?? null,
               activity: m.activity ?? null,
               tenureDays: m.tenureDays ?? null,
+              tenureAsOf: m.tenureAsOf ?? null,
+              tenure_as_of: m.tenure_as_of ?? null,
             })),
             clanName: apiData.data.clan.name,
             clanTag: apiData.data.clan.tag,
@@ -1102,7 +1107,26 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
           playerName={actionModal.player.name}
           defaultAction={actionModal.action}
           onClose={() => setActionModal(null)}
-          onSuccess={() => setActionModal(null)}
+          onSuccess={(result) => {
+            if (result) {
+              setRoster((prev) => {
+                if (!prev) return prev;
+                const targetTag = normalizeTag(actionModal.player.tag);
+                const members = prev.members.map((member) =>
+                  normalizeTag(member.tag) === targetTag
+                    ? {
+                        ...member,
+                        tenureDays: result.tenureDays,
+                        tenureAsOf: result.asOf,
+                        tenure_as_of: result.asOf,
+                      }
+                    : member
+                );
+                return { ...prev, members };
+              });
+            }
+            setActionModal(null);
+          }}
         />
       )}
     </>

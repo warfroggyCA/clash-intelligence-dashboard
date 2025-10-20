@@ -24,7 +24,6 @@ import { safeLocaleDateString } from '@/lib/date';
 import {
   calculateRushPercentage,
   calculateDonationBalance,
-  getMemberActivity,
   getTownHallLevel,
   isRushed,
   isVeryRushed,
@@ -43,6 +42,7 @@ import LeadershipGuard from '@/components/LeadershipGuard';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { showToast } from '@/lib/toast';
 import { resolveMemberLeague } from '@/lib/member-league';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 
 // =============================================================================
 // TYPES
@@ -192,13 +192,14 @@ export const TableRow: React.FC<TableRowProps> = ({
     setSelectedPlayer,
     setShowPlayerProfile,
   } = store;
+  const updateRosterMemberTenureFn = store.updateRosterMemberTenure;
   const router = useRouter();
   const clanTagForActions = roster.clanTag || storeClanTag || homeClan || '';
   // Calculate member metrics
   const th = getTownHallLevel(member);
   const rushPercent = calculateRushPercentage(member);
   const donationBalance = calculateDonationBalance(member);
-  const activity = useMemo(() => member.activity ?? getMemberActivity(member), [member]);
+  const activity = useMemo(() => resolveMemberActivity(member), [member]);
   const isRushedPlayer = isRushed(member);
   const isVeryRushedPlayer = isVeryRushed(member);
   const isNetReceiverPlayer = isNetReceiver(member);
@@ -207,17 +208,24 @@ export const TableRow: React.FC<TableRowProps> = ({
   const [isTenureEditorOpen, setTenureEditorOpen] = useState(false);
   const [tenureEditorValue, setTenureEditorValue] = useState(() => String(currentTenureDays));
   const [isUpdatingTenure, setIsUpdatingTenure] = useState(false);
-  const updateLocalTenure = useCallback((days: number, asOf?: string) => {
-    useDashboardStore.setState((state) => {
-      if (!state.roster) return {};
-      const members = state.roster.members.map((m) =>
-        normalizeTag(m.tag) === normalizeTag(member.tag)
-          ? { ...m, tenure_days: days, tenure_as_of: asOf ?? m.tenure_as_of }
-          : m
-      );
-      return { roster: { ...state.roster, members } } as Partial<typeof state>;
-    });
-  }, [member.tag]);
+  const updateLocalTenure = useCallback(
+    (days: number, asOf?: string) => {
+      if (typeof updateRosterMemberTenureFn === 'function') {
+        updateRosterMemberTenureFn(member.tag, days, asOf);
+        return;
+      }
+      useDashboardStore.setState((state) => {
+        if (!state.roster) return {};
+        const members = state.roster.members.map((m) =>
+          normalizeTag(m.tag) === normalizeTag(member.tag)
+            ? { ...m, tenure_days: days, tenure_as_of: asOf ?? m.tenure_as_of }
+            : m
+        );
+        return { roster: { ...state.roster, members } } as Partial<typeof state>;
+      });
+    },
+    [member.tag, updateRosterMemberTenureFn]
+  );
 
   useEffect(() => {
     if (isTenureEditorOpen) {

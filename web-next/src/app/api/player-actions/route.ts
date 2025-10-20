@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createApiContext } from '@/lib/api-context';
+import { applyTenureAction } from '@/lib/services/tenure-service';
+import { ymdNowUTC } from '@/lib/date';
+import { readLedgerEffective } from '@/lib/tenure';
+import { normalizeTag } from '@/lib/tags';
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
@@ -83,6 +87,10 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { clanTag, playerTag, playerName, actionType, actionData, createdBy } = body;
+    const normalizedClanTag = clanTag ? normalizeTag(clanTag) ?? clanTag : clanTag;
+    const normalizedPlayerTag = normalizeTag(playerTag ?? '') ?? playerTag;
+    const clanTagForWrite = normalizedClanTag ?? clanTag;
+    const playerTagForWrite = normalizedPlayerTag ?? playerTag;
     
     if (!clanTag || !playerTag || !actionType) {
       return json({ success: false, error: 'clanTag, playerTag, and actionType are required' }, { status: 400 });
@@ -92,31 +100,61 @@ export async function POST(request: NextRequest) {
     let data: any;
     
     if (actionType === 'tenure') {
-      const { action, reason, grantedBy } = actionData;
-      if (!action || !['granted', 'revoked'].includes(action)) {
+      const { action, reason, grantedBy, tenureDays, asOf } = actionData ?? {};
+      if (action && !['granted', 'revoked'].includes(action)) {
         return json({ success: false, error: 'Invalid tenure action' }, { status: 400 });
       }
-      
-      const { data: result, error } = await supabase
-        .from('player_tenure_actions')
-        .insert({
-          clan_tag: clanTag,
-          player_tag: playerTag,
-          player_name: playerName,
-          action,
-          reason,
-          granted_by: grantedBy,
-          created_by: createdBy
-        })
-        .select()
-        .single();
-      
-      if (error) {
-        console.error('Error creating tenure action:', error);
-        return json({ success: false, error: 'Failed to create tenure action' }, { status: 500 });
+
+      const resolvedAction: 'granted' | 'revoked' = action === 'revoked' ? 'revoked' : 'granted';
+      let baseDaysCandidate: number | null = null;
+      if (typeof tenureDays === 'number' && Number.isFinite(tenureDays)) {
+        baseDaysCandidate = tenureDays;
+      } else if (typeof tenureDays === 'string' && tenureDays.trim()) {
+        const parsed = Number.parseInt(tenureDays, 10);
+        if (Number.isFinite(parsed)) {
+          baseDaysCandidate = parsed;
+        }
       }
-      
-      data = { ...result, action_type: 'tenure' };
+      if (baseDaysCandidate === null) {
+        if (resolvedAction === 'revoked') {
+          baseDaysCandidate = 0;
+        } else {
+          try {
+            const ledger = await readLedgerEffective();
+            const key = normalizedPlayerTag ?? playerTag;
+            baseDaysCandidate = ledger[key] ?? 0;
+          } catch (ledgerError) {
+            console.warn('[api/player-actions] Failed to look up tenure ledger', ledgerError);
+            baseDaysCandidate = 0;
+          }
+        }
+      }
+      const baseDays = Math.max(0, Math.round(baseDaysCandidate));
+      const asOfIso =
+        typeof asOf === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf : ymdNowUTC();
+
+      const result = await applyTenureAction({
+        clanTag: normalizedClanTag ?? clanTag,
+        playerTag: normalizedPlayerTag ?? playerTag,
+        playerName,
+        baseDays,
+        asOf: asOfIso,
+        reason: reason ?? null,
+        action: resolvedAction,
+        grantedBy: grantedBy ?? null,
+        createdBy: createdBy ?? grantedBy ?? null,
+      });
+
+      data = {
+        action_type: 'tenure',
+        tenureAction: result.tenureAction ?? null,
+        tenureDays: result.tenureDays,
+        asOf: result.asOf,
+        action: result.action,
+        clanTag: result.clanTag,
+        playerTag: result.playerTag,
+        playerName: result.playerName,
+      };
     } else if (actionType === 'departure') {
       const { reason, departureType } = actionData;
       if (!reason || !departureType || !['voluntary', 'involuntary', 'inactive'].includes(departureType)) {
@@ -126,8 +164,8 @@ export async function POST(request: NextRequest) {
       const { data: result, error } = await supabase
         .from('player_departure_actions')
         .insert({
-          clan_tag: clanTag,
-          player_tag: playerTag,
+          clan_tag: clanTagForWrite,
+          player_tag: playerTagForWrite,
           player_name: playerName,
           reason,
           departure_type: departureType,

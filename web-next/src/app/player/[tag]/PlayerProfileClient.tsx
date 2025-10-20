@@ -9,11 +9,13 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
+  Award,
   BarChart3,
   Clipboard,
   Coins,
   ExternalLink,
   Flame,
+  Landmark,
   Hammer,
   History,
   Medal,
@@ -183,6 +185,17 @@ const HERO_DISPLAY_NAMES: Record<string, string> = {
   rc: "Royal Champion",
   mp: "Minion Prince",
 };
+
+type MilestoneKind = "hero" | "donation" | "capital" | "war" | "legend" | "builder";
+
+interface MilestoneHighlight {
+  id: string;
+  kind: MilestoneKind;
+  title: string;
+  detail: string;
+  dateIso: string;
+  dateDisplay: string;
+}
 
 const EQUIPMENT_TOOLTIPS: Record<string, { hero: string; description: string; rarity: string; tier: string }> = {
   "Giant Gauntlet": {
@@ -1333,6 +1346,200 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
 
     return insights;
   }, [profile?.timeline, activityEvidence]);
+
+  const milestoneIcon = (kind: MilestoneKind) => {
+    switch (kind) {
+      case "hero":
+        return <Sparkles className="h-4 w-4 text-amber-300" />;
+      case "donation":
+        return <Coins className="h-4 w-4 text-emerald-300" />;
+      case "capital":
+        return <Landmark className="h-4 w-4 text-sky-300" />;
+      case "war":
+        return <Medal className="h-4 w-4 text-rose-300" />;
+      case "legend":
+        return <Flame className="h-4 w-4 text-orange-300" />;
+      case "builder":
+        return <Hammer className="h-4 w-4 text-purple-300" />;
+      default:
+        return <Award className="h-4 w-4 text-slate-200" />;
+    }
+  };
+
+  const milestoneHighlights = useMemo(() => {
+    const timelineArray = Array.isArray(profile?.timeline)
+      ? (profile.timeline as TimelinePoint[])
+      : [];
+    const chronological = timelineArray
+      .filter((point): point is TimelinePoint & { snapshotDate: string } => Boolean(point?.snapshotDate))
+      .sort(
+        (a, b) =>
+          new Date(a.snapshotDate as string).getTime() -
+          new Date(b.snapshotDate as string).getTime(),
+      );
+
+    if (!chronological.length) return [] as MilestoneHighlight[];
+
+    const donationThresholds = [20000, 10000, 5000, 2500, 1000, 500];
+    const capitalThresholds = [1_000_000, 500_000, 250_000, 100_000];
+    const highlights: MilestoneHighlight[] = [];
+
+    const toNumeric = (value: unknown): number | null => {
+      if (typeof value === "number" && Number.isFinite(value)) return value;
+      if (typeof value === "string" && value.trim() !== "") {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+      }
+      return null;
+    };
+
+    const getDeltas = (point: TimelinePoint): Record<string, number> => {
+      if (!point?.deltas || typeof point.deltas !== "object") return {};
+      const output: Record<string, number> = {};
+      Object.entries(point.deltas as Record<string, unknown>).forEach(([key, raw]) => {
+        const numeric = toNumeric(raw);
+        if (numeric != null) output[key] = numeric;
+      });
+      return output;
+    };
+
+    chronological.forEach((point, index) => {
+      const prev = index > 0 ? chronological[index - 1] : null;
+      const deltas = getDeltas(point);
+      const events = Array.isArray(point.events) ? point.events : [];
+      const dateIso = point.snapshotDate;
+      const dateLabel = formatDate(dateIso);
+
+      const addHighlight = (
+        kind: MilestoneKind,
+        title: string,
+        detail: string,
+        suffix: string,
+      ) => {
+        highlights.push({
+          id: `${dateIso}-${kind}-${suffix}`,
+          kind,
+          title,
+          detail,
+          dateIso,
+          dateDisplay: dateLabel,
+        });
+      };
+
+      const pointTownHall =
+        typeof (point as any)?.townHallLevel === "number"
+          ? (point as any).townHallLevel
+          : summary?.townHallLevel ?? null;
+      const heroCaps =
+        pointTownHall != null ? HERO_MAX_LEVELS[pointTownHall] ?? null : null;
+
+      if (point.heroLevels && heroCaps) {
+        (Object.keys(heroCaps) as Array<keyof typeof heroCaps>).forEach((heroKey) => {
+          const cap = heroCaps?.[heroKey] ?? 0;
+          if (!cap) return;
+          const currentLevel =
+            toNumeric((point.heroLevels as Record<string, unknown>)[heroKey]) ?? 0;
+          const previousLevel =
+            toNumeric(
+              prev?.heroLevels
+                ? (prev.heroLevels as Record<string, unknown>)[heroKey]
+                : null,
+            ) ?? 0;
+          if (currentLevel >= cap && previousLevel < cap) {
+            const heroName = HERO_DISPLAY_NAMES[heroKey] ?? heroKey.toUpperCase();
+            addHighlight(
+              "hero",
+              `${heroName} maxed`,
+              `Reached level ${formatNumber(currentLevel)} (cap ${formatNumber(cap)})`,
+              `${heroKey}-${currentLevel}`,
+            );
+          }
+        });
+      }
+
+      const donationsTotal = point.donations ?? null;
+      const prevDonationsTotal = prev?.donations ?? null;
+      if (donationsTotal != null) {
+        for (const threshold of donationThresholds) {
+          if (
+            donationsTotal >= threshold &&
+            (prevDonationsTotal == null || prevDonationsTotal < threshold)
+          ) {
+            addHighlight(
+              "donation",
+              "Donation milestone",
+              `Crossed ${formatNumber(threshold)} troops donated`,
+              `donation-${threshold}`,
+            );
+            break;
+          }
+        }
+      }
+
+      const capitalTotal = point.capitalContributions ?? null;
+      const prevCapitalTotal = prev?.capitalContributions ?? null;
+      if (capitalTotal != null) {
+        for (const threshold of capitalThresholds) {
+          if (
+            capitalTotal >= threshold &&
+            (prevCapitalTotal == null || prevCapitalTotal < threshold)
+          ) {
+            addHighlight(
+              "capital",
+              "Capital supporter",
+              `Passed ${formatNumber(threshold)} capital gold contributed`,
+              `capital-${threshold}`,
+            );
+            break;
+          }
+        }
+      }
+
+      const warStarsDelta = deltas.war_stars ?? 0;
+      if (warStarsDelta >= 6 || events.includes("war_perf_day")) {
+        addHighlight(
+          "war",
+          "War standout",
+          warStarsDelta >= 6
+            ? `Recorded ${formatNumber(warStarsDelta)} war stars`
+            : "Strong war performance logged",
+          `war-${warStarsDelta}`,
+        );
+      }
+
+      if (events.includes("legend_activity")) {
+        addHighlight(
+          "legend",
+          "Legend League run",
+          "Legend League battles recorded",
+          "legend",
+        );
+      }
+
+      const builderWinsDelta = deltas.builder_battle_wins ?? 0;
+      const builderTrophiesDelta = deltas.builder_trophies ?? 0;
+      if (builderWinsDelta >= 5 || builderTrophiesDelta >= 30) {
+        addHighlight(
+          "builder",
+          "Builder push",
+          builderWinsDelta >= 5
+            ? `Won ${formatNumber(builderWinsDelta)} builder battles`
+            : `Builder trophies up ${formatSignedNumber(builderTrophiesDelta)}`,
+          `builder-${builderWinsDelta}-${builderTrophiesDelta}`,
+        );
+      }
+    });
+
+    const uniqueMap = new Map<string, MilestoneHighlight>();
+    for (const entry of highlights) {
+      const key = `${entry.kind}:${entry.detail}`;
+      uniqueMap.set(key, entry);
+    }
+    const unique = Array.from(uniqueMap.values()).sort(
+      (a, b) => new Date(b.dateIso).getTime() - new Date(a.dateIso).getTime(),
+    );
+    return unique.slice(0, 4);
+  }, [profile?.timeline, summary?.townHallLevel]);
 
   const activityBreakdownRows = useMemo(() => {
     if (!activityEvidence) return [];
@@ -2564,6 +2771,35 @@ const HERO_LABELS: Record<string, string> = {
 
               {activeTab === "history" && (
                 <div className="space-y-6">
+                  {milestoneHighlights.length > 0 && (
+                    <GlassCard
+                      title="Milestone Highlights"
+                      subtitle="Key accomplishments captured in the daily ledger"
+                      icon={<Award className="h-5 w-5" />}
+                      className="bg-slate-900/70 border border-slate-800/80"
+                    >
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                        {milestoneHighlights.map((highlight) => (
+                          <div
+                            key={highlight.id}
+                            className="flex items-start gap-3 rounded-xl border border-slate-800/60 bg-slate-900/80 px-4 py-3"
+                          >
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-slate-700/70 bg-slate-800/90 shadow-inner">
+                              {milestoneIcon(highlight.kind)}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold text-slate-100">{highlight.title}</span>
+                              <span className="text-xs text-slate-300">{highlight.detail}</span>
+                              <span className="text-[11px] text-slate-500 mt-1 uppercase tracking-wide">
+                                {highlight.dateDisplay}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </GlassCard>
+                  )}
+
                   {(timelineInsights.length > 0 || activityBreakdownRows.length > 0) && (
                     <GlassCard
                       title="Activity Streaks & Highlights"

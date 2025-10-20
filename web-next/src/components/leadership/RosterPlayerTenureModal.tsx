@@ -1,17 +1,25 @@
 "use client";
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { normalizeTag } from '@/lib/tags';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+
+interface TenureModalResult {
+  tenureDays: number;
+  asOf: string;
+  action: 'granted' | 'revoked';
+  tenureAction?: Record<string, any> | null;
+}
 
 interface RosterPlayerTenureModalProps {
   playerTag: string;
   playerName: string;
   clanTag: string;
   defaultAction?: 'granted' | 'revoked';
-  onSuccess?: () => void;
+  onSuccess?: (result: TenureModalResult) => void;
   onClose: () => void;
 }
 
@@ -28,15 +36,51 @@ export function RosterPlayerTenureModal({
   const [grantedBy, setGrantedBy] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const updateRosterMemberTenure = useDashboardStore((state) => state.updateRosterMemberTenure);
+  const rosterMember = useDashboardStore(
+    useMemo(
+      () => (state) =>
+        state.roster?.members?.find(
+          (m) => normalizeTag(m.tag) === normalizeTag(playerTag)
+        ) ?? null,
+      [playerTag]
+    )
+  );
 
   const normalizedClanTag = useMemo(() => normalizeTag(clanTag) ?? clanTag, [clanTag]);
   const normalizedPlayerTag = useMemo(() => normalizeTag(playerTag) ?? playerTag, [playerTag]);
+  const currentTenure = useMemo(
+    () => Math.max(0, Math.round(Number(rosterMember?.tenure_days ?? (rosterMember as any)?.tenure ?? 0) || 0)),
+    [rosterMember]
+  );
+  const [tenureInput, setTenureInput] = useState<string>(() => String(currentTenure));
+  const [asOf, setAsOf] = useState<string>(() => new Date().toISOString().slice(0, 10));
+
+  useEffect(() => {
+    setTenureInput((prev) => {
+      if (action === 'revoked') return '0';
+      if (prev === '0' && currentTenure !== 0) return String(currentTenure);
+      return prev;
+    });
+  }, [action, currentTenure]);
+
+  useEffect(() => {
+    setTenureInput(String(currentTenure));
+  }, [currentTenure]);
 
   const handleSubmit = async () => {
     if (!grantedBy.trim()) {
       setError('Please add your name so other leaders know who recorded this change.');
       return;
     }
+    const trimmedDays = tenureInput.trim();
+    const match = trimmedDays.match(/\d+/);
+    if (!match) {
+      setError('Please enter tenure days as a number.');
+      return;
+    }
+    const baseDays = Math.max(0, Math.min(20000, Number.parseInt(match[0], 10)));
+    const asOfIso = /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf : new Date().toISOString().slice(0, 10);
     setSaving(true);
     setError(null);
     try {
@@ -53,14 +97,27 @@ export function RosterPlayerTenureModal({
             action,
             reason: reason.trim() || null,
             grantedBy: grantedBy.trim(),
+            tenureDays: baseDays,
+            asOf: asOfIso,
           },
         }),
       });
+      const payload = await response.json().catch(() => null);
       if (!response.ok) {
-        const payload = await response.json().catch(() => null);
         throw new Error(payload?.error || `Failed to record tenure (${response.status})`);
       }
-      onSuccess?.();
+      const tenureDays =
+        typeof payload?.data?.tenureDays === 'number' ? payload.data.tenureDays : baseDays;
+      const effectiveAsOf = payload?.data?.asOf ?? asOfIso;
+      if (typeof updateRosterMemberTenure === 'function') {
+        updateRosterMemberTenure(playerTag, tenureDays, effectiveAsOf);
+      }
+      onSuccess?.({
+        tenureDays,
+        asOf: effectiveAsOf,
+        action: payload?.data?.action ?? action,
+        tenureAction: payload?.data?.tenureAction ?? null,
+      });
       onClose();
     } catch (err: any) {
       setError(err.message || 'Failed to record tenure action');
@@ -106,6 +163,35 @@ export function RosterPlayerTenureModal({
                   {value === 'granted' ? 'Grant Tenure' : 'Revoke Tenure'}
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="block text-sm font-medium text-slate-200">Tenure Days</label>
+              <Input
+                type="number"
+                min={0}
+                max={20000}
+                value={tenureInput}
+                disabled={saving || action === 'revoked'}
+                onChange={(e) => setTenureInput(e.target.value)}
+                placeholder="0"
+                className="mt-1 border-slate-700/70 bg-slate-900/80 text-slate-100"
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Current: {currentTenure} day{currentTenure === 1 ? '' : 's'}
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-200">As Of Date</label>
+              <Input
+                type="date"
+                value={asOf}
+                disabled={saving}
+                onChange={(e) => setAsOf(e.target.value)}
+                className="mt-1 border-slate-700/70 bg-slate-900/80 text-slate-100"
+              />
             </div>
           </div>
 

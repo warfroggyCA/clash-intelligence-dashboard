@@ -447,6 +447,7 @@ interface DashboardState {
   setIngestionJobId: (jobId: string | null) => void;
   setSelectedMember: (member: Member | null) => void;
   setSelectedPlayer: (member: Member | null) => void;
+  updateRosterMemberTenure: (playerTag: string, tenureDays: number, tenureAsOf?: string | null) => void;
   
   setDepartureNotifications: (count: number) => void;
   setDepartureNotificationsData: (data: DepartureNotifications | null) => void;
@@ -696,6 +697,31 @@ export const useDashboardStore = create<DashboardState>()(
       setIngestionJobId: (ingestionJobId) => set({ ingestionJobId }),
       setSelectedMember: (selectedMember) => set({ selectedMember }),
       setSelectedPlayer: (selectedPlayer) => set({ selectedPlayer }),
+      updateRosterMemberTenure: (playerTag, tenureDays, tenureAsOf) =>
+        set((state) => {
+          if (!state.roster?.members?.length) {
+            return {};
+          }
+          const normalized = normalizeTag(playerTag) ?? playerTag;
+          const members = state.roster.members.map((member) => {
+            if ((normalizeTag(member.tag) ?? member.tag) !== normalized) {
+              return member;
+            }
+            const nextTenure = Math.max(0, Math.round(tenureDays));
+            return {
+              ...member,
+              tenure_days: nextTenure,
+              tenure: nextTenure,
+              tenure_as_of: tenureAsOf ?? member.tenure_as_of ?? null,
+            };
+          });
+          return {
+            roster: {
+              ...state.roster,
+              members,
+            },
+          } as Partial<DashboardState>;
+        }),
       
       setDepartureNotifications: (departureNotifications) => set({ departureNotifications }),
       setDepartureNotificationsData: (departureNotificationsData) => set({ departureNotificationsData }),

@@ -7,12 +7,12 @@ import { TownHallBadge, LeagueBadge, HeroLevel, Button, GlassCard } from '@/comp
 import {
   calculateRushPercentage,
   calculateDonationBalance,
-  getMemberActivity,
   getTownHallLevel,
 } from '@/lib/business/calculations';
 import { HERO_MAX_LEVELS } from '@/types';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 import { resolveMemberLeague } from '@/lib/member-league';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 
 interface PlayerCardProps {
   member: Member;
@@ -22,7 +22,7 @@ interface PlayerCardProps {
 export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
   const rushPercent = calculateRushPercentage(member);
   const donations = calculateDonationBalance(member);
-  const activity = member.activity ?? getMemberActivity(member);
+  const activity = resolveMemberActivity(member);
   const th = getTownHallLevel(member);
   const heroCaps = HERO_MAX_LEVELS[th] || {};
   const roleVariant = getRoleBadgeVariant(member.role);
