@@ -4,9 +4,11 @@
 
 ### 1. Database Schema
 - **Migration**: `supabase/migrations/20251018_create_player_day_table.sql`
+- **Update**: `supabase/migrations/20250217_add_player_day_builder_war_columns.sql`
 - **Table**: `player_day` with comprehensive player state tracking
 - **Features**:
   - Core player stats (TH, league, trophies, donations, etc.)
+  - War & builder snapshots (attack wins, defense wins, builder hall level, builder wins, builder trophies)
   - Enrichment fields (hero levels, equipment, pets, super troops, achievements)
   - Delta tracking (trophies, donations, war stars, capital contributions)
   - Event categorization (upgrades, league changes, activity milestones)
@@ -89,6 +91,11 @@ npm run backfill:player-day
   donations: number | null;
   donations_rcv: number | null;
   war_stars: number | null;
+  attack_wins: number | null;
+  defense_wins: number | null;
+  builder_hall_level: number | null;
+  builder_battle_wins: number | null;
+  builder_trophies: number | null;
   capital_contrib: number | null;
   legend_attacks: number | null;
   // Enrichment

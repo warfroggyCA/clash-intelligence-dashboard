@@ -404,8 +404,13 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       donations: canonicalSnapshot.member.donations.given ?? null,
       donationsReceived: canonicalSnapshot.member.donations.received ?? null,
       warStars: canonicalSnapshot.member.war.stars ?? null,
+      attackWins: memberEnriched.attackWins ?? detail?.attackWins ?? null,
+      defenseWins: memberEnriched.defenseWins ?? detail?.defenseWins ?? null,
       capitalContrib: canonicalSnapshot.member.capitalContributions ?? null,
       legendAttacks: null,
+      builderHallLevel: memberEnriched.builderHallLevel ?? summary.builderHallLevel ?? null,
+      builderWins: memberEnriched.versusBattleWins ?? null,
+      builderTrophies: memberEnriched.versusTrophies ?? toNumeric(summary.builderTrophies) ?? null,
       heroLevels: heroLevels ?? null,
       equipmentLevels: memberEnriched.equipmentLevels ?? null,
       pets: memberEnriched.petLevels ?? null,
@@ -492,7 +497,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
         const { data: prevRow, error: prevError } = await supabase
           .from('player_day')
           .select(
-            'date, th, league, trophies, donations, donations_rcv, war_stars, capital_contrib, legend_attacks, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, snapshot_hash',
+            'date, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, snapshot_hash',
           )
           .eq('player_tag', state.playerTag)
           .order('date', { ascending: false })
@@ -514,8 +519,13 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
             donations: prevRow.donations ?? null,
             donationsReceived: prevRow.donations_rcv ?? null,
             warStars: prevRow.war_stars ?? null,
+            attackWins: prevRow.attack_wins ?? null,
+            defenseWins: prevRow.defense_wins ?? null,
             capitalContrib: prevRow.capital_contrib ?? null,
             legendAttacks: prevRow.legend_attacks ?? null,
+            builderHallLevel: prevRow.builder_hall_level ?? null,
+            builderWins: prevRow.builder_battle_wins ?? null,
+            builderTrophies: prevRow.builder_trophies ?? null,
             heroLevels: (prevRow.hero_levels as any) ?? null,
             equipmentLevels: (prevRow.equipment_levels as any) ?? null,
             pets: (prevRow.pets as any) ?? null,
@@ -544,8 +554,13 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
             donations: dayRow.donations,
             donations_rcv: dayRow.donationsReceived,
             war_stars: dayRow.warStars,
+            attack_wins: dayRow.attackWins,
+            defense_wins: dayRow.defenseWins,
             capital_contrib: dayRow.capitalContrib,
             legend_attacks: dayRow.legendAttacks,
+            builder_hall_level: dayRow.builderHallLevel,
+            builder_battle_wins: dayRow.builderBattleWins,
+            builder_trophies: dayRow.builderTrophies,
             hero_levels: dayRow.heroLevels,
             equipment_levels: dayRow.equipmentLevels,
             pets: dayRow.pets,

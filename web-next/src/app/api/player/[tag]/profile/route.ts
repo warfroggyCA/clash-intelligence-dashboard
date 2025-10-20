@@ -7,7 +7,7 @@ import { readTenureDetails } from '@/lib/tenure';
 import { CANONICAL_MEMBER_SNAPSHOT_VERSION } from '@/types/canonical-member-snapshot';
 import type { CanonicalMemberSnapshotV1 } from '@/types/canonical-member-snapshot';
 import type { PlayerTimelinePoint, PlayerSummarySupabase } from '@/types/player-profile-supabase';
-import type { Member, MemberEnriched, PlayerActivityTimelineEvent } from '@/types';
+import type { HeroCaps, Member, MemberEnriched, PlayerActivityTimelineEvent } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,8 +29,13 @@ interface PlayerDaySupabaseRow {
   donations: number | null;
   donations_rcv: number | null;
   war_stars: number | null;
+  attack_wins: number | null;
+  defense_wins: number | null;
   capital_contrib: number | null;
   legend_attacks: number | null;
+  builder_hall_level: number | null;
+  builder_battle_wins: number | null;
+  builder_trophies: number | null;
   hero_levels: Record<string, unknown> | null;
   equipment_levels: Record<string, number> | null;
   pets: Record<string, number> | null;
@@ -61,6 +66,171 @@ function toNumber(value: unknown): number | null {
 function ensureArray<T>(value: T | T[] | null | undefined): T[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+function coerceDeltaMap(point: PlayerTimelinePoint): Record<string, number> {
+  if (!point || typeof point !== 'object' || !point.deltas) return {};
+  const raw = point.deltas as Record<string, unknown>;
+  return Object.entries(raw).reduce<Record<string, number>>((acc, [key, value]) => {
+    const numeric = toNumber(value);
+    if (numeric !== null) {
+      acc[key] = numeric;
+    }
+    return acc;
+  }, {});
+}
+
+function extractDeltaValue(deltas: Record<string, number>, ...keys: string[]): number {
+  for (const key of keys) {
+    if (key in deltas) {
+      return deltas[key];
+    }
+  }
+  return 0;
+}
+
+function buildActivityEvent(
+  point: PlayerTimelinePoint,
+  previous?: PlayerTimelinePoint | null,
+): PlayerActivityTimelineEvent {
+  const deltas = coerceDeltaMap(point);
+  const prevHeroLevels =
+    (previous?.heroLevels as Record<string, unknown> | null | undefined) ?? null;
+  const currentHeroLevels =
+    (point.heroLevels as Record<string, unknown> | null | undefined) ?? null;
+
+  const heroUpgrades = Object.entries(deltas)
+    .filter(([key, value]) => key.startsWith('hero_') && value > 0)
+    .map(([key, value]) => {
+      const shortKey = key.replace('hero_', '');
+      const heroKey = shortKey as keyof HeroCaps;
+      const previousLevel = prevHeroLevels ? toNumber(prevHeroLevels[shortKey]) : null;
+      const currentLevel = currentHeroLevels ? toNumber(currentHeroLevels[shortKey]) : null;
+      const delta = value;
+      const from = previousLevel;
+      const to =
+        currentLevel ??
+        (from !== null ? from + delta : delta);
+      return {
+        hero: heroKey,
+        from,
+        to,
+      };
+    })
+    .filter((upgrade) => typeof upgrade.to === 'number');
+
+  const petUpgrades = Object.entries(deltas)
+    .filter(([key, value]) => key.startsWith('pet_') && value > 0)
+    .map(([key, value]) => {
+      const petKey = key.replace('pet_', '');
+      const previousLevel =
+        previous && previous.petLevels && petKey in previous.petLevels
+          ? toNumber((previous.petLevels as Record<string, unknown>)[petKey])
+          : null;
+      const currentLevel =
+        point.petLevels && petKey in point.petLevels
+          ? toNumber((point.petLevels as Record<string, unknown>)[petKey])
+          : null;
+      const delta = value;
+      const to =
+        currentLevel ??
+        (previousLevel !== null ? previousLevel + delta : delta);
+      return {
+        pet: petKey,
+        from: previousLevel,
+        to,
+      };
+    })
+    .filter((upgrade) => typeof upgrade.to === 'number');
+
+  const equipmentUpgrades = Object.entries(deltas)
+    .filter(([key, value]) => key.startsWith('equipment_') && value > 0)
+    .map(([key, value]) => {
+      const equipmentKey = key.replace('equipment_', '');
+      const previousLevel =
+        previous && previous.equipmentLevels && equipmentKey in previous.equipmentLevels
+          ? toNumber((previous.equipmentLevels as Record<string, unknown>)[equipmentKey])
+          : null;
+      const currentLevel =
+        point.equipmentLevels && equipmentKey in point.equipmentLevels
+          ? toNumber((point.equipmentLevels as Record<string, unknown>)[equipmentKey])
+          : null;
+      const delta = value;
+      const to =
+        currentLevel ??
+        (previousLevel !== null ? previousLevel + delta : delta);
+      return {
+        equipment: equipmentKey,
+        from: previousLevel,
+        to,
+      };
+    })
+    .filter((upgrade) => typeof upgrade.to === 'number');
+
+  const previousSuperTroops = new Set(previous?.superTroopsActive ?? []);
+  const currentSuperTroops = new Set(point.superTroopsActive ?? []);
+  const superTroopsActivated = Array.from(currentSuperTroops).filter(
+    (troop) => !previousSuperTroops.has(troop),
+  );
+  const superTroopsDeactivated = Array.from(previousSuperTroops).filter(
+    (troop) => !currentSuperTroops.has(troop),
+  );
+
+  const event: PlayerActivityTimelineEvent = {
+    date: point.snapshotDate ?? null,
+    trophies: point.trophies ?? previous?.trophies ?? 0,
+    rankedTrophies: point.rankedTrophies ?? null,
+    donations: point.donations ?? previous?.donations ?? 0,
+    donationsReceived: point.donationsReceived ?? previous?.donationsReceived ?? 0,
+    activityScore: point.activityScore ?? null,
+    trophyDelta: extractDeltaValue(deltas, 'trophies', 'trophy_delta', 'ranked_trophies'),
+    rankedTrophyDelta: extractDeltaValue(deltas, 'ranked_trophies'),
+    donationsDelta: extractDeltaValue(deltas, 'donations'),
+    donationsReceivedDelta: extractDeltaValue(deltas, 'donations_rcv', 'donations_received'),
+    heroUpgrades,
+    petUpgrades,
+    equipmentUpgrades,
+    superTroopsActivated,
+    superTroopsDeactivated,
+    warStars: point.warStars ?? previous?.warStars ?? 0,
+    warStarsDelta: extractDeltaValue(deltas, 'war_stars'),
+    attackWins: point.attackWins ?? previous?.attackWins ?? 0,
+    attackWinsDelta: extractDeltaValue(deltas, 'attack_wins'),
+    defenseWins: point.defenseWins ?? previous?.defenseWins ?? 0,
+    defenseWinsDelta: extractDeltaValue(deltas, 'defense_wins'),
+    capitalContributions: point.capitalContributions ?? previous?.capitalContributions ?? 0,
+    capitalContributionDelta: extractDeltaValue(deltas, 'capital_contrib', 'capital_contribution'),
+    builderHallLevel: point.builderHallLevel ?? previous?.builderHallLevel ?? null,
+    builderHallDelta: extractDeltaValue(deltas, 'builder_hall', 'builder_hall_level', 'bh'),
+    versusBattleWins: point.builderBattleWins ?? previous?.builderBattleWins ?? 0,
+    versusBattleWinsDelta: extractDeltaValue(
+      deltas,
+      'builder_battle_wins',
+      'versus_battle_wins',
+    ),
+    maxTroopCount: null,
+    maxTroopDelta: extractDeltaValue(deltas, 'max_troop_count'),
+    maxSpellCount: null,
+    maxSpellDelta: extractDeltaValue(deltas, 'max_spell_count'),
+    achievementCount: point.achievementCount ?? previous?.achievementCount ?? null,
+    achievementDelta: extractDeltaValue(deltas, 'achievement_count'),
+    expLevel: point.expLevel ?? previous?.expLevel ?? null,
+    expLevelDelta: extractDeltaValue(deltas, 'exp_level'),
+    summary: '',
+  };
+
+  return event;
+}
+
+function mapTimelinePointsToActivityEvents(points: PlayerTimelinePoint[]): PlayerActivityTimelineEvent[] {
+  if (!points.length) return [];
+  const events: PlayerActivityTimelineEvent[] = [];
+  let previous: PlayerTimelinePoint | null = null;
+  for (const point of points) {
+    events.push(buildActivityEvent(point, previous));
+    previous = point;
+  }
+  return events;
 }
 
 function buildTimelineFromPlayerDay(rows: PlayerDaySupabaseRow[]): TimelineComputation {
@@ -113,12 +283,12 @@ function buildTimelineFromPlayerDay(rows: PlayerDaySupabaseRow[]): TimelineCompu
       activityScore: null,
       heroLevels: row.hero_levels ?? null,
       warStars: row.war_stars ?? null,
-      attackWins: null,
-      defenseWins: null,
+      attackWins: row.attack_wins ?? null,
+      defenseWins: row.defense_wins ?? null,
       capitalContributions: row.capital_contrib ?? null,
-      builderHallLevel: null,
-      builderTrophies: null,
-      builderBattleWins: null,
+      builderHallLevel: row.builder_hall_level ?? null,
+      builderTrophies: row.builder_trophies ?? null,
+      builderBattleWins: row.builder_battle_wins ?? null,
       bestTrophies: null,
       bestVersusTrophies: null,
       leagueName: row.league ?? null,
@@ -391,7 +561,7 @@ export async function GET(
 
     const { data: playerDayRows, error: playerDayError } = await supabase
       .from('player_day')
-      .select('date, clan_tag, player_tag, th, league, trophies, donations, donations_rcv, war_stars, capital_contrib, legend_attacks, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability')
+      .select('date, clan_tag, player_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability')
       .eq('player_tag', normalizedTag)
       .order('date', { ascending: true });
 
@@ -447,8 +617,9 @@ export async function GET(
       } as MemberEnriched,
     } as Member;
 
+    const activityTimeline = mapTimelinePointsToActivityEvents(timelineStats.timeline);
     const activityEvidence = calculateActivityScore(memberForActivity, {
-      timeline: timelineStats.timeline as unknown as PlayerActivityTimelineEvent[],
+      timeline: activityTimeline,
       lookbackDays: 7,
     });
     summary = {
