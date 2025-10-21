@@ -865,7 +865,7 @@ export const useDashboardStore = create<DashboardState>()(
               
               setDataFetchedAt(fetchedAt);
 
-              const shouldForceLiveRefresh = !forceReload && modeOverride !== 'live' && isDataStale(fetchedAt);
+              const shouldForceLiveRefresh = !forceReload && (modeOverride as string) !== 'live' && isDataStale(fetchedAt);
               if (shouldForceLiveRefresh) {
                 await get().loadRoster(normalizedTag, { mode: 'live', force: true });
                 return;
@@ -976,7 +976,7 @@ export const useDashboardStore = create<DashboardState>()(
                   ?? transformedRoster?.snapshotMetadata?.fetchedAt
                   ?? new Date().toISOString();
                 setDataFetchedAt(fetchedAt);
-                const shouldForceLiveRefresh = !forceReload && modeOverride !== 'live' && isDataStale(fetchedAt);
+                const shouldForceLiveRefresh = !forceReload && (modeOverride as string) !== 'live' && isDataStale(fetchedAt);
                 if (shouldForceLiveRefresh) {
                   await get().loadRoster(normalizedTag, { mode: 'live', force: true });
                   return;

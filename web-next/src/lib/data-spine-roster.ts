@@ -361,7 +361,7 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
     },
     snapshotMetadata: {
       snapshotDate: snapshotDate ?? '',
-      fetchedAt: fetchedAtIso,
+      fetchedAt: fetchedAtIso ?? '',
       memberCount,
       warLogEntries: metadata.warLogEntries ?? metadata.war_log_entries ?? 0,
       capitalSeasons: metadata.capitalSeasons ?? metadata.capital_seasons ?? 0,
