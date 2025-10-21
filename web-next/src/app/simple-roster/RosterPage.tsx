@@ -470,7 +470,11 @@ export default function SimpleRosterPage() {
             <div>
               <h1 className="text-3xl font-bold text-clash-gold mb-2">Clan Roster</h1>
               <p className="text-sm text-brand-text-secondary">
-                {roster.members.length} members · Updated {new Date(roster.date).toLocaleDateString()}
+                {roster.members.length} members · Updated {(() => {
+                  if (!roster.date) return 'Unknown';
+                  const date = new Date(roster.date);
+                  return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleDateString();
+                })()}
               </p>
             </div>
           </div>
