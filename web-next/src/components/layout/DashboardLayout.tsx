@@ -195,7 +195,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
   }, [clanTag, homeClan, handleLoadHome]);
 
   const handleRefresh = async () => {
-    if (clanTag) {
+    console.log('[DashboardLayout] Refresh button clicked');
+    // Try the global refresh function first (for SimpleRoster)
+    if ((window as any).refreshRosterData) {
+      console.log('[DashboardLayout] Calling global refreshRosterData');
+      (window as any).refreshRosterData();
+    } else if (clanTag) {
+      console.log('[DashboardLayout] Falling back to Zustand refreshData');
       await refreshData();
     }
   };
