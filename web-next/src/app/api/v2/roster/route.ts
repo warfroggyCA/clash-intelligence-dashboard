@@ -427,22 +427,64 @@ export async function GET(req: NextRequest) {
     // Sort by trophies descending
     transformedMembers.sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
 
-    const lastUpdated = members.length > 0 ? members[0].snapshot_date : null;
+    const lastUpdatedRaw = members.length > 0 ? members[0].snapshot_date : null;
+    const toIsoString = (value: string | null): string | null => {
+      if (!value) return null;
+      const date = new Date(value);
+      if (Number.isNaN(date.valueOf())) {
+        return null;
+      }
+      return date.toISOString();
+    };
+    const resolvedFetchedAt = toIsoString(lastUpdatedRaw);
+    const snapshotDate =
+      resolvedFetchedAt?.slice(0, 10)
+        ?? (typeof lastUpdatedRaw === 'string' ? lastUpdatedRaw.slice(0, 10) : null);
+    const payloadVersion = resolvedFetchedAt ? `canonical-${resolvedFetchedAt}` : null;
+    const totalTrophies = transformedMembers.reduce((sum, m) => sum + (m.trophies || 0), 0);
+    const totalDonations = transformedMembers.reduce((sum, m) => sum + (m.donations || 0), 0);
 
     return NextResponse.json({
-        success: true,
-        data: {
-          clan: clanRow,
+      success: true,
+      data: {
+        clan: clanRow,
         members: transformedMembers,
         seasonEnd: null,
         seasonId: null,
         seasonStart: null,
-          snapshot: {
+        snapshot: {
           id: null,
-          fetched_at: lastUpdated,
+          fetchedAt: resolvedFetchedAt,
+          fetched_at: resolvedFetchedAt ?? lastUpdatedRaw,
+          memberCount: transformedMembers.length,
           member_count: transformedMembers.length,
-          total_trophies: transformedMembers.reduce((sum, m) => sum + (m.trophies || 0), 0),
-          total_donations: transformedMembers.reduce((sum, m) => sum + (m.donations || 0), 0),
+          totalTrophies,
+          total_trophies: totalTrophies,
+          totalDonations,
+          total_donations: totalDonations,
+          payloadVersion,
+          payload_version: payloadVersion,
+          ingestionVersion: null,
+          ingestion_version: null,
+          schemaVersion: null,
+          schema_version: null,
+          computedAt: resolvedFetchedAt,
+          computed_at: resolvedFetchedAt,
+          seasonId: null,
+          season_id: null,
+          seasonStart: null,
+          season_start: null,
+          seasonEnd: null,
+          season_end: null,
+          metadata: {
+            snapshotDate,
+            snapshot_date: snapshotDate,
+            fetchedAt: resolvedFetchedAt,
+            computedAt: resolvedFetchedAt,
+            payloadVersion,
+            ingestionVersion: null,
+            schemaVersion: null,
+          },
         },
       },
     });

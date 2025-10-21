@@ -237,6 +237,14 @@ export type HistoryStatus = 'idle' | 'loading' | 'ready' | 'error';
 
 const EMPTY_HEADLINES: readonly SmartInsightsHeadline[] = Object.freeze([] as SmartInsightsHeadline[]);
 const ROSTER_CACHE_MAX_AGE_MS = 5 * 60 * 1000; // 5 minutes
+const STALE_THRESHOLD_MS = 24 * 60 * 60 * 1000; // 24 hours
+
+const isDataStale = (timestamp: string | null | undefined): boolean => {
+  if (!timestamp) return true;
+  const parsed = new Date(timestamp).getTime();
+  if (Number.isNaN(parsed)) return true;
+  return Date.now() - parsed >= STALE_THRESHOLD_MS;
+};
 
 export interface HistoryCacheEntry {
   items: ChangeSummary[];
@@ -856,6 +864,14 @@ export const useDashboardStore = create<DashboardState>()(
               }
               
               setDataFetchedAt(fetchedAt);
+
+              const shouldForceLiveRefresh = !forceReload && modeOverride !== 'live' && isDataStale(fetchedAt);
+              if (shouldForceLiveRefresh) {
+                await get().loadRoster(normalizedTag, { mode: 'live', force: true });
+                return;
+              }
+
+              await get().loadIngestionHealth(normalizedTag);
               return;
             }
             } catch (supabaseError) {
@@ -960,6 +976,11 @@ export const useDashboardStore = create<DashboardState>()(
                   ?? transformedRoster?.snapshotMetadata?.fetchedAt
                   ?? new Date().toISOString();
                 setDataFetchedAt(fetchedAt);
+                const shouldForceLiveRefresh = !forceReload && modeOverride !== 'live' && isDataStale(fetchedAt);
+                if (shouldForceLiveRefresh) {
+                  await get().loadRoster(normalizedTag, { mode: 'live', force: true });
+                  return;
+                }
                 await get().loadIngestionHealth(normalizedTag);
                 return;
               }
