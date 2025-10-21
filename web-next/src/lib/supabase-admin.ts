@@ -19,7 +19,6 @@ export function getSupabaseAdminClient(): SupabaseClient {
         fetch(input, {
           ...init,
           cache: 'no-store',
-          next: { revalidate: 0 },
         }),
     },
   });
