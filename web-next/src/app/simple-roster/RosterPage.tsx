@@ -191,6 +191,20 @@ export default function SimpleRosterPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('league');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  
+  // Expose refresh function globally for DashboardLayout
+  useEffect(() => {
+    (window as any).refreshRosterData = () => {
+      console.log('[SimpleRoster] Manual refresh triggered');
+      setRefreshTrigger(prev => prev + 1);
+    };
+    
+    return () => {
+      delete (window as any).refreshRosterData;
+    };
+  }, []);
+  
   type ActionModalState =
     | { kind: 'notes'; player: RosterMember }
     | { kind: 'departure'; player: RosterMember }
@@ -345,7 +359,12 @@ export default function SimpleRosterPage() {
       try {
         setLoading(true);
         console.log('[SimpleRoster] Fetching roster data from /api/v2/roster');
-        const response = await fetch('/api/v2/roster');
+        const response = await fetch('/api/v2/roster', {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache'
+          }
+        });
         
         console.log('[SimpleRoster] Response status:', response.status);
         console.log('[SimpleRoster] Response headers:', Object.fromEntries(response.headers.entries()));
@@ -419,7 +438,7 @@ export default function SimpleRosterPage() {
     }
 
     loadRoster();
-  }, []);
+  }, [refreshTrigger]);
 
   if (loading) {
     return (
