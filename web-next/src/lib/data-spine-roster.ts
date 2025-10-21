@@ -221,34 +221,127 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
     return null;
   }
 
+  const snapshotAny = snapshot as Record<string, any>;
+  const rawMetadata = snapshotAny?.metadata ?? (snapshotAny as any)?.Metadata ?? {};
+  const metadata =
+    rawMetadata && typeof rawMetadata === 'object'
+      ? (rawMetadata as Record<string, any>)
+      : {};
+
+  const coalesceString = (...values: Array<unknown>): string | null => {
+    for (const value of values) {
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value;
+      }
+    }
+    return null;
+  };
+
+  const coalesceNumber = (...values: Array<unknown>): number | null => {
+    for (const value of values) {
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+      if (typeof value === 'string' && value.trim().length > 0) {
+        const parsed = Number(value);
+        if (Number.isFinite(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    return null;
+  };
+
+  const toIsoString = (value: string | null): string | null => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.valueOf())) {
+      return null;
+    }
+    return parsed.toISOString();
+  };
+
   const mappedMembers = (members || []).map(mapMember);
-  const metadata = snapshot.metadata || {};
   const apiData = body.data as Record<string, any>;
+  const memberCount =
+    coalesceNumber(
+      snapshotAny?.memberCount,
+      snapshotAny?.member_count,
+      metadata?.memberCount,
+      metadata?.member_count,
+    ) ?? mappedMembers.length;
+  const payloadVersion = coalesceString(
+    snapshotAny?.payloadVersion,
+    snapshotAny?.payload_version,
+    metadata?.payloadVersion,
+    metadata?.payload_version,
+  );
+  const ingestionVersion = coalesceString(
+    snapshotAny?.ingestionVersion,
+    snapshotAny?.ingestion_version,
+    metadata?.ingestionVersion,
+    metadata?.ingestion_version,
+  );
+  const schemaVersion = coalesceString(
+    snapshotAny?.schemaVersion,
+    snapshotAny?.schema_version,
+    metadata?.schemaVersion,
+    metadata?.schema_version,
+  );
+  const fetchedAtIso = toIsoString(
+    coalesceString(
+      snapshotAny?.fetchedAt,
+      snapshotAny?.fetched_at,
+      metadata?.fetchedAt,
+      metadata?.fetched_at,
+      metadata?.computedAt,
+      metadata?.computed_at,
+    ),
+  );
+  const computedAtIso =
+    toIsoString(
+      coalesceString(
+        snapshotAny?.computedAt,
+        snapshotAny?.computed_at,
+        metadata?.computedAt,
+        metadata?.computed_at,
+      ),
+    ) ?? fetchedAtIso;
+  const snapshotDate =
+    coalesceString(
+      snapshotAny?.snapshotDate,
+      snapshotAny?.snapshot_date,
+      metadata?.snapshotDate,
+      metadata?.snapshot_date,
+      fetchedAtIso ? fetchedAtIso.slice(0, 10) : null,
+    ) ?? (fetchedAtIso ? fetchedAtIso.slice(0, 10) : null);
+  const resolvedSnapshotDetails =
+    metadata?.snapshotDetails ?? metadata?.snapshot_details ?? null;
   const resolvedSeasonId = seasonId
     ?? apiData?.season_id
-    ?? snapshot.seasonId
-    ?? (snapshot as any)?.season_id
-    ?? metadata.seasonId
-    ?? (metadata as any)?.season_id
+    ?? snapshotAny?.seasonId
+    ?? snapshotAny?.season_id
+    ?? metadata?.seasonId
+    ?? metadata?.season_id
     ?? null;
   const resolvedSeasonStart = seasonStart
     ?? apiData?.season_start
-    ?? snapshot.seasonStart
-    ?? (snapshot as any)?.season_start
-    ?? metadata.seasonStart
-    ?? (metadata as any)?.season_start
+    ?? snapshotAny?.seasonStart
+    ?? snapshotAny?.season_start
+    ?? metadata?.seasonStart
+    ?? metadata?.season_start
     ?? null;
   const resolvedSeasonEnd = seasonEnd
     ?? apiData?.season_end
-    ?? snapshot.seasonEnd
-    ?? (snapshot as any)?.season_end
-    ?? metadata.seasonEnd
-    ?? (metadata as any)?.season_end
+    ?? snapshotAny?.seasonEnd
+    ?? snapshotAny?.season_end
+    ?? metadata?.seasonEnd
+    ?? metadata?.season_end
     ?? null;
 
   return {
     source: 'snapshot',
-    date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined,
+    date: snapshotDate ?? undefined,
     clanName: clan.name ?? undefined,
     clanTag: clan.tag,
     members: mappedMembers,
@@ -257,33 +350,33 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
     seasonEnd: resolvedSeasonEnd,
     meta: {
       clanName: clan.name ?? undefined,
-      memberCount: snapshot.memberCount,
-      payloadVersion: snapshot.payloadVersion ?? metadata.payloadVersion ?? null,
-      ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
-      schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
-      computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
+      memberCount,
+      payloadVersion: payloadVersion ?? null,
+      ingestionVersion: ingestionVersion ?? null,
+      schemaVersion: schemaVersion ?? null,
+      computedAt: computedAtIso ?? null,
       seasonId: resolvedSeasonId,
       seasonStart: resolvedSeasonStart,
       seasonEnd: resolvedSeasonEnd,
     },
     snapshotMetadata: {
-      snapshotDate: metadata.snapshotDate || (snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : ''),
-      fetchedAt: snapshot.fetchedAt,
-      memberCount: snapshot.memberCount,
+      snapshotDate: snapshotDate ?? '',
+      fetchedAt: fetchedAtIso,
+      memberCount,
       warLogEntries: metadata.warLogEntries ?? metadata.war_log_entries ?? 0,
       capitalSeasons: metadata.capitalSeasons ?? metadata.capital_seasons ?? 0,
       version: metadata.version ?? 'data-spine',
-      payloadVersion: snapshot.payloadVersion ?? metadata.payloadVersion ?? null,
-      ingestionVersion: snapshot.ingestionVersion ?? metadata.ingestionVersion ?? null,
-      schemaVersion: snapshot.schemaVersion ?? metadata.schemaVersion ?? null,
-      computedAt: snapshot.computedAt ?? metadata.computedAt ?? null,
+      payloadVersion: payloadVersion ?? null,
+      ingestionVersion: ingestionVersion ?? null,
+      schemaVersion: schemaVersion ?? null,
+      computedAt: computedAtIso ?? null,
       seasonId: resolvedSeasonId,
       seasonStart: resolvedSeasonStart,
       seasonEnd: resolvedSeasonEnd,
       defenseSnapshotTimestamp: metadata.defenseSnapshotTimestamp ?? null,
       defenseSnapshotLayoutId: metadata.defenseSnapshotLayoutId ?? null,
     },
-    snapshotDetails: metadata.snapshotDetails ?? null,
+    snapshotDetails: resolvedSnapshotDetails,
   } satisfies Roster;
 }
 
