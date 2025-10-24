@@ -13,6 +13,7 @@ import {
 } from '@/lib/business/calculations';
 import { calculateAceScores, createAceInputsFromRoster } from '@/lib/ace-score';
 import dynamic from 'next/dynamic';
+import { parseUtcDate, formatUtcDateTime, formatUtcDate } from '@/lib/date-format';
 const AceLeaderboardCard = dynamic(() => import('./AceLeaderboardCard'), { ssr: false });
 
 interface HighlightEntry {
@@ -290,16 +291,21 @@ const RosterSummaryInner = () => {
 
   const capitalSummary = snapshotDetails?.capitalRaidSeasons?.[0] ?? null;
 
-  const updatedAtLabel = useMemo(() => {
-    if (!dataFetchedAt) {
-      return null;
-    }
-    const parsed = new Date(dataFetchedAt);
-    if (Number.isNaN(parsed.getTime())) {
-      return null;
-    }
-    return formatDistanceToNow(parsed, { addSuffix: true });
-  }, [dataFetchedAt]);
+  const fetchedAtDate = useMemo(() => parseUtcDate(dataFetchedAt), [dataFetchedAt]);
+  const updatedAtRelative = useMemo(() => {
+    if (!fetchedAtDate) return null;
+    return formatDistanceToNow(fetchedAtDate, { addSuffix: true });
+  }, [fetchedAtDate]);
+  const updatedAtUtc = useMemo(() => {
+    if (!fetchedAtDate) return null;
+    return formatUtcDateTime(fetchedAtDate);
+  }, [fetchedAtDate]);
+  const snapshotDateLabel = useMemo(() => {
+    const raw = snapshotMetadata?.snapshotDate ?? null;
+    if (!raw) return null;
+    const parsed = parseUtcDate(raw);
+    return parsed ? formatUtcDate(parsed) : raw;
+  }, [snapshotMetadata?.snapshotDate]);
 
   const statTiles = useMemo<StatTileProps[]>(() => {
     if (RS_DISABLE_STATS) return [];
@@ -815,12 +821,20 @@ const RosterSummaryInner = () => {
             ))}
           </div>
 
-          {(updatedAtLabel || lastLoadInfo) && (
+          {(updatedAtUtc || lastLoadInfo) && (
             <div className="grid gap-3 sm:grid-cols-2 text-sm text-slate-200">
-              {updatedAtLabel && (
+              {updatedAtUtc && (
                 <div>
                   <p className="text-xs uppercase tracking-wide text-slate-400">Data Freshness</p>
-                  <p className="font-medium text-slate-100" suppressHydrationWarning>Updated {updatedAtLabel}</p>
+                  <p className="font-medium text-slate-100" suppressHydrationWarning>
+                    Updated {updatedAtUtc} UTC
+                    {updatedAtRelative ? ` • ${updatedAtRelative}` : ''}
+                  </p>
+                  {snapshotDateLabel && (
+                    <p className="text-xs text-slate-400" suppressHydrationWarning>
+                      Clash Snapshot Date {snapshotDateLabel} (UTC)
+                    </p>
+                  )}
                 </div>
               )}
               {lastLoadInfo && (

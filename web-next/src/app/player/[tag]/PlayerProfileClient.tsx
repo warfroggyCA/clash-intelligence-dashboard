@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { normalizeTag } from "@/lib/tags";
+import { compareRankedLeagues } from "@/lib/league-tiers";
 import { fetchPlayerProfileSupabase } from "@/lib/player-profile-supabase";
 import type { SupabasePlayerProfilePayload } from "@/types/player-profile-supabase";
 import { useLeadership } from "@/hooks/useLeadership";
@@ -186,7 +187,7 @@ const HERO_DISPLAY_NAMES: Record<string, string> = {
   mp: "Minion Prince",
 };
 
-type MilestoneKind = "hero" | "donation" | "capital" | "war" | "legend" | "builder";
+type MilestoneKind = "hero" | "donation" | "capital" | "war" | "legend" | "builder" | "league";
 
 interface MilestoneHighlight {
   id: string;
@@ -1492,6 +1493,21 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
             );
             break;
           }
+        }
+      }
+
+      const currentLeagueName = point.rankedLeagueName ?? point.leagueName ?? null;
+      const previousLeagueName = prev?.rankedLeagueName ?? prev?.leagueName ?? null;
+      if (currentLeagueName && previousLeagueName) {
+        const promotionDelta = compareRankedLeagues(currentLeagueName, previousLeagueName);
+        if (promotionDelta > 0) {
+          const fromLabel = previousLeagueName ?? "Unranked";
+          addHighlight(
+            "league",
+            "League promotion",
+            `Promoted from ${fromLabel} to ${currentLeagueName}`,
+            `league-${dateIso}-${currentLeagueName}`,
+          );
         }
       }
 

@@ -203,6 +203,8 @@ interface MemberData {
   extras?: any;
   tenure_days?: number | null;
   tenure_as_of?: string | null;
+  tournamentStats?: Member['tournamentStats'] | null;
+  tournamentFinalTrophies?: number | null;
 }
 
 interface SnapshotStats {
@@ -482,6 +484,16 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
       const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
       const trophies = summary.trophies ?? detail?.trophies ?? null;
       const extras = buildExtras(summary, detail);
+      const tournamentStats = detail?.tournamentStats ?? null;
+      let tournamentFinalTrophies: number | null = null;
+      if (tournamentStats && typeof tournamentStats === 'object') {
+        const offensive = Number((tournamentStats as any).offTrophies ?? 0);
+        const defensive = Number((tournamentStats as any).defTrophies ?? 0);
+        const combined = offensive + defensive;
+        if (Number.isFinite(combined) && combined > 0) {
+          tournamentFinalTrophies = combined;
+        }
+      }
       const tenureEntry = tenureDetails[normalized];
       const tenureDays = typeof tenureEntry?.days === 'number' ? tenureEntry.days : null;
       const tenureAsOf = tenureEntry?.as_of ?? snapshotDate ?? null;
@@ -513,6 +525,8 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
         extras,
         tenure_days: tenureDays,
         tenure_as_of: tenureAsOf,
+        tournamentStats: tournamentStats ?? null,
+        tournamentFinalTrophies,
       };
     });
 
@@ -923,6 +937,32 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
       const detail = snapshot.playerDetails?.[normalized];
       const enriched = extractEnrichedFields(detail);
 
+      const tournamentStats = member.tournamentStats ?? null;
+      let tournamentFinal = member.tournamentFinalTrophies ?? null;
+      if ((tournamentFinal == null || tournamentFinal <= 0) && tournamentStats && typeof tournamentStats === 'object') {
+        const offensive = Number((tournamentStats as any).offTrophies ?? 0);
+        const defensive = Number((tournamentStats as any).defTrophies ?? 0);
+        const combined = offensive + defensive;
+        if (Number.isFinite(combined) && combined > 0) {
+          tournamentFinal = combined;
+        }
+      }
+      const currentRanked =
+        typeof member.ranked_trophies === 'number'
+          ? member.ranked_trophies
+          : typeof member.battle_mode_trophies === 'number'
+            ? member.battle_mode_trophies
+            : typeof member.trophies === 'number'
+              ? member.trophies
+              : 0;
+      const rankedSnapshotValue = tournamentFinal != null && tournamentFinal > 0 ? tournamentFinal : currentRanked;
+      const extrasPayload = {
+        ...(member.extras ?? {}),
+        tournamentStats: tournamentStats ?? null,
+        tournamentFinalTrophies: tournamentFinal,
+        currentRankedTrophies: currentRanked,
+      };
+
       return {
         snapshot_id: latestSnapshot.id,
         member_id: memberId,
@@ -935,13 +975,13 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         hero_levels: member.hero_levels ?? null,
         activity_score: null,
         rush_percent: member.rush_percent ?? null,
-        extras: member.extras ?? {},
+        extras: extrasPayload,
         // New typed fields
         league_id: member.league_id,
         league_name: member.league_name,
         league_trophies: member.league_trophies,
-        battle_mode_trophies: member.battle_mode_trophies,
-        ranked_trophies: member.ranked_trophies,
+        battle_mode_trophies: currentRanked,
+        ranked_trophies: rankedSnapshotValue,
         ranked_league_id: member.ranked_league_id,
         ranked_modifier: member.ranked_modifier,
         equipment_flags: enriched.equipmentLevels ?? member.equipment_flags, // Use enriched equipment levels

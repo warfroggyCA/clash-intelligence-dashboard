@@ -32,7 +32,7 @@
 - **Process**:
   - Builds canonical player states from snapshot data
   - Fetches previous day's state for delta calculation
-  - Generates player day rows with deltas and events
+    - Generates player day rows with deltas and events
   - Upserts to player_day table with conflict resolution
   - Skips only repeat writes for the same date/snapshot hash so quiet days are still recorded
 
