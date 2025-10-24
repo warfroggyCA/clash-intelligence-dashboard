@@ -103,6 +103,7 @@ create index if not exists clan_war_attacks_war_idx
 create index if not exists clan_war_attacks_attacker_idx
   on public.clan_war_attacks (attacker_tag);
 
+-- Updated-at trigger helper
 create or replace function public.set_clan_wars_updated_at()
 returns trigger as $$
 begin
@@ -116,6 +117,7 @@ create trigger clan_wars_touch_collected_at
   before update on public.clan_wars
   for each row execute function public.set_clan_wars_updated_at();
 
+-- Enable RLS and permissive policy (service role only in production)
 alter table public.clan_wars enable row level security;
 alter table public.clan_war_clans enable row level security;
 alter table public.clan_war_members enable row level security;
@@ -366,3 +368,97 @@ begin
   return new;
 end;
 $$ language plpgsql;
+
+drop trigger if exists clan_game_seasons_set_updated_at on public.clan_game_seasons;
+create trigger clan_game_seasons_set_updated_at
+  before update on public.clan_game_seasons
+  for each row execute function public.set_clan_game_seasons_updated_at();
+
+alter table public.clan_game_seasons enable row level security;
+alter table public.clan_game_participants enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'clan_game_seasons'
+      and policyname = 'Allow all operations on clan_game_seasons'
+  ) then
+    create policy "Allow all operations on clan_game_seasons"
+      on public.clan_game_seasons
+      for all
+      using (true)
+      with check (true);
+  end if;
+end;
+$$;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'clan_game_participants'
+      and policyname = 'Allow all operations on clan_game_participants'
+  ) then
+    create policy "Allow all operations on clan_game_participants"
+      on public.clan_game_participants
+      for all
+      using (true)
+      with check (true);
+  end if;
+end;
+$$;
+
+comment on table public.clan_game_seasons is 'Stores clan games season metadata and total points.';
+comment on table public.clan_game_participants is 'Tracks player-level clan games participation and rewards.';
+
+-- ============================================================================
+-- 4️⃣ NORMALIZED PLAYER ACTIVITY EVENTS
+-- ============================================================================
+
+create table if not exists public.player_activity_events (
+  id uuid primary key default gen_random_uuid(),
+  clan_tag text not null,
+  player_tag text not null,
+  event_type text not null, -- e.g. war_attack, capital_raid, clan_game, donation_spike
+  source text not null,     -- ingestion source identifier
+  occurred_at timestamptz not null,
+  value numeric,
+  metadata jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  unique (clan_tag, player_tag, event_type, source, occurred_at)
+);
+
+create index if not exists player_activity_events_player_idx
+  on public.player_activity_events (player_tag);
+
+create index if not exists player_activity_events_clan_idx
+  on public.player_activity_events (clan_tag);
+
+create index if not exists player_activity_events_type_idx
+  on public.player_activity_events (event_type);
+
+alter table public.player_activity_events enable row level security;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_policies
+    where schemaname = 'public'
+      and tablename = 'player_activity_events'
+      and policyname = 'Allow all operations on player_activity_events'
+  ) then
+    create policy "Allow all operations on player_activity_events"
+      on public.player_activity_events
+      for all
+      using (true)
+      with check (true);
+  end if;
+end;
+$$;
+
+comment on table public.player_activity_events is 'Unified activity feed for players, populated from wars, raids, games, and other ingestion sources.';
+
+commit;

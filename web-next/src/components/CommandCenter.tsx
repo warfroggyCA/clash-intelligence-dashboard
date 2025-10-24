@@ -13,6 +13,7 @@ import { formatDistanceToNow } from 'date-fns';
 import ElderPromotionPanel from './command-center/ElderPromotionPanel';
 import WatchlistManager from './command-center/WatchlistManager';
 import CommandCenterSettings, { type AlertThresholds } from './command-center/CommandCenterSettings';
+import { parseUtcDate, formatUtcDateTime, formatUtcDate } from '@/lib/date-format';
 
 interface CommandCenterProps {
   clanData: any;
@@ -63,14 +64,25 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
   const topWarPerformers = useMemo(() => getTopWarPerformers(warMetrics.memberPerformance, 5), [warMetrics.memberPerformance]);
   const membersNeedingWarCoaching = useMemo(() => getMembersNeedingCoaching(warMetrics.memberPerformance), [warMetrics.memberPerformance]);
 
+  const fetchedAtDate = useMemo(() => parseUtcDate(snapshotMetadata?.fetchedAt ?? null), [snapshotMetadata?.fetchedAt]);
   const dataFreshnessLabel = useMemo(() => {
-    if (!snapshotMetadata?.fetchedAt) return 'Unknown';
+    if (!fetchedAtDate) return 'Unknown';
     try {
-      return formatDistanceToNow(new Date(snapshotMetadata.fetchedAt), { addSuffix: true });
-    } catch (error) {
+      return formatDistanceToNow(fetchedAtDate, { addSuffix: true });
+    } catch {
       return 'Unknown';
     }
-  }, [snapshotMetadata?.fetchedAt]);
+  }, [fetchedAtDate]);
+  const fetchedAtUtcLabel = useMemo(() => {
+    if (!fetchedAtDate) return null;
+    return formatUtcDateTime(fetchedAtDate);
+  }, [fetchedAtDate]);
+  const snapshotDateLabel = useMemo(() => {
+    const raw = snapshotMetadata?.snapshotDate ?? null;
+    if (!raw) return null;
+    const parsed = parseUtcDate(raw);
+    return parsed ? formatUtcDate(parsed) : raw;
+  }, [snapshotMetadata?.snapshotDate]);
 
   const freshnessColor = useMemo(() => {
     if (dataAgeHours == null) return 'text-slate-400';
@@ -110,11 +122,14 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
             <div className="flex items-center gap-2 text-sm mb-1">
               <span className="text-slate-400">Data Freshness:</span>
               <span className={`font-semibold ${freshnessColor}`}>
-                Updated {dataFreshnessLabel}
+                {fetchedAtUtcLabel
+                  ? `Updated ${fetchedAtUtcLabel} UTC${dataFreshnessLabel !== 'Unknown' ? ` • ${dataFreshnessLabel}` : ''}`
+                  : `Updated ${dataFreshnessLabel}`}
               </span>
             </div>
             <div className="text-xs text-slate-500">
               {members.length} members tracked
+              {snapshotDateLabel ? ` • Clash Day ${snapshotDateLabel}` : ''}
             </div>
           </div>
         </div>

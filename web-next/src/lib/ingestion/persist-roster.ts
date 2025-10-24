@@ -135,7 +135,7 @@ function computeRushPercent(thLevel: number | undefined, heroLevels: HeroLevels 
   }
 }
 
-function buildExtras(summary: MemberSummary, detail: any) {
+function buildExtras(summary: MemberSummary, detail: any, currentRankedTrophies?: number | null) {
   return {
     builderHallLevel: summary.builderHallLevel ?? detail?.builderHallLevel ?? null,
     townHallWeaponLevel: summary.townHallWeaponLevel ?? detail?.townHallWeaponLevel ?? null,
@@ -147,6 +147,7 @@ function buildExtras(summary: MemberSummary, detail: any) {
     warStars: detail?.warStars ?? null,
     attackWins: detail?.attackWins ?? null,
     defenseWins: detail?.defenseWins ?? null,
+    currentRankedTrophies: currentRankedTrophies ?? null,
   };
 }
 
@@ -267,7 +268,22 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       toNumeric(detail?.trophies) ??
       toNumeric(summary.trophies) ??
       null;
-    const extras = buildExtras(summary, detail);
+    const tournamentStats = detail?.tournamentStats ?? null;
+    let tournamentFinalTrophies: number | null = null;
+    if (tournamentStats && typeof tournamentStats === 'object') {
+      const offensive = Number((tournamentStats as any).offTrophies ?? 0);
+      const defensive = Number((tournamentStats as any).defTrophies ?? 0);
+      const combined = offensive + defensive;
+      if (Number.isFinite(combined) && combined > 0) {
+        tournamentFinalTrophies = combined;
+      }
+    }
+    const currentRankedValue = rankedTrophies ?? currentTrophies ?? 0;
+    const rankedSnapshotValue =
+      tournamentFinalTrophies != null && tournamentFinalTrophies > 0
+        ? tournamentFinalTrophies
+        : currentRankedValue;
+    const extras = buildExtras(summary, detail, currentRankedValue);
     const leagueSource = (summary.league && typeof summary.league === 'object') ? summary.league : detail?.league;
     const leagueIconSmall = getLeagueIcon(leagueSource, 'small');
     const leagueIconMedium = getLeagueIcon(leagueSource, 'medium');
@@ -338,7 +354,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
             }
           : null,
         ranked: {
-          trophies: rankedTrophies ?? null,
+          trophies: rankedSnapshotValue ?? null,
           leagueId: rankedLeagueId ?? null,
           leagueName: rankedLeagueName ?? null,
           iconSmall: rankedIconSmall,
@@ -398,9 +414,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       league: canonicalSnapshot.member.ranked.leagueName
         ?? canonicalSnapshot.member.league?.name
         ?? null,
-      trophies: canonicalSnapshot.member.ranked.trophies
-        ?? canonicalSnapshot.member.trophies
-        ?? null,
+      trophies: rankedSnapshotValue ?? canonicalSnapshot.member.trophies ?? null,
       donations: canonicalSnapshot.member.donations.given ?? null,
       donationsReceived: canonicalSnapshot.member.donations.received ?? null,
       warStars: canonicalSnapshot.member.war.stars ?? null,
@@ -428,6 +442,20 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
 
     playerDayStates.push(canonicalState);
 
+    const statsExtras = {
+      ...extras,
+      tournamentStats,
+      tournamentFinalTrophies,
+      currentRankedTrophies: currentRankedValue,
+    };
+
+    // Only write ranked_trophies on Monday (UTC) and keep plausible finals; otherwise leave as 0
+    const fetchedAtIso = snapshot.fetchedAt ?? null;
+    const fetchedDate = fetchedAtIso ? new Date(fetchedAtIso) : null;
+    const isMonday = fetchedDate ? fetchedDate.getUTCDay() === 1 : false;
+    const finalWithinBounds = (v: number | null) => v != null && Number.isFinite(v) && v > 0 && v <= 600;
+    const mondayFinal = isMonday && finalWithinBounds(tournamentFinalTrophies) ? tournamentFinalTrophies : 0;
+
     return {
       snapshot_id: snapshotId,
       member_id: memberId,
@@ -440,14 +468,14 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       hero_levels: heroLevels,
       activity_score: activityEvidence?.score ?? null,
       rush_percent: rushPercent,
-      extras,
+      extras: statsExtras,
       league_id: leagueId,
       league_name: leagueName,
       league_trophies: leagueTrophies,
-      ranked_trophies: rankedTrophies,
+      ranked_trophies: mondayFinal,
       ranked_league_id: rankedLeagueId,
       ranked_league_name: rankedLeagueName,
-      battle_mode_trophies: rankedTrophies,
+      battle_mode_trophies: currentRankedValue,
       equipment_flags: memberEnriched.equipmentLevels ?? detail?.equipment ?? null,
       // War stats & enriched fields
       war_stars: memberEnriched.warStars ?? detail?.warStars ?? null,

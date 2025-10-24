@@ -8,6 +8,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { parseUtcDate, formatUtcDateTime, formatUtcDate } from '@/lib/date-format';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
@@ -156,6 +158,33 @@ interface RosterData {
   clanName: string;
   date: string;
   clanTag: string;
+  snapshotMetadata?: {
+    snapshotDate: string;
+    fetchedAt: string;
+    memberCount: number;
+    warLogEntries: number;
+    capitalSeasons: number;
+    version: string;
+    payloadVersion?: string | null;
+    ingestionVersion?: string | null;
+    schemaVersion?: string | null;
+    computedAt?: string | null;
+    seasonId?: string | null;
+    seasonStart?: string | null;
+    seasonEnd?: string | null;
+  };
+  meta?: {
+    clanName?: string;
+    recentClans?: string[];
+    memberCount?: number;
+    payloadVersion?: string | null;
+    ingestionVersion?: string | null;
+    schemaVersion?: string | null;
+    computedAt?: string | null;
+    seasonId?: string | null;
+    seasonStart?: string | null;
+    seasonEnd?: string | null;
+  };
 }
 
 type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'season' | 'tenure' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
@@ -386,6 +415,23 @@ export default function SimpleRosterPage() {
         
         // Transform API response to our format
         if (apiData.success && apiData.data) {
+          const snapshot = apiData.data.snapshot ?? {};
+          const metadata = snapshot.metadata ?? {};
+          const normalizedMetadata = {
+            snapshotDate: metadata.snapshotDate ?? metadata.snapshot_date ?? snapshot.snapshotDate ?? snapshot.snapshot_date ?? null,
+            fetchedAt: snapshot.fetchedAt ?? snapshot.fetched_at ?? metadata.fetchedAt ?? metadata.fetched_at ?? null,
+            memberCount: snapshot.memberCount ?? snapshot.member_count ?? metadata.memberCount ?? metadata.member_count ?? apiData.data.members?.length ?? 0,
+            warLogEntries: metadata.warLogEntries ?? metadata.war_log_entries ?? 0,
+            capitalSeasons: metadata.capitalSeasons ?? metadata.capital_seasons ?? 0,
+            version: metadata.version ?? snapshot.version ?? 'data-spine',
+            payloadVersion: snapshot.payloadVersion ?? snapshot.payload_version ?? metadata.payloadVersion ?? metadata.payload_version ?? null,
+            ingestionVersion: snapshot.ingestionVersion ?? snapshot.ingestion_version ?? metadata.ingestionVersion ?? metadata.ingestion_version ?? null,
+            schemaVersion: snapshot.schemaVersion ?? snapshot.schema_version ?? metadata.schemaVersion ?? metadata.schema_version ?? null,
+            computedAt: snapshot.computedAt ?? snapshot.computed_at ?? metadata.computedAt ?? metadata.computed_at ?? null,
+            seasonId: snapshot.seasonId ?? snapshot.season_id ?? metadata.seasonId ?? metadata.season_id ?? null,
+            seasonStart: snapshot.seasonStart ?? snapshot.season_start ?? metadata.seasonStart ?? metadata.season_start ?? null,
+            seasonEnd: snapshot.seasonEnd ?? snapshot.season_end ?? metadata.seasonEnd ?? metadata.season_end ?? null,
+          };
           const transformed = {
             members: apiData.data.members.map((m: any) => ({
               tag: m.tag,
@@ -418,7 +464,18 @@ export default function SimpleRosterPage() {
             })),
             clanName: apiData.data.clan.name,
             clanTag: apiData.data.clan.tag,
-            date: apiData.data.snapshot.fetchedAt
+            date: snapshot.fetchedAt ?? snapshot.fetched_at ?? null,
+            snapshotMetadata: normalizedMetadata,
+            meta: {
+              computedAt: normalizedMetadata.computedAt,
+              payloadVersion: normalizedMetadata.payloadVersion,
+              ingestionVersion: normalizedMetadata.ingestionVersion,
+              schemaVersion: normalizedMetadata.schemaVersion,
+              seasonId: normalizedMetadata.seasonId,
+              seasonStart: normalizedMetadata.seasonStart,
+              seasonEnd: normalizedMetadata.seasonEnd,
+              memberCount: normalizedMetadata.memberCount,
+            },
           };
           console.log('[SimpleRoster] Transformed roster:', {
             clanName: transformed.clanName,
@@ -490,9 +547,22 @@ export default function SimpleRosterPage() {
               <h1 className="text-3xl font-bold text-clash-gold mb-2">Clan Roster</h1>
               <p className="text-sm text-brand-text-secondary">
                 {roster.members.length} members · Updated {(() => {
-                  if (!roster.date) return 'Unknown';
-                  const date = new Date(roster.date);
-                  return isNaN(date.getTime()) ? 'Invalid Date' : date.toLocaleDateString();
+                  const fetchedAtDate =
+                    parseUtcDate(roster.snapshotMetadata?.fetchedAt ?? null) ??
+                    parseUtcDate(roster.meta?.computedAt ?? null) ??
+                    parseUtcDate(roster.date ?? null);
+                  if (!fetchedAtDate) return 'Unknown';
+                  const formattedUtc = formatUtcDateTime(fetchedAtDate);
+                  const relative = formatDistanceToNow(fetchedAtDate, { addSuffix: true });
+                  const snapshotDisplay = (() => {
+                    const parsedSnapshot =
+                      parseUtcDate(roster.snapshotMetadata?.snapshotDate ?? null) ??
+                      parseUtcDate(roster.date ?? null);
+                    return parsedSnapshot ? formatUtcDate(parsedSnapshot) : roster.snapshotMetadata?.snapshotDate ?? null;
+                  })();
+                  return `${formattedUtc} UTC${relative ? ` • ${relative}` : ''}${
+                    snapshotDisplay ? ` • Clash Day ${snapshotDisplay}` : ''
+                  }`;
                 })()}
               </p>
             </div>

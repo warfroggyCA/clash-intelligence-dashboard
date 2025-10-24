@@ -59,6 +59,15 @@ function coerceDeltaMap(point: PlayerTimelinePoint): Record<string, number> {
   }, {});
 }
 
+function getWeekStartIso(date: Date): string {
+  const base = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const day = base.getUTCDay();
+  const diff = base.getUTCDate() - day + (day === 0 ? -6 : 1);
+  base.setUTCDate(diff);
+  base.setUTCHours(0, 0, 0, 0);
+  return base.toISOString().slice(0, 10);
+}
+
 function extractDeltaValue(deltas: Record<string, number>, ...keys: string[]): number {
   for (const key of keys) {
     if (key in deltas) {
@@ -82,11 +91,9 @@ export function buildTimelineFromPlayerDay(
     return aMs - bMs;
   });
 
-  const now = new Date();
-  const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-  const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
   const seasonStart = new Date(seasonStartIso);
   const mondayKeys = new Set<string>();
+  const weeklyFinals: Array<{ weekKey: string; value: number | null }> = [];
 
   let lastWeekTrophies: number | null = null;
   let seasonTotal = 0;
@@ -97,15 +104,15 @@ export function buildTimelineFromPlayerDay(
     const trophies = row.trophies ?? null;
 
     if (dateObj) {
-      if (!lastWeekTrophies && dateObj >= fourteenDaysAgo && dateObj < sevenDaysAgo) {
-        lastWeekTrophies = trophies ?? null;
-      }
-
       if (dateObj >= seasonStart && dateObj.getUTCDay() === 1 && dateIso) {
         const key = `${row.player_tag}|${dateIso}`;
         if (!mondayKeys.has(key)) {
           seasonTotal += trophies ?? 0;
           mondayKeys.add(key);
+          weeklyFinals.push({
+            weekKey: getWeekStartIso(dateObj),
+            value: trophies ?? null,
+          });
         }
       }
     }
@@ -148,8 +155,22 @@ export function buildTimelineFromPlayerDay(
   });
 
   const latest = chronological[chronological.length - 1];
+  const snapshotWeekKey = latest?.date ? getWeekStartIso(new Date(`${latest.date}T00:00:00Z`)) : null;
   if (latest?.trophies != null) {
     seasonTotal += latest.trophies;
+  }
+
+  if (weeklyFinals.length) {
+    const sortedWeekly = weeklyFinals
+      .filter((entry) => entry.value != null)
+      .sort((a, b) => b.weekKey.localeCompare(a.weekKey));
+    if (sortedWeekly.length) {
+      const candidateEntry = sortedWeekly.find((entry) => entry.value != null && (!snapshotWeekKey || entry.weekKey !== snapshotWeekKey))
+        || sortedWeekly.find((entry) => entry.value != null);
+      if (candidateEntry && candidateEntry.value != null) {
+        lastWeekTrophies = candidateEntry.value;
+      }
+    }
   }
 
   return {

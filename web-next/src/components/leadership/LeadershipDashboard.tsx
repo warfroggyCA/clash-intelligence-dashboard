@@ -446,9 +446,18 @@ export default function LeadershipDashboard() {
                     </div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
-                    <div className="text-xs uppercase tracking-wider text-blue-200/70">Last Snapshot</div>
+                    <div className="text-xs uppercase tracking-wider text-blue-200/70">Last Snapshot (UTC)</div>
                     <div className="text-base text-white">
-                      {leadershipSummary.updatedAt ? new Date(leadershipSummary.updatedAt).toLocaleString() : 'Never'}
+                      {leadershipSummary.updatedAt
+                        ? `${new Date(leadershipSummary.updatedAt).toLocaleString('en-US', {
+                            timeZone: 'UTC',
+                            year: 'numeric',
+                            month: 'short',
+                            day: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })} UTC`
+                        : 'Never'}
                     </div>
                   </div>
                   <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
