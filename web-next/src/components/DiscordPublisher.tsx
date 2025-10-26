@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { MessageSquare, Send, Settings, AlertTriangle, Users, Trophy, TrendingUp } from "lucide-react";
+import { useState, useEffect } from "react";
+import { MessageSquare, Send, Settings, AlertTriangle, Users, Trophy, TrendingUp, Swords } from "lucide-react";
 
 interface Member {
   name: string;
@@ -33,6 +33,21 @@ interface Roster {
 interface DiscordPublisherProps {
   clanData: Roster | null;
   clanTag: string;
+  warPlanSummary?: WarPlanSummary | null;
+}
+
+interface WarPlanSummary {
+  opponentName?: string | null;
+  opponentTag?: string | null;
+  confidence?: number | null;
+  outlook?: string | null;
+  recommendations?: string[] | null;
+  slotHighlights?: Array<{
+    slot: number;
+    ourName?: string | null;
+    opponentName?: string | null;
+    summary: string;
+  }>;
 }
 
 // Rush percentage calculation (same as in other components)
@@ -74,7 +89,7 @@ const calculateThCaps = (members: any[]): Map<number, Caps> => {
   return caps;
 };
 
-export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisherProps) {
+export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: DiscordPublisherProps) {
   const [selectedExhibit, setSelectedExhibit] = useState<string>("rushed");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
@@ -223,13 +238,67 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
     return message;
   };
 
+  const parseNumber = (value: unknown): number | null => {
+    if (value == null) return null;
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim().length) {
+      const parsed = Number(value);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+    return null;
+  };
+
+  const computeTenureDays = (member: Member): number | null => {
+    const direct = parseNumber(member.tenure_days ?? member.tenure);
+    if (direct != null) return direct;
+    const joinedAt = (member as any)?.joinedAt;
+    if (joinedAt) {
+      const date = new Date(joinedAt);
+      if (!Number.isNaN(date.getTime())) {
+        const diff = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
+        return Math.max(0, Math.round(diff));
+      }
+    }
+    return null;
+  };
+
+  const computeDaysSinceSeen = (member: Member): number | null => {
+    const value = parseNumber(member.lastSeen);
+    if (value != null) return value;
+    if (typeof member.lastSeen === 'string' && member.lastSeen.trim().length > 0) {
+      const date = new Date(member.lastSeen);
+      if (!Number.isNaN(date.getTime())) {
+        const diff = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
+        return Math.max(0, Math.round(diff));
+      }
+    }
+    const lastSeenAt = (member as any)?.lastSeenAt;
+    if (lastSeenAt) {
+      const date = new Date(lastSeenAt);
+      if (!Number.isNaN(date.getTime())) {
+        const diff = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
+        return Math.max(0, Math.round(diff));
+      }
+    }
+    return null;
+  };
+
   const generateActivityExhibit = (): string => {
     if (!clanData || !clanData.members) return "";
 
     const members = clanData.members;
-    const activeMembers = members.filter(m => Number(m.lastSeen || 0) <= 1);
-    const inactiveMembers = members.filter(m => Number(m.lastSeen || 0) > 3);
-    const newMembers = members.filter(m => (m.tenure_days || m.tenure || 0) < 7);
+    const activeMembers = members.filter((m) => {
+      const days = computeDaysSinceSeen(m);
+      return days !== null && days <= 1;
+    });
+    const inactiveMembers = members.filter((m) => {
+      const days = computeDaysSinceSeen(m);
+      return days !== null && days > 3;
+    });
+    const newMembers = members.filter((m) => {
+      const tenure = computeTenureDays(m);
+      return tenure !== null && tenure < 7;
+    });
 
     let message = `🏁 **Activity Report for ${clanData.clanName || 'Your Clan'}**\n\n`;
     
@@ -239,16 +308,110 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
 
     if (inactiveMembers.length > 0) {
       message += `⚠️ **Inactive Members (>3 days):**\n`;
-      inactiveMembers.slice(0, 5).forEach(member => {
-        message += `• **${member.name}** - Last seen ${member.lastSeen} days ago\n`;
+      inactiveMembers.slice(0, 10).forEach((member) => {
+        const days = computeDaysSinceSeen(member);
+        const daysText = days != null ? `${days} day${days === 1 ? '' : 's'} ago` : 'unknown';
+        message += `• **${member.name}** - Last seen ${daysText}\n`;
       });
+    } else {
+      message += `✅ **No members have been inactive for more than 3 days.**\n`;
     }
 
     if (newMembers.length > 0) {
       message += `\n🆕 **New Members (<7 days):**\n`;
-      newMembers.forEach(member => {
-        message += `• **${member.name}** - Joined ${member.tenure_days || member.tenure} days ago\n`;
+      newMembers.forEach((member) => {
+        const tenure = computeTenureDays(member);
+        const tenureText = tenure != null ? `${tenure} day${tenure === 1 ? '' : 's'} ago` : 'recently';
+        message += `• **${member.name}** - Joined ${tenureText}\n`;
       });
+    }
+
+    return message;
+  };
+
+  const formatWarResult = (result: string | undefined) => {
+    if (!result) return 'Unknown';
+    const normalized = result.toLowerCase();
+    if (normalized === 'win') return '🏆 Win';
+    if (normalized === 'loss') return '❌ Loss';
+    if (normalized === 'tie' || normalized === 'draw') return '🤝 Tie';
+    return result;
+  };
+
+  const formatDate = (value?: string | null) => {
+    if (!value) return 'Unknown time';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleString();
+  };
+
+  const generateWarReport = (): string => {
+    if (warPlanSummary) {
+      const lines: string[] = [];
+      const opponentLabel = warPlanSummary.opponentName || warPlanSummary.opponentTag || 'Opponent';
+      lines.push(`⚔️ **War Plan vs ${opponentLabel}**`);
+      if (warPlanSummary.confidence != null || warPlanSummary.outlook) {
+        const confidenceText =
+          warPlanSummary.confidence != null ? `${warPlanSummary.confidence.toFixed(1)}%` : 'Unknown';
+        const outlookText = warPlanSummary.outlook ?? 'Unknown outlook';
+        lines.push(`Confidence: ${confidenceText} • Outlook: ${outlookText}`);
+      }
+      if (warPlanSummary.recommendations?.length) {
+        lines.push('\n**Key Recommendations:**');
+        warPlanSummary.recommendations.slice(0, 4).forEach((rec) => {
+          lines.push(`• ${rec}`);
+        });
+      }
+      if (warPlanSummary.slotHighlights?.length) {
+        lines.push('\n**Priority Matchups:**');
+        warPlanSummary.slotHighlights.slice(0, 6).forEach((slot) => {
+          const our = slot.ourName ?? `Slot ${slot.slot}`;
+          const opp = slot.opponentName ? ` vs ${slot.opponentName}` : '';
+          lines.push(`• ${our}${opp} — ${slot.summary}`);
+        });
+      }
+      lines.push('\n_Ref: Stored war plan analysis_');
+      return lines.join('\n');
+    }
+
+    if (!clanData) return '';
+    const currentWar = clanData.snapshotDetails?.currentWar;
+    const warLog = clanData.snapshotDetails?.warLog ?? [];
+
+    let message = `⚔️ **War Report for ${clanData.clanName || 'Your Clan'}**\n\n`;
+
+    if (currentWar) {
+      const opponentName = currentWar.opponent?.name || 'Unknown Opponent';
+      const opponentTag = currentWar.opponent?.tag ? ` (${currentWar.opponent.tag})` : '';
+      message += `**Current War:** ${opponentName}${opponentTag}\n`;
+      message += `State: ${currentWar.state || 'Unknown'}\n`;
+      if (currentWar.teamSize) {
+        message += `Team Size: ${currentWar.teamSize}x${currentWar.teamSize}\n`;
+      }
+      if (currentWar.attacksPerMember) {
+        message += `Attacks per Member: ${currentWar.attacksPerMember}\n`;
+      }
+      if (currentWar.startTime) {
+        message += `War Start: ${formatDate(currentWar.startTime)}\n`;
+      }
+      if (currentWar.endTime) {
+        message += `War End: ${formatDate(currentWar.endTime)}\n`;
+      }
+      message += '\n';
+    } else {
+      message += 'No active war information available.\n\n';
+    }
+
+    if (warLog.length) {
+      message += '**Recent Wars:**\n';
+      warLog.slice(0, 3).forEach((entry) => {
+        const opponent = entry.opponent?.name || 'Unknown';
+        const outcome = formatWarResult(entry.result);
+        const when = formatDate(entry.endTime);
+        message += `• ${outcome} vs ${opponent} (${entry.teamSize}v${entry.teamSize}) on ${when}\n`;
+      });
+    } else {
+      message += 'No recent war log data available.';
     }
 
     return message;
@@ -262,6 +425,8 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
         return generateDonationExhibit();
       case "activity":
         return generateActivityExhibit();
+      case "war":
+        return generateWarReport();
       default:
         return "";
     }
@@ -310,6 +475,15 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
     setPreviewMessage(generateExhibitMessage());
   };
 
+  useEffect(() => {
+    if (clanData) {
+      setPreviewMessage(generateExhibitMessage());
+    } else {
+      setPreviewMessage('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clanData, selectedExhibit, warPlanSummary]);
+
   if (!clanData) {
     return (
       <div className="bg-white rounded-lg shadow-lg p-6">
@@ -324,10 +498,10 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
   return (
     <div className="bg-white rounded-lg shadow-lg p-6">
       <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <MessageSquare className="w-6 h-6 text-blue-600" />
-          <h2 className="text-xl font-bold text-gray-800">Discord Publisher</h2>
-        </div>
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-6 h-6 text-blue-600" />
+              <h2 className="text-xl font-bold text-gray-800">Discord Publisher</h2>
+            </div>
         <button
           onClick={() => setShowSettings(!showSettings)}
           className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
@@ -364,7 +538,7 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
       {/* Exhibit Selection */}
       <div className="mb-6">
         <h3 className="font-semibold text-gray-800 mb-3">Select Exhibit to Publish</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <button
             onClick={() => { setSelectedExhibit("rushed"); updatePreview(); }}
             className={`p-4 rounded-lg border-2 transition-all ${
@@ -402,6 +576,19 @@ export default function DiscordPublisher({ clanData, clanTag }: DiscordPublisher
             <TrendingUp className="w-6 h-6 mx-auto mb-2" />
             <div className="font-medium">Activity Report</div>
             <div className="text-sm opacity-75">Member activity status</div>
+          </button>
+
+          <button
+            onClick={() => { setSelectedExhibit("war"); updatePreview(); }}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              selectedExhibit === "war" 
+                ? "border-purple-500 bg-purple-50 text-purple-700" 
+                : "border-gray-200 hover:border-gray-300 text-gray-700"
+            }`}
+          >
+            <Swords className="w-6 h-6 mx-auto mb-2" />
+            <div className="font-medium">War Report</div>
+            <div className="text-sm opacity-75">Current war & recent results</div>
           </button>
         </div>
       </div>

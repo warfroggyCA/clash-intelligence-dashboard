@@ -66,7 +66,28 @@ export interface WarPlanBriefing {
   narrative: string;
   confidenceBand: WarPlanConfidenceBand;
   generatedAt: string;
-  source: 'heuristic';
+  source: 'heuristic' | 'openai';
+  model?: string;
+}
+
+export interface WarPlanAIPayload {
+  matchup: {
+    ourClanTag: string | null;
+    opponentClanTag: string | null;
+    confidence: number;
+    outlook: string;
+    metrics: WarPlanMetrics;
+    recommendations: string[];
+    slotHighlights: Array<{
+      slot: number;
+      matchup: string;
+      summary: string;
+      thDiff: number;
+      heroDiff: number;
+      rankedDiff: number;
+      warStarDiff: number;
+    }>;
+  };
 }
 
 export interface WarPlanAnalysis {
@@ -86,6 +107,7 @@ export interface WarPlanAnalysis {
   };
   slotBreakdown: SlotBreakdown[];
   recommendations: string[];
+  aiInput: WarPlanAIPayload | null;
   metrics: WarPlanMetrics;
   briefing: WarPlanBriefing;
 }
@@ -137,6 +159,7 @@ export function generateWarPlanAnalysis(params: {
     },
     slotBreakdown,
     recommendations,
+    aiInput: null,
     metrics,
     briefing,
   };

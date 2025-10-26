@@ -1,9 +1,76 @@
 "use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { Button, GlassCard } from '@/components/ui';
 import { normalizeTag } from '@/lib/tags';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import type { WarPlanAIPayload } from '@/lib/war-planning/analysis';
+
+const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+
+const ORACLE_DIRECTIVE = `"You are designated as **'Clan War Oracle,'** a **World-Class Clash of Clans War Strategist**. Your expertise is absolute, based on a deep understanding of competitive war metrics and the cutting-edge META strategies of 2025.
+
+Your singular mission is to perform a **deep, comprehensive analysis** of the subsequent \`War Plan Report\` data block, prioritizing the use of the structured JSON data for all quantitative conclusions.
+
+**DYNAMIC DATA ANALYSIS & STRATEGIC CONTEXT (Referencing the provided data block):**
+1.  **Outlook & Confidence:** Extract and report the numerical **Confidence Rating** and the overall **Outlook** (e.g., Favorable, Even, Unfavorable).
+2.  **Firepower Edge:** Calculate the strategic significance of the **Average Hero Delta** and **Top-Five Hero Delta** on attack sequencing.
+3.  **Challenge Areas:** Identify the exact number of **Danger Slots (TH Mismatches)** and formulate a mandatory plan for neutralizing the disadvantage.
+4.  **Roster Composition:** Identify the primary **Town Hall Distribution** for both clans to tailor army recommendations in Section 4.
+
+**CURRENT META AND MECHANICS (Must be integrated into strategy):**
+*   **System Reworks:** Incorporate the impact of recent changes, including the **Magic Shield** and **Reworked Revenge System**, the **Unified Town Hall Upgrades**, and the **Spring Trap Rework** (targeting the highest housing space troop).
+*   **Equipment Focus:** Ensure all strategies leverage prevailing **META Hero Equipment** (e.g., **Electro Boots**, **Fireball**, **Frozen Arrow**, **Giant Gauntlet**).
+
+---
+
+### **[OUTPUT FORMATTING & REQUIRED 6-SECTION ANALYSIS]**
+
+"Generate your strategy in a professional tone using the following precise Markdown structure. **The outputs for Sections 3 and 6 must explicitly define WHO attacks WHO using names and corresponding slot numbers.**"
+
+### **1. Executive War Briefing: Strategic Outlook (Data Synthesis)**
+
+*   **Confidence Rating & Core Thesis:** Re-state the calculated **% confidence** and deliver a 1-2 sentence core thesis justifying the war plan.
+
+### **2. Deep Matchup Analysis: Data-Driven Interpretation**
+
+*   **Hero Firepower & Offensive Strategy:** Interpret the numerical impact of the Hero Delta on the initial attack wave. Confirm that any slots with a **TH Advantage** or exceptional **Hero Advantage** must be exploited aggressively.
+*   **TH Roster Management Policy:** Clearly state the optimal CWL strategy type (e.g., **Bottom Up**, **Roster Switch**, or **Edge TH Switch**) to maximize star count against the opponent's TH distribution.
+
+### **3. Optimized Attack Sequencing & Targeting (WHO vs. WHO)**
+
+*   **Phase 1: Momentum & Exploitation (Triple Focus):** Define which players must attack which specific opponent bases (Slots 1-10) to secure high-value triples. **The output must be formatted as a bulleted list: [Our Player Name (Our Slot #) $\\rightarrow$ Opponent Name (Opponent Slot #)].** These assignments should leverage the clan's Hero Firepower advantage.
+*   **Phase 2: Mismatch Management (Danger Slots/2-Star Focus):** Provide explicit instructions detailing which of **our players** are assigned to attack the **Danger Slots** (all bases with **TH Disadvantage**). The instruction must state the **Opponent's Name and Slot #** and prioritize a guaranteed high-percentage 2-star outcome.
+
+### **4. World-Class META Attack Recommendations (Contextual and Dynamic)**
+
+*   **3-Star Strategies (TH Mirror/Dip):** Recommend 2-3 current top-tier attack strategies. Tailor selections to the most common TH levels in our roster and include mandatory **Hero Equipment** pairings (e.g., **Root Rider Smash**, **Queen Charge Lalo (QCL)**, or **Fireball Rocket Loon/Dragon attacks**).
+*   **2-Star Mismatch Strategies (Attacking Up):** Recommend precise armies for the designated 'attacking up' players (TH Disadvantage slots), focusing on securing the Town Hall and high destruction percentage (e.g., **Sneaky Goblin Blimp** followed by Baby Dragons/E-Drags).
+
+### **5. Critical Defensive Preparation**
+
+*   **CC Defense Strategy:** Recommend a maximum of three optimal Clan Castle (CC) defensive compositions suitable for the highest TH levels, explicitly naming troops known to delay or disrupt strong hero charges (e.g., **Ice Golems + Super Minions** or **2 IG + 1 Furnace**).
+*   **Base Layout Review:** Advise clan members to review their **COC layout** to optimize against prevailing META attacks.
+
+---
+
+### **6. Mandatory Final Assignment Table**
+
+**Produce a final, clear table listing the entire attack roster, stating the proposed strategy for the first attack only.**
+
+| Our Slot # | Our Player Name | Target Opponent Slot # | Target Opponent Name | Primary Goal | Recommended Strategy |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| [Our 1] | [Name] | [Opp 1] | [Name] | 3-Star | [META Strategy] |
+| [Our 2] | [Name] | [Opp X] | [Name] | [Goal] | [Strategy] |
+| ... | ... | ... | ... | ... | ... |
+| [Our N] | [Name] | [Opp Y] | [Name] | [Goal] | [Strategy] |
+
+---
+
+### **[END OF CLAN WAR ORACLE INSTRUCTIONS. ANALYZE THE FOLLOWING DATA.]**
+
+--- **BEGIN WARPLAN REPORT DATA** ---`;
 
 type HeroLevels = Record<string, number | null>;
 
@@ -81,12 +148,15 @@ type MatchupAnalysis = {
   recommendations: string[];
   metrics?: WarPlanMetrics;
   briefing?: WarPlanBriefing;
+  aiInput?: WarPlanAIPayload | null;
 };
 
 type MatchupResponse = {
   ourProfiles?: RosterMember[];
   opponentProfiles?: RosterMember[];
   analysis: MatchupAnalysis;
+  useAI?: boolean;
+  opponentClanName?: string | null;
 };
 
 type SavedPlan = {
@@ -102,6 +172,8 @@ type SavedPlan = {
   analysisCompletedAt?: string | null;
   analysisVersion?: string | null;
   updatedAt: string;
+  useAI?: boolean;
+  opponentClanName?: string | null;
 };
 
 type SlotBreakdown = {
@@ -128,6 +200,7 @@ const SectionTitle: React.FC<{ title: string; children?: React.ReactNode }> = ({
 
 const WarPlanningPage: React.FC = () => {
   const storeClanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
+  const clanName = useDashboardStore(selectors.clanName);
 
   const [ourClanTagInput, setOurClanTagInput] = useState(storeClanTag);
   const [opponentClanTagInput, setOpponentClanTagInput] = useState('');
@@ -152,6 +225,8 @@ const WarPlanningPage: React.FC = () => {
   const [planLoading, setPlanLoading] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [savedPlan, setSavedPlan] = useState<SavedPlan | null>(null);
+  const [useAI, setUseAI] = useState(true);
+  const [opponentClanName, setOpponentClanName] = useState<string>('');
 
   const normalizedOurClanTag = useMemo(
     () => (ourClanTagInput ? normalizeTag(ourClanTagInput) : ''),
@@ -242,6 +317,7 @@ const WarPlanningPage: React.FC = () => {
       setOpponentError('Enter the full opponent clan tag (at least 5 characters).');
       setOpponentRoster([]);
       setOpponentSelection(new Set());
+      setOpponentClanName('');
       return;
     }
     setOpponentError(null);
@@ -257,8 +333,17 @@ const WarPlanningPage: React.FC = () => {
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || `HTTP ${res.status}`);
       }
-      const opponents: RosterMember[] = body.data.opponents ?? [];
+      const opponents: RosterMember[] = (body.data.opponents ?? []).map((member: any) => ({
+        ...member,
+        heroLevels: member.heroLevels ?? { bk: null, aq: null, gw: null, rc: null, mp: null },
+      }));
       setOpponentRoster(opponents);
+      const fetchedClanName = body.data.clan?.name ?? '';
+      if (fetchedClanName) {
+        setOpponentClanName(fetchedClanName);
+      } else if (!opponentClanName) {
+        setOpponentClanName('');
+      }
       if (!options?.preserveSelection) {
         setOpponentSelection(new Set());
       }
@@ -266,10 +351,11 @@ const WarPlanningPage: React.FC = () => {
       setOpponentError(error instanceof Error ? error.message : 'Failed to load opponent roster');
       setOpponentRoster([]);
       setOpponentSelection(new Set());
+      setOpponentClanName('');
     } finally {
       setLoadingOpponents(false);
     }
-  }, [normalizedOpponentTag]);
+  }, [normalizedOpponentTag, opponentClanName]);
 
   const runMatchupAnalysis = useCallback(async () => {
     setAnalysisError(null);
@@ -285,6 +371,23 @@ const WarPlanningPage: React.FC = () => {
         return normalizedOpponentSelection.includes(normalized);
       });
 
+      const missingOur = normalizedOurSelection.filter(
+        (tag) => !ourSelectedRoster.some((member) => normalizeTag(member.tag ?? '') === tag),
+      );
+      const missingOpponent = normalizedOpponentSelection.filter(
+        (tag) => !opponentSelectedRoster.some((member) => normalizeTag(member.tag ?? '') === tag),
+      );
+
+      if (missingOur.length || missingOpponent.length) {
+        setAnalysisError(
+          missingOpponent.length
+            ? 'Opponent roster data still loading. Wait a moment and retry.'
+            : 'Our roster data still loading. Wait a moment and retry.',
+        );
+        setRunningAnalysis(false);
+        return;
+      }
+
       const payload: MatchupPayload = {
         ourClanTag: normalizedOurClanTag || undefined,
         opponentClanTag: normalizedOpponentTag,
@@ -292,6 +395,8 @@ const WarPlanningPage: React.FC = () => {
         opponentSelected: normalizedOpponentSelection,
         ourRoster: ourSelectedRoster,
         opponentRoster: opponentSelectedRoster,
+        useAI,
+        opponentClanName: opponentClanName || savedPlan?.opponentClanName || null,
       };
       const res = await fetch('/api/v2/war-planning/matchup', {
         method: 'POST',
@@ -302,7 +407,11 @@ const WarPlanningPage: React.FC = () => {
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || `HTTP ${res.status}`);
       }
-      setMatchup(body.data as MatchupResponse);
+      const matchupResponse = body.data as MatchupResponse;
+      setMatchup(matchupResponse);
+      if (matchupResponse?.opponentClanName) {
+        setOpponentClanName(matchupResponse.opponentClanName);
+      }
     } catch (error) {
       setAnalysisError(error instanceof Error ? error.message : 'Failed to generate matchup analysis');
     } finally {
@@ -315,6 +424,9 @@ const WarPlanningPage: React.FC = () => {
     normalizedOurSelection,
     ourRoster,
     opponentRoster,
+    useAI,
+    opponentClanName,
+    savedPlan,
   ]);
 
   const hasAutoLoadedOurRoster = useRef(false);
@@ -343,8 +455,9 @@ const WarPlanningPage: React.FC = () => {
     planLoadedRef.current = false;
     pendingPlanRef.current = null;
     setSavedPlan(null);
+    setUseAI(true);
+    setOpponentClanName('');
   }, [normalizedOurClanTag]);
-
 
   const planStorageKey = normalizedOurClanTag ? `war-plan:${normalizedOurClanTag}` : null;
 
@@ -375,28 +488,50 @@ const WarPlanningPage: React.FC = () => {
     return null;
   }, [planStorageKey]);
 
+  useEffect(() => {
+    if (!savedPlan) return;
+    if (!opponentClanName || savedPlan.opponentClanName === opponentClanName) return;
+    const nextPlan = { ...savedPlan, opponentClanName };
+    setSavedPlan(nextPlan);
+    savePlanToLocal(nextPlan);
+  }, [opponentClanName, savedPlan, savePlanToLocal]);
+
   const applyPlan = useCallback(
     (plan: SavedPlan, options?: { message?: string }) => {
-      pendingPlanRef.current = plan;
-      setSavedPlan(plan);
-      savePlanToLocal(plan);
+      const normalizedUseAI =
+        plan.useAI !== undefined
+          ? plan.useAI
+          : plan.analysis
+            ? plan.analysis.briefing?.source === 'openai'
+            : true;
+      const nextPlan: SavedPlan = {
+        ...plan,
+        useAI: normalizedUseAI,
+        opponentClanName: plan.opponentClanName ?? opponentClanName ?? null,
+      };
+
+      pendingPlanRef.current = nextPlan;
+      setSavedPlan(nextPlan);
+      savePlanToLocal(nextPlan);
       setPlanError(null);
+      setUseAI(Boolean(normalizedUseAI));
+      setOpponentClanName(nextPlan.opponentClanName ?? opponentClanName ?? '');
       if (options?.message) {
         setPlanMessage(options.message);
       } else {
-        const statusNote = plan.analysisStatus ? ` — analysis: ${plan.analysisStatus}` : '';
-        setPlanMessage(`Plan loaded vs ${plan.opponentClanTag}${statusNote}`);
+        const statusNote = nextPlan.analysisStatus ? ` — analysis: ${nextPlan.analysisStatus}` : '';
+        setPlanMessage(`Plan loaded vs ${nextPlan.opponentClanName || nextPlan.opponentClanTag}${statusNote}`);
       }
-      setOpponentClanTagInput(plan.opponentClanTag);
-      setOurSelection(new Set(plan.ourSelection ?? []));
-      setOpponentSelection(new Set(plan.opponentSelection ?? []));
-      if (plan.analysis) {
-        setMatchup({ analysis: plan.analysis });
+      setOpponentClanTagInput(nextPlan.opponentClanTag);
+      setOurSelection(new Set(nextPlan.ourSelection ?? []));
+      setOpponentSelection(new Set(nextPlan.opponentSelection ?? []));
+      if (nextPlan.analysis) {
+        setMatchup({ analysis: nextPlan.analysis });
       } else {
         setMatchup(null);
       }
     },
-    [savePlanToLocal],
+    [savePlanToLocal, opponentClanName],
   );
 
   const loadPlan = useCallback(
@@ -424,7 +559,7 @@ const WarPlanningPage: React.FC = () => {
 
       if (plan) {
         const statusNote = plan.analysisStatus ? ` — analysis: ${plan.analysisStatus}` : '';
-        applyPlan(plan, { message: `Restored plan vs ${plan.opponentClanTag}${statusNote}` });
+        applyPlan(plan, { message: `Restored plan vs ${plan.opponentClanName || plan.opponentClanTag}${statusNote}` });
       } else {
         setSavedPlan(null);
       }
@@ -563,6 +698,8 @@ const WarPlanningPage: React.FC = () => {
       ourSelection: normalizedOurSelection,
       opponentSelection: normalizedOpponentSelection,
       updatedAt: new Date().toISOString(),
+      useAI,
+      opponentClanName,
     };
 
     try {
@@ -575,6 +712,23 @@ const WarPlanningPage: React.FC = () => {
         return normalizedOpponentSelection.includes(normalized);
       });
 
+      const missingOur = normalizedOurSelection.filter(
+        (tag) => !ourSelectedRoster.some((member) => normalizeTag(member.tag ?? '') === tag),
+      );
+      const missingOpponent = normalizedOpponentSelection.filter(
+        (tag) => !opponentSelectedRoster.some((member) => normalizeTag(member.tag ?? '') === tag),
+      );
+
+      if (missingOur.length || missingOpponent.length) {
+        setPlanError(
+          missingOpponent.length
+            ? 'Opponent roster hasn’t finished loading. Wait a moment before saving.'
+            : 'Our roster hasn’t finished loading. Wait a moment before saving.',
+        );
+        setSavingPlan(false);
+        return;
+      }
+
       const res = await fetch('/api/v2/war-planning/plan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -585,15 +739,26 @@ const WarPlanningPage: React.FC = () => {
           opponentSelected: payload.opponentSelection,
           ourRoster: ourSelectedRoster,
           opponentRoster: opponentSelectedRoster,
+          useAI,
+          opponentClanName,
         }),
       });
       const body = await res.json();
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || `HTTP ${res.status}`);
       }
-      const savedPlanResponse = body.data as SavedPlan;
+      const savedPlanResponse = body.data as SavedPlan | null;
+      if (!savedPlanResponse) {
+        throw new Error('Server did not return a saved plan.');
+      }
+      savedPlanResponse.useAI = savedPlanResponse.useAI ?? useAI;
+      savedPlanResponse.opponentClanName =
+        savedPlanResponse.opponentClanName ?? opponentClanName ?? null;
+      if (!savedPlanResponse.opponentClanName && opponentClanName) {
+        savedPlanResponse.opponentClanName = opponentClanName;
+      }
       applyPlan(savedPlanResponse, {
-        message: `Plan saved vs ${savedPlanResponse.opponentClanTag}${savedPlanResponse.analysisStatus ? ` — analysis: ${savedPlanResponse.analysisStatus}` : ''}`,
+        message: `Plan saved vs ${savedPlanResponse.opponentClanName || savedPlanResponse.opponentClanTag}${savedPlanResponse.analysisStatus ? ` — analysis: ${savedPlanResponse.analysisStatus}` : ''}`,
       });
     } catch (error) {
       setPlanError(error instanceof Error ? error.message : 'Failed to save plan');
@@ -609,13 +774,17 @@ const WarPlanningPage: React.FC = () => {
     applyPlan,
     ourRoster,
     opponentRoster,
+    useAI,
+    opponentClanName,
   ]);
 
   const handleReloadSavedPlan = useCallback(() => {
     if (!savedPlan) return;
     const statusNote = savedPlan.analysisStatus ? ` — analysis: ${savedPlan.analysisStatus}` : '';
-   applyPlan(savedPlan, { message: `Plan loaded vs ${savedPlan.opponentClanTag}${statusNote}` });
- }, [applyPlan, savedPlan]);
+    applyPlan(savedPlan, {
+      message: `Plan loaded vs ${savedPlan.opponentClanName || savedPlan.opponentClanTag}${statusNote}`,
+    });
+  }, [applyPlan, savedPlan]);
 
   const handleRegenerateAnalysis = useCallback(async () => {
     if (!savedPlan) {
@@ -644,6 +813,22 @@ const WarPlanningPage: React.FC = () => {
       return normalized ? opponentTags.has(normalized) : false;
     });
 
+    const missingOur = Array.from(ourTags).filter(
+      (tag) => !ourSelectedRoster.some((member) => normalizeTag(member.tag ?? '') === tag),
+    );
+    const missingOpponent = Array.from(opponentTags).filter(
+      (tag) => !opponentSelectedRoster.some((member) => normalizeTag(member.tag ?? '') === tag),
+    );
+
+    if (missingOur.length || missingOpponent.length) {
+      setPlanError(
+        missingOpponent.length
+          ? 'Opponent roster hasn’t finished loading. Wait a moment before regenerating.'
+          : 'Our roster hasn’t finished loading. Wait a moment before regenerating.',
+      );
+      return;
+    }
+
     try {
       const res = await fetch('/api/v2/war-planning/plan/analyze', {
         method: 'POST',
@@ -653,23 +838,26 @@ const WarPlanningPage: React.FC = () => {
           opponentClanTag: savedPlan.opponentClanTag,
           ourRoster: ourSelectedRoster,
           opponentRoster: opponentSelectedRoster,
+          useAI,
         }),
       });
       const body = await res.json();
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || `HTTP ${res.status}`);
       }
-      const updated = body.data as SavedPlan;
-      setSavedPlan(updated);
-      savePlanToLocal(updated);
-      setMatchup(updated.analysis ? { analysis: updated.analysis } : null);
-      setPlanMessage(
-        `Analysis requeued — status: ${updated.analysisStatus ?? 'queued'}${updated.analysisJobId ? ` (job ${shortId(updated.analysisJobId)})` : ''}`,
-      );
+      const updated = body.data as SavedPlan | null;
+      if (!updated) {
+        throw new Error('Server did not return an updated plan.');
+      }
+      updated.useAI = updated.useAI ?? useAI;
+      updated.opponentClanName =
+        updated.opponentClanName ?? opponentClanName ?? savedPlan.opponentClanName ?? null;
+      const statusMessage = `Analysis requeued — status: ${updated.analysisStatus ?? 'queued'}${updated.analysisJobId ? ` (job ${shortId(updated.analysisJobId)})` : ''}`;
+      applyPlan(updated, { message: statusMessage });
     } catch (error) {
       setPlanError(error instanceof Error ? error.message : 'Failed to re-run analysis.');
     }
-  }, [savedPlan, ourRoster, opponentRoster, savePlanToLocal]);
+  }, [savedPlan, ourRoster, opponentRoster, applyPlan, useAI, opponentClanName]);
 
   const handleCopyPlan = useCallback(async () => {
     if (!savedPlan) {
@@ -679,18 +867,24 @@ const WarPlanningPage: React.FC = () => {
     setPlanError(null);
     setPlanMessage(null);
     const analysis = savedPlan.analysis ?? matchup?.analysis ?? null;
-    const report = buildAnalysisReport(analysis, savedPlan);
+    const opponentNameForCopy = opponentClanName || savedPlan.opponentClanName || null;
+    const planForCopy: SavedPlan = { ...savedPlan, opponentClanName: opponentNameForCopy };
+    const report = buildAnalysisReport(analysis, planForCopy);
+    const aiRequest = analysis?.aiInput ?? null;
     const payload = {
-      plan: savedPlan,
+      plan: planForCopy,
       analysis,
       ourRoster,
       opponentRoster,
       exportedAt: new Date().toISOString(),
       report,
+      useAI,
+      aiRequest,
+      opponentClanName: opponentNameForCopy,
     };
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-        const text = `${report}\n\n---\n\n${JSON.stringify(payload, null, 2)}`;
+        const text = `${ORACLE_DIRECTIVE}\n\n${report}\n\n---\n\n${JSON.stringify(payload, null, 2)}`;
         await navigator.clipboard.writeText(text);
         setPlanMessage('Plan payload + report copied to clipboard.');
       } else {
@@ -699,10 +893,11 @@ const WarPlanningPage: React.FC = () => {
     } catch (error) {
       setPlanError('Failed to copy plan to clipboard.');
     }
-  }, [savedPlan, matchup, ourRoster, opponentRoster]);
+  }, [savedPlan, matchup, ourRoster, opponentRoster, useAI, opponentClanName]);
 
   return (
-    <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
+    <DashboardLayout clanName={clanName || undefined}>
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
       <header>
         <h1 className="text-3xl font-bold mb-2">War Planning Control Center</h1>
         <p className="text-sm text-muted-foreground">
@@ -764,6 +959,11 @@ const WarPlanningPage: React.FC = () => {
               }}
             />
           </label>
+          {opponentClanName && (
+            <p className="text-sm text-muted-foreground">
+              Opponent: <span className="font-medium">{opponentClanName}</span>
+            </p>
+          )}
           {opponentError && <p className="text-sm text-destructive">{opponentError}</p>}
           {opponentRosterLoaded ? (
             <RosterList
@@ -783,7 +983,7 @@ const WarPlanningPage: React.FC = () => {
       {savedPlan && (
         <GlassCard className="p-4">
           <SectionTitle
-            title={`Saved Plan — vs ${savedPlan.opponentClanTag}`}
+            title={`Saved Plan — vs ${savedPlan.opponentClanName || savedPlan.opponentClanTag}`}
           >
             <div className="flex flex-wrap gap-2">
               <Button variant="secondary" onClick={handleReloadSavedPlan}>
@@ -796,7 +996,7 @@ const WarPlanningPage: React.FC = () => {
               >
                 Re-run Analysis
               </Button>
-              <Button variant="ghost" onClick={handleCopyPlan}>
+              <Button onClick={handleCopyPlan}>
                 Copy Payload
               </Button>
             </div>
@@ -808,6 +1008,8 @@ const WarPlanningPage: React.FC = () => {
             {savedPlan.analysisJobId && <span>• Job {shortId(savedPlan.analysisJobId)}</span>}
             {savedPlan.analysisStartedAt && <span>• Started {formatTimestamp(savedPlan.analysisStartedAt)}</span>}
             {savedPlan.analysisCompletedAt && <span>• Completed {formatTimestamp(savedPlan.analysisCompletedAt)}</span>}
+            {savedPlan.analysis?.briefing && <span>• Briefing: {formatBriefingSource(savedPlan.analysis.briefing)}</span>}
+            {savedPlan.opponentClanName && <span>• Opponent: {savedPlan.opponentClanName}</span>}
           </p>
         </GlassCard>
       )}
@@ -818,6 +1020,20 @@ const WarPlanningPage: React.FC = () => {
             {runningAnalysis ? 'Analyzing…' : 'Run Analysis'}
           </Button>
         </SectionTitle>
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={useAI}
+              onChange={(event) => setUseAI(event.target.checked)}
+              className="h-4 w-4"
+            />
+            <span>Use AI-powered briefing</span>
+          </label>
+          <span className="text-xs text-muted-foreground">
+            When off, we skip OpenAI and keep the generated payload in Copy for manual runs.
+          </span>
+        </div>
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <Button variant="secondary" onClick={handleSavePlan} disabled={!canSavePlan || savingPlan}>
             {savingPlan ? 'Saving…' : 'Save Plan'}
@@ -838,7 +1054,8 @@ const WarPlanningPage: React.FC = () => {
           )}
         </div>
       </GlassCard>
-    </div>
+      </div>
+    </DashboardLayout>
   );
 };
 
@@ -849,6 +1066,8 @@ type MatchupPayload = {
   opponentSelected: string[];
   ourRoster?: RosterMember[];
   opponentRoster?: RosterMember[];
+  useAI?: boolean;
+  opponentClanName?: string | null;
 };
 
 const RosterList: React.FC<{
@@ -923,7 +1142,7 @@ const MatchupResult: React.FC<{
             ))}
           </ul>
           <p className="text-xs text-muted-foreground">
-            Generated {formatTimestamp(briefing.generatedAt)} • Source: {briefing.source}
+            Generated {formatTimestamp(briefing.generatedAt)} • Source: {formatBriefingSource(briefing)}
           </p>
         </GlassCard>
       )}
@@ -1112,13 +1331,21 @@ function formatHeroSummary(heroLevels: HeroLevels): string {
     .join(', ');
 }
 
+function formatBriefingSource(briefing?: WarPlanBriefing | null): string {
+  if (!briefing) return 'Heuristic';
+  if (briefing.source === 'openai') {
+    return briefing.model ? `OpenAI (${briefing.model})` : 'OpenAI';
+  }
+  return 'Heuristic';
+}
+
 function buildAnalysisReport(analysis: MatchupAnalysis | null | undefined, plan: SavedPlan | null): string {
   if (!analysis) {
     return 'War plan report unavailable — analysis has not finished running.';
   }
 
   const lines: string[] = [];
-  const opponent = plan?.opponentClanTag ?? 'Opponent';
+  const opponent = plan?.opponentClanName ?? plan?.opponentClanTag ?? 'Opponent';
   const ours = plan?.ourClanTag ?? 'Our Clan';
 
   lines.push(`# War Plan Report: ${ours} vs ${opponent}`);
@@ -1162,7 +1389,10 @@ function buildAnalysisReport(analysis: MatchupAnalysis | null | undefined, plan:
   }
 
   lines.push('');
-  lines.push(`Generated ${formatTimestamp(analysis.briefing?.generatedAt ?? new Date().toISOString())}`);
+  const briefingSource = analysis.briefing ? formatBriefingSource(analysis.briefing) : 'Heuristic';
+  lines.push(
+    `Generated ${formatTimestamp(analysis.briefing?.generatedAt ?? new Date().toISOString())} • Source: ${briefingSource}`,
+  );
   return lines.join('\n');
 }
 

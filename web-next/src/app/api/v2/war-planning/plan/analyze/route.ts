@@ -14,6 +14,13 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
     const body = await req.json().catch(() => ({}));
+    const rawUseAI = body?.useAI;
+    let useAI = true;
+    if (typeof rawUseAI === 'boolean') {
+      useAI = rawUseAI;
+    } else if (typeof rawUseAI === 'string') {
+      useAI = !['false', '0', 'no', 'off'].includes(rawUseAI.trim().toLowerCase());
+    }
 
     const ourClanTag = normalizeTag(String(body?.ourClanTag ?? ''));
     const opponentClanTag = normalizeTag(String(body?.opponentClanTag ?? ''));
@@ -62,6 +69,7 @@ export async function POST(req: NextRequest) {
       opponentFallback: mapFallback(body?.opponentRoster),
       initiatedBy: 'plan:manual',
       dedupe: false,
+      useAI,
     });
 
     return NextResponse.json({
@@ -79,6 +87,7 @@ export async function POST(req: NextRequest) {
         analysisCompletedAt: queuedPlan.analysis_completed_at ?? null,
         analysisVersion: queuedPlan.analysis_version ?? null,
         updatedAt: queuedPlan.updated_at,
+        useAI,
       },
     });
   } catch (error) {

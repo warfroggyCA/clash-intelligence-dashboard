@@ -23,6 +23,7 @@ export interface WarPlanAnalysisJobPayload {
   opponentFallback?: WarPlanProfile[];
   initiatedBy?: string;
   attempt?: number;
+  aiEnabled?: boolean;
 }
 
 export interface QueueWarPlanAnalysisOptions {
@@ -31,6 +32,7 @@ export interface QueueWarPlanAnalysisOptions {
   initiatedBy?: string;
   inline?: boolean;
   dedupe?: boolean;
+  useAI?: boolean;
 }
 
 export interface QueueWarPlanAnalysisResult {
@@ -48,6 +50,7 @@ export async function queueWarPlanAnalysis(
     ourFallback: options.ourFallback,
     opponentFallback: options.opponentFallback,
     initiatedBy: options.initiatedBy ?? 'manual',
+    aiEnabled: options.useAI ?? true,
   };
 
   const job = await createBackgroundJob(supabase, {
@@ -173,6 +176,7 @@ export async function runWarPlanAnalysisJob(
     const { analysis } = await computeWarPlanAnalysisResult(supabase, plan, {
       ourFallback: payload.ourFallback ?? [],
       opponentFallback: payload.opponentFallback ?? [],
+      enableAI: payload.aiEnabled ?? true,
     });
 
     const completedAt = new Date().toISOString();
@@ -202,6 +206,7 @@ export async function runWarPlanAnalysisJob(
         completedAt,
         confidence: analysis.summary.confidence,
         outlook: analysis.summary.outlook,
+        aiEnabled: payload.aiEnabled ?? true,
       },
     });
 
