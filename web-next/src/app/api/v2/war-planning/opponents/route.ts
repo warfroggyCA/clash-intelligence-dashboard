@@ -7,6 +7,18 @@ export const revalidate = 0;
 
 const DEFAULT_LIMIT = 100;
 
+function normalizeHeroLevels(raw: Record<string, any> | undefined | null) {
+  const base = { bk: null, aq: null, gw: null, rc: null, mp: null } as Record<string, number | null>;
+  if (!raw || typeof raw !== 'object') return base;
+  for (const key of Object.keys(base)) {
+    const value = raw[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      base[key] = value;
+    }
+  }
+  return base;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
@@ -71,34 +83,13 @@ export async function GET(req: NextRequest) {
 
         const clashData = await clashResponse.json();
         
-        // Store clan in database
+        // Store clan in database (only insert columns that exist)
         const { error: insertClanError } = await supabase
           .from('clans')
           .upsert({
             tag: clanTag,
             name: clashData.name,
-            description: clashData.description,
-            location: clashData.location,
-            badge_urls: clashData.badgeUrls,
-            clan_level: clashData.clanLevel,
-            clan_points: clashData.clanPoints,
-            clan_versus_points: clashData.clanVersusPoints,
-            required_trophies: clashData.requiredTrophies,
-            war_frequency: clashData.warFrequency,
-            war_win_streak: clashData.warWinStreak,
-            war_wins: clashData.warWins,
-            war_ties: clashData.warTies,
-            war_losses: clashData.warLosses,
-            is_war_log_public: clashData.isWarLogPublic,
-            war_league: clashData.warLeague,
-            member_count: clashData.members,
-            labels: clashData.labels,
-            chat_language: clashData.chatLanguage,
-            required_versus_trophies: clashData.requiredVersusTrophies,
-            required_townhall_level: clashData.requiredTownhallLevel,
-            capital_hall_level: clashData.capitalHallLevel,
-            capital_league: clashData.capitalLeague,
-            created_at: new Date().toISOString(),
+            logo_url: clashData.badgeUrls?.small || null,
             updated_at: new Date().toISOString(),
           });
 
@@ -120,6 +111,7 @@ export async function GET(req: NextRequest) {
           defenseWins: member.defenseWins,
           builderHallLevel: member.builderHallLevel,
           lastUpdated: new Date().toISOString(),
+          heroLevels: normalizeHeroLevels(null),
         }));
 
         opponents.sort((a: any, b: any) => (b.trophies ?? 0) - (a.trophies ?? 0));
@@ -156,6 +148,7 @@ export async function GET(req: NextRequest) {
       const ranked = member.ranked ?? {};
       const war = member.war ?? {};
       const normalizedTag = normalizeTag(row.player_tag);
+      const heroes = member.heroLevels ?? (row.payload as any)?.heroLevels ?? {};
 
       return {
         tag: normalizedTag,
@@ -169,6 +162,7 @@ export async function GET(req: NextRequest) {
         defenseWins: war.defenseWins ?? null,
         builderHallLevel: member.builderBase?.hallLevel ?? null,
         lastUpdated: row.snapshot_date ?? null,
+        heroLevels: normalizeHeroLevels(heroes),
       };
     });
 
@@ -195,4 +189,3 @@ export async function GET(req: NextRequest) {
     );
   }
 }
-
