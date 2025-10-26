@@ -370,7 +370,7 @@ function clamp(value: number, min: number, max: number) {
 }
 
 function fillMissingProfiles(
-  existingProfiles: ReturnType<typeof loadProfiles>,
+  existingProfiles: Awaited<ReturnType<typeof loadProfiles>>,
   selectedTags: string[],
   fallbacks: ProfileFallback[],
 ) {
