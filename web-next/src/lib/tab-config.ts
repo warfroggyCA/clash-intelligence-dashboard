@@ -43,6 +43,20 @@ export const TAB_CONFIGS: TabConfig[] = [
     requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
   },
   {
+    id: 'warplanning',
+    label: 'War Planning',
+    icon: '⚔️',
+    description: 'Select lineups and analyze upcoming wars',
+    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  },
+  {
+    id: 'leadership',
+    label: 'Leadership',
+    icon: '👑',
+    description: 'Leadership dashboards and initiatives',
+    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  },
+  {
     id: 'applicants',
     label: 'Applicants',
     icon: '🎯',
