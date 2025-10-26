@@ -672,7 +672,9 @@ export type TabType =
   | "events" 
   | "applicants" 
   | "intelligence" 
-  | "discord";
+  | "discord"
+  | "warplanning"
+  | "leadership";
 
 /**
  * Status types for async operations
