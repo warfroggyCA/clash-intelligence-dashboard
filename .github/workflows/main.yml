@@ -2,7 +2,8 @@ name: Nightly Clan Ingestion
 
 on:
   schedule:
-    - cron: '0 6 * * *'  # 06:00 UTC nightly (1 hour after Vercel cron as backup)
+    - cron: '0 6 * * *'  # 06:00 UTC nightly (backup run 1)
+    - cron: '30 6 * * *' # 06:30 UTC nightly (backup run 2)
   workflow_dispatch:
     inputs:
       clanTag:

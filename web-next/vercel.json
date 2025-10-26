@@ -20,6 +20,14 @@
     {
       "path": "/api/cron/daily-ingestion",
       "schedule": "30 4 * * *"
+    },
+    {
+      "path": "/api/cron/daily-ingestion",
+      "schedule": "0 5 * * *"
+    },
+    {
+      "path": "/api/cron/daily-ingestion",
+      "schedule": "30 5 * * *"
     }
   ],
 
