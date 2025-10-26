@@ -501,6 +501,11 @@ const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change h
 const SMART_INSIGHTS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours cache for smart insights
 // auto-refresh removed
 
+const DEFAULT_IMPERSONATED_ROLE: ClanRoleName | null =
+  process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' || process.env.NODE_ENV !== 'production'
+    ? 'leader'
+    : null;
+
 const initialState = {
   // Core Data
   roster: null,
@@ -566,7 +571,7 @@ const initialState = {
   lastKnownIngestionVersion: null,
   currentUser: null,
   userRoles: [],
-  impersonatedRole: process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' ? 'leader' as ClanRoleName : null,
+  impersonatedRole: DEFAULT_IMPERSONATED_ROLE,
   rosterViewMode: 'table' as const,
   ingestionHealth: null,
   isTriggeringIngestion: false,

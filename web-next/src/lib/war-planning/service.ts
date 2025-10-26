@@ -6,6 +6,7 @@ import {
   type WarPlanAnalysis,
   type WarPlanProfile,
 } from './analysis';
+import { enhanceWarPlanAnalysis } from './ai-briefing';
 
 export const WAR_PLAN_SELECT_FIELDS =
   [
@@ -41,6 +42,7 @@ export interface WarPlanRecord {
 export interface GenerateOptions {
   ourFallback?: WarPlanProfile[];
   opponentFallback?: WarPlanProfile[];
+  enableAI?: boolean;
 }
 
 export interface WarPlanAnalysisResult {
@@ -99,14 +101,25 @@ export async function computeWarPlanAnalysisResult(
     options.opponentFallback ?? [],
   );
 
-  const analysis = generateWarPlanAnalysis({
+  const baseAnalysis = generateWarPlanAnalysis({
     ourProfiles,
     opponentProfiles,
     ourSelected: plan.our_selection,
     opponentSelected: plan.opponent_selection,
   });
 
-  return { analysis, ourProfiles, opponentProfiles };
+  const enhancedAnalysis = await enhanceWarPlanAnalysis(
+    baseAnalysis,
+    {
+      ourClanTag: plan.our_clan_tag,
+      opponentClanTag: plan.opponent_clan_tag,
+      ourProfiles,
+      opponentProfiles,
+    },
+    { enabled: options.enableAI !== false },
+  );
+
+  return { analysis: enhancedAnalysis, ourProfiles, opponentProfiles };
 }
 
 export interface StoreAnalysisOptions extends GenerateOptions {

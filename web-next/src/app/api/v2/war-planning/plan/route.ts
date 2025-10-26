@@ -19,6 +19,7 @@ interface PlanPayload {
   opponentSelected: string[];
   ourRoster?: WarPlanProfile[];
   opponentRoster?: WarPlanProfile[];
+  useAI?: boolean;
 }
 
 export async function GET(req: NextRequest) {
@@ -40,7 +41,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      data: record ? serializePlan(record) : null,
+      data: record
+        ? { ...serializePlan(record), useAI: detectAIUsage(record) }
+        : null,
     });
   } catch (error) {
     console.error('[war-planning/plan] GET failed', error);
@@ -59,6 +62,7 @@ export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
     const payload = await parsePlanPayload(req);
+    const aiEnabled = payload.useAI ?? true;
 
     const upsertResult = await supabase
       .from('war_plans')
@@ -86,11 +90,12 @@ export async function POST(req: NextRequest) {
       ourFallback: payload.ourRoster,
       opponentFallback: payload.opponentRoster,
       initiatedBy: 'plan:save',
+      useAI: aiEnabled,
     });
 
     return NextResponse.json({
       success: true,
-      data: serializePlan(queuedPlan),
+      data: { ...serializePlan(queuedPlan), useAI: aiEnabled },
     });
   } catch (error) {
     console.error('[war-planning/plan] POST failed', error);
@@ -145,6 +150,13 @@ async function parsePlanPayload(req: NextRequest): Promise<PlanPayload> {
   const opponentClanTag = normalizeTag(String(body?.opponentClanTag ?? ''));
   const ourSelected = normalizeTags(body?.ourSelected);
   const opponentSelected = normalizeTags(body?.opponentSelected);
+  const rawUseAI = body?.useAI;
+  let useAI = true;
+  if (typeof rawUseAI === 'boolean') {
+    useAI = rawUseAI;
+  } else if (typeof rawUseAI === 'string') {
+    useAI = !['false', '0', 'no', 'off'].includes(rawUseAI.trim().toLowerCase());
+  }
 
   if (!ourClanTag || !opponentClanTag) {
     throw new Error('ourClanTag and opponentClanTag are required.');
@@ -184,6 +196,7 @@ async function parsePlanPayload(req: NextRequest): Promise<PlanPayload> {
     opponentSelected,
     ourRoster: mapRosterFallback(body?.ourRoster),
     opponentRoster: mapRosterFallback(body?.opponentRoster),
+    useAI,
   };
 }
 
@@ -202,6 +215,12 @@ function serializePlan(row: WarPlanRecord) {
     analysisVersion: row.analysis_version ?? null,
     updatedAt: row.updated_at,
   };
+}
+
+function detectAIUsage(row: WarPlanRecord | null): boolean {
+  if (!row?.analysis) return true;
+  const source = row.analysis?.briefing?.source;
+  return source === 'openai';
 }
 
 function normalizeTags(tags: unknown): string[] {

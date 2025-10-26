@@ -3,7 +3,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useDashboardStore, selectors, useShallow } from '@/lib/stores/dashboard-store';
+import { tabIsVisible } from '@/lib/tab-config';
+import { useLeadership } from '@/hooks/useLeadership';
+import type { TabType } from '@/types';
 import { Roster } from '@/types';
 
 // Lazy-load all heavy/child components to avoid module-time side effects
@@ -21,6 +25,7 @@ const CommandCenter = dynamic(() => import('@/components/CommandCenter'), { ssr:
 const ApplicantsPanel = dynamic(() => import('@/components/ApplicantsPanel'), { ssr: false });
 const PlayerDatabase = dynamic(() => import('@/components/PlayerDatabase'), { ssr: false });
 const ReturningPlayerReview = dynamic(() => import('@/components/returning/ReturningPlayerReview'), { ssr: false });
+const DiscordHub = dynamic(() => import('@/components/DiscordHub'), { ssr: false });
 
 type Props = {
   initialRoster?: Roster | null;
@@ -53,13 +58,16 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
   const clanTag = useDashboardStore((state) => state.clanTag);
   const roster = useDashboardStore(useShallow((state) => state.roster));
   const status = useDashboardStore((state) => state.status);
-  
+  const setActiveTab = useDashboardStore((state) => state.setActiveTab);
+  const leadership = useLeadership();
+
   // Actions don't change, so they're safe to destructure
   const { setClanTag, setHomeClan, setRoster, loadRoster, refreshData } = useDashboardStore();
   
   const dataAgeHours = useDashboardStore(selectors.dataAge);
   const hasInitialized = useRef(false);
   const [showSimpleBanner, setShowSimpleBanner] = useState(true);
+  const searchParams = useSearchParams();
 
   useEffect(() => {
     const handleError = (event: ErrorEvent) => {
@@ -68,6 +76,16 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
     window.addEventListener('error', handleError);
     return () => window.removeEventListener('error', handleError);
   }, []);
+
+  useEffect(() => {
+    const tabFromQuery = searchParams?.get('tab');
+    if (!tabFromQuery) return;
+    const normalized = tabFromQuery.toLowerCase() as TabType;
+    if (normalized === activeTab) return;
+    if (tabIsVisible(normalized, { permissions: leadership.permissions, check: leadership.check })) {
+      setActiveTab(normalized);
+    }
+  }, [searchParams, activeTab, setActiveTab, leadership.permissions, leadership.check]);
 
   useEffect(() => {
     if (hasInitialized.current) {
@@ -228,7 +246,13 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
         return <div>Player DNA Dashboard Component</div>;
       
       case 'discord':
-        return <div>Discord Publisher Component</div>;
+        return (
+          <DiscordHub
+            clanTag={clanTag || homeClan || initialClanTag}
+            clanName={roster?.clanName ?? roster?.meta?.clanName ?? initialRoster?.clanName ?? null}
+            roster={roster ?? initialRoster ?? null}
+          />
+        );
       
       default:
         return <div>Roster Table Component</div>;

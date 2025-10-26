@@ -16,7 +16,8 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // CRITICAL FIX: Only call hydrateSession when NOT in anonymous mode
   useEffect(() => {
     const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
-    if (!allowAnon) {
+    const devOverride = process.env.NODE_ENV !== 'production';
+    if (!allowAnon && !devOverride) {
       hydrateSession();
     }
   }, [hydrateSession]);
@@ -24,8 +25,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   // CRITICAL FIX: Set impersonation default once, not every render
   useEffect(() => {
     const allowAnon = process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true';
-    if (!allowAnon) return;
-    
+    const devOverride = process.env.NODE_ENV !== 'production';
+    if (!allowAnon && !devOverride) return;
+
     // Only set default impersonation one time
     const state = useDashboardStore.getState();
     if (!state.impersonatedRole) {

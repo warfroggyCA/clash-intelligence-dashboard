@@ -1,11 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
 import Link from 'next/link';
+
+const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
 type OpponentProfile = {
   clan: {
@@ -411,11 +414,14 @@ function WarPrepPageContent() {
 }
 
 export default function WarPrepPage() {
+  const clanName = useDashboardStore(selectors.clanName);
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-      <Suspense fallback={<div className="mx-auto max-w-6xl p-4">Loading war preparation...</div>}>
-        <WarPrepPageContent />
-      </Suspense>
-    </div>
+    <DashboardLayout clanName={clanName || undefined}>
+      <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
+        <Suspense fallback={<div className="mx-auto max-w-6xl p-4">Loading war preparation...</div>}>
+          <WarPrepPageContent />
+        </Suspense>
+      </div>
+    </DashboardLayout>
   );
 }

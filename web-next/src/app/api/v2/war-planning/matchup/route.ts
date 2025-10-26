@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import {
+  generateWarPlanAnalysis,
+  type WarPlanProfile,
+} from '@/lib/war-planning/analysis';
+import { enhanceWarPlanAnalysis } from '@/lib/war-planning/ai-briefing';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,6 +17,7 @@ interface MatchupPayload {
   opponentSelected: string[];
   ourRoster?: Array<ProfileFallback>;
   opponentRoster?: Array<ProfileFallback>;
+  useAI?: boolean;
 }
 
 interface ProfileFallback {
@@ -37,6 +43,17 @@ export async function POST(req: NextRequest) {
     const opponentClanTag = normalizeTag(body.opponentClanTag ?? '');
     const ourSelected = normalizeTags(body.ourSelected);
     const opponentSelected = normalizeTags(body.opponentSelected);
+    const rawUseAI = body.useAI;
+    const providedOpponentClanName =
+      typeof body.opponentClanName === 'string' && body.opponentClanName.trim().length
+        ? body.opponentClanName.trim()
+        : null;
+    let useAI = true;
+    if (typeof rawUseAI === 'boolean') {
+      useAI = rawUseAI;
+    } else if (typeof rawUseAI === 'string') {
+      useAI = !['false', '0', 'no', 'off'].includes(rawUseAI.trim().toLowerCase());
+    }
 
     if (!opponentClanTag) {
       return NextResponse.json(
@@ -62,7 +79,13 @@ export async function POST(req: NextRequest) {
       opponentProfiles = fillMissingProfiles(opponentProfiles, opponentSelected, body.opponentRoster);
     }
 
-    const analysis = buildMatchupAnalysis(ourProfiles, opponentProfiles, ourSelected, opponentSelected);
+    const analysis = await buildMatchupAnalysis(
+      ourProfiles,
+      opponentProfiles,
+      ourSelected,
+      opponentSelected,
+      { ourClanTag, opponentClanTag, useAI, opponentClanName: providedOpponentClanName },
+    );
 
     return NextResponse.json({
       success: true,
@@ -72,6 +95,8 @@ export async function POST(req: NextRequest) {
         ourProfiles,
         opponentProfiles,
         analysis,
+        useAI,
+        opponentClanName: providedOpponentClanName,
       },
     });
   } catch (error) {
@@ -170,190 +195,65 @@ async function loadProfiles(
     .filter((profile): profile is NonNullable<typeof profile> => profile !== null);
 }
 
-function buildMatchupAnalysis(
-  ourProfiles: Array<{ tag: string; name: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>,
-  opponentProfiles: Array<{ tag: string; name: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>,
+async function buildMatchupAnalysis(
+  ourProfiles: Array<{
+    tag: string;
+    name: string;
+    thLevel: number | null;
+    rankedTrophies: number | null;
+    heroLevels: Record<string, number | null>;
+    warStars: number | null;
+  }>,
+  opponentProfiles: Array<{
+    tag: string;
+    name: string;
+    thLevel: number | null;
+    rankedTrophies: number | null;
+    heroLevels: Record<string, number | null>;
+    warStars: number | null;
+  }>,
   ourSelected: string[],
   opponentSelected: string[],
+  context: {
+    ourClanTag?: string | null;
+    opponentClanTag?: string | null;
+    opponentClanName?: string | null;
+    useAI: boolean;
+  },
 ) {
-  const ourMetrics = computeTeamMetrics(ourProfiles);
-  const opponentMetrics = computeTeamMetrics(opponentProfiles);
+  const ourWarProfiles: WarPlanProfile[] = ourProfiles.map((profile) => ({
+    tag: profile.tag,
+    name: profile.name,
+    clanTag: context.ourClanTag ?? null,
+    thLevel: profile.thLevel,
+    rankedTrophies: profile.rankedTrophies,
+    warStars: profile.warStars,
+    heroLevels: profile.heroLevels,
+  }));
 
-  const slotBreakdown = buildSlotBreakdown(
-    ourProfiles,
-    opponentProfiles,
+  const opponentWarProfiles: WarPlanProfile[] = opponentProfiles.map((profile) => ({
+    tag: profile.tag,
+    name: profile.name,
+    clanTag: context.opponentClanTag ?? null,
+    thLevel: profile.thLevel,
+    rankedTrophies: profile.rankedTrophies,
+    warStars: profile.warStars,
+    heroLevels: profile.heroLevels,
+  }));
+
+  const baseAnalysis = generateWarPlanAnalysis({
+    ourProfiles: ourWarProfiles,
+    opponentProfiles: opponentWarProfiles,
     ourSelected,
     opponentSelected,
-  );
-
-  const thDelta = ourMetrics.averageTownHall - opponentMetrics.averageTownHall;
-  const heroDelta = ourMetrics.averageHeroLevel - opponentMetrics.averageHeroLevel;
-  const warStarDelta = ourMetrics.averageWarStars - opponentMetrics.averageWarStars;
-  const rankedDelta = ourMetrics.averageRankedTrophies - opponentMetrics.averageRankedTrophies;
-
-  const confidenceScore = clamp(
-    50 + thDelta * 5 + heroDelta * 0.5 + warStarDelta * 0.1 + rankedDelta * 0.05,
-    5,
-    95,
-  );
-
-  return {
-    summary: {
-      confidence: confidenceScore,
-      outlook: confidenceScore >= 60 ? 'Favorable' : confidenceScore <= 40 ? 'Challenging' : 'Balanced',
-    },
-    teamComparison: {
-      ourMetrics,
-      opponentMetrics,
-      differentials: {
-        townHall: thDelta,
-        heroLevels: heroDelta,
-        warStars: warStarDelta,
-        rankedTrophies: rankedDelta,
-      },
-    },
-    slotBreakdown,
-    recommendations: buildRecommendations(confidenceScore, ourMetrics, opponentMetrics, slotBreakdown),
-  };
-}
-
-function computeTeamMetrics(profiles: Array<{ name: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>) {
-  const count = profiles.length || 1;
-  const thValues = profiles.map((profile) => profile.thLevel ?? 0);
-  const warStars = profiles.map((profile) => profile.warStars ?? 0);
-  const ranked = profiles.map((profile) => profile.rankedTrophies ?? 0);
-  const heroValues = profiles.flatMap((profile) =>
-    Object.values(profile.heroLevels ?? {}).map((value) => (typeof value === 'number' ? value : 0)),
-  );
-
-  const sum = (values: number[]) => values.reduce((acc, value) => acc + value, 0);
-
-  return {
-    size: profiles.length,
-    averageTownHall: sum(thValues) / count,
-    maxTownHall: Math.max(...thValues),
-    averageWarStars: sum(warStars) / count,
-    averageRankedTrophies: sum(ranked) / count,
-    averageHeroLevel: heroValues.length ? sum(heroValues) / heroValues.length : 0,
-  };
-}
-
-function buildSlotBreakdown(
-  ourProfiles: Array<{ tag: string; name: string; thLevel: number | null; heroLevels: Record<string, number | null>; rankedTrophies: number | null; warStars: number | null }>,
-  opponentProfiles: Array<{ tag: string; name: string; thLevel: number | null; heroLevels: Record<string, number | null>; rankedTrophies: number | null; warStars: number | null }>,
-  ourSelected: string[],
-  opponentSelected: string[],
-) {
-  const normalizeList = (tags: string[]) =>
-    tags.map((tag) => normalizeTag(tag)).filter((tag): tag is string => Boolean(tag));
-
-  const ourNormalized = normalizeList(ourSelected);
-  const opponentNormalized = normalizeList(opponentSelected);
-
-  const ourMap = new Map(
-    ourProfiles.map((profile) => [normalizeTag(profile.tag) ?? profile.tag, profile]),
-  );
-  const opponentMap = new Map(
-    opponentProfiles.map((profile) => [normalizeTag(profile.tag) ?? profile.tag, profile]),
-  );
-
-  const slotCount = Math.max(ourNormalized.length, opponentNormalized.length);
-
-  return Array.from({ length: slotCount }).map((_, index) => {
-    const ourTag = ourNormalized[index] ?? null;
-    const opponentTag = opponentNormalized[index] ?? null;
-    const ourProfile = ourTag ? ourMap.get(ourTag) : undefined;
-    const opponentProfile = opponentTag ? opponentMap.get(opponentTag) : undefined;
-
-    const thDiff = (ourProfile?.thLevel ?? 0) - (opponentProfile?.thLevel ?? 0);
-    const heroDiff =
-      computeAverageHeroLevel(ourProfile?.heroLevels ?? null) -
-      computeAverageHeroLevel(opponentProfile?.heroLevels ?? null);
-    const rankedDiff = (ourProfile?.rankedTrophies ?? 0) - (opponentProfile?.rankedTrophies ?? 0);
-    const warStarDiff = (ourProfile?.warStars ?? 0) - (opponentProfile?.warStars ?? 0);
-
-    const summary = buildSlotSummary(thDiff, heroDiff, rankedDiff, warStarDiff);
-
-    return {
-      slot: index + 1,
-      ourTag,
-      ourName: ourProfile?.name ?? ourTag,
-      opponentTag,
-      opponentName: opponentProfile?.name ?? opponentTag,
-      ourTH: ourProfile?.thLevel ?? null,
-      opponentTH: opponentProfile?.thLevel ?? null,
-      thDiff,
-      heroDiff,
-      rankedDiff,
-      warStarDiff,
-      summary,
-    };
   });
-}
 
-function buildSlotSummary(
-  thDiff: number,
-  heroDiff: number,
-  rankedDiff: number,
-  warStarDiff: number,
-) {
-  const parts: string[] = [];
-  if (thDiff > 0) parts.push(`TH advantage ${thDiff}`);
-  if (thDiff < 0) parts.push(`TH disadvantage ${Math.abs(thDiff)}`);
-  if (heroDiff > 5) parts.push(`Heroes up ${heroDiff.toFixed(1)}`);
-  if (heroDiff < -5) parts.push(`Heroes down ${Math.abs(heroDiff).toFixed(1)}`);
-  if (rankedDiff > 100) parts.push(`Ranked +${rankedDiff}`);
-  if (rankedDiff < -100) parts.push(`Ranked ${rankedDiff}`);
-  if (warStarDiff > 50) parts.push(`War-star veteran +${warStarDiff}`);
-  if (warStarDiff < -50) parts.push(`Behind in war stars ${warStarDiff}`);
-  if (!parts.length) {
-    return 'Even matchup';
-  }
-  return parts.join(' | ');
-}
-
-function buildRecommendations(
-  confidence: number,
-  ourMetrics: ReturnType<typeof computeTeamMetrics>,
-  opponentMetrics: ReturnType<typeof computeTeamMetrics>,
-  slotBreakdown: ReturnType<typeof buildSlotBreakdown>,
-) {
-  const notes: string[] = [];
-  if (confidence < 45) {
-    notes.push('Prioritize triple attempts on opponent weaknesses; consider safe two-star strategies on strong bases.');
-  } else if (confidence > 65) {
-    notes.push('Push for early high-value triples to build pressure and keep momentum.');
-  } else {
-    notes.push('Balanced matchup—play disciplined, adapt to first attack results.');
-  }
-
-  if (ourMetrics.averageHeroLevel < opponentMetrics.averageHeroLevel - 5) {
-    notes.push('Hero disadvantage detected; consider boosting key attackers or adjusting attack plans accordingly.');
-  }
-
-  if (ourMetrics.averageTownHall > opponentMetrics.averageTownHall + 0.5) {
-    notes.push('Town Hall advantage—leverage higher-tier bases to force mismatches.');
-  }
-
-  const biggestAdvantage = slotBreakdown
-    .slice()
-    .sort((a, b) => b.heroDiff + b.thDiff * 5 - (a.heroDiff + a.thDiff * 5))[0];
-  if (biggestAdvantage && (biggestAdvantage.heroDiff > 5 || biggestAdvantage.thDiff >= 1)) {
-    notes.push(
-      `Exploit slot ${biggestAdvantage.slot}: strong advantage (${biggestAdvantage.summary})—schedule aggressive attack.`,
-    );
-  }
-
-  const toughestMatch = slotBreakdown
-    .slice()
-    .sort((a, b) => (a.heroDiff + a.thDiff * 5) - (b.heroDiff + b.thDiff * 5))[0];
-  if (toughestMatch && (toughestMatch.heroDiff < -5 || toughestMatch.thDiff <= -1)) {
-    notes.push(
-      `Support slot ${toughestMatch.slot}: disadvantage (${toughestMatch.summary})—plan backup hitter or cleanup.`,
-    );
-  }
-
-  return notes;
+  return enhanceWarPlanAnalysis(baseAnalysis, {
+    ourClanTag: context.ourClanTag,
+    opponentClanTag: context.opponentClanTag,
+    ourProfiles: ourWarProfiles,
+    opponentProfiles: opponentWarProfiles,
+  }, { enabled: context.useAI });
 }
 
 function heroLevelValue(raw: unknown): number | null {
@@ -363,10 +263,6 @@ function heroLevelValue(raw: unknown): number | null {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(value, max));
 }
 
 function fillMissingProfiles(
@@ -410,13 +306,6 @@ function fillMissingProfiles(
   }
 
   return merged;
-}
-
-function computeAverageHeroLevel(heroLevels: Record<string, number | null> | null | undefined) {
-  if (!heroLevels) return 0;
-  const values = Object.values(heroLevels).filter((value): value is number => typeof value === 'number');
-  if (!values.length) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function normalizeHeroLevels(heroLevels: Record<string, number | null> | undefined): { bk: number | null; aq: number | null; gw: number | null; rc: number | null; mp: number | null } {
