@@ -35,26 +35,26 @@ export async function POST(req: NextRequest) {
 
     const mapFallback = (input: unknown): WarPlanProfile[] => {
       if (!Array.isArray(input)) return [];
-      return input
-        .map((entry) => {
-          if (!entry || typeof entry !== 'object') return null;
-          const record = entry as Record<string, unknown>;
-          const tag = normalizeTag(String(record.tag ?? ''));
-          if (!tag) return null;
-          return {
-            tag,
-            name: typeof record.name === 'string' ? record.name : null,
-            clanTag: typeof record.clanTag === 'string' ? normalizeTag(record.clanTag) : null,
-            thLevel: typeof record.thLevel === 'number' ? record.thLevel : null,
-            rankedTrophies: typeof record.rankedTrophies === 'number' ? record.rankedTrophies : null,
-            warStars: typeof record.warStars === 'number' ? record.warStars : null,
-            heroLevels:
-              record.heroLevels && typeof record.heroLevels === 'object'
-                ? (record.heroLevels as Record<string, number | null>)
-                : null,
-          } satisfies WarPlanProfile;
-        })
-        .filter((entry): entry is WarPlanProfile => entry !== null);
+      const profiles: WarPlanProfile[] = [];
+      for (const entry of input) {
+        if (!entry || typeof entry !== 'object') continue;
+        const record = entry as Record<string, unknown>;
+        const tag = normalizeTag(String(record.tag ?? ''));
+        if (!tag) continue;
+        profiles.push({
+          tag,
+          name: typeof record.name === 'string' ? record.name : null,
+          clanTag: typeof record.clanTag === 'string' ? normalizeTag(record.clanTag) : null,
+          thLevel: typeof record.thLevel === 'number' ? record.thLevel : null,
+          rankedTrophies: typeof record.rankedTrophies === 'number' ? record.rankedTrophies : null,
+          warStars: typeof record.warStars === 'number' ? record.warStars : null,
+          heroLevels:
+            record.heroLevels && typeof record.heroLevels === 'object'
+              ? (record.heroLevels as Record<string, number | null>)
+              : null,
+        });
+      }
+      return profiles;
     };
 
     const { plan: queuedPlan } = await queueWarPlanAnalysis(supabase, plan, {
