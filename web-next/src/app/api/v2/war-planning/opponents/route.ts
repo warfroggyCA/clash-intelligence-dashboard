@@ -122,7 +122,7 @@ export async function GET(req: NextRequest) {
           lastUpdated: new Date().toISOString(),
         }));
 
-        opponents.sort((a, b) => (b.trophies ?? 0) - (a.trophies ?? 0));
+        opponents.sort((a: any, b: any) => (b.trophies ?? 0) - (a.trophies ?? 0));
 
         return NextResponse.json({
           success: true,

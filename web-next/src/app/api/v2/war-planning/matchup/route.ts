@@ -171,8 +171,8 @@ async function loadProfiles(
 }
 
 function buildMatchupAnalysis(
-  ourProfiles: Array<{ tag: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>,
-  opponentProfiles: Array<{ tag: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>,
+  ourProfiles: Array<{ tag: string; name: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>,
+  opponentProfiles: Array<{ tag: string; name: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>,
   ourSelected: string[],
   opponentSelected: string[],
 ) {
@@ -217,7 +217,7 @@ function buildMatchupAnalysis(
   };
 }
 
-function computeTeamMetrics(profiles: Array<{ thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>) {
+function computeTeamMetrics(profiles: Array<{ name: string; thLevel: number | null; rankedTrophies: number | null; heroLevels: Record<string, number | null>; warStars: number | null }>) {
   const count = profiles.length || 1;
   const thValues = profiles.map((profile) => profile.thLevel ?? 0);
   const warStars = profiles.map((profile) => profile.warStars ?? 0);
@@ -239,8 +239,8 @@ function computeTeamMetrics(profiles: Array<{ thLevel: number | null; rankedTrop
 }
 
 function buildSlotBreakdown(
-  ourProfiles: Array<{ tag: string; thLevel: number | null; heroLevels: Record<string, number | null>; rankedTrophies: number | null; warStars: number | null }>,
-  opponentProfiles: Array<{ tag: string; thLevel: number | null; heroLevels: Record<string, number | null>; rankedTrophies: number | null; warStars: number | null }>,
+  ourProfiles: Array<{ tag: string; name: string; thLevel: number | null; heroLevels: Record<string, number | null>; rankedTrophies: number | null; warStars: number | null }>,
+  opponentProfiles: Array<{ tag: string; name: string; thLevel: number | null; heroLevels: Record<string, number | null>; rankedTrophies: number | null; warStars: number | null }>,
   ourSelected: string[],
   opponentSelected: string[],
 ) {
@@ -419,14 +419,14 @@ function computeAverageHeroLevel(heroLevels: Record<string, number | null> | nul
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-function normalizeHeroLevels(heroLevels: Record<string, number | null> | undefined): Record<string, number | null> {
+function normalizeHeroLevels(heroLevels: Record<string, number | null> | undefined): { bk: number | null; aq: number | null; gw: number | null; rc: number | null; mp: number | null } {
   if (!heroLevels || typeof heroLevels !== 'object') {
     return { bk: null, aq: null, gw: null, rc: null, mp: null };
   }
-  const result: Record<string, number | null> = { bk: null, aq: null, gw: null, rc: null, mp: null };
+  const result: { bk: number | null; aq: number | null; gw: number | null; rc: number | null; mp: number | null } = { bk: null, aq: null, gw: null, rc: null, mp: null };
   for (const key of Object.keys(result)) {
     const value = heroLevels[key];
-    result[key] = typeof value === 'number' && Number.isFinite(value) ? value : null;
+    result[key as keyof typeof result] = typeof value === 'number' && Number.isFinite(value) ? value : null;
   }
   return result;
 }
