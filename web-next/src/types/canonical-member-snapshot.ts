@@ -27,6 +27,7 @@ export interface CanonicalMemberRecord {
   role: string | null;
   townHallLevel: number | null;
   trophies: number | null;
+  battleModeTrophies: number | null;
   league: LeagueInfo | null;
   ranked: RankedInfo;
   donations: DonationInfo;

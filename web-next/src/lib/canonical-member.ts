@@ -11,26 +11,27 @@ interface BuildCanonicalMemberOptions {
   memberCount: number;
   totalTrophies: number | null;
   totalDonations: number | null;
-  member: {
-    tag: string;
-    name: string | null;
-    role: string | null;
-    townHallLevel: number | null;
-    trophies: number | null;
-    league: {
-      id: number | null;
+    member: {
+      tag: string;
       name: string | null;
+      role: string | null;
+      townHallLevel: number | null;
       trophies: number | null;
-      iconSmall: string | null;
-      iconMedium: string | null;
-    } | null;
-    ranked: {
-      trophies: number | null;
-      leagueId: number | null;
-      leagueName: string | null;
-      iconSmall: string | null;
-      iconMedium: string | null;
-    };
+      battleModeTrophies: number | null;
+      league: {
+        id: number | null;
+        name: string | null;
+        trophies: number | null;
+        iconSmall: string | null;
+        iconMedium: string | null;
+      } | null;
+      ranked: {
+        trophies: number | null;
+        leagueId: number | null;
+        leagueName: string | null;
+        iconSmall: string | null;
+        iconMedium: string | null;
+      };
     donations: {
       given: number | null;
       received: number | null;
@@ -102,6 +103,7 @@ export function buildCanonicalMemberSnapshot({
       role: member.role,
       townHallLevel: member.townHallLevel,
       trophies: member.trophies,
+      battleModeTrophies: member.battleModeTrophies,
       league: member.league,
       ranked: member.ranked,
       donations: member.donations,
