@@ -13,6 +13,7 @@ export const revalidate = 0;
 interface MatchupPayload {
   ourClanTag?: string;
   opponentClanTag: string;
+  opponentClanName?: string;
   ourSelected: string[];
   opponentSelected: string[];
   ourRoster?: Array<ProfileFallback>;
