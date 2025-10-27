@@ -127,6 +127,7 @@ type WarPlanBriefing = {
   confidenceBand: 'edge' | 'balanced' | 'underdog';
   generatedAt: string;
   source: string;
+  model?: string;
 };
 
 type MatchupAnalysis = {
