@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runIngestionJob } from '@/lib/ingestion/run-ingestion';
+import { runStagedIngestionJob } from '@/lib/ingestion/run-staged-ingestion';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 export const dynamic = "force-dynamic";
@@ -36,9 +36,17 @@ export async function GET(request: NextRequest) {
       }
     });
     
-    const results = await runIngestionJob({ 
-      clanTag: '#G9QVRYC2Y'
+    const result = await runStagedIngestionJob({ 
+      clanTag: '#G9QVRYC2Y',
+      runPostProcessing: true
     });
+    
+    const results = [{
+      clanTag: result.clanTag,
+      success: result.success,
+      error: result.error,
+      ingestionResult: result.ingestionResult
+    }];
     
     const endTime = new Date().toISOString();
     console.log(`[Cron ${executionId}] Daily ingestion completed successfully at ${endTime}:`, results);
