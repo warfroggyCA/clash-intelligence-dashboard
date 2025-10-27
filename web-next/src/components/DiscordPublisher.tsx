@@ -28,6 +28,10 @@ interface Roster {
   clanName?: string;
   members: Member[];
   meta?: any;
+  snapshotDetails?: {
+    currentWar?: any;
+    warLog?: any[];
+  };
 }
 
 interface DiscordPublisherProps {
