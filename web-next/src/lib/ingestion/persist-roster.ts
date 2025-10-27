@@ -449,12 +449,16 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       currentRankedTrophies: currentRankedValue,
     };
 
-    // Only write ranked_trophies on Monday (UTC) and keep plausible finals; otherwise leave as 0
+    // Handle Monday reset: After 00:00 UTC Monday, ranked trophies should be 0
     const fetchedAtIso = snapshot.fetchedAt ?? null;
     const fetchedDate = fetchedAtIso ? new Date(fetchedAtIso) : null;
     const isMonday = fetchedDate ? fetchedDate.getUTCDay() === 1 : false;
+    const isAfterReset = fetchedDate ? fetchedDate.getUTCHours() >= 0 : false; // After 00:00 UTC
+    
+    // On Monday after reset, force trophies to 0 (new week started)
+    // On Monday before reset, use tournament final if available
     const finalWithinBounds = (v: number | null) => v != null && Number.isFinite(v) && v > 0 && v <= 600;
-    const mondayFinal = isMonday && finalWithinBounds(tournamentFinalTrophies) ? tournamentFinalTrophies : 0;
+    const mondayFinal = isMonday && isAfterReset ? 0 : (isMonday && finalWithinBounds(tournamentFinalTrophies) ? tournamentFinalTrophies : 0);
 
     return {
       snapshot_id: snapshotId,
@@ -462,7 +466,7 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       snapshot_date: snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : null,
       th_level: summary.townHallLevel ?? detail?.townHallLevel ?? null,
       role: summary.role ?? null,
-      trophies: detail?.trophies ?? summary.trophies ?? null,  // detail.trophies = ranked battle trophies (correct for new system)
+      trophies: isMonday ? mondayFinal : (detail?.trophies ?? summary.trophies ?? null),  // Use mondayFinal on Monday, otherwise current ranked trophies
       donations: summary.donations ?? null,
       donations_received: summary.donationsReceived ?? null,
       hero_levels: heroLevels,
