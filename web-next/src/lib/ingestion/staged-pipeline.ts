@@ -11,6 +11,7 @@ import { appendJobLog, createJobRecord, updateJobStatus, IngestionJobLogEntry } 
 import { readTenureDetails } from '@/lib/tenure';
 import { daysSinceToDate } from '@/lib/date';
 import { extractEnrichedFields } from './field-extractors';
+import { createInitialTenureForJoiners } from '@/lib/services/tenure-service';
 
 export interface StagedIngestionResult {
   success: boolean;
@@ -100,7 +101,8 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
 
     // Phase 3: Upsert Members
     if (!skipPhases.includes('upsertMembers') && transformedData) {
-      result.phases.upsertMembers = await runUpsertMembersPhase(jobId, transformedData);
+      const snapshotDate = snapshot?.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined;
+      result.phases.upsertMembers = await runUpsertMembersPhase(jobId, transformedData, snapshotDate);
       if (!result.phases.upsertMembers.success) {
         throw new Error(`Upsert members phase failed: ${result.phases.upsertMembers.error_message}`);
       }
@@ -560,7 +562,7 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
   }
 }
 
-async function runUpsertMembersPhase(jobId: string, transformedData: TransformedData): Promise<PhaseResult> {
+async function runUpsertMembersPhase(jobId: string, transformedData: TransformedData, snapshotDate?: string): Promise<PhaseResult> {
   const startTime = Date.now();
   
   try {
@@ -650,6 +652,15 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
         supabase,
         clanTag: transformedData.clanData.tag,
         joinerTags: newlyJoinedTags,
+        memberLookup: memberMapByTag,
+      });
+
+      // Create initial tenure entries for new joiners
+      await createInitialTenureForJoiners({
+        supabase,
+        clanTag: transformedData.clanData.tag,
+        joinerTags: newlyJoinedTags,
+        joinDate: snapshotDate || new Date().toISOString().slice(0, 10),
         memberLookup: memberMapByTag,
       });
     }
