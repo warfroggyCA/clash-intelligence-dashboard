@@ -338,28 +338,29 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       memberCount: snapshot.metadata.memberCount,
       totalTrophies,
       totalDonations,
-      member: {
-        tag,
-        name: memberName ?? null,
-        role: summary.role ?? null,
-        townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
-        trophies: currentTrophies ?? null,
-        league: leagueSource
-          ? {
-              id: leagueId,
-              name: leagueName,
-              trophies: leagueTrophies,
-              iconSmall: leagueIconSmall,
-              iconMedium: leagueIconMedium,
-            }
-          : null,
-        ranked: {
-          trophies: rankedSnapshotValue ?? null,
-          leagueId: rankedLeagueId ?? null,
-          leagueName: rankedLeagueName ?? null,
-          iconSmall: rankedIconSmall,
-          iconMedium: rankedIconMedium,
-        },
+        member: {
+          tag,
+          name: memberName ?? null,
+          role: summary.role ?? null,
+          townHallLevel: summary.townHallLevel ?? detail?.townHallLevel ?? null,
+          trophies: currentTrophies ?? null,
+          battleModeTrophies: currentRankedValue ?? null,
+          league: leagueSource
+            ? {
+                id: leagueId,
+                name: leagueName,
+                trophies: leagueTrophies,
+                iconSmall: leagueIconSmall,
+                iconMedium: leagueIconMedium,
+              }
+            : null,
+          ranked: {
+            trophies: rankedSnapshotValue ?? null,
+            leagueId: rankedLeagueId ?? null,
+            leagueName: rankedLeagueName ?? null,
+            iconSmall: rankedIconSmall,
+            iconMedium: rankedIconMedium,
+          },
         donations: {
           given: donationsGiven ?? null,
           received: donationsReceived ?? null,

@@ -119,7 +119,7 @@ export async function GET(req: NextRequest) {
         th_level: member.townHallLevel,
         role: member.role,
         trophies: member.trophies,
-        ranked_trophies: ranked.trophies,
+        ranked_trophies: member.battleModeTrophies ?? ranked.trophies,
         ranked_league_id: ranked.leagueId,
         ranked_league_name: ranked.leagueName,
         league_trophies: league.trophies,
