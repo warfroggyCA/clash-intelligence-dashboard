@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     });
     
     const results = await runIngestionJob({ 
-      clanTag: '#2PR8R8V8P'
+      clanTag: '#G9QVRYC2Y'
     });
     
     const endTime = new Date().toISOString();
