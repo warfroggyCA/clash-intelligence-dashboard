@@ -18,7 +18,7 @@ interface MatchupPayload {
   opponentSelected: string[];
   ourRoster?: Array<ProfileFallback>;
   opponentRoster?: Array<ProfileFallback>;
-  useAI?: boolean;
+  useAI?: boolean | string;
 }
 
 interface ProfileFallback {
