@@ -89,3 +89,46 @@ export async function applyTenureAction(options: ApplyTenureOptions): Promise<Ap
     tenureAction,
   };
 }
+
+/**
+ * Automatically creates initial tenure entries for new clan members.
+ * This should be called when new members are detected joining the clan.
+ */
+export async function createInitialTenureForJoiners(params: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  clanTag: string;
+  joinerTags: string[];
+  joinDate: string;
+  memberLookup?: Map<string, { name: string }>;
+}): Promise<void> {
+  const { supabase, clanTag, joinerTags, joinDate, memberLookup } = params;
+  
+  if (!joinerTags.length) return;
+
+  console.log(`[tenure-service] Creating initial tenure entries for ${joinerTags.length} new joiners`);
+
+  for (const playerTag of joinerTags) {
+    try {
+      const member = memberLookup?.get(playerTag);
+      const playerName = member?.name || null;
+
+      // Create initial tenure entry with 0 base days, starting from join date
+      await applyTenureAction({
+        clanTag,
+        playerTag,
+        playerName,
+        baseDays: 0, // Start with 0 days
+        asOf: joinDate, // Start accruing from join date
+        reason: 'Automatic tenure creation for new clan member',
+        action: 'granted',
+        grantedBy: 'system',
+        createdBy: 'system',
+      });
+
+      console.log(`[tenure-service] Created initial tenure entry for ${playerName || playerTag} (${playerTag})`);
+    } catch (error) {
+      console.error(`[tenure-service] Failed to create tenure entry for ${playerTag}:`, error);
+      // Continue with other joiners even if one fails
+    }
+  }
+}
