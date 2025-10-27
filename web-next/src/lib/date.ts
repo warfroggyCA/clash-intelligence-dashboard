@@ -48,6 +48,20 @@ function normalizeDate(value: DateLike): Date | null {
     return date;
   }
 
+  // Special handling for Clash of Clans malformed date format: YYYYMMDDTHHMMSS.sssZ
+  // Example: 20251027T172500.000Z -> 2025-10-27T17:25:00.000Z
+  if (typeof value === 'string' && /^\d{8}T\d{6}\.\d{3}Z$/.test(value)) {
+    const match = value.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})\.(\d{3})Z$/);
+    if (match) {
+      const [, year, month, day, hour, minute, second, millis] = match;
+      const normalizedValue = `${year}-${month}-${day}T${hour}:${minute}:${second}.${millis}Z`;
+      const date = new Date(normalizedValue);
+      if (!isNaN(date.getTime())) {
+        return date;
+      }
+    }
+  }
+
   const date = value instanceof Date ? value : new Date(value);
   if (isNaN(date.getTime())) {
     return null;
