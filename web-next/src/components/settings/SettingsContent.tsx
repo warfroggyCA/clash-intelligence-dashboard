@@ -37,8 +37,8 @@ interface RoleEntry {
 
 export default function SettingsContent({ layout = 'page', onClose }: SettingsContentProps) {
   // Simple state - no Zustand (SSOT from API/localStorage)
-  const [homeClan, setHomeClan] = useState(cfg.homeClanTag);
-  const [clanTag, setClanTag] = useState(cfg.homeClanTag);
+  const [homeClan, setHomeClan] = useState<string>(cfg.homeClanTag);
+  const [clanTag, setClanTag] = useState<string>(cfg.homeClanTag);
   const [userRole, setUserRole] = useState<ClanRoleName>('member');
   
   const [newHomeClan, setNewHomeClan] = useState(homeClan || '');
