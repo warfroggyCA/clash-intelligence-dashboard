@@ -36,18 +36,11 @@ interface RoleEntry {
 }
 
 export default function SettingsContent({ layout = 'page', onClose }: SettingsContentProps) {
-  const {
-    homeClan,
-    clanTag,
-    setHomeClan,
-    setClanTag,
-    loadRoster,
-    userRole,
-    setUserRole,
-    loadSmartInsights,
-    setSmartInsights,
-  } = useDashboardStore();
-
+  // Simple state - no Zustand (SSOT from API/localStorage)
+  const [homeClan, setHomeClan] = useState(cfg.homeClanTag);
+  const [clanTag, setClanTag] = useState(cfg.homeClanTag);
+  const [userRole, setUserRole] = useState<ClanRoleName>('member');
+  
   const [newHomeClan, setNewHomeClan] = useState(homeClan || '');
   const [newClanTag, setNewClanTag] = useState(clanTag || '');
   const [newUserRole, setNewUserRole] = useState(userRole);
@@ -66,6 +59,24 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
 
   const { permissions } = useLeadership();
   const effectiveClanTag = normalizeTag(clanTag || homeClan || newHomeClan || '#');
+  
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('clan-settings');
+      if (saved) {
+        const data = JSON.parse(saved);
+        if (data.homeClan) setHomeClan(data.homeClan);
+        if (data.clanTag) setClanTag(data.clanTag);
+        if (data.userRole) setUserRole(data.userRole);
+        setNewHomeClan(data.homeClan || '');
+        setNewClanTag(data.clanTag || '');
+        setNewUserRole(data.userRole || 'member');
+      }
+    } catch (error) {
+      console.warn('[Settings] Failed to load from localStorage:', error);
+    }
+  }, []);
 
   useEffect(() => {
     setNewHomeClan(homeClan || '');
