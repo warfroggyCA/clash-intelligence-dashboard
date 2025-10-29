@@ -271,7 +271,7 @@ function WarPrepPageContent() {
 
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-100">⚔️ War Prep</h1>
+          <h1 className="text-2xl font-bold text-slate-100">⚔️ War Prep <span className="text-emerald-400 text-lg">[Dev]</span></h1>
           <p className="text-sm text-slate-400">
             {profile ? (
               <span>
