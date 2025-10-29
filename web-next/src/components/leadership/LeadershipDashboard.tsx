@@ -7,11 +7,10 @@ import { QuickActions } from '@/components/layout/QuickActions';
 import IngestionMonitor from '@/components/layout/IngestionMonitor';
 import ApplicantsPanel from '@/components/ApplicantsPanel';
 import { Button } from '@/components/ui';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
-import type { ActivityEvidence } from '@/types';
+import type { ActivityEvidence, Roster } from '@/types';
 
 interface JoinerRecord {
   id: string;
