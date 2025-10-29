@@ -271,12 +271,6 @@ const WarPlanningPage: React.FC = () => {
     [opponentSelection],
   );
 
-  useEffect(() => {
-    if (storeClanTag) {
-      setOurClanTagInput(storeClanTag);
-    }
-  }, [storeClanTag]);
-
   const toggleSelection = (tag: string, target: 'our' | 'opponent') => {
     if (target === 'our') {
       setOurSelection((prev) => {
