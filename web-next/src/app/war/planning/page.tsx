@@ -199,11 +199,34 @@ const SectionTitle: React.FC<{ title: string; children?: React.ReactNode }> = ({
 );
 
 const WarPlanningPage: React.FC = () => {
-  const storeClanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
-  const clanName = useDashboardStore(selectors.clanName);
+  // Simple state - no Zustand (SSOT from API)
+  const [clanTag, setClanTag] = useState('');
+  const [clanName, setClanName] = useState('');
 
-  const [ourClanTagInput, setOurClanTagInput] = useState(storeClanTag);
+  const [ourClanTagInput, setOurClanTagInput] = useState('');
   const [opponentClanTagInput, setOpponentClanTagInput] = useState('');
+
+  // Load our clan info on mount
+  useEffect(() => {
+    async function loadClanInfo() {
+      try {
+        const res = await fetch('/api/v2/roster?mode=latest', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data?.clan) {
+            const tag = data.data.clan.tag || '';
+            const name = data.data.clan.name || '';
+            setClanTag(tag);
+            setClanName(name);
+            setOurClanTagInput(tag); // Pre-fill form
+          }
+        }
+      } catch (error) {
+        console.warn('[WarPlanning] Failed to load clan info:', error);
+      }
+    }
+    loadClanInfo();
+  }, []);
 
   const [ourRoster, setOurRoster] = useState<RosterMember[]>([]);
   const [opponentRoster, setOpponentRoster] = useState<RosterMember[]>([]);
