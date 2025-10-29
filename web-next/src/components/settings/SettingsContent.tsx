@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { GlassCard } from '@/components/ui';
 import { ElderAssessmentCard } from '@/components/settings/ElderAssessmentCard';
 import { showToast } from '@/lib/toast';
 import { useLeadership } from '@/hooks/useLeadership';
+import { cfg } from '@/lib/config';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import type { ClanRole } from '@/lib/leadership';
 import { clearSmartInsightsPayload } from '@/lib/smart-insights-cache';
