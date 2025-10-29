@@ -435,9 +435,28 @@ function WarPrepPageContent() {
 }
 
 export default function WarPrepPage() {
-  const clanName = useDashboardStore(selectors.clanName);
+  // Fetch clan name directly (SSOT from API)
+  const [clanName, setClanName] = useState<string>();
+  
+  useEffect(() => {
+    async function loadClanName() {
+      try {
+        const res = await fetch('/api/v2/roster?mode=latest', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data?.clan?.name) {
+            setClanName(data.data.clan.name);
+          }
+        }
+      } catch (error) {
+        console.warn('[WarPrep] Failed to load clan name:', error);
+      }
+    }
+    loadClanName();
+  }, []);
+  
   return (
-    <DashboardLayout clanName={clanName || undefined}>
+    <DashboardLayout clanName={clanName}>
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
         <Suspense fallback={<div className="mx-auto max-w-6xl p-4">Loading war preparation...</div>}>
           <WarPrepPageContent />
