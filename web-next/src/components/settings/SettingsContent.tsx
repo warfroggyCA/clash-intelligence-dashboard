@@ -98,10 +98,14 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
     setMessage('');
     try {
       setHomeClan(normalized);
+      // Save to localStorage (SSOT)
+      localStorage.setItem('clan-settings', JSON.stringify({ 
+        homeClan: normalized, 
+        clanTag, 
+        userRole 
+      }));
       setMessage('Home clan updated successfully!');
-      if (!clanTag) {
-        await loadRoster(normalized);
-      }
+      // No need to load roster here - components fetch directly from API
     } catch (error) {
       console.error('Error updating home clan:', error);
       setMessage('Failed to update home clan');
