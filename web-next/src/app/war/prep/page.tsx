@@ -40,9 +40,12 @@ type OpponentProfile = {
 };
 
 function WarPrepPageContent() {
-  const ourClanTag = useDashboardStore((s) => s.clanTag || s.homeClan || '');
   const router = useRouter();
   const search = useSearchParams();
+  
+  // Simple state - no Zustand
+  const [ourClanTag, setOurClanTag] = useState('');
+  const [ourClanName, setOurClanName] = useState('');
   const [opponentInput, setOpponentInput] = useState('');
   const [autoDetect, setAutoDetect] = useState(true);
   const [enrich, setEnrich] = useState(12);
