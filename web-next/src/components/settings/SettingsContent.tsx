@@ -258,8 +258,13 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
     setMessage('');
     try {
       setClanTag(normalized);
-      await loadRoster(normalized);
-      setMessage('Clan switched successfully!');
+      // Save to localStorage (SSOT)
+      localStorage.setItem('clan-settings', JSON.stringify({ 
+        homeClan, 
+        clanTag: normalized, 
+        userRole 
+      }));
+      setMessage('Clan switched successfully! Refresh page to see new clan.');
     } catch (error) {
       console.error('Error switching clan:', error);
       setMessage('Failed to switch clan');
@@ -277,7 +282,13 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
     setMessage('');
     try {
       setClanTag(homeClan);
-      await loadRoster(homeClan);
+      // Save to localStorage (SSOT)
+      localStorage.setItem('clan-settings', JSON.stringify({ 
+        homeClan, 
+        clanTag: homeClan, 
+        userRole 
+      }));
+      setMessage('Loaded home clan! Refresh page to see changes.');
       setMessage('Home clan loaded successfully!');
     } catch (error) {
       console.error('Error loading home clan:', error);
