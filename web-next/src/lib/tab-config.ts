@@ -21,27 +21,28 @@ export const TAB_CONFIGS: TabConfig[] = [
     icon: '🛡️',
     description: 'Daily overview and roster',
   },
-  {
-    id: 'changes',
-    label: 'History',
-    icon: '📜',
-    description: 'Track roster changes and departures',
-    requires: ({ permissions }) => permissions.canManageChangeDashboard,
-  },
-  {
-    id: 'coaching',
-    label: 'Command Center',
-    icon: '🎯',
-    description: 'Real-time intelligence and actionable alerts',
-    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
-  },
-  {
-    id: 'database',
-    label: 'Player DB',
-    icon: '🗄️',
-    description: 'Player notes and archives',
-    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
-  },
+  // HIDDEN: These tabs use Zustand store and haven't been migrated yet
+  // {
+  //   id: 'changes',
+  //   label: 'History',
+  //   icon: '📜',
+  //   description: 'Track roster changes and departures',
+  //   requires: ({ permissions }) => permissions.canManageChangeDashboard,
+  // },
+  // {
+  //   id: 'coaching',
+  //   label: 'Command Center',
+  //   icon: '🎯',
+  //   description: 'Real-time intelligence and actionable alerts',
+  //   requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  // },
+  // {
+  //   id: 'database',
+  //   label: 'Player DB',
+  //   icon: '🗄️',
+  //   description: 'Player notes and archives',
+  //   requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  // },
   {
     id: 'warplanning',
     label: 'War Planning',
@@ -56,20 +57,20 @@ export const TAB_CONFIGS: TabConfig[] = [
     description: 'Leadership dashboards and initiatives',
     requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
   },
-  {
-    id: 'applicants',
-    label: 'Applicants',
-    icon: '🎯',
-    description: 'Evaluate potential clan members',
-    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
-  },
-  {
-    id: 'discord',
-    label: 'Discord',
-    icon: '📢',
-    description: 'Publish reports to Discord',
-    requires: ({ permissions }) => permissions.canAccessDiscordPublisher,
-  },
+  // {
+  //   id: 'applicants',
+  //   label: 'Applicants',
+  //   icon: '🎯',
+  //   description: 'Evaluate potential clan members',
+  //   requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  // },
+  // {
+  //   id: 'discord',
+  //   label: 'Discord',
+  //   icon: '📢',
+  //   description: 'Publish reports to Discord',
+  //   requires: ({ permissions }) => permissions.canAccessDiscordPublisher,
+  // },
 ];
 
 export function getVisibleTabs(context: TabVisibilityContext): TabConfig[] {

@@ -914,7 +914,7 @@ const WarPlanningPage: React.FC = () => {
 
   return (
     <DashboardLayout clanName={clanName || undefined}>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 p-4 md:p-6">
+      <div className="mx-auto flex w-full flex-col gap-6 p-4 md:p-6">
       <header>
         <h1 className="text-3xl font-bold mb-2">War Planning Control Center</h1>
         <p className="text-sm text-muted-foreground">
