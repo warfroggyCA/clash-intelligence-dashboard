@@ -4,7 +4,6 @@ import React, { useEffect, useMemo, useState, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
-import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
 import Link from 'next/link';
 
