@@ -4,7 +4,6 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import dynamic from 'next/dynamic';
 import { Button, GlassCard } from '@/components/ui';
 import { normalizeTag } from '@/lib/tags';
-import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import type { WarPlanAIPayload } from '@/lib/war-planning/analysis';
 
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
