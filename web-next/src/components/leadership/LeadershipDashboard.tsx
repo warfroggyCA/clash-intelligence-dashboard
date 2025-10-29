@@ -220,19 +220,49 @@ function JoinerReviewCard({ clanTag }: { clanTag: string | null }) {
 }
 
 export default function LeadershipDashboard() {
-  const roster = useDashboardStore((state) => state.roster);
-  const loadRoster = useDashboardStore((state) => state.loadRoster);
-  const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag);
+  // Simple state - no Zustand (SSOT from API)
+  const [roster, setRoster] = useState<Roster | null>(null);
+  const [clanTag, setClanTag] = useState<string>(cfg.homeClanTag);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
   const clanDisplayName = roster?.clanName || roster?.meta?.clanName || '...Heck Yeah...';
   const [showIngestionMonitor, setShowIngestionMonitor] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
 
+  // Load roster from API (SSOT)
+  const loadRoster = useCallback(async (tag?: string) => {
+    const targetTag = tag || clanTag;
+    if (!targetTag) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/v2/roster?clanTag=${encodeURIComponent(targetTag)}&mode=latest`, { 
+        cache: 'no-store' 
+      });
+      if (!res.ok) throw new Error(`Failed to fetch roster: ${res.status}`);
+      
+      const data = await res.json();
+      if (data.success && data.data) {
+        setRoster(data.data);
+        if (data.data.clan?.tag) {
+          setClanTag(data.data.clan.tag);
+        }
+      } else {
+        throw new Error(data.error || 'Failed to load roster');
+      }
+    } catch (err: any) {
+      console.error('[LeadershipDashboard] Failed to load roster:', err);
+      setError(err.message || 'Failed to load roster');
+    } finally {
+      setLoading(false);
+    }
+  }, [clanTag]);
+
   useEffect(() => {
-    if (roster || !clanTag) return;
-    loadRoster(normalizeTag(clanTag)).catch((err) => {
-      console.error('[LeadershipDashboard] Failed to load clan roster', err);
-    });
-  }, [roster, clanTag, loadRoster]);
+    loadRoster();
+  }, [loadRoster]);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
