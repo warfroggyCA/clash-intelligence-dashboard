@@ -56,6 +56,25 @@ function WarPrepPageContent() {
   const cleanOpponent = useMemo(() => (opponentInput ? normalizeTag(opponentInput) : ''), [opponentInput]);
   const cleanOurClan = useMemo(() => (ourClanTag ? normalizeTag(ourClanTag) : ''), [ourClanTag]);
 
+  // Fetch our clan info on mount (SSOT from API)
+  useEffect(() => {
+    async function loadOurClan() {
+      try {
+        const res = await fetch('/api/v2/roster?mode=latest', { cache: 'no-store' });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.data) {
+            setOurClanTag(data.data.clan?.tag || '');
+            setOurClanName(data.data.clan?.name || '');
+          }
+        }
+      } catch (error) {
+        console.warn('[WarPrep] Failed to load our clan info:', error);
+      }
+    }
+    loadOurClan();
+  }, []);
+
   // Persist opponent data to localStorage
   useEffect(() => {
     if (profile) {
