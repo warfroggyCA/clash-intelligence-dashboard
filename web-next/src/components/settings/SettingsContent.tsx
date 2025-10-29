@@ -319,11 +319,9 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       const result = await response.json();
       if (result.success) {
         clearSmartInsightsPayload(clanTag);
-        setSmartInsights(null);
-        setMessage(`Force refresh completed! ${result.data.memberCount} members, ${result.data.changesDetected} changes detected. Insights: ${result.data.insightsGenerated ? 'Generated' : 'Skipped'}`);
-        showToast('Force refresh completed successfully!', 'success');
-        await loadSmartInsights(clanTag, { force: true, ttlMs: 0 });
-        await loadRoster(clanTag);
+        setMessage(`Force refresh completed! ${result.data.memberCount} members, ${result.data.changesDetected} changes detected. Insights: ${result.data.insightsGenerated ? 'Generated' : 'Skipped'}. Refresh page to see updates.`);
+        showToast('Force refresh completed successfully! Refresh page to see updates.', 'success');
+        // No need to call store methods - components fetch directly from API
       } else {
         setMessage(`Force refresh failed: ${result.error}`);
         showToast('Force refresh failed', 'error');
