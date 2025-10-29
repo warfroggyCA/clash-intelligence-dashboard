@@ -256,7 +256,7 @@ function WarPrepPageContent() {
   }, [profile]);
 
   return (
-    <div className="mx-auto max-w-6xl p-4 space-y-6">
+    <div className="mx-auto w-full p-4 space-y-6">
       {/* Prominent Back Button */}
       <div className="flex items-center gap-3 mb-4">
         <Link 
@@ -458,7 +458,7 @@ export default function WarPrepPage() {
   return (
     <DashboardLayout clanName={clanName}>
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
-        <Suspense fallback={<div className="mx-auto max-w-6xl p-4">Loading war preparation...</div>}>
+        <Suspense fallback={<div className="mx-auto w-full p-4">Loading war preparation...</div>}>
           <WarPrepPageContent />
         </Suspense>
       </div>
