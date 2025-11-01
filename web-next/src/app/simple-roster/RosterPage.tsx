@@ -272,7 +272,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           comparison = a.name.localeCompare(b.name);
           break;
         case 'th':
-          comparison = a.townHallLevel - b.townHallLevel;
+          comparison = (a.townHallLevel ?? 0) - (b.townHallLevel ?? 0);
           break;
         case 'role':
           const roleOrder = { leader: 4, coLeader: 3, admin: 2, member: 1 };
