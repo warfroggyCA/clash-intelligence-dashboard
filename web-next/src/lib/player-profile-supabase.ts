@@ -167,7 +167,7 @@ export async function fetchPlayerProfileSupabase(
     throw new Error(payload?.error || `Failed to fetch player profile (${response.status})`);
   }
 
-  const { summary, timeline, history, leadership, evaluations, joinerEvents, clanHeroAverages } = payload.data as any;
+  const { summary, timeline, history, leadership, evaluations, joinerEvents, clanHeroAverages, vip } = payload.data as any;
 
   return {
     summary,
@@ -177,5 +177,6 @@ export async function fetchPlayerProfileSupabase(
     evaluations: mapEvaluations(evaluations),
     joinerEvents: mapJoinerEvents(joinerEvents),
     clanHeroAverages: clanHeroAverages || {},
+    vip: vip || { current: null, history: [] },
   };
 }
