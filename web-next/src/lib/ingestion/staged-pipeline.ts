@@ -149,7 +149,7 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
         };
         if (!vipResult.success && vipResult.error) {
           // Log but don't fail pipeline - VIP calculation is optional
-          await logPhase(jobId, 'calculateVIP', 'warning', `VIP calculation had issues: ${vipResult.error}`);
+          await logPhase(jobId, 'calculateVIP', 'warn', `VIP calculation had issues: ${vipResult.error}`);
         } else if (vipResult.scoresCalculated > 0) {
           await logPhase(jobId, 'calculateVIP', 'info', `VIP calculated for ${vipResult.scoresCalculated} members`);
         }
