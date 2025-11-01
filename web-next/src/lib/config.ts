@@ -55,7 +55,9 @@ export const cfg = {
   useSupabase,
   
   // Clan configuration
-  homeClanTag: "#2PR8R8V8P",
+  // CRITICAL: This is the production clan tag. Only override via env var if absolutely necessary.
+  // Default is #2PR8R8V8P - any override MUST be explicitly set in environment variables.
+  homeClanTag: process.env.DEFAULT_CLAN_TAG || process.env.NEXT_PUBLIC_HOME_CLAN_TAG || process.env.HOME_CLAN_TAG || "#2PR8R8V8P",
   enableCleanDownload: false,
   
   // Database configuration

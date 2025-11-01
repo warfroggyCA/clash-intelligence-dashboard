@@ -18,11 +18,16 @@ import { getRoleBadgeVariant } from '@/lib/leadership';
 import { calculateRushPercentage, getMemberActivity, getTownHallLevel, getHeroCaps } from '@/lib/business/calculations';
 import { cfg } from '@/lib/config';
 import LeadershipGuard from '@/components/LeadershipGuard';
-import type { Member } from '@/types';
 import RosterPlayerNotesModal from '@/components/leadership/RosterPlayerNotesModal';
 import RosterPlayerTenureModal from '@/components/leadership/RosterPlayerTenureModal';
 import RosterPlayerDepartureModal from '@/components/leadership/RosterPlayerDepartureModal';
 import { normalizeTag } from '@/lib/tags';
+import {
+  transformRosterApiResponse,
+  type RosterData,
+  type RosterMember,
+  type RosterApiResponse,
+} from './roster-transform';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -140,54 +145,7 @@ const ActionsMenu: React.FC<ActionsMenuProps> = ({
   );
 };
 
-interface RosterMember extends Member {
-  tag: string;
-  name: string;
-  townHallLevel: number;
-  role: string;
-  trophies: number;
-  donations: number;
-  donationsReceived: number;
-  lastWeekTrophies?: number;
-  tenureDays?: number | null; // Mapped from API tenureDays field
-  tenureAsOf?: string | null;
-}
-
-interface RosterData {
-  members: RosterMember[];
-  clanName: string;
-  date: string;
-  clanTag: string;
-  snapshotMetadata?: {
-    snapshotDate: string;
-    fetchedAt: string;
-    memberCount: number;
-    warLogEntries: number;
-    capitalSeasons: number;
-    version: string;
-    payloadVersion?: string | null;
-    ingestionVersion?: string | null;
-    schemaVersion?: string | null;
-    computedAt?: string | null;
-    seasonId?: string | null;
-    seasonStart?: string | null;
-    seasonEnd?: string | null;
-  };
-  meta?: {
-    clanName?: string;
-    recentClans?: string[];
-    memberCount?: number;
-    payloadVersion?: string | null;
-    ingestionVersion?: string | null;
-    schemaVersion?: string | null;
-    computedAt?: string | null;
-    seasonId?: string | null;
-    seasonStart?: string | null;
-    seasonEnd?: string | null;
-  };
-}
-
-type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'season' | 'tenure' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received';
+type SortKey = 'name' | 'th' | 'role' | 'league' | 'trophies' | 'lastWeek' | 'season' | 'tenure' | 'rush' | 'bk' | 'aq' | 'gw' | 'rc' | 'mp' | 'activity' | 'donations' | 'received' | 'vip';
 type SortDirection = 'asc' | 'desc';
 
 // League tier ranking for sorting (highest to lowest)
@@ -214,9 +172,13 @@ const getLeagueTier = (leagueName?: string): number => {
   return LEAGUE_TIERS[baseName] || 0;
 };
 
-export default function SimpleRosterPage() {
-  const [roster, setRoster] = useState<RosterData | null>(null);
-  const [loading, setLoading] = useState(true);
+interface SimpleRosterPageProps {
+  initialRoster?: RosterData | null;
+}
+
+export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProps = {}) {
+  const [roster, setRoster] = useState<RosterData | null>(() => initialRoster ?? null);
+  const [loading, setLoading] = useState(() => !initialRoster);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('league');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
@@ -233,6 +195,14 @@ export default function SimpleRosterPage() {
       delete (window as any).refreshRosterData;
     };
   }, []);
+
+  useEffect(() => {
+    if (initialRoster) {
+      setRoster(initialRoster);
+      setLoading(false);
+      setError(null);
+    }
+  }, [initialRoster]);
   
   type ActionModalState =
     | { kind: 'notes'; player: RosterMember }
@@ -375,6 +345,11 @@ export default function SimpleRosterPage() {
         case 'received':
           comparison = a.donationsReceived - b.donationsReceived;
           break;
+        case 'vip':
+          const aVip = a.vip?.score ?? 0;
+          const bVip = b.vip?.score ?? 0;
+          comparison = aVip - bVip;
+          break;
       }
       
       return sortDirection === 'asc' ? comparison : -comparison;
@@ -384,9 +359,18 @@ export default function SimpleRosterPage() {
   }, [roster, sortKey, sortDirection]);
 
   useEffect(() => {
+    let cancelled = false;
+    const shouldFetch = refreshTrigger > 0 || !initialRoster;
+    if (!shouldFetch) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
     async function loadRoster() {
       try {
         setLoading(true);
+        setError(null);
         console.log('[SimpleRoster] Fetching roster data from /api/v2/roster');
         const response = await fetch('/api/v2/roster', {
           cache: 'no-store',
@@ -394,17 +378,17 @@ export default function SimpleRosterPage() {
             'Cache-Control': 'no-cache'
           }
         });
-        
+
         console.log('[SimpleRoster] Response status:', response.status);
         console.log('[SimpleRoster] Response headers:', Object.fromEntries(response.headers.entries()));
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[SimpleRoster] Error response:', errorText);
           throw new Error(`Failed to load roster: ${response.status} - ${errorText.substring(0, 100)}`);
         }
-        
-        const apiData = await response.json();
+
+        const apiData = (await response.json()) as RosterApiResponse;
         console.log('[SimpleRoster] API data structure:', {
           success: apiData.success,
           hasData: !!apiData.data,
@@ -412,90 +396,39 @@ export default function SimpleRosterPage() {
           hasMembers: !!apiData.data?.members,
           memberCount: apiData.data?.members?.length
         });
-        
-        // Transform API response to our format
-        if (apiData.success && apiData.data) {
-          const snapshot = apiData.data.snapshot ?? {};
-          const metadata = snapshot.metadata ?? {};
-          const normalizedMetadata = {
-            snapshotDate: metadata.snapshotDate ?? metadata.snapshot_date ?? snapshot.snapshotDate ?? snapshot.snapshot_date ?? null,
-            fetchedAt: snapshot.fetchedAt ?? snapshot.fetched_at ?? metadata.fetchedAt ?? metadata.fetched_at ?? null,
-            memberCount: snapshot.memberCount ?? snapshot.member_count ?? metadata.memberCount ?? metadata.member_count ?? apiData.data.members?.length ?? 0,
-            warLogEntries: metadata.warLogEntries ?? metadata.war_log_entries ?? 0,
-            capitalSeasons: metadata.capitalSeasons ?? metadata.capital_seasons ?? 0,
-            version: metadata.version ?? snapshot.version ?? 'data-spine',
-            payloadVersion: snapshot.payloadVersion ?? snapshot.payload_version ?? metadata.payloadVersion ?? metadata.payload_version ?? null,
-            ingestionVersion: snapshot.ingestionVersion ?? snapshot.ingestion_version ?? metadata.ingestionVersion ?? metadata.ingestion_version ?? null,
-            schemaVersion: snapshot.schemaVersion ?? snapshot.schema_version ?? metadata.schemaVersion ?? metadata.schema_version ?? null,
-            computedAt: snapshot.computedAt ?? snapshot.computed_at ?? metadata.computedAt ?? metadata.computed_at ?? null,
-            seasonId: snapshot.seasonId ?? snapshot.season_id ?? metadata.seasonId ?? metadata.season_id ?? null,
-            seasonStart: snapshot.seasonStart ?? snapshot.season_start ?? metadata.seasonStart ?? metadata.season_start ?? null,
-            seasonEnd: snapshot.seasonEnd ?? snapshot.season_end ?? metadata.seasonEnd ?? metadata.season_end ?? null,
-          };
-          const transformed = {
-            members: apiData.data.members.map((m: any) => ({
-              tag: m.tag,
-              name: m.name,
-              townHallLevel: m.townHallLevel,
-              role: m.role,
-              trophies: m.trophies,
-              lastWeekTrophies: m.lastWeekTrophies,
-              donations: m.donations,
-              donationsReceived: m.donationsReceived,
-              rankedLeagueId: m.rankedLeagueId,
-              rankedTrophies: m.rankedTrophies,
-              // Show league badge only if player is seeded in ranked system
-              // rankedLeagueId === 105000000 means truly unranked (not registered)
-              // rankedLeagueId !== 105000000 means seeded in new 34-tier competitive system
-              rankedLeagueName: (m.rankedLeagueId && m.rankedLeagueId !== 105000000) 
-                ? m.rankedLeagueName 
-                : null,
-              // Hero levels for rush calculation
-              bk: m.bk,
-              aq: m.aq,
-              gw: m.gw,
-              rc: m.rc,
-              mp: m.mp,
-              seasonTotalTrophies: m.seasonTotalTrophies ?? null,
-              activity: m.activity ?? null,
-              tenureDays: m.tenureDays ?? null,
-              tenureAsOf: m.tenureAsOf ?? null,
-              tenure_as_of: m.tenure_as_of ?? null,
-            })),
-            clanName: apiData.data.clan.name,
-            clanTag: apiData.data.clan.tag,
-            date: snapshot.fetchedAt ?? snapshot.fetched_at ?? null,
-            snapshotMetadata: normalizedMetadata,
-            meta: {
-              computedAt: normalizedMetadata.computedAt,
-              payloadVersion: normalizedMetadata.payloadVersion,
-              ingestionVersion: normalizedMetadata.ingestionVersion,
-              schemaVersion: normalizedMetadata.schemaVersion,
-              seasonId: normalizedMetadata.seasonId,
-              seasonStart: normalizedMetadata.seasonStart,
-              seasonEnd: normalizedMetadata.seasonEnd,
-              memberCount: normalizedMetadata.memberCount,
-            },
-          };
-          console.log('[SimpleRoster] Transformed roster:', {
-            clanName: transformed.clanName,
-            memberCount: transformed.members.length
-          });
+
+        const transformed = transformRosterApiResponse(apiData);
+        console.log('[SimpleRoster] Transformed roster:', {
+          clanName: transformed.clanName,
+          memberCount: transformed.members.length,
+          sampleMember: transformed.members[0] ? {
+            name: transformed.members[0].name,
+            tag: transformed.members[0].tag,
+            vip: transformed.members[0].vip
+          } : null
+        });
+
+        if (!cancelled) {
           setRoster(transformed);
-        } else {
-          console.error('[SimpleRoster] Invalid API response format:', apiData);
-          throw new Error('Invalid API response format');
         }
       } catch (err) {
         console.error('[SimpleRoster] Load error:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load roster');
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : 'Failed to load roster');
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
 
     loadRoster();
-  }, [refreshTrigger]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshTrigger, initialRoster]);
 
   if (loading) {
     return (
@@ -580,9 +513,9 @@ export default function SimpleRosterPage() {
         </div>
 
         {/* Roster Table - Desktop */}
-        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-visible w-full">
-          <div className="overflow-visible">
-            <table className="w-full border-collapse">
+        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden w-full">
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-fixed border-collapse">
               <thead>
                 <tr className="bg-brand-surface-secondary border-b border-brand-border">
                   <th 
@@ -619,6 +552,13 @@ export default function SimpleRosterPage() {
                     className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
                   >
                     Trophies {sortKey === 'trophies' && (sortDirection === 'asc' ? '↑' : '↓')}
+                  </th>
+                  <th 
+                    onClick={() => handleSort('vip')}
+                    title="VIP Score (Very Important Player) - Measures comprehensive clan contribution (50% Competitive + 30% Support + 20% Development) - Click to sort"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  >
+                    VIP {sortKey === 'vip' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                 <th 
                   onClick={() => handleSort('lastWeek')}
@@ -844,6 +784,36 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                             </span>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        {player.vip ? (
+                          <div className="flex items-center justify-center">
+                            <span
+                              title={`VIP: ${player.vip.score.toFixed(1)}/100
+Rank: #${player.vip.rank}
+Competitive Performance: ${player.vip.competitive_score.toFixed(1)}/100
+Support Performance: ${player.vip.support_score.toFixed(1)}/100
+Development Performance: ${player.vip.development_score.toFixed(1)}/100
+${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→'} ${player.vip.last_week_score ? `vs ${player.vip.last_week_score.toFixed(1)} last week` : ''}
+
+VIP measures comprehensive clan contribution:
+• Competitive (50%): Ranked Performance + War Performance
+• Support (30%): Donations + Capital Contributions
+• Development (20%): Base Quality + Activity`}
+                              className={`font-semibold cursor-help ${
+                                player.vip.score >= 80 ? 'text-green-400' :
+                                player.vip.score >= 50 ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}
+                            >
+                              {player.vip.score.toFixed(1)}
+                              {player.vip.trend === 'up' && ' ↑'}
+                              {player.vip.trend === 'down' && ' ↓'}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-brand-text-tertiary">—</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-center">
                         {player.lastWeekTrophies !== null && player.lastWeekTrophies !== undefined ? (
@@ -1127,6 +1097,30 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       {activity.level}
                     </div>
                   </div>
+
+                  {/* VIP */}
+                  {player.vip && (
+                    <div 
+                      title={`VIP: ${player.vip.score.toFixed(1)}/100
+Rank: #${player.vip.rank}
+Competitive Performance: ${player.vip.competitive_score.toFixed(1)}/100
+Support Performance: ${player.vip.support_score.toFixed(1)}/100
+Development Performance: ${player.vip.development_score.toFixed(1)}/100
+${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→'} ${player.vip.last_week_score ? `vs ${player.vip.last_week_score.toFixed(1)} last week` : ''}`}
+                      className="cursor-help text-right"
+                    >
+                      <div className="text-brand-text-tertiary text-[10px]">VIP</div>
+                      <div className={`font-semibold text-sm ${
+                        player.vip.score >= 80 ? 'text-green-400' :
+                        player.vip.score >= 50 ? 'text-yellow-400' :
+                        'text-red-400'
+                      }`}>
+                        {player.vip.score.toFixed(1)}
+                        {player.vip.trend === 'up' && ' ↑'}
+                        {player.vip.trend === 'down' && ' ↓'}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Donations */}
                   <div title={donationTooltip} className="cursor-help text-right pt-1 border-t border-brand-border/30">

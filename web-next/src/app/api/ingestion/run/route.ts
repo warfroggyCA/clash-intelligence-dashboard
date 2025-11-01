@@ -14,11 +14,29 @@ interface TriggerPayload {
 export async function POST(req: Request) {
   try {
     const payload = (await req.json().catch(() => ({}))) as TriggerPayload;
-    const clanTag = payload.clanTag || cfg.homeClanTag;
+    // Only allow clanTag override with admin key
+    let clanTag = cfg.homeClanTag;
+    
+    // CRITICAL SAFEGUARD: Prevent accidental use of wrong clan tag
+    if (!clanTag || clanTag === '#G9QVRYC2Y') {
+      console.error(`[IngestionRun] INVALID CLAN TAG DETECTED: ${clanTag}. Forcing to #2PR8R8V8P`);
+      clanTag = '#2PR8R8V8P';
+    }
+    
+    if (payload.clanTag && typeof payload.clanTag === 'string') {
+      const adminKey = process.env.ADMIN_API_KEY || process.env.INGESTION_TRIGGER_KEY;
+      const provided = req.headers.get('x-api-key');
+      if (adminKey && provided === adminKey) {
+        clanTag = payload.clanTag;
+        console.log(`[IngestionRun] Using override clan tag: ${clanTag}`);
+      }
+    }
 
     if (!clanTag) {
       return NextResponse.json({ success: false, error: 'No clan tag configured' }, { status: 400 });
     }
+    
+    console.log(`[IngestionRun] Enqueuing ingestion for clan tag: ${clanTag}`);
 
     const jobId = await enqueueIngestionJob(clanTag);
 

@@ -17,6 +17,7 @@ import {
 } from '@/lib/activity/timeline';
 
 export const dynamic = 'force-dynamic';
+export const revalidate = 0; // Keep API route fresh, but page will cache via server component
 
 const SEASON_START_ISO = DEFAULT_SEASON_START_ISO;
 
@@ -479,6 +480,97 @@ export async function GET(
       throw joinerError;
     }
 
+    // Fetch VIP scores for current and historical weeks
+    let currentVip = null;
+    let vipHistory: Array<{ week_start: string; vip_score: number; competitive_score: number; support_score: number; development_score: number; rank: number }> = [];
+    
+    try {
+      // Get member ID
+      const { data: memberRow } = await supabase
+        .from('members')
+        .select('id')
+        .eq('tag', normalizedTag)
+        .single();
+      
+      if (memberRow?.id) {
+        // Get current tournament week
+        const now = new Date();
+        const dayOfWeek = now.getUTCDay();
+        const hours = now.getUTCHours();
+        
+        let weekStart: Date;
+        if (dayOfWeek === 1 && hours < 5) {
+          weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 6, 5, 0, 0));
+        } else {
+          const daysSinceTuesday = dayOfWeek === 0 ? 2 : (dayOfWeek === 1 ? 1 : dayOfWeek - 1);
+          weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - daysSinceTuesday, 5, 0, 0));
+        }
+        
+        const weekStartISO = weekStart.toISOString().split('T')[0];
+        
+        // Fetch current week VIP
+        const { data: currentVipRow } = await supabase
+          .from('vip_scores')
+          .select('vip_score, competitive_score, support_score, development_score, week_start')
+          .eq('member_id', memberRow.id)
+          .eq('week_start', weekStartISO)
+          .single();
+        
+        if (currentVipRow) {
+          // Get rank for current week
+          const { data: allCurrentWeekVip } = await supabase
+            .from('vip_scores')
+            .select('member_id, vip_score')
+            .eq('week_start', weekStartISO)
+            .order('vip_score', { ascending: false });
+          
+          const rank = (allCurrentWeekVip?.findIndex(row => row.member_id === memberRow.id) ?? -1) + 1;
+          
+          currentVip = {
+            score: Number(currentVipRow.vip_score),
+            rank,
+            competitive_score: Number(currentVipRow.competitive_score),
+            support_score: Number(currentVipRow.support_score),
+            development_score: Number(currentVipRow.development_score),
+            week_start: currentVipRow.week_start,
+          };
+        }
+        
+        // Fetch historical VIP scores (last 8 weeks)
+        const { data: historicalVipRows } = await supabase
+          .from('vip_scores')
+          .select('vip_score, competitive_score, support_score, development_score, week_start')
+          .eq('member_id', memberRow.id)
+          .order('week_start', { ascending: false })
+          .limit(8);
+        
+        if (historicalVipRows) {
+          // Get ranks for historical weeks
+          for (const row of historicalVipRows) {
+            const { data: weekVipRows } = await supabase
+              .from('vip_scores')
+              .select('member_id, vip_score')
+              .eq('week_start', row.week_start)
+              .order('vip_score', { ascending: false });
+            
+            const rank = (weekVipRows?.findIndex(w => w.member_id === memberRow.id) ?? -1) + 1;
+            
+            vipHistory.push({
+              week_start: row.week_start,
+              vip_score: Number(row.vip_score),
+              competitive_score: Number(row.competitive_score),
+              support_score: Number(row.support_score),
+              development_score: Number(row.development_score),
+              rank,
+            });
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('[player-profile] Failed to fetch VIP scores:', error);
+      // Continue without VIP data
+    }
+
     const responsePayload = {
       summary,
       timeline: timelineStats.timeline,
@@ -492,6 +584,10 @@ export async function GET(
       },
       evaluations: ensureArray(evaluationRows),
       joinerEvents: ensureArray(joinerRows),
+      vip: {
+        current: currentVip,
+        history: vipHistory,
+      },
     };
 
     return NextResponse.json({ success: true, data: responsePayload });

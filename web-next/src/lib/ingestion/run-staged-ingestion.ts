@@ -1,4 +1,5 @@
 import { cfg } from '@/lib/config';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { runStagedIngestion, StagedIngestionOptions } from './staged-pipeline';
 import { generateChangeSummary, generateGameChatMessages } from '@/lib/ai-summarizer';
 import { addDeparture } from '@/lib/departures';
@@ -31,7 +32,13 @@ export interface RunStagedIngestionJobOptions extends StagedIngestionOptions {
  */
 export async function runStagedIngestionJob(options: RunStagedIngestionJobOptions = {}): Promise<StagedIngestionJobResult> {
   const { runPostProcessing = true, ...stagedOptions } = options;
-  const clanTag = stagedOptions.clanTag || cfg.homeClanTag;
+  let clanTag = stagedOptions.clanTag || cfg.homeClanTag;
+  
+  // CRITICAL SAFEGUARD: Prevent accidental use of wrong clan tag
+  if (!clanTag || clanTag === '#G9QVRYC2Y') {
+    console.error(`[StagedIngestion] INVALID CLAN TAG DETECTED: ${clanTag}. Forcing to #2PR8R8V8P`);
+    clanTag = '#2PR8R8V8P';
+  }
   
   if (!clanTag) {
     return {
@@ -40,6 +47,9 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
       error: 'No clan tag provided',
     };
   }
+  
+  // Log the clan tag being used for debugging
+  console.log(`[StagedIngestion] Starting ingestion with clan tag: ${clanTag} (cfg.homeClanTag: ${cfg.homeClanTag})`);
 
   const result: StagedIngestionJobResult = {
     clanTag,
@@ -47,6 +57,28 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
   };
 
   try {
+    // Short-circuit if today's snapshot already exists in Supabase
+    try {
+      const supabase = getSupabaseAdminClient();
+      const todayIso = new Date().toISOString().slice(0, 10);
+      const { data: latestRow, error: latestErr } = await supabase
+        .from('canonical_member_snapshots')
+        .select('snapshot_date')
+        .eq('clan_tag', clanTag)
+        .order('snapshot_date', { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (!latestErr && latestRow?.snapshot_date) {
+        const latestDate = latestRow.snapshot_date.slice(0, 10);
+        if (latestDate >= todayIso) {
+          console.log(`[StagedIngestion] Up-to-date for ${clanTag} (latest ${latestDate}) — skipping fetch`);
+          return { clanTag, success: true, ingestionResult: { skipped: true, reason: 'up_to_date', latestDate } };
+        }
+      }
+    } catch (precheckErr) {
+      console.warn('[StagedIngestion] Pre-check failed, continuing with ingestion', precheckErr);
+    }
+
     // Run the core staged ingestion pipeline
     console.log(`[StagedIngestion] Starting ingestion for ${clanTag}`);
     const ingestionResult = await runStagedIngestion(stagedOptions);

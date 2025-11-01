@@ -86,6 +86,7 @@ interface TimelineItem {
 
 interface PlayerProfileClientProps {
   tag: string;
+  initialProfile?: SupabasePlayerProfilePayload | null;
 }
 
 const formatNumber = (value: number | null | undefined) => {
@@ -1078,7 +1079,7 @@ function deriveKudos(profile: SupabasePlayerProfilePayload | null) {
   return "No standout donation spikes this week — keep nudging for balance or review war participation instead.";
 }
 
-export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
+export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfileClientProps) {
   const router = useRouter();
   const normalizedTag = useMemo(() => normalizeTag(tag), [tag]);
   const plainTag = normalizedTag.replace("#", "");
@@ -1091,8 +1092,8 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
     (state) => state.clanTag || state.homeClan || cfg.homeClanTag || null,
   );
 
-  const [profile, setProfile] = useState<SupabasePlayerProfilePayload | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<SupabasePlayerProfilePayload | null>(() => initialProfile ?? null);
+  const [loading, setLoading] = useState(() => !initialProfile);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [showNoteModal, setShowNoteModal] = useState(false);
@@ -1120,11 +1121,26 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
   }, [normalizedTag]);
 
   useEffect(() => {
+    if (initialProfile) {
+      setProfile(initialProfile);
+      setLoading(false);
+      setError(null);
+    }
+  }, [initialProfile]);
+
+  useEffect(() => {
     let cancelled = false;
     if (!normalizedTag) {
       setProfile(null);
       setLoading(false);
       setError("Invalid player tag");
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    // Skip initial fetch if we have server-provided data
+    if (initialProfile) {
       return () => {
         cancelled = true;
       };
@@ -1144,7 +1160,7 @@ export default function PlayerProfileClient({ tag }: PlayerProfileClientProps) {
     return () => {
       cancelled = true;
     };
-  }, [normalizedTag, loadProfile]);
+  }, [normalizedTag, loadProfile, initialProfile]);
 
   const summary = profile?.summary ?? null;
   const history = profile?.history ?? null;
@@ -2089,6 +2105,23 @@ const HERO_LABELS: Record<string, string> = {
                                 : "Last seen not captured"}
                             </p>
                           </div>
+                          {profile?.vip?.current && (
+                            <div>
+                              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                                VIP Score
+                              </p>
+                              <p className={`mt-2 text-lg font-semibold ${
+                                profile.vip.current.score >= 80 ? 'text-green-400' :
+                                profile.vip.current.score >= 50 ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}>
+                                {profile.vip.current.score.toFixed(1)}
+                              </p>
+                              <p className="text-xs text-slate-400">
+                                Rank #{profile.vip.current.rank} • Competitive: {profile.vip.current.competitive_score.toFixed(1)} • Support: {profile.vip.current.support_score.toFixed(1)} • Development: {profile.vip.current.development_score.toFixed(1)}
+                              </p>
+                            </div>
+                          )}
                         </div>
                         <div className="space-y-4">
                           <div>

@@ -63,19 +63,21 @@ export async function GET(req: NextRequest) {
       throw clanError;
     }
 
-    // Get the latest canonical member snapshots for this clan
-    const { data: canonicalSnapshots, error: canonicalError } = await supabase
+    // 1) Resolve the newest snapshot_date for this clan from Supabase (no ingestion)
+    const { data: latestDateRow, error: latestDateErr } = await supabase
       .from('canonical_member_snapshots')
-      .select('player_tag, snapshot_date, payload')
+      .select('snapshot_date')
       .eq('clan_tag', clanTag)
-      .order('snapshot_date', { ascending: false })
-      .limit(100); // Get recent snapshots
+      .order('snapshot_date', { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
 
-    if (canonicalError) {
-      throw canonicalError;
+    if (latestDateErr) {
+      throw latestDateErr;
     }
 
-    if (!canonicalSnapshots || canonicalSnapshots.length === 0) {
+    // If we have no snapshots at all, return an empty dataset
+    if (!latestDateRow?.snapshot_date) {
       return NextResponse.json({
           success: true,
           data: {
@@ -88,11 +90,25 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // Group snapshots by player_tag and get the latest for each
+    // 2) Fetch ONLY rows for the newest snapshot_date (freshest dataset)
+    const latestSnapshotDate: string = latestDateRow.snapshot_date;
+    const { data: canonicalSnapshots, error: canonicalError } = await supabase
+      .from('canonical_member_snapshots')
+      .select('player_tag, snapshot_date, payload')
+      .eq('clan_tag', clanTag)
+      .eq('snapshot_date', latestSnapshotDate)
+      .limit(10000);
+
+    if (canonicalError) {
+      throw canonicalError;
+    }
+
+    // Group snapshots by player_tag and get one entry per player
     const latestSnapshots = new Map<string, any>();
-    for (const snapshot of canonicalSnapshots) {
-      if (!latestSnapshots.has(snapshot.player_tag)) {
-        latestSnapshots.set(snapshot.player_tag, snapshot);
+    for (const snapshot of canonicalSnapshots || []) {
+      const key = snapshot.player_tag;
+      if (key && !latestSnapshots.has(key)) {
+        latestSnapshots.set(key, snapshot);
       }
     }
 
@@ -265,235 +281,351 @@ export async function GET(req: NextRequest) {
 
     const memberIds = members.map(m => m.id).filter(Boolean);
     
+    // Create maps from member tag -> UUID for lookup (needed for VIP and historical data)
+    const memberTagToUuidMap = new Map<string, string>();
+    const memberIdMap = new Map<string, string>();
+    const memberTagById = new Map<string, string>();
+    
     if (memberIds.length > 0 && memberQueryTags.length > 0) {
-      // Get member IDs from the canonical data for historical lookup
+      // Get member IDs from the canonical data for historical lookup (single query for both WCI and historical data)
       const { data: memberRows, error: memberError } = await supabase
         .from('members')
         .select('id, tag')
         .in('tag', memberQueryTags);
 
       if (!memberError && memberRows) {
-        const memberIdMap = new Map<string, string>();
-        const memberTagById = new Map<string, string>();
-        const normalizedLastWeekByMemberLocal = new Map<string, number>();
-        const normalizedSeasonTotalsByMemberLocal = new Map<string, number>();
-        for (const member of memberRows) {
-          const normalizedMemberTag = normalizeTag(member.tag ?? '');
-          if (!normalizedMemberTag) continue;
-          // Map BOTH canonical and stripped tags to the same member_id for lookups
-          memberIdMap.set(normalizedMemberTag, member.id);
-          const stripped = normalizedMemberTag.replace(/^#+/, '');
-          if (stripped) {
-            memberIdMap.set(stripped, member.id);
+        for (const row of memberRows) {
+          const normalizedTag = normalizeTag(row.tag ?? '');
+          if (normalizedTag) {
+            // For WCI lookup
+            memberTagToUuidMap.set(normalizedTag, row.id);
+            // For historical data lookup
+            memberIdMap.set(normalizedTag, row.id);
+            const stripped = normalizedTag.replace(/^#+/, '');
+            if (stripped) {
+              memberIdMap.set(stripped, row.id);
+            }
+            memberTagById.set(row.id, normalizedTag);
           }
-          // Critically: always key member_id -> canonical tag with '#'
-          memberTagById.set(member.id, normalizedMemberTag);
         }
-
-        const historicalMemberIds = Array.from(new Set(memberIdMap.values()));
-
-        // Fetch last week's trophy data from member_snapshot_stats
-        // Calculate the previous Monday (last week's Monday)
-        const now = new Date();
-        const currentMonday = weekStartKey(now);
-        const lastMonday = new Date(currentMonday);
-        lastMonday.setUTCDate(lastMonday.getUTCDate() - 7);
-        const lastMondayISO = lastMonday.toISOString().slice(0, 10);
+      }
+    }
+    
+    // Fetch VIP scores for current tournament week
+    const vipScoresByMemberId = new Map<string, {
+      score: number;
+      rank: number;
+      competitive_score: number;
+      support_score: number;
+      development_score: number;
+      trend: 'up' | 'down' | 'stable';
+      last_week_score?: number;
+    }>();
+    
+    if (memberIds.length > 0 && memberTagToUuidMap.size > 0) {
+      try {
+        // Get actual UUIDs for members from memberTagToUuidMap
+        const memberUuids = Array.from(memberTagToUuidMap.values()).filter(Boolean);
         
-        const { data: lastWeekSnapshotRows, error: lastWeekError } = await supabase
+        if (memberUuids.length === 0) {
+          // No members found in database, skip VIP lookup
+          console.warn('[Roster API] No member UUIDs found for VIP lookup');
+        } else {
+          // Get the most recent week_start that has VIP data
+          const { data: latestWeekRow, error: weekError } = await supabase
+            .from('vip_scores')
+            .select('week_start')
+            .order('week_start', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          
+          if (weekError) {
+            console.warn('[Roster API] Error fetching latest week:', weekError);
+          }
+          
+          if (!latestWeekRow) {
+            // No VIP data at all, skip
+            console.warn('[Roster API] No VIP data found');
+          } else {
+            const weekStartISO = latestWeekRow.week_start;
+            console.log('[Roster API] Fetching VIP for week_start:', weekStartISO, 'memberUuids:', memberUuids.length);
+            
+            // Fetch current week VIP scores using UUIDs
+            const { data: vipRows, error: vipError } = await supabase
+              .from('vip_scores')
+              .select('member_id, vip_score, competitive_score, support_score, development_score, week_start')
+              .in('member_id', memberUuids)
+              .eq('week_start', weekStartISO)
+              .order('vip_score', { ascending: false });
+            
+            if (vipError) {
+              console.warn('[Roster API] Error fetching VIP scores:', vipError);
+            }
+            
+            console.log('[Roster API] Found VIP rows:', vipRows?.length || 0);
+            
+            if (!vipError && vipRows) {
+              // Create rank map (1-indexed)
+              let rank = 1;
+              for (const row of vipRows) {
+                vipScoresByMemberId.set(row.member_id, {
+                  score: Number(row.vip_score),
+                  rank: rank++,
+                  competitive_score: Number(row.competitive_score),
+                  support_score: Number(row.support_score),
+                  development_score: Number(row.development_score),
+                  trend: 'stable', // Will calculate trend if we have last week data
+                });
+              }
+              
+              // Fetch last week's VIP scores for trend calculation
+              const lastWeekStart = new Date(weekStartISO);
+              lastWeekStart.setUTCDate(lastWeekStart.getUTCDate() - 7);
+              const lastWeekStartISO = lastWeekStart.toISOString().split('T')[0];
+              
+              const { data: lastWeekVipRows } = await supabase
+                .from('vip_scores')
+                .select('member_id, vip_score')
+                .in('member_id', memberUuids)
+                .eq('week_start', lastWeekStartISO);
+              
+              if (lastWeekVipRows) {
+                const lastWeekScores = new Map(
+                  lastWeekVipRows.map(row => [row.member_id, Number(row.vip_score)])
+                );
+                
+                // Update trend for each member
+                for (const [memberId, vipData] of vipScoresByMemberId.entries()) {
+                  const lastWeekScore = lastWeekScores.get(memberId);
+                  if (lastWeekScore !== undefined) {
+                    vipData.last_week_score = lastWeekScore;
+                    if (vipData.score > lastWeekScore + 0.5) {
+                      vipData.trend = 'up';
+                    } else if (vipData.score < lastWeekScore - 0.5) {
+                      vipData.trend = 'down';
+                    } else {
+                      vipData.trend = 'stable';
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('[Roster API] Failed to fetch VIP scores:', error);
+        // Continue without VIP data - don't fail the request
+      }
+    }
+    
+    if (memberIds.length > 0 && memberQueryTags.length > 0 && memberIdMap.size > 0) {
+      // Use the memberIdMap and memberTagById already created above (no duplicate query)
+      const normalizedLastWeekByMemberLocal = new Map<string, number>();
+      const normalizedSeasonTotalsByMemberLocal = new Map<string, number>();
+      
+      const historicalMemberIds = Array.from(new Set(memberIdMap.values()));
+
+      // Fetch last week's trophy data from member_snapshot_stats
+      // Calculate the previous Monday (last week's Monday)
+      const now = new Date();
+      const currentMonday = weekStartKey(now);
+      const lastMonday = new Date(currentMonday);
+      lastMonday.setUTCDate(lastMonday.getUTCDate() - 7);
+      const lastMondayISO = lastMonday.toISOString().slice(0, 10);
+      
+      const { data: lastWeekSnapshotRows, error: lastWeekError } = await supabase
         .from('member_snapshot_stats')
-          .select('member_id, trophies, ranked_trophies, snapshot_date')
-          .in('member_id', historicalMemberIds)
-          .filter('snapshot_date', 'gte', lastMondayISO + 'T00:00:00Z')
-          .filter('snapshot_date', 'lte', currentMonday + 'T23:59:59Z')
+        .select('member_id, trophies, ranked_trophies, snapshot_date')
+        .in('member_id', historicalMemberIds)
+        .filter('snapshot_date', 'gte', lastMondayISO + 'T00:00:00Z')
+        .filter('snapshot_date', 'lte', currentMonday + 'T23:59:59Z')
         .order('snapshot_date', { ascending: false });
 
-        if (!lastWeekError && lastWeekSnapshotRows) {
-          // Group by member and find the highest ranked_trophies for each member
-          const memberBestTrophies = new Map<string, number>();
+      if (!lastWeekError && lastWeekSnapshotRows) {
+        // Group by member and find the highest ranked_trophies for each member
+        const memberBestTrophies = new Map<string, number>();
+        
+        for (const row of lastWeekSnapshotRows) {
+          const trophyValue = row.ranked_trophies ?? row.trophies ?? 0;
+          const currentBest = memberBestTrophies.get(row.member_id) ?? 0;
           
-          for (const row of lastWeekSnapshotRows) {
-            const trophyValue = row.ranked_trophies ?? row.trophies ?? 0;
-            const currentBest = memberBestTrophies.get(row.member_id) ?? 0;
-            
-            if (trophyValue > currentBest) {
-              memberBestTrophies.set(row.member_id, trophyValue);
-            }
-          }
-          
-          // Set the best trophy values for each member
-          for (const [memberId, bestTrophies] of memberBestTrophies) {
-            const memberTag = memberTagById.get(memberId);
-            if (memberTag) {
-              lastWeekTrophies.set(memberTag, bestTrophies);
-            }
+          if (trophyValue > currentBest) {
+            memberBestTrophies.set(row.member_id, trophyValue);
           }
         }
-
-        // Calculate running total from member_snapshot_stats (weekly finals only)
-        // Query all members separately to avoid Supabase's 1000-row limit
-        const allSeasonRows = [];
-        const batchSize = 5; // Process members in smaller batches
         
-        for (let i = 0; i < historicalMemberIds.length; i += batchSize) {
-          const batch = historicalMemberIds.slice(i, i + batchSize);
-          const { data: batchRows, error: batchError } = await supabase
-            .from('member_snapshot_stats')
-            .select('member_id, trophies, ranked_trophies, snapshot_date')
-            .in('member_id', batch)
-            .gte('snapshot_date', SEASON_START_ISO)
-            .order('snapshot_date', { ascending: true });
-            
-          if (batchError) {
-            console.error('Batch error:', batchError);
+        // Set the best trophy values for each member
+        for (const [memberId, bestTrophies] of memberBestTrophies) {
+          const memberTag = memberTagById.get(memberId);
+          if (memberTag) {
+            lastWeekTrophies.set(memberTag, bestTrophies);
+          }
+        }
+      }
+
+      // Calculate running total from member_snapshot_stats (weekly finals only)
+      // Query all members separately to avoid Supabase's 1000-row limit
+      const allSeasonRows = [];
+      const batchSize = 5; // Process members in smaller batches
+      
+      for (let i = 0; i < historicalMemberIds.length; i += batchSize) {
+        const batch = historicalMemberIds.slice(i, i + batchSize);
+        const { data: batchRows, error: batchError } = await supabase
+          .from('member_snapshot_stats')
+          .select('member_id, trophies, ranked_trophies, snapshot_date')
+          .in('member_id', batch)
+          .gte('snapshot_date', SEASON_START_ISO)
+          .order('snapshot_date', { ascending: true });
+          
+        if (batchError) {
+          console.error('Batch error:', batchError);
+          continue;
+        }
+        
+        allSeasonRows.push(...(batchRows || []));
+      }
+      
+      const allSeasonError = null; // No error if we got here
+
+      console.log('[roster] allSeasonRows length', allSeasonRows?.length);
+      console.log('[roster] allSeasonError:', allSeasonError);
+      console.log('[roster] historicalMemberIds length:', historicalMemberIds.length);
+      console.log('[roster] SEASON_START_ISO:', SEASON_START_ISO);
+      console.log('[roster] historicalMemberIds:', historicalMemberIds);
+      
+      // Check if warfroggy's member ID is in the query results
+      if (allSeasonRows) {
+        const warfroggyRows = allSeasonRows.filter(row => row.member_id === 'd20ea819-9cd8-4e29-b4df-c250b69cd619');
+        console.log('[roster] warfroggy rows in query:', warfroggyRows.length);
+        if (warfroggyRows.length > 0) {
+          console.log('[roster] warfroggy first few rows:');
+          warfroggyRows.slice(0, 5).forEach((row, i) => {
+            console.log(`[roster] Row ${i}: ${row.snapshot_date} - ranked: ${row.ranked_trophies}`);
+          });
+          
+          // Debug: Show all warfroggy rows to find Oct 20
+          console.log('[warp] ALL warfroggy rows:');
+          warfroggyRows.forEach((row, i) => {
+            const dateStr = row.snapshot_date.slice(0, 10);
+            if (dateStr.includes('2025-10-20') || dateStr.includes('2025-10-13')) {
+              console.log(`[warp] Row ${i}: ${row.snapshot_date} - ranked: ${row.ranked_trophies} (${dateStr})`);
+            }
+          });
+        }
+      }
+
+      if (!allSeasonError && allSeasonRows) {
+        const warfroggyTag = normalizeTag('#G9QVRYC2Y');
+        console.log('[roster] Monday-only logic executing with', allSeasonRows.length, 'rows');
+        // Calculate the current snapshot week key to exclude it from completed weeks
+        // Group by member and week, get one snapshot per week
+        const memberWeeks = new Map<string, Map<string, number>>(); // member_tag -> week -> max_trophies
+        
+        for (const row of allSeasonRows) {
+          if (!row.snapshot_date) continue;
+          const snapshotDate = new Date(row.snapshot_date);
+          if (Number.isNaN(snapshotDate.valueOf())) continue;
+          const memberTag = memberTagById.get(row.member_id);
+          if (!memberTag) continue;
+
+          const weekStartISO = weekStartKey(snapshotDate);
+          const snapshotDateISO = row.snapshot_date.slice(0, 10);
+
+          // Determine ISO week start (Monday). We only accept Monday snapshots to capture finals
+          const isMonday = snapshotDate.getUTCDay() === 1;
+          
+          // Debug logging for warfroggy's Oct 13 and Oct 20 data
+          if (row.member_id === 'd20ea819-9cd8-4e29-b4df-c250b69cd619' && 
+              (snapshotDateISO.includes('2025-10-13') || snapshotDateISO.includes('2025-10-20'))) {
+            console.log(`[warp] ${snapshotDateISO} -> week ${weekStartISO} (isMonday: ${isMonday}, day: ${snapshotDate.getUTCDay()}) - ranked: ${row.ranked_trophies}`);
+          }
+          
+          // Debug logging for Headhuntress's Oct 13 and Oct 20 data
+          if (row.member_id === 'fe1bcd9f-b9a8-402a-baef-3fb682973fcb' && 
+              (snapshotDateISO.includes('2025-10-13') || snapshotDateISO.includes('2025-10-20'))) {
+            console.log(`[head] ${snapshotDateISO} -> week ${weekStartISO} (isMonday: ${isMonday}, day: ${snapshotDate.getUTCDay()}) - ranked: ${row.ranked_trophies}`);
+          }
+          
+          // Accept any day within the ISO week, but only count ranked weeks on/after 2025-10-13
+          if (weekStartISO < RANKED_START_MONDAY_ISO) {
             continue;
           }
-          
-          allSeasonRows.push(...(batchRows || []));
-        }
-        
-        const allSeasonError = null; // No error if we got here
 
-        console.log('[roster] allSeasonRows length', allSeasonRows?.length);
-        console.log('[roster] allSeasonError:', allSeasonError);
-        console.log('[roster] historicalMemberIds length:', historicalMemberIds.length);
-        console.log('[roster] SEASON_START_ISO:', SEASON_START_ISO);
-        console.log('[roster] historicalMemberIds:', historicalMemberIds);
-        
-        // Check if warfroggy's member ID is in the query results
-        if (allSeasonRows) {
-          const warfroggyRows = allSeasonRows.filter(row => row.member_id === 'd20ea819-9cd8-4e29-b4df-c250b69cd619');
-          console.log('[roster] warfroggy rows in query:', warfroggyRows.length);
-          if (warfroggyRows.length > 0) {
-            console.log('[roster] warfroggy first few rows:');
-            warfroggyRows.slice(0, 5).forEach((row, i) => {
-              console.log(`[roster] Row ${i}: ${row.snapshot_date} - ranked: ${row.ranked_trophies}`);
-            });
-            
-            // Debug: Show all warfroggy rows to find Oct 20
-            console.log('[warp] ALL warfroggy rows:');
-            warfroggyRows.forEach((row, i) => {
-              const dateStr = row.snapshot_date.slice(0, 10);
-              if (dateStr.includes('2025-10-20') || dateStr.includes('2025-10-13')) {
-                console.log(`[warp] Row ${i}: ${row.snapshot_date} - ranked: ${row.ranked_trophies} (${dateStr})`);
-              }
-            });
+          if (!memberWeeks.has(memberTag)) {
+            memberWeeks.set(memberTag, new Map<string, number>());
+          }
+          
+          // Only use ranked_trophies (tournament finals), ignore regular trophies
+          const trophyValue = row.ranked_trophies ?? 0;
+          const memberWeekMap = memberWeeks.get(memberTag)!;
+          
+          const existingValue = memberWeekMap.get(weekStartISO) ?? 0;
+          // Keep the maximum plausible ranked final for the week
+          if (trophyValue > existingValue && trophyValue > 0 && trophyValue <= 600) {
+            memberWeekMap.set(weekStartISO, trophyValue);
           }
         }
 
-        if (!allSeasonError && allSeasonRows) {
-          const warfroggyTag = normalizeTag('#G9QVRYC2Y');
-          console.log('[roster] Monday-only logic executing with', allSeasonRows.length, 'rows');
-          // Calculate the current snapshot week key to exclude it from completed weeks
-          // Group by member and week, get one snapshot per week
-          const memberWeeks = new Map<string, Map<string, number>>(); // member_tag -> week -> max_trophies
-          
-          for (const row of allSeasonRows) {
-            if (!row.snapshot_date) continue;
-            const snapshotDate = new Date(row.snapshot_date);
-            if (Number.isNaN(snapshotDate.valueOf())) continue;
-            const memberTag = memberTagById.get(row.member_id);
-            if (!memberTag) continue;
 
-            const weekStartISO = weekStartKey(snapshotDate);
-            const snapshotDateISO = row.snapshot_date.slice(0, 10);
+        for (const [memberTag, weekMap] of memberWeeks.entries()) {
+          if (!weekMap || weekMap.size === 0) continue;
 
-            // Determine ISO week start (Monday). We only accept Monday snapshots to capture finals
-            const isMonday = snapshotDate.getUTCDay() === 1;
-            
-            // Debug logging for warfroggy's Oct 13 and Oct 20 data
-            if (row.member_id === 'd20ea819-9cd8-4e29-b4df-c250b69cd619' && 
-                (snapshotDateISO.includes('2025-10-13') || snapshotDateISO.includes('2025-10-20'))) {
-              console.log(`[warp] ${snapshotDateISO} -> week ${weekStartISO} (isMonday: ${isMonday}, day: ${snapshotDate.getUTCDay()}) - ranked: ${row.ranked_trophies}`);
-            }
-            
-            // Debug logging for Headhuntress's Oct 13 and Oct 20 data
-            if (row.member_id === 'fe1bcd9f-b9a8-402a-baef-3fb682973fcb' && 
-                (snapshotDateISO.includes('2025-10-13') || snapshotDateISO.includes('2025-10-20'))) {
-              console.log(`[head] ${snapshotDateISO} -> week ${weekStartISO} (isMonday: ${isMonday}, day: ${snapshotDate.getUTCDay()}) - ranked: ${row.ranked_trophies}`);
-            }
-            
-            // Accept any day within the ISO week, but only count ranked weeks on/after 2025-10-13
-            if (weekStartISO < RANKED_START_MONDAY_ISO) {
-              continue;
-            }
+          const entries = Array.from(weekMap.entries())
+            .map(([weekKey, value]) => ({
+              weekKey,
+              value: typeof value === 'number' && Number.isFinite(value) ? value : Number(value) || 0,
+            }))
+            .sort((a, b) => b.weekKey.localeCompare(a.weekKey));
 
-            if (!memberWeeks.has(memberTag)) {
-              memberWeeks.set(memberTag, new Map<string, number>());
-            }
-            
-            // Only use ranked_trophies (tournament finals), ignore regular trophies
-            const trophyValue = row.ranked_trophies ?? 0;
-            const memberWeekMap = memberWeeks.get(memberTag)!;
-            
-            const existingValue = memberWeekMap.get(weekStartISO) ?? 0;
-            // Keep the maximum plausible ranked final for the week
-            if (trophyValue > existingValue && trophyValue > 0 && trophyValue <= 600) {
-              memberWeekMap.set(weekStartISO, trophyValue);
-            }
+          // Only count weeks that have actual ranked_trophies (tournament finals)
+          // Filter out weeks with 0 or null ranked_trophies
+          // Keep plausible ranked finals only (ignore legacy thousands)
+          const tournamentFinals = entries.filter(entry => entry.value > 0 && entry.value <= 600);
+          const completedWeekSum = tournamentFinals.reduce((sum, entry) => sum + entry.value, 0);
+          normalizedSeasonTotalsByMemberLocal.set(memberTag, completedWeekSum);
+
+          // Debug logging for warfroggy, Headhuntress, and War.Frog
+          if (memberTag === warfroggyTag) {
+            console.log('[warp] weeks detected:', Array.from(weekMap.entries()));
+            console.log('[warp] tournament finals:', tournamentFinals.map(e => `${e.weekKey}: ${e.value}`));
+            console.log('[warp] completedWeekSum:', completedWeekSum);
+          }
+          if (memberTag === '#GPYCPQV8J') {
+            console.log('[head] weeks detected:', Array.from(weekMap.entries()));
+            console.log('[head] tournament finals:', tournamentFinals.map(e => `${e.weekKey}: ${e.value}`));
+            console.log('[head] completedWeekSum:', completedWeekSum);
+          }
+          if (memberTag === '#UL0LRJ02') {
+            console.log('[frog] weeks detected:', Array.from(weekMap.entries()));
+            console.log('[frog] tournament finals:', tournamentFinals.map(e => `${e.weekKey}: ${e.value}`));
+            console.log('[frog] completedWeekSum:', completedWeekSum);
           }
 
-
-          for (const [memberTag, weekMap] of memberWeeks.entries()) {
-            if (!weekMap || weekMap.size === 0) continue;
-
-            const entries = Array.from(weekMap.entries())
-              .map(([weekKey, value]) => ({
-                weekKey,
-                value: typeof value === 'number' && Number.isFinite(value) ? value : Number(value) || 0,
-              }))
-              .sort((a, b) => b.weekKey.localeCompare(a.weekKey));
-
-            // Only count weeks that have actual ranked_trophies (tournament finals)
-            // Filter out weeks with 0 or null ranked_trophies
-            // Keep plausible ranked finals only (ignore legacy thousands)
-            const tournamentFinals = entries.filter(entry => entry.value > 0 && entry.value <= 600);
-            const completedWeekSum = tournamentFinals.reduce((sum, entry) => sum + entry.value, 0);
-            normalizedSeasonTotalsByMemberLocal.set(memberTag, completedWeekSum);
-
-            // Debug logging for warfroggy, Headhuntress, and War.Frog
-            if (memberTag === warfroggyTag) {
-              console.log('[warp] weeks detected:', Array.from(weekMap.entries()));
-              console.log('[warp] tournament finals:', tournamentFinals.map(e => `${e.weekKey}: ${e.value}`));
-              console.log('[warp] completedWeekSum:', completedWeekSum);
-            }
-            if (memberTag === '#GPYCPQV8J') {
-              console.log('[head] weeks detected:', Array.from(weekMap.entries()));
-              console.log('[head] tournament finals:', tournamentFinals.map(e => `${e.weekKey}: ${e.value}`));
-              console.log('[head] completedWeekSum:', completedWeekSum);
-            }
-            if (memberTag === '#UL0LRJ02') {
-              console.log('[frog] weeks detected:', Array.from(weekMap.entries()));
-              console.log('[frog] tournament finals:', tournamentFinals.map(e => `${e.weekKey}: ${e.value}`));
-              console.log('[frog] completedWeekSum:', completedWeekSum);
-            }
-
-            // Get the most recent week (first entry after descending sort)
-            const latestEntry = tournamentFinals[0];
-            if (latestEntry && latestEntry.value != null) {
-              normalizedLastWeekByMemberLocal.set(memberTag, latestEntry.value);
-            }
-
-            seasonWeekEntriesByMember.set(memberTag, tournamentFinals);
+          // Get the most recent week (first entry after descending sort)
+          const latestEntry = tournamentFinals[0];
+          if (latestEntry && latestEntry.value != null) {
+            normalizedLastWeekByMemberLocal.set(memberTag, latestEntry.value);
           }
 
-          if (normalizedLastWeekByMemberLocal.size) {
-            normalizedLastWeekByMember.clear();
-            for (const [memberTag, value] of normalizedLastWeekByMemberLocal) {
-              normalizedLastWeekByMember.set(memberTag, value);
-            }
-            lastWeekTrophies = new Map(normalizedLastWeekByMemberLocal);
+          seasonWeekEntriesByMember.set(memberTag, tournamentFinals);
+        }
+
+        if (normalizedLastWeekByMemberLocal.size) {
+          normalizedLastWeekByMember.clear();
+          for (const [memberTag, value] of normalizedLastWeekByMemberLocal) {
+            normalizedLastWeekByMember.set(memberTag, value);
           }
-          if (normalizedSeasonTotalsByMemberLocal.size) {
-            normalizedSeasonTotalsByMember.clear();
-            for (const [memberTag, value] of normalizedSeasonTotalsByMemberLocal) {
-              normalizedSeasonTotalsByMember.set(memberTag, value);
-              if (memberTag === '#G9QVRYC2Y' || memberTag === '#GPYCPQV8J' || memberTag === '#UL0LRJ02') {
-                console.log(`[normalized] ${memberTag} -> ${value}`);
-              }
+          lastWeekTrophies = new Map(normalizedLastWeekByMemberLocal);
+        }
+        if (normalizedSeasonTotalsByMemberLocal.size) {
+          normalizedSeasonTotalsByMember.clear();
+          for (const [memberTag, value] of normalizedSeasonTotalsByMemberLocal) {
+            normalizedSeasonTotalsByMember.set(memberTag, value);
+            if (memberTag === '#G9QVRYC2Y' || memberTag === '#GPYCPQV8J' || memberTag === '#UL0LRJ02') {
+              console.log(`[normalized] ${memberTag} -> ${value}`);
             }
-            seasonTotalMap = new Map(normalizedSeasonTotalsByMemberLocal);
           }
+          seasonTotalMap = new Map(normalizedSeasonTotalsByMemberLocal);
         }
       }
     }
@@ -645,6 +777,12 @@ export async function GET(req: NextRequest) {
           id: member.ranked_league_id,
           name: member.ranked_league_name,
         },
+        vip: (() => {
+          // Look up VIP by member UUID (not tag)
+          const memberTag = normalizeTag(member.tag ?? '');
+          const memberUuid = memberTagToUuidMap.get(memberTag ?? '');
+          return memberUuid ? (vipScoresByMemberId.get(memberUuid) || null) : null;
+        })(),
       };
     });
 

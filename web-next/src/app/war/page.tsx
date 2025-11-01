@@ -1270,7 +1270,7 @@ const WarCenterPage: React.FC = () => {
         </div>
 
         <GlassCard className="space-y-4 p-4">
-          <SectionTitle title="Section A — Opponent Profile">
+          <SectionTitle title="Opponent Profile">
             <div className="flex items-center gap-2">
               <Button
                 variant="secondary"
@@ -1444,7 +1444,7 @@ const WarCenterPage: React.FC = () => {
         </GlassCard>
 
         <GlassCard className="p-4">
-          <SectionTitle title="Section B — Our Roster">
+          <SectionTitle title="Our Roster">
             <Button variant="secondary" onClick={() => fetchOurRoster()} disabled={loadingOurRoster}>
               {loadingOurRoster ? 'Loading…' : 'Refresh'}
             </Button>
@@ -1476,7 +1476,7 @@ const WarCenterPage: React.FC = () => {
         </GlassCard>
 
         <GlassCard className="p-4">
-          <SectionTitle title="Section B — Opponent Roster">
+          <SectionTitle title="Opponent Roster">
             <Button variant="secondary" onClick={() => fetchOpponents()} disabled={loadingOpponents}>
               {loadingOpponents ? 'Loading…' : 'Fetch Opponent'}
             </Button>
