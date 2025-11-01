@@ -486,6 +486,41 @@ export interface DepartureNotifications {
   hasNotifications: boolean;
 }
 
+/**
+ * Joiner notification for a single player
+ */
+export interface JoinerNotification {
+  id: string;
+  playerTag: string;
+  playerName: string | null;
+  detectedAt: string;
+  metadata: {
+    hasPreviousHistory: boolean;
+    hasNameChange: boolean;
+    previousName: string | null;
+    notesCount: number;
+    warningsCount: number;
+    totalTenure: number;
+    lastDepartureDate: string | null;
+    notificationPriority: 'low' | 'medium' | 'high' | 'critical';
+  };
+  history: any | null;
+  notes: any[];
+  warnings: any[];
+}
+
+/**
+ * Joiner notifications container
+ */
+export interface JoinerNotifications {
+  critical: JoinerNotification[]; // Has warnings - HIGHEST PRIORITY
+  high: JoinerNotification[]; // Has notes or name change
+  medium: JoinerNotification[]; // Has previous history
+  low: JoinerNotification[]; // New player
+  totalCount: number;
+  hasNotifications: boolean;
+}
+
 // =============================================================================
 // INSIGHTS & ANALYTICS
 // =============================================================================

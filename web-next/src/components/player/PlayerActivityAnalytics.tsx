@@ -18,6 +18,7 @@ interface PlayerActivityAnalyticsProps {
     };
   }>;
   playerName: string;
+  memberData?: Member; // Optional: full member data for accurate activity calculation
 }
 
 function getScoreColor(score: number): string {
@@ -38,7 +39,8 @@ function getScoreLabel(score: number): string {
 
 export default function PlayerActivityAnalytics({ 
   data, 
-  playerName 
+  playerName,
+  memberData
 }: PlayerActivityAnalyticsProps) {
   const createEmptyBreakdown = (): ActivityBreakdown => ({
     realtime: 0,
@@ -58,11 +60,11 @@ export default function PlayerActivityAnalytics({
 
   const stubMember: Member = useMemo(
     () =>
-      ({
+      memberData ?? ({
         tag: `analytics-${playerName}`,
         name: playerName,
       } as Member),
-    [playerName],
+    [playerName, memberData],
   );
 
   const toActivityEvent = (point: PlayerActivityAnalyticsProps['data'][number]): PlayerActivityTimelineEvent => {
@@ -143,7 +145,7 @@ export default function PlayerActivityAnalytics({
   const activityScores = useMemo(() => {
     return data.map(point => {
       const event = toActivityEvent(point);
-      const evidence = calculateActivityScore(stubMember, { timeline: [event], lookbackDays: 1 });
+      const evidence = calculateActivityScore(stubMember, { timeline: [event], lookbackDays: 7 });
       const breakdownTotals = evidence.breakdown ?? createEmptyBreakdown();
       const chartBreakdown = {
         donations: breakdownTotals.donations,
@@ -210,27 +212,27 @@ export default function PlayerActivityAnalytics({
     const breakdown = data.breakdown;
 
     return (
-      <div className="bg-white border border-gray-200 rounded-lg p-4 shadow-lg">
-        <p className="font-medium text-gray-900 mb-2">{label}</p>
+      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 shadow-xl">
+        <p className="font-medium text-slate-100 mb-2">{label}</p>
         <p className="text-lg font-bold mb-2" style={{ color: data.color }}>
           Score: {data.score}/100 ({getScoreLabel(data.score)})
         </p>
         <div className="space-y-1 text-sm">
           <div className="flex justify-between">
-            <span>Donations:</span>
-            <span className="font-medium">{breakdown.donations.toFixed(1)} pts</span>
+            <span className="text-slate-300">Donations:</span>
+            <span className="font-medium text-slate-100">{breakdown.donations.toFixed(1)} pts</span>
           </div>
           <div className="flex justify-between">
-            <span>Trophies:</span>
-            <span className="font-medium">{breakdown.trophies.toFixed(1)} pts</span>
+            <span className="text-slate-300">Trophies:</span>
+            <span className="font-medium text-slate-100">{breakdown.trophies.toFixed(1)} pts</span>
           </div>
           <div className="flex justify-between">
-            <span>War Contribution:</span>
-            <span className="font-medium">{breakdown.war.toFixed(1)} pts</span>
+            <span className="text-slate-300">War Contribution:</span>
+            <span className="font-medium text-slate-100">{breakdown.war.toFixed(1)} pts</span>
           </div>
           <div className="flex justify-between">
-            <span>Capital:</span>
-            <span className="font-medium">{breakdown.capital.toFixed(1)} pts</span>
+            <span className="text-slate-300">Capital:</span>
+            <span className="font-medium text-slate-100">{breakdown.capital.toFixed(1)} pts</span>
           </div>
         </div>
       </div>
@@ -239,90 +241,81 @@ export default function PlayerActivityAnalytics({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">
-          Daily Activity Analysis
-        </h2>
-        <p className="text-gray-600">
-          {playerName}&apos;s activity scored based on daily contributions across key metrics
-        </p>
-      </div>
-
       {/* Analytics Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="rounded-xl border border-slate-700/70 bg-slate-800/70 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <Activity className="w-5 h-5 text-blue-600" />
-            <h3 className="font-medium text-gray-900">Avg Score</h3>
+            <Activity className="w-5 h-5 text-blue-400" />
+            <h3 className="font-medium text-slate-200">Avg Score</h3>
           </div>
-          <p className="text-2xl font-bold text-blue-600">{analytics.averageScore}</p>
-          <p className="text-sm text-gray-500">{getScoreLabel(analytics.averageScore)}</p>
+          <p className="text-2xl font-bold text-blue-400">{analytics.averageScore}</p>
+          <p className="text-sm text-slate-400">{getScoreLabel(analytics.averageScore)}</p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="rounded-xl border border-slate-700/70 bg-slate-800/70 p-4">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-green-600" />
-            <h3 className="font-medium text-gray-900">Consistency</h3>
+            <TrendingUp className="w-5 h-5 text-emerald-400" />
+            <h3 className="font-medium text-slate-200">Consistency</h3>
           </div>
-          <p className="text-2xl font-bold text-green-600">{analytics.consistencyScore}</p>
-          <p className="text-sm text-gray-500">
+          <p className="text-2xl font-bold text-emerald-400">{analytics.consistencyScore}</p>
+          <p className="text-sm text-slate-400">
             {analytics.consistencyScore >= 80 ? 'Very Consistent' :
              analytics.consistencyScore >= 60 ? 'Consistent' :
              analytics.consistencyScore >= 40 ? 'Moderate' : 'Inconsistent'}
           </p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="rounded-xl border border-slate-700/70 bg-slate-800/70 p-4">
           <div className="flex items-center gap-2 mb-2">
             {analytics.trend >= 0 ? (
-              <TrendingUp className="w-5 h-5 text-green-600" />
+              <TrendingUp className="w-5 h-5 text-emerald-400" />
             ) : (
-              <TrendingDown className="w-5 h-5 text-red-600" />
+              <TrendingDown className="w-5 h-5 text-red-400" />
             )}
-            <h3 className="font-medium text-gray-900">7-Day Trend</h3>
+            <h3 className="font-medium text-slate-200">7-Day Trend</h3>
           </div>
-          <p className={`text-2xl font-bold ${analytics.trend >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+          <p className={`text-2xl font-bold ${analytics.trend >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
             {analytics.trend >= 0 ? '+' : ''}{analytics.trend}
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-400">
             {Math.abs(analytics.trend) < 5 ? 'Stable' :
              analytics.trend > 0 ? 'Improving' : 'Declining'}
           </p>
         </div>
 
-        <div className="bg-white border border-gray-200 rounded-lg p-4">
+        <div className="rounded-xl border border-slate-700/70 bg-slate-800/70 p-4">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className={`w-5 h-5 ${
-              analytics.inactivityRisk === 'High' ? 'text-red-600' :
-              analytics.inactivityRisk === 'Medium' ? 'text-orange-600' : 'text-green-600'
+              analytics.inactivityRisk === 'High' ? 'text-red-400' :
+              analytics.inactivityRisk === 'Medium' ? 'text-amber-400' : 'text-emerald-400'
             }`} />
-            <h3 className="font-medium text-gray-900">Risk Level</h3>
+            <h3 className="font-medium text-slate-200">Risk Level</h3>
           </div>
           <p className={`text-2xl font-bold ${
-            analytics.inactivityRisk === 'High' ? 'text-red-600' :
-            analytics.inactivityRisk === 'Medium' ? 'text-orange-600' : 'text-green-600'
+            analytics.inactivityRisk === 'High' ? 'text-red-400' :
+            analytics.inactivityRisk === 'Medium' ? 'text-amber-400' : 'text-emerald-400'
           }`}>
             {analytics.inactivityRisk}
           </p>
-          <p className="text-sm text-gray-500">Inactivity Risk</p>
+          <p className="text-sm text-slate-400">Inactivity Risk</p>
         </div>
       </div>
 
       {/* Activity Score Chart */}
-      <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Daily Activity Scores</h3>
+      <div className="rounded-xl border border-slate-700/70 bg-slate-800/70 p-6">
+        <h3 className="font-semibold text-slate-100 mb-4">Daily Activity Scores</h3>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={activityScores} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
             <XAxis 
               dataKey="date" 
-              stroke="#6b7280"
+              stroke="#94a3b8"
               fontSize={12}
               tickLine={false}
               axisLine={false}
             />
             <YAxis 
-              stroke="#6b7280"
+              stroke="#94a3b8"
               fontSize={12}
               tickLine={false}
               axisLine={false}
@@ -341,7 +334,7 @@ export default function PlayerActivityAnalytics({
         </ResponsiveContainer>
         
         {/* Legend */}
-        <div className="mt-4 flex flex-wrap gap-4 text-sm">
+        <div className="mt-4 flex flex-wrap gap-4 text-sm text-slate-300">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-green-500 rounded"></div>
             <span>Very Active (80-100)</span>

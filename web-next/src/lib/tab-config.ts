@@ -51,6 +51,13 @@ export const TAB_CONFIGS: TabConfig[] = [
     requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
   },
   {
+    id: 'database',
+    label: 'Player Database',
+    icon: '🗄️',
+    description: 'Player notes, warnings, and tenure records',
+    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  },
+  {
     id: 'leadership',
     label: 'Leadership',
     icon: '👑',

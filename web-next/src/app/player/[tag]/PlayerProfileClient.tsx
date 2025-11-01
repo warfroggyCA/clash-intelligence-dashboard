@@ -33,7 +33,9 @@ import { compareRankedLeagues } from "@/lib/league-tiers";
 import { fetchPlayerProfileSupabase } from "@/lib/player-profile-supabase";
 import type { SupabasePlayerProfilePayload } from "@/types/player-profile-supabase";
 import { useLeadership } from "@/hooks/useLeadership";
-import { useDashboardStore } from "@/lib/stores/dashboard-store";
+import { useDashboardStore, selectors } from "@/lib/stores/dashboard-store";
+import { useShallow } from 'zustand/react/shallow';
+import { getMemberActivity } from '@/lib/business/calculations';
 import { cfg } from "@/lib/config";
 import { showToast } from "@/lib/toast";
 import { Button } from "@/components/ui/Button";
@@ -1141,10 +1143,27 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   const { permissions } = useLeadership();
   const canViewLeadership = permissions.canViewLeadershipFeatures;
 
+  // Use shared dashboard store (SSOT - Single Source of Truth)
+  const roster = useDashboardStore(useShallow((state) => state.roster));
+  const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag);
+  const loadRoster = useDashboardStore((state) => state.loadRoster);
+  const clanName = useDashboardStore(selectors.clanName);
   const currentUserEmail = useDashboardStore((state) => state.currentUser?.email ?? null);
-  const fallbackClanTag = useDashboardStore(
-    (state) => state.clanTag || state.homeClan || cfg.homeClanTag || null,
-  );
+
+  // Find player in roster (SSOT for current state)
+  const rosterMember = useMemo(() => {
+    if (!roster?.members?.length || !normalizedTag) return null;
+    return roster.members.find(
+      (member) => normalizeTag(member.tag) === normalizedTag
+    ) ?? null;
+  }, [roster, normalizedTag]);
+
+  // Load roster if not already loaded
+  useEffect(() => {
+    if (!roster && clanTag) {
+      void loadRoster(clanTag);
+    }
+  }, [roster, clanTag, loadRoster]);
 
   const [profile, setProfile] = useState<SupabasePlayerProfilePayload | null>(() => initialProfile ?? null);
   const [loading, setLoading] = useState(() => !initialProfile);
@@ -1216,7 +1235,47 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     };
   }, [normalizedTag, loadProfile, initialProfile]);
 
-  const summary = profile?.summary ?? null;
+  // Merge roster data (SSOT) with profile data
+  // Roster data takes priority for current state, profile data provides timeline/history
+  const profileSummary = profile?.summary ?? null;
+  const mergedSummary = useMemo(() => {
+    if (!profileSummary) return null;
+    
+    // If we have roster member data, use it as SSOT for current state
+    if (rosterMember) {
+      // Use roster member's activity (calculated from roster API)
+      const rosterActivity = getMemberActivity(rosterMember);
+      
+      return {
+        ...profileSummary,
+        // Current state from roster (SSOT)
+        name: rosterMember.name ?? profileSummary.name,
+        tag: rosterMember.tag ?? profileSummary.tag,
+        role: rosterMember.role ?? profileSummary.role,
+        townHallLevel: rosterMember.townHallLevel ?? profileSummary.townHallLevel,
+        trophies: rosterMember.trophies ?? profileSummary.trophies,
+        rankedTrophies: rosterMember.rankedTrophies ?? profileSummary.rankedTrophies,
+        donations: {
+          given: rosterMember.donations ?? profileSummary.donations.given,
+          received: rosterMember.donationsReceived ?? profileSummary.donations.received,
+        },
+        rankedLeague: {
+          id: rosterMember.rankedLeagueId ?? profileSummary.rankedLeague.id,
+          name: rosterMember.rankedLeagueName ?? profileSummary.rankedLeague.name,
+        },
+        lastWeekTrophies: rosterMember.lastWeekTrophies ?? profileSummary.lastWeekTrophies,
+        seasonTotalTrophies: rosterMember.seasonTotalTrophies ?? profileSummary.seasonTotalTrophies,
+        // Use roster activity as SSOT
+        activity: rosterActivity,
+        activityScore: rosterActivity.score ?? profileSummary.activityScore,
+      };
+    }
+    
+    // Fallback to profile summary if no roster data
+    return profileSummary;
+  }, [profileSummary, rosterMember]);
+
+  const summary = mergedSummary;
   const history = profile?.history ?? null;
   const activeWarning = canViewLeadership
     ? profile?.leadership.warnings.find((warning) => warning.isActive) ?? null
@@ -1892,7 +1951,7 @@ const HERO_LABELS: Record<string, string> = {
   );
 
   return (
-    <DashboardLayout clanName={summary?.clanName ?? undefined}>
+    <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
       <div className="min-h-screen bg-slate-950/95 pb-20">
         <div className="w-full px-4 pb-16 pt-10">
           <div className="mb-6 flex items-center gap-3 text-sm text-slate-400">
@@ -3161,13 +3220,46 @@ const HERO_LABELS: Record<string, string> = {
                       data={profile?.timeline?.filter(point => point.snapshotDate).map(point => ({
                         date: point.snapshotDate!,
                         deltas: {
-                          trophies: point.deltas?.trophies || 0,
-                          donations: point.deltas?.donations || 0,
-                          warStars: point.deltas?.war_stars || 0,
-                          clanCapitalContributions: point.deltas?.capital_contrib || 0,
+                          trophies: (point.deltas as any)?.trophies || 0,
+                          donations: (point.deltas as any)?.donations || 0,
+                          war_stars: (point.deltas as any)?.war_stars || 0,
+                          capital_contrib: (point.deltas as any)?.capital_contrib || 0,
                         }
                       })) ?? []}
                       playerName={summary?.name || "Player"}
+                      memberData={summary ? {
+                        name: summary.name ?? summary.tag,
+                        tag: summary.tag,
+                        role: summary.role ?? undefined,
+                        townHallLevel: summary.townHallLevel ?? undefined,
+                        trophies: summary.trophies ?? undefined,
+                        rankedTrophies: summary.rankedTrophies ?? undefined,
+                        rankedLeagueId: summary.rankedLeague.id ?? undefined,
+                        rankedLeagueName: summary.rankedLeague.name ?? undefined,
+                        donations: summary.donations.given ?? undefined,
+                        donationsReceived: summary.donations.received ?? undefined,
+                        seasonTotalTrophies: summary.seasonTotalTrophies ?? undefined,
+                        enriched: {
+                          warStars: summary.war.stars ?? null,
+                          attackWins: summary.war.attackWins ?? null,
+                          defenseWins: summary.war.defenseWins ?? null,
+                          capitalContributions: summary.capitalContributions ?? null,
+                          builderHallLevel: summary.builderBase.hallLevel ?? null,
+                          versusTrophies: summary.builderBase.trophies ?? null,
+                          versusBattleWins: summary.builderBase.battleWins ?? null,
+                          builderLeagueId: summary.builderBase.leagueId ?? null,
+                          builderLeagueName: summary.builderBase.leagueName ?? null,
+                          achievementCount: summary.achievements.count ?? null,
+                          achievementScore: summary.achievements.score ?? null,
+                          expLevel: summary.expLevel ?? null,
+                          bestTrophies: summary.bestTrophies ?? null,
+                          bestVersusTrophies: summary.bestVersusTrophies ?? null,
+                          equipmentLevels: summary.equipmentLevels ?? null,
+                          petLevels: summary.pets ?? null,
+                          superTroopsActive: summary.superTroopsActive ?? null,
+                        } as any,
+                        activity: summary.activity ?? undefined,
+                      } as Member : undefined}
                     />
                   </GlassCard>
 
@@ -3178,11 +3270,32 @@ const HERO_LABELS: Record<string, string> = {
                     className="bg-slate-900/70 border border-slate-800/80"
                   >
                     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                      <TrophyChart data={profile?.timeline?.filter(point => point.snapshotDate).map(point => ({
-                        date: point.snapshotDate!,
-                        trophies: point.trophies,
-                        rankedTrophies: point.rankedTrophies
-                      })) ?? []} />
+                      <TrophyChart data={(() => {
+                        if (!profile?.timeline) return [];
+                        const rankedStartDateStr = '2025-10-06';
+                        const filtered = profile.timeline.filter(point => {
+                          if (!point.snapshotDate) return false;
+                          // snapshotDate comes as YYYY-MM-DD string (e.g., "2025-10-05")
+                          const pointDateStr = String(point.snapshotDate).substring(0, 10);
+                          // Strictly exclude Oct 5 and earlier - must be >= Oct 6
+                          const isAfterStart = pointDateStr >= rankedStartDateStr;
+                          if (!isAfterStart) {
+                            console.warn('[PlayerProfile] Filtering out Oct 5 date:', pointDateStr, point);
+                          }
+                          return isAfterStart;
+                        });
+                        console.log('[PlayerProfile] TrophyChart data:', {
+                          total: profile.timeline.length,
+                          filtered: filtered.length,
+                          firstDate: filtered[0]?.snapshotDate,
+                          lastDate: filtered[filtered.length - 1]?.snapshotDate
+                        });
+                        return filtered.map(point => ({
+                          date: point.snapshotDate!,
+                          trophies: point.trophies,
+                          rankedTrophies: point.rankedTrophies
+                        }));
+                      })()} />
                       <DonationChart data={donationSeries} />
                     </div>
                   </GlassCard>

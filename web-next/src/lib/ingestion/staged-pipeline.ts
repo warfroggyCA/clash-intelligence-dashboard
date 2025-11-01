@@ -732,6 +732,7 @@ async function recordJoinerEvents(params: {
 
   const detectedAt = new Date().toISOString();
 
+  // Fetch player history
   const { data: existingHistoryRows, error: historyError } = await supabase
     .from('player_history')
     .select('*')
@@ -742,9 +743,52 @@ async function recordJoinerEvents(params: {
     throw new Error(`Failed to load player history for joiners: ${historyError.message}`);
   }
 
+  // Fetch player notes
+  const { data: playerNotesRows, error: notesError } = await supabase
+    .from('player_notes')
+    .select('*')
+    .eq('clan_tag', clanTag)
+    .in('player_tag', joinerTags)
+    .order('created_at', { ascending: false });
+
+  if (notesError) {
+    console.warn(`Failed to load player notes for joiners: ${notesError.message}`);
+  }
+
+  // Fetch player warnings
+  const { data: playerWarningsRows, error: warningsError } = await supabase
+    .from('player_warnings')
+    .select('*')
+    .eq('clan_tag', clanTag)
+    .in('player_tag', joinerTags)
+    .eq('is_active', true)
+    .order('created_at', { ascending: false });
+
+  if (warningsError) {
+    console.warn(`Failed to load player warnings for joiners: ${warningsError.message}`);
+  }
+
   const historyMap = new Map(
     (existingHistoryRows ?? []).map((row) => [row.player_tag, row])
   );
+
+  const notesMap = new Map<string, any[]>();
+  (playerNotesRows ?? []).forEach((note) => {
+    const tag = note.player_tag;
+    if (!notesMap.has(tag)) {
+      notesMap.set(tag, []);
+    }
+    notesMap.get(tag)!.push(note);
+  });
+
+  const warningsMap = new Map<string, any[]>();
+  (playerWarningsRows ?? []).forEach((warning) => {
+    const tag = warning.player_tag;
+    if (!warningsMap.has(tag)) {
+      warningsMap.set(tag, []);
+    }
+    warningsMap.get(tag)!.push(warning);
+  });
 
   const joinMovement = {
     type: 'joined',
@@ -765,11 +809,18 @@ async function recordJoinerEvents(params: {
 
     const aliases = Array.isArray(existing?.aliases) ? existing.aliases : [];
     const notes = Array.isArray(existing?.notes) ? existing.notes : [];
+    
+    // Add current name to aliases if it's different from primary_name
+    const currentName = member?.name || null;
+    const primaryName = existing?.primary_name || null;
+    if (currentName && primaryName && currentName !== primaryName && !aliases.includes(currentName)) {
+      aliases.push(currentName);
+    }
 
     return {
       clan_tag: clanTag,
       player_tag: tag,
-      primary_name: member?.name || existing?.primary_name || tag,
+      primary_name: currentName || primaryName || tag,
       status: 'active' as const,
       total_tenure: existing?.total_tenure ?? 0,
       current_stint: { startDate: detectedAt, isActive: true },
@@ -787,18 +838,47 @@ async function recordJoinerEvents(params: {
     throw new Error(`Failed to upsert player history for joiners: ${upsertHistoryError.message}`);
   }
 
+  // Build enriched joiner inserts with notification metadata
   const joinerInserts = joinerTags.map((tag) => {
     const member = memberLookup.get(tag);
+    const history = historyMap.get(tag);
+    const notes = notesMap.get(tag) || [];
+    const warnings = warningsMap.get(tag) || [];
+    
+    const currentName = member?.name || null;
+    const previousName = history?.primary_name || null;
+    const hasPreviousHistory = !!history && (history.movements?.length > 0 || history.total_tenure > 0);
+    const hasNameChange = currentName && previousName && currentName !== previousName;
+    
+    // Determine notification priority
+    let notificationPriority: 'low' | 'medium' | 'high' | 'critical' = 'low';
+    if (warnings.length > 0) {
+      notificationPriority = 'critical';
+    } else if (notes.length > 0 || hasNameChange) {
+      notificationPriority = 'high';
+    } else if (hasPreviousHistory) {
+      notificationPriority = 'medium';
+    }
+
     return {
       clan_tag: clanTag,
       player_tag: tag,
       detected_at: detectedAt,
       source_snapshot_id: null,
       metadata: {
-        name: member?.name ?? null,
+        name: currentName,
         role: member?.role ?? null,
         townHallLevel: member?.townHallLevel ?? null,
         trophies: member?.trophies ?? null,
+        // Notification enrichment
+        hasPreviousHistory,
+        hasNameChange,
+        previousName: previousName || null,
+        notesCount: notes.length,
+        warningsCount: warnings.length,
+        totalTenure: history?.total_tenure ?? 0,
+        lastDepartureDate: history?.movements?.find((m: any) => m.type === 'departed')?.date || null,
+        notificationPriority,
       },
     };
   });

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { LeadershipOnly } from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import type { ActivityEvidence, Roster } from '@/types';
 
 interface JoinerRecord {
@@ -220,49 +222,22 @@ function JoinerReviewCard({ clanTag }: { clanTag: string | null }) {
 }
 
 export default function LeadershipDashboard() {
-  // Simple state - no Zustand (SSOT from API)
-  const [roster, setRoster] = useState<Roster | null>(null);
-  const [clanTag, setClanTag] = useState<string>(cfg.homeClanTag);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Use shared dashboard store (SSOT - Single Source of Truth)
+  const roster = useDashboardStore(useShallow((state) => state.roster)) as Roster | null;
+  const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag);
+  const loadRoster = useDashboardStore((state) => state.loadRoster);
+  const clanNameFromSelector = useDashboardStore(selectors.clanName);
+  const clanDisplayName = (roster?.clanName ?? roster?.meta?.clanName ?? clanNameFromSelector) || '...Heck Yeah...';
   
-  const clanDisplayName = roster?.clanName || roster?.meta?.clanName || '...Heck Yeah...';
   const [showIngestionMonitor, setShowIngestionMonitor] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
 
-  // Load roster from API (SSOT)
-  const loadRoster = useCallback(async (tag?: string) => {
-    const targetTag = tag || clanTag;
-    if (!targetTag) return;
-    
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/v2/roster?clanTag=${encodeURIComponent(targetTag)}&mode=latest`, { 
-        cache: 'no-store' 
-      });
-      if (!res.ok) throw new Error(`Failed to fetch roster: ${res.status}`);
-      
-      const data = await res.json();
-      if (data.success && data.data) {
-        setRoster(data.data);
-        if (data.data.clan?.tag) {
-          setClanTag(data.data.clan.tag);
-        }
-      } else {
-        throw new Error(data.error || 'Failed to load roster');
-      }
-    } catch (err: any) {
-      console.error('[LeadershipDashboard] Failed to load roster:', err);
-      setError(err.message || 'Failed to load roster');
-    } finally {
-      setLoading(false);
-    }
-  }, [clanTag]);
-
+  // Load roster if not already loaded (for clan name in header)
   useEffect(() => {
-    loadRoster();
-  }, [loadRoster]);
+    if (!roster && clanTag) {
+      void loadRoster(clanTag);
+    }
+  }, [roster, clanTag, loadRoster]);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -440,7 +415,7 @@ export default function LeadershipDashboard() {
 
   return (
     <LeadershipOnly className="min-h-screen w-full">
-      <DashboardLayout clanName={clanDisplayName} hideNavigation>
+      <DashboardLayout clanName={clanDisplayName && clanDisplayName.trim().length > 0 ? clanDisplayName : undefined} hideNavigation>
         <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-8 space-y-8">
           <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl p-8 border border-blue-500/20 shadow-2xl">
             <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-8">

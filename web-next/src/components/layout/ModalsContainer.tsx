@@ -20,6 +20,7 @@ import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import { Modal } from '@/components/ui';
 import DepartureManager from '@/components/DepartureManager';
+import JoinerManager from '@/components/JoinerManager';
 import AccessManager from '@/components/AccessManager';
 import AccessSetup from '@/components/AccessSetup';
 import AccessLogin from '@/components/AccessLogin';
@@ -40,6 +41,66 @@ export interface ModalsContainerProps {
 // =============================================================================
 // MODAL COMPONENTS
 // =============================================================================
+
+const JoinerManagerModal: React.FC = () => {
+  const {
+    showJoinerManager,
+    setShowJoinerManager,
+    joinerNotificationsData,
+    setJoinerNotificationsData,
+    dismissedJoinerNotifications,
+    setDismissedJoinerNotifications
+  } = useDashboardStore();
+
+  const handleClose = () => {
+    setShowJoinerManager(false);
+  };
+
+  const handleNotificationChange = (updatedData: any) => {
+    setJoinerNotificationsData(updatedData);
+  };
+
+  const handleDismissAll = () => {
+    // Already handled in JoinerManager component
+  };
+
+  if (!showJoinerManager) return null;
+
+  return (
+    <LeadershipGuard
+      requiredPermission="canManageChangeDashboard"
+      fallback={
+        <Modal
+          isOpen={showJoinerManager}
+          onClose={handleClose}
+          title="Joiner Manager"
+          size="lg"
+        >
+          <div className="text-center py-8">
+            <div className="text-4xl mb-4">🎯</div>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">Joiner Manager</h3>
+            <p className="text-gray-600 mb-4">This feature requires leadership access.</p>
+            <p className="text-sm text-gray-500 mb-4">Use the role selector in the top right to switch to Leader or Co-Leader role.</p>
+            <button
+              onClick={handleClose}
+              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </Modal>
+      }
+    >
+      <JoinerManager
+        clanTag={useDashboardStore.getState().clanTag || useDashboardStore.getState().homeClan || ""}
+        onClose={handleClose}
+        onNotificationChange={handleNotificationChange}
+        onDismissAll={handleDismissAll}
+        cachedNotifications={joinerNotificationsData}
+      />
+    </LeadershipGuard>
+  );
+};
 
 const DepartureManagerModal: React.FC = () => {
   const {
@@ -267,6 +328,9 @@ export const ModalsContainer: React.FC<ModalsContainerProps> = ({ className = ''
       
       {/* Departure Manager Modal */}
       <DepartureManagerModal />
+      
+      {/* Joiner Manager Modal */}
+      <JoinerManagerModal />
       
       {/* Access Management Modals */}
       <AccessManagementModals />

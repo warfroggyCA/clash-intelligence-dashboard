@@ -22,6 +22,7 @@ import {
   ClanRole,
   AccessMember,
   DepartureNotifications,
+  JoinerNotifications,
   EventHistory,
   PlayerEvent,
   ChangeSummary,
@@ -362,6 +363,7 @@ interface DashboardState {
   showAccessSetup: boolean;
   showAccessLogin: boolean;
   showDepartureManager: boolean;
+  showJoinerManager: boolean;
   showDepartureModal: boolean;
   showPlayerProfile: boolean;
   showSettings: boolean;
@@ -374,6 +376,9 @@ interface DashboardState {
   departureNotifications: number;
   departureNotificationsData: DepartureNotifications | null;
   dismissedNotifications: Set<string>;
+  joinerNotifications: number;
+  joinerNotificationsData: JoinerNotifications | null;
+  dismissedJoinerNotifications: Set<string>;
   
   // Snapshots & History
   historyByClan: Record<string, HistoryCacheEntry>;
@@ -448,6 +453,7 @@ interface DashboardState {
   setShowAccessSetup: (show: boolean) => void;
   setShowAccessLogin: (show: boolean) => void;
   setShowDepartureManager: (show: boolean) => void;
+  setShowJoinerManager: (show: boolean) => void;
   setShowDepartureModal: (show: boolean) => void;
   setShowPlayerProfile: (show: boolean) => void;
   setShowSettings: (show: boolean) => void;
@@ -460,6 +466,9 @@ interface DashboardState {
   setDepartureNotifications: (count: number) => void;
   setDepartureNotificationsData: (data: DepartureNotifications | null) => void;
   setDismissedNotifications: (notifications: Set<string>) => void;
+  setJoinerNotifications: (count: number) => void;
+  setJoinerNotificationsData: (data: JoinerNotifications | null) => void;
+  setDismissedJoinerNotifications: (notifications: Set<string>) => void;
   
   setAvailableSnapshots: (snapshots: Array<{ date: string; memberCount: number }>) => void;
   setSelectedSnapshot: (snapshot: string) => void;
@@ -485,6 +494,8 @@ interface DashboardState {
   refreshData: () => Promise<void>;
   checkDepartureNotifications: () => Promise<void>;
   dismissAllNotifications: () => void;
+  checkJoinerNotifications: () => Promise<void>;
+  dismissAllJoinerNotifications: () => void;
   hydrateRosterFromCache: () => boolean;
   hydrateSession: () => Promise<void>;
   setImpersonatedRole: (role: ClanRoleName | null) => void;
@@ -537,6 +548,7 @@ const initialState = {
   showAccessSetup: false,
   showAccessLogin: false,
   showDepartureManager: false,
+  showJoinerManager: false,
   showDepartureModal: false,
   showPlayerProfile: false,
   showSettings: false,
@@ -549,6 +561,9 @@ const initialState = {
   departureNotifications: 0,
   departureNotificationsData: null,
   dismissedNotifications: new Set<string>(),
+  joinerNotifications: 0,
+  joinerNotificationsData: null,
+  dismissedJoinerNotifications: new Set<string>(),
   
   // Snapshots & History
   historyByClan: {} as Record<string, HistoryCacheEntry>,
@@ -700,6 +715,7 @@ export const useDashboardStore = create<DashboardState>()(
       setShowAccessSetup: (showAccessSetup) => set({ showAccessSetup }),
       setShowAccessLogin: (showAccessLogin) => set({ showAccessLogin }),
       setShowDepartureManager: (showDepartureManager) => set({ showDepartureManager }),
+      setShowJoinerManager: (showJoinerManager) => set({ showJoinerManager }),
       setShowDepartureModal: (showDepartureModal) => set({ showDepartureModal }),
       setShowPlayerProfile: (showPlayerProfile) => set({ showPlayerProfile }),
       setShowSettings: (showSettings) => set({ showSettings }),
@@ -739,6 +755,9 @@ export const useDashboardStore = create<DashboardState>()(
       setDepartureNotifications: (departureNotifications) => set({ departureNotifications }),
       setDepartureNotificationsData: (departureNotificationsData) => set({ departureNotificationsData }),
       setDismissedNotifications: (dismissedNotifications) => set({ dismissedNotifications }),
+      setJoinerNotifications: (joinerNotifications) => set({ joinerNotifications }),
+      setJoinerNotificationsData: (joinerNotificationsData) => set({ joinerNotificationsData }),
+      setDismissedJoinerNotifications: (dismissedJoinerNotifications) => set({ dismissedJoinerNotifications }),
       
       setAvailableSnapshots: (availableSnapshots) => set({ availableSnapshots }),
       setSelectedSnapshot: (selectedSnapshot) => set({ selectedSnapshot }),
@@ -1491,6 +1510,81 @@ export const useDashboardStore = create<DashboardState>()(
             newDismissed.add(departure.memberTag);
           });
           setDismissedNotifications(newDismissed);
+        }
+      },
+      
+      checkJoinerNotifications: async () => {
+        const { clanTag, homeClan, setJoinerNotifications, setJoinerNotificationsData, setDismissedJoinerNotifications } = get();
+        const currentTag = clanTag || homeClan;
+        
+        if (!currentTag) return;
+        
+        try {
+          const response = await fetch(`/api/joiners/notifications?clanTag=${encodeURIComponent(currentTag)}&days=7`);
+          const data = await response.json();
+          
+          if (data.success && data.data) {
+            // Load dismissed notifications from localStorage
+            const dismissed = new Set<string>();
+            try {
+              const stored = localStorage.getItem('dismissedJoinerNotifications');
+              if (stored) {
+                const parsed = JSON.parse(stored);
+                parsed.forEach((id: string) => dismissed.add(id));
+              }
+            } catch (error) {
+              console.error('Failed to load dismissed joiner notifications:', error);
+            }
+            
+            setDismissedJoinerNotifications(dismissed);
+            
+            // Calculate active notifications count (excluding dismissed)
+            // Prioritize critical (warnings) and high priority notifications
+            let activeCount = 0;
+            const notifications = data.data;
+            
+            // Count critical (warnings) - highest priority
+            activeCount += notifications.critical?.filter((n: any) => !dismissed.has(n.id)).length || 0;
+            // Count high priority (notes or name change)
+            activeCount += notifications.high?.filter((n: any) => !dismissed.has(n.id)).length || 0;
+            // Count medium priority (previous history)
+            activeCount += notifications.medium?.filter((n: any) => !dismissed.has(n.id)).length || 0;
+            // Count low priority (new players) - only if they have some history
+            activeCount += notifications.low?.filter((n: any) => !dismissed.has(n.id)).length || 0;
+            
+            setJoinerNotifications(activeCount);
+            setJoinerNotificationsData(notifications);
+          } else {
+            setJoinerNotifications(0);
+            setJoinerNotificationsData(null);
+          }
+        } catch (error) {
+          console.error('Failed to check joiner notifications:', error);
+          setJoinerNotifications(0);
+          setJoinerNotificationsData(null);
+        }
+      },
+      
+      dismissAllJoinerNotifications: () => {
+        const { joinerNotificationsData, setDismissedJoinerNotifications } = get();
+        if (joinerNotificationsData) {
+          const newDismissed = new Set<string>();
+          [
+            ...joinerNotificationsData.critical,
+            ...joinerNotificationsData.high,
+            ...joinerNotificationsData.medium,
+            ...joinerNotificationsData.low,
+          ].forEach((notification) => {
+            newDismissed.add(notification.id);
+          });
+          setDismissedJoinerNotifications(newDismissed);
+          
+          // Persist to localStorage
+          try {
+            localStorage.setItem('dismissedJoinerNotifications', JSON.stringify(Array.from(newDismissed)));
+          } catch (error) {
+            console.error('Failed to save dismissed joiner notifications:', error);
+          }
         }
       },
     });
