@@ -102,7 +102,7 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
     }
     
     // Check for notifications on mount (only for leadership)
-    if (leadership.check('canManageChangeDashboard')) {
+    if (leadership.permissions.canManageChangeDashboard) {
       void checkDepartureNotifications();
       void checkJoinerNotifications();
     }
