@@ -151,9 +151,9 @@ export function transformRosterApiResponse(response: RosterApiResponse): RosterD
   const metadata = snapshot.metadata ?? {};
 
   const snapshotDate =
-    metadata.snapshotDate ?? metadata.snapshot_date ?? snapshot.snapshotDate ?? snapshot.snapshot_date ?? null;
+    (metadata as any).snapshotDate ?? (metadata as any).snapshot_date ?? (snapshot as any).snapshotDate ?? (snapshot as any).snapshot_date ?? null;
   const fetchedAt =
-    snapshot.fetchedAt ?? snapshot.fetched_at ?? metadata.fetchedAt ?? metadata.fetched_at ?? null;
+    snapshot.fetchedAt ?? snapshot.fetched_at ?? (metadata as any).fetchedAt ?? (metadata as any).fetched_at ?? null;
   const memberCount =
     snapshot.memberCount ??
     snapshot.member_count ??
