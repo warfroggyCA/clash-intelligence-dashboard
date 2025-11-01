@@ -184,6 +184,29 @@ export interface PlayerLeadershipBundle {
   departureActions: PlayerDepartureActionRecord[];
 }
 
+export interface PlayerVIPCurrent {
+  score: number;
+  rank: number;
+  competitive_score: number;
+  support_score: number;
+  development_score: number;
+  week_start: string;
+}
+
+export interface PlayerVIPHistory {
+  week_start: string;
+  vip_score: number;
+  competitive_score: number;
+  support_score: number;
+  development_score: number;
+  rank: number;
+}
+
+export interface PlayerVIP {
+  current: PlayerVIPCurrent | null;
+  history: PlayerVIPHistory[];
+}
+
 export interface SupabasePlayerProfilePayload {
   summary: PlayerSummarySupabase;
   timeline: PlayerTimelinePoint[];
@@ -192,4 +215,5 @@ export interface SupabasePlayerProfilePayload {
   leadership: PlayerLeadershipBundle;
   evaluations: PlayerEvaluationRecord[];
   joinerEvents: PlayerJoinerEventRecord[];
+  vip: PlayerVIP;
 }
