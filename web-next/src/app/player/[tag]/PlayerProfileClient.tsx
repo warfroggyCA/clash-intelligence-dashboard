@@ -1841,7 +1841,7 @@ const HERO_LABELS: Record<string, string> = {
     window.open(href, "_blank", "noopener");
   }, [plainTag]);
 
-  const clanTagForActions = summary?.clanTag ?? fallbackClanTag ?? null;
+  const clanTagForActions = summary?.clanTag ?? clanTag ?? null;
 
   const handleSaveNote = async () => {
     if (!canViewLeadership || !clanTagForActions || !normalizedTag || !noteText.trim()) return;
