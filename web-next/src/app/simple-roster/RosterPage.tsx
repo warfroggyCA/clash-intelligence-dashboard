@@ -1046,13 +1046,13 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                       >
-                        {player.trophies >= 1000 ? `${(player.trophies / 1000).toFixed(1)}k` : player.trophies}
+                        {(player.trophies ?? 0) >= 1000 ? `${((player.trophies ?? 0) / 1000).toFixed(1)}k` : (player.trophies ?? 0)}
                       </span>
                     </div>
-                    <div title={`Town Hall ${player.townHallLevel}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
+                    <div title={`Town Hall ${player.townHallLevel ?? '?'}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
                       <Image 
-                        src={`/assets/clash/Townhalls/TH${player.townHallLevel}.png`}
-                        alt={`TH${player.townHallLevel}`}
+                        src={`/assets/clash/Townhalls/TH${player.townHallLevel ?? 0}.png`}
+                        alt={`TH${player.townHallLevel ?? 0}`}
                         width={48}
                         height={48}
                         className="w-full h-full object-contain"
