@@ -301,11 +301,11 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
             }
           } else {
             // Tier 3: Both are unranked - sort by legacy trophies (descending)
-            comparison = a.trophies - b.trophies;
+            comparison = (a.trophies ?? 0) - (b.trophies ?? 0);
           }
           break;
         case 'trophies':
-          comparison = a.trophies - b.trophies;
+          comparison = (a.trophies ?? 0) - (b.trophies ?? 0);
           break;
         case 'lastWeek':
           comparison = (a.lastWeekTrophies ?? 0) - (b.lastWeekTrophies ?? 0);
@@ -340,10 +340,10 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           comparison = aActivity - bActivity;
           break;
         case 'donations':
-          comparison = a.donations - b.donations;
+          comparison = (a.donations ?? 0) - (b.donations ?? 0);
           break;
         case 'received':
-          comparison = a.donationsReceived - b.donationsReceived;
+          comparison = (a.donationsReceived ?? 0) - (b.donationsReceived ?? 0);
           break;
         case 'vip':
           const aVip = a.vip?.score ?? 0;
