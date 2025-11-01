@@ -285,7 +285,7 @@ export default function JoinerManager({ clanTag, onClose, onNotificationChange, 
           ) : (
             <>
               {/* CRITICAL: Warnings */}
-              {notifications?.critical.length > 0 && (
+              {(notifications?.critical?.length ?? 0) > 0 && (
                 <div>
                   <h3 className="text-lg font-bold text-red-900 mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5" />
