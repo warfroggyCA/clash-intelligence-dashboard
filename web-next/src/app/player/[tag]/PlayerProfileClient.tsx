@@ -45,7 +45,7 @@ import { LeagueBadge, TownHallBadge } from "@/components/ui";
 import TrophyChart from "@/components/player/TrophyChart";
 import DonationChart from "@/components/player/DonationChart";
 import PlayerActivityAnalytics from "@/components/player/PlayerActivityAnalytics";
-import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS, EQUIPMENT_NAME_ALIASES } from "@/types";
+import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS, EQUIPMENT_NAME_ALIASES, type Member } from "@/types";
 import { HeroLevel } from "@/components/ui";
 import { getRoleBadgeVariant } from "@/lib/leadership";
 import Image from "next/image";
