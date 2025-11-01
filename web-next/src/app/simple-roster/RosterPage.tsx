@@ -28,6 +28,7 @@ import {
   type RosterMember,
   type RosterApiResponse,
 } from './roster-transform';
+import type { Member } from '@/types';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -317,7 +318,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           comparison = (a.tenureDays ?? 0) - (b.tenureDays ?? 0);
           break;
         case 'rush':
-          comparison = calculateRushPercentage(a) - calculateRushPercentage(b);
+          comparison = calculateRushPercentage(a as Member) - calculateRushPercentage(b as Member);
           break;
         case 'bk':
           comparison = (a.bk || 0) - (b.bk || 0);
