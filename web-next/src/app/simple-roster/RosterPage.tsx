@@ -766,7 +766,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       <td className="px-4 py-3">
                         <div className="flex justify-center">
                           <div 
-                            title={`Current trophy count: ${player.trophies.toLocaleString()}`}
+                            title={`Current trophy count: ${(player.trophies ?? 0).toLocaleString()}`}
                             className="relative cursor-help" 
                             style={{ width: '40px', height: '40px' }}
                           >
@@ -781,7 +781,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                               className="absolute bottom-0 right-0 text-white font-bold text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                               style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                             >
-                              {player.trophies.toLocaleString()}
+                              {(player.trophies ?? 0).toLocaleString()}
                             </span>
                           </div>
                         </div>
@@ -819,10 +819,10 @@ VIP measures comprehensive clan contribution:
                       <td className="px-4 py-3 text-center">
                         {player.lastWeekTrophies !== null && player.lastWeekTrophies !== undefined ? (
                           <span 
-                            title={`Last week's final trophy count: ${player.lastWeekTrophies.toLocaleString()}`}
+                            title={`Last week's final trophy count: ${(player.lastWeekTrophies ?? 0).toLocaleString()}`}
                             className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
                           >
-                            {player.lastWeekTrophies.toLocaleString()}
+                            {(player.lastWeekTrophies ?? 0).toLocaleString()}
                           </span>
                         ) : (
                           <span className="text-xs text-brand-text-muted">–</span>
@@ -831,10 +831,10 @@ VIP measures comprehensive clan contribution:
                       <td className="px-4 py-3 text-center">
                         {player.seasonTotalTrophies !== null && player.seasonTotalTrophies !== undefined ? (
                           <span 
-                            title={`Running total trophies (sum of weekly finals): ${player.seasonTotalTrophies.toLocaleString()}`}
+                            title={`Running total trophies (sum of weekly finals): ${(player.seasonTotalTrophies ?? 0).toLocaleString()}`}
                             className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
                           >
-                            {player.seasonTotalTrophies.toLocaleString()}
+                            {(player.seasonTotalTrophies ?? 0).toLocaleString()}
                           </span>
                         ) : (
                           <span className="text-xs text-brand-text-muted">–</span>
@@ -1031,7 +1031,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                   {/* Trophy, TH & League Badges - Same Size */}
                   <div className="flex items-center gap-2">
                     <div 
-                      title={`Current trophy count: ${player.trophies.toLocaleString()}`}
+                      title={`Current trophy count: ${(player.trophies ?? 0).toLocaleString()}`}
                       className="relative cursor-help" 
                       style={{ width: '48px', height: '48px' }}
                     >
