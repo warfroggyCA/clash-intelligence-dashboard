@@ -655,7 +655,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
                   const roleBadgeVariant = getRoleBadgeVariant(player.role);
                   const rushPercent = calculateRushPercentage(player as Member);
                   const activity = getMemberActivity(player as Member);
-                  const maxHeroes = getHeroCaps(player.townHallLevel);
+                  const maxHeroes = getHeroCaps(player.townHallLevel ?? 0);
                   
                   // Rush color coding
                   const rushColor = rushPercent >= 70 ? 'text-red-600' : 
@@ -948,7 +948,7 @@ VIP measures comprehensive clan contribution:
           {sortedMembers.map((player) => {
             const rushPercent = calculateRushPercentage(player as Member);
             const activity = getMemberActivity(player as Member);
-            const maxHeroes = getHeroCaps(player.townHallLevel);
+            const maxHeroes = getHeroCaps(player.townHallLevel ?? 0);
             
             const rushColor = rushPercent >= 70 ? 'text-red-600' : 
                              rushPercent >= 40 ? 'text-yellow-600' : 
