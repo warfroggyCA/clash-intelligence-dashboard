@@ -289,49 +289,49 @@ export default function JoinerManager({ clanTag, onClose, onNotificationChange, 
                 <div>
                   <h3 className="text-lg font-bold text-red-900 mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5" />
-                    CRITICAL: Players with Warnings ({notifications.critical.length})
+                    CRITICAL: Players with Warnings ({notifications?.critical?.length ?? 0})
                   </h3>
                   <div className="space-y-4">
-                    {notifications.critical.map((n) => renderNotification(n, 'critical'))}
+                    {notifications?.critical?.map((n) => renderNotification(n, 'critical'))}
                   </div>
                 </div>
               )}
 
               {/* HIGH: Notes or Name Change */}
-              {notifications?.high.length > 0 && (
+              {(notifications?.high?.length ?? 0) > 0 && (
                 <div>
                   <h3 className="text-lg font-bold text-orange-900 mb-3 flex items-center gap-2">
                     <AlertCircle className="w-5 h-5" />
-                    High Priority: Notes or Name Changes ({notifications.high.length})
+                    High Priority: Notes or Name Changes ({notifications?.high?.length ?? 0})
                   </h3>
                   <div className="space-y-4">
-                    {notifications.high.map((n) => renderNotification(n, 'high'))}
+                    {notifications?.high?.map((n) => renderNotification(n, 'high'))}
                   </div>
                 </div>
               )}
 
               {/* MEDIUM: Previous History */}
-              {notifications?.medium.length > 0 && (
+              {(notifications?.medium?.length ?? 0) > 0 && (
                 <div>
                   <h3 className="text-lg font-bold text-blue-900 mb-3 flex items-center gap-2">
                     <UserCheck className="w-5 h-5" />
-                    Returning Players ({notifications.medium.length})
+                    Returning Players ({notifications?.medium?.length ?? 0})
                   </h3>
                   <div className="space-y-4">
-                    {notifications.medium.map((n) => renderNotification(n, 'medium'))}
+                    {notifications?.medium?.map((n) => renderNotification(n, 'medium'))}
                   </div>
                 </div>
               )}
 
               {/* LOW: New Players */}
-              {notifications?.low.length > 0 && (
+              {(notifications?.low?.length ?? 0) > 0 && (
                 <div>
                   <h3 className="text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
                     <UserPlus className="w-5 h-5" />
-                    New Players ({notifications.low.length})
+                    New Players ({notifications?.low?.length ?? 0})
                   </h3>
                   <div className="space-y-4">
-                    {notifications.low.map((n) => renderNotification(n, 'low'))}
+                    {notifications?.low?.map((n) => renderNotification(n, 'low'))}
                   </div>
                 </div>
               )}
