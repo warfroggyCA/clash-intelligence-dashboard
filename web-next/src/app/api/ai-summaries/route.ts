@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createApiContext } from '@/lib/api-context';
-import { getSupabaseServerClient } from '@/lib/supabase';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { normalizeTag } from '@/lib/tags';
 
 export async function GET(request: NextRequest) {
