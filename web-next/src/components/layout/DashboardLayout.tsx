@@ -411,7 +411,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const disableTabNavigation = process.env.NEXT_PUBLIC_DISABLE_TAB_NAV === 'true';
 
   return (
-    <div className={`min-h-screen w-full ${className}`}>
+    <div className={`min-h-screen w-full ${className}`} style={{ overflowX: 'hidden' }}>
       {/* Skip to main content link */}
       {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
       <a 
@@ -440,7 +440,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       )}
       
       {/* Main Content */}
-      <main id="main-content" role="main" tabIndex={-1} className="dashboard-main min-h-screen w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
+      <main id="main-content" role="main" tabIndex={-1} className="dashboard-main w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
         <div className="space-y-6">
           {children}
         </div>

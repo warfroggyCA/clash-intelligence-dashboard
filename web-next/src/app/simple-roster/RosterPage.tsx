@@ -29,9 +29,21 @@ import {
   type RosterApiResponse,
 } from './roster-transform';
 import type { Member } from '@/types';
+import {
+  handleExportCSV,
+  handleExportDiscord,
+  handleCopySummary,
+} from '@/lib/export/roster-export';
+import { showToast } from '@/lib/toast';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+
+// Helper function to check if a player is a new joiner (joined in last 7 days)
+function isNewJoiner(player: RosterMember): boolean {
+  if (player.tenureDays === null || player.tenureDays === undefined) return false;
+  return player.tenureDays <= 7;
+}
 
 // Actions Menu Component
 interface ActionsMenuProps {
@@ -186,6 +198,8 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const lastRefreshRef = useRef<number>(0);
   const staleCheckRef = useRef<boolean>(false);
+  const [exportMenuOpen, setExportMenuOpen] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
   
   // Expose refresh function globally for DashboardLayout
   useEffect(() => {
@@ -212,6 +226,66 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
     | { kind: 'departure'; player: RosterMember }
     | { kind: 'tenure'; player: RosterMember; action: 'granted' | 'revoked' };
   const [actionModal, setActionModal] = useState<ActionModalState | null>(null);
+
+  // Export handlers
+  const handleExportCSVClick = async () => {
+    if (!roster) {
+      showToast('No roster data to export', 'error');
+      return;
+    }
+    setExportMenuOpen(false);
+    const success = await handleExportCSV(roster);
+    if (success) {
+      showToast('CSV exported successfully', 'success');
+    } else {
+      showToast('Failed to export CSV', 'error');
+    }
+  };
+
+  const handleExportDiscordClick = async () => {
+    if (!roster) {
+      showToast('No roster data to export', 'error');
+      return;
+    }
+    setExportMenuOpen(false);
+    const success = await handleExportDiscord(roster);
+    if (success) {
+      showToast('Discord format copied to clipboard', 'success');
+    } else {
+      showToast('Failed to copy Discord format', 'error');
+    }
+  };
+
+  const handleCopySummaryClick = async () => {
+    if (!roster) {
+      showToast('No roster data to export', 'error');
+      return;
+    }
+    setExportMenuOpen(false);
+    const success = await handleCopySummary(roster);
+    if (success) {
+      showToast('Summary copied to clipboard', 'success');
+    } else {
+      showToast('Failed to copy summary', 'error');
+    }
+  };
+
+  // Close export menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setExportMenuOpen(false);
+      }
+    };
+
+    if (exportMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [exportMenuOpen]);
 
   // Sorting function
   const handleSort = (key: SortKey) => {
@@ -540,10 +614,13 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
       <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Header Section */}
         <div className="mb-6">
-          <div className="flex items-center justify-between">
-            <div>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
               <h1 className="text-3xl font-bold text-clash-gold mb-2">Clan Roster</h1>
-              <p className="text-sm text-brand-text-secondary">
+              <p 
+                className="text-sm text-brand-text-secondary cursor-help break-words"
+                title="Member count and snapshot update information. The snapshot date represents when the data was captured (typically daily at 4:30 AM UTC). The 'Updated' timestamp shows when this data was last fetched from the database."
+              >
                 {roster.members.length} members · Updated {(() => {
                   const fetchedAtDate =
                     parseUtcDate(roster.snapshotMetadata?.fetchedAt ?? null) ??
@@ -564,152 +641,416 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
                 })()}
               </p>
             </div>
-            <button
-              onClick={() => {
-                console.log('[SimpleRoster] Manual refresh button clicked');
-                setRefreshTrigger(prev => prev + 1);
-              }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center space-x-2"
-            >
-              <span>🔄</span>
-              <span>Refresh Data</span>
-            </button>
+            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <button
+                onClick={() => {
+                  console.log('[SimpleRoster] Manual refresh button clicked');
+                  setRefreshTrigger(prev => prev + 1);
+                }}
+                className="px-4 py-2.5 bg-brand-surface-secondary hover:bg-brand-surface-hover border border-brand-border text-brand-text-primary rounded-lg transition-all duration-200 flex items-center gap-2 font-medium text-sm shadow-sm hover:shadow-md hover:border-brand-accent/50"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span>Refresh Data</span>
+              </button>
+              
+              {/* Export Dropdown */}
+              <div className="relative" ref={exportMenuRef}>
+                <button
+                  onClick={() => setExportMenuOpen(!exportMenuOpen)}
+                  className="px-4 py-2.5 bg-brand-surface-secondary hover:bg-brand-surface-hover border border-brand-border text-brand-text-primary rounded-lg transition-all duration-200 flex items-center gap-2 font-medium text-sm shadow-sm hover:shadow-md hover:border-brand-accent/50"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <span>Export</span>
+                  <svg className={`w-3 h-3 transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {exportMenuOpen && (
+                  <div className="absolute right-0 sm:right-0 mt-2 w-56 max-w-[calc(100vw-2rem)] bg-brand-surface-primary border border-brand-border rounded-lg shadow-xl z-50 overflow-hidden">
+                    <div className="py-1">
+                      <button
+                        onClick={handleExportCSVClick}
+                        className="w-full px-4 py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5"
+                      >
+                        <svg className="w-4 h-4 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span>Export CSV</span>
+                      </button>
+                      <button
+                        onClick={handleExportDiscordClick}
+                        className="w-full px-4 py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5"
+                      >
+                        <svg className="w-4 h-4 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                        </svg>
+                        <span>Copy Discord Format</span>
+                      </button>
+                      <button
+                        onClick={handleCopySummaryClick}
+                        className="w-full px-4 py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5"
+                      >
+                        <svg className="w-4 h-4 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <span>Copy Full Table</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
+        {/* Summary Cards */}
+        {roster && (() => {
+          // Calculate average VIP score
+          const membersWithVip = roster.members.filter(m => m.vip?.score != null);
+          const avgVip = membersWithVip.length > 0
+            ? membersWithVip.reduce((sum, m) => sum + (m.vip?.score ?? 0), 0) / membersWithVip.length
+            : 0;
+
+          // Top VIP leaders (top 5)
+          const topVipLeaders = [...roster.members]
+            .filter(m => m.vip?.score != null)
+            .sort((a, b) => (b.vip?.score ?? 0) - (a.vip?.score ?? 0))
+            .slice(0, 5);
+
+          // Activity breakdown
+          const activityCounts = {
+            veryActive: 0,
+            active: 0,
+            moderate: 0,
+            low: 0,
+            inactive: 0,
+          };
+
+          roster.members.forEach((member) => {
+            const activity = getMemberActivity(member as Member);
+            if (activity.level === 'Very Active') activityCounts.veryActive++;
+            else if (activity.level === 'Active') activityCounts.active++;
+            else if (activity.level === 'Moderate') activityCounts.moderate++;
+            else if (activity.level === 'Low') activityCounts.low++;
+            else activityCounts.inactive++;
+          });
+
+          // New joiners count (joined in last 7 days)
+          const newJoiners = roster.members.filter(m => isNewJoiner(m));
+          const newJoinersCount = newJoiners.length;
+
+          return (
+            <div className="mb-6 grid grid-cols-5 gap-2">
+              {/* Total Members Card */}
+              <div 
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                title="Total number of members currently on the clan roster. This count reflects the most recent snapshot data and includes all members regardless of their activity level or role."
+              >
+                <div className="flex items-center justify-between min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-brand-text-secondary mb-1">Total Members</p>
+                    <p className="text-2xl font-bold text-brand-text-primary">{roster.members.length}</p>
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-surfaceRaised/70 flex-shrink-0">
+                    <svg className="w-5 h-5 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* New Joiners Card */}
+              <div 
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                title="Members who joined the clan in the last 7 days. These are new recruits who may need onboarding and support. Tenure is calculated as days since joining the clan, with new joiners having 7 days or less."
+              >
+                <div className="flex items-center justify-between min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-brand-text-secondary mb-1">New Joiners</p>
+                    <p className="text-2xl font-bold text-emerald-400">{newJoinersCount}</p>
+                    {newJoinersCount > 0 && (
+                      <p className="text-[10px] text-brand-text-tertiary mt-0.5">
+                        This week
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 flex-shrink-0">
+                    <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Average VIP Score Card */}
+              <div 
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                title="Average VIP (Very Important Player) Score across all clan members.
+
+VIP Score measures comprehensive clan contribution:
+• 50% Competitive Performance
+  - Ranked battles (LAI + TPG)
+  - War performance (Offensive + Defensive)
+• 30% Support Performance
+  - Donations to clan members
+  - Clan Capital contributions
+• 20% Development Performance
+  - Base quality (rush percentage)
+  - Activity level
+  - Hero progression
+
+Higher scores indicate more valuable clan members. Calculated weekly from Monday snapshots."
+              >
+                <div className="flex items-center justify-between min-w-0">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-brand-text-secondary mb-1">Avg VIP Score</p>
+                    <p className="text-2xl font-bold text-clash-gold">{avgVip > 0 ? avgVip.toFixed(1) : '—'}</p>
+                  </div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-surfaceRaised/70 flex-shrink-0">
+                    <svg className="w-5 h-5 text-clash-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
+                  </div>
+                </div>
+              </div>
+
+              {/* Top VIP Leaders Card */}
+              <div 
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                title="Top VIP Leader from the clan roster.
+
+VIP Score measures comprehensive clan contribution:
+• Competitive Performance (50%)
+• Support Performance (30%)
+• Development Performance (20%)
+
+The top leader represents the member with the highest overall contribution score. Shows the #1 leader and indicates how many more are in the top 5 rankings."
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-brand-text-secondary mb-1">Top VIP Leader</p>
+                  {topVipLeaders.length > 0 ? (
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-base font-bold text-brand-text-primary truncate">{topVipLeaders[0].name}</span>
+                        <span className="text-xs font-semibold text-clash-gold flex-shrink-0">{topVipLeaders[0].vip?.score.toFixed(1)}</span>
+                      </div>
+                      {topVipLeaders.length > 1 && (
+                        <p className="text-[10px] text-brand-text-tertiary">
+                          +{topVipLeaders.length - 1} more
+                        </p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="text-base font-bold text-brand-text-secondary">—</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Activity Breakdown Card */}
+              <div 
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                title="Breakdown of clan member activity levels based on recent performance.
+
+Activity Score Calculation (0-65 points):
+• Ranked Battles (0-20 pts): Participating in ranked multiplayer battles
+• Donations (0-15 pts): Troops donated to clan members
+• Hero Development (0-10 pts): Hero upgrades and progression
+• Leadership Role (0-10 pts): Leader, Co-Leader, or Elder role
+• Trophy Level (0-10 pts): Current trophy count tier
+
+Activity Levels:
+• Very Active: Highest scoring members (typically 50+ pts)
+• Active: Engaged members (typically 30-49 pts)
+• Moderate: Some participation (typically 15-29 pts)
+• Low: Minimal activity (typically 5-14 pts)
+• Inactive: No recent activity (typically 0-4 pts)
+
+Helps identify engaged vs. inactive members."
+              >
+                <div className="mb-2">
+                  <p className="text-xs text-brand-text-secondary mb-1.5">Activity Breakdown</p>
+                  <div className="space-y-1 text-[10px]">
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="text-brand-text-tertiary cursor-help"
+                        title="Very Active: Members scoring 50+ activity points. Highly engaged in ranked battles, donations, and clan activities."
+                      >
+                        Very Active
+                      </span>
+                      <span className="font-semibold text-green-400">{activityCounts.veryActive}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="text-brand-text-tertiary cursor-help"
+                        title="Active: Members scoring 30-49 activity points. Regularly participating in clan activities."
+                      >
+                        Active
+                      </span>
+                      <span className="font-semibold text-blue-400">{activityCounts.active}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="text-brand-text-tertiary cursor-help"
+                        title="Moderate: Members scoring 15-29 activity points. Some participation but not highly engaged."
+                      >
+                        Moderate
+                      </span>
+                      <span className="font-semibold text-yellow-400">{activityCounts.moderate}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="text-brand-text-tertiary cursor-help"
+                        title="Inactive: Members scoring 0-14 activity points. Minimal or no recent clan activity."
+                      >
+                        Inactive
+                      </span>
+                      <span className="font-semibold text-red-400">{activityCounts.inactive}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
         {/* Roster Table - Desktop */}
         <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden w-full">
-          <div className="overflow-x-auto">
-            <table className="min-w-full table-fixed border-collapse">
+          <div className="overflow-x-auto overflow-y-visible">
+            <table className="min-w-[1400px] w-full border-collapse">
               <thead>
                 <tr className="bg-brand-surface-secondary border-b border-brand-border">
                   <th 
                     onClick={() => handleSort('name')}
                     title="Player name - Click to sort"
-                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[120px]"
                   >
                     Player {sortKey === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('role')}
                     title="Clan role: Leader > Co-Leader > Elder > Member - Click to sort"
-                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
                   >
                     Role {sortKey === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('th')}
                     title="Town Hall level - Higher TH unlocks more troops, defenses, and heroes - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[60px]"
                   >
                     TH {sortKey === 'th' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('league')}
                     title="Ranked battle league - Shows current competitive tier based on trophy count - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
                   >
                     League {sortKey === 'league' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('trophies')}
                     title="Current trophy count from multiplayer battles - Higher trophies = harder opponents - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
                   >
                     Trophies {sortKey === 'trophies' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('vip')}
                     title="VIP Score (Very Important Player) - Measures comprehensive clan contribution (50% Competitive + 30% Support + 20% Development) - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
                   >
                     VIP {sortKey === 'vip' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                 <th 
                   onClick={() => handleSort('lastWeek')}
                   title="Last week's final trophy count (Monday 4:30 AM UTC snapshot before Tuesday reset) - Shows previous week's competitive performance - Click to sort"
-                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
                 >
                   Last Week {sortKey === 'lastWeek' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th 
                   onClick={() => handleSort('season')}
                   title="Cumulative trophy total via Monday finals since season start"
-                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[110px]"
                 >
                   Running Total {sortKey === 'season' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th 
                   onClick={() => handleSort('tenure')}
                   title="Days since joining the clan - Click to sort"
-                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[100px]"
                 >
                   Tenure (days) {sortKey === 'tenure' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
                 <th 
                   onClick={() => handleSort('rush')}
                     title="Rush % - Heroes below max for current TH level. Lower is better (0% = maxed) - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[70px]"
                   >
                     Rush % {sortKey === 'rush' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('bk')}
                     title="Barbarian King level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
                   >
                     BK {sortKey === 'bk' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('aq')}
                     title="Archer Queen level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
                   >
                     AQ {sortKey === 'aq' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('gw')}
                     title="Grand Warden level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
                   >
                     GW {sortKey === 'gw' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('rc')}
                     title="Royal Champion level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
                   >
                     RC {sortKey === 'rc' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('mp')}
                     title="Minion Prince level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
                   >
                     MP {sortKey === 'mp' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('activity')}
                     title="Activity level based on: ranked battles (20 pts), donations (15 pts), hero progress (10 pts), role (10 pts), trophies (10 pts) - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
                   >
                     Activity {sortKey === 'activity' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('donations')}
                     title="Troops donated to clan members this season - Higher is better - Click to sort"
-                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
                   >
                     Donated {sortKey === 'donations' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('received')}
                     title="Troops received from clan members this season - Compare with donated to see balance - Click to sort"
-                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent"
+                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
                   >
                     Received {sortKey === 'received' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider">
+                  <th className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider min-w-[80px]">
                     Actions
                   </th>
                 </tr>
@@ -783,16 +1124,26 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       key={player.tag} 
                       className="hover:bg-brand-surface-hover transition-colors duration-150"
                     >
-                      <td className="px-4 py-3">
-                        <Link 
-                          href={`/player/${player.tag.replace('#', '')}`}
-                          className="text-white hover:text-slate-200 hover:underline transition-colors"
-                          style={{ fontFamily: "'Clash Display', sans-serif" }}
-                        >
-                          {player.name}
-                        </Link>
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <Link 
+                            href={`/player/${player.tag.replace('#', '')}`}
+                            className="text-white hover:text-slate-200 hover:underline transition-colors"
+                            style={{ fontFamily: "'Clash Display', sans-serif" }}
+                          >
+                            {player.name}
+                          </Link>
+                          {isNewJoiner(player) && (
+                            <span 
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                              title={`New joiner: Joined ${player.tenureDays} day${player.tenureDays === 1 ? '' : 's'} ago`}
+                            >
+                              New
+                            </span>
+                          )}
+                        </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span 
                           title={roleTooltip}
                           className="text-sm text-brand-text-secondary cursor-help"
@@ -800,7 +1151,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center" title={`Town Hall ${player.townHallLevel ?? '?'}`}>
                           <TownHallBadge
                             level={player.townHallLevel ?? 0}
@@ -811,7 +1162,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           />
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex justify-center">
                           {player.rankedLeagueName ? (
                             <div title={leagueTooltip} className="cursor-help">
@@ -827,7 +1178,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex justify-center">
                           <div 
                             title={`Current trophy count: ${(player.trophies ?? 0).toLocaleString()}`}
@@ -850,7 +1201,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         {player.vip ? (
                           <div className="flex items-center justify-center">
                             <span
@@ -880,7 +1231,7 @@ VIP measures comprehensive clan contribution:
                           <span className="text-xs text-brand-text-tertiary">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         {player.lastWeekTrophies !== null && player.lastWeekTrophies !== undefined ? (
                           <span 
                             title={`Last week's final trophy count: ${(player.lastWeekTrophies ?? 0).toLocaleString()}`}
@@ -892,7 +1243,7 @@ VIP measures comprehensive clan contribution:
                           <span className="text-xs text-brand-text-muted">–</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         {player.seasonTotalTrophies !== null && player.seasonTotalTrophies !== undefined ? (
                           <span 
                             title={`Running total trophies (sum of weekly finals): ${(player.seasonTotalTrophies ?? 0).toLocaleString()}`}
@@ -904,19 +1255,30 @@ VIP measures comprehensive clan contribution:
                           <span className="text-xs text-brand-text-muted">–</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         {player.tenureDays !== null && player.tenureDays !== undefined ? (
-                          <span 
-                            title={`Tenure: ${player.tenureDays} days since joining`}
-                            className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
-                          >
-                            {player.tenureDays}
-                          </span>
+                          <div className="flex flex-col items-center gap-1">
+                            <span 
+                              title={`Tenure: ${player.tenureDays} day${player.tenureDays === 1 ? '' : 's'} since joining`}
+                              className={`font-mono text-sm font-semibold cursor-help ${
+                                isNewJoiner(player) 
+                                  ? 'text-emerald-400' 
+                                  : 'text-brand-text-secondary'
+                              }`}
+                            >
+                              {player.tenureDays}
+                            </span>
+                            {isNewJoiner(player) && (
+                              <span className="text-[10px] text-emerald-400/70 font-medium">
+                                New
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-xs text-brand-text-muted">–</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <span 
                           title={rushTooltip}
                           className={`font-mono text-sm font-semibold cursor-help ${rushColor}`}
@@ -924,7 +1286,7 @@ VIP measures comprehensive clan contribution:
                           {rushPercent}%
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <span 
                           title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk || 0}\n${(maxHeroes.bk || 0) > 0 ? `Progress: ${Math.round(((player.bk || 0) / (maxHeroes.bk || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -932,7 +1294,7 @@ VIP measures comprehensive clan contribution:
                           {player.bk || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <span 
                           title={`Archer Queen: ${player.aq || 0}/${maxHeroes.aq || 0}\n${(maxHeroes.aq || 0) > 0 ? `Progress: ${Math.round(((player.aq || 0) / (maxHeroes.aq || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -940,7 +1302,7 @@ VIP measures comprehensive clan contribution:
                           {player.aq || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <span 
                           title={`Grand Warden: ${player.gw || 0}/${maxHeroes.gw || 0}\n${(maxHeroes.gw || 0) > 0 ? `Progress: ${Math.round(((player.gw || 0) / (maxHeroes.gw || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -948,7 +1310,7 @@ VIP measures comprehensive clan contribution:
                           {player.gw || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <span 
                           title={`Royal Champion: ${player.rc || 0}/${maxHeroes.rc || 0}\n${(maxHeroes.rc || 0) > 0 ? `Progress: ${Math.round(((player.rc || 0) / (maxHeroes.rc || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -956,7 +1318,7 @@ VIP measures comprehensive clan contribution:
                           {player.rc || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <span 
                           title={`Minion Prince: ${player.mp || 0}/${maxHeroes.mp || 0}\n${(maxHeroes.mp || 0) > 0 ? `Progress: ${Math.round(((player.mp || 0) / (maxHeroes.mp || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -964,7 +1326,7 @@ VIP measures comprehensive clan contribution:
                           {player.mp || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <span 
                           title={activityTooltip}
                           className="text-sm text-brand-text-secondary cursor-help"
@@ -972,7 +1334,7 @@ VIP measures comprehensive clan contribution:
                           {activity.level}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         <span 
                           title={donationTooltip}
                           className="font-mono text-sm text-green-600 font-medium cursor-help"
@@ -980,7 +1342,7 @@ VIP measures comprehensive clan contribution:
                           {player.donations === 0 ? '—' : player.donations}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className="px-4 py-3 text-right whitespace-nowrap">
                         <span 
                           title={donationTooltip}
                           className="font-mono text-sm text-blue-600 font-medium cursor-help"
@@ -988,7 +1350,7 @@ VIP measures comprehensive clan contribution:
                           {player.donationsReceived === 0 ? '—' : player.donationsReceived}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center">
+                      <td className="px-4 py-3 text-center whitespace-nowrap">
                         <ActionsMenu 
                           player={player}
                           onViewProfile={handleViewProfile}
@@ -1083,6 +1445,14 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       >
                       {player.name}
                     </Link>
+                    {isNewJoiner(player) && (
+                      <span 
+                        className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
+                        title={`New joiner: Joined ${player.tenureDays} day${player.tenureDays === 1 ? '' : 's'} ago`}
+                      >
+                        New
+                      </span>
+                    )}
                     <span className="text-sm text-brand-text-tertiary leading-tight">•</span>
                     <span 
                       title={roleTooltip}
@@ -1195,6 +1565,24 @@ ${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→
                       {donationBalance > 0 ? '+' : ''}{donationBalance}
                     </span></div>
                   </div>
+
+                  {/* Tenure */}
+                  {player.tenureDays !== null && player.tenureDays !== undefined && (
+                    <div 
+                      title={`Tenure: ${player.tenureDays} day${player.tenureDays === 1 ? '' : 's'} since joining`}
+                      className="cursor-help text-right pt-1 border-t border-brand-border/30"
+                    >
+                      <div className="text-brand-text-tertiary text-[10px]">Tenure</div>
+                      <div className={`font-mono font-semibold text-sm ${
+                        isNewJoiner(player) 
+                          ? 'text-emerald-400' 
+                          : 'text-brand-text-secondary'
+                      }`}>
+                        {player.tenureDays}d
+                        {isNewJoiner(player) && <span className="text-[10px] text-emerald-400/70 ml-1">New</span>}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

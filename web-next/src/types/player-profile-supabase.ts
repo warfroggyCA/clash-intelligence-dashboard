@@ -13,6 +13,7 @@ export interface PlayerBuilderBaseSummary {
   trophies: number | null;
   battleWins: number | null;
   leagueId: number | null;
+  leagueName: string | null;
 }
 
 export interface PlayerAchievementSummary {
@@ -44,6 +45,7 @@ export interface PlayerSummarySupabase {
     stars: number | null;
     attackWins: number | null;
     defenseWins: number | null;
+    preference: "in" | "out" | null;
   };
   builderBase: PlayerBuilderBaseSummary;
   capitalContributions: number | null;

@@ -127,6 +127,7 @@ export function extractBuilderBaseMetrics(playerDetail: any) {
     versusTrophies: playerDetail?.builderBaseTrophies ?? playerDetail?.versusTrophies ?? null,
     versusBattleWins: playerDetail?.versusBattleWins ?? null,
     builderLeagueId: playerDetail?.builderBaseLeague?.id ?? null,
+    builderLeagueName: playerDetail?.builderBaseLeague?.name ?? null,
   };
 }
 

@@ -337,6 +337,60 @@ const EQUIPMENT_TOOLTIPS: Record<string, { hero: string; description: string; ra
     description: "Summons Lava Hounds and Balloons to support the King in battle.",
     rarity: "Common (Max Lvl 18)",
     tier: "A Tier"
+  },
+  "Rocket Spear": {
+    hero: "Royal Champion",
+    description: "Throws a powerful spear that deals massive damage to defensive buildings.",
+    rarity: "Epic",
+    tier: "S Tier"
+  },
+  "Frozen Arrow": {
+    hero: "Archer Queen",
+    description: "Fires an arrow that freezes enemy defenses and buildings, slowing them down significantly.",
+    rarity: "Epic",
+    tier: "S Tier"
+  },
+  "Electro Boots": {
+    hero: "Royal Champion",
+    description: "Charges the Royal Champion with electricity, dealing chain lightning damage to nearby enemies.",
+    rarity: "Epic",
+    tier: "S Tier"
+  },
+  "Meteor Staff": {
+    hero: "Minion Prince",
+    description: "Periodically summons meteors that target the nearest defensive building, dealing area damage to both ground and air units. Enhances the Prince's offensive capabilities, damage, and hitpoints.",
+    rarity: "Epic",
+    tier: "S Tier"
+  },
+  "Spiky Ball": {
+    hero: "Barbarian King",
+    description: "Throws a spiky ball that deals damage and bounces between targets.",
+    rarity: "Epic",
+    tier: "A Tier"
+  },
+  "Dark Crown": {
+    hero: "Minion Prince",
+    description: "Enhances the Minion Prince's abilities with dark magic, increasing damage and survivability.",
+    rarity: "Epic",
+    tier: "A Tier"
+  },
+  "Action Figure": {
+    hero: "Minion Prince",
+    description: "Summons animated figures to aid in battle.",
+    rarity: "Epic",
+    tier: "B Tier"
+  },
+  "Haste Vial": {
+    hero: "Royal Champion",
+    description: "Grants increased movement and attack speed for a duration.",
+    rarity: "Common (Max Lvl 18)",
+    tier: "B Tier"
+  },
+  "Magic Mirror": {
+    hero: "Archer Queen",
+    description: "Allows the Archer Queen to summon clones of herself during her ability, providing strategic advantages in battles.",
+    rarity: "Epic",
+    tier: "A Tier"
   }
 };
 
@@ -1527,24 +1581,27 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
         }
       }
 
+      // War milestone: Only create when delta first occurs (not based on cumulative event)
       const warStarsDelta = deltas.war_stars ?? 0;
-      if (warStarsDelta >= 6 || events.includes("war_perf_day")) {
+      if (warStarsDelta >= 6) {
         addHighlight(
           "war",
           "War standout",
-          warStarsDelta >= 6
-            ? `Recorded ${formatNumber(warStarsDelta)} war stars`
-            : "Strong war performance logged",
-          `war-${warStarsDelta}`,
+          `Recorded ${formatNumber(warStarsDelta)} war stars`,
+          `war-${dateIso}-${warStarsDelta}`,
         );
       }
 
-      if (events.includes("legend_activity")) {
+      // Legend activity: Only create when it's NEW (present in current but not in previous)
+      const prevEvents = Array.isArray(prev?.events) ? prev.events : [];
+      const hasLegendActivity = events.includes("legend_activity");
+      const hadLegendActivity = prevEvents.includes("legend_activity");
+      if (hasLegendActivity && !hadLegendActivity) {
         addHighlight(
           "legend",
           "Legend League run",
           "Legend League battles recorded",
-          "legend",
+          `legend-${dateIso}`,
         );
       }
 
@@ -2001,7 +2058,7 @@ const HERO_LABELS: Record<string, string> = {
                     >
                       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
                         <div className="space-y-4">
-                          <div>
+                          <div className="cursor-help" title="The player's current competitive league based on their ranked trophy count. Higher leagues require more trophies and offer better rewards.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Competitive League
                             </p>
@@ -2018,7 +2075,7 @@ const HERO_LABELS: Record<string, string> = {
                               )}
                             </div>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Current ranked trophy count. Ranked trophies are earned through ranked battles and determine league placement. These reset at the end of each season.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Ranked Trophies
                             </p>
@@ -2028,7 +2085,7 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="All-time highest trophy count achieved by this player. This represents their peak competitive performance across all seasons.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Best Trophies
                             </p>
@@ -2038,7 +2095,7 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Total ranked trophies earned during the current season. This accumulates from the start of the season until now, resetting at season end.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Season Total
                             </p>
@@ -2048,14 +2105,14 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                             {summary?.lastWeekTrophies != null && (
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-slate-400 cursor-help" title="Ranked trophy count from the start of the current week (Monday). Used to measure weekly progress and activity.">
                                 Last Monday {formatNumber(summary.lastWeekTrophies)}
                               </p>
                             )}
                           </div>
                         </div>
                         <div className="space-y-4">
-                          <div>
+                          <div className="cursor-help" title="Total troops donated to clan members during the current season. Higher donations indicate stronger clan support and activity. Season resets periodically.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Seasonal Donations
                             </p>
@@ -2064,13 +2121,13 @@ const HERO_LABELS: Record<string, string> = {
                                 ? formatNumber(summary.donations.given)
                                 : "—"}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-slate-400 cursor-help" title="Total troops received from clan members. A higher received count indicates active requesting and clan engagement.">
                               {summary?.donations?.received != null
                                 ? `${formatNumber(summary.donations.received)} received`
                                 : "Donation intake not tracked"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Total capital gold contributed to Clan Capital upgrades during Raid Weekends. Higher contributions show stronger participation in clan capital development.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Capital Gold
                             </p>
@@ -2080,7 +2137,7 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Rush percentage indicates how much of the base is rushed. 0% = fully maxed, 100% = completely rushed. Lower scores show better base optimization and progression planning.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Rush Score
                             </p>
@@ -2090,7 +2147,7 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Activity score measures player engagement over the last 7 days based on donations, attacks, and clan participation. Scores range from 0-100, with higher scores indicating more active players.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Activity Score
                             </p>
@@ -2099,14 +2156,14 @@ const HERO_LABELS: Record<string, string> = {
                                 ? summary.activityScore.toFixed(1)
                                 : "Awaiting data"}
                             </p>
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-slate-400 cursor-help" title="Last time this player was detected as active in the game. Based on data updates from the Clash API.">
                               {summary?.lastSeen
                                 ? `Last seen ${formatRelative(summary.lastSeen) ?? ""}`
                                 : "Last seen not captured"}
                             </p>
                           </div>
                           {profile?.vip?.current && (
-                            <div>
+                            <div className="cursor-help" title="VIP Score is a composite metric (0-100) that evaluates player value across three dimensions: Competitive (trophy performance, war stars), Support (donations, activity), and Development (base progression, hero levels). Higher scores indicate more valuable clan members.">
                               <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                                 VIP Score
                               </p>
@@ -2117,14 +2174,14 @@ const HERO_LABELS: Record<string, string> = {
                               }`}>
                                 {profile.vip.current.score.toFixed(1)}
                               </p>
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-slate-400 cursor-help" title="Rank position within the clan based on VIP score. Breakdown shows: Competitive (trophy/war performance), Support (donations/activity), Development (base/hero progression).">
                                 Rank #{profile.vip.current.rank} • Competitive: {profile.vip.current.competitive_score.toFixed(1)} • Support: {profile.vip.current.support_score.toFixed(1)} • Development: {profile.vip.current.development_score.toFixed(1)}
                               </p>
                             </div>
                           )}
                         </div>
                         <div className="space-y-4">
-                          <div>
+                          <div className="cursor-help" title="Builder Hall level in the Builder Base (Night Village). Maximum level is BH 10. Higher levels unlock more buildings and defenses, improving base strength in Versus Battles.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Builder Hall Level
                             </p>
@@ -2134,7 +2191,7 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Current trophy count in Builder Base Versus Battles. Trophies determine matchmaking and league placement. Higher trophies indicate stronger Builder Base performance.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Versus Trophies
                             </p>
@@ -2144,7 +2201,7 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Total wins in Builder Base Versus Battles. Each battle pits your base against another player's base in simultaneous attacks. Higher win counts show more Builder Base activity.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Versus Battle Wins
                             </p>
@@ -2154,7 +2211,7 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Total number of days this player has been a member of the clan. Calculated from the start of their current or most recent stint. Longer tenure indicates clan loyalty and stability.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Tenure
                             </p>
@@ -2164,12 +2221,12 @@ const HERO_LABELS: Record<string, string> = {
                                 : "—"}
                             </p>
                             {history?.currentStint?.startDate && (
-                              <p className="text-xs text-slate-400">
+                              <p className="text-xs text-slate-400 cursor-help" title="Date when the current clan membership period began. If the player left and rejoined, this reflects the most recent join date.">
                                 Since {formatDate(history.currentStint.startDate)}
                               </p>
                             )}
                           </div>
-                          <div>
+                          <div className="cursor-help" title="Alternative names or aliases this player has used while in the clan. Helps track players who change their in-game name frequently.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
                               Clan Alias
                             </p>
@@ -2333,7 +2390,7 @@ const HERO_LABELS: Record<string, string> = {
                         className="bg-slate-900/70 border border-slate-800/80"
                       >
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Builder Hall level in the Builder Base (Night Village). Maximum level is BH 10. Higher levels unlock more buildings and defenses.">
                             <div className="flex items-center gap-3">
                               <Hammer className="h-5 w-5 text-slate-300" />
                               <div>
@@ -2348,7 +2405,7 @@ const HERO_LABELS: Record<string, string> = {
                               </div>
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Current trophy count in Builder Base Versus Battles. Trophies determine matchmaking and league placement.">
                             <div className="flex items-center gap-3">
                               <BarChart3 className="h-5 w-5 text-slate-300" />
                               <div>
@@ -2363,7 +2420,7 @@ const HERO_LABELS: Record<string, string> = {
                               </div>
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Total wins in Builder Base Versus Battles. Each battle pits your base against another player's base in simultaneous attacks.">
                             <div className="flex items-center gap-3">
                               <Activity className="h-5 w-5 text-slate-300" />
                               <div>
@@ -2378,7 +2435,7 @@ const HERO_LABELS: Record<string, string> = {
                               </div>
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Total capital gold contributed to Clan Capital upgrades during Raid Weekends. Higher contributions show stronger participation in clan capital development.">
                             <div className="flex items-center gap-3">
                               <Coins className="h-5 w-5 text-amber-300" />
                               <div>
@@ -2470,7 +2527,7 @@ const HERO_LABELS: Record<string, string> = {
                         className="bg-slate-900/70 border border-slate-800/80"
                       >
                         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Super Troops currently boosted with Dark Elixir. Super Troops are enhanced versions of regular troops with special abilities. Players can boost up to 2 Super Troops at a time, with each boost lasting 3 days.">
                             <div className="mb-2 flex items-center gap-2">
                               <Flame className="h-4 w-4 text-amber-400" />
                               <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
@@ -2494,7 +2551,7 @@ const HERO_LABELS: Record<string, string> = {
                               </p>
                             )}
                           </div>
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Pet levels for each hero companion. Pets are unlocked at Town Hall 14+ and accompany heroes into battle, providing additional abilities. Higher levels increase pet effectiveness.">
                             <div className="mb-2 flex items-center gap-2">
                               <PawPrint className="h-4 w-4 text-emerald-300" />
                               <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
@@ -2642,18 +2699,30 @@ const HERO_LABELS: Record<string, string> = {
                       className="bg-slate-900/70 border border-slate-800/80"
                     >
                       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Whether the player has opted in or out of Clan Wars. War opt-in status determines if a player can be included in war matchmaking and lineups.">
                           <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                             War opt-in
                           </p>
-                          <p className="mt-2 text-base font-semibold text-slate-100">
-                            Not yet tracked
+                          <p className={`mt-2 text-base font-semibold ${
+                            profile?.summary?.war?.preference === 'in' 
+                              ? 'text-emerald-400' 
+                              : profile?.summary?.war?.preference === 'out'
+                              ? 'text-orange-400'
+                              : 'text-slate-400'
+                          }`}>
+                            {profile?.summary?.war?.preference === 'in' 
+                              ? 'Opted In' 
+                              : profile?.summary?.war?.preference === 'out'
+                              ? 'Opted Out'
+                              : 'Not Set'}
                           </p>
                           <p className="text-xs text-slate-400">
-                            War preference ingestion lands in the next pipeline refresh.
+                            {profile?.summary?.war?.preference 
+                              ? `Player preference: ${profile.summary.war.preference.toUpperCase()}`
+                              : 'War preference not available'}
                           </p>
                         </div>
-                        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4">
+                        <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 cursor-help" title="Current membership status in the clan. 'Member' = regular member, 'Elder' = has elder privileges, 'Co-Leader' = has co-leader privileges, 'Leader' = clan leader. Status determines permissions and responsibilities.">
                           <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                             Join status
                           </p>
@@ -2661,7 +2730,7 @@ const HERO_LABELS: Record<string, string> = {
                             {history?.status ? history.status.toUpperCase() : "Unknown"}
                           </p>
                           {history?.currentStint?.startDate ? (
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-slate-400 cursor-help" title="Date when the current clan membership period began. If the player left and rejoined, this reflects the most recent join date.">
                               Current stint started {formatRelative(history.currentStint.startDate)}
                             </p>
                           ) : (
@@ -2671,7 +2740,7 @@ const HERO_LABELS: Record<string, string> = {
                           )}
                         </div>
                         {canViewLeadership && (
-                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 md:col-span-2">
+                          <div className="rounded-2xl border border-slate-800/70 bg-slate-900/80 px-4 py-4 md:col-span-2 cursor-help" title="Most recent leadership note for this player. Leadership notes are used to capture context, coaching feedback, follow-ups, or important observations about the player's performance or behavior. Only visible to leadership members.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                               Leadership spotlight
                             </p>
@@ -3125,7 +3194,7 @@ const HERO_LABELS: Record<string, string> = {
                     className="bg-slate-900/70 border border-slate-800/80"
                   >
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-                      <div className="rounded-3xl border border-slate-800/70 bg-slate-900/70 px-4 py-4">
+                      <div className="rounded-3xl border border-slate-800/70 bg-slate-900/70 px-4 py-4 cursor-help" title="Total war stars earned across all Clan Wars. Each successful attack can earn up to 3 stars based on destruction percentage. Higher totals indicate more war participation and successful attacks.">
                         <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                           War stars
                         </p>
@@ -3136,7 +3205,7 @@ const HERO_LABELS: Record<string, string> = {
                           Pull detailed performance once war logs are ingested.
                         </p>
                       </div>
-                      <div className="rounded-3xl border border-slate-800/70 bg-slate-900/70 px-4 py-4">
+                      <div className="rounded-3xl border border-slate-800/70 bg-slate-900/70 px-4 py-4 cursor-help" title="Total number of successful war attacks where the player earned stars. Offensive wins track how many times a player successfully attacked enemy bases in Clan Wars, contributing to overall war performance.">
                         <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                           Offensive wins
                         </p>
@@ -3149,7 +3218,7 @@ const HERO_LABELS: Record<string, string> = {
                           Hit-rate logging aligns with the war event sync roadmap.
                         </p>
                       </div>
-                      <div className="rounded-3xl border border-slate-800/70 bg-slate-900/70 px-4 py-4">
+                      <div className="rounded-3xl border border-slate-800/70 bg-slate-900/70 px-4 py-4 cursor-help" title="Total number of successful defensive holds in Clan Wars. Defensive holds occur when the player's base successfully defends against enemy attacks, preventing the attacker from earning 3 stars.">
                         <p className="text-xs uppercase tracking-[0.28em] text-slate-500">
                           Defensive holds
                         </p>

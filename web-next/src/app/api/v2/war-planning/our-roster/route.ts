@@ -17,6 +17,7 @@ type LightweightAlly = {
   heroLevels: Record<string, number | null>;
   activityScore: number | null;
   lastUpdated: string | null;
+  warPreference?: "in" | "out" | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -87,6 +88,7 @@ export async function GET(req: NextRequest) {
         heroLevels,
         activityScore: member.activityScore ?? payload.activityScore ?? null,
         lastUpdated: row.snapshot_date ?? null,
+        warPreference: war.preference ?? null,
       };
     });
 

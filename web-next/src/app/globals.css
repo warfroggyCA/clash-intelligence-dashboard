@@ -100,6 +100,9 @@ body {
   color: var(--text-primary);
   background: var(--clash-bg-primary);
   transition: color 0.3s ease, background 0.3s ease;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Dark theme body background */
@@ -159,14 +162,35 @@ thead th.tooltip-trigger[data-tooltip]::after {
   top: calc(100% + 0.5rem);
 }
 
-.tooltip-trigger.tooltip-left[data-tooltip]::after {
+.tooltip-trigger.tooltip-right[data-tooltip]::after {
   bottom: auto;
   top: 50%;
-  left: auto;
+  left: calc(100% + 0.5rem);
+  right: auto;
   transform: translateY(-50%);
-  right: calc(100% + 0.5rem);
-  max-width: min(18rem, 70vw);
+  max-width: min(20rem, 70vw);
   text-align: left;
+}
+
+.tooltip-trigger.tooltip-overlay[data-tooltip]::after {
+  bottom: auto;
+  top: 50%;
+  left: 50%;
+  right: auto;
+  transform: translate(-50%, -50%);
+  max-width: min(24rem, 90vw);
+  text-align: left;
+  z-index: 10001;
+}
+
+/* On narrow screens, show overlay tooltips below instead */
+@media (max-width: 640px) {
+  .tooltip-trigger.tooltip-overlay[data-tooltip]::after {
+    top: calc(100% + 0.5rem);
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 2rem);
+  }
 }
 
 .tooltip-trigger[data-tooltip]:hover::after,
