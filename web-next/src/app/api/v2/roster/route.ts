@@ -796,6 +796,10 @@ export async function GET(req: NextRequest) {
     const totalTrophies = transformedMembers.reduce((sum, m) => sum + (m.trophies || 0), 0);
     const totalDonations = transformedMembers.reduce((sum, m) => sum + (m.donations || 0), 0);
 
+    // Get current date in UTC for comparison
+    const currentDateUTC = new Date().toISOString().split('T')[0];
+    const snapshotDateOnly = snapshotDate ? snapshotDate.split('T')[0] : null;
+    
     return NextResponse.json({
       success: true,
       data: {
@@ -828,6 +832,8 @@ export async function GET(req: NextRequest) {
           season_start: null,
           seasonEnd: null,
           season_end: null,
+          snapshotDate,
+          snapshot_date: snapshotDate,
           metadata: {
             snapshotDate,
             snapshot_date: snapshotDate,
@@ -837,6 +843,12 @@ export async function GET(req: NextRequest) {
             ingestionVersion: null,
             schemaVersion: null,
           },
+        },
+        // Add date comparison metadata
+        dateInfo: {
+          currentDate: currentDateUTC,
+          snapshotDate: snapshotDateOnly,
+          isStale: snapshotDateOnly ? currentDateUTC > snapshotDateOnly : false,
         },
       },
     });

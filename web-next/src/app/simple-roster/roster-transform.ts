@@ -32,8 +32,15 @@ export interface RosterApiResponse {
       season_start?: string | null;
       seasonEnd?: string | null;
       season_end?: string | null;
+      snapshotDate?: string | null;
+      snapshot_date?: string | null;
     } | null;
     members?: Array<Record<string, any>>;
+    dateInfo?: {
+      currentDate: string;
+      snapshotDate: string | null;
+      isStale: boolean;
+    };
   };
   error?: string;
 }
