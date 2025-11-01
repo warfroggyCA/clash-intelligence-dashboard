@@ -334,39 +334,32 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
     }
   };
 
-  const recColor = (rec?: string) => rec === 'Excellent' ? 'text-emerald-700' : rec === 'Good' ? 'text-green-700' : rec === 'Fair' ? 'text-amber-700' : 'text-rose-700';
+  const recColor = (rec?: string) => rec === 'Excellent' ? 'text-emerald-400' : rec === 'Good' ? 'text-green-400' : rec === 'Fair' ? 'text-amber-400' : 'text-rose-400';
 
   return (
-    <div className="container mx-auto px-6 py-8 max-w-6xl">
-      <div className="space-y-8">
-        {/* Header */}
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Applicant Management</h1>
-          <p className="text-gray-600">Evaluate individual players, build shortlists, and scan external clans for potential recruits</p>
-        </div>
-
+    <div className="space-y-6">
         {/* Evaluate Applicant Section */}
-        <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
           <div className="flex items-center space-x-2 mb-6">
-            <div className="w-8 h-8 bg-emerald-100 rounded-lg flex items-center justify-center">
-              <span className="text-emerald-600 font-bold">1</span>
+            <div className="w-8 h-8 bg-emerald-900/30 border border-emerald-700/30 rounded-lg flex items-center justify-center">
+              <span className="text-emerald-400 font-bold">1</span>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Evaluate Individual Applicant</h2>
+            <h2 className="text-xl font-semibold text-slate-100">Evaluate Individual Applicant</h2>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
             <div className="lg:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 Player Tag
-                <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                <Info className="w-4 h-4 text-slate-500 inline ml-1" />
               </label>
               <input 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-emerald-500 focus:border-transparent" 
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-emerald-500 focus:border-transparent" 
                 placeholder="#XXXXXXXX" 
                 value={tag} 
                 onChange={e => setTag(e.target.value)} 
               />
-              <p className="mt-2 text-sm text-gray-500">Clan context defaults to your current clan for fit scoring</p>
+              <p className="mt-2 text-sm text-slate-400">Clan context defaults to your current clan for fit scoring</p>
             </div>
             <div className="flex items-end">
               <button 
@@ -387,12 +380,12 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             </div>
           </div>
           {historyNote && (
-            <div className="mt-3 rounded border bg-amber-50 p-3 text-amber-800 text-sm">
+            <div className="mt-3 rounded border border-amber-800/50 bg-amber-900/30 p-3 text-amber-300 text-sm">
               <div className="font-semibold">History/Alias Audit</div>
               <div>{historyNote}</div>
               {historyLink && (
                 <div className="mt-1">
-                  <Link href={historyLink} target="_blank" rel="noreferrer" className="underline text-amber-900 hover:text-amber-700">
+                  <Link href={historyLink} target="_blank" rel="noreferrer" className="underline text-amber-200 hover:text-amber-100">
                     View retired profile
                   </Link>
                 </div>
@@ -400,28 +393,28 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             </div>
           )}
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <div className="text-red-700 text-sm">{error}</div>
+            <div className="bg-red-900/30 border border-red-800/50 rounded-lg p-4 mb-4">
+              <div className="text-red-300 text-sm">{error}</div>
             </div>
           )}
           
           {result && (
-            <div className="bg-gray-50 rounded-lg p-6">
+            <div className="bg-slate-800/50 rounded-lg p-6">
               {/* Player Header */}
               <div className="flex items-start justify-between mb-6">
                 <div className="flex-1">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  <h3 className="text-xl font-semibold text-slate-100 mb-2">
                     {result.applicant?.name} 
-                    <span className="text-gray-500 font-normal">({result.applicant?.tag})</span>
+                    <span className="text-slate-400 font-normal">({result.applicant?.tag})</span>
                   </h3>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                  <div className="flex flex-wrap gap-4 text-sm text-slate-300">
                     <span>TH {result.applicant?.townHallLevel ?? '—'}</span>
                     <span>Trophies {result.applicant?.trophies ?? '—'}</span>
                     <span>Rush {result?.applicant ? computeRushPercent(result.applicant) : 0}%</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="text-4xl font-bold text-gray-900">{result.evaluation.score}</div>
+                  <div className="text-4xl font-bold text-slate-100">{result.evaluation.score}</div>
                   <div className={`text-lg font-semibold ${recColor(result.evaluation.recommendation)}`}>
                     {result.evaluation.recommendation}
                   </div>
@@ -431,11 +424,11 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
               {/* Action Buttons */}
               <div className="flex flex-wrap gap-3 mb-6">
                 <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700">Status:</label>
+                  <label className="text-sm font-medium text-slate-300">Status:</label>
                   <select 
                     value={status} 
                     onChange={e => setStatus(e.target.value)} 
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                    className="bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                   >
                     <option value="shortlisted">Shortlisted</option>
                     <option value="consider-later">Consider Later</option>
@@ -459,26 +452,26 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                   {copied ? '✓ Copied!' : 'Copy Discord Summary'}
                 </button>
                 {saved && (
-                  <span className="text-sm text-green-700 self-center bg-green-100 px-3 py-1 rounded-full">
+                  <span className="text-sm text-green-300 self-center bg-green-900/30 border border-green-700/30 px-3 py-1 rounded-full">
                     ✓ Saved
                   </span>
                 )}
               </div>
 
               {/* Evaluation Breakdown */}
-              <div className="bg-white rounded-lg border border-gray-200 divide-y">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                  <h4 className="font-semibold text-gray-900">Evaluation Breakdown</h4>
+              <div className="bg-slate-900/50 rounded-lg border border-slate-700 divide-y divide-slate-700">
+                <div className="px-4 py-3 bg-slate-800/50 border-b border-slate-700">
+                  <h4 className="font-semibold text-slate-100">Evaluation Breakdown</h4>
                 </div>
                 {result.evaluation.breakdown.map((b, i) => (
-                  <div key={i} className="flex items-start justify-between p-4 hover:bg-gray-50 transition-colors">
+                  <div key={i} className="flex items-start justify-between p-4 hover:bg-slate-800/50 transition-colors">
                     <div className="flex-1">
-                      <div className="font-medium text-gray-900 mb-1">{b.category}</div>
-                      <div className="text-sm text-gray-600">{b.details}</div>
+                      <div className="font-medium text-slate-100 mb-1">{b.category}</div>
+                      <div className="text-sm text-slate-300">{b.details}</div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-semibold text-gray-900">{b.points} / {b.maxPoints}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-sm font-semibold text-slate-100">{b.points} / {b.maxPoints}</div>
+                      <div className="text-xs text-slate-400">
                         {Math.round((b.points / b.maxPoints) * 100)}%
                       </div>
                     </div>
@@ -490,36 +483,36 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
         </div>
 
         {/* Shortlist Builder Section */}
-        <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
           <div className="flex items-center space-x-2 mb-6">
-            <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-              <span className="text-blue-600 font-bold">2</span>
+            <div className="w-8 h-8 bg-blue-900/30 border border-blue-700/30 rounded-lg flex items-center justify-center">
+              <span className="text-blue-400 font-bold">2</span>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Shortlist Builder</h2>
+            <h2 className="text-xl font-semibold text-slate-100">Shortlist Builder</h2>
           </div>
           
-          <p className="text-gray-600 mb-6">Build a ranked shortlist from saved candidates (status: shortlisted/consider-later). Apply filters to refine results.</p>
+          <p className="text-slate-300 mb-6">Build a ranked shortlist from saved candidates (status: shortlisted/consider-later). Apply filters to refine results.</p>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Filters */}
             <div className="space-y-4">
-              <h3 className="font-medium text-gray-900">Filters</h3>
+              <h3 className="font-medium text-slate-100">Filters</h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Top N</label>
+                  <label className="block text-sm font-medium text-slate-300 mb-1">Top N</label>
                   <input 
                     type="number" 
                     min={1} 
                     max={50} 
                     value={topN} 
                     onChange={e => setTopN(Math.min(50, Math.max(1, Number(e.target.value)||10)))} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Min TH
-                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                    <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                   </label>
                   <input 
                     type="number" 
@@ -527,13 +520,13 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                     max={16} 
                     value={minTh} 
                     onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Max TH
-                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                    <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                   </label>
                   <input 
                     type="number" 
@@ -541,13 +534,13 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                     max={16} 
                     value={maxTh} 
                     onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Min Score
-                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                    <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                   </label>
                   <input 
                     type="number" 
@@ -555,26 +548,26 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                     max={100} 
                     value={minScore} 
                     onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Min Trophies
-                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                    <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                   </label>
                   <input 
                     type="number" 
                     min={0} 
                     value={minTrophies} 
                     onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-slate-300 mb-1">
                     Max Rush %
-                    <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                    <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                   </label>
                   <input 
                     type="number" 
@@ -582,13 +575,13 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                     max={100} 
                     value={maxRush} 
                     onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} 
-                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
+                    className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
                   />
                 </div>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Roles</label>
                 <div className="flex flex-wrap gap-3">
                   {(['member','elder','coleader','leader'] as const).map(r => (
                     <label key={r} className="inline-flex items-center gap-2">
@@ -596,9 +589,9 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                         type="checkbox" 
                         checked={!!roles[r]} 
                         onChange={e=>setRoles(prev=>({ ...prev, [r]: e.target.checked }))} 
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-slate-600 bg-slate-900/50 text-blue-500 focus:ring-blue-500"
                       />
-                      <span className="text-sm text-gray-700 capitalize">{r}</span>
+                      <span className="text-sm text-slate-300 capitalize">{r}</span>
                     </label>
                   ))}
                 </div>
@@ -624,23 +617,23 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             </div>
           </div>
           {shortlist.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 divide-y">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200">
-                <h4 className="font-semibold text-gray-900">Shortlist Results ({shortlist.length} candidates)</h4>
+            <div className="bg-slate-900/50 rounded-lg border border-slate-700 divide-y divide-slate-700">
+              <div className="px-4 py-3 bg-slate-800/50 border-b border-slate-700">
+                <h4 className="font-semibold text-slate-100">Shortlist Results ({shortlist.length} candidates)</h4>
               </div>
               {shortlist.map((item, idx) => (
-                <div key={item.applicant.tag} className="p-4 flex items-start justify-between hover:bg-gray-50 transition-colors">
+                <div key={item.applicant.tag} className="p-4 flex items-start justify-between hover:bg-slate-800/50 transition-colors">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-lg font-bold text-gray-400">#{idx+1}</span>
+                      <span className="text-lg font-bold text-slate-500">#{idx+1}</span>
                       <div>
-                        <div className="font-semibold text-gray-900">{item.applicant.name}</div>
-                        <div className="text-sm text-gray-500">{item.applicant.tag}</div>
+                        <div className="font-semibold text-slate-100">{item.applicant.name}</div>
+                        <div className="text-sm text-slate-400">{item.applicant.tag}</div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-4 text-sm text-slate-300">
                       <span>Score: <span className="font-semibold">{item.evaluation.score}</span></span>
-                      <span>Recommendation: <span className="font-semibold text-emerald-600">{item.evaluation.recommendation}</span></span>
+                      <span>Recommendation: <span className="font-semibold text-emerald-400">{item.evaluation.recommendation}</span></span>
                       <span>Rush: <span className="font-semibold">{computeRushPercent(item.applicant)}%</span></span>
                     </div>
                   </div>
@@ -661,25 +654,25 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
         </div>
 
         {/* Scan External Clan Section */}
-        <div className="bg-white/90 backdrop-blur rounded-2xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50">
           <div className="flex items-center space-x-2 mb-6">
-            <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-              <span className="text-purple-600 font-bold">3</span>
+            <div className="w-8 h-8 bg-purple-900/30 border border-purple-700/30 rounded-lg flex items-center justify-center">
+              <span className="text-purple-400 font-bold">3</span>
             </div>
-            <h2 className="text-xl font-semibold text-gray-900">Scan External Clan</h2>
+            <h2 className="text-xl font-semibold text-slate-100">Scan External Clan</h2>
           </div>
           
-          <p className="text-gray-600 mb-6">Fetch a clan roster by tag, score all members against your clan&apos;s profile, and return the top N. Apply the same filters.</p>
+          <p className="text-slate-300 mb-6">Fetch a clan roster by tag, score all members against your clan&apos;s profile, and return the top N. Apply the same filters.</p>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* Clan Tag Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-slate-300 mb-2">
                 External Clan Tag
-                <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                <Info className="w-4 h-4 text-slate-500 inline ml-1" />
               </label>
               <input 
-                className="w-full border border-gray-300 rounded-lg px-4 py-3 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-4 py-3 text-slate-100 placeholder:text-slate-500 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                 placeholder="#XXXXXXXX" 
                 value={scanTag} 
                 onChange={e => setScanTag(e.target.value)} 
@@ -706,24 +699,24 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
           </div>
           
           {/* Reuse the same filters from shortlist builder */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <h3 className="font-medium text-gray-900 mb-4">Filters (same as shortlist builder)</h3>
+          <div className="bg-slate-800/50 rounded-lg p-4 mb-6">
+            <h3 className="font-medium text-slate-100 mb-4">Filters (same as shortlist builder)</h3>
             <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Top N</label>
+                <label className="block text-sm font-medium text-slate-300 mb-1">Top N</label>
                 <input 
                   type="number" 
                   min={1} 
                   max={50} 
                   value={topN} 
                   onChange={e => setTopN(Math.min(50, Math.max(1, Number(e.target.value)||10)))} 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Min TH
-                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                 </label>
                 <input 
                   type="number" 
@@ -731,13 +724,13 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                   max={16} 
                   value={minTh} 
                   onChange={e=>setMinTh(Math.max(0, Number(e.target.value)||0))} 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Max TH
-                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                 </label>
                 <input 
                   type="number" 
@@ -745,13 +738,13 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                   max={16} 
                   value={maxTh} 
                   onChange={e=>setMaxTh(Math.max(0, Number(e.target.value)||0))} 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Min Score
-                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                 </label>
                 <input 
                   type="number" 
@@ -759,26 +752,26 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                   max={100} 
                   value={minScore} 
                   onChange={e=>setMinScore(Math.max(0, Number(e.target.value)||0))} 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Min Trophies
-                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                 </label>
                 <input 
                   type="number" 
                   min={0} 
                   value={minTrophies} 
                   onChange={e=>setMinTrophies(Math.max(0, Number(e.target.value)||0))} 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-slate-300 mb-1">
                   Max Rush %
-                  <Info className="w-4 h-4 text-gray-400 inline ml-1" />
+                  <Info className="w-4 h-4 text-slate-500 inline ml-1" />
                 </label>
                 <input 
                   type="number" 
@@ -786,13 +779,13 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                   max={100} 
                   value={maxRush} 
                   onChange={e=>setMaxRush(Math.max(0, Math.min(100, Number(e.target.value)||0)))} 
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
+                  className="w-full bg-slate-900/50 border border-slate-600 rounded-lg px-3 py-2 text-slate-100 focus:ring-2 focus:ring-purple-500 focus:border-transparent" 
                 />
               </div>
             </div>
             
             <div className="mt-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
+              <label className="block text-sm font-medium text-slate-300 mb-2">Roles</label>
               <div className="flex flex-wrap gap-3">
                 {(['member','elder','coleader','leader'] as const).map(r => (
                   <label key={r} className="inline-flex items-center gap-2">
@@ -800,9 +793,9 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                       type="checkbox" 
                       checked={!!roles[r]} 
                       onChange={e=>setRoles(prev=>({ ...prev, [r]: e.target.checked }))} 
-                      className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
+                      className="rounded border-slate-600 bg-slate-900/50 text-purple-500 focus:ring-purple-500"
                     />
-                    <span className="text-sm text-gray-700 capitalize">{r}</span>
+                    <span className="text-sm text-slate-300 capitalize">{r}</span>
                   </label>
                 ))}
               </div>
@@ -810,9 +803,9 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
           </div>
           
           {scanResults.length > 0 && (
-            <div className="bg-white rounded-lg border border-gray-200 divide-y">
-              <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                <h4 className="font-semibold text-gray-900">Scan Results ({scanResults.length} candidates)</h4>
+            <div className="bg-slate-900/50 rounded-lg border border-slate-700 divide-y divide-slate-700">
+              <div className="px-4 py-3 bg-slate-800/50 border-b border-slate-700 flex items-center justify-between">
+                <h4 className="font-semibold text-slate-100">Scan Results ({scanResults.length} candidates)</h4>
                 <button 
                   onClick={async ()=>{ 
                     const text = scanResults.map(buildDiscordBlurbFor).map((t,i)=>`#${i+1} ${t}`).join('\n\n'); 
@@ -826,18 +819,18 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
                 </button>
               </div>
               {scanResults.map((item, idx) => (
-                <div key={item.applicant.tag} className="p-4 flex items-start justify-between hover:bg-gray-50 transition-colors">
+                <div key={item.applicant.tag} className="p-4 flex items-start justify-between hover:bg-slate-800/50 transition-colors">
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <span className="text-lg font-bold text-gray-400">#{idx+1}</span>
+                      <span className="text-lg font-bold text-slate-500">#{idx+1}</span>
                       <div>
-                        <div className="font-semibold text-gray-900">{item.applicant.name}</div>
-                        <div className="text-sm text-gray-500">{item.applicant.tag}</div>
+                        <div className="font-semibold text-slate-100">{item.applicant.name}</div>
+                        <div className="text-sm text-slate-400">{item.applicant.tag}</div>
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+                    <div className="flex flex-wrap gap-4 text-sm text-slate-300">
                       <span>Score: <span className="font-semibold">{item.evaluation.score}</span></span>
-                      <span>Recommendation: <span className="font-semibold text-emerald-600">{item.evaluation.recommendation}</span></span>
+                      <span>Recommendation: <span className="font-semibold text-emerald-400">{item.evaluation.recommendation}</span></span>
                       <span>Rush: <span className="font-semibold">{computeRushPercent(item.applicant)}%</span></span>
                     </div>
                   </div>
@@ -856,7 +849,6 @@ export default function ApplicantsPanel({ defaultClanTag }: { defaultClanTag: st
             </div>
           )}
         </div>
-      </div>
     </div>
   );
 }

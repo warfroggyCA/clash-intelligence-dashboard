@@ -156,7 +156,7 @@ const ACTIVE_SORT_CELL_CLASSES = `relative bg-slate-800/20 transition-colors dar
 
 const TableCell: React.FC<TableCellProps> = ({ className = '', children, isActiveSort = false, title, ...rest }) => {
   const tooltipClass = title ? 'tooltip-trigger' : '';
-  const mergedClassName = `py-2 px-4 text-sm ${className} ${isActiveSort ? ACTIVE_SORT_CELL_CLASSES : ''} ${tooltipClass}`.trim();
+  const mergedClassName = `py-2 px-4 text-sm align-middle ${className} ${isActiveSort ? ACTIVE_SORT_CELL_CLASSES : ''} ${tooltipClass}`.trim();
 
   return (
     <td
