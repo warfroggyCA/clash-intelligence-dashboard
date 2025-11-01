@@ -12,17 +12,19 @@ import { readTenureDetails } from '@/lib/tenure';
 import { daysSinceToDate } from '@/lib/date';
 import { extractEnrichedFields } from './field-extractors';
 import { createInitialTenureForJoiners } from '@/lib/services/tenure-service';
+import { calculateAndStoreVIP } from './calculate-vip';
 
 export interface StagedIngestionResult {
   success: boolean;
   clanTag: string;
-  phases: {
-    fetch: PhaseResult;
-    transform: PhaseResult;
-    upsertMembers: PhaseResult;
-    writeSnapshot: PhaseResult;
-    writeStats: PhaseResult;
-  };
+    phases: {
+      fetch: PhaseResult;
+      transform: PhaseResult;
+      upsertMembers: PhaseResult;
+      writeSnapshot: PhaseResult;
+      writeStats: PhaseResult;
+      calculateVIP?: PhaseResult;
+    };
   error?: string;
 }
 
@@ -51,10 +53,19 @@ export interface StagedIngestionOptions {
 export async function runStagedIngestion(options: StagedIngestionOptions = {}): Promise<StagedIngestionResult> {
   const { clanTag: providedTag, jobId: providedJobId, skipPhases = [] } = options;
   
-  const clanTag = providedTag || cfg.homeClanTag;
+  let clanTag = providedTag || cfg.homeClanTag;
+  
+  // CRITICAL SAFEGUARD: Prevent accidental use of wrong clan tag
+  if (!clanTag || clanTag === '#G9QVRYC2Y') {
+    console.error(`[StagedPipeline] INVALID CLAN TAG DETECTED: ${clanTag}. Forcing to #2PR8R8V8P`);
+    clanTag = '#2PR8R8V8P';
+  }
+  
   if (!clanTag) {
     throw new Error('No clan tag provided');
   }
+  
+  console.log(`[StagedPipeline] Running ingestion for clan tag: ${clanTag}`);
 
   const jobId = providedJobId || crypto.randomUUID();
   
@@ -74,6 +85,7 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
       upsertMembers: { success: false, duration_ms: 0 },
       writeSnapshot: { success: false, duration_ms: 0 },
       writeStats: { success: false, duration_ms: 0 },
+      calculateVIP: { success: false, duration_ms: 0 },
     },
   };
 
@@ -121,6 +133,26 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
       result.phases.writeStats = await runWriteStatsPhase(jobId, transformedData, snapshot);
       if (!result.phases.writeStats.success) {
         throw new Error(`Write stats phase failed: ${result.phases.writeStats.error_message}`);
+      }
+    }
+
+    // Phase 6: Calculate VIP (only on Mondays after stats are written)
+    if (!skipPhases.includes('calculateVIP') && snapshot) {
+      const snapshotDate = snapshot.fetchedAt ? new Date(snapshot.fetchedAt) : null;
+      if (snapshotDate) {
+        const vipResult = await calculateAndStoreVIP(jobId, snapshotDate);
+        result.phases.calculateVIP = {
+          success: vipResult.success,
+          duration_ms: 0, // Will be tracked inside calculateAndStoreVIP if needed
+          row_delta: vipResult.scoresCalculated,
+          error_message: vipResult.error,
+        };
+        if (!vipResult.success && vipResult.error) {
+          // Log but don't fail pipeline - VIP calculation is optional
+          await logPhase(jobId, 'calculateVIP', 'warning', `VIP calculation had issues: ${vipResult.error}`);
+        } else if (vipResult.scoresCalculated > 0) {
+          await logPhase(jobId, 'calculateVIP', 'info', `VIP calculated for ${vipResult.scoresCalculated} members`);
+        }
       }
     }
 

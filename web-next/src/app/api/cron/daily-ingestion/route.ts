@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { runStagedIngestionJob } from '@/lib/ingestion/run-staged-ingestion';
+import { cfg } from '@/lib/config';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 export const dynamic = "force-dynamic";
@@ -36,8 +37,29 @@ export async function GET(request: NextRequest) {
       }
     });
     
+    const url = new URL(request.url);
+    let targetClanTag = cfg.homeClanTag;
+    
+    // CRITICAL SAFEGUARD: Ensure we're using the correct default clan tag
+    if (!targetClanTag || targetClanTag === '#G9QVRYC2Y') {
+      console.error(`[Cron ${executionId}] INVALID CLAN TAG DETECTED: ${targetClanTag}. Forcing to #2PR8R8V8P`);
+      targetClanTag = '#2PR8R8V8P';
+    }
+    
+    // Only allow clanTag override with admin key header
+    const adminKey = process.env.ADMIN_API_KEY || process.env.INGESTION_TRIGGER_KEY;
+    const providedKey = request.headers.get('x-api-key');
+    const clanTagOverride = url.searchParams.get('clanTag');
+    if (clanTagOverride && adminKey && providedKey === adminKey) {
+      targetClanTag = clanTagOverride;
+      console.log(`[Cron ${executionId}] Using override clan tag: ${targetClanTag}`);
+    }
+    
+    // Log the clan tag being used for debugging
+    console.log(`[Cron ${executionId}] Using clan tag: ${targetClanTag} (from cfg.homeClanTag: ${cfg.homeClanTag})`);
+    
     const result = await runStagedIngestionJob({ 
-      clanTag: '#G9QVRYC2Y',
+      clanTag: targetClanTag,
       runPostProcessing: true
     });
     
