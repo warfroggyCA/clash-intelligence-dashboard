@@ -26,6 +26,7 @@ export interface CanonicalMemberRecord {
   name: string | null;
   role: string | null;
   townHallLevel: number | null;
+  townHallWeaponLevel: number | null; // TH weapon level (TH12+)
   trophies: number | null;
   battleModeTrophies: number | null;
   league: LeagueInfo | null;
@@ -45,6 +46,29 @@ export interface CanonicalMemberRecord {
   bestVersusTrophies: number | null;
   superTroopsActive: string[] | null;
   tenure: TenureInfo;
+  // New fields from memberList
+  clanRank: number | null; // Rank in clan (by trophies)
+  previousClanRank: number | null; // Previous season rank
+  // Player labels
+  labels: Array<{ id: number; name: string; iconUrls?: Record<string, string | null> }> | null;
+  // Legend statistics
+  legendStatistics: {
+    legendTrophies: number | null;
+    currentSeason: {
+      rank: number | null;
+      trophies: number | null;
+    } | null;
+    previousSeason: {
+      id: string | null;
+      rank: number | null;
+      trophies: number | null;
+    } | null;
+    bestSeason: {
+      id: string | null;
+      rank: number | null;
+      trophies: number | null;
+    } | null;
+  } | null;
   metrics?: Record<string, { value: number; metadata?: Record<string, any> | null }>;
   extras?: Record<string, any> | null;
 }
@@ -74,6 +98,7 @@ export interface WarInfo {
   stars: number | null;
   attackWins: number | null;
   defenseWins: number | null;
+  preference: "in" | "out" | null; // warPreference from API
 }
 
 export interface BuilderBaseInfo {
@@ -81,6 +106,7 @@ export interface BuilderBaseInfo {
   trophies: number | null;
   battleWins: number | null;
   leagueId: number | null;
+  leagueName: string | null; // Builder league name
 }
 
 export interface AchievementInfo {

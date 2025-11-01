@@ -368,16 +368,21 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
         activityScore: activityEvidence?.score ?? null,
         heroLevels,
         rushPercent,
+        townHallWeaponLevel: detail?.townHallWeaponLevel ?? null,
         war: {
           stars: memberEnriched.warStars ?? null,
           attackWins: memberEnriched.attackWins ?? null,
           defenseWins: memberEnriched.defenseWins ?? null,
+          preference: detail?.warPreference === "in" || detail?.warPreference === "out" 
+            ? detail.warPreference 
+            : null,
         },
         builderBase: {
           hallLevel: memberEnriched.builderHallLevel ?? null,
           trophies: memberEnriched.versusTrophies ?? null,
           battleWins: memberEnriched.versusBattleWins ?? null,
           leagueId: memberEnriched.builderLeagueId ?? null,
+          leagueName: detail?.builderBaseLeague?.name ?? null,
         },
         capitalContributions: memberEnriched.capitalContributions ?? null,
         pets: memberEnriched.petLevels ?? null,
@@ -390,6 +395,44 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
         bestTrophies: memberEnriched.bestTrophies ?? null,
         bestVersusTrophies: memberEnriched.bestVersusTrophies ?? null,
         superTroopsActive: memberEnriched.superTroopsActive ?? null,
+        clanRank: toNumeric(summary.clanRank) ?? null,
+        previousClanRank: toNumeric(summary.previousClanRank) ?? null,
+        labels: Array.isArray(detail?.labels) && detail.labels.length > 0
+          ? detail.labels.map((label: any) => ({
+              id: typeof label.id === 'number' ? label.id : 0,
+              name: typeof label.name === 'string' ? label.name : '',
+              iconUrls: label.iconUrls && typeof label.iconUrls === 'object' ? label.iconUrls : undefined,
+            }))
+          : null,
+        legendStatistics: detail?.legendStatistics
+          ? {
+              legendTrophies: toNumeric(detail.legendStatistics.legendTrophies) ?? null,
+              currentSeason: detail.legendStatistics.currentSeason
+                ? {
+                    rank: toNumeric(detail.legendStatistics.currentSeason.rank) ?? null,
+                    trophies: toNumeric(detail.legendStatistics.currentSeason.trophies) ?? null,
+                  }
+                : null,
+              previousSeason: detail.legendStatistics.previousSeason
+                ? {
+                    id: typeof detail.legendStatistics.previousSeason.id === 'string' 
+                      ? detail.legendStatistics.previousSeason.id 
+                      : null,
+                    rank: toNumeric(detail.legendStatistics.previousSeason.rank) ?? null,
+                    trophies: toNumeric(detail.legendStatistics.previousSeason.trophies) ?? null,
+                  }
+                : null,
+              bestSeason: detail.legendStatistics.bestSeason
+                ? {
+                    id: typeof detail.legendStatistics.bestSeason.id === 'string' 
+                      ? detail.legendStatistics.bestSeason.id 
+                      : null,
+                    rank: toNumeric(detail.legendStatistics.bestSeason.rank) ?? null,
+                    trophies: toNumeric(detail.legendStatistics.bestSeason.trophies) ?? null,
+                  }
+                : null,
+            }
+          : null,
         tenure: {
           days: null,
           asOf: null,
@@ -486,12 +529,16 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       war_stars: memberEnriched.warStars ?? detail?.warStars ?? null,
       attack_wins: memberEnriched.attackWins ?? detail?.attackWins ?? null,
       defense_wins: memberEnriched.defenseWins ?? detail?.defenseWins ?? null,
+      war_preference: detail?.warPreference === "in" || detail?.warPreference === "out" 
+        ? detail.warPreference 
+        : null,
       capital_contributions: memberEnriched.capitalContributions ?? detail?.clanCapitalContributions ?? null,
       pet_levels: memberEnriched.petLevels ?? null,
       builder_hall_level: memberEnriched.builderHallLevel ?? summary.builderHallLevel ?? null,
       versus_trophies: memberEnriched.versusTrophies ?? toNumeric(summary.builderTrophies) ?? null,
       versus_battle_wins: memberEnriched.versusBattleWins ?? null,
       builder_league_id: memberEnriched.builderLeagueId ?? null,
+      builder_league_name: detail?.builderBaseLeague?.name ?? null,
       max_troop_count: memberEnriched.maxTroopCount ?? null,
       max_spell_count: memberEnriched.maxSpellCount ?? null,
       super_troops_active: memberEnriched.superTroopsActive ?? null,

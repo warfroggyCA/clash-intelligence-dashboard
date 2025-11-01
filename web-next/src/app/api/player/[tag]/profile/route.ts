@@ -15,6 +15,7 @@ import {
   type PlayerDayTimelineRow,
   type TimelineComputation,
 } from '@/lib/activity/timeline';
+import { calculateHistoricalTrophiesForPlayer } from '@/lib/business/historical-trophies';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Keep API route fresh, but page will cache via server component
@@ -183,12 +184,14 @@ function buildSummary(
       stars: member.war.stars ?? null,
       attackWins: member.war.attackWins ?? null,
       defenseWins: member.war.defenseWins ?? null,
+      preference: member.war.preference ?? null,
     },
     builderBase: {
       hallLevel: member.builderBase.hallLevel ?? null,
       trophies: member.builderBase.trophies ?? null,
       battleWins: member.builderBase.battleWins ?? null,
       leagueId: member.builderBase.leagueId ?? null,
+      leagueName: member.builderBase.leagueName ?? null,
     },
     capitalContributions: member.capitalContributions ?? null,
     activityScore: member.activityScore ?? null,
@@ -295,9 +298,34 @@ export async function GET(
       timelineStats = buildTimeline(filteredRows);
     }
 
+    // Get member ID for historical trophy calculations (SSOT)
+    let historicalTrophyData: Awaited<ReturnType<typeof calculateHistoricalTrophiesForPlayer>> | null = null;
+    try {
+      const { data: memberRow } = await supabase
+        .from('members')
+        .select('id')
+        .eq('tag', normalizedTag)
+        .maybeSingle();
+      
+      if (memberRow?.id) {
+        historicalTrophyData = await calculateHistoricalTrophiesForPlayer(memberRow.id, normalizedTag);
+      }
+    } catch (error) {
+      console.warn('[player-profile] Failed to fetch historical trophy data:', error);
+      // Continue with fallback values from timelineStats
+    }
+
+    // Use SSOT historical trophy data, fallback to timelineStats if not available
+    const resolvedLastWeekTrophies = historicalTrophyData?.lastWeekTrophies ?? timelineStats.lastWeekTrophies;
+    const resolvedSeasonTotalTrophies = historicalTrophyData?.seasonTotalTrophies ?? timelineStats.seasonTotalTrophies;
+
     let summary = buildSummary(
       latestSnapshot,
-      timelineStats,
+      {
+        ...timelineStats,
+        lastWeekTrophies: resolvedLastWeekTrophies,
+        seasonTotalTrophies: resolvedSeasonTotalTrophies,
+      },
       clanRow?.name ?? null,
       tenureInfo?.days ?? latestSnapshot.member.tenure.days ?? null,
       tenureInfo?.as_of ?? latestSnapshot.member.tenure.asOf ?? null,
@@ -324,6 +352,7 @@ export async function GET(
         versusTrophies: summary.builderBase.trophies ?? null,
         versusBattleWins: summary.builderBase.battleWins ?? null,
         builderLeagueId: summary.builderBase.leagueId ?? null,
+        builderLeagueName: summary.builderBase.leagueName ?? null,
         achievementCount: summary.achievements.count ?? null,
         achievementScore: summary.achievements.score ?? null,
         expLevel: summary.expLevel ?? null,

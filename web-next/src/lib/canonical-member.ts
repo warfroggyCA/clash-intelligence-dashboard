@@ -16,6 +16,7 @@ interface BuildCanonicalMemberOptions {
       name: string | null;
       role: string | null;
       townHallLevel: number | null;
+      townHallWeaponLevel: number | null;
       trophies: number | null;
       battleModeTrophies: number | null;
       league: {
@@ -43,12 +44,14 @@ interface BuildCanonicalMemberOptions {
       stars: number | null;
       attackWins: number | null;
       defenseWins: number | null;
+      preference: "in" | "out" | null;
     };
     builderBase: {
       hallLevel: number | null;
       trophies: number | null;
       battleWins: number | null;
       leagueId: number | null;
+      leagueName: string | null;
     };
     capitalContributions: number | null;
     pets: Record<string, number> | null;
@@ -61,6 +64,26 @@ interface BuildCanonicalMemberOptions {
     bestTrophies: number | null;
     bestVersusTrophies: number | null;
     superTroopsActive: string[] | null;
+    clanRank: number | null;
+    previousClanRank: number | null;
+    labels: Array<{ id: number; name: string; iconUrls?: Record<string, string | null> }> | null;
+    legendStatistics: {
+      legendTrophies: number | null;
+      currentSeason: {
+        rank: number | null;
+        trophies: number | null;
+      } | null;
+      previousSeason: {
+        id: string | null;
+        rank: number | null;
+        trophies: number | null;
+      } | null;
+      bestSeason: {
+        id: string | null;
+        rank: number | null;
+        trophies: number | null;
+      } | null;
+    } | null;
     tenure: {
       days: number | null;
       asOf: string | null;
@@ -102,6 +125,7 @@ export function buildCanonicalMemberSnapshot({
       name: member.name,
       role: member.role,
       townHallLevel: member.townHallLevel,
+      townHallWeaponLevel: member.townHallWeaponLevel ?? null,
       trophies: member.trophies,
       battleModeTrophies: member.battleModeTrophies,
       league: member.league,
@@ -120,6 +144,10 @@ export function buildCanonicalMemberSnapshot({
       bestTrophies: member.bestTrophies,
       bestVersusTrophies: member.bestVersusTrophies,
       superTroopsActive: member.superTroopsActive,
+      clanRank: member.clanRank ?? null,
+      previousClanRank: member.previousClanRank ?? null,
+      labels: member.labels ?? null,
+      legendStatistics: member.legendStatistics ?? null,
       tenure: member.tenure,
       metrics: member.metrics,
       extras: member.extras,

@@ -86,6 +86,7 @@ type RosterMember = {
   heroLevels: HeroLevels;
   activityScore: number | null;
   lastUpdated: string | null;
+  warPreference?: "in" | "out" | null;
 };
 
 type MatchupMetrics = {
@@ -566,7 +567,28 @@ const WarCenterPage: React.FC = () => {
     ],
   );
 
-  const handleClearOpponent = useCallback(() => {
+  const handleClearOpponent = useCallback(async () => {
+    // Record opponent in history before clearing
+    if (opponentProfile && cleanOurClanTag) {
+      const opponentTag = normalizeTag(opponentProfile.clan.tag ?? '') || cleanOpponentTag;
+      if (opponentTag) {
+        try {
+          await fetch('/api/war/history', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              ourClanTag: cleanOurClanTag,
+              opponentTag: opponentTag,
+              opponentName: opponentProfile.clan.name ?? null,
+            }),
+          });
+        } catch (error) {
+          console.warn('[WarCenter] Failed to record war history', error);
+          // Continue with clearing even if history recording fails
+        }
+      }
+    }
+
     setOpponentProfile(null);
     setOpponentProfileError(null);
     setOpponentProfileMessage(null);
@@ -574,7 +596,16 @@ const WarCenterPage: React.FC = () => {
     setOpponentClanName('');
     setOpponentSelection(new Set());
     setOpponentRoster([]);
+    setMatchup(null);
     localStorage.removeItem('war-prep-opponent');
+  }, [opponentProfile, cleanOurClanTag, cleanOpponentTag]);
+
+  const handleClearSelections = useCallback(() => {
+    setOurSelection(new Set());
+    setOpponentSelection(new Set());
+    setMatchup(null);
+    setPlanMessage(null);
+    setPlanError(null);
   }, []);
 
   const handlePinOpponent = useCallback(async () => {
@@ -605,6 +636,8 @@ const WarCenterPage: React.FC = () => {
     }
   }, [cleanOurClanTag, cleanOpponentTag, opponentProfile]);
 
+  // DISABLED: Auto-fetching opponent profile from URL params or pinned - now manual only
+  // Users must click "Analyze Opponent" or "Sync Opponent" to fetch
   useEffect(() => {
     const sp = search;
     if (!sp) return;
@@ -612,50 +645,44 @@ const WarCenterPage: React.FC = () => {
     const qAuto = sp.get('autoDetect');
     const qOur = sp.get('ourClanTag');
     const qEnrich = sp.get('enrich');
-    let needsFetch = false;
+    // Only update form inputs, don't auto-fetch
     if (qEnrich) setEnrichLevel(Math.max(4, Math.min(50, Number(qEnrich) || 12)));
     if (qOur) setOurClanTagInput(qOur);
     if (qAuto != null) {
       const auto = qAuto === 'true';
       setAutoDetectOpponent(auto);
-      if (auto) needsFetch = true;
     }
     if (qOpp) {
       setOpponentClanTagInput(qOpp);
-      if (!qAuto || qAuto === 'false') needsFetch = true;
-    }
-    if (needsFetch) {
-      void fetchOpponentProfile({ pin: false });
-      return;
     }
 
-    const loadPinned = async () => {
-      const tag = cleanOurClanTag;
-      if (!tag) return;
-      try {
-        const res = await fetch(`/api/war/pin?ourClanTag=${encodeURIComponent(tag)}`, {
-          cache: 'no-store',
-        });
-        const body = await res.json();
-        if (res.ok && body?.success && body?.data?.opponent_tag) {
-          setAutoDetectOpponent(false);
-          setOpponentClanTagInput(body.data.opponent_tag);
-          if (body.data.profile_data) {
-            setOpponentProfile(body.data.profile_data);
-            if (body.data.profile_data?.clan?.name) {
-              setOpponentClanName(body.data.profile_data.clan.name);
-            }
-          } else {
-            await fetchOpponentProfile({ pin: false });
-          }
-        }
-      } catch (error) {
-        console.warn('[WarCenter] Failed to load pinned opponent', error);
-      }
-    };
-
-    void loadPinned();
-  }, [search, cleanOurClanTag, fetchOpponentProfile]);
+    // DISABLED: Auto-loading pinned opponent
+    // const loadPinned = async () => {
+    //   const tag = cleanOurClanTag;
+    //   if (!tag) return;
+    //   try {
+    //     const res = await fetch(`/api/war/pin?ourClanTag=${encodeURIComponent(tag)}`, {
+    //       cache: 'no-store',
+    //     });
+    //     const body = await res.json();
+    //     if (res.ok && body?.success && body?.data?.opponent_tag) {
+    //       setAutoDetectOpponent(false);
+    //       setOpponentClanTagInput(body.data.opponent_tag);
+    //       if (body.data.profile_data) {
+    //         setOpponentProfile(body.data.profile_data);
+    //         if (body.data.profile_data?.clan?.name) {
+    //           setOpponentClanName(body.data.profile_data.clan.name);
+    //         }
+    //       } else {
+    //         await fetchOpponentProfile({ pin: false });
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.warn('[WarCenter] Failed to load pinned opponent', error);
+    //   }
+    // };
+    // void loadPinned();
+  }, [search, cleanOurClanTag]);
 
   const runMatchupAnalysis = useCallback(async () => {
     setAnalysisError(null);
@@ -743,13 +770,14 @@ const WarCenterPage: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (!hasAutoLoadedOurRoster.current && normalizedOurClanTag && !loadingOurRoster) {
-      hasAutoLoadedOurRoster.current = true;
-      const preserveSelection = Boolean(pendingPlanRef.current);
-      void fetchOurRoster({ preserveSelection });
-    }
-  }, [normalizedOurClanTag, fetchOurRoster, loadingOurRoster]);
+  // DISABLED: Auto-fetching our roster - now manual only
+  // useEffect(() => {
+  //   if (!hasAutoLoadedOurRoster.current && normalizedOurClanTag && !loadingOurRoster) {
+  //     hasAutoLoadedOurRoster.current = true;
+  //     const preserveSelection = Boolean(pendingPlanRef.current);
+  //     void fetchOurRoster({ preserveSelection });
+  //   }
+  // }, [normalizedOurClanTag, fetchOurRoster, loadingOurRoster]);
 
   useEffect(() => {
     planLoadedRef.current = false;
@@ -869,36 +897,39 @@ const WarCenterPage: React.FC = () => {
     [loadPlanFromLocal, applyPlan],
   );
 
-  useEffect(() => {
-    if (autoFetchOpponentRef.current) {
-      clearTimeout(autoFetchOpponentRef.current);
-      autoFetchOpponentRef.current = null;
-    }
-    if (!normalizedOpponentTag || normalizedOpponentTag.length < 5) {
-      setOpponentRoster([]);
-      setOpponentSelection(new Set());
-      setOpponentError(null);
-      return;
-    }
-    autoFetchOpponentRef.current = window.setTimeout(() => {
-      const preserveSelection = Boolean(pendingPlanRef.current);
-      void fetchOpponents({ preserveSelection });
-    }, 600);
-    return () => {
-      if (autoFetchOpponentRef.current) {
-        clearTimeout(autoFetchOpponentRef.current);
-        autoFetchOpponentRef.current = null;
-      }
-    };
-  }, [normalizedOpponentTag, fetchOpponents]);
+  // DISABLED: Auto-fetching opponent roster - now manual only
+  // useEffect(() => {
+  //   if (autoFetchOpponentRef.current) {
+  //     clearTimeout(autoFetchOpponentRef.current);
+  //     autoFetchOpponentRef.current = null;
+  //   }
+  //   if (!normalizedOpponentTag || normalizedOpponentTag.length < 5) {
+  //     setOpponentRoster([]);
+  //     setOpponentSelection(new Set());
+  //     setOpponentError(null);
+  //     return;
+  //   }
+  //   autoFetchOpponentRef.current = window.setTimeout(() => {
+  //     const preserveSelection = Boolean(pendingPlanRef.current);
+  //     void fetchOpponents({ preserveSelection });
+  //   }, 600);
+  //   return () => {
+  //     if (autoFetchOpponentRef.current) {
+  //       clearTimeout(autoFetchOpponentRef.current);
+  //       autoFetchOpponentRef.current = null;
+  //     }
+  //   };
+  // }, [normalizedOpponentTag, fetchOpponents]);
 
+  // Only auto-load plan if explicitly requested (not on every roster load)
+  // This prevents loading stale plans from finished wars
   useEffect(() => {
     if (planLoadedRef.current) return;
     if (!normalizedOurClanTag) return;
     if (!ourRoster.length) return;
+    // Don't auto-load - require manual action to load saved plans
     planLoadedRef.current = true;
-    void loadPlan(normalizedOurClanTag);
-  }, [ourRoster, normalizedOurClanTag, loadPlan]);
+  }, [ourRoster, normalizedOurClanTag]);
 
   useEffect(() => {
     const pending = pendingPlanRef.current;
@@ -909,6 +940,7 @@ const WarCenterPage: React.FC = () => {
     pendingPlanRef.current = null;
   }, [opponentRoster, normalizedOpponentTag]);
 
+  // Only poll for analysis status when actively queued/running, and stop after completion or timeout
   useEffect(() => {
     if (!savedPlan) return;
     const status = (savedPlan.analysisStatus ?? '').toLowerCase();
@@ -916,8 +948,21 @@ const WarCenterPage: React.FC = () => {
 
     let ignore = false;
     let lastStatus = savedPlan.analysisStatus ?? null;
+    let pollCount = 0;
+    const MAX_POLLS = 120; // Max 5 minutes (120 * 5s = 600s)
+    let intervalId: number | null = null;
 
     const refresh = async () => {
+      if (pollCount >= MAX_POLLS) {
+        // Stop polling after max attempts
+        if (intervalId) {
+          clearInterval(intervalId);
+          intervalId = null;
+        }
+        return;
+      }
+      pollCount++;
+      
       try {
         const params = new URLSearchParams();
         params.set('ourClanTag', savedPlan.ourClanTag);
@@ -947,6 +992,13 @@ const WarCenterPage: React.FC = () => {
             }
             lastStatus = latestStatus;
           }
+          // Stop polling if status is no longer queued/running
+          if (latestStatus && !['queued', 'running'].includes(latestStatus.toLowerCase())) {
+            if (intervalId) {
+              clearInterval(intervalId);
+              intervalId = null;
+            }
+          }
         }
       } catch (error) {
         if (!ignore) {
@@ -955,15 +1007,18 @@ const WarCenterPage: React.FC = () => {
       }
     };
 
-    const interval = window.setInterval(() => {
+    // Use longer interval to reduce "vibrating" - poll every 5 seconds instead of 2.5
+    intervalId = window.setInterval(() => {
       void refresh();
-    }, 2500);
+    }, 5000);
 
     void refresh();
 
     return () => {
       ignore = true;
-      clearInterval(interval);
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
     };
   }, [
     savedPlan,
@@ -1099,12 +1154,18 @@ const WarCenterPage: React.FC = () => {
   ]);
 
   const handleReloadSavedPlan = useCallback(() => {
-    if (!savedPlan) return;
+    if (!savedPlan) {
+      // Try to load from server/local storage
+      if (normalizedOurClanTag) {
+        void loadPlan(normalizedOurClanTag);
+      }
+      return;
+    }
     const statusNote = savedPlan.analysisStatus ? ` — analysis: ${savedPlan.analysisStatus}` : '';
     applyPlan(savedPlan, {
       message: `Plan loaded vs ${savedPlan.opponentClanName || savedPlan.opponentClanTag}${statusNote}`,
     });
-  }, [applyPlan, savedPlan]);
+  }, [applyPlan, savedPlan, normalizedOurClanTag, loadPlan]);
 
   const handleRegenerateAnalysis = useCallback(async () => {
     if (!savedPlan) {
@@ -1217,7 +1278,7 @@ const WarCenterPage: React.FC = () => {
 
   return (
     <DashboardLayout clanName={clanName || undefined}>
-      <div className="mx-auto flex w-full flex-col gap-6 p-4 md:p-6">
+      <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 p-4 md:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-3">
             <Link
@@ -1284,8 +1345,13 @@ const WarCenterPage: React.FC = () => {
                 Pin Opponent
               </Button>
               {opponentProfile && (
-                <Button variant="ghost" onClick={handleClearOpponent} className="text-destructive">
-                  Clear
+                <Button 
+                  variant="outline" 
+                  onClick={handleClearOpponent}
+                  className="text-destructive border-destructive hover:bg-destructive/10"
+                  title="Clear opponent and record in war history"
+                >
+                  Reset & Record
                 </Button>
               )}
             </div>
@@ -1445,9 +1511,16 @@ const WarCenterPage: React.FC = () => {
 
         <GlassCard className="p-4">
           <SectionTitle title="Our Roster">
-            <Button variant="secondary" onClick={() => fetchOurRoster()} disabled={loadingOurRoster}>
-              {loadingOurRoster ? 'Loading…' : 'Refresh'}
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="secondary" onClick={() => fetchOurRoster()} disabled={loadingOurRoster}>
+                {loadingOurRoster ? 'Loading…' : 'Refresh'}
+              </Button>
+              {(ourSelection.size > 0 || opponentSelection.size > 0) && (
+                <Button variant="outline" onClick={handleClearSelections}>
+                  Clear Selections
+                </Button>
+              )}
+            </div>
           </SectionTitle>
           <div className="flex flex-col gap-3">
             <label className="flex flex-col gap-1 text-sm">
@@ -1525,16 +1598,20 @@ const WarCenterPage: React.FC = () => {
             >
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={handleReloadSavedPlan}>
-                  Load Saved Plan
+                  {savedPlan ? 'Reload Plan' : 'Load Saved Plan'}
                 </Button>
-                <Button
-                  variant="secondary"
-                  onClick={handleRegenerateAnalysis}
-                  disabled={['queued', 'running'].includes((savedPlan.analysisStatus ?? '').toLowerCase())}
-                >
-                  Re-run Analysis
-                </Button>
-                <Button onClick={handleCopyPlan}>Copy Payload</Button>
+                {savedPlan && (
+                  <>
+                    <Button
+                      variant="secondary"
+                      onClick={handleRegenerateAnalysis}
+                      disabled={['queued', 'running'].includes((savedPlan.analysisStatus ?? '').toLowerCase())}
+                    >
+                      Re-run Analysis
+                    </Button>
+                    <Button onClick={handleCopyPlan}>Copy Payload</Button>
+                  </>
+                )}
               </div>
             </SectionTitle>
             <p className="text-sm text-muted-foreground flex flex-wrap gap-2">
@@ -1554,9 +1631,16 @@ const WarCenterPage: React.FC = () => {
 
         <GlassCard className="p-4">
           <SectionTitle title="Matchup Analysis">
-            <Button onClick={runMatchupAnalysis} disabled={!canRunAnalysis || runningAnalysis}>
-              {runningAnalysis ? 'Analyzing…' : 'Run Analysis'}
-            </Button>
+            <div className="flex gap-2">
+              <Button onClick={runMatchupAnalysis} disabled={!canRunAnalysis || runningAnalysis}>
+                {runningAnalysis ? 'Analyzing…' : 'Run Analysis'}
+              </Button>
+              {(ourSelection.size > 0 || opponentSelection.size > 0) && (
+                <Button variant="outline" onClick={handleClearSelections}>
+                  Clear Selections
+                </Button>
+              )}
+            </div>
           </SectionTitle>
           <div className="flex flex-wrap items-center gap-3 mb-3">
             <Button variant="secondary" onClick={handleSavePlan} disabled={!canSavePlan || savingPlan}>
@@ -1611,6 +1695,7 @@ const RosterList: React.FC<{
     <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
       {roster.map((player) => {
         const isSelected = selection.has(player.tag);
+        const isOptedIn = player.warPreference === 'in';
         return (
           <label
             key={player.tag}
@@ -1619,12 +1704,20 @@ const RosterList: React.FC<{
             }`}
           >
             <div className="flex items-center justify-between gap-2">
-              <span className="font-medium text-sm truncate">{player.name}</span>
+              <div className="flex items-center gap-2 min-w-0 flex-1">
+                {isOptedIn && (
+                  <span 
+                    className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" 
+                    title="War opt-in: This player has opted in to clan wars"
+                  />
+                )}
+                <span className="font-medium text-sm truncate">{player.name}</span>
+              </div>
               <input
                 type="checkbox"
                 checked={isSelected}
                 onChange={() => onToggle(player.tag)}
-                className="h-4 w-4"
+                className="h-4 w-4 flex-shrink-0"
               />
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
