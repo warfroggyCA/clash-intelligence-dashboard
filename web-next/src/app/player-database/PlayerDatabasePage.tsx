@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Search, Plus, RefreshCw, User, Calendar, MessageSquare, X } from "lucide-react";
+import { Search, Plus, RefreshCw, User, Calendar, MessageSquare, X, Users, UserCheck, UserX, AlertTriangle } from "lucide-react";
 import dynamic from 'next/dynamic';
 import { useShallow } from 'zustand/react/shallow';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
@@ -163,8 +163,17 @@ export default function PlayerDatabasePage() {
     }
   };
 
-  // Function to fetch current clan members
+  // Function to fetch current clan members - use roster from store if available
   const fetchCurrentMembers = useCallback(async () => {
+    // Try to use roster from store first (faster, already loaded)
+    if (roster?.members && Array.isArray(roster.members) && roster.members.length > 0) {
+      return roster.members.map((member: any) => ({
+        tag: normalizeTag(member.tag) || member.tag,
+        name: member.name || member.tag || 'Unknown Player',
+      }));
+    }
+    
+    // Fallback to API if store doesn't have roster
     try {
       const response = await fetch('/api/v2/roster');
       if (response.ok) {
@@ -179,7 +188,7 @@ export default function PlayerDatabasePage() {
       console.error('Failed to fetch current members:', error);
     }
     return [];
-  }, []);
+  }, [roster]);
 
   // Function to fetch player names from the player-resolver API (uses historical snapshots)
   const fetchPlayerNamesFromResolver = useCallback(async () => {
@@ -321,9 +330,12 @@ export default function PlayerDatabasePage() {
     }
 
     try {
+      // Fetch current members and Supabase data in parallel
+      const [rosterMembers, { notesData, warningsData, actionsData }] = await Promise.all([
+        fetchCurrentMembers(),
+        loadFromSupabase()
+      ]);
       
-      // Always fetch current members fresh to ensure we have the latest data
-      const rosterMembers = await fetchCurrentMembers();
       const currentMemberTagsSet = new Set<string>();
       const playerNames: Record<string, string> = {};
 
@@ -335,9 +347,6 @@ export default function PlayerDatabasePage() {
 
       const playerRecords: PlayerRecord[] = [];
       const clanTag = '#2PR8R8V8P'; // Your clan tag
-
-      // Fetch from Supabase APIs only
-      const { notesData, warningsData, actionsData } = await loadFromSupabase();
 
       // Group data by player tag (Supabase only)
       const playerDataMap = new Map<string, {
@@ -511,23 +520,14 @@ export default function PlayerDatabasePage() {
       if (missingTags.length > 0) {
         console.log(`Fetching names for ${missingTags.length} missing tags:`, missingTags.slice(0, 5));
         
-        // First try the player-resolver API (uses historical snapshots)
-        const resolverNames = await fetchPlayerNamesFromResolver();
-        if (Object.keys(resolverNames).length > 0) {
-          console.log(`Fetched ${Object.keys(resolverNames).length} names from resolver`);
-          Object.assign(playerNames, resolverNames);
-        }
-        
-        // Then try canonical snapshots for any still missing
-        const stillMissing = missingTags.filter(tag => !playerNames[tag] || playerNames[tag] === 'Unknown Player');
-        if (stillMissing.length > 0) {
-          console.log(`Fetching ${stillMissing.length} remaining tags from canonical snapshots`);
-          const canonicalNames = await fetchPlayerNamesFromCanonical(stillMissing);
+        // Try canonical snapshots first (fastest, most reliable)
+        const canonicalNames = await fetchPlayerNamesFromCanonical(missingTags);
+        if (Object.keys(canonicalNames).length > 0) {
           console.log(`Fetched ${Object.keys(canonicalNames).length} names from canonical:`, Object.keys(canonicalNames).slice(0, 5));
           Object.assign(playerNames, canonicalNames);
         }
         
-        // Finally, try Clash API directly for any still missing
+        // Only try Clash API as last resort for any still missing (this is slowest)
         const finalMissing = missingTags.filter(tag => !playerNames[tag] || playerNames[tag] === 'Unknown Player');
         if (finalMissing.length > 0) {
           console.log(`Fetching ${finalMissing.length} remaining tags from Clash API`);
@@ -1407,11 +1407,11 @@ export default function PlayerDatabasePage() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <User className="w-5 h-5 text-blue-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-slate-800/50 border border-slate-700/50">
+                <Users className="w-6 h-6 text-slate-300" />
               </div>
               <div>
                 <p className="text-sm text-muted">Total Players</p>
@@ -1422,8 +1422,8 @@ export default function PlayerDatabasePage() {
           
           <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-green-100 rounded-lg">
-                <User className="w-5 h-5 text-green-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-emerald-900/30 border border-emerald-700/30">
+                <UserCheck className="w-6 h-6 text-emerald-400" />
               </div>
               <div>
                 <p className="text-sm text-muted">Current Members</p>
@@ -1436,8 +1436,8 @@ export default function PlayerDatabasePage() {
           
           <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-orange-100 rounded-lg">
-                <User className="w-5 h-5 text-orange-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-orange-900/30 border border-orange-700/30">
+                <UserX className="w-6 h-6 text-orange-400" />
               </div>
               <div>
                 <p className="text-sm text-muted">Former Members</p>
@@ -1450,27 +1450,13 @@ export default function PlayerDatabasePage() {
           
           <GlassCard className="stat-tile">
             <div className="flex items-center space-x-3">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <User className="w-5 h-5 text-blue-600" />
+              <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-red-900/30 border border-red-700/30">
+                <AlertTriangle className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <p className="text-sm text-muted">Players with Notes</p>
+                <p className="text-sm text-muted">Players with Warnings</p>
                 <p className="text-xl font-semibold text-high-contrast">
-                  {players.filter(p => p.notes.length > 0).length}
-                </p>
-              </div>
-            </div>
-          </GlassCard>
-          
-          <GlassCard className="stat-tile">
-            <div className="flex items-center space-x-3">
-              <div className="p-2 bg-purple-100 rounded-lg">
-                <MessageSquare className="w-5 h-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Total Notes</p>
-                <p className="text-xl font-semibold text-high-contrast">
-                  {players.reduce((sum, p) => sum + p.notes.length, 0)}
+                  {players.filter(p => p.warning?.isActive).length}
                 </p>
               </div>
             </div>

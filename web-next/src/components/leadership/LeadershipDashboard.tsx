@@ -2,12 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import { ClipboardCheck, Copy, Check, Sparkles, Newspaper } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { LeadershipOnly } from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
 import IngestionMonitor from '@/components/layout/IngestionMonitor';
 import ApplicantsPanel from '@/components/ApplicantsPanel';
+import TodaysBriefing from '@/components/TodaysBriefing';
+import NewsFeed from '@/components/leadership/NewsFeed';
 import { Button } from '@/components/ui';
+import GlassCard from '@/components/ui/GlassCard';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
@@ -229,15 +233,62 @@ export default function LeadershipDashboard() {
   const clanNameFromSelector = useDashboardStore(selectors.clanName);
   const clanDisplayName = (roster?.clanName ?? roster?.meta?.clanName ?? clanNameFromSelector) || '...Heck Yeah...';
   
-  const [showIngestionMonitor, setShowIngestionMonitor] = useState(false);
-  const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
+  const loadSmartInsights = useDashboardStore((state) => state.loadSmartInsights);
+  const smartInsights = useDashboardStore(selectors.smartInsights);
+  const smartInsightsStatus = useDashboardStore(selectors.smartInsightsStatus);
+  const smartInsightsError = useDashboardStore(selectors.smartInsightsError);
+  const gameChatMessages = useMemo(() => smartInsights?.context?.gameChatMessages ?? [], [smartInsights]);
 
-  // Load roster if not already loaded (for clan name in header)
+  // Load roster if not already loaded (for clan name in header and Quick Actions)
   useEffect(() => {
     if (!roster && clanTag) {
+      console.log('[LeadershipDashboard] Loading roster for clanTag:', clanTag);
       void loadRoster(clanTag);
     }
   }, [roster, clanTag, loadRoster]);
+
+  // Load smart insights when component mounts
+  useEffect(() => {
+    if (clanTag) {
+      void loadSmartInsights(clanTag, { force: false });
+    }
+  }, [clanTag, loadSmartInsights]);
+
+  // Also try to load insights if roster isn't loaded but we have a clanTag
+  useEffect(() => {
+    if (!roster && clanTag) {
+      // Try loading insights even without roster
+      void loadSmartInsights(clanTag, { force: false });
+    }
+  }, [roster, clanTag, loadSmartInsights]);
+
+  const [showIngestionMonitor, setShowIngestionMonitor] = useState(false);
+  const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
+  const [copiedMessageIndex, setCopiedMessageIndex] = useState<number | null>(null);
+
+  const handleCopyGameChatMessage = useCallback(async (message: string, index: number) => {
+    try {
+      await navigator.clipboard.writeText(message);
+      setCopiedMessageIndex(index);
+      setTimeout(() => setCopiedMessageIndex(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy message:', err);
+    }
+  }, []);
+
+  const handleRefreshInsights = useCallback(async () => {
+    if (!clanTag) {
+      console.error('[LeadershipDashboard] No clanTag available for loading insights');
+      return;
+    }
+    console.log('[LeadershipDashboard] Refreshing insights for clanTag:', clanTag);
+    try {
+      await loadSmartInsights(clanTag, { force: true });
+      console.log('[LeadershipDashboard] Insights refresh completed');
+    } catch (error) {
+      console.error('[LeadershipDashboard] Failed to refresh insights:', error);
+    }
+  }, [clanTag, loadSmartInsights]);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -577,13 +628,85 @@ export default function LeadershipDashboard() {
             </div>
           )}
 
-          <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
-            <h2 className="text-xl font-semibold text-white mb-4">Applicant Evaluation System</h2>
-            <p className="text-sm text-blue-100/70 mb-6">
-              Evaluate potential clan members and manage your applicant shortlist.
-            </p>
+                 {/* News Feed */}
+                 <GlassCard
+                   title="News Feed"
+                   subtitle="Bullet-point summary of clan state, changes, and notable items"
+                   icon={<Newspaper className="h-5 w-5" />}
+                   className="bg-slate-900/70 border border-slate-800/80"
+                 >
+                   <div className="mb-4 flex items-center justify-between">
+                     <div className="text-xs text-slate-400">
+                       {smartInsightsStatus === 'loading' && 'Loading insights...'}
+                       {smartInsightsStatus === 'error' && smartInsightsError && `Error: ${smartInsightsError}`}
+                       {smartInsightsStatus === 'success' && !smartInsights && 'No insights available yet'}
+                       {smartInsightsStatus === 'success' && smartInsights && 'Insights loaded'}
+                       {!clanTag && <span className="text-amber-400 ml-2">(No clan tag)</span>}
+                     </div>
+                     <Button
+                       onClick={handleRefreshInsights}
+                       disabled={!clanTag || smartInsightsStatus === 'loading'}
+                       variant="outline"
+                       size="sm"
+                       className="text-xs"
+                       title={!clanTag ? `No clan tag available. Current: ${clanTag || 'null'}` : 'Force refresh insights from API'}
+                     >
+                       {smartInsightsStatus === 'loading' ? 'Loading...' : 'Refresh Insights'}
+                     </Button>
+                   </div>
+                   <NewsFeed />
+                 </GlassCard>
+
+          {/* Today's Briefing / AI Insights */}
+          <GlassCard
+            title="Daily Insights"
+            subtitle="High-level observations and news from the latest data ingestion"
+            icon={<Sparkles className="h-5 w-5" />}
+            className="bg-slate-900/70 border border-slate-800/80"
+          >
+            <TodaysBriefing />
+          </GlassCard>
+
+          {/* Game Chat Messages */}
+          {gameChatMessages.length > 0 && (
+            <GlassCard
+              title="Game Chat Messages"
+              subtitle="Ready-to-paste congratulations and announcements"
+              icon={<Copy className="h-5 w-5" />}
+              className="bg-slate-900/70 border border-slate-800/80"
+            >
+              <div className="space-y-3">
+                {gameChatMessages.map((message, index) => (
+                  <div
+                    key={index}
+                    className="flex items-start justify-between gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-4 hover:bg-slate-800/70 transition-colors"
+                  >
+                    <p className="flex-1 text-sm text-slate-200 whitespace-pre-wrap">{message}</p>
+                    <button
+                      onClick={() => handleCopyGameChatMessage(message, index)}
+                      className="flex-shrink-0 rounded-lg border border-slate-600 bg-slate-700/50 p-2 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+                      title="Copy to clipboard"
+                    >
+                      {copiedMessageIndex === index ? (
+                        <Check className="h-4 w-4 text-emerald-400" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </GlassCard>
+          )}
+
+          <GlassCard
+            title="Applicant Evaluation System"
+            subtitle="Evaluate potential clan members and manage your applicant shortlist"
+            icon={<ClipboardCheck className="h-5 w-5" />}
+            className="bg-slate-900/70 border border-slate-800/80"
+          >
             <ApplicantsPanel defaultClanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
-          </div>
+          </GlassCard>
 
           <JoinerReviewCard clanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
         </div>
