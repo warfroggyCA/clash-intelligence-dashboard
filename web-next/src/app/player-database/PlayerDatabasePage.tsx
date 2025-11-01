@@ -3,12 +3,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { Search, Plus, RefreshCw, User, Calendar, MessageSquare, X } from "lucide-react";
 import dynamic from 'next/dynamic';
+import { useShallow } from 'zustand/react/shallow';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import { normalizeTag } from '@/lib/tags';
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { GlassCard } from '@/components/ui/GlassCard';
+import type { Roster } from '@/types';
 
 // Lazy load components to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -64,6 +67,12 @@ interface PlayerRecord {
 }
 
 export default function PlayerDatabasePage() {
+  const roster = useDashboardStore(useShallow((state) => state.roster)) as Roster | null;
+  const clanNameFromSelector = useDashboardStore(selectors.clanName);
+  const clanName = roster?.clanName ?? roster?.meta?.clanName ?? clanNameFromSelector;
+  const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '#2PR8R8V8P');
+  const loadRoster = useDashboardStore((state) => state.loadRoster);
+  
   const [players, setPlayers] = useState<PlayerRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,6 +98,58 @@ export default function PlayerDatabasePage() {
   const [showArchived, setShowArchived] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'current' | 'former'>('all');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cacheTimestamp, setCacheTimestamp] = useState<string | null>(null);
+
+  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
+
+  // Get cache key based on showArchived flag
+  const getCacheKey = useCallback((archived: boolean) => {
+    return `playerDatabase:cache:v1:${archived ? 'archived' : 'active'}`;
+  }, []);
+
+  // Load cached data from localStorage
+  const loadCachedData = useCallback((): PlayerRecord[] | null => {
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      const cacheKey = getCacheKey(showArchived);
+      const cached = localStorage.getItem(cacheKey);
+      if (!cached) return null;
+      
+      const parsed = JSON.parse(cached);
+      if (!parsed.data || !parsed.timestamp) return null;
+      
+      const age = Date.now() - parsed.timestamp;
+      if (age > CACHE_TTL_MS) {
+        // Cache expired, remove it
+        localStorage.removeItem(cacheKey);
+        return null;
+      }
+      
+      setCacheTimestamp(new Date(parsed.timestamp).toISOString());
+      return parsed.data as PlayerRecord[];
+    } catch (error) {
+      console.error('Failed to load cached player database:', error);
+      return null;
+    }
+  }, [showArchived, getCacheKey]);
+
+  // Save data to cache
+  const saveToCache = useCallback((data: PlayerRecord[]) => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      const cacheKey = getCacheKey(showArchived);
+      const cacheData = {
+        data,
+        timestamp: Date.now(),
+      };
+      localStorage.setItem(cacheKey, JSON.stringify(cacheData));
+      setCacheTimestamp(new Date().toISOString());
+    } catch (error) {
+      console.error('Failed to save player database cache:', error);
+    }
+  }, [showArchived, getCacheKey]);
 
   // Handle column sorting
   const handleSort = (field: 'name' | 'lastUpdated' | 'noteCount' | 'status') => {
@@ -120,6 +181,108 @@ export default function PlayerDatabasePage() {
     return [];
   }, []);
 
+  // Function to fetch player names from the player-resolver API (uses historical snapshots)
+  const fetchPlayerNamesFromResolver = useCallback(async () => {
+    try {
+      const response = await fetch('/api/player-resolver');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.data?.playerNames) {
+          const nameMap: Record<string, string> = {};
+          Object.entries(data.data.playerNames).forEach(([tag, name]: [string, any]) => {
+            if (tag && name) {
+              const normalizedTag = normalizeTag(tag) || tag;
+              nameMap[normalizedTag] = String(name);
+            }
+          });
+          return nameMap;
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch player names from resolver:', error);
+    }
+    return {};
+  }, []);
+
+  // Function to fetch player names directly from Clash of Clans API
+  const fetchPlayerNamesFromCoC = useCallback(async (playerTags: string[]) => {
+    if (playerTags.length === 0) return {};
+    
+    // Filter out invalid test tags
+    const validTags = playerTags.filter(tag => {
+      const upperTag = tag.toUpperCase();
+      return !upperTag.includes('TEST');
+    });
+    
+    if (validTags.length === 0) return {};
+    
+    try {
+      const tagsParam = validTags.map(tag => encodeURIComponent(tag)).join(',');
+      const response = await fetch(`/api/coc-player-names?tags=${tagsParam}`);
+      
+      if (!response.ok) {
+        console.error(`[fetchPlayerNamesFromCoC] API returned ${response.status}:`, await response.text().catch(() => ''));
+        return {};
+      }
+      
+      const data = await response.json();
+      const nameMap: Record<string, string> = {};
+      
+      if (data.success && Array.isArray(data.data)) {
+        data.data.forEach((player: any) => {
+          if (player.tag && player.name) {
+            const normalizedTag = normalizeTag(player.tag) || player.tag;
+            nameMap[normalizedTag] = String(player.name);
+          }
+        });
+        console.log(`[fetchPlayerNamesFromCoC] Fetched ${Object.keys(nameMap).length} names from Clash API`);
+      } else {
+        console.error('[fetchPlayerNamesFromCoC] Invalid response format:', data);
+      }
+      
+      return nameMap;
+    } catch (error) {
+      console.error('Failed to fetch player names from Clash API:', error);
+    }
+    return {};
+  }, []);
+
+  // Function to fetch player names from canonical snapshots for tags not in current roster
+  const fetchPlayerNamesFromCanonical = useCallback(async (playerTags: string[]) => {
+    if (playerTags.length === 0) return {};
+    
+    try {
+      // Ensure all tags are normalized before sending
+      const normalizedTags = playerTags.map(tag => normalizeTag(tag) || tag).filter(Boolean);
+      const tagsParam = normalizedTags.map(tag => encodeURIComponent(tag)).join(',');
+      const response = await fetch(`/api/player-names?tags=${tagsParam}`);
+      
+      if (!response.ok) {
+        console.error(`[fetchPlayerNamesFromCanonical] API returned ${response.status}:`, await response.text().catch(() => ''));
+        return {};
+      }
+      
+      const data = await response.json();
+      const nameMap: Record<string, string> = {};
+      
+      if (data.success && Array.isArray(data.data)) {
+        data.data.forEach((player: any) => {
+          if (player.tag && player.name) {
+            const normalizedTag = normalizeTag(player.tag) || player.tag;
+            nameMap[normalizedTag] = player.name;
+          }
+        });
+      } else {
+        console.error('[fetchPlayerNamesFromCanonical] Invalid response format:', data);
+      }
+      
+      return nameMap;
+    } catch (error) {
+      console.error('Failed to fetch player names from canonical snapshots:', error);
+    }
+    return {};
+  }, []);
+
   // Function to load player data from Supabase only
   const loadFromSupabase = useCallback(async () => {
     const clanTag = '#2PR8R8V8P'; // Your clan tag
@@ -139,11 +302,25 @@ export default function PlayerDatabasePage() {
   }, [showArchived]);
 
   // Function to load player database from Supabase only
-  const loadPlayerDatabase = useCallback(async () => {
+  const loadPlayerDatabase = useCallback(async (forceRefresh = false) => {
     if (typeof window === 'undefined') return;
 
-    try {
+    // Try to load from cache first (unless forcing refresh)
+    if (!forceRefresh) {
+      const cachedData = loadCachedData();
+      if (cachedData && cachedData.length > 0) {
+        console.log('[PlayerDatabase] Loading from cache');
+        setPlayers(cachedData);
+        setLoading(false);
+        // Continue fetching fresh data in background
+      } else {
+        setLoading(true);
+      }
+    } else {
       setLoading(true);
+    }
+
+    try {
       
       // Always fetch current members fresh to ensure we have the latest data
       const rosterMembers = await fetchCurrentMembers();
@@ -177,8 +354,9 @@ export default function PlayerDatabasePage() {
         notesData.data.forEach((note: any) => {
           const tagKey = normalizeTag(note.player_tag) || note.player_tag;
           if (!tagKey) return;
-          if (note.player_name && !playerNames[tagKey]) {
-            playerNames[tagKey] = note.player_name;
+          // Prioritize stored player_name from the note itself - check ALL notes for this tag
+          if (note.player_name && note.player_name.trim() && note.player_name !== 'Unknown Player' && !playerNames[tagKey]) {
+            playerNames[tagKey] = note.player_name.trim();
           }
           if (!playerDataMap.has(tagKey)) {
             playerDataMap.set(tagKey, {
@@ -186,9 +364,16 @@ export default function PlayerDatabasePage() {
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: playerNames[tagKey] || note.player_name || 'Unknown Player',
+              name: playerNames[tagKey] || (note.player_name && note.player_name.trim() && note.player_name !== 'Unknown Player' ? note.player_name.trim() : 'Unknown Player'),
               lastUpdated: note.created_at
             });
+          } else {
+            // If we already have this player but found a name in this note, update it
+            const existingData = playerDataMap.get(tagKey)!;
+            if (note.player_name && note.player_name.trim() && note.player_name !== 'Unknown Player' && existingData.name === 'Unknown Player') {
+              existingData.name = note.player_name.trim();
+              playerNames[tagKey] = note.player_name.trim();
+            }
           }
           const playerData = playerDataMap.get(tagKey)!;
           
@@ -213,8 +398,9 @@ export default function PlayerDatabasePage() {
         warningsData.data.forEach((warning: any) => {
           const tagKey = normalizeTag(warning.player_tag) || warning.player_tag;
           if (!tagKey) return;
-          if (warning.player_name && !playerNames[tagKey]) {
-            playerNames[tagKey] = warning.player_name;
+          // Prioritize stored player_name from the warning itself - check ALL warnings for this tag
+          if (warning.player_name && warning.player_name.trim() && warning.player_name !== 'Unknown Player' && !playerNames[tagKey]) {
+            playerNames[tagKey] = warning.player_name.trim();
           }
           if (!playerDataMap.has(tagKey)) {
             playerDataMap.set(tagKey, {
@@ -222,9 +408,16 @@ export default function PlayerDatabasePage() {
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: playerNames[tagKey] || warning.player_name || 'Unknown Player',
+              name: playerNames[tagKey] || (warning.player_name && warning.player_name.trim() && warning.player_name !== 'Unknown Player' ? warning.player_name.trim() : 'Unknown Player'),
               lastUpdated: warning.created_at
             });
+          } else {
+            // If we already have this player but found a name in this warning, update it
+            const existingData = playerDataMap.get(tagKey)!;
+            if (warning.player_name && warning.player_name.trim() && warning.player_name !== 'Unknown Player' && existingData.name === 'Unknown Player') {
+              existingData.name = warning.player_name.trim();
+              playerNames[tagKey] = warning.player_name.trim();
+            }
           }
           const playerData = playerDataMap.get(tagKey)!;
           
@@ -250,8 +443,9 @@ export default function PlayerDatabasePage() {
         actionsData.data.forEach((action: any) => {
           const tagKey = normalizeTag(action.player_tag) || action.player_tag;
           if (!tagKey) return;
-          if (action.player_name && !playerNames[tagKey]) {
-            playerNames[tagKey] = action.player_name;
+          // Prioritize stored player_name from the action itself - check ALL actions for this tag
+          if (action.player_name && action.player_name.trim() && action.player_name !== 'Unknown Player' && !playerNames[tagKey]) {
+            playerNames[tagKey] = action.player_name.trim();
           }
           if (!playerDataMap.has(tagKey)) {
             playerDataMap.set(tagKey, {
@@ -259,9 +453,16 @@ export default function PlayerDatabasePage() {
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              name: playerNames[tagKey] || action.player_name || 'Unknown Player',
+              name: playerNames[tagKey] || (action.player_name && action.player_name.trim() && action.player_name !== 'Unknown Player' ? action.player_name.trim() : 'Unknown Player'),
               lastUpdated: action.created_at
             });
+          } else {
+            // If we already have this player but found a name in this action, update it
+            const existingData = playerDataMap.get(tagKey)!;
+            if (action.player_name && action.player_name.trim() && action.player_name !== 'Unknown Player' && existingData.name === 'Unknown Player') {
+              existingData.name = action.player_name.trim();
+              playerNames[tagKey] = action.player_name.trim();
+            }
           }
           const playerData = playerDataMap.get(tagKey)!;
           
@@ -293,13 +494,66 @@ export default function PlayerDatabasePage() {
         });
       }
 
+      // Fetch missing player names from canonical snapshots
+      // Check both playerNames map and playerDataMap for missing names
+      // Filter out invalid test tags
+      const missingTags = Array.from(playerDataMap.keys()).filter(tag => {
+        // Skip invalid test tags
+        if (tag.includes('TEST') || tag.includes('test')) {
+          return false;
+        }
+        const hasName = playerNames[tag] && playerNames[tag] !== 'Unknown Player';
+        const dataName = playerDataMap.get(tag)?.name;
+        const hasDataName = dataName && dataName !== 'Unknown Player';
+        return !hasName && !hasDataName;
+      });
+      
+      if (missingTags.length > 0) {
+        console.log(`Fetching names for ${missingTags.length} missing tags:`, missingTags.slice(0, 5));
+        
+        // First try the player-resolver API (uses historical snapshots)
+        const resolverNames = await fetchPlayerNamesFromResolver();
+        if (Object.keys(resolverNames).length > 0) {
+          console.log(`Fetched ${Object.keys(resolverNames).length} names from resolver`);
+          Object.assign(playerNames, resolverNames);
+        }
+        
+        // Then try canonical snapshots for any still missing
+        const stillMissing = missingTags.filter(tag => !playerNames[tag] || playerNames[tag] === 'Unknown Player');
+        if (stillMissing.length > 0) {
+          console.log(`Fetching ${stillMissing.length} remaining tags from canonical snapshots`);
+          const canonicalNames = await fetchPlayerNamesFromCanonical(stillMissing);
+          console.log(`Fetched ${Object.keys(canonicalNames).length} names from canonical:`, Object.keys(canonicalNames).slice(0, 5));
+          Object.assign(playerNames, canonicalNames);
+        }
+        
+        // Finally, try Clash API directly for any still missing
+        const finalMissing = missingTags.filter(tag => !playerNames[tag] || playerNames[tag] === 'Unknown Player');
+        if (finalMissing.length > 0) {
+          console.log(`Fetching ${finalMissing.length} remaining tags from Clash API`);
+          const cocNames = await fetchPlayerNamesFromCoC(finalMissing);
+          console.log(`Fetched ${Object.keys(cocNames).length} names from Clash API`);
+          Object.assign(playerNames, cocNames);
+        }
+        
+        // Update names in playerDataMap
+        playerDataMap.forEach((data, tag) => {
+          if (playerNames[tag] && (data.name === 'Unknown Player' || !data.name)) {
+            data.name = playerNames[tag];
+          }
+        });
+      }
+
       // Convert to PlayerRecord format
       playerDataMap.forEach((data, tag) => {
         const isCurrentMember = currentMemberTagsSet.has(tag);
         
+        // Use updated name from playerNames map if available
+        const finalName = playerNames[tag] || data.name || 'Unknown Player';
+        
         playerRecords.push({
           tag,
-          name: data.name,
+          name: finalName,
           notes: data.notes,
           warning: data.warnings.length > 0 ? data.warnings[0] : undefined,
           tenureActions: data.tenureActions,
@@ -329,12 +583,24 @@ export default function PlayerDatabasePage() {
       // Sort by last updated
       playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
       setPlayers(playerRecords);
+      
+      // Save to cache
+      saveToCache(playerRecords);
+      
       setLoading(false);
     } catch (error) {
       console.error('Failed to load player database:', error);
+      setErrorMessage('Failed to load player database. Please try again.');
       setLoading(false);
     }
-  }, [fetchCurrentMembers, loadFromSupabase]);
+  }, [fetchCurrentMembers, loadFromSupabase, fetchPlayerNamesFromCanonical, fetchPlayerNamesFromResolver, fetchPlayerNamesFromCoC, loadCachedData, saveToCache, showArchived]);
+
+  // Load roster if not already loaded (for clan name in header)
+  useEffect(() => {
+    if (!roster && clanTag) {
+      void loadRoster(clanTag);
+    }
+  }, [roster, clanTag, loadRoster]);
 
   useEffect(() => {
     loadPlayerDatabase();
@@ -590,8 +856,22 @@ export default function PlayerDatabasePage() {
     }
   };
 
+  // Invalidate cache helper
+  const invalidateCache = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      // Invalidate both archived and active caches
+      localStorage.removeItem('playerDatabase:cache:v1:archived');
+      localStorage.removeItem('playerDatabase:cache:v1:active');
+      setCacheTimestamp(null);
+    } catch (error) {
+      console.error('Failed to invalidate cache:', error);
+    }
+  }, []);
+
   const handleRefresh = () => {
-    loadPlayerDatabase();
+    invalidateCache();
+    loadPlayerDatabase(true); // Force refresh
   };
 
   // Note management functions
@@ -623,7 +903,8 @@ export default function PlayerDatabasePage() {
       });
 
       if (response.ok) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true); // Force refresh after mutation
         setNewNoteText('');
         setShowAddNoteModal(false);
         setErrorMessage(null);
@@ -661,7 +942,8 @@ export default function PlayerDatabasePage() {
       });
 
       if (response.ok) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true);
         setEditingNote(null);
         setNewNoteText('');
       } else {
@@ -670,7 +952,7 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Error editing note:', error);
     }
-  }, [players, loadPlayerDatabase]);
+  }, [players, loadPlayerDatabase, invalidateCache]);
 
   const deleteNote = useCallback(async (playerTag: string, noteIndex: number) => {
     try {
@@ -685,14 +967,15 @@ export default function PlayerDatabasePage() {
       });
 
       if (response.ok) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true);
       } else {
         console.error('Failed to delete note:', await response.text());
       }
     } catch (error) {
       console.error('Error deleting note:', error);
     }
-  }, [players, loadPlayerDatabase]);
+  }, [players, loadPlayerDatabase, invalidateCache]);
 
   const openAddNoteModal = useCallback(() => {
     setNewNoteText('');
@@ -737,7 +1020,8 @@ export default function PlayerDatabasePage() {
 
       const result = await response.json();
       if (result.success) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true);
         setNewPlayerTag('');
         setNewPlayerName('');
         setNewNoteText('');
@@ -787,7 +1071,8 @@ export default function PlayerDatabasePage() {
       });
 
       if (response.ok) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true);
         setWarningNoteText('');
         setShowWarningModal(false);
         setErrorMessage(null);
@@ -811,7 +1096,8 @@ export default function PlayerDatabasePage() {
       });
 
       if (response.ok) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true);
       } else {
         console.error('Failed to remove warning:', await response.text());
       }
@@ -856,7 +1142,8 @@ export default function PlayerDatabasePage() {
       });
 
       if (response.ok) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true);
       } else {
         console.error('Failed to add tenure action:', await response.text());
       }
@@ -891,7 +1178,8 @@ export default function PlayerDatabasePage() {
       });
 
       if (response.ok) {
-        loadPlayerDatabase();
+        invalidateCache();
+        loadPlayerDatabase(true);
       } else {
         console.error('Failed to add departure action:', await response.text());
       }
@@ -1043,7 +1331,7 @@ export default function PlayerDatabasePage() {
 
   if (loading) {
     return (
-      <DashboardLayout>
+      <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex items-center space-x-3">
             <RefreshCw className="w-5 h-5 animate-spin text-brand-primary" />
@@ -1055,7 +1343,7 @@ export default function PlayerDatabasePage() {
   }
 
   return (
-    <DashboardLayout>
+    <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
       <div className="space-y-6">
         {/* Header */}
         <GlassCard 
@@ -1063,11 +1351,17 @@ export default function PlayerDatabasePage() {
           subtitle="View notes and history for all clan members (current and former)"
           actions={
             <div className="flex items-center space-x-3">
+              {cacheTimestamp && (
+                <div className="text-xs text-brand-text-secondary/70">
+                  Cached: {safeLocaleString(new Date(cacheTimestamp))}
+                </div>
+              )}
               <Button
                 variant="secondary"
                 size="sm"
                 onClick={handleRefresh}
                 className="flex items-center space-x-2"
+                title="Refresh data from server (clears cache)"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Refresh</span>

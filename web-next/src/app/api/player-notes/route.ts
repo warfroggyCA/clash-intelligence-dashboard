@@ -1,19 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createApiContext } from '@/lib/api-context';
+import { normalizeTag } from '@/lib/tags';
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
     const { searchParams } = new URL(request.url);
-    const clanTag = searchParams.get('clanTag');
-    const playerTag = searchParams.get('playerTag');
+    const clanTagParam = searchParams.get('clanTag');
+    const playerTagParam = searchParams.get('playerTag');
     const includeArchived = searchParams.get('includeArchived') === 'true';
     
-    if (!clanTag) {
+    if (!clanTagParam) {
       return json({ success: false, error: 'clanTag is required' }, { status: 400 });
     }
+    
+    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
+    const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
     
     const supabase = getSupabaseAdminClient();
     let query = supabase
@@ -50,11 +54,14 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { clanTag, playerTag, playerName, note, customFields = {}, createdBy } = body;
+    const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, customFields = {}, createdBy } = body;
     
-    if (!clanTag || !playerTag || !note) {
+    if (!clanTagParam || !playerTagParam || !note) {
       return json({ success: false, error: 'clanTag, playerTag, and note are required' }, { status: 400 });
     }
+    
+    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
+    const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
     
     const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase

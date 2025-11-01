@@ -47,7 +47,15 @@ function buildTimeline(rows: CanonicalSnapshotRow[]): TimelineComputation {
     return { timeline: [], lastWeekTrophies: null, seasonTotalTrophies: null };
   }
 
+  const RANKED_START_DATE = '2025-10-06'; // Ranked League started Oct 6, 2025
+
   const chronological = [...rows]
+    .filter((row) => {
+      // Filter out dates before Ranked League start (Oct 6, 2025)
+      if (!row.snapshot_date) return false;
+      const snapshotDateStr = row.snapshot_date.toString().substring(0, 10);
+      return snapshotDateStr >= RANKED_START_DATE;
+    })
     .filter((row) => row.payload?.schemaVersion === CANONICAL_MEMBER_SNAPSHOT_VERSION)
     .sort((a, b) => {
       const aDate = a.snapshot_date ? new Date(`${a.snapshot_date}T00:00:00Z`).getTime() : 0;
@@ -218,10 +226,13 @@ async function fetchCanonicalSnapshots(
   clanTag: string | null,
   limit = 120,
 ): Promise<CanonicalSnapshotRow[]> {
+  const RANKED_START_DATE = '2025-10-06'; // Filter at SQL level to exclude Oct 5 and earlier
+  
   const baseSelect = supabase
     .from('canonical_member_snapshots')
     .select('clan_tag, snapshot_date, payload')
     .eq('player_tag', playerTag)
+    .gte('snapshot_date', RANKED_START_DATE) // Only fetch Oct 6, 2025 onwards
     .order('snapshot_date', { ascending: false })
     .limit(limit);
 

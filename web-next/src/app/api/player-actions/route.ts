@@ -11,14 +11,17 @@ export async function GET(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url);
-    const clanTag = searchParams.get('clanTag');
-    const playerTag = searchParams.get('playerTag');
+    const clanTagParam = searchParams.get('clanTag');
+    const playerTagParam = searchParams.get('playerTag');
     const actionType = searchParams.get('type'); // 'tenure' or 'departure'
     const includeArchived = searchParams.get('includeArchived') === 'true';
     
-    if (!clanTag) {
+    if (!clanTagParam) {
       return json({ success: false, error: 'clanTag is required' }, { status: 400 });
     }
+    
+    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
+    const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
     
     const supabase = getSupabaseAdminClient();
     let data: any[] = [];

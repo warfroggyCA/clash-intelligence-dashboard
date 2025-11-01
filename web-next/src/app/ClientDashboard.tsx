@@ -62,7 +62,7 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
   const leadership = useLeadership();
 
   // Actions don't change, so they're safe to destructure
-  const { setClanTag, setHomeClan, setRoster, loadRoster, refreshData } = useDashboardStore();
+  const { setClanTag, setHomeClan, setRoster, loadRoster, refreshData, checkDepartureNotifications, checkJoinerNotifications } = useDashboardStore();
   
   const dataAgeHours = useDashboardStore(selectors.dataAge);
   const hasInitialized = useRef(false);
@@ -100,7 +100,13 @@ function ClientDashboardInner({ initialRoster, initialClanTag }: Props) {
     if (initialRoster) {
       setRoster(initialRoster);
     }
-  }, [initialClanTag, initialRoster, setClanTag, setRoster]);
+    
+    // Check for notifications on mount (only for leadership)
+    if (leadership.check('canManageChangeDashboard')) {
+      void checkDepartureNotifications();
+      void checkJoinerNotifications();
+    }
+  }, [initialClanTag, initialRoster, setClanTag, setRoster, leadership, checkDepartureNotifications, checkJoinerNotifications]);
 
   // Auto-load data if we don't have initial data from server
   useEffect(() => {

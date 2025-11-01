@@ -52,6 +52,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
     refreshData,
     departureNotifications,
     setShowDepartureManager,
+    joinerNotifications,
+    setShowJoinerManager,
     setShowAccessManager,
     setShowIngestionMonitor,
     currentAccessMember,
@@ -227,7 +229,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
           </div>
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center justify-center gap-3">
-              <div className="relative flex h-12 w-12 items-center justify-center sm:h-14 sm:w-14">
+              <Link href="/" className="relative flex h-12 w-12 items-center justify-center sm:h-14 sm:w-14 hover:opacity-80 transition-opacity cursor-pointer" title="Go to Roster">
                 <Image
                   src={logoSrc}
                   alt="Clan Logo"
@@ -236,13 +238,15 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                   className="rounded-3xl object-cover"
                   priority
                 />
-              </div>
-              <div
-                className={`font-semibold leading-tight text-slate-100 transition-all duration-200 ${isScrolled ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}
+              </Link>
+              <Link
+                href="/"
+                className={`font-semibold leading-tight text-slate-100 transition-all duration-200 hover:text-white hover:scale-105 cursor-pointer ${isScrolled ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}
                 style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
+                title="Go to Roster"
               >
                 {headerTitle}
-              </div>
+              </Link>
             </div>
           </div>
 
@@ -373,6 +377,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                     <FontSizeControl />
                   </div>
                   <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
+                    {joinerNotifications > 0 && (
+                      <button
+                        onClick={() => setShowJoinerManager(true)}
+                        className="relative flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
+                      >
+                        🎯 New Joiners
+                        <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-600 text-[10px] font-semibold text-white">
+                          {joinerNotifications}
+                        </span>
+                      </button>
+                    )}
                     {departureNotifications > 0 && (
                       <button
                         onClick={() => setShowDepartureManager(true)}

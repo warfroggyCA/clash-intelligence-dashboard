@@ -1,18 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { createApiContext } from '@/lib/api-context';
+import { normalizeTag } from '@/lib/tags';
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-warnings');
   
   try {
     const { searchParams } = new URL(request.url);
-    const clanTag = searchParams.get('clanTag');
-    const playerTag = searchParams.get('playerTag');
+    const clanTagParam = searchParams.get('clanTag');
+    const playerTagParam = searchParams.get('playerTag');
     
-    if (!clanTag) {
+    if (!clanTagParam) {
       return json({ success: false, error: 'clanTag is required' }, { status: 400 });
     }
+    
+    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
+    const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
     
     const supabase = getSupabaseAdminClient();
     let query = supabase
@@ -44,11 +48,14 @@ export async function POST(request: NextRequest) {
   
   try {
     const body = await request.json();
-    const { clanTag, playerTag, playerName, warningNote, createdBy } = body;
+    const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, warningNote, createdBy } = body;
     
-    if (!clanTag || !playerTag || !warningNote) {
+    if (!clanTagParam || !playerTagParam || !warningNote) {
       return json({ success: false, error: 'clanTag, playerTag, and warningNote are required' }, { status: 400 });
     }
+    
+    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
+    const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
     
     const supabase = getSupabaseAdminClient();
     
@@ -90,12 +97,15 @@ export async function DELETE(request: NextRequest) {
   
   try {
     const { searchParams } = new URL(request.url);
-    const clanTag = searchParams.get('clanTag');
-    const playerTag = searchParams.get('playerTag');
+    const clanTagParam = searchParams.get('clanTag');
+    const playerTagParam = searchParams.get('playerTag');
     
-    if (!clanTag || !playerTag) {
+    if (!clanTagParam || !playerTagParam) {
       return json({ success: false, error: 'clanTag and playerTag are required' }, { status: 400 });
     }
+    
+    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
+    const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
     
     const supabase = getSupabaseAdminClient();
     const { error } = await supabase
