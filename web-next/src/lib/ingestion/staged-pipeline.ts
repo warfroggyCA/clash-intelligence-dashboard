@@ -1071,7 +1071,7 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
     // Write canonical_member_snapshots for API consumption
     await logPhase(jobId, 'writeStats', 'info', 'Writing canonical member snapshots');
     const { buildCanonicalMemberSnapshot } = await import('@/lib/canonical-member');
-    const snapshotDate = snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : null;
+    // snapshotDate already defined above at line 960
     const totalTrophies = transformedData.memberData.reduce((sum, m) => sum + (m.trophies || 0), 0);
     const totalDonations = transformedData.memberData.reduce((sum, m) => sum + (m.donations || 0), 0);
     
@@ -1106,7 +1106,7 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         clanName: transformedData.clanData.name,
         snapshotId: latestSnapshot.id,
         fetchedAt: snapshot.fetchedAt,
-        computedAt: snapshot.metadata?.computedAt ?? null,
+        computedAt: null, // computed_at is set in writeSnapshot phase, not available here
         memberCount: transformedData.memberData.length,
         totalTrophies,
         totalDonations,
@@ -1142,12 +1142,14 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
             stars: enriched.warStars ?? null,
             attackWins: enriched.attackWins ?? null,
             defenseWins: enriched.defenseWins ?? null,
+            preference: enriched.warPreference ?? null,
           },
           builderBase: {
             hallLevel: enriched.builderHallLevel ?? null,
             trophies: enriched.versusTrophies ?? null,
             battleWins: enriched.versusBattleWins ?? null,
             leagueId: enriched.builderLeagueId ?? null,
+            leagueName: enriched.builderLeagueName ?? null,
           },
           capitalContributions: enriched.capitalContributions ?? null,
           pets: enriched.petLevels ?? null,
@@ -1160,6 +1162,11 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
           bestTrophies: enriched.bestTrophies ?? null,
           bestVersusTrophies: enriched.bestVersusTrophies ?? null,
           superTroopsActive: enriched.superTroopsActive ?? null,
+          townHallWeaponLevel: detail?.townHallWeaponLevel ?? null,
+          clanRank: detail?.clanRank ?? null,
+          previousClanRank: detail?.previousClanRank ?? null,
+          labels: detail?.labels ?? null,
+          legendStatistics: detail?.legendStatistics ?? null,
           tenure: {
             days: snapshotStats.find(s => s.member_id === memberIdByTag.get(normalized))?.tenure_days ?? null,
             asOf: snapshotStats.find(s => s.member_id === memberIdByTag.get(normalized))?.tenure_as_of ?? null,
