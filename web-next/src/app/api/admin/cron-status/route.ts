@@ -4,72 +4,87 @@ import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
+/**
+ * Cron Status Endpoint
+ * Returns the status of cron job executions and data freshness
+ */
 export async function GET(request: NextRequest) {
   try {
     const supabase = getSupabaseAdminClient();
     
-    // Get recent cron executions
-    const { data: cronLogs, error } = await supabase
+    // Get recent cron executions from ingest_logs
+    const { data: cronLogs, error: logsError } = await supabase
       .from('ingest_logs')
       .select('*')
       .eq('job_name', 'daily-ingestion-cron')
       .order('started_at', { ascending: false })
-      .limit(50);
+      .limit(10);
     
-    if (error) {
-      throw new Error(`Failed to fetch cron logs: ${error.message}`);
+    if (logsError) {
+      console.error('[cron-status] Error fetching logs:', logsError);
     }
     
-    // Analyze execution patterns
-    const today = new Date().toISOString().split('T')[0];
-    const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // Get latest snapshot dates for each clan
+    const { data: latestSnapshots, error: snapshotError } = await supabase
+      .from('canonical_member_snapshots')
+      .select('clan_tag, snapshot_date')
+      .order('snapshot_date', { ascending: false });
     
-    const todayExecutions = cronLogs?.filter(log => 
-      log.started_at?.startsWith(today)
-    ) || [];
+    if (snapshotError) {
+      console.error('[cron-status] Error fetching snapshots:', snapshotError);
+    }
     
-    const yesterdayExecutions = cronLogs?.filter(log => 
-      log.started_at?.startsWith(yesterday)
-    ) || [];
+    // Group by clan_tag and get the latest date for each
+    const latestByClan = new Map<string, string>();
+    for (const snap of latestSnapshots || []) {
+      if (!snap.clan_tag || !snap.snapshot_date) continue;
+      const current = latestByClan.get(snap.clan_tag);
+      if (!current || snap.snapshot_date > current) {
+        latestByClan.set(snap.clan_tag, snap.snapshot_date);
+      }
+    }
     
-    // Count successful vs failed executions
-    const todayStats = {
-      total: todayExecutions.length,
-      successful: todayExecutions.filter(log => log.status === 'completed').length,
-      failed: todayExecutions.filter(log => log.status === 'failed').length,
-      running: todayExecutions.filter(log => log.status === 'running').length
-    };
+    // Get current date
+    const currentDateUTC = new Date().toISOString().split('T')[0];
     
-    const yesterdayStats = {
-      total: yesterdayExecutions.length,
-      successful: yesterdayExecutions.filter(log => log.status === 'completed').length,
-      failed: yesterdayExecutions.filter(log => log.status === 'failed').length,
-      running: yesterdayExecutions.filter(log => log.status === 'running').length
-    };
+    // Check for stale data
+    const staleClans: Array<{ clanTag: string; snapshotDate: string; daysOld: number }> = [];
+    for (const [clanTag, snapshotDate] of latestByClan.entries()) {
+      const snapshotDateOnly = snapshotDate.split('T')[0];
+      if (currentDateUTC > snapshotDateOnly) {
+        const daysDiff = Math.floor(
+          (new Date(currentDateUTC).getTime() - new Date(snapshotDateOnly).getTime()) / (1000 * 60 * 60 * 24)
+        );
+        staleClans.push({
+          clanTag,
+          snapshotDate: snapshotDateOnly,
+          daysOld: daysDiff,
+        });
+      }
+    }
     
     return NextResponse.json({
       success: true,
-      data: {
-        today: {
-          date: today,
-          stats: todayStats,
-          executions: todayExecutions
-        },
-        yesterday: {
-          date: yesterday,
-          stats: yesterdayStats,
-          executions: yesterdayExecutions
-        },
-        recent_logs: cronLogs?.slice(0, 10) || []
-      }
+      currentDate: currentDateUTC,
+      cronExecutions: cronLogs || [],
+      latestSnapshots: Array.from(latestByClan.entries()).map(([clanTag, date]) => ({
+        clanTag,
+        snapshotDate: date.split('T')[0],
+        isStale: currentDateUTC > date.split('T')[0],
+      })),
+      staleClans,
+      summary: {
+        totalCronExecutions: cronLogs?.length || 0,
+        recentSuccesses: cronLogs?.filter(log => log.status === 'completed').length || 0,
+        recentFailures: cronLogs?.filter(log => log.status === 'failed').length || 0,
+        totalClans: latestByClan.size,
+        staleClanCount: staleClans.length,
+      },
     });
   } catch (error: any) {
-    console.error('[Cron Status] Failed to fetch status:', error);
+    console.error('[cron-status] Error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: error?.message || 'Internal Server Error'
-      }, 
+      { success: false, error: error.message || 'Internal server error' },
       { status: 500 }
     );
   }

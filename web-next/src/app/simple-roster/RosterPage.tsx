@@ -184,6 +184,8 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const [sortKey, setSortKey] = useState<SortKey>('league');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const lastRefreshRef = useRef<number>(0);
+  const staleCheckRef = useRef<boolean>(false);
   
   // Expose refresh function globally for DashboardLayout
   useEffect(() => {
@@ -395,13 +397,27 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           hasData: !!apiData.data,
           hasClan: !!apiData.data?.clan,
           hasMembers: !!apiData.data?.members,
-          memberCount: apiData.data?.members?.length
+          memberCount: apiData.data?.members?.length,
+          dateInfo: apiData.data?.dateInfo
         });
+
+        // Check if data is stale (today > snapshot date)
+        const dateInfo = apiData.data?.dateInfo;
+        if (dateInfo?.isStale) {
+          console.warn('[SimpleRoster] Data is stale:', {
+            currentDate: dateInfo.currentDate,
+            snapshotDate: dateInfo.snapshotDate,
+            isStale: dateInfo.isStale
+          });
+          // Note: We'll still display the data, but show a warning
+          // The cron jobs should have run, but if they didn't, we'll show stale data
+        }
 
         const transformed = transformRosterApiResponse(apiData);
         console.log('[SimpleRoster] Transformed roster:', {
           clanName: transformed.clanName,
           memberCount: transformed.members.length,
+          snapshotDate: transformed.snapshotMetadata?.snapshotDate,
           sampleMember: transformed.members[0] ? {
             name: transformed.members[0].name,
             tag: transformed.members[0].tag,
@@ -430,6 +446,54 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
       cancelled = true;
     };
   }, [refreshTrigger, initialRoster]);
+  
+  // Check for stale data on mount and periodically (with cooldown to prevent infinite loops)
+  useEffect(() => {
+    if (!roster?.snapshotMetadata?.snapshotDate) return;
+    
+    const snapshotDate = roster.snapshotMetadata.snapshotDate;
+    const today = new Date().toISOString().split('T')[0];
+    const snapshotDateOnly = snapshotDate.split('T')[0];
+    
+    // If data is fresh, reset the stale check flag
+    if (today <= snapshotDateOnly) {
+      staleCheckRef.current = false;
+      return;
+    }
+    
+    const checkStaleData = () => {
+      // Prevent checking if we just refreshed (within last 60 seconds)
+      const now = Date.now();
+      if (now - lastRefreshRef.current < 60000) {
+        return;
+      }
+      
+      if (today > snapshotDateOnly && !staleCheckRef.current) {
+        console.warn('[SimpleRoster] Data is stale - triggering refresh', {
+          today,
+          snapshotDate: snapshotDateOnly
+        });
+        staleCheckRef.current = true; // Mark as checked
+        lastRefreshRef.current = now; // Track refresh time
+        // Auto-refresh if data is stale
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+    
+    // Only check once per snapshotDate, not on every render
+    if (!staleCheckRef.current) {
+      checkStaleData();
+    }
+    
+    // Reset stale check flag after 5 minutes to allow re-checking
+    const resetInterval = setTimeout(() => {
+      staleCheckRef.current = false;
+    }, 5 * 60 * 1000);
+    
+    return () => {
+      clearTimeout(resetInterval);
+    };
+  }, [roster?.snapshotMetadata?.snapshotDate]); // Only depend on snapshotDate, not entire roster
 
   if (loading) {
     return (

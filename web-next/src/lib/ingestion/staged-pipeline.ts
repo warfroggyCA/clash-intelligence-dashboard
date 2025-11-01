@@ -1068,11 +1068,134 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
       snapshotStats,
     );
 
+    // Write canonical_member_snapshots for API consumption
+    await logPhase(jobId, 'writeStats', 'info', 'Writing canonical member snapshots');
+    const { buildCanonicalMemberSnapshot } = await import('@/lib/canonical-member');
+    const snapshotDate = snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : null;
+    const totalTrophies = transformedData.memberData.reduce((sum, m) => sum + (m.trophies || 0), 0);
+    const totalDonations = transformedData.memberData.reduce((sum, m) => sum + (m.donations || 0), 0);
+    
+    const canonicalRows = transformedData.memberData.map((member) => {
+      const normalized = normalizeTag(member.tag);
+      const detail = snapshot.playerDetails?.[normalized];
+      const enriched = extractEnrichedFields(detail);
+      
+      // Get league icons - use extracted fields if available, otherwise fall back to detail
+      const leagueIconSmall = member.league_icon_small ?? detail?.league?.iconUrls?.small ?? detail?.league?.badgeUrls?.small ?? null;
+      const leagueIconMedium = member.league_icon_medium ?? detail?.league?.iconUrls?.medium ?? detail?.league?.badgeUrls?.medium ?? null;
+      const rankedIconSmall = detail?.leagueTier?.iconUrls?.small ?? detail?.leagueTier?.badgeUrls?.small ?? null;
+      const rankedIconMedium = detail?.leagueTier?.iconUrls?.medium ?? detail?.leagueTier?.badgeUrls?.medium ?? null;
+      
+      const tournamentStats = member.tournamentStats ?? null;
+      let tournamentFinalTrophies: number | null = null;
+      if (tournamentStats && typeof tournamentStats === 'object') {
+        const offensive = Number((tournamentStats as any).offTrophies ?? 0);
+        const defensive = Number((tournamentStats as any).defTrophies ?? 0);
+        const combined = offensive + defensive;
+        if (Number.isFinite(combined) && combined > 0) {
+          tournamentFinalTrophies = combined;
+        }
+      }
+      const currentRanked = member.ranked_trophies ?? member.battle_mode_trophies ?? member.trophies ?? 0;
+      const rankedSnapshotValue = tournamentFinalTrophies != null && tournamentFinalTrophies > 0 
+        ? tournamentFinalTrophies 
+        : currentRanked;
+      
+      const canonicalSnapshot = buildCanonicalMemberSnapshot({
+        clanTag: transformedData.clanData.tag,
+        clanName: transformedData.clanData.name,
+        snapshotId: latestSnapshot.id,
+        fetchedAt: snapshot.fetchedAt,
+        computedAt: snapshot.metadata?.computedAt ?? null,
+        memberCount: transformedData.memberData.length,
+        totalTrophies,
+        totalDonations,
+        member: {
+          tag: normalized,
+          name: member.name ?? null,
+          role: member.role ?? null,
+          townHallLevel: member.townHallLevel ?? null,
+          trophies: member.trophies ?? null,
+          battleModeTrophies: currentRanked ?? null,
+          league: member.league_id != null || member.league_name != null ? {
+            id: member.league_id ?? null,
+            name: member.league_name ?? null,
+            trophies: member.league_trophies ?? null,
+            iconSmall: leagueIconSmall,
+            iconMedium: leagueIconMedium,
+          } : null,
+          ranked: {
+            trophies: rankedSnapshotValue ?? null,
+            leagueId: member.ranked_league_id ?? null,
+            leagueName: member.ranked_league_name ?? null,
+            iconSmall: rankedIconSmall,
+            iconMedium: rankedIconMedium,
+          },
+          donations: {
+            given: member.donations ?? null,
+            received: member.donations_received ?? null,
+          },
+          activityScore: null, // Will be calculated on read if needed
+          heroLevels: member.hero_levels ?? null,
+          rushPercent: member.rush_percent ?? null,
+          war: {
+            stars: enriched.warStars ?? null,
+            attackWins: enriched.attackWins ?? null,
+            defenseWins: enriched.defenseWins ?? null,
+          },
+          builderBase: {
+            hallLevel: enriched.builderHallLevel ?? null,
+            trophies: enriched.versusTrophies ?? null,
+            battleWins: enriched.versusBattleWins ?? null,
+            leagueId: enriched.builderLeagueId ?? null,
+          },
+          capitalContributions: enriched.capitalContributions ?? null,
+          pets: enriched.petLevels ?? null,
+          equipmentLevels: enriched.equipmentLevels ?? null,
+          achievements: {
+            count: enriched.achievementCount ?? null,
+            score: enriched.achievementScore ?? null,
+          },
+          expLevel: enriched.expLevel ?? null,
+          bestTrophies: enriched.bestTrophies ?? null,
+          bestVersusTrophies: enriched.bestVersusTrophies ?? null,
+          superTroopsActive: enriched.superTroopsActive ?? null,
+          tenure: {
+            days: snapshotStats.find(s => s.member_id === memberIdByTag.get(normalized))?.tenure_days ?? null,
+            asOf: snapshotStats.find(s => s.member_id === memberIdByTag.get(normalized))?.tenure_as_of ?? null,
+          },
+          extras: member.extras ?? null,
+        },
+      });
+      
+      return {
+        clan_tag: transformedData.clanData.tag,
+        player_tag: normalized,
+        snapshot_id: latestSnapshot.id,
+        snapshot_date: canonicalSnapshot.snapshotDate,
+        schema_version: canonicalSnapshot.schemaVersion,
+        payload: canonicalSnapshot,
+      };
+    }).filter(Boolean);
+    
+    if (canonicalRows.length > 0) {
+      const { error: canonicalError } = await supabase
+        .from('canonical_member_snapshots')
+        .upsert(canonicalRows, { onConflict: 'snapshot_id,player_tag', ignoreDuplicates: false });
+      
+      if (canonicalError) {
+        await logPhase(jobId, 'writeStats', 'warn', `Failed to upsert canonical snapshots: ${canonicalError.message}`);
+      } else {
+        await logPhase(jobId, 'writeStats', 'info', `Wrote ${canonicalRows.length} canonical snapshots`);
+      }
+    }
+
     const duration_ms = Date.now() - startTime;
     
     await logPhase(jobId, 'writeStats', 'info', 'Write stats phase completed', {
       statsInserted: snapshotStats.length,
       metricsInserted,
+      canonicalSnapshotsInserted: canonicalRows.length,
     });
 
     return {
