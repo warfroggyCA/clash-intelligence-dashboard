@@ -737,9 +737,9 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         </span>
                       </td>
                       <td className="px-4 py-3 text-center">
-                        <div className="flex items-center justify-center" title={`Town Hall ${player.townHallLevel}`}>
+                        <div className="flex items-center justify-center" title={`Town Hall ${player.townHallLevel ?? '?'}`}>
                           <TownHallBadge
-                            level={player.townHallLevel}
+                            level={player.townHallLevel ?? 0}
                             size="sm"
                             showLevel
                             showBox={false}
