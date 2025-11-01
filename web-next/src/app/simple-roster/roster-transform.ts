@@ -38,10 +38,10 @@ export interface RosterApiResponse {
   error?: string;
 }
 
-export interface RosterMember extends Member {
+export interface RosterMember extends Omit<Member, 'tenure_as_of'> {
   tenureDays?: number | null;
   tenureAsOf?: string | null;
-  tenure_as_of?: string | null;
+  tenure_as_of?: string | null | undefined; // Override to allow null
   lastWeekTrophies?: number | null;
   seasonTotalTrophies?: number | null;
   vip?: {
