@@ -336,8 +336,8 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           comparison = (a.mp || 0) - (b.mp || 0);
           break;
         case 'activity':
-          const aActivity = getMemberActivity(a).score;
-          const bActivity = getMemberActivity(b).score;
+          const aActivity = getMemberActivity(a as Member).score;
+          const bActivity = getMemberActivity(b as Member).score;
           comparison = aActivity - bActivity;
           break;
         case 'donations':
@@ -653,8 +653,8 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
               <tbody className="divide-y divide-brand-border/50">
                 {sortedMembers.map((player, index) => {
                   const roleBadgeVariant = getRoleBadgeVariant(player.role);
-                  const rushPercent = calculateRushPercentage(player);
-                  const activity = getMemberActivity(player);
+                  const rushPercent = calculateRushPercentage(player as Member);
+                  const activity = getMemberActivity(player as Member);
                   const maxHeroes = getHeroCaps(player.townHallLevel);
                   
                   // Rush color coding
@@ -946,8 +946,8 @@ VIP measures comprehensive clan contribution:
         {/* Mobile Cards - Mobile Only */}
         <div className="md:hidden space-y-4">
           {sortedMembers.map((player) => {
-            const rushPercent = calculateRushPercentage(player);
-            const activity = getMemberActivity(player);
+            const rushPercent = calculateRushPercentage(player as Member);
+            const activity = getMemberActivity(player as Member);
             const maxHeroes = getHeroCaps(player.townHallLevel);
             
             const rushColor = rushPercent >= 70 ? 'text-red-600' : 
