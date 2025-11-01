@@ -707,9 +707,9 @@ Player is enrolled but hasn't earned trophies yet this season.`;
                     : 'Member - Standard clan member';
 
                   // Donation tooltip
-                  const donationBalance = player.donationsReceived - player.donations;
-                  const donationTooltip = `Donated: ${player.donations}
-Received: ${player.donationsReceived}
+                  const donationBalance = (player.donationsReceived ?? 0) - (player.donations ?? 0);
+                  const donationTooltip = `Donated: ${player.donations ?? 0}
+Received: ${player.donationsReceived ?? 0}
 Balance: ${donationBalance > 0 ? '+' : ''}${donationBalance}
 
 ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Gives more than receives' : 'Balanced donations'}`;
@@ -994,9 +994,9 @@ Player is enrolled but hasn't earned trophies yet this season.`;
               ? 'Elder - Can invite and donate to clan members'
               : 'Member - Standard clan member';
 
-            const donationBalance = player.donationsReceived - player.donations;
-            const donationTooltip = `Donated: ${player.donations}
-Received: ${player.donationsReceived}
+            const donationBalance = (player.donationsReceived ?? 0) - (player.donations ?? 0);
+            const donationTooltip = `Donated: ${player.donations ?? 0}
+Received: ${player.donationsReceived ?? 0}
 Balance: ${donationBalance > 0 ? '+' : ''}${donationBalance}
 
 ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Gives more than receives' : 'Balanced donations'}`;
