@@ -140,6 +140,9 @@ export function extractWarStats(playerDetail: any) {
     attackWins: playerDetail?.attackWins ?? null,
     defenseWins: playerDetail?.defenseWins ?? null,
     capitalContributions: playerDetail?.clanCapitalContributions ?? null,
+    warPreference: playerDetail?.warPreference === 'in' || playerDetail?.warPreference === 'out' 
+      ? playerDetail.warPreference 
+      : null,
   };
 }
 
@@ -167,9 +170,11 @@ export function extractEnrichedFields(playerDetail: any) {
       versusTrophies: null,
       versusBattleWins: null,
       builderLeagueId: null,
+      builderLeagueName: null,
       warStars: null,
       attackWins: null,
       defenseWins: null,
+      warPreference: null,
       capitalContributions: null,
       maxTroopCount: null,
       maxSpellCount: null,
@@ -196,11 +201,13 @@ export function extractEnrichedFields(playerDetail: any) {
     versusTrophies: builderBase.versusTrophies,
     versusBattleWins: builderBase.versusBattleWins,
     builderLeagueId: builderBase.builderLeagueId,
+    builderLeagueName: builderBase.builderLeagueName,
     
     // War & Raids
     warStars: warStats.warStars,
     attackWins: warStats.attackWins,
     defenseWins: warStats.defenseWins,
+    warPreference: warStats.warPreference,
     capitalContributions: warStats.capitalContributions,
     
     // Troops & Spells
