@@ -83,7 +83,7 @@ export default async function PlayerHistoryPage({ params, searchParams }: Player
 
         {/* Charts Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <TrophyChart data={data.filter(point => {
+          <TrophyChart data={data.filter((point: { date: string; trophies?: number | null; rankedTrophies?: number | null }) => {
             // Filter to only include data from Ranked League start date (Oct 6, 2025) onwards
             // Use date string comparison to avoid timezone issues - strictly exclude Oct 5 and earlier
             const pointDateStr = point.date.includes('T') 
