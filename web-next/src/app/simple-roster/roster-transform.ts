@@ -157,24 +157,24 @@ export function transformRosterApiResponse(response: RosterApiResponse): RosterD
   const memberCount =
     snapshot.memberCount ??
     snapshot.member_count ??
-    metadata.memberCount ??
-    metadata.member_count ??
+    (metadata as any).memberCount ??
+    (metadata as any).member_count ??
     response.data.members.length ?? 0;
 
   const normalizedMetadata = {
     snapshotDate,
     fetchedAt,
     memberCount,
-    warLogEntries: metadata.warLogEntries ?? metadata.war_log_entries ?? 0,
-    capitalSeasons: metadata.capitalSeasons ?? metadata.capital_seasons ?? 0,
-    version: metadata.version ?? snapshot.version ?? 'data-spine',
-    payloadVersion: snapshot.payloadVersion ?? snapshot.payload_version ?? metadata.payloadVersion ?? metadata.payload_version ?? null,
-    ingestionVersion: snapshot.ingestionVersion ?? snapshot.ingestion_version ?? metadata.ingestionVersion ?? metadata.ingestion_version ?? null,
-    schemaVersion: snapshot.schemaVersion ?? snapshot.schema_version ?? metadata.schemaVersion ?? metadata.schema_version ?? null,
-    computedAt: snapshot.computedAt ?? snapshot.computed_at ?? metadata.computedAt ?? metadata.computed_at ?? null,
-    seasonId: snapshot.seasonId ?? snapshot.season_id ?? metadata.seasonId ?? metadata.season_id ?? null,
-    seasonStart: snapshot.seasonStart ?? snapshot.season_start ?? metadata.seasonStart ?? metadata.season_start ?? null,
-    seasonEnd: snapshot.seasonEnd ?? snapshot.season_end ?? metadata.seasonEnd ?? metadata.season_end ?? null,
+    warLogEntries: (metadata as any).warLogEntries ?? (metadata as any).war_log_entries ?? 0,
+    capitalSeasons: (metadata as any).capitalSeasons ?? (metadata as any).capital_seasons ?? 0,
+    version: (metadata as any).version ?? (snapshot as any).version ?? 'data-spine',
+    payloadVersion: snapshot.payloadVersion ?? snapshot.payload_version ?? (metadata as any).payloadVersion ?? (metadata as any).payload_version ?? null,
+    ingestionVersion: snapshot.ingestionVersion ?? snapshot.ingestion_version ?? (metadata as any).ingestionVersion ?? (metadata as any).ingestion_version ?? null,
+    schemaVersion: snapshot.schemaVersion ?? snapshot.schema_version ?? (metadata as any).schemaVersion ?? (metadata as any).schema_version ?? null,
+    computedAt: snapshot.computedAt ?? snapshot.computed_at ?? (metadata as any).computedAt ?? (metadata as any).computed_at ?? null,
+    seasonId: snapshot.seasonId ?? snapshot.season_id ?? (metadata as any).seasonId ?? (metadata as any).season_id ?? null,
+    seasonStart: snapshot.seasonStart ?? snapshot.season_start ?? (metadata as any).seasonStart ?? (metadata as any).season_start ?? null,
+    seasonEnd: snapshot.seasonEnd ?? snapshot.season_end ?? (metadata as any).seasonEnd ?? (metadata as any).season_end ?? null,
   } as RosterData['snapshotMetadata'];
 
   const rosterMembers = response.data.members.map((member) => toRosterMember(member));
