@@ -7,7 +7,7 @@
 
 "use client";
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { parseUtcDate, formatUtcDateTime, formatUtcDate } from '@/lib/date-format';
 import Link from 'next/link';
@@ -38,6 +38,12 @@ import { showToast } from '@/lib/toast';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+
+// Helper function to format numbers
+const formatNumber = (num: number | undefined | null): string => {
+  if (num === undefined || num === null) return '—';
+  return num.toLocaleString();
+};
 
 // Helper function to check if a player is a new joiner (joined in last 7 days)
 function isNewJoiner(player: RosterMember): boolean {
@@ -1514,114 +1520,115 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     )}
                   </div>
                 </div>
+              </div>
 
-                {/* Right: All Stats Organized */}
-                <div className="flex-shrink-0 text-xs space-y-2">
-                  {/* Rush */}
-                  <div className="flex items-center gap-2">
-                    <div title={rushTooltip} className="cursor-help text-right">
-                      <div className="text-brand-text-tertiary text-[10px]">Rush</div>
-                      <div className={`font-mono font-semibold ${rushColor}`}>{rushPercent}%</div>
-                    </div>
+              {/* Stats Grid - 3 columns */}
+              <div className="w-full grid grid-cols-3 gap-x-3 gap-y-3 text-xs mt-3">
+                {/* Activity */}
+                <div title={activityTooltip} className="flex flex-col items-start cursor-help">
+                  <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">Activity</div>
+                  <div className={`font-semibold text-sm ${
+                    activity.level === 'Very Active' ? 'text-green-400' :
+                    activity.level === 'Active' ? 'text-blue-400' :
+                    activity.level === 'Moderate' ? 'text-yellow-400' :
+                    activity.level === 'Low' ? 'text-orange-400' :
+                    'text-red-400'
+                  }`}>
+                    {activity.level}
                   </div>
+                </div>
 
-                  {/* Activity */}
-                  <div title={activityTooltip} className="cursor-help text-right">
-                    <div className="text-brand-text-tertiary text-[10px]">Activity</div>
-                    <div className="text-sm text-brand-text-secondary font-medium">
-                      {activity.level}
-                    </div>
-                  </div>
-
-                  {/* VIP */}
-                  {player.vip && (
-                    <div 
-                      title={`VIP: ${player.vip.score.toFixed(1)}/100
+                {/* VIP */}
+                {player.vip ? (
+                  <div 
+                    title={`VIP: ${player.vip.score.toFixed(1)}/100
 Rank: #${player.vip.rank}
 Competitive Performance: ${player.vip.competitive_score.toFixed(1)}/100
 Support Performance: ${player.vip.support_score.toFixed(1)}/100
 Development Performance: ${player.vip.development_score.toFixed(1)}/100
 ${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→'} ${player.vip.last_week_score ? `vs ${player.vip.last_week_score.toFixed(1)} last week` : ''}`}
-                      className="cursor-help text-right"
-                    >
-                      <div className="text-brand-text-tertiary text-[10px]">VIP</div>
-                      <div className={`font-semibold text-sm ${
-                        player.vip.score >= 80 ? 'text-green-400' :
-                        player.vip.score >= 50 ? 'text-yellow-400' :
-                        'text-red-400'
-                      }`}>
-                        {player.vip.score.toFixed(1)}
-                        {player.vip.trend === 'up' && ' ↑'}
-                        {player.vip.trend === 'down' && ' ↓'}
-                      </div>
+                    className="flex flex-col items-start cursor-help"
+                  >
+                    <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">VIP</div>
+                    <div className={`font-semibold ${
+                      player.vip.score >= 80 ? 'text-green-400' :
+                      player.vip.score >= 50 ? 'text-yellow-400' :
+                      'text-red-400'
+                    }`}>
+                      {player.vip.score.toFixed(1)}
+                      {player.vip.trend === 'up' && ' ↑'}
+                      {player.vip.trend === 'down' && ' ↓'}
                     </div>
-                  )}
-
-                  {/* Donations */}
-                  <div title={donationTooltip} className="cursor-help text-right pt-1 border-t border-brand-border/30">
-                    <div className="text-brand-text-tertiary text-[10px]">Don: <span className="font-mono text-green-600 font-semibold">{player.donations === 0 ? '—' : player.donations}</span></div>
-                    <div className="text-brand-text-tertiary text-[10px]">Rec: <span className="font-mono text-blue-600 font-semibold">{player.donationsReceived === 0 ? '—' : player.donationsReceived}</span></div>
-                    <div className="text-brand-text-tertiary text-[10px]">Bal: <span className={`font-mono font-semibold ${donationBalance > 0 ? 'text-red-600' : donationBalance < 0 ? 'text-green-600' : 'text-brand-text-tertiary'}`}>
-                      {donationBalance > 0 ? '+' : ''}{donationBalance}
-                    </span></div>
                   </div>
+                ) : (
+                  <div className="flex flex-col items-start">
+                    <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">VIP</div>
+                    <div className="font-semibold text-brand-text-tertiary">—</div>
+                  </div>
+                )}
 
-                  {/* Tenure */}
-                  {player.tenureDays !== null && player.tenureDays !== undefined && (
-                    <div 
-                      title={`Tenure: ${player.tenureDays} day${player.tenureDays === 1 ? '' : 's'} since joining`}
-                      className="cursor-help text-right pt-1 border-t border-brand-border/30"
-                    >
-                      <div className="text-brand-text-tertiary text-[10px]">Tenure</div>
-                      <div className={`font-mono font-semibold text-sm ${
-                        isNewJoiner(player) 
-                          ? 'text-emerald-400' 
-                          : 'text-brand-text-secondary'
-                      }`}>
-                        {player.tenureDays}d
-                        {isNewJoiner(player) && <span className="text-[10px] text-emerald-400/70 ml-1">New</span>}
-                      </div>
+                {/* Tenure */}
+                {player.tenureDays !== null && player.tenureDays !== undefined ? (
+                  <div 
+                    title={`Tenure: ${player.tenureDays} day${player.tenureDays === 1 ? '' : 's'} since joining`}
+                    className="flex flex-col items-start cursor-help"
+                  >
+                    <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">Tenure</div>
+                    <div className={`font-semibold ${
+                      isNewJoiner(player) 
+                        ? 'text-emerald-400' 
+                        : 'text-brand-text-secondary'
+                    }`}>
+                      {player.tenureDays}{player.tenureDays === 1 ? ' (day)' : ' (days)'}
                     </div>
-                  )}
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-start">
+                    <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">Tenure</div>
+                    <div className="font-semibold text-brand-text-tertiary">—</div>
+                  </div>
+                )}
+
+                {/* Donated */}
+                <div title={donationTooltip} className="flex flex-col items-start cursor-help">
+                  <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">Donated</div>
+                  <div className="font-semibold text-green-400">{player.donations === 0 ? '—' : player.donations}</div>
+                </div>
+
+                {/* Received */}
+                <div title={donationTooltip} className="flex flex-col items-start cursor-help">
+                  <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">Received</div>
+                  <div className="font-semibold text-blue-400">{player.donationsReceived === 0 ? '—' : player.donationsReceived}</div>
+                </div>
+
+                {/* Season */}
+                <div title="Season total trophies" className="flex flex-col items-start cursor-help">
+                  <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">Season</div>
+                  <div className="font-semibold text-white">{player.seasonTotalTrophies ? formatNumber(player.seasonTotalTrophies) : '—'}</div>
                 </div>
               </div>
 
-              {/* Heroes Row - Bottom */}
-              <div className="flex items-center justify-between text-xs pt-2 border-t border-brand-border/30">
-                <div 
-                  title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk || 0}\n${(maxHeroes.bk || 0) > 0 ? `Progress: ${Math.round(((player.bk || 0) / (maxHeroes.bk || 1)) * 100)}%` : 'Not available at this TH'}`}
-                  className="flex flex-col items-center cursor-help"
-                >
-                  <span className="text-brand-text-tertiary text-[10px]">BK</span>
-                  <span className="font-mono font-semibold text-brand-text-primary">{player.bk || '-'}</span>
-                </div>
-                <div 
-                  title={`Archer Queen: ${player.aq || 0}/${maxHeroes.aq || 0}\n${(maxHeroes.aq || 0) > 0 ? `Progress: ${Math.round(((player.aq || 0) / (maxHeroes.aq || 1)) * 100)}%` : 'Not available at this TH'}`}
-                  className="flex flex-col items-center cursor-help"
-                >
-                  <span className="text-brand-text-tertiary text-[10px]">AQ</span>
-                  <span className="font-mono font-semibold text-brand-text-primary">{player.aq || '-'}</span>
-                </div>
-                <div 
-                  title={`Grand Warden: ${player.gw || 0}/${maxHeroes.gw || 0}\n${(maxHeroes.gw || 0) > 0 ? `Progress: ${Math.round(((player.gw || 0) / (maxHeroes.gw || 1)) * 100)}%` : 'Not available at this TH'}`}
-                  className="flex flex-col items-center cursor-help"
-                >
-                  <span className="text-brand-text-tertiary text-[10px]">GW</span>
-                  <span className="font-mono font-semibold text-brand-text-primary">{player.gw || '-'}</span>
-                </div>
-                <div 
-                  title={`Royal Champion: ${player.rc || 0}/${maxHeroes.rc || 0}\n${(maxHeroes.rc || 0) > 0 ? `Progress: ${Math.round(((player.rc || 0) / (maxHeroes.rc || 1)) * 100)}%` : 'Not available at this TH'}`}
-                  className="flex flex-col items-center cursor-help"
-                >
-                  <span className="text-brand-text-tertiary text-[10px]">RC</span>
-                  <span className="font-mono font-semibold text-brand-text-primary">{player.rc || '-'}</span>
-                </div>
-                <div 
-                  title={`Minion Prince: ${player.mp || 0}/${maxHeroes.mp || 0}\n${(maxHeroes.mp || 0) > 0 ? `Progress: ${Math.round(((player.mp || 0) / (maxHeroes.mp || 1)) * 100)}%` : 'Not available at this TH'}`}
-                  className="flex flex-col items-center cursor-help"
-                >
-                  <span className="text-brand-text-tertiary text-[10px]">MP</span>
-                  <span className="font-mono font-semibold text-brand-text-primary">{player.mp || '-'}</span>
+              {/* Heroes Row */}
+              <div className="pt-3 border-t border-brand-border/30">
+                {/* Heroes - Inline with bullets */}
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-brand-text-tertiary text-[10px] uppercase tracking-wide whitespace-nowrap">Heroes:</span>
+                  <div className="flex flex-wrap items-center gap-1.5 text-white font-medium">
+                    {[
+                      player.bk && `BK ${player.bk}`,
+                      player.aq && `AQ ${player.aq}`,
+                      player.gw && `GW ${player.gw}`,
+                      player.rc && `RC ${player.rc}`,
+                      player.mp && `MP ${player.mp}`,
+                    ]
+                      .filter(Boolean)
+                      .map((hero, idx, arr) => (
+                        <React.Fragment key={idx}>
+                          <span className="whitespace-nowrap">{hero}</span>
+                          {idx < arr.length - 1 && <span className="text-white/30">•</span>}
+                        </React.Fragment>
+                      ))}
+                  </div>
                 </div>
               </div>
             </div>
