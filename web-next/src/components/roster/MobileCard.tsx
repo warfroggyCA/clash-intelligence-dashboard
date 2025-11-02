@@ -248,10 +248,10 @@ export const MobileCard: React.FC<MobileCardProps> = ({
         <div className="flex flex-col items-start">
           <div className="text-[10px] uppercase tracking-wide text-white/50 mb-1">VIP</div>
           <div className="font-semibold text-amber-300">
-            {member.vipScore?.toFixed(1) ?? '—'}
+            {(member as any).vip?.score?.toFixed(1) ?? '—'}
             {(() => {
               const previousVIP = (member as any).previousVipScore;
-              const currentVIP = member.vipScore;
+              const currentVIP = (member as any).vip?.score;
               if (previousVIP != null && currentVIP != null) {
                 return currentVIP > previousVIP ? ' ↑' : currentVIP < previousVIP ? ' ↓' : '';
               }
