@@ -35,11 +35,10 @@ const formatNumber = (num: number | undefined): string => {
   return num.toLocaleString();
 };
 
-const formatDays = (days: number | undefined): string => {
-  if (days === undefined || days === null) return '—';
-  if (days === 0) return 'New';
-  if (days === 1) return '1 day';
-  return `${days} days`;
+const formatTenure = (days: number | undefined): { value: string; unit: string } => {
+  if (days === undefined || days === null) return { value: '—', unit: '' };
+  if (days === 0) return { value: 'New', unit: '' };
+  return { value: String(days), unit: days === 1 ? '(day)' : '(days)' };
 };
 
 const activityBadgeClass = (level: string): string => {
@@ -230,121 +229,109 @@ export const MobileCard: React.FC<MobileCardProps> = ({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-xs text-white/80 md:text-sm">
-        <div className="flex items-center gap-2">
-          <span className="text-white/50">Town Hall</span>
-          <span className="font-semibold text-white">{th}</span>
-          {rushWarning && (
-            <span className="text-xs" title={`Rushed ${rushPercent.toFixed(1)}%`}>
-              {rushSevere ? '🔴' : '🟡'}
-            </span>
-          )}
+      <div className="mt-4 grid grid-cols-3 gap-x-3 gap-y-3 text-xs md:text-sm">
+        <div className="flex flex-col items-start">
+          <div className="text-[10px] uppercase tracking-wide text-white/50 mb-1">TH</div>
+          <div className="font-semibold text-white flex items-center gap-1">
+            {th}
+            {rushWarning && (
+              <span className="text-xs" title={`Rushed ${rushPercent.toFixed(1)}%`}>
+                {rushSevere ? '🔴' : '🟡'}
+              </span>
+            )}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-white/50">Trophies</span>
-          <span className="font-semibold text-white">{formatNumber((member as any).rankedTrophies ?? member.trophies ?? 0)}</span>
+        <div className="flex flex-col items-start">
+          <div className="text-[10px] uppercase tracking-wide text-white/50 mb-1">Trophies</div>
+          <div className="font-semibold text-white">{formatNumber((member as any).rankedTrophies ?? member.trophies ?? 0)}</div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-white/50">Donated</span>
-          <span className="font-semibold text-emerald-300">{formatNumber(member.donations)}</span>
-          {lowDonator && <span className="text-xs text-rose-200" title="Low donator">⚠️</span>}
+        <div className="flex flex-col items-start">
+          <div className="text-[10px] uppercase tracking-wide text-white/50 mb-1">VIP</div>
+          <div className="font-semibold text-amber-300">
+            {member.vipScore?.toFixed(1) ?? '—'}
+            {(() => {
+              const previousVIP = (member as any).previousVipScore;
+              const currentVIP = member.vipScore;
+              if (previousVIP != null && currentVIP != null) {
+                return currentVIP > previousVIP ? ' ↑' : currentVIP < previousVIP ? ' ↓' : '';
+              }
+              return '';
+            })()}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-white/50">Received</span>
-          <span className="font-semibold text-sky-300">{formatNumber(member.donationsReceived)}</span>
-          {netReceiver && <span className="text-xs text-amber-200" title="Net receiver">📥</span>}
+        <div className="flex flex-col items-start">
+          <div className="text-[10px] uppercase tracking-wide text-white/50 mb-1">Donated</div>
+          <div className="font-semibold text-emerald-300 flex items-center gap-1">
+            {formatNumber(member.donations)}
+            {lowDonator && <span className="text-xs text-rose-200" title="Low donator">⚠️</span>}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-white/50">Season</span>
-          <span className="font-semibold text-white">{formatNumber((member as any).seasonTotalTrophies ?? undefined)}</span>
+        <div className="flex flex-col items-start">
+          <div className="text-[10px] uppercase tracking-wide text-white/50 mb-1">Received</div>
+          <div className="font-semibold text-sky-300 flex items-center gap-1">
+            {formatNumber(member.donationsReceived)}
+            {netReceiver && <span className="text-xs text-amber-200" title="Net receiver">📥</span>}
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-white/50">Tenure</span>
-          <span className="font-semibold text-white">{formatDays(member.tenure_days || member.tenure)}</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="text-white/50">Activity</span>
-          <span className={`border px-2 py-1 text-[11px] font-semibold md:text-xs ${activityBadgeClass(activity.level)}`}>
-            {activity.level}
-          </span>
+        <div className="flex flex-col items-start">
+          <div className="text-[10px] uppercase tracking-wide text-white/50 mb-1">Season</div>
+          <div className="font-semibold text-white">{formatNumber((member as any).seasonTotalTrophies ?? undefined)}</div>
         </div>
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2 text-[11px] md:text-xs">
-        {rushWarning && (
-          <span className={`rounded-full px-3 py-1 font-semibold ${rushSevere ? 'bg-rose-500/20 text-rose-100' : 'bg-amber-400/20 text-amber-100'}`}>
-            {rushSevere ? 'Very Rushed' : 'Rushed'} • {rushPercent.toFixed(1)}%
-          </span>
-        )}
-        {netReceiver && (
-          <span className="rounded-full bg-orange-400/20 px-3 py-1 font-semibold text-orange-100">
-            Net Receiver
-          </span>
-        )}
-        {lowDonator && (
-          <span className="rounded-full bg-white/10 px-3 py-1 font-semibold text-white/70">
-            Low Donator
-          </span>
-        )}
-        {donationBalance.balance < 0 && (
-          <span className="rounded-full bg-emerald-500/15 px-3 py-1 font-semibold text-emerald-100">
-            Net +{Math.abs(donationBalance.balance).toLocaleString()}
-          </span>
-        )}
+      <div className="mt-3 flex items-center justify-center gap-2">
+        <span className="text-[11px] uppercase tracking-wide text-white/50">Activity:</span>
+        <span className={`border px-3 py-1 rounded-full text-[11px] font-semibold md:text-xs ${activityBadgeClass(activity.level)}`}>
+          {activity.level}
+        </span>
       </div>
 
       <div className="mt-4 border-t border-white/10 pt-4">
-        <div className="flex items-start justify-between gap-3">
-          <span className="text-xs uppercase tracking-[0.28em] text-white/50">Heroes</span>
-          <div className="flex flex-wrap gap-3 text-sm text-white">
-            {member.bk && (
-              <div className="text-center">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">BK</div>
-                <div>{member.bk}</div>
-              </div>
-            )}
-            {member.aq && (
-              <div className="text-center">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">AQ</div>
-                <div>{member.aq}</div>
-              </div>
-            )}
-            {member.gw && (
-              <div className="text-center">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">GW</div>
-                <div>{member.gw}</div>
-              </div>
-            )}
-            {member.rc && (
-              <div className="text-center">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">RC</div>
-                <div>{member.rc}</div>
-              </div>
-            )}
-            {member.mp && (
-              <div className="text-center">
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-white/70">MB</div>
-                <div>{member.mp}</div>
-              </div>
-            )}
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-[10px] uppercase tracking-wide text-white/50 whitespace-nowrap">Heroes:</span>
+          <div className="flex flex-wrap items-center gap-1.5 text-white font-medium">
+            {[
+              member.bk && `BK ${member.bk}`,
+              member.aq && `AQ ${member.aq}`,
+              member.gw && `GW ${member.gw}`,
+              member.rc && `RC ${member.rc}`,
+              member.mp && `MP ${member.mp}`,
+            ]
+              .filter(Boolean)
+              .map((hero, idx, arr) => (
+                <React.Fragment key={idx}>
+                  <span className="whitespace-nowrap">{hero}</span>
+                  {idx < arr.length - 1 && <span className="text-white/30">•</span>}
+                </React.Fragment>
+              ))}
           </div>
         </div>
-        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-white/70 md:text-sm">
+        <div className="mt-2 flex items-center gap-4 text-xs text-white/70 md:text-sm">
           <div>
-            <p className="text-white/50">Last Active</p>
-            <p className="font-medium text-white/80">{lastActiveDisplay}</p>
+            <span className="text-white/50 text-[10px] uppercase">Last Active: </span>
+            <span className="font-medium text-white/80">{lastActiveDisplay}</span>
           </div>
           <div>
-            <p className="text-white/50">Last Seen</p>
-            <p className="font-medium text-white/80">
+            <span className="text-white/50 text-[10px] uppercase">Last Seen: </span>
+            <span className="font-medium text-white/80">
               {member.lastSeen
                 ? safeLocaleDateString(member.lastSeen, {
                     fallback: 'Unknown',
                     context: 'MobileCard lastSeen',
                   })
                 : 'Unknown'}
-            </p>
+            </span>
           </div>
+        </div>
+        <div className="mt-2">
+          <span className="text-white/50 text-[10px] uppercase">Tenure: </span>
+          <span className="font-medium text-white/80">
+            {(() => {
+              const days = member.tenure_days || member.tenure;
+              if (!days) return '—';
+              return `${days}${days === 1 ? ' (day)' : ' (days)'}`;
+            })()}
+          </span>
         </div>
       </div>
 
