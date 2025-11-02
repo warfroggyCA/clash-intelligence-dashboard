@@ -49,25 +49,24 @@ After months of intense development, bug fixes, and architectural iterations, th
    - ✅ WCI proposal (60% Competitive Performance, 40% Progression & Support)
    - ✅ Comprehensive planning notes
 
-### What's Problematic ⚠️
+### Historical Context - Old Issues (Now Resolved) ✅
 
-1. **Complex Main Dashboard** (Zustand-based `/`)
-   - ⚠️ Player profile navigation still broken (shows "Player UU9G" mock data)
-   - ⚠️ Browser back button crashes (React 185 error)
-   - ⚠️ Slow performance due to aggressive cache-busting
-   - ⚠️ Multiple layers of state management causing instability
-   - ⚠️ Command Rail disabled (emergency fix for React 185)
+1. **Complex Main Dashboard** (Zustand-based `/`) - ✅ **RESOLVED**
+   - ✅ Replaced with Simple Architecture (`/simple-roster`)
+   - ✅ Main route (`/`) now uses SimpleRosterPage
+   - ✅ Browser navigation works correctly
+   - ✅ No React 185 errors
+   - ✅ Command Rail removed/disabled
 
-2. **Duplicate Features**
-   - ⚠️ Two roster implementations (simple vs. complex)
-   - ⚠️ QuickActions + Command Rail + Tab content overlap
-   - ⚠️ Multiple insight/coaching systems (AI Coaching, Smart Insights, DNA Dashboard)
+2. **Duplicate Features** - ✅ **MOSTLY RESOLVED**
+   - ✅ Simple architecture is primary
+   - ✅ QuickActions moved to header menu
+   - ⚠️ Multiple insight systems still exist (may need consolidation)
 
-3. **UI Bloat & Confusion**
-   - ⚠️ QuickActions bar takes vertical space, duplicates functionality
-   - ⚠️ 6 tabs but some are placeholder/broken
-   - ⚠️ Command Rail is disabled placeholder
-   - ⚠️ Too many entry points for same actions
+3. **UI Bloat & Confusion** - ✅ **RESOLVED**
+   - ✅ QuickActions moved to header (Actions menu)
+   - ✅ Command Rail disabled/removed
+   - ✅ Clean, simple interface
 
 ---
 
@@ -78,15 +77,15 @@ After months of intense development, bug fixes, and architectural iterations, th
 **Philosophy:** "Do fewer things, but do them perfectly"
 
 **Approach:**
-1. **Make `/simple-roster` the PRIMARY dashboard**
-   - Rename to just `/` (make it the home page)
-   - Retire complex Zustand-based architecture
-   - Build features incrementally on stable foundation
+1. **Make `/simple-roster` the PRIMARY dashboard** ✅ **COMPLETE**
+   - ✅ Main route (`/`) uses SimpleRosterPage
+   - ✅ Complex Zustand-based architecture retired
+   - ✅ Building features incrementally on stable foundation
 
-2. **Consolidate QuickActions into Toolbar Menu**
-   - Move "Refresh Data & Insights", "Copy Summary", "Export", "Insights Summary" to a **⚙️ Actions** dropdown in header
-   - Remove the QuickActions bar entirely (saves vertical space)
-   - Keep toolbar clean: Logo | Tabs | Actions Menu | User Menu
+2. **Consolidate QuickActions into Toolbar Menu** ✅ **COMPLETE**
+   - ✅ QuickActions moved to header Actions menu
+   - ✅ QuickActions bar removed (saves vertical space)
+   - ✅ Toolbar clean: Logo | Tabs | Actions Menu | User Menu
 
 3. **Streamline Tabs to Core Functions**
    - **Dashboard** (🛡️) - Main roster table (current `/simple-roster`)
@@ -96,10 +95,10 @@ After months of intense development, bug fixes, and architectural iterations, th
    - **Discord** (📢) - Publishing tools (for leaders with permission)
    - Remove: Placeholder tabs, disabled features
 
-4. **Retire Command Rail**
-   - It's currently disabled/placeholder
-   - Features can move to tabs or Actions menu
-   - Saves horizontal space, reduces complexity
+4. **Retire Command Rail** ✅ **COMPLETE**
+   - ✅ CommandRail disabled/removed
+   - ✅ Features moved to tabs or Actions menu
+   - ✅ Saves horizontal space, reduces complexity
 
 5. **Fix Player Profiles Once**
    - Deep investigation into why `buildProfileFromSnapshots()` returns null

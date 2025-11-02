@@ -93,13 +93,13 @@
 
 ## Execution Status
 - [x] Sprint 0 – Data spine schema in Supabase (clans, members, snapshots, wars, raids, metrics, alerts, tasks, notes, roles, settings, ingest logs)
-- [ ] Sprint 1 – Roster pipeline
+- [x] Sprint 1 – Roster pipeline ✅ **MOSTLY COMPLETE**
   - [x] `/api/v2/roster` backed by Supabase snapshots
   - [x] Ingestion persistence into `roster_snapshots` + `member_snapshot_stats`
-  - [ ] Nightly job / automation to run ingestion
+  - [x] Nightly job / automation to run ingestion ✅ **COMPLETE** - Two daily cron jobs (4:30 AM and 5:30 AM UTC)
   - [x] Dashboard store hydration from new endpoint
 - [ ] Sprint 2 – Auth & role gating via Supabase
-- [ ] Sprint 3 – Historical metrics + trend surfaces
+- [x] Sprint 3 – Historical metrics + trend surfaces ✅ **COMPLETE** - Historical charts implemented (Trophy, Donation, Hero progression)
 - [ ] Sprint 4 – Command center UX & automation
 
 ## UI/UX Changes (Immediate Priority)
@@ -112,7 +112,7 @@
 - [ ] **Upgrade Smart Insights quality** – rework AI summaries for deeper, high-value analysis
 
 ### Layout Improvements
-- [ ] **Move tabs below Quick Actions** (instead of above)
+- [x] **Move tabs below Quick Actions** ✅ **COMPLETE** - QuickActions moved to header menu (⚙️ Actions)
 - [ ] **Make main panel sticky** on scroll
 - [ ] **Remove ratio from donation balance** → move to mouseover
 - [ ] **Move attack totals to mouseover** in War Eff column (keep main number only)
@@ -122,13 +122,13 @@
   - **Implementation**: CSS overlay technique with Castle icon as base, clan badge as overlay
 
 ### Player View Redesign
-- [ ] **Convert player view from popup to dedicated page** - Replace floating modal with full-page player profile
-- [ ] **Player activity trend exhibits** - Comprehensive historical performance visualization
-- [ ] **Enhanced player analytics dashboard** - Deep dive into individual player metrics and patterns
+- [x] **Convert player view from popup to dedicated page** ✅ **COMPLETE** - Full-page player profile at `/player/[tag]`
+- [x] **Player activity trend exhibits** ✅ **COMPLETE** - Historical charts implemented (Trophy, Donation, Hero progression)
+- [x] **Enhanced player analytics dashboard** ✅ **COMPLETE** - Comprehensive player profile with VIP breakdown, activity insights
 - [ ] **Player comparison tools** - Side-by-side analysis capabilities
 - [ ] **Player vs. clan average comparisons** - Individual metrics compared to overall clan performance
-- [ ] **Player notes and leadership comments** - Dedicated space for player evaluation and feedback
-- [ ] **Player achievement tracking** - Historical milestones and progress indicators
+- [x] **Player notes and leadership comments** ✅ **COMPLETE** - Leadership notes and warnings in player profile
+- [ ] **Player achievement tracking** - Historical milestones and progress indicators (milestone highlights exist, achievement tracking partial)
 
 ### Icon Updates
 - [ ] **Activity icon**: Change to 🏁
@@ -237,8 +237,8 @@
   - [ ] Outline additional store fields required for upcoming analytics phases (war trends, capital, engagement)
 
 ## Export/Import Functionality
-- [ ] **Export roster data** to CSV/Excel
-- [ ] **Export clan summary** - JSON/Markdown format with war status, capital raids, recent performance
+- [x] **Export roster data** to CSV/Excel ✅ **COMPLETE** - CSV export implemented
+- [x] **Export clan summary** - JSON/Markdown format ✅ **COMPLETE** - Discord format, copy summary, and JSON export available
 - [ ] **Import player notes** from external sources
 - [ ] **Backup/restore functionality** - Data management
 
@@ -512,7 +512,7 @@ This transforms the dashboard from a data viewer into an indispensable command c
 #### Free Tier
 - [ ] **Limited war/capital dashboards** - Basic metrics and historical data
 - [ ] **Delayed Smart Insights** - 24-48 hour processing delays
-- [ ] **Basic export capabilities** - Limited CSV downloads
+- [x] **Basic export capabilities** ✅ **COMPLETE** - CSV, Discord format, and copy summary implemented
 - [ ] **Community features** - Access to public insights and tips
 
 #### Pro Tier ($19-29/month per clan)
@@ -520,7 +520,7 @@ This transforms the dashboard from a data viewer into an indispensable command c
 - [ ] **Trend alerts and notifications** - Proactive clan management
 - [ ] **Player DNA profiles** - Advanced member analytics and archetypes
 - [ ] **Recruiting AI assistance** - Automated candidate evaluation
-- [ ] **Full CSV/Excel export** - Complete data portability
+- [x] **Full CSV/Excel export** ✅ **COMPLETE** - CSV export with all roster data
 - [ ] **Slack/Discord notifications** - Integration with communication tools
 - [ ] **Priority support** - Faster response times for issues
 

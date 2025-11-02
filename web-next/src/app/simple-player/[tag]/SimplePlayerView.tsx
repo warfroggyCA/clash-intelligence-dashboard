@@ -394,7 +394,7 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
 
           <div className="bg-brand-surface border border-brand-border/60 rounded-xl p-5">
             <p className="text-xs text-brand-text-muted uppercase tracking-wider">Rush Status</p>
-            <p className={`mt-2 text-3xl font-mono font-bold ${rushPercent >= 70 ? 'text-red-500' : rushPercent >= 40 ? 'text-yellow-400' : 'text-green-400'}`}>
+            <p className={`mt-2 text-3xl font-mono font-bold ${rushPercent >= 70 ? 'text-red-500' : rushPercent >= 40 ? 'text-yellow-400' : 'text-white'}`}>
               {rushPercent}%
             </p>
             <p className="text-sm text-brand-text-tertiary mt-2">Lower is better — compares hero levels to Town Hall {player.townHallLevel} caps.</p>

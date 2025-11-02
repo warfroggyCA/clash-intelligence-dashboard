@@ -12,7 +12,77 @@
  * This metric measures comprehensive clan contribution across all game modes.
  */
 
-import { calculateTPG, calculateLAI, calculatePDR } from './wci';
+// =============================================================================
+// Helper Functions (previously from wci.ts, now integrated)
+// =============================================================================
+
+/**
+ * Calculate Trophy Progression Gain (TPG)
+ * Measures: How much did they gain this week?
+ * Formula: Normalize trophy delta to 0-100 scale
+ */
+function calculateTPG(
+  rankedTrophiesStart: number | null,
+  rankedTrophiesEnd: number | null
+): number {
+  if (rankedTrophiesStart == null || rankedTrophiesEnd == null) {
+    return 50; // Neutral if missing data
+  }
+  
+  const delta = rankedTrophiesEnd - rankedTrophiesStart;
+  
+  // Normalize: 800+ trophy gain = 100, 0 = 50, negative = <50
+  // Scale: -400 to +800 maps to 0-100
+  const normalized = Math.max(0, Math.min(100, 50 + (delta / 8)));
+  
+  return Math.round(normalized * 100) / 100;
+}
+
+/**
+ * Calculate League Advancement Index (LAI)
+ * Measures: Did they promote, retain, or get demoted?
+ * 
+ * Based on league tier comparison (inferred from leagueTier.id)
+ */
+function calculateLAI(
+  leagueTierStart: number | null,
+  leagueTierEnd: number | null,
+  rankedTrophiesEnd: number | null
+): number {
+  // Extract tier numbers from league IDs (format: 105000001-105000034)
+  // The last 6 digits contain the tier number: 105000013 → 13
+  const tierStart = leagueTierStart 
+    ? leagueTierStart % 1000000
+    : null;
+  const tierEnd = leagueTierEnd
+    ? leagueTierEnd % 1000000
+    : null;
+  
+  if (tierStart == null || tierEnd == null) {
+    // Can't determine if no tier data
+    return rankedTrophiesEnd != null && rankedTrophiesEnd > 0 ? 60 : 30;
+  }
+  
+  if (tierEnd > tierStart) {
+    return 100; // Promoted
+  } else if (tierEnd < tierStart) {
+    return 20; // Demoted
+  } else {
+    // Same tier - check if they have trophies (active)
+    return rankedTrophiesEnd != null && rankedTrophiesEnd > 0 ? 70 : 40;
+  }
+}
+
+/**
+ * Calculate Progression Debt Reduction (PDR)
+ * Measures: Are they fixing their rushed base?
+ * Formula: 100 - rushPercent (lower rush = higher score)
+ */
+function calculatePDR(rushPercent: number | null): number {
+  if (rushPercent == null) return 50; // Neutral if unknown
+  // Lower rush% = higher PDR score
+  return Math.max(0, Math.min(100, 100 - rushPercent));
+}
 
 // =============================================================================
 // Competitive Performance Components

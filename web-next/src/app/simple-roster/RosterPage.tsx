@@ -7,7 +7,7 @@
 
 "use client";
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { parseUtcDate, formatUtcDateTime, formatUtcDate } from '@/lib/date-format';
 import Link from 'next/link';
@@ -35,6 +35,8 @@ import {
   handleCopySummary,
 } from '@/lib/export/roster-export';
 import { showToast } from '@/lib/toast';
+import LeaderboardView from '@/components/roster/LeaderboardView';
+import { List, Trophy } from 'lucide-react';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -206,6 +208,32 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const staleCheckRef = useRef<boolean>(false);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
+  const [showRightFade, setShowRightFade] = useState(false);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'leaderboard'>('table');
+  
+  // Check scroll state for fade indicator
+  const checkScrollState = useCallback(() => {
+    if (tableScrollRef.current) {
+      const hasScroll = tableScrollRef.current.scrollWidth > tableScrollRef.current.clientWidth;
+      const isAtEnd = tableScrollRef.current.scrollLeft + tableScrollRef.current.clientWidth >= tableScrollRef.current.scrollWidth - 10;
+      setShowRightFade(hasScroll && !isAtEnd);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Check after a small delay to allow layout to settle
+    const timeoutId = setTimeout(checkScrollState, 100);
+    const handleResize = () => {
+      // Small delay to allow layout to settle
+      setTimeout(checkScrollState, 100);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, [checkScrollState, roster?.members?.length]); // Re-check when member count changes
   
   // Expose refresh function globally for DashboardLayout
   useEffect(() => {
@@ -648,6 +676,37 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
               </p>
             </div>
             <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              {/* View Mode Switcher */}
+              <div className="flex items-center gap-1 rounded-lg border border-brand-border bg-brand-surface-secondary p-1">
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`
+                    flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+                    ${viewMode === 'table' 
+                      ? 'bg-brand-surfaceRaised text-brand-text-primary border border-brand-primary/50 shadow-sm' 
+                      : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface-hover'
+                    }
+                  `}
+                  title="Table view - Full roster with sortable columns"
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">Table</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('leaderboard')}
+                  className={`
+                    flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+                    ${viewMode === 'leaderboard' 
+                      ? 'bg-brand-surfaceRaised text-brand-text-primary border border-brand-primary/50 shadow-sm' 
+                      : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface-hover'
+                    }
+                  `}
+                  title="Leaderboard view - Ranked by multiple criteria"
+                >
+                  <Trophy className="h-4 w-4" />
+                  <span className="hidden sm:inline">Leaderboard</span>
+                </button>
+              </div>
               <button
                 onClick={() => {
                   console.log('[SimpleRoster] Manual refresh button clicked');
@@ -880,42 +939,42 @@ Helps identify engaged vs. inactive members."
               >
                 <div className="mb-2">
                   <p className="text-xs text-brand-text-secondary mb-1.5">Activity Breakdown</p>
-                  <div className="space-y-1 text-[10px]">
+                  <div className="space-y-1.5 text-xs">
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help"
+                        className="text-brand-text-tertiary cursor-help text-xs"
                         title="Very Active: Members scoring 50+ activity points. Highly engaged in ranked battles, donations, and clan activities."
                       >
                         Very Active
                       </span>
-                      <span className="font-semibold text-green-400">{activityCounts.veryActive}</span>
+                      <span className="font-bold text-green-400 text-base">{activityCounts.veryActive}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help"
+                        className="text-brand-text-tertiary cursor-help text-xs"
                         title="Active: Members scoring 30-49 activity points. Regularly participating in clan activities."
                       >
                         Active
                       </span>
-                      <span className="font-semibold text-blue-400">{activityCounts.active}</span>
+                      <span className="font-bold text-blue-400 text-base">{activityCounts.active}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help"
+                        className="text-brand-text-tertiary cursor-help text-xs"
                         title="Moderate: Members scoring 15-29 activity points. Some participation but not highly engaged."
                       >
                         Moderate
                       </span>
-                      <span className="font-semibold text-yellow-400">{activityCounts.moderate}</span>
+                      <span className="font-bold text-yellow-400 text-base">{activityCounts.moderate}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help"
+                        className="text-brand-text-tertiary cursor-help text-xs"
                         title="Inactive: Members scoring 0-14 activity points. Minimal or no recent clan activity."
                       >
                         Inactive
                       </span>
-                      <span className="font-semibold text-red-400">{activityCounts.inactive}</span>
+                      <span className="font-bold text-red-400 text-base">{activityCounts.inactive}</span>
                     </div>
                   </div>
                 </div>
@@ -924,9 +983,28 @@ Helps identify engaged vs. inactive members."
           );
         })()}
 
-        {/* Roster Table - Desktop */}
-        <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden w-full">
-          <div className="overflow-x-auto overflow-y-visible">
+        {/* View Content */}
+        {viewMode === 'leaderboard' ? (
+          <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden w-full p-6">
+            <LeaderboardView 
+              members={roster.members} 
+              currentPlayerTag={null} // TODO: Get current user's tag if available
+            />
+          </div>
+        ) : (
+          <>
+            {/* Roster Table - Desktop */}
+            <div className="hidden md:block rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden w-full">
+          <div 
+            ref={tableScrollRef}
+            className="overflow-x-auto overflow-y-visible relative"
+            onScroll={(e) => {
+              const target = e.currentTarget;
+              const hasScroll = target.scrollWidth > target.clientWidth;
+              const isAtEnd = target.scrollLeft + target.clientWidth >= target.scrollWidth - 10; // 10px threshold
+              setShowRightFade(hasScroll && !isAtEnd);
+            }}
+          >
             <table className="min-w-[1400px] w-full border-collapse">
               <thead>
                 <tr className="bg-brand-surface-secondary border-b border-brand-border">
@@ -1071,7 +1149,7 @@ Helps identify engaged vs. inactive members."
                   // Rush color coding
                   const rushColor = rushPercent >= 70 ? 'text-red-600' : 
                                    rushPercent >= 40 ? 'text-yellow-600' : 
-                                   'text-green-600';
+                                   'text-white';
                   
                   // Activity color coding
                   const activityColor = activity.level === 'Very Active' ? 'bg-green-100 text-green-800 border-green-200' :
@@ -1372,6 +1450,12 @@ VIP measures comprehensive clan contribution:
                 })}
               </tbody>
             </table>
+            {/* Right edge fade indicator */}
+            {showRightFade && (
+              <div 
+                className="absolute top-0 right-0 w-20 h-full pointer-events-none z-10 fade-scroll-indicator"
+              />
+            )}
           </div>
         </div>
 
@@ -1384,7 +1468,7 @@ VIP measures comprehensive clan contribution:
             
             const rushColor = rushPercent >= 70 ? 'text-red-600' : 
                              rushPercent >= 40 ? 'text-yellow-600' : 
-                             'text-green-600';
+                             'text-white';
             
             const activityColor = activity.level === 'Very Active' ? 'bg-green-100 text-green-800 border-green-200' :
                                  activity.level === 'Active' ? 'bg-blue-100 text-blue-800 border-blue-200' :
@@ -1634,7 +1718,9 @@ ${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→
             </div>
             );
           })}
-        </div>
+            </div>
+          </>
+        )}
       </div>
     </DashboardLayout>
 

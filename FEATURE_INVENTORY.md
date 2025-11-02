@@ -36,12 +36,12 @@
 
 ### 2. Competitive Performance Metrics
 
-**Weekly Competitive Index (WCI)** ⭐ PRIMARY METRIC
-- Replace ACE score with WCI
-- Weekly tournament performance tracking
-- Competitive Performance (60%) + Progression & Support (40%)
+**VIP Score** ⭐ PRIMARY METRIC (Replaced WCI)
+- VIP Score is the primary metric (replaced both ACE and WCI)
+- Formula: (0.50 × Competitive) + (0.30 × Support) + (0.20 × Development)
+- Weekly calculation on Monday snapshots
 - Leaderboard showing top performers
-- Historical WCI trends (week-over-week)
+- Historical VIP trends (week-over-week)
 
 **Ranked Battle Analytics**
 - Tournament utilization rate (attacks used vs. available)
@@ -263,7 +263,7 @@
 - Complex state management (no Zustand complexity)
 - Multiple data sources (SSOT = Supabase only)
 - Duplicate implementations (one way to do everything)
-- Obsolete metrics (ACE replaced by WCI)
+- Obsolete metrics (ACE and WCI replaced by VIP Score)
 - Broken/unused features (clean house)
 - Architecture confusion (Simple Architecture only)
 

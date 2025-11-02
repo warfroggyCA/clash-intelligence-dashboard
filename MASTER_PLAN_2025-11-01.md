@@ -20,6 +20,10 @@
   - ✅ Mobile-responsive (table → cards)
   - ✅ Auto-refresh on stale data detection
   - ✅ Real player names from Supabase
+  - ✅ Export functionality (CSV, Discord, Copy Summary)
+  - ✅ Roster summary cards (VIP average, new joiners, activity breakdown)
+  - ✅ New joiner flagging (badges and detection)
+  - ✅ Scroll indicator for horizontal overflow
 
 - **Player Profile** (`/player/[tag]`)
   - ✅ Clean player detail view
@@ -27,6 +31,8 @@
   - ✅ Hero progression tracking
   - ✅ Donation statistics
   - ✅ League and trophy history
+  - ✅ Historical charts (Trophy, Donation, Hero progression)
+  - ✅ Comprehensive copy summary (detailed data for LLM analysis)
 
 #### **2. Data Pipeline**
 - **Automated Ingestion**
@@ -93,22 +99,22 @@ CoC API → Staged Pipeline → Supabase → API Endpoints → Frontend Display
   - Filter by TH level, role, activity level
   - Filter by VIP score range
 
-- [ ] **Export Options**
-  - Export roster to CSV
-  - Export roster to Discord format
-  - Copy summary to clipboard
+- [x] **Export Options** ✅ **COMPLETE**
+  - ✅ Export roster to CSV
+  - ✅ Export roster to Discord format
+  - ✅ Copy summary to clipboard
 
-- [ ] **Roster Summary Cards**
-  - Total members, average VIP score
-  - Top contributors (VIP leaders)
-  - Activity breakdown
+- [x] **Roster Summary Cards** ✅ **COMPLETE**
+  - ✅ Total members, average VIP score
+  - ✅ New joiners count
+  - ✅ Activity breakdown (Very Active, Active, Moderate, Low, Inactive)
 
 #### **1.2 Player Profile Enhancements**
-- [ ] **Historical Charts**
-  - VIP Score trend over time
-  - Trophy progression graph
-  - Donation history
-  - Hero upgrade timeline
+- [x] **Historical Charts** ✅ **COMPLETE**
+  - ✅ Trophy progression graph (regular + ranked)
+  - ✅ Donation history (given vs received)
+  - ✅ Hero upgrade timeline (BK, AQ, GW, RC)
+  - ⏳ VIP Score trend over time (partial - data available, chart pending)
 
 - [ ] **Comparison Views**
   - Compare player to clan average
@@ -116,15 +122,15 @@ CoC API → Staged Pipeline → Supabase → API Endpoints → Frontend Display
   - Compare to same league tier
 
 #### **1.3 Leadership Tools**
-- [ ] **New Joiner Flagging**
-  - Automatic detection of new members
-  - Flag players who joined in last 7 days
-  - Show tenure days prominently
+- [x] **New Joiner Flagging** ✅ **COMPLETE**
+  - ✅ Automatic detection of new members (isNewJoiner function)
+  - ✅ Flag players who joined in last 7 days (badge in roster)
+  - ✅ Show tenure days prominently (displayed in roster table)
 
 - [ ] **Activity Alerts**
-  - Flag inactive players (no activity for 7+ days)
-  - Alert on sudden VIP score drops
-  - Notify on rushed base improvements
+  - ⏳ Flag inactive players (alerts engine exists, needs UI integration)
+  - [ ] Alert on sudden VIP score drops
+  - [ ] Notify on rushed base improvements
 
 ### **Phase 2: Advanced Analytics (Future)**
 
@@ -151,9 +157,9 @@ CoC API → Staged Pipeline → Supabase → API Endpoints → Frontend Display
 #### **3.1 UI/UX Improvements**
 - [ ] Loading skeletons (better perceived performance)
 - [ ] Error boundaries (graceful failures)
-- [ ] Toast notifications (for actions)
+- [x] Toast notifications (for actions) ✅ **COMPLETE** - Using showToast utility
 - [ ] Keyboard shortcuts
-- [ ] Dark mode toggle
+- [x] Dark mode toggle ✅ **COMPLETE** - Dark theme implemented
 
 #### **3.2 Mobile Optimization**
 - [ ] Swipe gestures for navigation
@@ -222,11 +228,12 @@ Both jobs:
 
 ### **Deprecated/Removed**
 - ❌ Complex Zustand state management
-- ❌ Dual architecture (simple + complex)
-- ❌ Command Rail (disabled placeholder)
-- ❌ QuickActions bar (moved to header menu)
-- ❌ Card view toggle (auto-responsive instead)
-- ❌ WCI Score (replaced by VIP Score)
+- ❌ Dual architecture (simple + complex) - **COMPLETE:** Simple architecture is now primary
+- ❌ Command Rail (disabled placeholder) - **REMOVED:** Component disabled, CSS remnants may exist
+- ❌ QuickActions bar (moved to header menu) - **COMPLETE:** Moved to Actions menu in header
+- ❌ Card view toggle (auto-responsive instead) - **COMPLETE:** Auto-responsive design
+- ❌ WCI Score (replaced by VIP Score) - **COMPLETE:** VIP is primary metric, WCI code exists but unused
+- ❌ ClientDashboard (old complex dashboard) - **DEPRECATED:** File exists but unused; main route uses SimpleRosterPage
 
 ### **Not Planned**
 - ❌ Real-time WebSocket updates (polling is sufficient)
@@ -295,13 +302,13 @@ Both jobs:
 
 ### **Next Week**
 1. Add search/filter to roster table
-2. Add export functionality
-3. Add new joiner flagging
+2. ~~Add export functionality~~ ✅ **DONE**
+3. ~~Add new joiner flagging~~ ✅ **DONE**
 
 ### **Following Weeks**
-1. Historical charts for player profiles
-2. Roster summary cards
-3. Activity alerts
+1. ~~Historical charts for player profiles~~ ✅ **DONE** (Trophy, Donation, Hero charts)
+2. ~~Roster summary cards~~ ✅ **DONE**
+3. Activity alerts (UI integration needed)
 
 ---
 
@@ -324,7 +331,7 @@ Both jobs:
 
 ---
 
-**Last Updated:** November 1, 2025  
+**Last Updated:** January 25, 2025  
 **Status:** Active Development  
 **Architecture:** Simple Architecture ✅
 
