@@ -492,15 +492,15 @@ export async function GET(
               totals.donations.count += 1;
             }
 
-            // War stars (from enriched if available, or 0)
-            const warStars = (member.enriched as any)?.warStars ?? 0;
+            // War stars (from war.stars)
+            const warStars = member.war?.stars ?? 0;
             if (warStars > 0) {
               totals.warStars.sum += warStars;
               totals.warStars.count += 1;
             }
 
             // Capital contributions
-            const capitalContrib = (member.enriched as any)?.capitalContributions ?? member.clanCapitalContributions ?? 0;
+            const capitalContrib = member.capitalContributions ?? 0;
             if (capitalContrib > 0) {
               totals.capitalContributions.sum += capitalContrib;
               totals.capitalContributions.count += 1;
