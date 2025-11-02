@@ -648,7 +648,7 @@ export const TableRow: React.FC<TableRowProps> = ({
         title={heroRushTooltip}
         isActiveSort={isActiveColumn('rush')}
       >
-        <span className={`font-semibold ${rushPercent >= 70 ? 'text-clash-red' : rushPercent >= 40 ? 'text-clash-orange' : 'text-clash-green'}`}>
+        <span className={`font-semibold ${rushPercent >= 70 ? 'text-clash-red' : rushPercent >= 40 ? 'text-clash-orange' : 'text-white'}`}>
           {rushPercent.toFixed(1)}%
         </span>
       </TableCell>

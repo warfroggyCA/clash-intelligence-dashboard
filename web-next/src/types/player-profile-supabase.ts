@@ -214,6 +214,14 @@ export interface SupabasePlayerProfilePayload {
   timeline: PlayerTimelinePoint[];
   history: PlayerHistoryRecordSupabase | null;
   clanHeroAverages?: Record<string, number>;
+  clanStatsAverages?: {
+    trophies: number;
+    donations: number;
+    warStars: number;
+    capitalContributions: number;
+    townHallLevel: number;
+    vipScore: number;
+  };
   leadership: PlayerLeadershipBundle;
   evaluations: PlayerEvaluationRecord[];
   joinerEvents: PlayerJoinerEventRecord[];

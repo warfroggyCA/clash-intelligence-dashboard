@@ -436,6 +436,126 @@ export async function GET(
       }
     }
 
+    // Calculate clan averages for stats (for radar chart comparison)
+    let clanStatsAverages = {
+      trophies: 0,
+      donations: 0,
+      warStars: 0,
+      capitalContributions: 0,
+      townHallLevel: 0,
+      vipScore: 0,
+    };
+    if (clanTag) {
+      try {
+        // Fetch most recent snapshot for each clan member
+        const { data: latestSnapshotRows } = await supabase
+          .from('canonical_member_snapshots')
+          .select('payload, snapshot_date, player_tag')
+          .eq('clan_tag', clanTag)
+          .order('snapshot_date', { ascending: false });
+
+        if (latestSnapshotRows && latestSnapshotRows.length > 0) {
+          // Get unique players (most recent snapshot per player)
+          const playerLatestMap = new Map<string, CanonicalMemberSnapshotV1>();
+          latestSnapshotRows.forEach((row) => {
+            const tag = row.player_tag;
+            if (!playerLatestMap.has(tag)) {
+              playerLatestMap.set(tag, row.payload as CanonicalMemberSnapshotV1);
+            }
+          });
+
+          const members = Array.from(playerLatestMap.values());
+          const totals = {
+            trophies: { sum: 0, count: 0 },
+            donations: { sum: 0, count: 0 },
+            warStars: { sum: 0, count: 0 },
+            capitalContributions: { sum: 0, count: 0 },
+            townHallLevel: { sum: 0, count: 0 },
+            vipScore: { sum: 0, count: 0 },
+          };
+
+          members.forEach((payload) => {
+            const member = payload?.member;
+            if (!member) return;
+
+            // Trophies
+            const trophies = member.ranked?.trophies ?? member.trophies ?? 0;
+            if (trophies > 0) {
+              totals.trophies.sum += trophies;
+              totals.trophies.count += 1;
+            }
+
+            // Donations
+            const donations = member.donations?.given ?? 0;
+            if (donations > 0) {
+              totals.donations.sum += donations;
+              totals.donations.count += 1;
+            }
+
+            // War stars (from enriched if available, or 0)
+            const warStars = (member.enriched as any)?.warStars ?? 0;
+            if (warStars > 0) {
+              totals.warStars.sum += warStars;
+              totals.warStars.count += 1;
+            }
+
+            // Capital contributions
+            const capitalContrib = (member.enriched as any)?.capitalContributions ?? member.clanCapitalContributions ?? 0;
+            if (capitalContrib > 0) {
+              totals.capitalContributions.sum += capitalContrib;
+              totals.capitalContributions.count += 1;
+            }
+
+            // Town Hall level
+            const thLevel = member.townHallLevel ?? member.th ?? 0;
+            if (thLevel > 0) {
+              totals.townHallLevel.sum += thLevel;
+              totals.townHallLevel.count += 1;
+            }
+          });
+
+          // Calculate averages
+          if (totals.trophies.count > 0) {
+            clanStatsAverages.trophies = totals.trophies.sum / totals.trophies.count;
+          }
+          if (totals.donations.count > 0) {
+            clanStatsAverages.donations = totals.donations.sum / totals.donations.count;
+          }
+          if (totals.warStars.count > 0) {
+            clanStatsAverages.warStars = totals.warStars.sum / totals.warStars.count;
+          }
+          if (totals.capitalContributions.count > 0) {
+            clanStatsAverages.capitalContributions = totals.capitalContributions.sum / totals.capitalContributions.count;
+          }
+          if (totals.townHallLevel.count > 0) {
+            clanStatsAverages.townHallLevel = totals.townHallLevel.sum / totals.townHallLevel.count;
+          }
+
+          // VIP score average (use current week VIP scores)
+          const weekStartISO = new Date().toISOString().split('T')[0];
+          const monday = new Date(weekStartISO);
+          monday.setUTCDate(monday.getUTCDate() - monday.getUTCDay() + 1);
+          const weekStart = monday.toISOString().split('T')[0];
+
+          try {
+            const { data: vipRows } = await supabase
+              .from('vip_scores')
+              .select('vip_score, member_id')
+              .eq('week_start', weekStart);
+
+            if (vipRows && vipRows.length > 0) {
+              const vipSum = vipRows.reduce((sum, row) => sum + Number(row.vip_score || 0), 0);
+              clanStatsAverages.vipScore = vipSum / vipRows.length;
+            }
+          } catch (vipError) {
+            console.warn('Failed to fetch clan VIP averages:', vipError);
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to calculate clan stats averages:', error);
+      }
+    }
+
     const { data: historyRow, error: historyError } = clanTag
       ? await supabase
           .from('player_history')
@@ -616,6 +736,7 @@ export async function GET(
       timeline: timelineStats.timeline,
       history: historyRow ?? null,
       clanHeroAverages,
+      clanStatsAverages,
       leadership: {
         notes: ensureArray(notesRows),
         warnings: ensureArray(warningsRows),

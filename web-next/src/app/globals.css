@@ -1108,37 +1108,6 @@ th { @apply text-left font-semibold; }
 [data-theme="light"] .quick-actions-card .text-slate-400 {
   color: #475569 !important;
 }
-[data-theme="light"] .command-rail-card {
-  background: #ffffff !important;
-  color: #10213A !important;
-  border-color: rgba(148, 163, 184, 0.35) !important;
-  box-shadow: 0 24px 46px -30px rgba(15, 23, 42, 0.22) !important;
-}
-
-[data-theme="light"] .command-rail-card p,
-[data-theme="light"] .command-rail-card span,
-[data-theme="light"] .command-rail-card div {
-  color: #20304C !important;
-}
-
-[data-theme="light"] .command-rail-card .text-slate-100,
-[data-theme="light"] .command-rail-card .text-slate-200,
-[data-theme="light"] .command-rail-card .text-slate-300 {
-  color: #364d6b !important;
-}
-
-[data-theme="light"] .command-rail-card .bg-brand-surfaceSubtle,
-[data-theme="light"] .command-rail-card .bg-brand-surfaceSubtle\/70,
-[data-theme="light"] .command-rail-card .bg-brand-surfaceSubtle\/60 {
-  background-color: rgba(226, 232, 240, 0.9) !important;
-  color: #142136 !important;
-}
-
-[data-theme="light"] .command-rail-card .hover\:bg-brand-surfaceRaised:hover,
-[data-theme="light"] .command-rail-header .hover\:bg-brand-surfaceSubtle\/80:hover {
-  background-color: rgba(203, 213, 225, 0.92) !important;
-  color: #142136 !important;
-}
 [data-theme="light"] .bg-emerald-400\/20 {
   background-color: rgba(16, 185, 129, 0.18) !important;
   color: #047857 !important;
@@ -1156,29 +1125,10 @@ th { @apply text-left font-semibold; }
 [data-theme="light"] .shadow-\[0_24px_55px_-30px_rgba\(0,0,0,0\.3\)\] {
   box-shadow: 0 28px 52px -32px rgba(15, 23, 42, 0.22) !important;
 }
-[data-theme="light"] .command-rail-header {
-  background: #f8fafc !important;
-  border-color: rgba(203, 213, 225, 0.65) !important;
-  color: #1E293B !important;
-  box-shadow: 0 18px 32px -26px rgba(15, 23, 42, 0.18) !important;
-}
-
 /* Keep header white text in light theme */
 [data-theme="light"] .header-hero,
 [data-theme="light"] .header-hero * {
   color: #ffffff !important;
-}
-
-[data-theme="light"] .command-rail-header .text-slate-100,
-[data-theme="light"] .command-rail-header .text-slate-200,
-[data-theme="light"] .command-rail-header .text-slate-300,
-[data-theme="light"] .command-rail-header .text-slate-400 {
-  color: #1E293B !important;
-}
-
-[data-theme="light"] .command-rail-header .bg-brand-surfaceSubtle {
-  background-color: rgba(226, 232, 240, 0.85) !important;
-  color: #1E293B !important;
 }
 [data-theme="light"] .text-slate-400.uppercase,
 [data-theme="light"] .text-slate-500.uppercase {
@@ -1283,4 +1233,13 @@ button:has(svg:only-child) {
 /* Ensure tooltips appear above all content */
 [title]:hover::after {
   z-index: 10000 !important;
+}
+
+/* Right edge fade indicator for scrollable tables */
+.fade-scroll-indicator {
+  background: linear-gradient(to right, transparent 0%, rgba(16, 23, 40, 0.4) 30%, rgba(16, 23, 40, 0.95) 100%);
+}
+
+[data-theme="light"] .fade-scroll-indicator {
+  background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.4) 30%, rgba(255, 255, 255, 0.95) 100%);
 }

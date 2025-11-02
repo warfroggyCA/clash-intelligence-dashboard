@@ -23,6 +23,7 @@ import {
   Plus,
   Sparkles,
   SquarePen,
+  Target,
   Trophy,
   UserCheck,
   UserPlus,
@@ -45,6 +46,10 @@ import { LeagueBadge, TownHallBadge } from "@/components/ui";
 import TrophyChart from "@/components/player/TrophyChart";
 import DonationChart from "@/components/player/DonationChart";
 import PlayerActivityAnalytics from "@/components/player/PlayerActivityAnalytics";
+import PlayerDNARadar from "@/components/PlayerDNARadar";
+import StatsRadarChart from "@/components/player/StatsRadarChart";
+import { calculatePlayerDNA, classifyPlayerArchetype, calculateClanDNA } from "@/lib/player-dna";
+import { generateDNABreakdown } from "@/lib/player-dna-breakdown";
 import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS, EQUIPMENT_NAME_ALIASES, type Member } from "@/types";
 import { HeroLevel } from "@/components/ui";
 import { getRoleBadgeVariant } from "@/lib/leadership";
@@ -54,7 +59,7 @@ const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayou
   ssr: false,
 });
 
-type TabKey = "overview" | "history" | "evaluations" | "metrics";
+type TabKey = "overview" | "history" | "evaluations" | "metrics" | "analysis";
 
 type TimelineTone = "default" | "positive" | "warning";
 
@@ -1176,6 +1181,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   const [warningText, setWarningText] = useState("");
   const [warningSaving, setWarningSaving] = useState(false);
   const [showEquipmentTierModal, setShowEquipmentTierModal] = useState(false);
+  const [expandedChart, setExpandedChart] = useState<'dna' | 'stats' | null>(null);
 
   const loadProfile = useCallback(async () => {
     if (!normalizedTag) return;
@@ -1281,6 +1287,65 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     ? profile?.leadership.warnings.find((warning) => warning.isActive) ?? null
     : null;
   const latestNote = canViewLeadership ? profile?.leadership.notes[0] ?? null : null;
+
+  // Calculate Player DNA and Stats data (available for analysis tab and modal)
+  const analysisData = useMemo(() => {
+    let playerDNA = null;
+    let playerArchetype: string | null = null;
+    let clanAverageDNA = null;
+    let dnaBreakdown = null;
+
+    if (roster && rosterMember && roster.members.length > 0) {
+      const clanAverages = {
+        averageDonations: roster.members.reduce((sum, m) => sum + (m.donations ?? 0), 0) / roster.members.length,
+        averageWarStars: roster.members.reduce((sum, m) => sum + (m.warStars ?? 0), 0) / roster.members.length,
+        averageCapitalContributions: roster.members.reduce((sum, m) => sum + (m.clanCapitalContributions ?? 0), 0) / roster.members.length,
+        totalMembers: roster.members.length
+      };
+      playerDNA = calculatePlayerDNA(rosterMember, clanAverages);
+      playerArchetype = classifyPlayerArchetype(playerDNA, rosterMember);
+      
+      // Calculate clan average DNA for overlay
+      const clanDNA = calculateClanDNA(roster.members);
+      clanAverageDNA = clanDNA.averageDNA;
+      
+      // Calculate clan average tenure for context-aware descriptions
+      const clanAverageTenure = roster.members.length > 0
+        ? roster.members.reduce((sum, m) => sum + (m.tenure ?? 0), 0) / roster.members.length
+        : undefined;
+      
+      // Generate breakdown explanations for tooltips
+      dnaBreakdown = generateDNABreakdown(playerDNA, rosterMember, clanAverageTenure);
+    }
+
+    // Prepare stats for Stats Radar Chart
+    const clanStatsAverages = profile?.clanStatsAverages ?? {
+      trophies: 0,
+      donations: 0,
+      warStars: 0,
+      capitalContributions: 0,
+      townHallLevel: 0,
+      vipScore: 0,
+    };
+
+    const playerStats = summary ? {
+      trophies: summary.rankedTrophies ?? summary.trophies ?? 0,
+      donations: summary.donations?.given ?? 0,
+      warStars: summary.war?.stars ?? 0,
+      capitalContributions: summary.capitalContributions ?? 0,
+      townHallLevel: summary.townHallLevel ?? 0,
+      vipScore: profile?.vip?.current?.score ?? 0,
+    } : null;
+
+    return {
+      playerDNA,
+      playerArchetype,
+      clanAverageDNA,
+      dnaBreakdown,
+      playerStats,
+      clanStatsAverages,
+    };
+  }, [roster, rosterMember, profile, summary]);
 
   const activityEvidence = summary?.activity ?? null;
   const activityScore = activityEvidence?.score ?? summary?.activityScore ?? null;
@@ -1804,36 +1869,286 @@ const HERO_LABELS: Record<string, string> = {
 
   const handleCopySummary = useCallback(() => {
     if (!summary) return;
-    const lines = [
-      `${summary.name ?? "Unknown"} (${summary.tag})`,
-      summary.clanName ? `Clan: ${summary.clanName}` : null,
-      summary.role ? `Role: ${summary.role}` : null,
-      summary.townHallLevel ? `Town Hall ${summary.townHallLevel}` : null,
-      summary.seasonTotalTrophies != null
-        ? `Season total trophies: ${formatNumber(summary.seasonTotalTrophies)}`
-        : null,
-      summary.lastWeekTrophies != null
-        ? `Last Monday checkpoint: ${formatNumber(summary.lastWeekTrophies)}`
-        : null,
-      summary.donations?.given != null
-        ? `Donations: ${formatNumber(summary.donations.given)} given, ${formatNumber(summary.donations.received)} received`
-        : null,
-      summary.war?.stars != null ? `War stars: ${formatNumber(summary.war.stars)}` : null,
-      summary.capitalContributions != null
-        ? `Capital gold: ${formatNumber(summary.capitalContributions)}`
-        : null,
-      summary.rushPercent != null ? `Rush score: ${formatPercent(summary.rushPercent)}` : null,
-      summary.activityScore != null ? `Activity score: ${summary.activityScore.toFixed(1)}` : null,
-      history?.currentStint?.startDate
-        ? `Current stint since ${formatDate(history.currentStint.startDate)}`
-        : null,
-    ].filter(Boolean);
-
+    
+    const sections: string[] = [];
+    
+    // ========================================
+    // BASIC INFORMATION
+    // ========================================
+    sections.push("═══════════════════════════════════════");
+    sections.push("PLAYER PROFILE SUMMARY");
+    sections.push("═══════════════════════════════════════");
+    sections.push("");
+    sections.push(`Name: ${summary.name ?? "Unknown"}`);
+    sections.push(`Tag: ${summary.tag}`);
+    if (summary.clanName) sections.push(`Clan: ${summary.clanName}`);
+    if (summary.clanTag) sections.push(`Clan Tag: ${summary.clanTag}`);
+    if (summary.role) sections.push(`Role: ${summary.role.charAt(0).toUpperCase() + summary.role.slice(1)}`);
+    if (summary.townHallLevel) sections.push(`Town Hall Level: ${summary.townHallLevel}`);
+    if (summary.expLevel != null) sections.push(`Experience Level: ${summary.expLevel}`);
+    sections.push("");
+    
+    // ========================================
+    // COMPETITIVE PERFORMANCE
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("COMPETITIVE PERFORMANCE");
+    sections.push("───────────────────────────────────────");
+    if (summary.trophies != null) sections.push(`Current Trophies: ${formatNumber(summary.trophies)}`);
+    if (summary.rankedTrophies != null) sections.push(`Ranked Battle Trophies: ${formatNumber(summary.rankedTrophies)}`);
+    if (summary.bestTrophies != null) sections.push(`All-Time Best Trophies: ${formatNumber(summary.bestTrophies)}`);
+    if (summary.bestVersusTrophies != null) sections.push(`Best Builder Base Trophies: ${formatNumber(summary.bestVersusTrophies)}`);
+    
+    if (summary.rankedLeague?.name) {
+      sections.push(`Ranked League: ${summary.rankedLeague.name}${summary.rankedLeague.trophies != null ? ` (${formatNumber(summary.rankedLeague.trophies)} trophies)` : ""}`);
+    }
+    if (summary.league?.name && (!summary.rankedLeague?.name || summary.league.name !== summary.rankedLeague.name)) {
+      sections.push(`Regular League: ${summary.league.name}${summary.league.trophies != null ? ` (${formatNumber(summary.league.trophies)} trophies)` : ""}`);
+    }
+    
+    if (summary.seasonTotalTrophies != null) {
+      sections.push(`Season Running Total: ${formatNumber(summary.seasonTotalTrophies)} trophies`);
+    }
+    if (summary.lastWeekTrophies != null) {
+      sections.push(`Last Week Final (Monday): ${formatNumber(summary.lastWeekTrophies)} trophies`);
+    }
+    sections.push("");
+    
+    // ========================================
+    // HERO LEVELS & PROGRESSION
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("HERO LEVELS & PROGRESSION");
+    sections.push("───────────────────────────────────────");
+    if (heroLevels && heroCaps) {
+      const heroKeys = ['bk', 'aq', 'gw', 'rc', 'mp'] as const;
+      heroKeys.forEach((key) => {
+        const level = typeof heroLevels[key] === 'number' ? heroLevels[key] : null;
+        const max = heroCaps[key] ?? null;
+        if (level != null || max != null) {
+          const heroName = HERO_LABELS[key.toUpperCase()] ?? key.toUpperCase();
+          const levelStr = level != null ? formatNumber(level) : "—";
+          const maxStr = max != null ? formatNumber(max) : "—";
+          const progress = level != null && max != null && max > 0 
+            ? ` (${formatPercent((level / max) * 100)})`
+            : "";
+          sections.push(`${heroName}: ${levelStr}/${maxStr}${progress}`);
+        }
+      });
+    }
+    sections.push("");
+    
+    // ========================================
+    // PETS & EQUIPMENT
+    // ========================================
+    if (petEntries.length > 0 || equipmentEntries.length > 0) {
+      sections.push("───────────────────────────────────────");
+      sections.push("PETS & EQUIPMENT");
+      sections.push("───────────────────────────────────────");
+      
+      if (petEntries.length > 0) {
+        sections.push("Pets:");
+        petEntries.forEach(([petName, level]) => {
+          sections.push(`  • ${petName}: Level ${formatNumber(level)}`);
+        });
+      }
+      
+      if (equipmentEntries.length > 0) {
+        sections.push("Equipment:");
+        equipmentEntries.forEach(([equipName, level]) => {
+          sections.push(`  • ${equipName}: Level ${formatNumber(level)}`);
+        });
+      }
+      sections.push("");
+    }
+    
+    // ========================================
+    // WAR PERFORMANCE
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("WAR PERFORMANCE");
+    sections.push("───────────────────────────────────────");
+    if (summary.war?.stars != null) sections.push(`War Stars Earned: ${formatNumber(summary.war.stars)}`);
+    if (summary.war?.attackWins != null) sections.push(`Attack Wins: ${formatNumber(summary.war.attackWins)}`);
+    if (summary.war?.defenseWins != null) sections.push(`Defense Wins: ${formatNumber(summary.war.defenseWins)}`);
+    if (summary.war?.preference) {
+      const pref = summary.war.preference === "in" ? "Opted In" : summary.war.preference === "out" ? "Opted Out" : "Unknown";
+      sections.push(`War Preference: ${pref}`);
+    }
+    sections.push("");
+    
+    // ========================================
+    // DONATIONS & SUPPORT
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("DONATIONS & SUPPORT");
+    sections.push("───────────────────────────────────────");
+    if (summary.donations?.given != null) sections.push(`Troops Donated: ${formatNumber(summary.donations.given)}`);
+    if (summary.donations?.received != null) sections.push(`Troops Received: ${formatNumber(summary.donations.received)}`);
+    if (summary.donations?.balance != null) {
+      const balance = summary.donations.balance;
+      const balanceLabel = balance > 0 ? "Net Receiver" : balance < 0 ? "Net Donor" : "Balanced";
+      sections.push(`Donation Balance: ${formatSignedNumber(balance)} (${balanceLabel})`);
+    }
+    sections.push("");
+    
+    // ========================================
+    // CAPITAL & BUILDER BASE
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("CAPITAL & BUILDER BASE");
+    sections.push("───────────────────────────────────────");
+    if (summary.capitalContributions != null) {
+      sections.push(`Capital Gold Contributed: ${formatNumber(summary.capitalContributions)}`);
+    }
+    if (summary.builderBase?.hallLevel != null) {
+      sections.push(`Builder Hall Level: ${summary.builderBase.hallLevel}`);
+    }
+    if (summary.builderBase?.trophies != null) {
+      sections.push(`Builder Base Trophies: ${formatNumber(summary.builderBase.trophies)}`);
+    }
+    if (summary.builderBase?.battleWins != null) {
+      sections.push(`Builder Battle Wins: ${formatNumber(summary.builderBase.battleWins)}`);
+    }
+    if (summary.builderBase?.leagueName) {
+      sections.push(`Builder League: ${summary.builderBase.leagueName}`);
+    }
+    if (summary.battleModeTrophies != null) {
+      sections.push(`Battle Mode Trophies: ${formatNumber(summary.battleModeTrophies)}`);
+    }
+    sections.push("");
+    
+    // ========================================
+    // ACTIVITY & ENGAGEMENT
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("ACTIVITY & ENGAGEMENT");
+    sections.push("───────────────────────────────────────");
+    if (summary.activityScore != null) {
+      sections.push(`Activity Score: ${summary.activityScore.toFixed(1)}/65`);
+    }
+    if (activityEvidence?.level) {
+      sections.push(`Activity Level: ${activityEvidence.level}`);
+    }
+    if (activityEvidence?.confidence != null) {
+      sections.push(`Activity Confidence: ${formatPercent(activityEvidence.confidence * 100)}`);
+    }
+    
+    if (activityBreakdownRows.length > 0) {
+      sections.push("Activity Breakdown:");
+      activityBreakdownRows.forEach((row) => {
+        const detail = row.detail ? ` (${row.detail})` : "";
+        sections.push(`  • ${row.label}: ${row.score} pts${detail}`);
+      });
+    }
+    
+    if (timelineInsights.length > 0) {
+      sections.push("Recent Activity Insights:");
+      timelineInsights.forEach((insight) => {
+        sections.push(`  • ${insight}`);
+      });
+    }
+    sections.push("");
+    
+    // ========================================
+    // BASE QUALITY & PROGRESSION
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("BASE QUALITY & PROGRESSION");
+    sections.push("───────────────────────────────────────");
+    if (summary.rushPercent != null) {
+      const rushLabel = summary.rushPercent >= 70 ? "Very Rushed" : summary.rushPercent >= 40 ? "Moderately Rushed" : "Well Developed";
+      sections.push(`Rush Score: ${formatPercent(summary.rushPercent)} (${rushLabel})`);
+      sections.push(`  Note: Rush score measures hero shortfall vs Town Hall caps. Lower is better (0% = fully maxed).`);
+    }
+    sections.push("");
+    
+    // ========================================
+    // ACHIEVEMENTS & MILESTONES
+    // ========================================
+    if (achievementSummary.count != null || milestoneHighlights.length > 0) {
+      sections.push("───────────────────────────────────────");
+      sections.push("ACHIEVEMENTS & MILESTONES");
+      sections.push("───────────────────────────────────────");
+      if (achievementSummary.count != null) {
+        sections.push(`Achievements Unlocked: ${formatNumber(achievementSummary.count)}`);
+      }
+      if (achievementSummary.score != null) {
+        sections.push(`Achievement Score: ${formatNumber(achievementSummary.score)}`);
+      }
+      if (milestoneHighlights.length > 0) {
+        sections.push("Recent Milestones:");
+        milestoneHighlights.forEach((milestone) => {
+          sections.push(`  • ${milestone.dateDisplay}: ${milestone.title} - ${milestone.detail}`);
+        });
+      }
+      sections.push("");
+    }
+    
+    // ========================================
+    // SUPER TROOPS & EXTRAS
+    // ========================================
+    if (superTroopList.length > 0) {
+      sections.push("───────────────────────────────────────");
+      sections.push("SUPER TROOPS ACTIVE");
+      sections.push("───────────────────────────────────────");
+      sections.push(superTroopList.join(", "));
+      sections.push("");
+    }
+    
+    // ========================================
+    // VIP SCORE (if available)
+    // ========================================
+    if (profile?.vip?.current) {
+      sections.push("───────────────────────────────────────");
+      sections.push("VIP SCORE (Clan Value Assessment)");
+      sections.push("───────────────────────────────────────");
+      sections.push(`Overall VIP Score: ${profile.vip.current.score.toFixed(1)}/100`);
+      sections.push(`Clan Rank: #${profile.vip.current.rank}`);
+      sections.push(`Competitive Score: ${profile.vip.current.competitive_score.toFixed(1)}/100`);
+      sections.push(`Support Score: ${profile.vip.current.support_score.toFixed(1)}/100`);
+      sections.push(`Development Score: ${profile.vip.current.development_score.toFixed(1)}/100`);
+      sections.push(`  Note: VIP measures comprehensive clan contribution across Competitive (50%), Support (30%), and Development (20%) dimensions.`);
+      sections.push("");
+    }
+    
+    // ========================================
+    // TENURE & HISTORY
+    // ========================================
+    sections.push("───────────────────────────────────────");
+    sections.push("TENURE & HISTORY");
+    sections.push("───────────────────────────────────────");
+    if (summary.tenureDays != null) {
+      sections.push(`Tenure: ${formatNumber(summary.tenureDays)} day${summary.tenureDays === 1 ? "" : "s"}`);
+      if (summary.tenureAsOf) sections.push(`Tenure as of: ${formatDate(summary.tenureAsOf)}`);
+    }
+    if (summary.joinDate) sections.push(`Join Date: ${formatDate(summary.joinDate)}`);
+    if (summary.lastSeen) sections.push(`Last Seen: ${formatDate(summary.lastSeen)}`);
+    if (history?.currentStint?.startDate) {
+      sections.push(`Current Stint Started: ${formatDate(history.currentStint.startDate)}`);
+    }
+    
+    const fullSummary = sections.join("\n");
+    
     navigator.clipboard
-      .writeText(lines.join("\n"))
-      .then(() => showToast("Copied leadership summary", "success"))
+      .writeText(fullSummary)
+      .then(() => showToast("Copied comprehensive player summary", "success"))
       .catch(() => showToast("Unable to copy summary — copy manually instead", "error"));
-  }, [summary, history]);
+  }, [
+    summary, 
+    history, 
+    heroLevels, 
+    heroCaps, 
+    petEntries, 
+    equipmentEntries, 
+    superTroopList, 
+    achievementSummary, 
+    milestoneHighlights, 
+    activityEvidence, 
+    activityBreakdownRows, 
+    timelineInsights,
+    profile?.vip
+  ]);
 
   const handleOpenInClash = useCallback(() => {
     if (!plainTag) return;
@@ -1968,7 +2283,7 @@ const HERO_LABELS: Record<string, string> = {
           </div>
 
           <div className="mb-6 flex flex-wrap gap-2">
-            {(["overview", "history", "evaluations", "metrics"] as TabKey[]).map((tab) => (
+            {(["overview", "history", "evaluations", "metrics", "analysis"] as TabKey[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -1983,7 +2298,8 @@ const HERO_LABELS: Record<string, string> = {
                 {tab === "history" && <History className="h-4 w-4" />}
                 {tab === "evaluations" && <SquarePen className="h-4 w-4" />}
                 {tab === "metrics" && <Activity className="h-4 w-4" />}
-                {tab}
+                {tab === "analysis" && <Target className="h-4 w-4" />}
+                {tab === "analysis" ? "Player Analysis" : tab}
               </button>
             ))}
           </div>
@@ -3208,6 +3524,213 @@ const HERO_LABELS: Record<string, string> = {
                 </div>
               )}
 
+              {activeTab === "analysis" && (
+                <div className="space-y-6">
+                  {(() => {
+                    const { playerDNA, playerArchetype, clanAverageDNA, dnaBreakdown, playerStats, clanStatsAverages } = analysisData;
+
+                    return (
+                      <>
+                        {/* Radar Charts Side-by-Side */}
+                        {(playerDNA && playerArchetype) || (playerStats && clanStatsAverages) ? (
+                          <GlassCard
+                            title="Player Analysis"
+                            subtitle="DNA profile and performance comparison"
+                            icon={<Target className="h-5 w-5" />}
+                            className="bg-gradient-to-br from-slate-900/90 via-indigo-900/30 to-slate-900/90 border border-slate-800/80 shadow-[0_20px_60px_-30px_rgba(99,102,241,0.3)]"
+                          >
+                            <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                              {/* Player DNA Radar Chart */}
+                              {playerDNA && playerArchetype && (
+                                <div className="flex flex-col">
+                                  <div className="mb-4 flex items-center gap-2">
+                                    <Target className="h-4 w-4 text-indigo-400" />
+                                    <h3 
+                                      className="text-sm font-semibold text-slate-200 cursor-help"
+                                      title="Player DNA Profile: A multi-dimensional classification system that analyzes players across six core dimensions. Each dimension (0-100) measures a different aspect of player behavior and contribution. The radar chart visualizes how the player compares to clan averages (dashed line) in each dimension. The archetype is automatically determined based on the player's DNA pattern."
+                                    >
+                                      Player DNA Profile
+                                    </h3>
+                                  </div>
+                                  <div 
+                                    className="relative flex justify-center py-4 cursor-pointer group transition-all duration-200 hover:scale-[1.02]"
+                                    onClick={() => setExpandedChart('dna')}
+                                    title="Click to view larger chart"
+                                  >
+                                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 rounded-3xl blur-3xl group-hover:from-indigo-500/20 group-hover:to-purple-500/20 transition-colors" />
+                                    <PlayerDNARadar
+                                      dna={playerDNA}
+                                      archetype={playerArchetype as any}
+                                      playerName=""
+                                      size={420}
+                                      showName={false}
+                                      clanAverageDNA={clanAverageDNA}
+                                    />
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded text-xs text-slate-300 border border-slate-700">
+                                      Click to expand
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 grid grid-cols-3 gap-2">
+                                    <div 
+                                      className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-2 py-1.5 backdrop-blur-sm cursor-help"
+                                      title={dnaBreakdown?.leadership || "Leadership: Calculation not available"}
+                                    >
+                                      <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400">Leadership</p>
+                                      <p className="mt-0.5 text-base font-bold text-indigo-300">{playerDNA.leadership}</p>
+                                    </div>
+                                    <div 
+                                      className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-2 py-1.5 backdrop-blur-sm cursor-help"
+                                      title={dnaBreakdown?.performance || "Performance: Calculation not available"}
+                                    >
+                                      <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400">Performance</p>
+                                      <p className="mt-0.5 text-base font-bold text-indigo-300">{playerDNA.performance}</p>
+                                    </div>
+                                    <div 
+                                      className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-2 py-1.5 backdrop-blur-sm cursor-help"
+                                      title={dnaBreakdown?.generosity || "Generosity: Calculation not available"}
+                                    >
+                                      <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400">Generosity</p>
+                                      <p className="mt-0.5 text-base font-bold text-indigo-300">{playerDNA.generosity}</p>
+                                    </div>
+                                    <div 
+                                      className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-2 py-1.5 backdrop-blur-sm cursor-help"
+                                      title={dnaBreakdown?.social || "Social: Calculation not available"}
+                                    >
+                                      <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400">Social</p>
+                                      <p className="mt-0.5 text-base font-bold text-indigo-300">{playerDNA.social}</p>
+                                    </div>
+                                    <div 
+                                      className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-2 py-1.5 backdrop-blur-sm cursor-help"
+                                      title={dnaBreakdown?.specialization || "Specialization: Calculation not available"}
+                                    >
+                                      <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400">Specialization</p>
+                                      <p className="mt-0.5 text-base font-bold text-indigo-300">{playerDNA.specialization}</p>
+                                    </div>
+                                    <div 
+                                      className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-2 py-1.5 backdrop-blur-sm cursor-help"
+                                      title={dnaBreakdown?.consistency || "Consistency: Calculation not available"}
+                                    >
+                                      <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400">Consistency</p>
+                                      <p className="mt-0.5 text-base font-bold text-indigo-300">{playerDNA.consistency}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Stats Comparison Radar Chart */}
+                              {playerStats && clanStatsAverages && (
+                                <div className="flex flex-col">
+                                  <div className="mb-4 flex items-center gap-2">
+                                    <BarChart3 className="h-4 w-4 text-blue-400" />
+                                    <h3 
+                                      className="text-sm font-semibold text-slate-200 cursor-help"
+                                      title="Performance vs Clan Average: This radar chart compares your key stats to your clan's averages. The solid blue line represents your values, while the dashed gray line shows the clan average. Values above the clan average (50%+ on the chart) indicate you're performing better than average in that area. The percentage shown for each metric indicates how much above or below average you are."
+                                    >
+                                      Performance vs Clan Average
+                                    </h3>
+                                  </div>
+                                  <div 
+                                    className="relative flex justify-center py-4 cursor-pointer group transition-all duration-200 hover:scale-[1.02]"
+                                    onClick={() => setExpandedChart('stats')}
+                                    title="Click to view larger chart"
+                                  >
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-500/10 rounded-3xl blur-3xl group-hover:from-blue-500/20 group-hover:to-cyan-500/20 transition-colors" />
+                                    <StatsRadarChart
+                                      playerStats={playerStats}
+                                      clanAverages={clanStatsAverages}
+                                      playerName=""
+                                      size={420}
+                                      showName={false}
+                                    />
+                                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800/90 backdrop-blur-sm px-2 py-1 rounded text-xs text-slate-300 border border-slate-700">
+                                      Click to expand
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 grid grid-cols-3 gap-2">
+                                    {[
+                                      { 
+                                        label: 'Trophies', 
+                                        player: playerStats.trophies, 
+                                        avg: clanStatsAverages.trophies,
+                                        tooltip: "Current trophy count. Higher trophies indicate stronger competitive performance and higher league placement. Ranked Battle Trophies are used if available."
+                                      },
+                                      { 
+                                        label: 'Donations', 
+                                        player: playerStats.donations, 
+                                        avg: clanStatsAverages.donations,
+                                        tooltip: "Total troops donated to clan members. Higher donations show stronger clan support and generosity. Includes all troop types donated throughout the season."
+                                      },
+                                      { 
+                                        label: 'War Stars', 
+                                        player: playerStats.warStars, 
+                                        avg: clanStatsAverages.warStars,
+                                        tooltip: "Total stars earned in Clan Wars. Each successful attack can earn up to 3 stars. Higher totals indicate more war participation and successful attacks."
+                                      },
+                                      { 
+                                        label: 'Capital', 
+                                        player: playerStats.capitalContributions, 
+                                        avg: clanStatsAverages.capitalContributions,
+                                        tooltip: "Total capital gold contributed to Clan Capital upgrades during Raid Weekends. Higher contributions show stronger participation in clan capital development."
+                                      },
+                                      { 
+                                        label: 'Town Hall', 
+                                        player: playerStats.townHallLevel, 
+                                        avg: clanStatsAverages.townHallLevel,
+                                        tooltip: "Town Hall level (1-16). Higher levels unlock more buildings, defenses, and troops. Indicates overall base progression and power level."
+                                      },
+                                      { 
+                                        label: 'VIP Score', 
+                                        player: playerStats.vipScore, 
+                                        avg: clanStatsAverages.vipScore,
+                                        tooltip: "VIP (Very Important Player) Score: Combined measure of competitive performance (50%), support activities (30%), and base development (20%). Higher scores indicate well-rounded, valuable clan members."
+                                      },
+                                    ].map(({ label, player, avg, tooltip }) => {
+                                      const diff = avg > 0 ? ((player - avg) / avg) * 100 : 0;
+                                      const isPositive = diff >= 0;
+                                      return (
+                                        <div 
+                                          key={label} 
+                                          className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-2 py-1.5 backdrop-blur-sm cursor-help"
+                                          title={tooltip}
+                                        >
+                                          <p className="text-[9px] uppercase tracking-[0.15em] text-slate-400">{label}</p>
+                                          <p className="mt-0.5 text-base font-bold text-blue-300">{formatNumber(player)}</p>
+                                          <div className="mt-0.5 flex items-baseline gap-1">
+                                            <p className="text-[8px] text-slate-500">vs {formatNumber(Math.round(avg))}</p>
+                                            <p className={`text-[8px] font-semibold ${isPositive ? 'text-emerald-400' : 'text-orange-400'}`}>
+                                              {isPositive ? '+' : ''}{diff.toFixed(0)}%
+                                            </p>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </GlassCard>
+                        ) : null}
+
+                        {(!playerDNA || !playerStats) && (
+                          <GlassCard
+                            title="Analysis Data Unavailable"
+                            subtitle="Player analysis requires roster data"
+                            icon={<Target className="h-5 w-5" />}
+                            className="bg-slate-900/70 border border-slate-800/80"
+                          >
+                            <p className="text-sm text-slate-400">
+                              {!rosterMember 
+                                ? "Unable to load player data from roster. Please ensure the player is in the current clan."
+                                : "Clan averages are not yet available. Analysis will appear once clan data is processed."}
+                            </p>
+                          </GlassCard>
+                        )}
+                      </>
+                    );
+                  })()}
+                </div>
+              )}
+
               {activeTab === "metrics" && (
                 <div className="space-y-6">
                   <GlassCard
@@ -3548,6 +4071,151 @@ const HERO_LABELS: Record<string, string> = {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Expanded Radar Chart Modal */}
+      <Modal
+        isOpen={expandedChart !== null}
+        onClose={() => setExpandedChart(null)}
+        title={expandedChart === 'dna' ? 'Player DNA Profile' : 'Performance vs Clan Average'}
+        size="2xl"
+        className="bg-slate-900/95 border border-slate-800"
+      >
+        {expandedChart === 'dna' && analysisData.playerDNA && analysisData.playerArchetype && (
+          <div className="space-y-6">
+            <div className="relative flex justify-center py-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-purple-500/10 rounded-3xl blur-3xl" />
+              <PlayerDNARadar
+                dna={analysisData.playerDNA}
+                archetype={analysisData.playerArchetype as any}
+                playerName={summary?.name ?? ""}
+                size={700}
+                showName={true}
+                clanAverageDNA={analysisData.clanAverageDNA}
+              />
+            </div>
+            {analysisData.dnaBreakdown && (
+              <div className="grid grid-cols-3 gap-3">
+                <div 
+                  className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 backdrop-blur-sm cursor-help"
+                  title={analysisData.dnaBreakdown.leadership}
+                >
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Leadership</p>
+                  <p className="mt-1 text-xl font-bold text-indigo-300">{analysisData.playerDNA.leadership}</p>
+                </div>
+                <div 
+                  className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 backdrop-blur-sm cursor-help"
+                  title={analysisData.dnaBreakdown.performance}
+                >
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Performance</p>
+                  <p className="mt-1 text-xl font-bold text-indigo-300">{analysisData.playerDNA.performance}</p>
+                </div>
+                <div 
+                  className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 backdrop-blur-sm cursor-help"
+                  title={analysisData.dnaBreakdown.generosity}
+                >
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Generosity</p>
+                  <p className="mt-1 text-xl font-bold text-indigo-300">{analysisData.playerDNA.generosity}</p>
+                </div>
+                <div 
+                  className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 backdrop-blur-sm cursor-help"
+                  title={analysisData.dnaBreakdown.social}
+                >
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Social</p>
+                  <p className="mt-1 text-xl font-bold text-indigo-300">{analysisData.playerDNA.social}</p>
+                </div>
+                <div 
+                  className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 backdrop-blur-sm cursor-help"
+                  title={analysisData.dnaBreakdown.specialization}
+                >
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Specialization</p>
+                  <p className="mt-1 text-xl font-bold text-indigo-300">{analysisData.playerDNA.specialization}</p>
+                </div>
+                <div 
+                  className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 backdrop-blur-sm cursor-help"
+                  title={analysisData.dnaBreakdown.consistency}
+                >
+                  <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">Consistency</p>
+                  <p className="mt-1 text-xl font-bold text-indigo-300">{analysisData.playerDNA.consistency}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {expandedChart === 'stats' && analysisData.playerStats && analysisData.clanStatsAverages && (
+          <div className="space-y-6">
+            <div className="relative flex justify-center py-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 via-transparent to-cyan-500/10 rounded-3xl blur-3xl" />
+              <StatsRadarChart
+                playerStats={analysisData.playerStats}
+                clanAverages={analysisData.clanStatsAverages}
+                playerName={summary?.name ?? ""}
+                size={700}
+                showName={true}
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { 
+                  label: 'Trophies', 
+                  player: analysisData.playerStats.trophies, 
+                  avg: analysisData.clanStatsAverages.trophies,
+                  tooltip: "Current trophy count. Higher trophies indicate stronger competitive performance and higher league placement. Ranked Battle Trophies are used if available."
+                },
+                { 
+                  label: 'Donations', 
+                  player: analysisData.playerStats.donations, 
+                  avg: analysisData.clanStatsAverages.donations,
+                  tooltip: "Total troops donated to clan members. Higher donations show stronger clan support and generosity. Includes all troop types donated throughout the season."
+                },
+                { 
+                  label: 'War Stars', 
+                  player: analysisData.playerStats.warStars, 
+                  avg: analysisData.clanStatsAverages.warStars,
+                  tooltip: "Total stars earned in Clan Wars. Each successful attack can earn up to 3 stars. Higher totals indicate more war participation and successful attacks."
+                },
+                { 
+                  label: 'Capital', 
+                  player: analysisData.playerStats.capitalContributions, 
+                  avg: analysisData.clanStatsAverages.capitalContributions,
+                  tooltip: "Total capital gold contributed to Clan Capital upgrades during Raid Weekends. Higher contributions show stronger participation in clan capital development."
+                },
+                { 
+                  label: 'Town Hall', 
+                  player: analysisData.playerStats.townHallLevel, 
+                  avg: analysisData.clanStatsAverages.townHallLevel,
+                  tooltip: "Town Hall level (1-16). Higher levels unlock more buildings, defenses, and troops. Indicates overall base progression and power level."
+                },
+                { 
+                  label: 'VIP Score', 
+                  player: analysisData.playerStats.vipScore, 
+                  avg: analysisData.clanStatsAverages.vipScore,
+                  tooltip: "VIP (Very Important Player) Score: Combined measure of competitive performance (50%), support activities (30%), and base development (20%). Higher scores indicate well-rounded, valuable clan members."
+                },
+              ].map(({ label, player, avg, tooltip }) => {
+                const diff = avg > 0 ? ((player - avg) / avg) * 100 : 0;
+                const isPositive = diff >= 0;
+                return (
+                  <div 
+                    key={label} 
+                    className="rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2 backdrop-blur-sm cursor-help"
+                    title={tooltip}
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.15em] text-slate-400">{label}</p>
+                    <p className="mt-1 text-xl font-bold text-blue-300">{formatNumber(player)}</p>
+                    <div className="mt-1 flex items-baseline gap-1">
+                      <p className="text-[9px] text-slate-500">vs {formatNumber(Math.round(avg))}</p>
+                      <p className={`text-[9px] font-semibold ${isPositive ? 'text-emerald-400' : 'text-orange-400'}`}>
+                        {isPositive ? '+' : ''}{diff.toFixed(0)}%
+                      </p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </Modal>
 
     </DashboardLayout>

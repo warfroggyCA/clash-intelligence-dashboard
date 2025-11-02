@@ -2,7 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import RootErrorBoundary from '@/components/layout/RootErrorBoundary';
-import ClientDashboard from '@/app/ClientDashboard';
+// DEPRECATED: This file has been retired. Main route now uses SimpleRosterPage.
+// import ClientDashboard from '@/app/ClientDashboard';
 import ShadowRootPortal from '@/components/ShadowRootPortal';
 import type { Roster } from '@/types';
 
