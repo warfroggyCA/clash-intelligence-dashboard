@@ -1900,10 +1900,14 @@ const HERO_LABELS: Record<string, string> = {
     if (summary.bestVersusTrophies != null) sections.push(`Best Builder Base Trophies: ${formatNumber(summary.bestVersusTrophies)}`);
     
     if (summary.rankedLeague?.name) {
-      sections.push(`Ranked League: ${summary.rankedLeague.name}${summary.rankedLeague.trophies != null ? ` (${formatNumber(summary.rankedLeague.trophies)} trophies)` : ""}`);
+      const rankedLeague = summary.rankedLeague;
+      const trophies = 'trophies' in rankedLeague ? rankedLeague.trophies : null;
+      sections.push(`Ranked League: ${rankedLeague.name}${trophies != null ? ` (${formatNumber(trophies)} trophies)` : ""}`);
     }
     if (summary.league?.name && (!summary.rankedLeague?.name || summary.league.name !== summary.rankedLeague.name)) {
-      sections.push(`Regular League: ${summary.league.name}${summary.league.trophies != null ? ` (${formatNumber(summary.league.trophies)} trophies)` : ""}`);
+      const league = summary.league;
+      const trophies = 'trophies' in league ? league.trophies : null;
+      sections.push(`Regular League: ${league.name}${trophies != null ? ` (${formatNumber(trophies)} trophies)` : ""}`);
     }
     
     if (summary.seasonTotalTrophies != null) {
