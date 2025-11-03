@@ -2040,9 +2040,9 @@ const HERO_LABELS: Record<string, string> = {
     if (activityEvidence?.level) {
       sections.push(`Activity Level: ${activityEvidence.level}`);
     }
-    if (activityEvidence && activityEvidence.confidence != null) {
-      const confidence = activityEvidence.confidence;
-      sections.push(`Activity Confidence: ${formatPercent(confidence * 100)}`);
+    if (activityEvidence?.confidence) {
+      const confidenceLabel = activityEvidence.confidence.charAt(0).toUpperCase() + activityEvidence.confidence.slice(1);
+      sections.push(`Activity Confidence: ${confidenceLabel}`);
     }
     
     if (activityBreakdownRows.length > 0) {
