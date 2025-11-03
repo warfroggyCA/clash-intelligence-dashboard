@@ -147,11 +147,19 @@ export default function PlayerActivityAnalytics({
       const event = toActivityEvent(point);
       const evidence = calculateActivityScore(stubMember, { timeline: [event], lookbackDays: 7 });
       const breakdownTotals = evidence.breakdown ?? createEmptyBreakdown();
+      // Store full breakdown so tooltip can show all contributing categories
       const chartBreakdown = {
         donations: breakdownTotals.donations,
         trophies: breakdownTotals.trophies,
         war: breakdownTotals.war,
         capital: breakdownTotals.capital,
+        // Add other major categories
+        realtime: breakdownTotals.realtime,
+        heroProgress: breakdownTotals.heroProgress,
+        role: breakdownTotals.role,
+        upgrades: breakdownTotals.upgrades,
+        builder: breakdownTotals.builder,
+        other: breakdownTotals.other + breakdownTotals.lab + breakdownTotals.achievements + breakdownTotals.superTroops,
       };
       const totalScore = Object.values(breakdownTotals).reduce((sum, val) => sum + val, 0);
       const roundedScore = Math.round(totalScore);
@@ -211,30 +219,38 @@ export default function PlayerActivityAnalytics({
     const data = payload[0].payload;
     const breakdown = data.breakdown;
 
+    // Show all non-zero categories, grouped logically
+    const categories = [
+      { key: 'realtime', label: 'Ranked Battles', value: breakdown.realtime },
+      { key: 'donations', label: 'Donations', value: breakdown.donations },
+      { key: 'trophies', label: 'Trophy Level', value: breakdown.trophies },
+      { key: 'war', label: 'War Contribution', value: breakdown.war },
+      { key: 'capital', label: 'Capital', value: breakdown.capital },
+      { key: 'heroProgress', label: 'Hero Progress', value: breakdown.heroProgress },
+      { key: 'role', label: 'Clan Role', value: breakdown.role },
+      { key: 'upgrades', label: 'Upgrades', value: breakdown.upgrades },
+      { key: 'builder', label: 'Builder Base', value: breakdown.builder },
+      { key: 'other', label: 'Other', value: breakdown.other },
+    ].filter(cat => cat.value > 0);
+
     return (
-      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 shadow-xl">
+      <div className="bg-slate-800 border border-slate-700 rounded-lg p-4 shadow-xl max-w-xs">
         <p className="font-medium text-slate-100 mb-2">{label}</p>
-        <p className="text-lg font-bold mb-2" style={{ color: data.color }}>
+        <p className="text-lg font-bold mb-3" style={{ color: data.color }}>
           Score: {data.score}/100 ({getScoreLabel(data.score)})
         </p>
-        <div className="space-y-1 text-sm">
-          <div className="flex justify-between">
-            <span className="text-slate-300">Donations:</span>
-            <span className="font-medium text-slate-100">{breakdown.donations.toFixed(1)} pts</span>
+        {categories.length > 0 ? (
+          <div className="space-y-1 text-sm">
+            {categories.map((cat) => (
+              <div key={cat.key} className="flex justify-between">
+                <span className="text-slate-300">{cat.label}:</span>
+                <span className="font-medium text-slate-100">{cat.value.toFixed(1)} pts</span>
+              </div>
+            ))}
           </div>
-          <div className="flex justify-between">
-            <span className="text-slate-300">Trophies:</span>
-            <span className="font-medium text-slate-100">{breakdown.trophies.toFixed(1)} pts</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-300">War Contribution:</span>
-            <span className="font-medium text-slate-100">{breakdown.war.toFixed(1)} pts</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-slate-300">Capital:</span>
-            <span className="font-medium text-slate-100">{breakdown.capital.toFixed(1)} pts</span>
-          </div>
-        </div>
+        ) : (
+          <p className="text-sm text-slate-400">No activity breakdown available</p>
+        )}
       </div>
     );
   };
