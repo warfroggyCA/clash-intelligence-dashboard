@@ -1989,8 +1989,14 @@ const HERO_LABELS: Record<string, string> = {
     sections.push("───────────────────────────────────────");
     if (summary.donations?.given != null) sections.push(`Troops Donated: ${formatNumber(summary.donations.given)}`);
     if (summary.donations?.received != null) sections.push(`Troops Received: ${formatNumber(summary.donations.received)}`);
-    if (summary.donations?.balance != null) {
-      const balance = summary.donations.balance;
+    // Calculate balance from given/received if balance property doesn't exist
+    if (summary.donations) {
+      const given = summary.donations.given ?? 0;
+      const received = summary.donations.received ?? 0;
+      // Use type guard to check if balance exists in the union type
+      const balance = ('balance' in summary.donations && summary.donations.balance != null)
+        ? (summary.donations as { balance: number | null }).balance!
+        : (given - received);
       const balanceLabel = balance > 0 ? "Net Receiver" : balance < 0 ? "Net Donor" : "Balanced";
       sections.push(`Donation Balance: ${formatSignedNumber(balance)} (${balanceLabel})`);
     }
