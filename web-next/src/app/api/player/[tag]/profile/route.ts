@@ -507,7 +507,7 @@ export async function GET(
             }
 
             // Town Hall level
-            const thLevel = member.townHallLevel ?? member.th ?? 0;
+            const thLevel = member.townHallLevel ?? 0;
             if (thLevel > 0) {
               totals.townHallLevel.sum += thLevel;
               totals.townHallLevel.count += 1;
