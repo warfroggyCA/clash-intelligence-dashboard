@@ -2133,7 +2133,6 @@ const HERO_LABELS: Record<string, string> = {
       sections.push(`Tenure: ${formatNumber(summary.tenureDays)} day${summary.tenureDays === 1 ? "" : "s"}`);
       if (summary.tenureAsOf) sections.push(`Tenure as of: ${formatDate(summary.tenureAsOf)}`);
     }
-    if (summary.joinDate) sections.push(`Join Date: ${formatDate(summary.joinDate)}`);
     if (summary.lastSeen) sections.push(`Last Seen: ${formatDate(summary.lastSeen)}`);
     if (history?.currentStint?.startDate) {
       sections.push(`Current Stint Started: ${formatDate(history.currentStint.startDate)}`);
