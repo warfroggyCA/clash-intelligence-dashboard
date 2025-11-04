@@ -57,10 +57,17 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
   };
 
   try {
-    // Short-circuit if today's snapshot already exists in Supabase
+    // Check if today's snapshot already exists - but allow second run to proceed
+    // This ensures both scheduled runs (4:30 and 5:30 UTC) can execute
     try {
       const supabase = getSupabaseAdminClient();
       const todayIso = new Date().toISOString().slice(0, 10);
+      const now = new Date();
+      const currentHour = now.getUTCHours();
+      const currentMinute = now.getUTCMinutes();
+      
+      // Only skip if we're past 6:00 AM UTC AND data exists for today
+      // This allows both 4:30 and 5:30 runs to proceed, but prevents unnecessary runs later
       const { data: latestRow, error: latestErr } = await supabase
         .from('canonical_member_snapshots')
         .select('snapshot_date')
@@ -68,11 +75,16 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
         .order('snapshot_date', { ascending: false, nullsFirst: false })
         .limit(1)
         .maybeSingle();
+        
       if (!latestErr && latestRow?.snapshot_date) {
         const latestDate = latestRow.snapshot_date.slice(0, 10);
-        if (latestDate >= todayIso) {
-          console.log(`[StagedIngestion] Up-to-date for ${clanTag} (latest ${latestDate}) — skipping fetch`);
+        const isAfterScheduledRuns = currentHour > 6 || (currentHour === 6 && currentMinute >= 0);
+        
+        if (latestDate >= todayIso && isAfterScheduledRuns) {
+          console.log(`[StagedIngestion] Up-to-date for ${clanTag} (latest ${latestDate}) and past scheduled runs — skipping fetch`);
           return { clanTag, success: true, ingestionResult: { skipped: true, reason: 'up_to_date', latestDate } };
+        } else if (latestDate >= todayIso && !isAfterScheduledRuns) {
+          console.log(`[StagedIngestion] Data exists for today (${latestDate}), but within scheduled run window — proceeding to ensure both runs complete`);
         }
       }
     } catch (precheckErr) {

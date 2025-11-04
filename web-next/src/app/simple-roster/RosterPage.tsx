@@ -206,6 +206,36 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const lastRefreshRef = useRef<number>(0);
   const staleCheckRef = useRef<boolean>(false);
+  
+  // Auto-refresh if data is stale (older than today)
+  useEffect(() => {
+    if (!roster?.lastUpdated || staleCheckRef.current) return;
+    
+    const checkAndRefresh = async () => {
+      const lastUpdated = new Date(roster.lastUpdated);
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+      const lastUpdatedDate = new Date(lastUpdated);
+      lastUpdatedDate.setUTCHours(0, 0, 0, 0);
+      
+      // If data is from before today and it's past 6:30 AM UTC (after both cron runs)
+      const now = new Date();
+      const cutoffTime = new Date(today);
+      cutoffTime.setUTCHours(6, 30, 0, 0);
+      
+      if (lastUpdatedDate < today && now >= cutoffTime) {
+        console.log('[RosterPage] Data is stale, triggering refresh...');
+        staleCheckRef.current = true;
+        setRefreshTrigger(prev => prev + 1);
+      }
+    };
+    
+    // Check every 5 minutes
+    const interval = setInterval(checkAndRefresh, 5 * 60 * 1000);
+    checkAndRefresh(); // Check immediately
+    
+    return () => clearInterval(interval);
+  }, [roster?.lastUpdated, refreshTrigger]);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [showRightFade, setShowRightFade] = useState(false);

@@ -155,3 +155,4 @@ describe('getInitialRosterData', () => {
     await expect(getInitialRosterData('#2PR8R8V8P')).rejects.toThrow('Failed to load roster: 500');
   });
 });
+
