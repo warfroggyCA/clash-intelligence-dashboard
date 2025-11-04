@@ -41,9 +41,8 @@ export async function getInitialRosterData(requestedClanTag?: string): Promise<R
     headers: {
       Accept: 'application/json',
     },
-    cache: 'force-cache',
+    cache: 'no-store', // Always fetch fresh data to prevent stale data issues
     next: {
-      revalidate: ROSTER_REVALIDATE_SECONDS,
       tags: normalizedTag
         ? ['roster', `roster:${normalizedTag}`]
         : ['roster'],

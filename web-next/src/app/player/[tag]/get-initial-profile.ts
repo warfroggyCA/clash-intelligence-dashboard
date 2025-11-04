@@ -45,9 +45,8 @@ export async function getInitialPlayerProfile(playerTag: string): Promise<Supaba
     headers: {
       Accept: 'application/json',
     },
-    cache: 'force-cache',
+    cache: 'no-store', // Always fetch fresh data to prevent stale data issues
     next: {
-      revalidate: PLAYER_PROFILE_REVALIDATE_SECONDS,
       tags: ['player-profile', `player-profile:${normalizedTag}`],
     },
   });
@@ -64,4 +63,5 @@ export async function getInitialPlayerProfile(playerTag: string): Promise<Supaba
 
   return payload.data;
 }
+
 

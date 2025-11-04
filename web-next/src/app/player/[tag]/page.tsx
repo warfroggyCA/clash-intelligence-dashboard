@@ -1,12 +1,14 @@
 import PlayerProfileClient from './PlayerProfileClient';
-import { getInitialPlayerProfile, PLAYER_PROFILE_REVALIDATE_SECONDS } from './get-initial-profile';
+import { getInitialPlayerProfile } from './get-initial-profile';
 import type { SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
 
 interface PlayerPageProps {
   params: { tag: string };
 }
 
-export const revalidate = PLAYER_PROFILE_REVALIDATE_SECONDS;
+// Force dynamic rendering to prevent stale data caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function PlayerPage({ params }: PlayerPageProps) {
   const tag = params?.tag ?? '';

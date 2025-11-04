@@ -9,10 +9,12 @@
  */
 
 import RosterPage from './simple-roster/RosterPage';
-import { getInitialRosterData, ROSTER_REVALIDATE_SECONDS } from './simple-roster/get-initial-roster';
+import { getInitialRosterData } from './simple-roster/get-initial-roster';
 import type { RosterData } from './simple-roster/roster-transform';
 
-export const revalidate = ROSTER_REVALIDATE_SECONDS;
+// Force dynamic rendering to prevent stale data caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function Home() {
   let initialRoster: RosterData | null = null;
