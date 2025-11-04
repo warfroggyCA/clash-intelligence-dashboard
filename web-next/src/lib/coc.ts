@@ -429,8 +429,15 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
     axiosConfig.httpsAgent = proxyAgent;
     axiosConfig.httpAgent = proxyAgent;
 
+    // Log the exact URL and headers being sent (but mask sensitive data)
+    const maskedToken = token ? `${token.substring(0, 8)}...${token.substring(token.length - 4)}` : 'MISSING';
+    console.log(`[API Call] (proxy) Making request to: ${BASE}${path}`);
+    console.log(`[API Call] (proxy) Authorization header: Bearer ${maskedToken}`);
+    console.log(`[API Call] (proxy) Proxy agent configured: ${proxyAgent ? 'YES' : 'NO'}`);
+
     const response = await axios.get(`${BASE}${path}`, axiosConfig);
     console.log(`[API Call] (proxy) SUCCESS for ${path} - Status: ${response.status}`);
+    console.log(`[API Call] (proxy) Response headers:`, JSON.stringify(response.headers));
     return response.data as T;
   } catch (error: any) {
     if (error?.response) {
