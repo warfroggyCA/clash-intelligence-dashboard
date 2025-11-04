@@ -88,7 +88,19 @@ const DEFAULT_TIMEOUT_MS = Number(process.env.COC_API_TIMEOUT_MS ?? 15000);
 const MAX_RETRIES = Math.max(1, Number(process.env.COC_API_MAX_RETRIES ?? 3));
 const RETRY_BACKOFF_BASE_MS = Number(process.env.COC_API_RETRY_BASE_MS ?? 1000);
 const DISABLE_PROXY = process.env.COC_DISABLE_PROXY === 'true';
-const ALLOW_PROXY_FALLBACK = process.env.COC_ALLOW_PROXY_FALLBACK !== 'false';
+
+// Environment detection
+const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
+const isProduction = process.env.NODE_ENV === 'production' && (process.env.VERCEL_ENV === 'production' || !process.env.VERCEL_ENV);
+
+// CRITICAL: In production, Fixie is REQUIRED. Direct connections are not allowed.
+if (isProduction && !FIXIE_URL && !DISABLE_PROXY) {
+  console.error('[CoC API] CRITICAL ERROR: FIXIE_URL is not set in production environment. Fixie proxy is REQUIRED for production.');
+  throw new Error('FIXIE_URL environment variable is required in production. Direct CoC API connections are not allowed.');
+}
+
+// In production, force proxy usage (no fallback to direct)
+const ALLOW_PROXY_FALLBACK = isDevelopment ? (process.env.COC_ALLOW_PROXY_FALLBACK !== 'false') : false;
 
 // Force IPv4 for native fetch (some keys/IP-allowlists are v4-only) when no proxy is set
 if (!FIXIE_URL) {
@@ -260,23 +272,58 @@ async function api<T>(path: string): Promise<T> {
   const canUseProxy = Boolean(FIXIE_URL) && !DISABLE_PROXY;
   
   // Log proxy configuration for debugging
-  console.log(`[CoC API] Proxy config - FIXIE_URL: ${FIXIE_URL ? 'SET' : 'NOT SET'}, DISABLE_PROXY: ${DISABLE_PROXY}, canUseProxy: ${canUseProxy}`);
+  console.log(`[CoC API] Proxy config - Environment: ${isProduction ? 'PRODUCTION' : isDevelopment ? 'DEVELOPMENT' : 'UNKNOWN'}, FIXIE_URL: ${FIXIE_URL ? 'SET' : 'NOT SET'}, DISABLE_PROXY: ${DISABLE_PROXY}, canUseProxy: ${canUseProxy}`);
   
-  if (canUseProxy) {
-    attemptModes.push('proxy');
-    if (ALLOW_PROXY_FALLBACK) {
+  // PRODUCTION: Must use Fixie, no direct connections allowed
+  if (isProduction) {
+    if (!canUseProxy) {
+      const error = new Error('FIXIE_URL is required in production. Direct CoC API connections are not allowed.');
+      console.error('[CoC API] PRODUCTION ERROR:', error.message);
+      throw error;
+    }
+    // Production: Only use proxy, no fallback
+    while (attemptModes.length < MAX_RETRIES) {
+      attemptModes.push('proxy');
+    }
+  } 
+  // DEVELOPMENT: Allow direct connections if Fixie not available
+  else if (isDevelopment) {
+    if (canUseProxy) {
+      attemptModes.push('proxy');
+      if (ALLOW_PROXY_FALLBACK) {
+        while (attemptModes.length < MAX_RETRIES) {
+          attemptModes.push('direct');
+        }
+      } else {
+        while (attemptModes.length < MAX_RETRIES) {
+          attemptModes.push('proxy');
+        }
+      }
+    } else {
+      console.warn(`[CoC API] Development mode: Proxy not available, using direct connection`);
       while (attemptModes.length < MAX_RETRIES) {
         attemptModes.push('direct');
       }
-    } else {
-      while (attemptModes.length < MAX_RETRIES) {
-        attemptModes.push('proxy');
-      }
     }
-  } else {
-    console.warn(`[CoC API] WARNING: Proxy not available (FIXIE_URL=${FIXIE_URL ? 'set' : 'not set'}, DISABLE_PROXY=${DISABLE_PROXY}) - using direct connection`);
-    while (attemptModes.length < MAX_RETRIES) {
-      attemptModes.push('direct');
+  }
+  // UNKNOWN ENVIRONMENT: Try to use proxy if available, otherwise direct
+  else {
+    if (canUseProxy) {
+      attemptModes.push('proxy');
+      if (ALLOW_PROXY_FALLBACK) {
+        while (attemptModes.length < MAX_RETRIES) {
+          attemptModes.push('direct');
+        }
+      } else {
+        while (attemptModes.length < MAX_RETRIES) {
+          attemptModes.push('proxy');
+        }
+      }
+    } else {
+      console.warn(`[CoC API] WARNING: Proxy not available - using direct connection`);
+      while (attemptModes.length < MAX_RETRIES) {
+        attemptModes.push('direct');
+      }
     }
   }
 
@@ -321,6 +368,12 @@ async function api<T>(path: string): Promise<T> {
         if (isClientError) {
           throw error;
         }
+      }
+      
+      // In production, direct connections should never happen
+      if (isProduction && mode === 'direct') {
+        console.error(`[CoC API] CRITICAL ERROR: Direct connection attempted in PRODUCTION. This should never happen. FIXIE_URL must be set.`);
+        throw new Error('Direct CoC API connection attempted in production. Fixie proxy is required.');
       }
       
       // If direct connection gets 403, and we have Fixie available but didn't try it, suggest using proxy
