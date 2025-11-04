@@ -240,7 +240,8 @@ async function api<T>(path: string): Promise<T> {
     return cached;
   }
 
-  const token = process.env.COC_API_TOKEN;
+  // Support both COC_API_TOKEN and COC_API_KEY for compatibility
+  const token = process.env.COC_API_TOKEN || process.env.COC_API_KEY;
   if (!token) {
     // In development, fall back to mock data if no token
     if (process.env.NODE_ENV === 'development') {
