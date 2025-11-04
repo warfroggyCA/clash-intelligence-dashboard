@@ -403,40 +403,68 @@ async function withRateLimiter<T>(fn: () => Promise<T>): Promise<T> {
 
 async function requestViaProxy<T>(path: string, token: string): Promise<T> {
   if (!FIXIE_URL) {
-    console.warn(`[CoC API] requestViaProxy called but FIXIE_URL not set - falling back to direct`);
-    return requestDirect<T>(path, token);
+    const error = new Error('requestViaProxy called but FIXIE_URL not set');
+    console.error(`[CoC API] CRITICAL: ${error.message}`);
+    throw error;
   }
 
   const axiosConfig: any = {
-    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    headers: { 
+      Authorization: `Bearer ${token}`, 
+      Accept: "application/json",
+      'User-Agent': 'ClashIntelligence/1.0'
+    },
     timeout: DEFAULT_TIMEOUT_MS,
+    maxRedirects: 5,
   };
   
   // Log proxy URL (masked for security)
   const maskedFixieUrl = FIXIE_URL.replace(/^https?:\/\/[^:]+:[^@]+@/, 'https://***:***@');
-  console.log(`[API Call] (proxy via ${maskedFixieUrl}) ${path}`);
+  const fixieHost = FIXIE_URL.match(/@([^:]+)/)?.[1] || 'unknown';
+  console.log(`[API Call] (proxy via Fixie ${fixieHost}) ${path}`);
+  console.log(`[API Call] Proxy config - FIXIE_URL format: ${FIXIE_URL.startsWith('http') ? 'valid' : 'invalid'}, length: ${FIXIE_URL.length}`);
   
-  const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
-  axiosConfig.httpsAgent = proxyAgent;
-  axiosConfig.httpAgent = proxyAgent;
-
   try {
+    const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
+    axiosConfig.httpsAgent = proxyAgent;
+    axiosConfig.httpAgent = proxyAgent;
+
     const response = await axios.get(`${BASE}${path}`, axiosConfig);
-    console.log(`[API Call] (proxy) SUCCESS for ${path}`);
+    console.log(`[API Call] (proxy) SUCCESS for ${path} - Status: ${response.status}`);
     return response.data as T;
   } catch (error: any) {
     if (error?.response) {
       const status = error.response.status;
       const statusText = error.response.statusText;
       const data = error.response.data;
-      console.error(`[API Call] (proxy) FAILED ${status} ${statusText} for ${path}:`, JSON.stringify(data));
+      const headers = error.response.headers;
+      
+      console.error(`[API Call] (proxy) FAILED ${status} ${statusText} for ${path}`);
+      console.error(`[API Call] Response data:`, JSON.stringify(data));
+      console.error(`[API Call] Response headers:`, JSON.stringify(headers));
+      
+      // Check if the error is actually from the proxy or from CoC API
+      if (status === 403) {
+        console.error(`[API Call] 403 Forbidden through Fixie proxy. Possible causes:`);
+        console.error(`  1. CoC API token is invalid or revoked`);
+        console.error(`  2. Fixie proxy IP is not whitelisted in CoC API key settings`);
+        console.error(`  3. API key permissions are insufficient`);
+      }
+      
       const proxiedError: any = new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
       proxiedError.status = status;
+      proxiedError.proxied = true;
       throw proxiedError;
     }
+    
+    // Network/proxy errors
     console.error(`[API Call] (proxy) REQUEST FAILED for ${path}:`, error?.message || error);
+    console.error(`[API Call] Error code:`, error?.code);
+    console.error(`[API Call] Error stack:`, error?.stack);
+    
     const proxiedError: any = new Error(`CoC API proxy request failed: ${error?.message || error}`);
     proxiedError.code = error?.code;
+    proxiedError.proxied = true;
     throw proxiedError;
   }
 }
