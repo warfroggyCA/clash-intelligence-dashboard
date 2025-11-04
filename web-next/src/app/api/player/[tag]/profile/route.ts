@@ -277,7 +277,11 @@ export async function GET(
     }
 
     const latestSnapshot = filteredRows[0].payload;
+    const latestSnapshotDate = filteredRows[0].snapshot_date;
     const clanTag = latestSnapshot.clanTag ?? filteredRows[0].clan_tag ?? homeClanTag;
+    
+    // Log the latest snapshot date for debugging
+    console.log(`[player-profile] Latest snapshot date for ${normalizedTag}: ${latestSnapshotDate}`);
 
     const { data: clanRow, error: clanError } = await supabase
       .from('clans')
@@ -748,6 +752,11 @@ export async function GET(
       vip: {
         current: currentVip,
         history: vipHistory,
+      },
+      // Include snapshot date for debugging/freshness tracking
+      _metadata: {
+        snapshotDate: latestSnapshotDate,
+        fetchedAt: new Date().toISOString(),
       },
     };
 
