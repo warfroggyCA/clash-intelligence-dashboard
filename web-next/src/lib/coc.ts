@@ -99,7 +99,8 @@ if (isProduction && !FIXIE_URL && !DISABLE_PROXY) {
   throw new Error('FIXIE_URL environment variable is required in production. Direct CoC API connections are not allowed.');
 }
 
-// In production, force proxy usage (no fallback to direct)
+// CRITICAL: In production, NEVER allow fallback to direct connections
+// Production MUST use Fixie proxy only. Direct connections are forbidden.
 const ALLOW_PROXY_FALLBACK = isDevelopment ? (process.env.COC_ALLOW_PROXY_FALLBACK !== 'false') : false;
 
 // Force IPv4 for native fetch (some keys/IP-allowlists are v4-only) when no proxy is set
