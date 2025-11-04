@@ -307,8 +307,8 @@ async function api<T>(path: string): Promise<T> {
       const isLastAttempt = attemptNumber === totalAttempts || isClientError;
 
       const modeLabel = mode === 'proxy' ? 'proxy' : 'direct';
-      const status = (error as any)?.status;
-      const is403 = status === 403;
+      const errorStatus = (error as any)?.status ?? status;
+      const is403 = errorStatus === 403;
       
       if (is403 && mode === 'direct') {
         console.error(`[CoC API] 403 Forbidden on direct connection - FIXIE_URL is ${FIXIE_URL ? 'SET' : 'NOT SET'}. This likely means Fixie proxy is not configured in production environment.`);
