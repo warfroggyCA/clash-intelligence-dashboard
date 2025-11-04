@@ -67,6 +67,7 @@ export interface RosterData {
   clanName: string;
   clanTag: string;
   date: string | null;
+  lastUpdated?: string | null; // Date when the snapshot was last updated
   snapshotMetadata?: {
     snapshotDate: string | null;
     fetchedAt: string | null;
@@ -186,11 +187,15 @@ export function transformRosterApiResponse(response: RosterApiResponse): RosterD
 
   const rosterMembers = response.data.members.map((member) => toRosterMember(member));
 
+  // Use snapshotDate as lastUpdated if available, otherwise use fetchedAt
+  const lastUpdated = snapshotDate || fetchedAt || null;
+
   return {
     members: rosterMembers,
     clanName: response.data.clan?.name ?? 'Unknown Clan',
     clanTag: response.data.clan?.tag ?? '#UNKNOWN',
     date: fetchedAt,
+    lastUpdated,
     snapshotMetadata: normalizedMetadata,
     meta: {
       clanName: response.data.clan?.name ?? null,

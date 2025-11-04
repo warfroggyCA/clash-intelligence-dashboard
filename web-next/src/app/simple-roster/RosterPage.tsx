@@ -212,6 +212,8 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
     if (!roster?.lastUpdated || staleCheckRef.current) return;
     
     const checkAndRefresh = async () => {
+      if (!roster.lastUpdated) return;
+      
       const lastUpdated = new Date(roster.lastUpdated);
       const today = new Date();
       today.setUTCHours(0, 0, 0, 0);
