@@ -258,6 +258,10 @@ async function api<T>(path: string): Promise<T> {
   
   const attemptModes: Array<'proxy' | 'direct'> = [];
   const canUseProxy = Boolean(FIXIE_URL) && !DISABLE_PROXY;
+  
+  // Log proxy configuration for debugging
+  console.log(`[CoC API] Proxy config - FIXIE_URL: ${FIXIE_URL ? 'SET' : 'NOT SET'}, DISABLE_PROXY: ${DISABLE_PROXY}, canUseProxy: ${canUseProxy}`);
+  
   if (canUseProxy) {
     attemptModes.push('proxy');
     if (ALLOW_PROXY_FALLBACK) {
@@ -270,6 +274,7 @@ async function api<T>(path: string): Promise<T> {
       }
     }
   } else {
+    console.warn(`[CoC API] WARNING: Proxy not available (FIXIE_URL=${FIXIE_URL ? 'set' : 'not set'}, DISABLE_PROXY=${DISABLE_PROXY}) - using direct connection`);
     while (attemptModes.length < MAX_RETRIES) {
       attemptModes.push('direct');
     }
@@ -302,6 +307,13 @@ async function api<T>(path: string): Promise<T> {
       const isLastAttempt = attemptNumber === totalAttempts || isClientError;
 
       const modeLabel = mode === 'proxy' ? 'proxy' : 'direct';
+      const status = (error as any)?.status;
+      const is403 = status === 403;
+      
+      if (is403 && mode === 'direct') {
+        console.error(`[CoC API] 403 Forbidden on direct connection - FIXIE_URL is ${FIXIE_URL ? 'SET' : 'NOT SET'}. This likely means Fixie proxy is not configured in production environment.`);
+      }
+      
       console.warn(`[CoC API] Attempt ${attemptNumber}/${totalAttempts} (${modeLabel}) failed for ${path}: ${error?.message || error}`);
 
       if (mode === 'proxy' && (!ALLOW_PROXY_FALLBACK || isClientError)) {
@@ -309,6 +321,11 @@ async function api<T>(path: string): Promise<T> {
         if (isClientError) {
           throw error;
         }
+      }
+      
+      // If direct connection gets 403, and we have Fixie available but didn't try it, suggest using proxy
+      if (is403 && mode === 'direct' && FIXIE_URL && !DISABLE_PROXY) {
+        console.error(`[CoC API] CRITICAL: 403 on direct connection but Fixie is configured. This suggests proxy configuration issue.`);
       }
 
       if (isLastAttempt) {
@@ -333,6 +350,7 @@ async function withRateLimiter<T>(fn: () => Promise<T>): Promise<T> {
 
 async function requestViaProxy<T>(path: string, token: string): Promise<T> {
   if (!FIXIE_URL) {
+    console.warn(`[CoC API] requestViaProxy called but FIXIE_URL not set - falling back to direct`);
     return requestDirect<T>(path, token);
   }
 
@@ -340,23 +358,30 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
     headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
     timeout: DEFAULT_TIMEOUT_MS,
   };
+  
+  // Log proxy URL (masked for security)
+  const maskedFixieUrl = FIXIE_URL.replace(/^https?:\/\/[^:]+:[^@]+@/, 'https://***:***@');
+  console.log(`[API Call] (proxy via ${maskedFixieUrl}) ${path}`);
+  
   const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
   axiosConfig.httpsAgent = proxyAgent;
   axiosConfig.httpAgent = proxyAgent;
 
   try {
-    console.log(`[API Call] (proxy) ${path}`);
     const response = await axios.get(`${BASE}${path}`, axiosConfig);
+    console.log(`[API Call] (proxy) SUCCESS for ${path}`);
     return response.data as T;
   } catch (error: any) {
     if (error?.response) {
       const status = error.response.status;
       const statusText = error.response.statusText;
       const data = error.response.data;
+      console.error(`[API Call] (proxy) FAILED ${status} ${statusText} for ${path}:`, JSON.stringify(data));
       const proxiedError: any = new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
       proxiedError.status = status;
       throw proxiedError;
     }
+    console.error(`[API Call] (proxy) REQUEST FAILED for ${path}:`, error?.message || error);
     const proxiedError: any = new Error(`CoC API proxy request failed: ${error?.message || error}`);
     proxiedError.code = error?.code;
     throw proxiedError;
