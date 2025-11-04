@@ -79,8 +79,14 @@ export async function fetchFullClanSnapshot(
 
   const [clan, members] = await Promise.race([
     Promise.all([
-      getClanInfo(normalizedTag),
-      getClanMembers(normalizedTag),
+      getClanInfo(normalizedTag).catch((error: any) => {
+        console.error(`[FullSnapshot] Failed to fetch clan info for ${normalizedTag}:`, error?.message || error);
+        throw error;
+      }),
+      getClanMembers(normalizedTag).catch((error: any) => {
+        console.error(`[FullSnapshot] Failed to fetch clan members for ${normalizedTag}:`, error?.message || error);
+        throw error;
+      }),
     ]),
     timeoutPromise
   ]) as [any, any];
@@ -95,9 +101,18 @@ export async function fetchFullClanSnapshot(
 
   const [warLog, currentWar, capitalRaidSeasons] = await Promise.race([
     Promise.all([
-      getClanWarLog(normalizedTag, warLogLimit),
-      getClanCurrentWar(normalizedTag),
-      getClanCapitalRaidSeasons(normalizedTag, capitalSeasonLimit),
+      getClanWarLog(normalizedTag, warLogLimit).catch((error: any) => {
+        console.error(`[FullSnapshot] Failed to fetch war log for ${normalizedTag}:`, error?.message || error);
+        throw error;
+      }),
+      getClanCurrentWar(normalizedTag).catch((error: any) => {
+        console.error(`[FullSnapshot] Failed to fetch current war for ${normalizedTag}:`, error?.message || error);
+        throw error;
+      }),
+      getClanCapitalRaidSeasons(normalizedTag, capitalSeasonLimit).catch((error: any) => {
+        console.error(`[FullSnapshot] Failed to fetch capital raid seasons for ${normalizedTag}:`, error?.message || error);
+        throw error;
+      }),
     ]),
     warTimeoutPromise
   ]) as [any[], any, any[]];
