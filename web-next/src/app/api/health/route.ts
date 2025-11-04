@@ -59,27 +59,66 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { json } = createApiContext(request, '/api/health');
   
-  // Check if this is a cron ingestion request
+  // Check if this is a direct ingestion request (from Ingestion Monitor modal)
   const url = new URL(request.url);
   if (url.searchParams.get('cron') === 'true') {
     try {
-      // Import the ingestion function
-      const { runIngestionJob } = await import('@/lib/ingestion/run-ingestion');
+      // Import the staged ingestion function (same as cron route)
+      const { runStagedIngestionJob } = await import('@/lib/ingestion/run-staged-ingestion');
+      const { cfg } = await import('@/lib/config');
       
-      console.log('[Health/Cron] Starting daily ingestion job');
+      let targetClanTag = cfg.homeClanTag;
       
-      const results = await runIngestionJob({
-        clanTag: '#2PR8R8V8P'
+      // CRITICAL SAFEGUARD: Ensure we're using the correct default clan tag
+      if (!targetClanTag || targetClanTag === '#G9QVRYC2Y') {
+        console.error(`[Health/DirectIngestion] INVALID CLAN TAG DETECTED: ${targetClanTag}. Forcing to #2PR8R8V8P`);
+        targetClanTag = '#2PR8R8V8P';
+      }
+      
+      console.log('[Health/DirectIngestion] Starting direct ingestion job for', targetClanTag);
+      
+      const result = await runStagedIngestionJob({
+        clanTag: targetClanTag,
+        runPostProcessing: true
       });
       
-      console.log('[Health/Cron] Daily ingestion completed:', results);
+      console.log('[Health/DirectIngestion] Direct ingestion completed:', result.success ? 'SUCCESS' : 'FAILED');
+      
+      if (!result.success) {
+        return json(
+          {
+            success: false,
+            error: result.error || 'Ingestion failed',
+            data: {
+              clanTag: result.clanTag,
+              success: false,
+              error: result.error
+            }
+          },
+          { status: 500 }
+        );
+      }
+      
+      // Format response similar to what the UI expects
+      const ingestionResult = result.ingestionResult as any;
+      const responseData = [{
+        clanTag: result.clanTag,
+        success: result.success,
+        memberCount: ingestionResult?.memberCount ?? ingestionResult?.phases?.canonical?.memberCount ?? 0,
+        changesDetected: result.changeSummary ? 'Yes' : 'No',
+        playersResolved: result.playersResolved ?? 0,
+        summary: result.changeSummary,
+        skipped: ingestionResult?.skipped ?? false,
+        reason: ingestionResult?.reason,
+        insightsGenerated: result.insightsGenerated ?? false
+      }];
       
       return json({
         success: true,
-        data: results
+        data: responseData
       });
     } catch (error: any) {
-      console.error('[Health/Cron] Daily ingestion failed:', error);
+      console.error('[Health/DirectIngestion] Direct ingestion failed:', error);
       return json(
         {
           success: false,
