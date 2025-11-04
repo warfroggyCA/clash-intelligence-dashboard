@@ -71,24 +71,68 @@ export async function GET(request: NextRequest) {
     }];
     
     const endTime = new Date().toISOString();
-    console.log(`[Cron ${executionId}] Daily ingestion completed successfully at ${endTime}:`, results);
+    const durationMs = new Date(endTime).getTime() - new Date(startTime).getTime();
+    
+    // CRITICAL: Verify data was actually written
+    let dataVerified = false;
+    if (result.success && !result.ingestionResult?.skipped) {
+      try {
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const { data: verifyRow, error: verifyErr } = await supabase
+          .from('canonical_member_snapshots')
+          .select('snapshot_date')
+          .eq('clan_tag', targetClanTag)
+          .eq('snapshot_date', todayIso)
+          .limit(1)
+          .maybeSingle();
+        
+        if (!verifyErr && verifyRow) {
+          dataVerified = true;
+          console.log(`[Cron ${executionId}] ✅ Data verified: snapshot exists for ${todayIso}`);
+        } else {
+          console.error(`[Cron ${executionId}] ⚠️  WARNING: Ingestion reported success but no data found for ${todayIso}`);
+        }
+      } catch (verifyError: any) {
+        console.error(`[Cron ${executionId}] Failed to verify data:`, verifyError.message);
+      }
+    } else if (result.ingestionResult?.skipped) {
+      dataVerified = true; // Skip is OK if data exists
+      console.log(`[Cron ${executionId}] ⏭️  Ingestion skipped: ${result.ingestionResult.reason}`);
+    }
+    
+    console.log(`[Cron ${executionId}] Daily ingestion ${result.success ? 'completed' : 'FAILED'} at ${endTime} (${Math.round(durationMs / 1000)}s)`);
     
     // Update execution log
     await supabase.from('ingest_logs').update({
-      status: 'completed',
+      status: result.success ? 'completed' : 'failed',
       finished_at: endTime,
       details: {
         execution_id: executionId,
         source: 'vercel-cron',
         results: results,
-        duration_ms: new Date(endTime).getTime() - new Date(startTime).getTime()
+        duration_ms: durationMs,
+        data_verified: dataVerified,
+        verification_error: !dataVerified && result.success ? 'Data not found after ingestion' : null
       }
     }).eq('job_name', 'daily-ingestion-cron').eq('started_at', startTime);
+    
+    if (!result.success) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          execution_id: executionId,
+          error: result.error || 'Ingestion failed',
+          timestamp: endTime
+        }, 
+        { status: 500 }
+      );
+    }
     
     return NextResponse.json({ 
       success: true, 
       execution_id: executionId,
       data: results,
+      data_verified: dataVerified,
       timestamp: endTime
     });
   } catch (error: any) {

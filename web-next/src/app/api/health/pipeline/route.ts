@@ -49,13 +49,11 @@ export async function GET(request: NextRequest) {
       automation: {
         vercelCron: {
           enabled: true,
-          schedule: '0 3 * * *', // 3 AM UTC
-          nextRun: getNextCronTime('0 3 * * *')
-        },
-        githubActions: {
-          enabled: true,
-          schedule: '0 6 * * *', // 6 AM UTC
-          nextRun: getNextCronTime('0 6 * * *')
+          schedules: ['30 4 * * *', '30 5 * * *'], // 4:30 AM and 5:30 AM UTC
+          nextRuns: [
+            getNextCronTime('30 4 * * *'),
+            getNextCronTime('30 5 * * *')
+          ]
         }
       }
     };
@@ -87,10 +85,18 @@ export async function GET(request: NextRequest) {
 }
 
 function getNextCronTime(cronExpression: string): string {
-  // Simple calculation for next run (this is a simplified version)
+  // Parse cron expression (format: "minute hour * * *")
+  const [minute, hour] = cronExpression.split(' ').map(Number);
   const now = new Date();
-  const tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  tomorrow.setHours(3, 0, 0, 0); // 3 AM UTC
-  return tomorrow.toISOString();
+  const nextRun = new Date(now);
+  
+  // Set to the scheduled time today
+  nextRun.setUTCHours(hour, minute, 0, 0);
+  
+  // If that time has already passed today, move to tomorrow
+  if (nextRun.getTime() <= now.getTime()) {
+    nextRun.setUTCDate(nextRun.getUTCDate() + 1);
+  }
+  
+  return nextRun.toISOString();
 }
