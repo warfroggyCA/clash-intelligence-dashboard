@@ -448,7 +448,10 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
         console.error(`[API Call] 403 Forbidden through Fixie proxy. Possible causes:`);
         console.error(`  1. CoC API token is invalid or revoked`);
         console.error(`  2. Fixie proxy IP is not whitelisted in CoC API key settings`);
+        console.error(`     → Run /api/debug/fixie-ip to get Fixie IP addresses`);
+        console.error(`     → Whitelist these IPs in https://developer.clashofclans.com/#/account/apikey`);
         console.error(`  3. API key permissions are insufficient`);
+        console.error(`  4. API key rate limits exceeded`);
       }
       
       const proxiedError: any = new Error(`CoC API ${status} ${statusText}: ${JSON.stringify(data)}`);
