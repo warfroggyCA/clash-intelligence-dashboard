@@ -239,8 +239,8 @@ export async function fetchFullClanSnapshot(
 
   const metadata = {
     memberCount: members.length,
-    warLogEntries: warLog.length,
-    capitalSeasons: capitalRaidSeasons.length,
+    warLogEntries: warLogResult.length,
+    capitalSeasons: capitalRaidSeasonsResult.length,
     version: SNAPSHOT_VERSION,
     snapshotDate: fetchedAt.slice(0, 10),
     fetchedAt,
@@ -254,9 +254,9 @@ export async function fetchFullClanSnapshot(
     clan,
     memberSummaries,
     playerDetails,
-    currentWar,
-    warLog,
-    capitalRaidSeasons,
+    currentWar: currentWarResult,
+    warLog: warLogResult,
+    capitalRaidSeasons: capitalRaidSeasonsResult,
     metadata,
   };
 }
