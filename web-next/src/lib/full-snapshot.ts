@@ -99,23 +99,41 @@ export async function fetchFullClanSnapshot(
     setTimeout(() => reject(new Error('Timeout fetching war data')), 45000); // 45 second timeout
   });
 
-  const [warLog, currentWar, capitalRaidSeasons] = await Promise.race([
-    Promise.all([
-      getClanWarLog(normalizedTag, warLogLimit).catch((error: any) => {
-        console.error(`[FullSnapshot] Failed to fetch war log for ${normalizedTag}:`, error?.message || error);
-        throw error;
-      }),
-      getClanCurrentWar(normalizedTag).catch((error: any) => {
-        console.error(`[FullSnapshot] Failed to fetch current war for ${normalizedTag}:`, error?.message || error);
-        throw error;
-      }),
-      getClanCapitalRaidSeasons(normalizedTag, capitalSeasonLimit).catch((error: any) => {
-        console.error(`[FullSnapshot] Failed to fetch capital raid seasons for ${normalizedTag}:`, error?.message || error);
-        throw error;
-      }),
-    ]),
-    warTimeoutPromise
-  ]) as [any[], any, any[]];
+  // War log and capital data are optional - don't fail entire ingestion if they fail
+  // Some clans have war log hidden, or API key might not have permissions
+  let warLogResult: any[] = [];
+  let currentWarResult: any = null;
+  let capitalRaidSeasonsResult: any[] = [];
+  
+  try {
+    const [warLog, currentWar, capitalRaidSeasons] = await Promise.race([
+      Promise.all([
+        getClanWarLog(normalizedTag, warLogLimit).catch((error: any) => {
+          console.warn(`[FullSnapshot] War log fetch failed (continuing without it):`, error?.message || error);
+          return []; // Return empty array instead of throwing - war log is optional
+        }),
+        getClanCurrentWar(normalizedTag).catch((error: any) => {
+          console.warn(`[FullSnapshot] Current war fetch failed (continuing without it):`, error?.message || error);
+          return null; // Return null instead of throwing - current war is optional
+        }),
+        getClanCapitalRaidSeasons(normalizedTag, capitalSeasonLimit).catch((error: any) => {
+          console.warn(`[FullSnapshot] Capital raid seasons fetch failed (continuing without it):`, error?.message || error);
+          return []; // Return empty array instead of throwing - capital seasons are optional
+        }),
+      ]),
+      warTimeoutPromise
+    ]) as [any[], any, any[]];
+    
+    warLogResult = Array.isArray(warLog) ? warLog : [];
+    currentWarResult = currentWar ?? null;
+    capitalRaidSeasonsResult = Array.isArray(capitalRaidSeasons) ? capitalRaidSeasons : [];
+  } catch (error: any) {
+    // If timeout or other error, continue with empty values - war data is optional
+    console.warn(`[FullSnapshot] War data fetch timed out or failed (continuing without it):`, error?.message || error);
+    warLogResult = [];
+    currentWarResult = null;
+    capitalRaidSeasonsResult = [];
+  }
 
   const playerDetails: Record<string, any> = {};
   console.log(`[FullSnapshot] fetchPlayers=${fetchPlayers}, members.length=${members?.length ?? 0}`);
