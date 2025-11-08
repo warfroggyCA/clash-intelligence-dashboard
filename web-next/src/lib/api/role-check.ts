@@ -4,7 +4,7 @@
  * TODO: Replace with real authentication when implemented
  */
 
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * Check if request has leadership role (leader or coLeader)

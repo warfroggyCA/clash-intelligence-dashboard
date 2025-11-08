@@ -93,10 +93,20 @@ const DISABLE_PROXY = process.env.COC_DISABLE_PROXY === 'true';
 const isDevelopment = process.env.NODE_ENV === 'development' || process.env.VERCEL_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production' && (process.env.VERCEL_ENV === 'production' || !process.env.VERCEL_ENV);
 
-// CRITICAL: In production, Fixie is REQUIRED. Direct connections are not allowed.
-if (isProduction && !FIXIE_URL && !DISABLE_PROXY) {
-  console.error('[CoC API] CRITICAL ERROR: FIXIE_URL is not set in production environment. Fixie proxy is REQUIRED for production.');
-  throw new Error('FIXIE_URL environment variable is required in production. Direct CoC API connections are not allowed.');
+// Lazy check for FIXIE_URL - only validate when API is actually called, not at module load time
+// This prevents build-time errors when FIXIE_URL is not set during build
+function validateFixieConfig() {
+  // Skip validation during build phase (when VERCEL_ENV is not set or is 'development')
+  const isBuildPhase = !process.env.VERCEL_ENV || process.env.VERCEL_ENV === 'development';
+  if (isBuildPhase) {
+    return; // Skip validation during build
+  }
+  
+  // CRITICAL: In production runtime, Fixie is REQUIRED. Direct connections are not allowed.
+  if (isProduction && !FIXIE_URL && !DISABLE_PROXY) {
+    console.error('[CoC API] CRITICAL ERROR: FIXIE_URL is not set in production environment. Fixie proxy is REQUIRED for production.');
+    throw new Error('FIXIE_URL environment variable is required in production. Direct CoC API connections are not allowed.');
+  }
 }
 
 // CRITICAL: In production, NEVER allow fallback to direct connections
@@ -212,6 +222,9 @@ function encTag(tag: string) {
 }
 
 async function api<T>(path: string): Promise<T> {
+  // Validate Fixie config when API is actually called (not at module load)
+  validateFixieConfig();
+  
   // Development mode - use mock data to save Fixie quota
   if (DEV_MODE) {
     console.log(`[DEV MODE] Using mock data for: ${path}`);

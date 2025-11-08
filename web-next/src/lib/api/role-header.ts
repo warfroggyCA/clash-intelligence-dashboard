@@ -23,7 +23,7 @@ export function getCurrentUserRole(): string {
     const userRoles = store.userRoles;
     const clanTag = store.clanTag || store.homeClan || '';
 
-    let currentRole: ClanRoleName = 'member';
+    let currentRole: string = 'member';
 
     if (impersonatedRole) {
       currentRole = impersonatedRole;
@@ -36,7 +36,11 @@ export function getCurrentUserRole(): string {
     }
 
     // Normalize coLeader to coleader for backend consistency
-    return currentRole === 'coLeader' ? 'coleader' : currentRole;
+    // Handle both 'coLeader' (from store) and 'coleader' (from database)
+    if (currentRole === 'coLeader' || currentRole === 'coleader') {
+      return 'coleader';
+    }
+    return currentRole;
   } catch (error) {
     console.warn('[getCurrentUserRole] Error getting role:', error);
     return 'member';
