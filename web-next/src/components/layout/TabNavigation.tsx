@@ -51,7 +51,7 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
   }, [mobileMenuOpen]);
 
   const handleTabClick = (tabId: string) => {
-    setActiveTab(tabId);
+    setActiveTab(tabId as TabType);
     setMobileMenuOpen(false);
     // Navigate to the appropriate page based on tab
     if (tabId === 'roster') {
