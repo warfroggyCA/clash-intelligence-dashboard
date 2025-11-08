@@ -11,6 +11,7 @@ import type {
   PlayerTimelinePoint,
   SupabasePlayerProfilePayload,
 } from '@/types/player-profile-supabase';
+import { fetchWithRetry } from '@/lib/api/retry';
 
 interface PlayerProfileApiResponse {
   success: boolean;
@@ -151,10 +152,26 @@ export async function fetchPlayerProfileSupabase(
     throw new Error('Player tag is required');
   }
 
-  const response = await fetch(`/api/player/${encodeURIComponent(tag)}/profile`, {
-    ...init,
-    cache: 'no-store',
-  });
+  // Add role header for server-side filtering
+  const { getRoleHeaders } = await import('@/lib/api/role-header');
+  const roleHeaders = getRoleHeaders();
+
+  const response = await fetchWithRetry(
+    `/api/player/${encodeURIComponent(tag)}/profile`,
+    {
+      ...init,
+      cache: 'no-store',
+      headers: {
+        ...init?.headers,
+        ...roleHeaders,
+      },
+    },
+    {
+      maxRetries: 3,
+      initialDelay: 1000,
+      maxDelay: 5000
+    }
+  );
 
   let payload: PlayerProfileApiResponse;
   try {
@@ -164,7 +181,9 @@ export async function fetchPlayerProfileSupabase(
   }
 
   if (!response.ok || !payload?.success || !payload.data) {
-    throw new Error(payload?.error || `Failed to fetch player profile (${response.status})`);
+    const error: any = new Error(payload?.error || `Failed to fetch player profile (${response.status})`);
+    error.status = response.status;
+    throw error;
   }
 
   const { summary, timeline, history, leadership, evaluations, joinerEvents, clanHeroAverages, vip } = payload.data as any;

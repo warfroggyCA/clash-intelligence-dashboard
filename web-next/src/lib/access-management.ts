@@ -89,8 +89,23 @@ export const ACCESS_LEVEL_PERMISSIONS = {
   },
 };
 
-export function getAccessLevelPermissions(accessLevel: AccessLevel) {
-  return ACCESS_LEVEL_PERMISSIONS[accessLevel];
+/**
+ * Get permissions for an access level, with optional custom overrides
+ */
+export function getAccessLevelPermissions(
+  accessLevel: AccessLevel,
+  customPermissions?: Record<string, Partial<typeof ACCESS_LEVEL_PERMISSIONS[AccessLevel]>>
+): typeof ACCESS_LEVEL_PERMISSIONS[AccessLevel] {
+  const defaults = ACCESS_LEVEL_PERMISSIONS[accessLevel];
+  
+  // If no custom permissions provided, return defaults
+  if (!customPermissions || !customPermissions[accessLevel]) {
+    return defaults;
+  }
+  
+  // Merge custom overrides with defaults
+  const custom = customPermissions[accessLevel];
+  return { ...defaults, ...custom };
 }
 
 // Get access level display name

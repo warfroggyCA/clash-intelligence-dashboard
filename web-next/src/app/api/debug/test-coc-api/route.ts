@@ -85,15 +85,18 @@ export async function GET(req: NextRequest) {
     console.error(`[Test CoC API] Error status:`, error?.status);
     console.error(`[Test CoC API] Error stack:`, error?.stack);
     
+    const { sanitizeErrorForApi, sanitizeErrorMessage } = await import('@/lib/security/error-sanitizer');
+    const sanitized = sanitizeErrorForApi(error);
+    
     return NextResponse.json({
       success: false,
-      error: error?.message || 'Unknown error',
+      error: sanitized.message,
       errorDetails: {
         status: error?.status,
         proxied: error?.proxied,
         code: error?.code,
-        message: error?.message,
-        stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined,
+        message: sanitized.message,
+        stack: process.env.NODE_ENV === 'development' ? sanitizeErrorMessage(error?.stack) : undefined,
       },
       diagnostics: {
         environment: {

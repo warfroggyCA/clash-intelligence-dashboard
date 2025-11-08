@@ -441,13 +441,13 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       
       {/* Command Toolbar */}
       {!hideNavigation && (
-        <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-3 pb-2 pt-2 sm:px-4">
-          <div className="flex flex-col gap-2">
-            <div className="rounded-2xl border border-slate-800/70 bg-slate-900/90">
+        <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-2 pb-1.5 pt-1.5 sm:px-4 sm:pb-2 sm:pt-2">
+          <div className="flex flex-col gap-1.5 sm:gap-2">
+            <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
               {disableTabNavigation ? (
                 <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
               ) : (
-                <TabNavigation className="px-2" />
+                <TabNavigation className="px-1.5 sm:px-2" />
               )}
             </div>
           </div>

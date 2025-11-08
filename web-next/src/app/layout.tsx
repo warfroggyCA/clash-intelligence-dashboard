@@ -5,6 +5,7 @@ import Script from 'next/script';
 import { ThemeProvider } from '@/lib/contexts/theme-context';
 import TooltipManager from '@/components/TooltipManager';
 import HydrationGate from '@/components/HydrationGate';
+import { SWRProvider } from '@/components/providers/SWRProvider';
 
 const INITIAL_THEME_SCRIPT = `
 (() => {
@@ -72,18 +73,20 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   );
 
   const appTree = disableThemeProvider ? (
-    <>
+    <SWRProvider>
       {process.env.NEXT_PUBLIC_DISABLE_TOOLTIP_MANAGER === 'true' ? null : <TooltipManager />}
       <div id="app-root" suppressHydrationWarning>
         {content}
       </div>
-    </>
+    </SWRProvider>
   ) : (
     <ThemeProvider defaultTheme="dark">
-      {process.env.NEXT_PUBLIC_DISABLE_TOOLTIP_MANAGER === 'true' ? null : <TooltipManager />}
-      <div id="app-root" suppressHydrationWarning>
-        {content}
-      </div>
+      <SWRProvider>
+        {process.env.NEXT_PUBLIC_DISABLE_TOOLTIP_MANAGER === 'true' ? null : <TooltipManager />}
+        <div id="app-root" suppressHydrationWarning>
+          {content}
+        </div>
+      </SWRProvider>
     </ThemeProvider>
   );
   return (

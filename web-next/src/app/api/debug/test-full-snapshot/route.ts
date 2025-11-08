@@ -74,8 +74,11 @@ export async function GET(req: NextRequest) {
     console.error(`[Test FullSnapshot] Error message:`, error?.message);
     console.error(`[Test FullSnapshot] Error stack:`, error?.stack);
     
-    // Try to extract which phase failed
-    const errorMessage = error?.message || 'Unknown error';
+    const { sanitizeErrorForApi } = await import('@/lib/security/error-sanitizer');
+    const sanitized = sanitizeErrorForApi(error);
+    
+    // Try to extract which phase failed (using sanitized message)
+    const errorMessage = sanitized.message;
     let failedPhase = 'unknown';
     
     if (errorMessage.includes('clan info')) failedPhase = 'clan info';
@@ -90,7 +93,7 @@ export async function GET(req: NextRequest) {
       error: errorMessage,
       failedPhase,
       errorDetails: {
-        message: error?.message,
+        message: sanitized.message,
         status: error?.status,
         proxied: error?.proxied,
       },

@@ -842,20 +842,30 @@ export async function GET(
       // Continue without VIP data
     }
 
+    // Check user role to filter leadership data
+    // TODO: Replace with real auth check when authentication is implemented
+    const userRole = _req.headers.get('x-user-role') || 'member';
+    const isLeadership = userRole === 'leader' || userRole === 'coLeader' || userRole === 'coleader';
+
     const responsePayload = {
       summary,
       timeline: timelineStats.timeline,
       history: historyRow ?? null,
       clanHeroAverages,
       clanStatsAverages,
-      leadership: {
+      leadership: isLeadership ? {
         notes: ensureArray(notesRows),
         warnings: ensureArray(warningsRows),
         tenureActions: ensureArray(tenureRows),
         departureActions: ensureArray(departureRows),
+      } : {
+        notes: [],
+        warnings: [],
+        tenureActions: [],
+        departureActions: [],
       },
-      evaluations: ensureArray(evaluationRows),
-      joinerEvents: ensureArray(joinerRows),
+      evaluations: isLeadership ? ensureArray(evaluationRows) : [],
+      joinerEvents: isLeadership ? ensureArray(joinerRows) : [],
       vip: {
         current: currentVip,
         history: vipHistory,

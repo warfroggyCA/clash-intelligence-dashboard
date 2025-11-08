@@ -1170,9 +1170,34 @@ button:has(svg:only-child) {
 
 /* Mobile touch targets */
 @media (max-width: 768px) {
-  button, a.button {
-    min-height: 48px;
-    min-width: 48px;
+  /* Ensure buttons meet minimum touch target size */
+  button:not(.no-touch-target), a.button:not(.no-touch-target) {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improve table scrolling on mobile */
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+  
+  /* Better text readability on mobile */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+  
+  /* Improve spacing between interactive table elements */
+  table td a, table td button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+  }
+  
+  /* Better gap between action buttons */
+  .flex.gap-2 > button, .flex.gap-2 > a {
+    margin: 0 2px;
   }
 }
 

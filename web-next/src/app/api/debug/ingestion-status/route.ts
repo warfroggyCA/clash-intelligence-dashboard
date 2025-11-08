@@ -89,10 +89,12 @@ export async function GET(req: NextRequest) {
       }
     });
   } catch (error: any) {
+    const { sanitizeErrorForApi, sanitizeErrorMessage } = await import('@/lib/security/error-sanitizer');
+    const sanitized = sanitizeErrorForApi(error);
     return NextResponse.json({
       success: false,
-      error: error?.message || 'Unknown error',
-      stack: process.env.NODE_ENV === 'development' ? error?.stack : undefined
+      error: sanitized.message,
+      stack: process.env.NODE_ENV === 'development' ? sanitizeErrorMessage(error?.stack) : undefined
     }, { status: 500 });
   }
 }

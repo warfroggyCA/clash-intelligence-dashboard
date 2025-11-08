@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import useSWR from 'swr';
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,6 +28,9 @@ import {
   Trophy,
   UserCheck,
   UserPlus,
+  ChevronDown,
+  ChevronUp,
+  MoreVertical,
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { normalizeTag } from "@/lib/tags";
@@ -54,6 +58,10 @@ import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS, EQUIPMENT_NAME_ALIASES, type Mem
 import { HeroLevel } from "@/components/ui";
 import { getRoleBadgeVariant } from "@/lib/leadership";
 import Image from "next/image";
+import { PlayerProfileSkeleton } from "@/components/ui/PlayerProfileSkeleton";
+import { ErrorDisplay, categorizeError } from "@/components/ui/ErrorDisplay";
+import { playerProfileFetcher } from "@/lib/api/swr-fetcher";
+import { playerProfileSWRConfig } from "@/lib/api/swr-config";
 
 const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayout"), {
   ssr: false,
@@ -1170,9 +1178,6 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     }
   }, [roster, clanTag, loadRoster]);
 
-  const [profile, setProfile] = useState<SupabasePlayerProfilePayload | null>(() => initialProfile ?? null);
-  const [loading, setLoading] = useState(() => !initialProfile);
-  const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [showNoteModal, setShowNoteModal] = useState(false);
   const [noteText, setNoteText] = useState("");
@@ -1186,30 +1191,53 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   const [showAddAliasModal, setShowAddAliasModal] = useState(false);
   const [aliasTagInput, setAliasTagInput] = useState("");
   const [aliasSaving, setAliasSaving] = useState(false);
+  
+  // Collapsible sections - default to collapsed
+  const [activityScoreExpanded, setActivityScoreExpanded] = useState(false);
+  const [actionsMenuOpen, setActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  
+  // Close actions menu on outside click
+  useEffect(() => {
+    if (!actionsMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(event.target as Node)) {
+        setActionsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [actionsMenuOpen]);
 
+  // Use SWR for player profile fetching with caching
+  const profileKey = normalizedTag ? `/api/player/${encodeURIComponent(normalizedTag)}/profile` : null;
+  const { data: profile, error: swrError, isLoading, mutate: mutateProfile } = useSWR<SupabasePlayerProfilePayload>(
+    profileKey,
+    playerProfileFetcher,
+    {
+      ...playerProfileSWRConfig,
+      fallbackData: initialProfile ?? undefined, // Use initial data if available
+      onSuccess: (data) => {
+        console.log('[PlayerProfile] SWR loaded profile:', {
+          tag: data.summary?.tag,
+          name: data.summary?.name,
+        });
+      },
+      onError: (err) => {
+        console.error('[PlayerProfile] SWR error:', err);
+      },
+    }
+  );
+
+  // Convert SWR error to string for ErrorDisplay
+  const error = swrError ? (swrError instanceof Error ? swrError.message : String(swrError)) : null;
+  const loading = isLoading;
+
+  // loadProfile function for retry (uses SWR mutate)
   const loadProfile = useCallback(async () => {
     if (!normalizedTag) return;
-    try {
-      const data = await fetchPlayerProfileSupabase(normalizedTag);
-      setProfile(data);
-      setError(null);
-    } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Failed to load player profile. Please try again.";
-      setError(message);
-      throw err;
-    }
-  }, [normalizedTag]);
-
-  useEffect(() => {
-    if (initialProfile) {
-      setProfile(initialProfile);
-      setLoading(false);
-      setError(null);
-    }
-  }, [initialProfile]);
+    await mutateProfile(); // SWR mutate triggers revalidation
+  }, [normalizedTag, mutateProfile]);
 
   // Load linked accounts
   useEffect(() => {
@@ -1232,39 +1260,8 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     loadLinkedAccounts();
   }, [normalizedTag, clanTag]);
 
-  useEffect(() => {
-    let cancelled = false;
-    if (!normalizedTag) {
-      setProfile(null);
-      setLoading(false);
-      setError("Invalid player tag");
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    // Skip initial fetch if we have server-provided data
-    if (initialProfile) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    setLoading(true);
-    loadProfile()
-      .catch(() => {
-        /* handled earlier */
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [normalizedTag, loadProfile, initialProfile]);
+  // SWR handles all fetching - no manual fetch needed!
+  // Invalid tag is handled by SWR (profileKey will be null)
 
   // Merge roster data (SSOT) with profile data
   // Roster data takes priority for current state, profile data provides timeline/history
@@ -2361,90 +2358,127 @@ const HERO_LABELS: Record<string, string> = {
   const aliasList = history?.aliases ?? [];
 
   const renderLoading = () => (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="flex flex-col items-center gap-4 text-slate-300">
-        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-700 border-t-transparent" />
-        <p>Loading player profile…</p>
-      </div>
-    </div>
+    <DashboardLayout>
+      <PlayerProfileSkeleton />
+    </DashboardLayout>
   );
 
-  const renderError = () => (
-    <div className="flex min-h-[60vh] items-center justify-center">
-      <div className="rounded-3xl border border-red-500/40 bg-red-500/10 px-8 py-6 text-center text-red-100 shadow-lg">
-        <p className="font-semibold">We hit a snag loading this profile.</p>
-        <p className="mt-2 text-sm text-red-200/80">{error}</p>
-        <div className="mt-6 flex justify-center gap-3">
-          <Button variant="secondary" onClick={handleGoBack}>
-            Back
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => {
-              setLoading(true);
-              loadProfile()
-                .catch(() => {
-                  /* handled */
-                })
-                .finally(() => setLoading(false));
-            }}
-          >
-            Retry
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
+  const renderError = () => {
+    const errorType = categorizeError({ message: error || '' });
+    return (
+      <ErrorDisplay
+        message={error || 'Failed to load player profile'}
+        type={errorType}
+        title="Unable to Load Profile"
+        onRetry={() => {
+          mutateProfile(); // SWR mutate triggers revalidation
+        }}
+        onGoBack={handleGoBack}
+        onGoHome={() => router.push('/')}
+      />
+    );
+  };
 
   return (
     <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
       <div className="min-h-screen bg-slate-950/95 pb-20">
-        <div className="w-full px-4 pb-16 pt-10">
-          <div className="mb-6 flex items-center gap-3 text-sm text-slate-400">
+        <div className="w-full px-3 sm:px-4 pb-16 pt-6 sm:pt-10">
+          <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3 text-sm text-slate-400">
             <button
               type="button"
               onClick={handleGoBack}
-              className="inline-flex items-center gap-2 rounded-full border border-slate-700/70 bg-slate-800/50 px-3 py-1 text-xs uppercase tracking-[0.24em] text-slate-300 transition hover:bg-slate-800"
+              className="inline-flex items-center gap-1.5 sm:gap-2 rounded-full border border-slate-700/70 bg-slate-800/50 px-2 py-1 sm:px-3 sm:py-1 text-xs uppercase tracking-[0.24em] text-slate-300 transition hover:bg-slate-800 min-h-[36px] sm:min-h-0"
+              title="Go back"
+              aria-label="Go back"
             >
-              <ArrowLeft className="h-4 w-4" />
-              Back
+              <ArrowLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Back</span>
             </button>
-            <span className="text-slate-500">/</span>
-            <span className="text-slate-300">Player Profile</span>
+            <span className="text-slate-500 hidden sm:inline">/</span>
+            <span className="text-slate-300 text-xs sm:text-sm">Player Profile</span>
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-2">
+          {/* Compact Tab Navigation with Actions */}
+          <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-1 sm:gap-2">
             {(["overview", "history", "evaluations", "metrics", "analysis"] as TabKey[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => setActiveTab(tab)}
-                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold capitalize transition ${
+                className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-full border px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold capitalize transition min-h-[36px] sm:min-h-0 ${
                   activeTab === tab
                     ? "border-indigo-400 bg-indigo-500/30 text-indigo-200 shadow-[0_12px_30px_-20px_rgba(99,102,241,0.9)]"
                     : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500 hover:text-slate-100"
                 }`}
+                title={tab === "analysis" ? "Player Analysis" : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                aria-label={tab === "analysis" ? "Player Analysis" : tab.charAt(0).toUpperCase() + tab.slice(1)}
               >
-                {tab === "overview" && <BarChart3 className="h-4 w-4" />}
-                {tab === "history" && <History className="h-4 w-4" />}
-                {tab === "evaluations" && <SquarePen className="h-4 w-4" />}
-                {tab === "metrics" && <Activity className="h-4 w-4" />}
-                {tab === "analysis" && <Target className="h-4 w-4" />}
-                {tab === "analysis" ? "Player Analysis" : tab}
+                {tab === "overview" && <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                {tab === "history" && <History className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                {tab === "evaluations" && <SquarePen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                {tab === "metrics" && <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                {tab === "analysis" && <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                <span className="hidden sm:inline">{tab === "analysis" ? "Player Analysis" : tab}</span>
               </button>
             ))}
+            
+            {/* Actions Menu - Integrated into tab navigation */}
+            <div className="relative ml-auto" ref={actionsMenuRef}>
+              <button
+                onClick={() => setActionsMenuOpen(!actionsMenuOpen)}
+                className={`inline-flex items-center gap-1.5 sm:gap-2 rounded-full border px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-semibold transition min-h-[36px] sm:min-h-0 ${
+                  actionsMenuOpen
+                    ? "border-indigo-400 bg-indigo-500/30 text-indigo-200"
+                    : "border-slate-700 bg-slate-900/60 text-slate-300 hover:border-slate-500 hover:text-slate-100"
+                }`}
+                title="Actions menu"
+                aria-label="Actions menu"
+              >
+                <MoreVertical className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden sm:inline">Actions</span>
+              </button>
+              
+              {actionsMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 rounded-lg border border-slate-700/80 bg-slate-900/98 backdrop-blur-md shadow-2xl z-[100] overflow-hidden">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        handleCopySummary();
+                        setActionsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800/80 transition-colors min-h-[44px] sm:min-h-0"
+                      title="Copy player summary"
+                    >
+                      <Clipboard className="h-4 w-4" />
+                      <span>Copy Summary</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        handleOpenInClash();
+                        setActionsMenuOpen(false);
+                      }}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm text-slate-200 hover:bg-slate-800/80 transition-colors min-h-[44px] sm:min-h-0"
+                      title="Open player in Clash of Clans"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                      <span>Open in Clash</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="relative mb-10 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-900/80 to-slate-900 p-8 shadow-[0_40px_120px_-50px_rgba(79,70,229,0.6)]">
+          <div className="relative mb-6 sm:mb-10 overflow-hidden rounded-2xl sm:rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900 via-indigo-900/80 to-slate-900 p-4 sm:p-8 shadow-[0_40px_120px_-50px_rgba(79,70,229,0.6)]">
             <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.25),transparent_55%)]" />
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
-              <div className="flex flex-1 flex-col gap-6">
-                <div className="flex flex-col gap-5">
+            <div className="flex flex-col gap-3 sm:gap-4 lg:flex-row lg:items-start lg:justify-between">
+              <div className="flex flex-1 flex-col gap-3 sm:gap-4">
+                <div className="flex flex-col gap-2 sm:gap-3">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex flex-col gap-2">
                       <div className="flex flex-wrap items-center gap-4">
                         <h1
-                          className="font-black text-3xl text-white md:text-4xl tracking-wider drop-shadow-2xl"
+                          className="font-black text-2xl sm:text-3xl md:text-4xl text-white tracking-wider drop-shadow-2xl"
                           style={{ fontFamily: "'Clash Display', sans-serif", fontWeight: '700', letterSpacing: '0.05em' }}
                         >
                           {loading ? "Loading player..." : (summary?.name ?? "Unknown Player")}
@@ -2486,40 +2520,66 @@ const HERO_LABELS: Record<string, string> = {
                       </div>
                     </div>
                     {activityScore != null && (
-                      <div
-                        className="mt-4 lg:mt-0 rounded-3xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-sm max-w-sm tooltip-trigger tooltip-left"
-                        data-tooltip={activityTooltip || undefined}
-                      >
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <p className="text-xs uppercase tracking-[0.32em] text-slate-300/80">
-                              Activity Score
-                            </p>
-                            <p className="mt-2 text-4xl font-black text-white drop-shadow-sm">
-                              {activityScore}
-                              <span className="ml-3 text-base font-semibold text-slate-300">
-                                {activityEvidence?.level ?? "—"}
-                              </span>
-                            </p>
-                          </div>
-                          <div
-                            className={`flex h-12 w-12 items-center justify-center rounded-full border ${
-                              activityScore >= 70
-                                ? "border-emerald-400/80 bg-emerald-500/20 text-emerald-200"
-                                : activityScore >= 45
-                                  ? "border-sky-400/80 bg-sky-500/20 text-sky-200"
-                                  : activityScore >= 28
-                                    ? "border-amber-400/80 bg-amber-500/20 text-amber-200"
-                                    : "border-rose-400/80 bg-rose-500/20 text-rose-200"
-                            }`}
+                      <div className="mt-2 sm:mt-4 lg:mt-0">
+                        {!activityScoreExpanded ? (
+                          <button
+                            onClick={() => setActivityScoreExpanded(true)}
+                            className="flex items-center gap-1.5 sm:gap-2 rounded-lg border border-white/10 bg-white/5 px-2 py-1.5 sm:px-3 sm:py-2 backdrop-blur-sm hover:bg-white/10 transition-colors text-xs sm:text-sm"
+                            title="Click to expand activity score details"
                           >
-                            <Activity className="h-6 w-6" />
+                            <Activity className={`h-3 w-3 sm:h-4 sm:w-4 ${
+                              activityScore >= 70 ? "text-emerald-400" :
+                              activityScore >= 45 ? "text-sky-400" :
+                              activityScore >= 28 ? "text-amber-400" :
+                              "text-rose-400"
+                            }`} />
+                            <span className="font-semibold text-white">{activityScore}</span>
+                            <span className="text-slate-300 text-[10px] sm:text-xs">{activityEvidence?.level ?? "—"}</span>
+                            <ChevronDown className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-400 ml-auto" />
+                          </button>
+                        ) : (
+                          <div
+                            className="rounded-xl border border-white/10 bg-white/5 px-2 py-2 sm:px-3 sm:py-2.5 backdrop-blur-sm max-w-sm"
+                            data-tooltip={activityTooltip || undefined}
+                          >
+                            <button
+                              onClick={() => setActivityScoreExpanded(false)}
+                              className="w-full flex items-center justify-between mb-2"
+                            >
+                              <p className="text-[10px] sm:text-xs uppercase tracking-[0.32em] text-slate-300/80">
+                                Activity Score
+                              </p>
+                              <ChevronUp className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-slate-400" />
+                            </button>
+                            <div className="flex items-center justify-between gap-2 sm:gap-3">
+                              <div>
+                                <p className="text-xl sm:text-2xl md:text-3xl font-black text-white drop-shadow-sm">
+                                  {activityScore}
+                                  <span className="ml-1.5 sm:ml-2 text-xs sm:text-sm font-semibold text-slate-300">
+                                    {activityEvidence?.level ?? "—"}
+                                  </span>
+                                </p>
+                              </div>
+                              <div
+                                className={`flex h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 items-center justify-center rounded-full border ${
+                                  activityScore >= 70
+                                    ? "border-emerald-400/80 bg-emerald-500/20 text-emerald-200"
+                                    : activityScore >= 45
+                                      ? "border-sky-400/80 bg-sky-500/20 text-sky-200"
+                                      : activityScore >= 28
+                                        ? "border-amber-400/80 bg-amber-500/20 text-amber-200"
+                                        : "border-rose-400/80 bg-rose-500/20 text-rose-200"
+                                }`}
+                              >
+                                <Activity className="h-4 w-4 sm:h-5 sm:w-5 md:h-6 md:w-6" />
+                              </div>
+                            </div>
+                            {activityEvidence?.confidence && (
+                              <p className="mt-1.5 sm:mt-2 text-[10px] sm:text-xs text-slate-400">
+                                Confidence: {activityEvidence.confidence}
+                              </p>
+                            )}
                           </div>
-                        </div>
-                        {activityEvidence?.confidence && (
-                          <p className="mt-2 text-xs text-slate-400">
-                            Confidence: {activityEvidence.confidence}
-                          </p>
                         )}
                       </div>
                     )}
@@ -2527,24 +2587,6 @@ const HERO_LABELS: Record<string, string> = {
                 </div>
               </div>
 
-              <div className="flex flex-col items-stretch gap-3 max-w-xs">
-                <Button
-                  variant="outline"
-                  className="justify-center gap-2 text-slate-100"
-                  onClick={handleCopySummary}
-                >
-                  <Clipboard className="h-4 w-4" />
-                  Copy Summary
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="justify-center gap-2 border border-white/10 text-white hover:bg-white/20"
-                  onClick={handleOpenInClash}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  Open in Clash
-                </Button>
-              </div>
             </div>
           </div>
 

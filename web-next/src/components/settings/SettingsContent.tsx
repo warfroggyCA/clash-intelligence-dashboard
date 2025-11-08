@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { GlassCard } from '@/components/ui';
 import { ElderAssessmentCard } from '@/components/settings/ElderAssessmentCard';
+import PermissionManager from '@/components/settings/PermissionManager';
 import { showToast } from '@/lib/toast';
 import { useLeadership } from '@/hooks/useLeadership';
 import { cfg } from '@/lib/config';
@@ -562,6 +563,11 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
           </GlassCard>
 
           <ElderAssessmentCard />
+
+          {/* Permission Manager - Only Leaders can customize permissions */}
+          {permissions.canManageAccess && (
+            <PermissionManager clanTag={clanTag || cfg.homeClanTag} />
+          )}
         </>
       )}
 

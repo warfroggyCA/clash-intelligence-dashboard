@@ -5,6 +5,7 @@ import { createApiContext } from '@/lib/api-context';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
 import { getLinkedTags } from '@/lib/player-aliases';
+import { requireLeadership, isLeadershipRequest } from '@/lib/api/role-check';
 
 /**
  * Lookup player name from tag using canonical snapshots or members table
@@ -53,6 +54,9 @@ export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-warnings');
   
   try {
+    // Require leadership role to view warnings
+    requireLeadership(request);
+    
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');
     const playerTagParam = searchParams.get('playerTag');
@@ -84,8 +88,13 @@ export async function GET(request: NextRequest) {
     
     return json({ success: true, data });
   } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
     console.error('Error in player-warnings GET:', error);
-    return json({ success: false, error: error.message }, { status: 500 });
+    const { sanitizeErrorForApi } = await import('@/lib/security/error-sanitizer');
+    return json({ success: false, error: sanitizeErrorForApi(error).message }, { status: error?.status || 500 });
   }
 }
 
@@ -93,6 +102,9 @@ export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-warnings');
   
   try {
+    // Require leadership role to create warnings
+    requireLeadership(request);
+    
     const body = await request.json();
     const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, warningNote, createdBy } = body;
     
@@ -193,8 +205,13 @@ export async function POST(request: NextRequest) {
     
     return json({ success: true, data });
   } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
     console.error('Error in player-warnings POST:', error);
-    return json({ success: false, error: error.message }, { status: 500 });
+    const { sanitizeErrorForApi } = await import('@/lib/security/error-sanitizer');
+    return json({ success: false, error: sanitizeErrorForApi(error).message }, { status: error?.status || 500 });
   }
 }
 
@@ -202,6 +219,9 @@ export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-warnings');
   
   try {
+    // Require leadership role to delete warnings
+    requireLeadership(request);
+    
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');
     const playerTagParam = searchParams.get('playerTag');
@@ -227,7 +247,12 @@ export async function DELETE(request: NextRequest) {
     
     return json({ success: true });
   } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
     console.error('Error in player-warnings DELETE:', error);
-    return json({ success: false, error: error.message }, { status: 500 });
+    const { sanitizeErrorForApi } = await import('@/lib/security/error-sanitizer');
+    return json({ success: false, error: sanitizeErrorForApi(error).message }, { status: error?.status || 500 });
   }
 }

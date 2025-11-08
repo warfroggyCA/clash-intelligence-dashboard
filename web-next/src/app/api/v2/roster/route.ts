@@ -5,6 +5,7 @@ import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { calculateActivityScore } from '@/lib/business/calculations';
 import type { Member } from '@/types';
+import { sanitizeErrorForApi } from '@/lib/security/error-sanitizer';
 import {
   buildTimelineFromPlayerDay,
   mapTimelinePointsToActivityEvents,
@@ -601,7 +602,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error('[roster-canonical] Error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      { success: false, error: sanitizeErrorForApi(error).message },
       { status: 500 }
     );
   }

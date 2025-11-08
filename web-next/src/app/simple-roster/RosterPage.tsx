@@ -8,6 +8,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
 import { parseUtcDate, formatUtcDateTime, formatUtcDate } from '@/lib/date-format';
 import Link from 'next/link';
@@ -36,7 +37,11 @@ import {
 } from '@/lib/export/roster-export';
 import { showToast } from '@/lib/toast';
 import LeaderboardView from '@/components/roster/LeaderboardView';
-import { List, Trophy } from 'lucide-react';
+import { List, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
+import { RosterSkeleton } from '@/components/ui/RosterSkeleton';
+import { ErrorDisplay, categorizeError } from '@/components/ui/ErrorDisplay';
+import { rosterFetcher } from '@/lib/api/swr-fetcher';
+import { rosterSWRConfig } from '@/lib/api/swr-config';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -198,14 +203,34 @@ interface SimpleRosterPageProps {
 }
 
 export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProps = {}) {
-  const [roster, setRoster] = useState<RosterData | null>(() => initialRoster ?? null);
-  const [loading, setLoading] = useState(() => !initialRoster);
-  const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('league');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const lastRefreshRef = useRef<number>(0);
   const staleCheckRef = useRef<boolean>(false);
+  
+  // Use SWR for data fetching with caching
+  const { data: roster, error: swrError, isLoading, mutate } = useSWR<RosterData>(
+    '/api/v2/roster',
+    rosterFetcher,
+    {
+      ...rosterSWRConfig,
+      fallbackData: initialRoster ?? undefined, // Use initial data if available
+      onSuccess: (data) => {
+        console.log('[SimpleRoster] SWR loaded roster:', {
+          clanName: data.clanName,
+          memberCount: data.members.length,
+        });
+      },
+      onError: (err) => {
+        console.error('[SimpleRoster] SWR error:', err);
+      },
+    }
+  );
+  
+  // Convert SWR error to string for ErrorDisplay
+  const error = swrError ? (swrError instanceof Error ? swrError.message : String(swrError)) : null;
+  const loading = isLoading;
   
   // Auto-refresh if data is stale (older than today)
   useEffect(() => {
@@ -228,7 +253,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
       if (lastUpdatedDate < today && now >= cutoffTime) {
         console.log('[RosterPage] Data is stale, triggering refresh...');
         staleCheckRef.current = true;
-        setRefreshTrigger(prev => prev + 1);
+        mutate(); // SWR mutate triggers revalidation
       }
     };
     
@@ -243,6 +268,16 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const [showRightFade, setShowRightFade] = useState(false);
   const tableScrollRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<'table' | 'leaderboard'>('table');
+  
+  // Collapsible summary section - default to collapsed so roster is immediately visible
+  const [summaryExpanded, setSummaryExpanded] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    // Check localStorage for saved preference
+    const saved = localStorage.getItem('roster-summary-expanded');
+    if (saved !== null) return saved === 'true';
+    // Default: collapsed so users see the roster immediately
+    return false;
+  });
   
   // Check scroll state for fade indicator
   const checkScrollState = useCallback(() => {
@@ -271,21 +306,20 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   useEffect(() => {
     (window as any).refreshRosterData = () => {
       console.log('[SimpleRoster] Manual refresh triggered');
-      setRefreshTrigger(prev => prev + 1);
+      mutate(); // SWR mutate triggers revalidation
     };
     
     return () => {
       delete (window as any).refreshRosterData;
     };
-  }, []);
-
+  }, [mutate]);
+  
+  // Handle manual refresh trigger
   useEffect(() => {
-    if (initialRoster) {
-      setRoster(initialRoster);
-      setLoading(false);
-      setError(null);
+    if (refreshTrigger > 0) {
+      mutate(); // Trigger SWR revalidation
     }
-  }, [initialRoster]);
+  }, [refreshTrigger, mutate]);
   
   type ActionModalState =
     | { kind: 'notes'; player: RosterMember }
@@ -501,92 +535,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
     return members;
   }, [roster, sortKey, sortDirection]);
 
-  useEffect(() => {
-    let cancelled = false;
-    const shouldFetch = refreshTrigger > 0 || !initialRoster;
-    if (!shouldFetch) {
-      return () => {
-        cancelled = true;
-      };
-    }
-
-    async function loadRoster() {
-      try {
-        setLoading(true);
-        setError(null);
-        console.log('[SimpleRoster] Fetching roster data from /api/v2/roster');
-        const response = await fetch('/api/v2/roster', {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache'
-          }
-        });
-
-        console.log('[SimpleRoster] Response status:', response.status);
-        console.log('[SimpleRoster] Response headers:', Object.fromEntries(response.headers.entries()));
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[SimpleRoster] Error response:', errorText);
-          throw new Error(`Failed to load roster: ${response.status} - ${errorText.substring(0, 100)}`);
-        }
-
-        const apiData = (await response.json()) as RosterApiResponse;
-        console.log('[SimpleRoster] API data structure:', {
-          success: apiData.success,
-          hasData: !!apiData.data,
-          hasClan: !!apiData.data?.clan,
-          hasMembers: !!apiData.data?.members,
-          memberCount: apiData.data?.members?.length,
-          dateInfo: apiData.data?.dateInfo
-        });
-
-        // Check if data is stale (today > snapshot date)
-        const dateInfo = apiData.data?.dateInfo;
-        if (dateInfo?.isStale) {
-          console.warn('[SimpleRoster] Data is stale:', {
-            currentDate: dateInfo.currentDate,
-            snapshotDate: dateInfo.snapshotDate,
-            isStale: dateInfo.isStale
-          });
-          // Note: We'll still display the data, but show a warning
-          // The cron jobs should have run, but if they didn't, we'll show stale data
-        }
-
-        const transformed = transformRosterApiResponse(apiData);
-        console.log('[SimpleRoster] Transformed roster:', {
-          clanName: transformed.clanName,
-          memberCount: transformed.members.length,
-          snapshotDate: transformed.snapshotMetadata?.snapshotDate,
-          sampleMember: transformed.members[0] ? {
-            name: transformed.members[0].name,
-            tag: transformed.members[0].tag,
-            vip: transformed.members[0].vip
-          } : null
-        });
-
-        if (!cancelled) {
-          setRoster(transformed);
-        }
-      } catch (err) {
-        console.error('[SimpleRoster] Load error:', err);
-        if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Failed to load roster');
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    loadRoster();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [refreshTrigger, initialRoster]);
-  
+  // SWR handles all fetching - no manual fetch needed!
   // Check for stale data on mount and periodically (with cooldown to prevent infinite loops)
   useEffect(() => {
     if (!roster?.snapshotMetadata?.snapshotDate) return;
@@ -637,54 +586,62 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">Loading Roster...</h1>
-        </div>
-      </div>
+      <DashboardLayout>
+        <RosterSkeleton />
+      </DashboardLayout>
     );
   }
 
   if (error) {
+    const errorType = categorizeError({ message: error });
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-4 text-red-400">Error</h1>
-          <p>{error}</p>
-          <button 
-            onClick={() => window.location.reload()} 
-            className="mt-4 px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
+      <DashboardLayout>
+        <ErrorDisplay
+          message={error} // Will be filtered to user-friendly if technical
+          type={errorType}
+          onRetry={() => {
+            mutate(); // SWR mutate triggers revalidation
+          }}
+          onGoHome={() => window.location.href = '/'}
+        />
+      </DashboardLayout>
     );
   }
 
+  if (!roster && !loading) {
+    return (
+      <DashboardLayout>
+        <ErrorDisplay
+          message="No roster data is available. This might be a new clan or the data hasn't been loaded yet."
+          type="notFound"
+          title="No Roster Data"
+          onRetry={() => {
+            mutate(); // SWR mutate triggers revalidation
+          }}
+          onGoHome={() => window.location.href = '/'}
+        />
+      </DashboardLayout>
+    );
+  }
+
+  // At this point, roster should exist (we've checked loading and error states)
   if (!roster) {
-    return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-bold mb-8">No Roster Data</h1>
-        </div>
-      </div>
-    );
+    return null; // Shouldn't happen, but TypeScript needs this
   }
 
-  const clanTag = roster?.clanTag ?? cfg.homeClanTag ?? '#UNKNOWN';
+  const clanTag = roster.clanTag ?? cfg.homeClanTag ?? '#UNKNOWN';
 
   return (
     <>
       <DashboardLayout clanName={roster.clanName}>
-      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Header Section */}
-        <div className="mb-6">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mb-4 sm:mb-6">
+          <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
-              <h1 className="text-3xl font-bold text-clash-gold mb-2">Clan Roster</h1>
+              <h1 className="text-2xl sm:text-3xl font-bold text-clash-gold mb-1 sm:mb-2">Clan Roster</h1>
               <p 
-                className="text-sm text-brand-text-secondary cursor-help break-words"
+                className="text-xs sm:text-sm text-brand-text-secondary cursor-help break-words leading-relaxed"
                 title="Member count and snapshot update information. The snapshot date represents when the data was captured (typically daily at 4:30 AM UTC). The 'Updated' timestamp shows when this data was last fetched from the database."
               >
                 {roster.members.length} members · Updated {(() => {
@@ -707,62 +664,71 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
                 })()}
               </p>
             </div>
-            <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              {/* View Mode Switcher */}
-              <div className="flex items-center gap-1 rounded-lg border border-brand-border bg-brand-surface-secondary p-1">
+            {/* Compact Action Toolbar */}
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              {/* View Mode Switcher - Compact */}
+              <div className="flex items-center gap-0.5 rounded-lg border border-brand-border bg-brand-surface-secondary p-0.5">
                 <button
                   onClick={() => setViewMode('table')}
                   className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+                    flex items-center justify-center p-1.5 sm:px-2 sm:py-1 rounded-md text-xs sm:text-sm font-medium transition-all min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0
                     ${viewMode === 'table' 
-                      ? 'bg-brand-surfaceRaised text-brand-text-primary border border-brand-primary/50 shadow-sm' 
+                      ? 'bg-brand-surfaceRaised text-brand-text-primary shadow-sm' 
                       : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface-hover'
                     }
                   `}
                   title="Table view - Full roster with sortable columns"
+                  aria-label="Table view"
                 >
                   <List className="h-4 w-4" />
-                  <span className="hidden sm:inline">Table</span>
+                  <span className="hidden sm:inline ml-1.5">Table</span>
                 </button>
                 <button
                   onClick={() => setViewMode('leaderboard')}
                   className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
+                    flex items-center justify-center p-1.5 sm:px-2 sm:py-1 rounded-md text-xs sm:text-sm font-medium transition-all min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0
                     ${viewMode === 'leaderboard' 
-                      ? 'bg-brand-surfaceRaised text-brand-text-primary border border-brand-primary/50 shadow-sm' 
+                      ? 'bg-brand-surfaceRaised text-brand-text-primary shadow-sm' 
                       : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface-hover'
                     }
                   `}
                   title="Leaderboard view - Ranked by multiple criteria"
+                  aria-label="Leaderboard view"
                 >
                   <Trophy className="h-4 w-4" />
-                  <span className="hidden sm:inline">Leaderboard</span>
+                  <span className="hidden sm:inline ml-1.5">Leaderboard</span>
                 </button>
               </div>
+              
+              {/* Compact Action Buttons - Icon only on mobile */}
               <button
                 onClick={() => {
                   console.log('[SimpleRoster] Manual refresh button clicked');
-                  setRefreshTrigger(prev => prev + 1);
+                  mutate(); // SWR mutate triggers revalidation
                 }}
-                className="px-4 py-2.5 bg-brand-surface-secondary hover:bg-brand-surface-hover border border-brand-border text-brand-text-primary rounded-lg transition-all duration-200 flex items-center gap-2 font-medium text-sm shadow-sm hover:shadow-md hover:border-brand-accent/50"
+                className="p-1.5 sm:px-2.5 sm:py-1.5 bg-brand-surface-secondary hover:bg-brand-surface-hover border border-brand-border text-brand-text-primary rounded-lg transition-all duration-200 flex items-center justify-center min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0"
+                title="Refresh data"
+                aria-label="Refresh data"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span>Refresh Data</span>
+                <span className="hidden sm:inline ml-1.5 text-xs sm:text-sm">Refresh</span>
               </button>
               
-              {/* Export Dropdown */}
+              {/* Export Dropdown - Compact */}
               <div className="relative" ref={exportMenuRef}>
                 <button
                   onClick={() => setExportMenuOpen(!exportMenuOpen)}
-                  className="px-4 py-2.5 bg-brand-surface-secondary hover:bg-brand-surface-hover border border-brand-border text-brand-text-primary rounded-lg transition-all duration-200 flex items-center gap-2 font-medium text-sm shadow-sm hover:shadow-md hover:border-brand-accent/50"
+                  className="p-1.5 sm:px-2.5 sm:py-1.5 bg-brand-surface-secondary hover:bg-brand-surface-hover border border-brand-border text-brand-text-primary rounded-lg transition-all duration-200 flex items-center justify-center min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0"
+                  title="Export options"
+                  aria-label="Export options"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                   </svg>
-                  <span>Export</span>
-                  <svg className={`w-3 h-3 transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <span className="hidden sm:inline ml-1.5 text-xs sm:text-sm">Export</span>
+                  <svg className={`w-3 h-3 ml-1 transition-transform duration-200 ${exportMenuOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -772,7 +738,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
                     <div className="py-1">
                       <button
                         onClick={handleExportCSVClick}
-                        className="w-full px-4 py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5"
+                        className="w-full px-4 py-3 sm:py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5 min-h-[44px] sm:min-h-0"
                       >
                         <svg className="w-4 h-4 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -781,7 +747,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
                       </button>
                       <button
                         onClick={handleExportDiscordClick}
-                        className="w-full px-4 py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5"
+                        className="w-full px-4 py-3 sm:py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5 min-h-[44px] sm:min-h-0"
                       >
                         <svg className="w-4 h-4 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -790,7 +756,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
                       </button>
                       <button
                         onClick={handleCopySummaryClick}
-                        className="w-full px-4 py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5"
+                        className="w-full px-4 py-3 sm:py-2.5 text-left text-sm text-brand-text-primary hover:bg-brand-surface-hover transition-colors flex items-center gap-2.5 min-h-[44px] sm:min-h-0"
                       >
                         <svg className="w-4 h-4 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
@@ -805,7 +771,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           </div>
         </div>
 
-        {/* Summary Cards */}
+        {/* Summary Cards - Collapsible */}
         {roster && (() => {
           // Calculate average VIP score
           const membersWithVip = roster.members.filter(m => m.vip?.score != null);
@@ -842,18 +808,41 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           const newJoinersCount = newJoiners.length;
 
           return (
-            <div className="mb-6 grid grid-cols-5 gap-2">
+            <div className="mb-4 sm:mb-6">
+              {/* Collapsible Header */}
+              <button
+                onClick={() => {
+                  const newState = !summaryExpanded;
+                  setSummaryExpanded(newState);
+                  localStorage.setItem('roster-summary-expanded', String(newState));
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg border border-brand-border bg-brand-surface-secondary hover:bg-brand-surface-hover transition-colors mb-2 sm:mb-3"
+                aria-label={summaryExpanded ? 'Collapse summary' : 'Expand summary'}
+              >
+                <span className="text-sm font-medium text-brand-text-primary">
+                  Summary Statistics
+                </span>
+                {summaryExpanded ? (
+                  <ChevronUp className="w-4 h-4 text-brand-text-secondary" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 text-brand-text-secondary" />
+                )}
+              </button>
+
+              {/* Collapsible Content */}
+              {summaryExpanded && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
               {/* Total Members Card */}
               <div 
-                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
                 title="Total number of members currently on the clan roster. This count reflects the most recent snapshot data and includes all members regardless of their activity level or role."
               >
                 <div className="flex items-center justify-between min-w-0">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-brand-text-secondary mb-1">Total Members</p>
-                    <p className="text-2xl font-bold text-brand-text-primary">{roster.members.length}</p>
+                    <p className="text-[10px] sm:text-xs text-brand-text-secondary mb-1">Total Members</p>
+                    <p className="text-xl sm:text-2xl font-bold text-brand-text-primary">{roster.members.length}</p>
                   </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-surfaceRaised/70 flex-shrink-0">
+                  <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-brand-surfaceRaised/70 flex-shrink-0">
                     <svg className="w-5 h-5 text-brand-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
                     </svg>
@@ -863,20 +852,20 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
 
               {/* New Joiners Card */}
               <div 
-                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
                 title="Members who joined the clan in the last 7 days. These are new recruits who may need onboarding and support. Tenure is calculated as days since joining the clan, with new joiners having 7 days or less."
               >
                 <div className="flex items-center justify-between min-w-0">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-brand-text-secondary mb-1">New Joiners</p>
-                    <p className="text-2xl font-bold text-emerald-400">{newJoinersCount}</p>
+                    <p className="text-[10px] sm:text-xs text-brand-text-secondary mb-1">New Joiners</p>
+                    <p className="text-xl sm:text-2xl font-bold text-emerald-400">{newJoinersCount}</p>
                     {newJoinersCount > 0 && (
-                      <p className="text-[10px] text-brand-text-tertiary mt-0.5">
+                      <p className="text-[9px] sm:text-[10px] text-brand-text-tertiary mt-0.5">
                         This week
                       </p>
                     )}
                   </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/20 flex-shrink-0">
+                  <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-emerald-500/20 flex-shrink-0">
                     <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                     </svg>
@@ -886,7 +875,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
 
               {/* Average VIP Score Card */}
               <div 
-                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
                 title="Average VIP (Very Important Player) Score across all clan members.
 
 VIP Score measures comprehensive clan contribution:
@@ -905,10 +894,10 @@ Higher scores indicate more valuable clan members. Calculated weekly from Monday
               >
                 <div className="flex items-center justify-between min-w-0">
                   <div className="min-w-0 flex-1">
-                    <p className="text-xs text-brand-text-secondary mb-1">Avg VIP Score</p>
-                    <p className="text-2xl font-bold text-clash-gold">{avgVip > 0 ? avgVip.toFixed(1) : '—'}</p>
+                    <p className="text-[10px] sm:text-xs text-brand-text-secondary mb-1">Avg VIP Score</p>
+                    <p className="text-xl sm:text-2xl font-bold text-clash-gold">{avgVip > 0 ? avgVip.toFixed(1) : '—'}</p>
                   </div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-surfaceRaised/70 flex-shrink-0">
+                  <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-xl bg-brand-surfaceRaised/70 flex-shrink-0">
                     <svg className="w-5 h-5 text-clash-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                     </svg>
@@ -918,7 +907,7 @@ Higher scores indicate more valuable clan members. Calculated weekly from Monday
 
               {/* Top VIP Leaders Card */}
               <div 
-                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
                 title="Top VIP Leader from the clan roster.
 
 VIP Score measures comprehensive clan contribution:
@@ -929,28 +918,28 @@ VIP Score measures comprehensive clan contribution:
 The top leader represents the member with the highest overall contribution score. Shows the #1 leader and indicates how many more are in the top 5 rankings."
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs text-brand-text-secondary mb-1">Top VIP Leader</p>
+                  <p className="text-[10px] sm:text-xs text-brand-text-secondary mb-1">Top VIP Leader</p>
                   {topVipLeaders.length > 0 ? (
                     <div className="space-y-0.5 min-w-0">
                       <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-base font-bold text-brand-text-primary truncate">{topVipLeaders[0].name}</span>
+                        <span className="text-sm sm:text-base font-bold text-brand-text-primary truncate">{topVipLeaders[0].name}</span>
                         <span className="text-xs font-semibold text-clash-gold flex-shrink-0">{topVipLeaders[0].vip?.score.toFixed(1)}</span>
                       </div>
                       {topVipLeaders.length > 1 && (
-                        <p className="text-[10px] text-brand-text-tertiary">
+                        <p className="text-[9px] sm:text-[10px] text-brand-text-tertiary">
                           +{topVipLeaders.length - 1} more
                         </p>
                       )}
                     </div>
                   ) : (
-                    <p className="text-base font-bold text-brand-text-secondary">—</p>
+                    <p className="text-sm sm:text-base font-bold text-brand-text-secondary">—</p>
                   )}
                 </div>
               </div>
 
               {/* Activity Breakdown Card */}
               <div 
-                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0"
+                className="rounded-xl border border-brand-border bg-brand-surface-secondary p-3 sm:p-4 shadow-sm hover:shadow-md transition-shadow cursor-help tooltip-overlay min-w-0 col-span-2 sm:col-span-1"
                 title="Breakdown of clan member activity levels based on recent performance.
 
 Activity Score Calculation (0-65 points):
@@ -970,47 +959,58 @@ Activity Levels:
 Helps identify engaged vs. inactive members."
               >
                 <div className="mb-2">
-                  <p className="text-xs text-brand-text-secondary mb-1.5">Activity Breakdown</p>
-                  <div className="space-y-1.5 text-xs">
+                  <p className="text-[10px] sm:text-xs text-brand-text-secondary mb-1.5">Activity Breakdown</p>
+                  <div className="space-y-1 sm:space-y-1.5 text-[10px] sm:text-xs">
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help text-xs"
+                        className="text-brand-text-tertiary cursor-help text-[10px] sm:text-xs"
                         title="Very Active: Members scoring 50+ activity points. Highly engaged in ranked battles, donations, and clan activities."
                       >
                         Very Active
                       </span>
-                      <span className="font-bold text-green-400 text-base">{activityCounts.veryActive}</span>
+                      <span className="font-bold text-green-400 text-sm sm:text-base">{activityCounts.veryActive}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help text-xs"
+                        className="text-brand-text-tertiary cursor-help text-[10px] sm:text-xs"
                         title="Active: Members scoring 30-49 activity points. Regularly participating in clan activities."
                       >
                         Active
                       </span>
-                      <span className="font-bold text-blue-400 text-base">{activityCounts.active}</span>
+                      <span className="font-bold text-blue-400 text-sm sm:text-base">{activityCounts.active}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help text-xs"
+                        className="text-brand-text-tertiary cursor-help text-[10px] sm:text-xs"
                         title="Moderate: Members scoring 15-29 activity points. Some participation but not highly engaged."
                       >
                         Moderate
                       </span>
-                      <span className="font-bold text-yellow-400 text-base">{activityCounts.moderate}</span>
+                      <span className="font-bold text-yellow-400 text-sm sm:text-base">{activityCounts.moderate}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span 
-                        className="text-brand-text-tertiary cursor-help text-xs"
-                        title="Inactive: Members scoring 0-14 activity points. Minimal or no recent clan activity."
+                        className="text-brand-text-tertiary cursor-help text-[10px] sm:text-xs"
+                        title="Low: Members scoring 5-14 activity points. Minimal participation in clan activities."
+                      >
+                        Low
+                      </span>
+                      <span className="font-bold text-orange-400 text-sm sm:text-base">{activityCounts.low}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span 
+                        className="text-brand-text-tertiary cursor-help text-[10px] sm:text-xs"
+                        title="Inactive: Members scoring 0-4 activity points. No recent activity detected."
                       >
                         Inactive
                       </span>
-                      <span className="font-bold text-red-400 text-base">{activityCounts.inactive}</span>
+                      <span className="font-bold text-red-400 text-sm sm:text-base">{activityCounts.inactive}</span>
                     </div>
                   </div>
                 </div>
               </div>
+                </div>
+              )}
             </div>
           );
         })()}
@@ -1043,49 +1043,49 @@ Helps identify engaged vs. inactive members."
                   <th 
                     onClick={() => handleSort('name')}
                     title="Player name - Click to sort"
-                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[120px]"
+                    className="px-4 py-3 sm:py-4 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[120px] min-h-[44px] sm:min-h-0"
                   >
                     Player {sortKey === 'name' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('role')}
                     title="Clan role: Leader > Co-Leader > Elder > Member - Click to sort"
-                    className="px-4 py-3 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
+                    className="px-4 py-3 sm:py-4 text-left text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px] min-h-[44px] sm:min-h-0"
                   >
                     Role {sortKey === 'role' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('th')}
                     title="Town Hall level - Higher TH unlocks more troops, defenses, and heroes - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[60px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[60px] min-h-[44px] sm:min-h-0"
                   >
                     TH {sortKey === 'th' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('league')}
                     title="Ranked battle league - Shows current competitive tier based on trophy count - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px] min-h-[44px] sm:min-h-0"
                   >
                     League {sortKey === 'league' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('trophies')}
                     title="Current trophy count from multiplayer battles - Higher trophies = harder opponents - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px] min-h-[44px] sm:min-h-0"
                   >
                     Trophies {sortKey === 'trophies' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('vip')}
                     title="VIP Score (Very Important Player) - Measures comprehensive clan contribution (50% Competitive + 30% Support + 20% Development) - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px] min-h-[44px] sm:min-h-0"
                   >
                     VIP {sortKey === 'vip' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                 <th 
                   onClick={() => handleSort('lastWeek')}
                   title="Last week's final trophy count (Monday 4:30 AM UTC snapshot before Tuesday reset) - Shows previous week's competitive performance - Click to sort"
-                  className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
+                  className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px] min-h-[44px] sm:min-h-0"
                 >
                   Last Week {sortKey === 'lastWeek' && (sortDirection === 'asc' ? '↑' : '↓')}
                 </th>
@@ -1113,60 +1113,60 @@ Helps identify engaged vs. inactive members."
                   <th 
                     onClick={() => handleSort('bk')}
                     title="Barbarian King level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px] min-h-[44px] sm:min-h-0"
                   >
                     BK {sortKey === 'bk' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('aq')}
                     title="Archer Queen level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px] min-h-[44px] sm:min-h-0"
                   >
                     AQ {sortKey === 'aq' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('gw')}
                     title="Grand Warden level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px] min-h-[44px] sm:min-h-0"
                   >
                     GW {sortKey === 'gw' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('rc')}
                     title="Royal Champion level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px] min-h-[44px] sm:min-h-0"
                   >
                     RC {sortKey === 'rc' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('mp')}
                     title="Minion Prince level - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[50px] min-h-[44px] sm:min-h-0"
                   >
                     MP {sortKey === 'mp' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('activity')}
                     title="Activity level based on: ranked battles (20 pts), donations (15 pts), hero progress (10 pts), role (10 pts), trophies (10 pts) - Click to sort"
-                    className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px]"
+                    className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[90px] min-h-[44px] sm:min-h-0"
                   >
                     Activity {sortKey === 'activity' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('donations')}
                     title="Troops donated to clan members this season - Higher is better - Click to sort"
-                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
+                    className="px-4 py-3 sm:py-4 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px] min-h-[44px] sm:min-h-0"
                   >
                     Donated {sortKey === 'donations' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
                   <th 
                     onClick={() => handleSort('received')}
                     title="Troops received from clan members this season - Compare with donated to see balance - Click to sort"
-                    className="px-4 py-3 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px]"
+                    className="px-4 py-3 sm:py-4 text-right text-xs font-semibold text-brand-text-secondary uppercase tracking-wider cursor-pointer hover:text-brand-accent min-w-[80px] min-h-[44px] sm:min-h-0"
                   >
                     Received {sortKey === 'received' && (sortDirection === 'asc' ? '↑' : '↓')}
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider min-w-[80px]">
+                  <th className="px-4 py-3 sm:py-4 text-center text-xs font-semibold text-brand-text-secondary uppercase tracking-wider min-w-[80px] min-h-[44px] sm:min-h-0">
                     Actions
                   </th>
                 </tr>
@@ -1240,11 +1240,11 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       key={player.tag} 
                       className="hover:bg-brand-surface-hover transition-colors duration-150"
                     >
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
                           <Link 
                             href={`/player/${player.tag.replace('#', '')}`}
-                            className="text-white hover:text-slate-200 hover:underline transition-colors"
+                            className="text-white hover:text-slate-200 hover:underline transition-colors py-2 -my-2 px-1 -mx-1 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 min-h-[44px] sm:min-h-0 flex items-center"
                             style={{ fontFamily: "'Clash Display', sans-serif" }}
                           >
                             {player.name}
@@ -1259,15 +1259,15 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 whitespace-nowrap">
                         <span 
                           title={roleTooltip}
-                          className="text-sm text-brand-text-secondary cursor-help"
+                          className="text-sm text-brand-text-secondary cursor-help py-2 -my-2 px-1 -mx-1 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 inline-block min-h-[44px] sm:min-h-0 flex items-center"
                         >
                           {player.role === 'leader' ? 'Leader' : player.role === 'coLeader' ? 'Co-Leader' : player.role === 'admin' ? 'Elder' : 'Member'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <div className="flex items-center justify-center" title={`Town Hall ${player.townHallLevel ?? '?'}`}>
                           <TownHallBadge
                             level={player.townHallLevel ?? 0}
@@ -1278,10 +1278,10 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           />
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 whitespace-nowrap">
                         <div className="flex justify-center">
                           {(player.rankedLeagueName || player.rankedTrophies || player.trophies) ? (
-                            <div title={leagueTooltip} className="cursor-help">
+                            <div title={leagueTooltip} className="cursor-help py-2 -my-2 px-2 -mx-2 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 min-h-[44px] sm:min-h-0 flex items-center justify-center">
                               <LeagueBadge 
                                 league={player.rankedLeagueName || undefined} 
                                 trophies={player.rankedTrophies ?? player.trophies}
@@ -1295,11 +1295,11 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           )}
                         </div>
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 whitespace-nowrap">
                         <div className="flex justify-center">
                           <div 
                             title={`Current trophy count: ${(player.trophies ?? 0).toLocaleString()}`}
-                            className="relative cursor-help" 
+                            className="relative cursor-help py-2 -my-2 px-2 -mx-2 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 min-h-[44px] sm:min-h-0 flex items-center justify-center" 
                             style={{ width: '40px', height: '40px' }}
                           >
                             <Image 
@@ -1318,9 +1318,9 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         {player.vip ? (
-                          <div className="flex items-center justify-center">
+                          <div className="flex items-center justify-center py-2 -my-2 px-2 -mx-2 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 min-h-[44px] sm:min-h-0">
                             <span
                               title={`VIP: ${player.vip.score.toFixed(1)}/100
 Rank: #${player.vip.rank}
@@ -1348,11 +1348,11 @@ VIP measures comprehensive clan contribution:
                           <span className="text-xs text-brand-text-tertiary">—</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         {player.lastWeekTrophies !== null && player.lastWeekTrophies !== undefined ? (
                           <span 
                             title={`Last week's final trophy count: ${(player.lastWeekTrophies ?? 0).toLocaleString()}`}
-                            className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help"
+                            className="font-mono text-sm font-semibold text-brand-text-secondary cursor-help py-2 -my-2 px-2 -mx-2 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 inline-block min-h-[44px] sm:min-h-0 flex items-center justify-center"
                           >
                             {(player.lastWeekTrophies ?? 0).toLocaleString()}
                           </span>
@@ -1360,7 +1360,7 @@ VIP measures comprehensive clan contribution:
                           <span className="text-xs text-brand-text-muted">–</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         {player.seasonTotalTrophies !== null && player.seasonTotalTrophies !== undefined ? (
                           <span 
                             title={`Running total trophies (sum of weekly finals): ${(player.seasonTotalTrophies ?? 0).toLocaleString()}`}
@@ -1372,7 +1372,7 @@ VIP measures comprehensive clan contribution:
                           <span className="text-xs text-brand-text-muted">–</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         {player.tenureDays !== null && player.tenureDays !== undefined ? (
                           <div className="flex flex-col items-center gap-1">
                             <span 
@@ -1395,7 +1395,7 @@ VIP measures comprehensive clan contribution:
                           <span className="text-xs text-brand-text-muted">–</span>
                         )}
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <span 
                           title={rushTooltip}
                           className={`font-mono text-sm font-semibold cursor-help ${rushColor}`}
@@ -1403,7 +1403,7 @@ VIP measures comprehensive clan contribution:
                           {rushPercent}%
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <span 
                           title={`Barbarian King: ${player.bk || 0}/${maxHeroes.bk || 0}\n${(maxHeroes.bk || 0) > 0 ? `Progress: ${Math.round(((player.bk || 0) / (maxHeroes.bk || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -1411,7 +1411,7 @@ VIP measures comprehensive clan contribution:
                           {player.bk || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <span 
                           title={`Archer Queen: ${player.aq || 0}/${maxHeroes.aq || 0}\n${(maxHeroes.aq || 0) > 0 ? `Progress: ${Math.round(((player.aq || 0) / (maxHeroes.aq || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -1419,7 +1419,7 @@ VIP measures comprehensive clan contribution:
                           {player.aq || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <span 
                           title={`Grand Warden: ${player.gw || 0}/${maxHeroes.gw || 0}\n${(maxHeroes.gw || 0) > 0 ? `Progress: ${Math.round(((player.gw || 0) / (maxHeroes.gw || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -1427,7 +1427,7 @@ VIP measures comprehensive clan contribution:
                           {player.gw || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <span 
                           title={`Royal Champion: ${player.rc || 0}/${maxHeroes.rc || 0}\n${(maxHeroes.rc || 0) > 0 ? `Progress: ${Math.round(((player.rc || 0) / (maxHeroes.rc || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -1435,7 +1435,7 @@ VIP measures comprehensive clan contribution:
                           {player.rc || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <span 
                           title={`Minion Prince: ${player.mp || 0}/${maxHeroes.mp || 0}\n${(maxHeroes.mp || 0) > 0 ? `Progress: ${Math.round(((player.mp || 0) / (maxHeroes.mp || 1)) * 100)}%` : 'Not available at this TH'}`}
                           className="font-mono text-sm text-brand-text-primary cursor-help"
@@ -1443,7 +1443,7 @@ VIP measures comprehensive clan contribution:
                           {player.mp || '-'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <span 
                           title={activityTooltip}
                           className="text-sm text-brand-text-secondary cursor-help"
@@ -1451,23 +1451,23 @@ VIP measures comprehensive clan contribution:
                           {activity.level}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-right whitespace-nowrap">
                         <span 
                           title={donationTooltip}
-                          className="font-mono text-sm text-green-600 font-medium cursor-help"
+                          className="font-mono text-sm text-green-600 font-medium cursor-help py-2 -my-2 px-2 -mx-2 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 inline-block min-h-[44px] sm:min-h-0 flex items-center justify-end"
                         >
                           {player.donations === 0 ? '—' : player.donations}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-right whitespace-nowrap">
                         <span 
                           title={donationTooltip}
-                          className="font-mono text-sm text-blue-600 font-medium cursor-help"
+                          className="font-mono text-sm text-blue-600 font-medium cursor-help py-2 -my-2 px-2 -mx-2 sm:py-0 sm:my-0 sm:px-0 sm:mx-0 inline-block min-h-[44px] sm:min-h-0 flex items-center justify-end"
                         >
                           {player.donationsReceived === 0 ? '—' : player.donationsReceived}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-center whitespace-nowrap">
+                      <td className="px-4 py-3 sm:py-4 text-center whitespace-nowrap">
                         <ActionsMenu 
                           player={player}
                           onViewProfile={handleViewProfile}
@@ -1553,10 +1553,10 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
             return (
             <div
               key={player.tag}
-              className="rounded-lg border border-brand-border bg-brand-surface shadow-sm p-3"
+              className="rounded-lg border border-brand-border bg-brand-surface shadow-sm p-2.5 sm:p-3"
             >
               {/* Clean Header Layout */}
-              <div className="flex items-start gap-3 mb-3">
+              <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
                 {/* Left: Name, Role, Badges */}
                 <div className="flex-1 min-w-0">
                   {/* Name with Role */}
@@ -1585,33 +1585,33 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     </span>
                   </div>
                   
-                  {/* Trophy, TH & League Badges - Same Size */}
-                  <div className="flex items-center gap-2">
+                  {/* Trophy, TH & League Badges - Smaller on mobile */}
+                  <div className="flex items-center gap-1.5 sm:gap-2">
                     <div 
                       title={`Current trophy count: ${(player.trophies ?? 0).toLocaleString()}`}
                       className="relative cursor-help" 
-                      style={{ width: '48px', height: '48px' }}
+                      style={{ width: '36px', height: '36px' }}
                     >
                       <Image 
                         src="/assets/clash/trophy.png"
                         alt="Trophy"
-                        width={48}
-                        height={48}
+                        width={36}
+                        height={36}
                         className="w-full h-full object-contain"
                       />
                       <span 
-                        className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                        className="absolute bottom-0 right-0 text-white font-bold text-[10px] sm:text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                       >
                         {(player.trophies ?? 0) >= 1000 ? `${((player.trophies ?? 0) / 1000).toFixed(1)}k` : (player.trophies ?? 0)}
                       </span>
                     </div>
-                    <div title={`Town Hall ${player.townHallLevel ?? '?'}`} className="relative cursor-help" style={{ width: '48px', height: '48px' }}>
+                    <div title={`Town Hall ${player.townHallLevel ?? '?'}`} className="relative cursor-help" style={{ width: '36px', height: '36px' }}>
                       <Image 
                         src={`/assets/clash/Townhalls/TH${player.townHallLevel ?? 0}.png`}
                         alt={`TH${player.townHallLevel ?? 0}`}
-                        width={48}
-                        height={48}
+                        width={36}
+                        height={36}
                         className="w-full h-full object-contain"
                         onError={(e) => {
                           e.currentTarget.style.display = 'none';
@@ -1619,7 +1619,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         }}
                       />
                       <span 
-                        className="absolute bottom-0 right-0 text-white font-bold text-sm drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                        className="absolute bottom-0 right-0 text-white font-bold text-[10px] sm:text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                       >
                         {player.townHallLevel}
@@ -1641,7 +1641,7 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
               </div>
 
               {/* Stats Grid - 3 columns */}
-              <div className="w-full grid grid-cols-3 gap-x-3 gap-y-3 text-xs mt-3">
+              <div className="w-full grid grid-cols-3 gap-x-2 sm:gap-x-3 gap-y-2 sm:gap-y-3 text-xs mt-2 sm:mt-3">
                 {/* Activity */}
                 <div title={activityTooltip} className="flex flex-col items-start cursor-help">
                   <div className="text-brand-text-tertiary text-[10px] uppercase tracking-wide mb-1">Activity</div>
@@ -1727,10 +1727,10 @@ ${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→
               </div>
 
               {/* Heroes Row */}
-              <div className="pt-3 border-t border-brand-border/30">
+              <div className="pt-2 sm:pt-3 border-t border-brand-border/30 mt-2 sm:mt-0">
                 {/* Heroes - Inline with bullets */}
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="text-brand-text-tertiary text-[10px] uppercase tracking-wide whitespace-nowrap">Heroes:</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+                  <span className="text-brand-text-tertiary text-[9px] sm:text-[10px] uppercase tracking-wide whitespace-nowrap">Heroes:</span>
                   <div className="flex flex-wrap items-center gap-1.5 text-white font-medium">
                     {[
                       player.bk && `BK ${player.bk}`,
@@ -1786,10 +1786,11 @@ ${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→
           onClose={() => setActionModal(null)}
           onSuccess={(result) => {
             if (result) {
-              setRoster((prev) => {
-                if (!prev) return prev;
+              // Update SWR cache optimistically
+              mutate((current) => {
+                if (!current) return current;
                 const targetTag = normalizeTag(actionModal.player.tag);
-                const members = prev.members.map((member) =>
+                const members = current.members.map((member: RosterMember) =>
                   normalizeTag(member.tag) === targetTag
                     ? {
                         ...member,
@@ -1799,8 +1800,8 @@ ${player.vip.trend === 'up' ? '↑' : player.vip.trend === 'down' ? '↓' : '→
                       }
                     : member
                 );
-                return { ...prev, members };
-              });
+                return { ...current, members };
+              }, false); // false = don't revalidate, just update cache
             }
             setActionModal(null);
           }}

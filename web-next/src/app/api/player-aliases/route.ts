@@ -88,7 +88,8 @@ export async function GET(request: NextRequest) {
     }
   } catch (error: any) {
     console.error('Error in player-aliases GET:', error);
-    return json({ success: false, error: error.message }, { status: 500 });
+    const { sanitizeErrorForApi } = await import('@/lib/security/error-sanitizer');
+    return json({ success: false, error: sanitizeErrorForApi(error).message }, { status: 500 });
   }
 }
 
@@ -106,6 +107,9 @@ export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-aliases');
   
   try {
+    // Require leadership role to create alias links
+    requireLeadership(request);
+    
     const body = await request.json();
     const { clanTag: clanTagParam, playerTag1, playerTag2, createdBy } = body;
     
@@ -212,8 +216,13 @@ export async function POST(request: NextRequest) {
 
     return json({ success: true, message: 'Alias link created successfully' });
   } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
     console.error('Error in player-aliases POST:', error);
-    return json({ success: false, error: error.message }, { status: 500 });
+    const { sanitizeErrorForApi } = await import('@/lib/security/error-sanitizer');
+    return json({ success: false, error: sanitizeErrorForApi(error).message }, { status: error?.status || 500 });
   }
 }
 
@@ -230,6 +239,9 @@ export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-aliases');
   
   try {
+    // Require leadership role to delete alias links
+    requireLeadership(request);
+    
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');
     const playerTag1Param = searchParams.get('playerTag1');
@@ -255,8 +267,13 @@ export async function DELETE(request: NextRequest) {
 
     return json({ success: true, message: 'Alias link removed successfully' });
   } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
     console.error('Error in player-aliases DELETE:', error);
-    return json({ success: false, error: error.message }, { status: 500 });
+    const { sanitizeErrorForApi } = await import('@/lib/security/error-sanitizer');
+    return json({ success: false, error: sanitizeErrorForApi(error).message }, { status: error?.status || 500 });
   }
 }
 

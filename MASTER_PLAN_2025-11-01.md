@@ -94,11 +94,6 @@ CoC API → Staged Pipeline → Supabase → API Endpoints → Frontend Display
 ### **Phase 1: Core Features (Current Focus)**
 
 #### **1.1 Enhanced Roster Features**
-- [ ] **Search/Filter Functionality**
-  - Search by player name or tag
-  - Filter by TH level, role, activity level
-  - Filter by VIP score range
-
 - [x] **Export Options** ✅ **COMPLETE**
   - ✅ Export roster to CSV
   - ✅ Export roster to Discord format
@@ -301,9 +296,9 @@ Both jobs:
 3. ✅ Test VIP score display on roster and player pages
 
 ### **Next Week**
-1. Add search/filter to roster table
-2. ~~Add export functionality~~ ✅ **DONE**
-3. ~~Add new joiner flagging~~ ✅ **DONE**
+1. ~~Add export functionality~~ ✅ **DONE**
+2. ~~Add new joiner flagging~~ ✅ **DONE**
+3. VIP Score trend chart (data available, chart pending)
 
 ### **Following Weeks**
 1. ~~Historical charts for player profiles~~ ✅ **DONE** (Trophy, Donation, Hero charts)
@@ -331,7 +326,7 @@ Both jobs:
 
 ---
 
-**Last Updated:** January 25, 2025  
+**Last Updated:** November 8, 2025  
 **Status:** Active Development  
 **Architecture:** Simple Architecture ✅
 
