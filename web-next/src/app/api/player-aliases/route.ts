@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireLeadership } from '@/lib/api/role-check';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { createApiContext } from '@/lib/api-context';
