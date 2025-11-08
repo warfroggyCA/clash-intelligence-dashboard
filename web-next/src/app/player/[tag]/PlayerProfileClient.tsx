@@ -1396,7 +1396,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     return segments.join(' • ');
   }, [activityEvidence]);
 
-  const donationSeries = useMemo(() => deriveDonationSeries(profile), [profile]);
+  const donationSeries = useMemo(() => deriveDonationSeries(profile ?? null), [profile]);
   const kudosSuggestion = useMemo(() => deriveKudos(profile), [profile]);
   const timelineItems = useMemo(
     () => buildTimeline(profile, canViewLeadership),
