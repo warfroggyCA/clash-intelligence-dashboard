@@ -36,12 +36,12 @@ export interface ModalProps extends ComponentWithChildrenAndClassName {
 
 const getSizeStyles = (size: ModalSize): string => {
   const sizes = {
-    sm: 'max-w-sm',
-    md: 'max-w-md',
-    lg: 'max-w-lg',
-    xl: 'max-w-xl',
-    '2xl': 'max-w-2xl',
-    full: 'max-w-full mx-4',
+    sm: 'max-w-sm mx-2 sm:mx-4',
+    md: 'max-w-md mx-2 sm:mx-4',
+    lg: 'max-w-lg mx-2 sm:mx-4',
+    xl: 'max-w-xl mx-2 sm:mx-4',
+    '2xl': 'max-w-2xl mx-2 sm:mx-4',
+    full: 'max-w-full mx-2 sm:mx-4',
   };
   
   return sizes[size];
@@ -127,11 +127,19 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   const sizeStyles = getSizeStyles(size);
-  const modalStyles = `relative bg-white/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/20 w-full max-h-[85vh] overflow-y-auto ${sizeStyles} ${className}`.trim();
+  // Match glass-card styling but with slightly elevated appearance for distinction
+  const modalStyles = `relative backdrop-blur-lg rounded-3xl shadow-2xl w-full max-h-[90vh] sm:max-h-[85vh] overflow-y-auto ${sizeStyles} ${className}`.trim();
+  // Use glass-card gradient but slightly brighter for distinction
+  const modalBgStyle: React.CSSProperties = {
+    background: 'linear-gradient(160deg, rgba(20, 28, 45, 0.96), rgba(16, 22, 38, 0.94))',
+    border: '1px solid rgba(148, 163, 184, 0.18)',
+    boxShadow: '0 32px 64px -32px rgba(8, 15, 31, 0.85), 0 0 0 1px rgba(148, 163, 184, 0.1)',
+    color: 'rgba(226, 232, 240, 0.95)',
+  };
 
   const modalTree = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gradient-to-br from-black/20 via-purple-900/20 to-blue-900/30 backdrop-blur-md"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
       onClick={handleOverlayClick}
       role="dialog"
       aria-modal="true"
@@ -141,21 +149,22 @@ export const Modal: React.FC<ModalProps> = ({
       <div
         ref={modalRef}
         className={modalStyles}
+        style={modalBgStyle}
         tabIndex={-1}
         role="document"
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-4 sm:p-6 border-b border-slate-700/40">
             {title && (
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-100 pr-2">
                 {title}
               </h2>
             )}
             {showCloseButton && (
               <button
                 onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600 dark:text-gray-300 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                className="p-2 sm:p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-colors min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 flex items-center justify-center flex-shrink-0"
                 aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
@@ -165,7 +174,7 @@ export const Modal: React.FC<ModalProps> = ({
         )}
 
         {/* Content */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6 text-slate-200">
           {children}
         </div>
       </div>

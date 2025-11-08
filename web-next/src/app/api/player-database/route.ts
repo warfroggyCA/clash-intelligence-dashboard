@@ -13,6 +13,9 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
+    // Require leadership role to view player database (contains notes/warnings)
+    requireLeadership(request);
+    
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag') || cfg.homeClanTag;
     const includeArchived = searchParams.get('includeArchived') === 'true';
@@ -770,10 +773,14 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
     console.error('[player-database] Error:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Failed to load player database' },
-      { status: 500 }
+      { success: false, error: (await import('@/lib/security/error-sanitizer')).sanitizeErrorForApi(error).message },
+      { status: error?.status || 500 }
     );
   }
 }

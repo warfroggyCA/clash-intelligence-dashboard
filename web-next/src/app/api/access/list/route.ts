@@ -7,6 +7,8 @@ import {
   updateAccessMember,
   deactivateAccessMember,
 } from '@/lib/server/access-service';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { normalizeTag } from '@/lib/tags';
 import { z } from 'zod';
 import { createApiContext } from '@/lib/api/route-helpers';
 
@@ -26,11 +28,22 @@ export async function GET(req: NextRequest) {
       return json({ success: false, error: 'Invalid access password' }, { status: 401 });
     }
 
+    // Load custom permissions if they exist
+    const supabase = getSupabaseAdminClient();
+    const normalizedClanTag = normalizeTag(clanTag);
+    const { data: config } = await supabase
+      .from('clan_access_configs')
+      .select('custom_permissions')
+      .eq('clan_tag', normalizedClanTag)
+      .maybeSingle();
+
+    const customPermissions = config?.custom_permissions || null;
+
     return json({
       success: true,
       data: {
         accessMember,
-        permissions: getAccessLevelPermissions(accessMember.accessLevel),
+        permissions: getAccessLevelPermissions(accessMember.accessLevel, customPermissions),
       },
     });
   } catch (error) {

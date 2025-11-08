@@ -220,10 +220,15 @@ export default function PlayerDatabasePage() {
       console.log('[PlayerDatabase] Fetching from optimized endpoint', forceRefresh ? '(force refresh)' : '');
       const startTime = Date.now();
       
+      // Add role header for server-side filtering
+      const { getRoleHeaders } = await import('@/lib/api/role-header');
+      const roleHeaders = getRoleHeaders();
+      
       const response = await fetch(url, {
         cache: 'no-store', // Ensure no caching
         headers: {
           'Cache-Control': 'no-cache',
+          ...roleHeaders,
         },
       });
       
@@ -1366,26 +1371,26 @@ export default function PlayerDatabasePage() {
               
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Player Tag</p>
-                  <p className="text-gray-900 dark:text-white font-mono">{selectedPlayer.tag}</p>
+                  <p className="text-sm text-slate-400">Player Tag</p>
+                  <p className="text-slate-100 font-mono">{selectedPlayer.tag}</p>
                 </div>
                 
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400">Status</p>
+                  <p className="text-sm text-slate-400">Status</p>
                   <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
                     selectedPlayer.isCurrentMember 
-                      ? 'bg-green-100 text-green-800' 
-                      : 'bg-orange-100 text-orange-800'
+                      ? 'bg-emerald-900/40 text-emerald-300 border border-emerald-700/40' 
+                      : 'bg-orange-900/40 text-orange-300 border border-orange-700/40'
                   }`}>
                     {selectedPlayer.isCurrentMember ? 'Current Member' : 'Former Member'}
                   </span>
                 </div>
 
                 <div>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Warn on Return</p>
+                  <p className="text-sm text-slate-400 mb-2">Warn on Return</p>
                   <LeadershipGuard requiredPermission="canModifyClanData" fallback={
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-900 dark:text-white">
+                      <span className="text-sm text-slate-200">
                         {selectedPlayer.warning?.isActive ? 'Warning Active' : 'No Warning Set'}
                       </span>
                     </div>
@@ -1402,9 +1407,9 @@ export default function PlayerDatabasePage() {
                               removePlayerWarning(selectedPlayer.tag);
                             }
                           }}
-                          className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                          className="w-4 h-4 text-blue-500 bg-slate-800/50 border-slate-600 rounded focus:ring-blue-500 focus:ring-2"
                         />
-                        <span className="text-sm text-gray-900 dark:text-white">
+                        <span className="text-sm text-slate-200">
                           {selectedPlayer.warning?.isActive ? 'Warning Active' : 'No Warning Set'}
                         </span>
                       </label>
@@ -1421,10 +1426,10 @@ export default function PlayerDatabasePage() {
                     </div>
                   </LeadershipGuard>
                   {selectedPlayer.warning?.isActive && (
-                    <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
-                      <p className="text-sm text-red-800 font-medium mb-1">Warning Note:</p>
-                      <p className="text-sm text-red-700 break-words overflow-wrap-anywhere">{selectedPlayer.warning.warningNote}</p>
-                      <p className="text-xs text-red-600 mt-1">
+                    <div className="mt-2 p-3 bg-red-900/30 border border-red-700/40 rounded-lg">
+                      <p className="text-sm text-red-300 font-medium mb-1">Warning Note:</p>
+                      <p className="text-sm text-red-200 break-words overflow-wrap-anywhere">{selectedPlayer.warning.warningNote}</p>
+                      <p className="text-xs text-red-300/80 mt-1">
                         Set on {safeLocaleString(new Date(selectedPlayer.warning.timestamp))}
                       </p>
                     </div>
@@ -1434,8 +1439,8 @@ export default function PlayerDatabasePage() {
                   
                   {/* Quick Actions for Leaders */}
                   <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
-                    <div className="mb-4 p-3 bg-white/5 border border-white/10 rounded-lg">
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quick Actions</p>
+                    <div className="mb-4 p-3 bg-slate-800/30 border border-slate-700/40 rounded-lg">
+                      <p className="text-xs text-slate-400 mb-3">Quick Actions</p>
                       <div className="flex flex-wrap gap-2">
                         <Button
                           variant="secondary"
@@ -1505,7 +1510,7 @@ export default function PlayerDatabasePage() {
                 {/* Player Timeline */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Player History</p>
+                    <p className="text-sm text-slate-300 font-medium">Player History</p>
                     <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
                       <Button
                         variant="primary"
@@ -1518,22 +1523,22 @@ export default function PlayerDatabasePage() {
                       </Button>
                     </LeadershipGuard>
                   </div>
-                  <div className="border border-white/10 rounded-lg bg-white/5">
+                  <div className="border border-slate-700/40 rounded-lg bg-slate-800/20">
                     <div className="p-4 max-w-full">
                       {generatePlayerTimeline(selectedPlayer).map((event, index) => (
-                        <div key={event.id} className={`relative border-b border-gray-200 dark:border-gray-700 pb-4 ${index % 2 === 0 ? 'bg-gray-50/50 dark:bg-gray-800/20' : ''}`}>
+                        <div key={event.id} className={`relative border-b border-slate-700/30 pb-4 ${index % 2 === 0 ? 'bg-slate-800/10' : ''}`}>
                           <div className="flex items-start space-x-3">
                             <div className="relative flex-shrink-0">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm ${
-                                event.color === 'green' ? 'bg-green-100 text-green-600' :
-                                event.color === 'red' ? 'bg-red-100 text-red-600' :
-                                event.color === 'orange' ? 'bg-orange-100 text-orange-600' :
-                                'bg-blue-100 text-blue-600'
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm border ${
+                                event.color === 'green' ? 'bg-emerald-900/40 text-emerald-300 border-emerald-700/40' :
+                                event.color === 'red' ? 'bg-red-900/40 text-red-300 border-red-700/40' :
+                                event.color === 'orange' ? 'bg-orange-900/40 text-orange-300 border-orange-700/40' :
+                                'bg-blue-900/40 text-blue-300 border-blue-700/40'
                               }`}>
                                 <div className="w-2 h-2 rounded-full bg-current"></div>
                               </div>
                               {index < generatePlayerTimeline(selectedPlayer).length - 1 && (
-                                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 w-0.5 h-4 bg-white/20"></div>
+                                <div className="absolute top-8 left-1/2 transform -translate-x-1/2 w-0.5 h-4 bg-slate-700/40"></div>
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
@@ -1541,10 +1546,10 @@ export default function PlayerDatabasePage() {
                                 <div className="flex items-center space-x-3 flex-1">
                                   <span className="text-lg flex-shrink-0">{event.icon}</span>
                                   <div className="flex flex-col space-y-1 flex-1">
-                                    <p className="text-sm font-medium text-high-contrast">
+                                    <p className="text-sm font-medium text-slate-200">
                                       {event.title}
                                     </p>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                    <p className="text-xs text-slate-400">
                                       {safeLocaleString(new Date(event.timestamp))}
                                     </p>
                                   </div>
@@ -1552,7 +1557,7 @@ export default function PlayerDatabasePage() {
                                 <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
                                   <button
                                     onClick={() => openEditEventModal(event)}
-                                    className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
+                                    className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 rounded-lg transition-colors flex-shrink-0 border border-slate-700/40 hover:border-slate-600/60"
                                     title="Edit this event"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1561,11 +1566,11 @@ export default function PlayerDatabasePage() {
                                   </button>
                                 </LeadershipGuard>
                               </div>
-                              <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 break-words overflow-wrap-anywhere pr-4">
+                              <p className="text-sm text-slate-300 mt-2 break-words overflow-wrap-anywhere pr-4">
                                 {event.description}
                               </p>
                               {event.details && (
-                                <div className="mt-1 text-xs text-gray-500 dark:text-gray-400 pr-4">
+                                <div className="mt-1 text-xs text-slate-400 pr-4">
                                   {event.details.grantedBy && (
                                     <span>By: {event.details.grantedBy}</span>
                                   )}
@@ -1583,7 +1588,7 @@ export default function PlayerDatabasePage() {
                       ))}
                       {generatePlayerTimeline(selectedPlayer).length === 0 && (
                         <div className="text-center py-4">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">No history available</p>
+                          <p className="text-sm text-slate-400">No history available</p>
                         </div>
                       )}
                     </div>

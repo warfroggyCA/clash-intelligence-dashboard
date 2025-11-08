@@ -57,10 +57,10 @@ const getVariantStyles = (variant: ButtonVariant): string => {
 
 const getSizeStyles = (size: ButtonSize): string => {
   const sizes = {
-    sm: 'px-2 py-1 text-xs',
-    md: 'px-4 py-2 text-sm',
-    lg: 'px-6 py-3 text-base',
-    xl: 'px-8 py-4 text-lg',
+    sm: 'px-3 py-2 text-xs min-h-[44px] min-w-[44px] sm:px-2 sm:py-1 sm:min-h-0 sm:min-w-0',
+    md: 'px-4 py-2.5 text-sm min-h-[44px] sm:min-h-0',
+    lg: 'px-6 py-3 text-base min-h-[48px] sm:min-h-0',
+    xl: 'px-8 py-4 text-lg min-h-[52px] sm:min-h-0',
   };
   
   return sizes[size];
