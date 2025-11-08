@@ -107,10 +107,10 @@ export async function GET(req: NextRequest) {
     const stats = statsRows ?? [];
     const memberIds = stats.map((row) => row.member_id).filter(Boolean) as string[];
 
-    // Get member info (tags, names) - single query
+    // Get member info (tags, names, cumulative donations) - single query
     const { data: memberRows, error: memberError } = await supabase
       .from('members')
-      .select('id, tag, name')
+      .select('id, tag, name, cumulative_donations_given, cumulative_donations_received')
       .in('id', memberIds);
 
     if (memberError) {
@@ -176,6 +176,9 @@ export async function GET(req: NextRequest) {
         // DONATIONS FROM STATS (single source of truth)
         donations: stat.donations ?? 0,
         donations_received: stat.donations_received ?? 0,
+        // CUMULATIVE DONATIONS FROM MEMBERS TABLE (accumulates over tenure)
+        cumulative_donations_given: member.cumulative_donations_given ?? 0,
+        cumulative_donations_received: member.cumulative_donations_received ?? 0,
         hero_levels: stat.hero_levels ?? canonicalMember.heroLevels ?? null,
         activity_score: stat.activity_score ?? canonicalMember.activityScore ?? null,
         rush_percent: stat.rush_percent ?? canonicalMember.rushPercent ?? null,
