@@ -1397,9 +1397,9 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   }, [activityEvidence]);
 
   const donationSeries = useMemo(() => deriveDonationSeries(profile ?? null), [profile]);
-  const kudosSuggestion = useMemo(() => deriveKudos(profile), [profile]);
+  const kudosSuggestion = useMemo(() => deriveKudos(profile ?? null), [profile]);
   const timelineItems = useMemo(
-    () => buildTimeline(profile, canViewLeadership),
+    () => buildTimeline(profile ?? null, canViewLeadership),
     [profile, canViewLeadership],
   );
 
