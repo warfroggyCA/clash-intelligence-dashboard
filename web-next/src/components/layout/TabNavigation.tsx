@@ -2,10 +2,11 @@
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useDashboardStore, type TabType } from "@/lib/stores/dashboard-store";
+import { useDashboardStore } from "@/lib/stores/dashboard-store";
 import { useLeadership } from "@/hooks/useLeadership";
 import { getVisibleTabs } from "@/lib/tab-config";
 import { Menu, X } from "lucide-react";
+import type { TabType } from "@/types";
 
 interface TabNavigationProps {
   className?: string;
