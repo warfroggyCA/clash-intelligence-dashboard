@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useDashboardStore } from "@/lib/stores/dashboard-store";
+import { useDashboardStore, type TabType } from "@/lib/stores/dashboard-store";
 import { useLeadership } from "@/hooks/useLeadership";
 import { getVisibleTabs } from "@/lib/tab-config";
 import { Menu, X } from "lucide-react";
