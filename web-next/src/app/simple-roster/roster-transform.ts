@@ -114,8 +114,14 @@ function toRosterMember(raw: Record<string, any>): RosterMember {
     townHallLevel: raw.townHallLevel ?? raw.th ?? null,
     role: raw.role ?? null,
     trophies: raw.trophies ?? raw.leagueTrophies ?? null,
-    donations: raw.donations ?? null,
-    donationsReceived: raw.donationsReceived ?? raw.donations_received ?? null,
+    // API returns: donations: member.donations || 0, donationsReceived: member.donations_received || 0
+    // So these are always numbers (never null/undefined)
+    donations: typeof raw.donations === 'number' ? raw.donations : (raw.donations ?? 0),
+    donationsReceived: typeof raw.donationsReceived === 'number' 
+      ? raw.donationsReceived 
+      : (typeof raw.donations_received === 'number' ? raw.donations_received : (raw.donationsReceived ?? raw.donations_received ?? 0)),
+    warStars: raw.warStars ?? raw.war_stars ?? raw.enriched?.warStars ?? null,
+    clanCapitalContributions: raw.clanCapitalContributions ?? raw.capitalContributions ?? raw.capital_contributions ?? raw.enriched?.capitalContributions ?? null,
     rankedLeagueId:
       raw.rankedLeagueId ?? rankedLeague?.id ?? raw.leagueId ?? null,
     rankedLeagueName:

@@ -512,7 +512,9 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
       const normalized = normalizeTag(summary.tag);
       const detail = snapshot.playerDetails?.[normalized];
       const league = summary.league || detail?.league;
-      const leagueTier = detail?.leagueTier; // NEW: Extract ranked league tier
+      // leagueTier comes from clan members API (member.leagueTier) OR player detail API (detail?.leagueTier)
+      // Prioritize player detail API as it's more accurate for ranked leagues
+      const leagueTier = detail?.leagueTier ?? summary.leagueTier;
       const { donations, donationsReceived } = deriveDonations(summary, detail);
       const heroLevels = buildHeroLevels(detail);
       const rushPercent = computeRushPercent(summary.townHallLevel ?? detail?.townHallLevel, heroLevels);
@@ -768,6 +770,74 @@ async function recordJoinerEvents(params: {
     console.warn(`Failed to load player warnings for joiners: ${warningsError.message}`);
   }
 
+  // Check for warnings on linked alias accounts
+  const linkedAccountWarningsMap = new Map<string, any[]>();
+  const linkedAccountTagsMap = new Map<string, string[]>();
+  
+  try {
+    // Query all alias links for the joining tags
+    const { data: aliasLinks, error: aliasLinksError } = await supabase
+      .from('player_alias_links')
+      .select('player_tag_1, player_tag_2')
+      .eq('clan_tag', clanTag)
+      .or(`player_tag_1.in.(${joinerTags.join(',')}),player_tag_2.in.(${joinerTags.join(',')})`);
+
+    if (!aliasLinksError && aliasLinks && aliasLinks.length > 0) {
+      // Build map of linked tags for each joiner
+      aliasLinks.forEach((link: any) => {
+        const tag1 = link.player_tag_1;
+        const tag2 = link.player_tag_2;
+        
+        if (joinerTags.includes(tag1)) {
+          if (!linkedAccountTagsMap.has(tag1)) {
+            linkedAccountTagsMap.set(tag1, []);
+          }
+          linkedAccountTagsMap.get(tag1)!.push(tag2);
+        }
+        if (joinerTags.includes(tag2)) {
+          if (!linkedAccountTagsMap.has(tag2)) {
+            linkedAccountTagsMap.set(tag2, []);
+          }
+          linkedAccountTagsMap.get(tag2)!.push(tag1);
+        }
+      });
+
+      // Collect all linked tags
+      const allLinkedTags = new Set<string>();
+      linkedAccountTagsMap.forEach((tags) => {
+        tags.forEach(tag => allLinkedTags.add(tag));
+      });
+
+      // Fetch warnings for linked tags
+      if (allLinkedTags.size > 0) {
+        const { data: linkedWarningsRows, error: linkedWarningsError } = await supabase
+          .from('player_warnings')
+          .select('*')
+          .eq('clan_tag', clanTag)
+          .in('player_tag', Array.from(allLinkedTags))
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+
+        if (!linkedWarningsError && linkedWarningsRows) {
+          // Group warnings by linked tag
+          linkedWarningsRows.forEach((warning: any) => {
+            const warningTag = warning.player_tag;
+            linkedAccountTagsMap.forEach((linkedTags, joinerTag) => {
+              if (linkedTags.includes(warningTag)) {
+                if (!linkedAccountWarningsMap.has(joinerTag)) {
+                  linkedAccountWarningsMap.set(joinerTag, []);
+                }
+                linkedAccountWarningsMap.get(joinerTag)!.push(warning);
+              }
+            });
+          });
+        }
+      }
+    }
+  } catch (aliasError: any) {
+    console.warn(`Failed to check linked account warnings for joiners: ${aliasError.message}`);
+  }
+
   const historyMap = new Map(
     (existingHistoryRows ?? []).map((row) => [row.player_tag, row])
   );
@@ -788,6 +858,18 @@ async function recordJoinerEvents(params: {
       warningsMap.set(tag, []);
     }
     warningsMap.get(tag)!.push(warning);
+  });
+
+  // Merge linked account warnings into warningsMap
+  linkedAccountWarningsMap.forEach((linkedWarnings, joinerTag) => {
+    if (!warningsMap.has(joinerTag)) {
+      warningsMap.set(joinerTag, []);
+    }
+    // Add linked warnings with a flag
+    linkedWarnings.forEach((warning: any) => {
+      warning._fromLinkedAccount = true;
+      warningsMap.get(joinerTag)!.push(warning);
+    });
   });
 
   const joinMovement = {
@@ -850,9 +932,15 @@ async function recordJoinerEvents(params: {
     const hasPreviousHistory = !!history && (history.movements?.length > 0 || history.total_tenure > 0);
     const hasNameChange = currentName && previousName && currentName !== previousName;
     
+    // Check for warnings on linked accounts
+    const linkedAccountWarnings = linkedAccountWarningsMap.get(tag) || [];
+    const linkedAccountTags = linkedAccountTagsMap.get(tag) || [];
+    const hasLinkedAccountWarnings = linkedAccountWarnings.length > 0;
+
     // Determine notification priority
+    // If ANY linked account has warnings, set to critical
     let notificationPriority: 'low' | 'medium' | 'high' | 'critical' = 'low';
-    if (warnings.length > 0) {
+    if (warnings.length > 0 || hasLinkedAccountWarnings) {
       notificationPriority = 'critical';
     } else if (notes.length > 0 || hasNameChange) {
       notificationPriority = 'high';
@@ -879,6 +967,14 @@ async function recordJoinerEvents(params: {
         totalTenure: history?.total_tenure ?? 0,
         lastDepartureDate: history?.movements?.find((m: any) => m.type === 'departed')?.date || null,
         notificationPriority,
+        // Linked account metadata
+        linkedAccountTags: linkedAccountTags,
+        linkedAccountWarnings: linkedAccountWarnings.map((w: any) => ({
+          tag: w.player_tag,
+          warningNote: w.warning_note,
+          createdAt: w.created_at,
+        })),
+        hasLinkedAccountWarnings: hasLinkedAccountWarnings,
       },
     };
   });
@@ -1106,6 +1202,7 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         battle_mode_trophies: currentRanked,
         ranked_trophies: rankedSnapshotValue,
         ranked_league_id: member.ranked_league_id,
+        ranked_league_name: member.ranked_league_name,
         ranked_modifier: member.ranked_modifier,
         equipment_flags: enriched.equipmentLevels ?? member.equipment_flags, // Use enriched equipment levels
         tenure_days: normalizedTenure,

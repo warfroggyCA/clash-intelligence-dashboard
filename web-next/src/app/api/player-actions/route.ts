@@ -1,10 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { createApiContext } from '@/lib/api-context';
 import { applyTenureAction } from '@/lib/services/tenure-service';
 import { ymdNowUTC } from '@/lib/date';
 import { readLedgerEffective } from '@/lib/tenure';
 import { normalizeTag } from '@/lib/tags';
+import { cfg } from '@/lib/config';
+
+/**
+ * Lookup player name from tag using canonical snapshots or members table
+ */
+async function lookupPlayerName(clanTag: string, playerTag: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  
+  // Try canonical snapshots first (most reliable)
+  const { data: snapshot } = await supabase
+    .from('canonical_member_snapshots')
+    .select('payload')
+    .eq('player_tag', playerTag)
+    .eq('clan_tag', clanTag)
+    .order('snapshot_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  if (snapshot?.payload?.member?.name) {
+    return snapshot.payload.member.name;
+  }
+  
+  // Fallback to members table
+  const { data: clanRow } = await supabase
+    .from('clans')
+    .select('id')
+    .eq('tag', clanTag)
+    .maybeSingle();
+  
+  if (clanRow?.id) {
+    const { data: member } = await supabase
+      .from('members')
+      .select('name')
+      .eq('clan_id', clanRow.id)
+      .eq('tag', playerTag)
+      .maybeSingle();
+    
+    if (member?.name) {
+      return member.name;
+    }
+  }
+  
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
@@ -136,10 +181,21 @@ export async function POST(request: NextRequest) {
       const asOfIso =
         typeof asOf === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(asOf) ? asOf : ymdNowUTC();
 
+      // If playerName not provided, look it up from tag
+      let finalPlayerName = playerName?.trim();
+      if (!finalPlayerName || finalPlayerName === 'Unknown Player') {
+        const lookedUpName = await lookupPlayerName(normalizedClanTag ?? clanTag, normalizedPlayerTag ?? playerTag);
+        if (lookedUpName) {
+          finalPlayerName = lookedUpName;
+        } else {
+          finalPlayerName = playerName || null;
+        }
+      }
+      
       const result = await applyTenureAction({
         clanTag: normalizedClanTag ?? clanTag,
         playerTag: normalizedPlayerTag ?? playerTag,
-        playerName,
+        playerName: finalPlayerName,
         baseDays,
         asOf: asOfIso,
         reason: reason ?? null,
@@ -164,12 +220,23 @@ export async function POST(request: NextRequest) {
         return json({ success: false, error: 'Invalid departure data' }, { status: 400 });
       }
       
+      // If playerName not provided, look it up from tag
+      let finalPlayerName = playerName?.trim();
+      if (!finalPlayerName || finalPlayerName === 'Unknown Player') {
+        const lookedUpName = await lookupPlayerName(clanTagForWrite, playerTagForWrite);
+        if (lookedUpName) {
+          finalPlayerName = lookedUpName;
+        } else {
+          finalPlayerName = playerName || null;
+        }
+      }
+      
       const { data: result, error } = await supabase
         .from('player_departure_actions')
         .insert({
           clan_tag: clanTagForWrite,
           player_tag: playerTagForWrite,
-          player_name: playerName,
+          player_name: finalPlayerName,
           reason,
           departure_type: departureType,
           recorded_by: actionData.recordedBy,

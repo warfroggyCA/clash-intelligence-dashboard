@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { AlertCircle, UserX, UserCheck, Clock, MessageSquare, X } from "lucide-react";
 import { safeLocaleDateString } from '@/lib/date';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import LeadershipGuard from '@/components/LeadershipGuard';
 
 interface DepartureRecord {
   memberTag: string;
@@ -271,69 +272,71 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                         )}
                       </div>
                     </div>
-                    <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 ml-4 items-stretch sm:items-center">
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch('/api/tenure/update', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                clanTag,
-                                memberTag: rejoin.memberTag,
-                                mode: 'grant-existing'
-                              })
-                            });
-                            const payload = await res.json().catch(() => null);
-                            if (res.ok) {
-                              const tenureDays = typeof payload?.data?.tenureDays === 'number' ? payload.data.tenureDays : null;
-                              const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
-                              if (tenureDays !== null && typeof updateRosterMemberTenure === 'function') {
-                                updateRosterMemberTenure(rejoin.memberTag, tenureDays, asOf);
+                    <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                      <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 ml-4 items-stretch sm:items-center">
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/tenure/update', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  clanTag,
+                                  memberTag: rejoin.memberTag,
+                                  mode: 'grant-existing'
+                                })
+                              });
+                              const payload = await res.json().catch(() => null);
+                              if (res.ok) {
+                                const tenureDays = typeof payload?.data?.tenureDays === 'number' ? payload.data.tenureDays : null;
+                                const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
+                                if (tenureDays !== null && typeof updateRosterMemberTenure === 'function') {
+                                  updateRosterMemberTenure(rejoin.memberTag, tenureDays, asOf);
+                                }
                               }
+                            } catch (error) {
+                              console.error('Failed to update tenure for returning member', error);
                             }
-                          } catch (error) {
-                            console.error('Failed to update tenure for returning member', error);
-                          }
-                          await markRejoinResolved(rejoin.memberTag);
-                        }}
-                        className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
-                        title="Grant prior tenure and resume counting from today"
-                      >
-                        Grant Tenure
-                      </button>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const res = await fetch('/api/tenure/update', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                clanTag,
-                                memberTag: rejoin.memberTag,
-                                mode: 'reset'
-                              })
-                            });
-                            const payload = await res.json().catch(() => null);
-                            if (res.ok && typeof updateRosterMemberTenure === 'function') {
-                              const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
-                              updateRosterMemberTenure(rejoin.memberTag, 0, asOf);
-                            }
-                          } catch (e) { console.error(e); }
-                          await markRejoinResolved(rejoin.memberTag);
-                        }}
-                        className="px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 hover:scale-105 transition-all duration-200 font-medium"
-                        title="Reset tenure to 0 starting today"
-                      >
-                        Reset Tenure
-                      </button>
-                      <button
-                        onClick={() => markRejoinResolved(rejoin.memberTag)}
-                        className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 hover:scale-105 transition-all duration-200 font-medium"
-                      >
-                        Mark Resolved
-                      </button>
-                    </div>
+                            await markRejoinResolved(rejoin.memberTag);
+                          }}
+                          className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
+                          title="Grant prior tenure and resume counting from today"
+                        >
+                          Grant Tenure
+                        </button>
+                        <button
+                          onClick={async () => {
+                            try {
+                              const res = await fetch('/api/tenure/update', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  clanTag,
+                                  memberTag: rejoin.memberTag,
+                                  mode: 'reset'
+                                })
+                              });
+                              const payload = await res.json().catch(() => null);
+                              if (res.ok && typeof updateRosterMemberTenure === 'function') {
+                                const asOf = payload?.data?.asOf ?? new Date().toISOString().slice(0, 10);
+                                updateRosterMemberTenure(rejoin.memberTag, 0, asOf);
+                              }
+                            } catch (e) { console.error(e); }
+                            await markRejoinResolved(rejoin.memberTag);
+                          }}
+                          className="px-3 py-1 bg-amber-600 text-white rounded text-sm hover:bg-amber-700 hover:scale-105 transition-all duration-200 font-medium"
+                          title="Reset tenure to 0 starting today"
+                        >
+                          Reset Tenure
+                        </button>
+                        <button
+                          onClick={() => markRejoinResolved(rejoin.memberTag)}
+                          className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 hover:scale-105 transition-all duration-200 font-medium"
+                        >
+                          Mark Resolved
+                        </button>
+                      </div>
+                    </LeadershipGuard>
                   </div>
                 </div>
               ))}
@@ -377,16 +380,18 @@ export default function DepartureManager({ clanTag, onClose, onNotificationChang
                         {departure.departureReason && <p><strong>Reason:</strong> {departure.departureReason}</p>}
                       </div>
                     </div>
-                    <button
-                      onClick={() => {
-                        setEditingDeparture(departure);
-                        setNotes(departure.notes || "");
-                        setReason(departure.departureReason || "");
-                      }}
-                      className="ml-4 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
-                    >
-                      {isProcessed ? 'Edit Notes' : 'Add Notes'}
-                    </button>
+                    <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                      <button
+                        onClick={() => {
+                          setEditingDeparture(departure);
+                          setNotes(departure.notes || "");
+                          setReason(departure.departureReason || "");
+                        }}
+                        className="ml-4 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700 hover:scale-105 transition-all duration-200 font-medium"
+                      >
+                        {isProcessed ? 'Edit Notes' : 'Add Notes'}
+                      </button>
+                    </LeadershipGuard>
                   </div>
                 </div>
                 );

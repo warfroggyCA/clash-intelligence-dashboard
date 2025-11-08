@@ -8,6 +8,7 @@ interface LeagueBadgeProps {
   showText?: boolean;
   size?: 'sm' | 'md' | 'lg' | 'xl' | 'xxl';
   tier?: number; // optional, reserved for future use
+  isRanked?: boolean; // If true, use ranked league thresholds even for low trophy counts
 }
 
 const imageDimensions = {
@@ -46,6 +47,22 @@ const getLeagueFromTrophies = (trophies: number): string => {
   return 'Bronze';
 };
 
+// Helper function for ranked leagues (post-Oct 2025)
+const getRankedLeagueFromTrophies = (trophies: number): string => {
+  if (trophies >= 5000) return 'Legend League';
+  if (trophies >= 4900) return 'Titan League';
+  if (trophies >= 4800) return 'Electro League';
+  if (trophies >= 4700) return 'Dragon League';
+  if (trophies >= 4600) return 'PEKKA League';
+  if (trophies >= 4500) return 'Golem League';
+  if (trophies >= 4400) return 'Witch League';
+  if (trophies >= 4300) return 'Valkyrie League';
+  if (trophies >= 4200) return 'Wizard League';
+  if (trophies >= 4100) return 'Archer League';
+  if (trophies >= 4000) return 'Barbarian League';
+  return 'Skeleton League';
+};
+
 // Oct 2025 ranked league names present in new asset set
 const OCT2025_CANON: Record<string, string> = {
   'barbarian league': 'Barbarian League',
@@ -76,14 +93,25 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
   showText = true,
   size = 'md',
   tier,
+  isRanked = false,
 }) => {
   // Determine league name
   const cleanedLeagueName = typeof league === 'string' ? league.trim() : '';
   const hasNamedLeague = cleanedLeagueName.length > 0;
+  
+  // If no league name but we have trophies, derive it
+  // Check if it's a ranked league by:
+  // 1. Explicit isRanked prop
+  // 2. League name matches ranked league pattern
+  // 3. Trophies are in ranked range (4000+)
+  const isRankedLeague = isRanked || (hasNamedLeague 
+    ? /^(Skeleton|Barbarian|Archer|Wizard|Valkyrie|Witch|Golem|PEKKA|Dragon|Electro|Titan|Legend)\s*League/i.test(cleanedLeagueName)
+    : trophies !== undefined && trophies !== null && trophies >= 4000);
+  
   const determinedLeague = hasNamedLeague
     ? cleanedLeagueName
     : trophies !== undefined && trophies !== null
-      ? getLeagueFromTrophies(trophies)
+      ? (isRankedLeague ? getRankedLeagueFromTrophies(trophies) : getLeagueFromTrophies(trophies))
       : 'No League';
   // Normalize to base league (strip trailing numeric/roman tier)
   const m = determinedLeague.match(/^(.*?League)(?:\s+(\d+|[IVXLCDM]+))?$/i);

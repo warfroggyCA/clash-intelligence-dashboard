@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Eye, EyeOff, MessageSquare, Download, CheckCircle, AlertTriangle, Clock } from 'lucide-react';
 import { GlassCard, Button } from '@/components/ui';
+import LeadershipGuard from '@/components/LeadershipGuard';
 import type { Member } from '@/types';
 import { 
   formatWatchlistForDiscord, 
@@ -236,68 +237,72 @@ export const WatchlistManager = ({ watchlist, onUpdateWatchlist }: WatchlistMana
                 {isExpanded && (
                   <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
                     {/* Notes */}
-                    {isEditingNote ? (
-                      <div>
-                        <label className="text-sm text-gray-400 mb-1 block">Add Notes:</label>
-                        <textarea
-                          value={noteText}
-                          onChange={(e) => setNoteText(e.target.value)}
-                          className="w-full bg-brand-surface border border-gray-600 rounded px-3 py-2 text-gray-100 text-sm"
-                          rows={2}
-                          placeholder="Add notes about this player..."
-                        />
-                        <div className="flex gap-2 mt-2">
-                          <Button size="sm" onClick={() => handleSaveNotes(item.member.tag)}>
-                            Save
-                          </Button>
-                          <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)}>
-                            Cancel
-                          </Button>
+                    <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                      {isEditingNote ? (
+                        <div>
+                          <label className="text-sm text-gray-400 mb-1 block">Add Notes:</label>
+                          <textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            className="w-full bg-brand-surface border border-gray-600 rounded px-3 py-2 text-gray-100 text-sm"
+                            rows={2}
+                            placeholder="Add notes about this player..."
+                          />
+                          <div className="flex gap-2 mt-2">
+                            <Button size="sm" onClick={() => handleSaveNotes(item.member.tag)}>
+                              Save
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingNotes(null)}>
+                              Cancel
+                            </Button>
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          setEditingNotes(item.member.tag);
-                          setNoteText(item.notes || '');
-                        }}
-                        className="min-h-[44px]"
-                      >
-                        📝 {item.notes ? 'Edit Notes' : 'Add Notes'}
-                      </Button>
-                    )}
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setEditingNotes(item.member.tag);
+                            setNoteText(item.notes || '');
+                          }}
+                          className="min-h-[44px]"
+                        >
+                          📝 {item.notes ? 'Edit Notes' : 'Add Notes'}
+                        </Button>
+                      )}
+                    </LeadershipGuard>
 
                     {/* Actions */}
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleSnooze(item.member.tag, 3)}
-                        className="min-h-[44px]"
-                      >
-                        <Clock className="w-3 h-3 mr-1" />
-                        Snooze 3d
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleSnooze(item.member.tag, 7)}
-                        className="min-h-[44px]"
-                      >
-                        <Clock className="w-3 h-3 mr-1" />
-                        Snooze 7d
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRemove(item.member.tag)}
-                        className="min-h-[44px] text-red-400 hover:text-red-300"
-                      >
-                        Remove
-                      </Button>
-                    </div>
+                    <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSnooze(item.member.tag, 3)}
+                          className="min-h-[44px]"
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          Snooze 3d
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleSnooze(item.member.tag, 7)}
+                          className="min-h-[44px]"
+                        >
+                          <Clock className="w-3 h-3 mr-1" />
+                          Snooze 7d
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleRemove(item.member.tag)}
+                          className="min-h-[44px] text-red-400 hover:text-red-300"
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </LeadershipGuard>
                   </div>
                 )}
               </div>
@@ -325,14 +330,16 @@ export const WatchlistManager = ({ watchlist, onUpdateWatchlist }: WatchlistMana
                     Snoozed until {item.snoozedUntil ? new Date(item.snoozedUntil).toLocaleDateString() : 'unknown'}
                   </p>
                 </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleUnsnooze(item.member.tag)}
-                  className="min-h-[44px]"
-                >
-                  Unsnooze
-                </Button>
+                <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleUnsnooze(item.member.tag)}
+                    className="min-h-[44px]"
+                  >
+                    Unsnooze
+                  </Button>
+                </LeadershipGuard>
               </div>
             </div>
           ))}

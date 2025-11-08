@@ -64,128 +64,164 @@ export async function GET(req: NextRequest) {
       throw clanError;
     }
 
-    // 1) Resolve the newest snapshot_date for this clan from Supabase (no ingestion)
-    const { data: latestDateRow, error: latestDateErr } = await supabase
-      .from('canonical_member_snapshots')
-      .select('snapshot_date')
-      .eq('clan_tag', clanTag)
-      .order('snapshot_date', { ascending: false, nullsFirst: false })
+    // Get the latest roster snapshot (this is where all the ingested data lives)
+    const { data: snapshotRows, error: snapshotError } = await supabase
+      .from('roster_snapshots')
+      .select('id, fetched_at, member_count, total_trophies, total_donations, metadata, payload_version, ingestion_version, schema_version, computed_at, season_id, season_start, season_end')
+      .eq('clan_id', clanRow.id)
+      .order('fetched_at', { ascending: false })
       .limit(1)
       .maybeSingle();
 
-    if (latestDateErr) {
-      throw latestDateErr;
+    if (snapshotError) {
+      throw snapshotError;
     }
 
     // If we have no snapshots at all, return an empty dataset
-    if (!latestDateRow?.snapshot_date) {
+    if (!snapshotRows) {
       return NextResponse.json({
-          success: true,
-          data: {
+        success: true,
+        data: {
           clanTag: clanRow.tag,
           clanName: clanRow.name,
           logoUrl: clanRow.logo_url,
           lastUpdated: null,
-            members: [],
-          },
+          members: [],
+        },
       });
     }
 
-    // 2) Fetch ONLY rows for the newest snapshot_date (freshest dataset)
-    const latestSnapshotDate: string = latestDateRow.snapshot_date;
+    const snapshot = snapshotRows;
+    const latestSnapshotDate = snapshot.fetched_at?.slice(0, 10) || null;
+
+    // Get ALL member stats from member_snapshot_stats (this is the single source of truth)
+    const { data: statsRows, error: statsError } = await supabase
+      .from('member_snapshot_stats')
+      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, war_stars, attack_wins, defense_wins, capital_contributions, pet_levels, builder_hall_level, versus_trophies, versus_battle_wins, builder_league_id, max_troop_count, max_spell_count, super_troops_active, achievement_count, achievement_score, exp_level, equipment_flags, best_trophies, best_versus_trophies, ranked_trophies, ranked_league_id, ranked_league_name, league_id, league_name, league_trophies, battle_mode_trophies, tenure_days, tenure_as_of')
+      .eq('snapshot_id', snapshot.id);
+
+    if (statsError) {
+      throw statsError;
+    }
+
+    const stats = statsRows ?? [];
+    const memberIds = stats.map((row) => row.member_id).filter(Boolean) as string[];
+
+    // Get member info (tags, names) - single query
+    const { data: memberRows, error: memberError } = await supabase
+      .from('members')
+      .select('id, tag, name')
+      .in('id', memberIds);
+
+    if (memberError) {
+      throw memberError;
+    }
+
+    const memberLookup = new Map(memberRows?.map(m => [m.id, m]) || []);
+
+    // Get canonical snapshots for additional data (activity, etc.) - single query
+    // Use fetched_at date for matching canonical snapshots
+    const canonicalSnapshotDate = latestSnapshotDate;
     const { data: canonicalSnapshots, error: canonicalError } = await supabase
       .from('canonical_member_snapshots')
-      .select('player_tag, snapshot_date, payload')
+      .select('player_tag, payload')
       .eq('clan_tag', clanTag)
-      .eq('snapshot_date', latestSnapshotDate)
+      .eq('snapshot_date', canonicalSnapshotDate)
       .limit(10000);
 
     if (canonicalError) {
       throw canonicalError;
     }
 
-    // Group snapshots by player_tag and get one entry per player
-    const latestSnapshots = new Map<string, any>();
-    for (const snapshot of canonicalSnapshots || []) {
-      const key = snapshot.player_tag;
-      if (key && !latestSnapshots.has(key)) {
-        latestSnapshots.set(key, snapshot);
+    // Map canonical snapshots by tag for quick lookup
+    const canonicalByTag = new Map<string, any>();
+    for (const cs of canonicalSnapshots || []) {
+      const tag = normalizeTag(cs.player_tag || '');
+      if (tag && !canonicalByTag.has(tag)) {
+        canonicalByTag.set(tag, cs);
       }
     }
 
     // Get tenure data from the tenure ledger
     const tenureMap = await readLedgerEffective();
 
-    const rawMembers = Array.from(latestSnapshots.values()).map(snapshot => {
-      const member = snapshot.payload.member;
-      const ranked = member.ranked || {};
-      const league = member.league || {};
-      const war = member.war || {};
-      const builderBase = member.builderBase || {};
-      const pets = member.pets || {};
-      const rawTag = snapshot.player_tag ?? member.tag ?? '';
-      const canonicalTag = normalizeTag(rawTag) || (typeof rawTag === 'string' ? rawTag : '');
-      if (!canonicalTag) {
-        return null;
-      }
-      
+    // Build members from stats (single source of truth) + enrich with canonical payload data
+    const rawMembers = stats.map(stat => {
+      const member = memberLookup.get(stat.member_id);
+      if (!member) return null;
+
+      const canonicalTag = normalizeTag(member.tag || '');
+      if (!canonicalTag) return null;
+
+      const canonical = canonicalByTag.get(canonicalTag);
+      const canonicalMember = canonical?.payload?.member || {};
+      const ranked = canonicalMember.ranked || {};
+      const league = canonicalMember.league || {};
+
       return {
-        id: canonicalTag, // Use normalized tag as ID since we don't have member_id in canonical
+        id: member.id,
         tag: canonicalTag,
-        name: member.name,
-        th_level: member.townHallLevel,
-        role: member.role,
-        trophies: member.trophies,
-        ranked_trophies: member.battleModeTrophies ?? ranked.trophies,
-        ranked_league_id: ranked.leagueId,
-        ranked_league_name: ranked.leagueName,
-        league_trophies: league.trophies,
-        battle_mode_trophies: league.trophies,
-        donations: typeof member.donations === 'object' ? (member.donations?.given || 0) : (member.donations || 0),
-        donations_received: typeof member.donations === 'object' ? (member.donations?.received || 0) : (member.donationsReceived || 0),
-        hero_levels: member.heroLevels,
-        activity_score: member.activityScore,
-        rush_percent: member.rushPercent,
-        best_trophies: member.bestTrophies,
-        best_versus_trophies: member.bestVersusTrophies,
-        war_stars: war.stars,
-        attack_wins: war.attackWins,
-        defense_wins: war.defenseWins,
-        capital_contributions: member.capitalContributions,
-        pet_levels: pets,
-        builder_hall_level: builderBase.hallLevel,
-        versus_trophies: builderBase.trophies,
-        versus_battle_wins: builderBase.battleWins,
-        builder_league_id: builderBase.league?.id,
-        max_troop_count: 0, // Not available in canonical
-        max_spell_count: 0, // Not available in canonical
-        super_troops_active: member.superTroopsActive,
-        achievement_count: member.achievements?.length || 0,
-        achievement_score: 0, // Not available in canonical
-        exp_level: member.expLevel,
-        equipment_flags: member.equipmentLevels,
-        tenure_days: tenureMap[canonicalTag] ?? tenureMap[snapshot.player_tag] ?? null,
-        tenure_as_of: null, // Will be populated when tenure is updated
-        snapshot_date: snapshot.snapshot_date,
+        name: member.name || canonicalMember.name || canonicalTag,
+        th_level: stat.th_level ?? canonicalMember.townHallLevel ?? null,
+        role: stat.role ?? canonicalMember.role ?? null,
+        trophies: stat.trophies ?? canonicalMember.trophies ?? null,
+        ranked_trophies: stat.ranked_trophies ?? canonicalMember.battleModeTrophies ?? ranked.trophies ?? null,
+        // LEAGUE DATA FROM STATS (single source of truth), fallback to canonical payload if missing
+        ranked_league_id: stat.ranked_league_id ?? ranked.leagueId ?? null,
+        ranked_league_name: stat.ranked_league_name ?? ranked.leagueName ?? null,
+        league_id: stat.league_id ?? league.id ?? null,
+        league_name: stat.league_name ?? league.name ?? null,
+        league_trophies: stat.league_trophies ?? league.trophies ?? null,
+        battle_mode_trophies: stat.battle_mode_trophies ?? null,
+        // DONATIONS FROM STATS (single source of truth)
+        donations: stat.donations ?? 0,
+        donations_received: stat.donations_received ?? 0,
+        hero_levels: stat.hero_levels ?? canonicalMember.heroLevels ?? null,
+        activity_score: stat.activity_score ?? canonicalMember.activityScore ?? null,
+        rush_percent: stat.rush_percent ?? canonicalMember.rushPercent ?? null,
+        best_trophies: stat.best_trophies ?? canonicalMember.bestTrophies ?? null,
+        best_versus_trophies: stat.best_versus_trophies ?? canonicalMember.bestVersusTrophies ?? null,
+        war_stars: stat.war_stars ?? canonicalMember.war?.stars ?? null,
+        attack_wins: stat.attack_wins ?? canonicalMember.war?.attackWins ?? null,
+        defense_wins: stat.defense_wins ?? canonicalMember.war?.defenseWins ?? null,
+        capital_contributions: stat.capital_contributions ?? canonicalMember.capitalContributions ?? null,
+        pet_levels: stat.pet_levels ?? canonicalMember.pets ?? null,
+        builder_hall_level: stat.builder_hall_level ?? canonicalMember.builderBase?.hallLevel ?? null,
+        versus_trophies: stat.versus_trophies ?? canonicalMember.builderBase?.trophies ?? null,
+        versus_battle_wins: stat.versus_battle_wins ?? canonicalMember.builderBase?.battleWins ?? null,
+        builder_league_id: stat.builder_league_id ?? canonicalMember.builderBase?.league?.id ?? null,
+        max_troop_count: stat.max_troop_count ?? 0,
+        max_spell_count: stat.max_spell_count ?? 0,
+        super_troops_active: stat.super_troops_active ?? canonicalMember.superTroopsActive ?? null,
+        achievement_count: stat.achievement_count ?? 0,
+        achievement_score: stat.achievement_score ?? 0,
+        exp_level: stat.exp_level ?? canonicalMember.expLevel ?? null,
+        equipment_flags: stat.equipment_flags ?? canonicalMember.equipmentLevels ?? null,
+        tenure_days: stat.tenure_days ?? tenureMap[canonicalTag] ?? null,
+        tenure_as_of: stat.tenure_as_of ?? null,
+        snapshot_date: latestSnapshotDate,
       };
     }).filter((member): member is NonNullable<typeof member> => member !== null);
 
     type SnapshotMember = (typeof rawMembers)[number];
     const members: SnapshotMember[] = rawMembers;
 
+    // Build tag->UUID maps from the members we already have (no extra query needed)
+    const memberTagToUuidMap = new Map<string, string>();
+    const memberIdToTagMap = new Map<string, string>();
+    for (const member of members) {
+      if (member.id && member.tag) {
+        const normalizedTag = normalizeTag(member.tag);
+        if (normalizedTag) {
+          memberTagToUuidMap.set(normalizedTag, member.id);
+          memberIdToTagMap.set(member.id, normalizedTag);
+        }
+      }
+    }
+
     const canonicalTags = members
       .map((member) => normalizeTag(member.tag ?? ''))
       .filter((tag): tag is string => Boolean(tag));
-    const memberQueryTags = Array.from(
-      new Set(
-        canonicalTags
-          .flatMap((tag) => {
-            const stripped = tag.replace(/^#+/, '');
-            return stripped && stripped !== tag ? [tag, stripped] : [tag];
-          })
-          .filter((tag): tag is string => Boolean(tag)),
-      ),
-    );
 
     const timelineByPlayer = new Map<string, ReturnType<typeof buildTimelineFromPlayerDay>>();
     try {
@@ -255,6 +291,8 @@ export async function GET(req: NextRequest) {
         rankedTrophies: member.ranked_trophies ?? null,
         rankedLeagueId: member.ranked_league_id ?? null,
         rankedLeagueName: member.ranked_league_name ?? null,
+        leagueId: member.league_id ?? null,
+        leagueName: member.league_name ?? null,
         donations: member.donations ?? null,
         donationsReceived: member.donations_received ?? null,
         warStars: member.war_stars ?? null,
@@ -270,28 +308,6 @@ export async function GET(req: NextRequest) {
         enriched: enriched as Member['enriched'],
       } as Member;
     };
-
-    // Create maps from member tag -> UUID for lookup (needed for VIP and historical data)
-    const memberTagToUuidMap = new Map<string, string>();
-    const memberIdToTagMap = new Map<string, string>();
-    
-    if (memberQueryTags.length > 0) {
-      // Get member IDs from the canonical data for historical lookup (single query for both VIP and historical data)
-      const { data: memberRows, error: memberError } = await supabase
-        .from('members')
-        .select('id, tag')
-        .in('tag', memberQueryTags);
-
-      if (!memberError && memberRows) {
-        for (const row of memberRows) {
-          const normalizedTag = normalizeTag(row.tag ?? '');
-          if (normalizedTag) {
-            memberTagToUuidMap.set(normalizedTag, row.id);
-            memberIdToTagMap.set(row.id, normalizedTag);
-          }
-        }
-      }
-    }
     
     // Calculate historical trophies using SSOT shared function
     const historicalTrophyDataByMember = memberIdToTagMap.size > 0
@@ -455,6 +471,8 @@ export async function GET(req: NextRequest) {
         rankedTrophies: member.ranked_trophies || 0,
         rankedLeagueId: member.ranked_league_id,
         rankedLeagueName: member.ranked_league_name,
+        leagueId: member.league_id,
+        leagueName: member.league_name,
         leagueTrophies: member.league_trophies || 0,
         battleModeTrophies: member.battle_mode_trophies || 0,
         donations: member.donations || 0,
@@ -493,7 +511,8 @@ export async function GET(req: NextRequest) {
         lastWeekTrophies: resolvedLastWeek,
         seasonTotalTrophies: resolvedSeasonTotal,
         league: {
-          name: member.ranked_league_name,
+          id: member.league_id,
+          name: member.league_name,
           trophies: member.league_trophies,
           iconSmall: null,
           iconMedium: null,
@@ -514,12 +533,10 @@ export async function GET(req: NextRequest) {
     // Sort by trophies descending
     transformedMembers.sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
 
-    const snapshotDate =
-      resolvedFetchedAt?.slice(0, 10)
-        ?? (typeof lastUpdatedRaw === 'string' ? lastUpdatedRaw.slice(0, 10) : null);
-    const payloadVersion = resolvedFetchedAt ? `canonical-${resolvedFetchedAt}` : null;
-    const totalTrophies = transformedMembers.reduce((sum, m) => sum + (m.trophies || 0), 0);
-    const totalDonations = transformedMembers.reduce((sum, m) => sum + (m.donations || 0), 0);
+    const snapshotDate = latestSnapshotDate;
+    const payloadVersion = snapshot.payload_version ?? `snapshot-${snapshot.id}`;
+    const totalTrophies = snapshot.total_trophies ?? transformedMembers.reduce((sum, m) => sum + (m.trophies || 0), 0);
+    const totalDonations = snapshot.total_donations ?? transformedMembers.reduce((sum, m) => sum + (m.donations || 0), 0);
 
     // Get current date in UTC for comparison
     const currentDateUTC = new Date().toISOString().split('T')[0];
@@ -530,43 +547,43 @@ export async function GET(req: NextRequest) {
       data: {
         clan: clanRow,
         members: transformedMembers,
-        seasonEnd: null,
-        seasonId: null,
-        seasonStart: null,
+        seasonEnd: snapshot.season_end ?? null,
+        seasonId: snapshot.season_id ?? null,
+        seasonStart: snapshot.season_start ?? null,
         snapshot: {
-          id: null,
-          fetchedAt: resolvedFetchedAt,
-          fetched_at: resolvedFetchedAt ?? lastUpdatedRaw,
-          memberCount: transformedMembers.length,
-          member_count: transformedMembers.length,
+          id: snapshot.id,
+          fetchedAt: snapshot.fetched_at ?? resolvedFetchedAt,
+          fetched_at: snapshot.fetched_at ?? resolvedFetchedAt,
+          memberCount: snapshot.member_count ?? transformedMembers.length,
+          member_count: snapshot.member_count ?? transformedMembers.length,
           totalTrophies,
           total_trophies: totalTrophies,
           totalDonations,
           total_donations: totalDonations,
           payloadVersion,
           payload_version: payloadVersion,
-          ingestionVersion: null,
-          ingestion_version: null,
-          schemaVersion: null,
-          schema_version: null,
-          computedAt: resolvedFetchedAt,
-          computed_at: resolvedFetchedAt,
-          seasonId: null,
-          season_id: null,
-          seasonStart: null,
-          season_start: null,
-          seasonEnd: null,
-          season_end: null,
+          ingestionVersion: snapshot.ingestion_version ?? null,
+          ingestion_version: snapshot.ingestion_version ?? null,
+          schemaVersion: snapshot.schema_version ?? null,
+          schema_version: snapshot.schema_version ?? null,
+          computedAt: snapshot.computed_at ?? resolvedFetchedAt,
+          computed_at: snapshot.computed_at ?? resolvedFetchedAt,
+          seasonId: snapshot.season_id ?? null,
+          season_id: snapshot.season_id ?? null,
+          seasonStart: snapshot.season_start ?? null,
+          season_start: snapshot.season_start ?? null,
+          seasonEnd: snapshot.season_end ?? null,
+          season_end: snapshot.season_end ?? null,
           snapshotDate,
           snapshot_date: snapshotDate,
-          metadata: {
+          metadata: snapshot.metadata ?? {
             snapshotDate,
             snapshot_date: snapshotDate,
-            fetchedAt: resolvedFetchedAt,
-            computedAt: resolvedFetchedAt,
+            fetchedAt: snapshot.fetched_at ?? resolvedFetchedAt,
+            computedAt: snapshot.computed_at ?? resolvedFetchedAt,
             payloadVersion,
-            ingestionVersion: null,
-            schemaVersion: null,
+            ingestionVersion: snapshot.ingestion_version ?? null,
+            schemaVersion: snapshot.schema_version ?? null,
           },
         },
         // Add date comparison metadata

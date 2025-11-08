@@ -1280,13 +1280,14 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex justify-center">
-                          {player.rankedLeagueName ? (
+                          {(player.rankedLeagueName || player.rankedTrophies || player.trophies) ? (
                             <div title={leagueTooltip} className="cursor-help">
                               <LeagueBadge 
-                                league={player.rankedLeagueName} 
-                                trophies={player.trophies}
+                                league={player.rankedLeagueName || undefined} 
+                                trophies={player.rankedTrophies ?? player.trophies}
                                 size="sm" 
                                 showText={false}
+                                isRanked={!!player.rankedTrophies || !!player.rankedLeagueName}
                               />
                             </div>
                           ) : (
@@ -1624,13 +1625,14 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                         {player.townHallLevel}
                       </span>
                     </div>
-                    {player.rankedLeagueName && (
+                    {(player.rankedLeagueName || player.rankedTrophies || player.trophies) && (
                       <div title={leagueTooltip} className="cursor-help">
                         <LeagueBadge 
-                          league={player.rankedLeagueName} 
-                          trophies={player.trophies}
+                          league={player.rankedLeagueName || undefined} 
+                          trophies={player.rankedTrophies ?? player.trophies}
                           size="sm" 
                           showText={false}
+                          isRanked={!!player.rankedTrophies || !!player.rankedLeagueName}
                         />
                       </div>
                     )}
