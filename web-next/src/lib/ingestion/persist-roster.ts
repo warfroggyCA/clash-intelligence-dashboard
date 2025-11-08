@@ -511,8 +511,8 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       th_level: summary.townHallLevel ?? detail?.townHallLevel ?? null,
       role: summary.role ?? null,
       trophies: isMonday ? mondayFinal : (detail?.trophies ?? summary.trophies ?? null),  // Use mondayFinal on Monday, otherwise current ranked trophies
-      donations: summary.donations ?? null,
-      donations_received: summary.donationsReceived ?? null,
+      donations: donationsGiven ?? null,
+      donations_received: donationsReceived ?? null,
       hero_levels: heroLevels,
       activity_score: activityEvidence?.score ?? null,
       rush_percent: rushPercent,

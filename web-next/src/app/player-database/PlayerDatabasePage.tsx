@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { GlassCard } from '@/components/ui/GlassCard';
+import LeadershipGuard from '@/components/LeadershipGuard';
 import type { Roster } from '@/types';
 
 // Lazy load components to avoid module-time side effects
@@ -64,6 +65,7 @@ interface PlayerRecord {
   departureActions?: DepartureAction[];
   lastUpdated: string;
   isCurrentMember?: boolean;
+  linkedAccounts?: Array<{ tag: string; name: string; membershipStatus?: 'current' | 'former' | 'never' }>;
 }
 
 export default function PlayerDatabasePage() {
@@ -190,127 +192,7 @@ export default function PlayerDatabasePage() {
     return [];
   }, [roster]);
 
-  // Function to fetch player names from the player-resolver API (uses historical snapshots)
-  const fetchPlayerNamesFromResolver = useCallback(async () => {
-    try {
-      const response = await fetch('/api/player-resolver');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.playerNames) {
-          const nameMap: Record<string, string> = {};
-          Object.entries(data.data.playerNames).forEach(([tag, name]: [string, any]) => {
-            if (tag && name) {
-              const normalizedTag = normalizeTag(tag) || tag;
-              nameMap[normalizedTag] = String(name);
-            }
-          });
-          return nameMap;
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch player names from resolver:', error);
-    }
-    return {};
-  }, []);
-
-  // Function to fetch player names directly from Clash of Clans API
-  const fetchPlayerNamesFromCoC = useCallback(async (playerTags: string[]) => {
-    if (playerTags.length === 0) return {};
-    
-    // Filter out invalid test tags
-    const validTags = playerTags.filter(tag => {
-      const upperTag = tag.toUpperCase();
-      return !upperTag.includes('TEST');
-    });
-    
-    if (validTags.length === 0) return {};
-    
-    try {
-      const tagsParam = validTags.map(tag => encodeURIComponent(tag)).join(',');
-      const response = await fetch(`/api/coc-player-names?tags=${tagsParam}`);
-      
-      if (!response.ok) {
-        console.error(`[fetchPlayerNamesFromCoC] API returned ${response.status}:`, await response.text().catch(() => ''));
-        return {};
-      }
-      
-      const data = await response.json();
-      const nameMap: Record<string, string> = {};
-      
-      if (data.success && Array.isArray(data.data)) {
-        data.data.forEach((player: any) => {
-          if (player.tag && player.name) {
-            const normalizedTag = normalizeTag(player.tag) || player.tag;
-            nameMap[normalizedTag] = String(player.name);
-          }
-        });
-        console.log(`[fetchPlayerNamesFromCoC] Fetched ${Object.keys(nameMap).length} names from Clash API`);
-      } else {
-        console.error('[fetchPlayerNamesFromCoC] Invalid response format:', data);
-      }
-      
-      return nameMap;
-    } catch (error) {
-      console.error('Failed to fetch player names from Clash API:', error);
-    }
-    return {};
-  }, []);
-
-  // Function to fetch player names from canonical snapshots for tags not in current roster
-  const fetchPlayerNamesFromCanonical = useCallback(async (playerTags: string[]) => {
-    if (playerTags.length === 0) return {};
-    
-    try {
-      // Ensure all tags are normalized before sending
-      const normalizedTags = playerTags.map(tag => normalizeTag(tag) || tag).filter(Boolean);
-      const tagsParam = normalizedTags.map(tag => encodeURIComponent(tag)).join(',');
-      const response = await fetch(`/api/player-names?tags=${tagsParam}`);
-      
-      if (!response.ok) {
-        console.error(`[fetchPlayerNamesFromCanonical] API returned ${response.status}:`, await response.text().catch(() => ''));
-        return {};
-      }
-      
-      const data = await response.json();
-      const nameMap: Record<string, string> = {};
-      
-      if (data.success && Array.isArray(data.data)) {
-        data.data.forEach((player: any) => {
-          if (player.tag && player.name) {
-            const normalizedTag = normalizeTag(player.tag) || player.tag;
-            nameMap[normalizedTag] = player.name;
-          }
-        });
-      } else {
-        console.error('[fetchPlayerNamesFromCanonical] Invalid response format:', data);
-      }
-      
-      return nameMap;
-    } catch (error) {
-      console.error('Failed to fetch player names from canonical snapshots:', error);
-    }
-    return {};
-  }, []);
-
-  // Function to load player data from Supabase only
-  const loadFromSupabase = useCallback(async () => {
-    const clanTag = '#2PR8R8V8P'; // Your clan tag
-
-    // Fetch from Supabase APIs
-    const [notesResponse, warningsResponse, actionsResponse] = await Promise.all([
-      fetch(`/api/player-notes?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}`),
-      fetch(`/api/player-warnings?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}`),
-      fetch(`/api/player-actions?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}`)
-    ]);
-
-    const notesData = notesResponse.ok ? await notesResponse.json() : { success: false, data: [] };
-    const warningsData = warningsResponse.ok ? await warningsResponse.json() : { success: false, data: [] };
-    const actionsData = actionsResponse.ok ? await actionsResponse.json() : { success: false, data: [] };
-
-    return { notesData, warningsData, actionsData };
-  }, [showArchived]);
-
-  // Function to load player database from Supabase only
+  // Optimized function to load player database using the new unified endpoint
   const loadPlayerDatabase = useCallback(async (forceRefresh = false) => {
     if (typeof window === 'undefined') return;
 
@@ -330,262 +212,38 @@ export default function PlayerDatabasePage() {
     }
 
     try {
-      // Fetch current members and Supabase data in parallel
-      const [rosterMembers, { notesData, warningsData, actionsData }] = await Promise.all([
-        fetchCurrentMembers(),
-        loadFromSupabase()
-      ]);
-      
-      const currentMemberTagsSet = new Set<string>();
-      const playerNames: Record<string, string> = {};
-
-      rosterMembers.forEach((member: any) => {
-        if (!member.tag) return;
-        currentMemberTagsSet.add(member.tag);
-        playerNames[member.tag] = member.name;
-      });
-
-      const playerRecords: PlayerRecord[] = [];
       const clanTag = '#2PR8R8V8P'; // Your clan tag
-
-      // Group data by player tag (Supabase only)
-      const playerDataMap = new Map<string, {
-        notes: any[];
-        warnings: any[];
-        tenureActions: any[];
-        departureActions: any[];
-        name: string;
-        lastUpdated: string;
-      }>();
-
-      // Process Supabase data only
-      if (notesData.success && notesData.data) {
-        notesData.data.forEach((note: any) => {
-          const tagKey = normalizeTag(note.player_tag) || note.player_tag;
-          if (!tagKey) return;
-          // Prioritize stored player_name from the note itself - check ALL notes for this tag
-          if (note.player_name && note.player_name.trim() && note.player_name !== 'Unknown Player' && !playerNames[tagKey]) {
-            playerNames[tagKey] = note.player_name.trim();
-          }
-          if (!playerDataMap.has(tagKey)) {
-            playerDataMap.set(tagKey, {
-              notes: [],
-              warnings: [],
-              tenureActions: [],
-              departureActions: [],
-              name: playerNames[tagKey] || (note.player_name && note.player_name.trim() && note.player_name !== 'Unknown Player' ? note.player_name.trim() : 'Unknown Player'),
-              lastUpdated: note.created_at
-            });
-          } else {
-            // If we already have this player but found a name in this note, update it
-            const existingData = playerDataMap.get(tagKey)!;
-            if (note.player_name && note.player_name.trim() && note.player_name !== 'Unknown Player' && existingData.name === 'Unknown Player') {
-              existingData.name = note.player_name.trim();
-              playerNames[tagKey] = note.player_name.trim();
-            }
-          }
-          const playerData = playerDataMap.get(tagKey)!;
-          
-          // Add Supabase note
-          playerData.notes.push({
-            id: note.id,
-            timestamp: note.created_at,
-            note: note.note,
-            customFields: note.custom_fields || {},
-            createdBy: note.created_by || 'Unknown',
-            source: 'supabase'
-          });
-          
-          if (note.created_at > playerData.lastUpdated) {
-            playerData.lastUpdated = note.created_at;
-          }
-        });
-      }
-
-      // Process Supabase warnings
-      if (warningsData.success && warningsData.data) {
-        warningsData.data.forEach((warning: any) => {
-          const tagKey = normalizeTag(warning.player_tag) || warning.player_tag;
-          if (!tagKey) return;
-          // Prioritize stored player_name from the warning itself - check ALL warnings for this tag
-          if (warning.player_name && warning.player_name.trim() && warning.player_name !== 'Unknown Player' && !playerNames[tagKey]) {
-            playerNames[tagKey] = warning.player_name.trim();
-          }
-          if (!playerDataMap.has(tagKey)) {
-            playerDataMap.set(tagKey, {
-              notes: [],
-              warnings: [],
-              tenureActions: [],
-              departureActions: [],
-              name: playerNames[tagKey] || (warning.player_name && warning.player_name.trim() && warning.player_name !== 'Unknown Player' ? warning.player_name.trim() : 'Unknown Player'),
-              lastUpdated: warning.created_at
-            });
-          } else {
-            // If we already have this player but found a name in this warning, update it
-            const existingData = playerDataMap.get(tagKey)!;
-            if (warning.player_name && warning.player_name.trim() && warning.player_name !== 'Unknown Player' && existingData.name === 'Unknown Player') {
-              existingData.name = warning.player_name.trim();
-              playerNames[tagKey] = warning.player_name.trim();
-            }
-          }
-          const playerData = playerDataMap.get(tagKey)!;
-          
-          if (warning.is_active) {
-            // Add Supabase warning
-            playerData.warnings.push({
-              id: warning.id,
-              timestamp: warning.created_at,
-              warningNote: warning.warning_note,
-              isActive: true,
-              source: 'supabase'
-            });
-            
-            if (warning.created_at > playerData.lastUpdated) {
-              playerData.lastUpdated = warning.created_at;
-            }
-          }
-        });
-      }
-
-      // Process Supabase actions
-      if (actionsData.success && actionsData.data) {
-        actionsData.data.forEach((action: any) => {
-          const tagKey = normalizeTag(action.player_tag) || action.player_tag;
-          if (!tagKey) return;
-          // Prioritize stored player_name from the action itself - check ALL actions for this tag
-          if (action.player_name && action.player_name.trim() && action.player_name !== 'Unknown Player' && !playerNames[tagKey]) {
-            playerNames[tagKey] = action.player_name.trim();
-          }
-          if (!playerDataMap.has(tagKey)) {
-            playerDataMap.set(tagKey, {
-              notes: [],
-              warnings: [],
-              tenureActions: [],
-              departureActions: [],
-              name: playerNames[tagKey] || (action.player_name && action.player_name.trim() && action.player_name !== 'Unknown Player' ? action.player_name.trim() : 'Unknown Player'),
-              lastUpdated: action.created_at
-            });
-          } else {
-            // If we already have this player but found a name in this action, update it
-            const existingData = playerDataMap.get(tagKey)!;
-            if (action.player_name && action.player_name.trim() && action.player_name !== 'Unknown Player' && existingData.name === 'Unknown Player') {
-              existingData.name = action.player_name.trim();
-              playerNames[tagKey] = action.player_name.trim();
-            }
-          }
-          const playerData = playerDataMap.get(tagKey)!;
-          
-          if (action.action_type === 'tenure') {
-            // Add Supabase tenure action
-            playerData.tenureActions.push({
-              id: action.id,
-              timestamp: action.created_at,
-              action: action.action,
-              reason: action.reason,
-              grantedBy: action.granted_by,
-              source: 'supabase'
-            });
-          } else if (action.action_type === 'departure') {
-            // Add Supabase departure action
-            playerData.departureActions.push({
-              id: action.id,
-              timestamp: action.created_at,
-              reason: action.reason,
-              type: action.departure_type,
-              recordedBy: action.recorded_by,
-              source: 'supabase'
-            });
-          }
-          
-          if (action.created_at > playerData.lastUpdated) {
-            playerData.lastUpdated = action.created_at;
-          }
-        });
-      }
-
-      // Fetch missing player names from canonical snapshots
-      // Check both playerNames map and playerDataMap for missing names
-      // Filter out invalid test tags
-      const missingTags = Array.from(playerDataMap.keys()).filter(tag => {
-        // Skip invalid test tags
-        if (tag.includes('TEST') || tag.includes('test')) {
-          return false;
-        }
-        const hasName = playerNames[tag] && playerNames[tag] !== 'Unknown Player';
-        const dataName = playerDataMap.get(tag)?.name;
-        const hasDataName = dataName && dataName !== 'Unknown Player';
-        return !hasName && !hasDataName;
+      // Add cache-busting parameter when forcing refresh
+      const cacheBuster = forceRefresh ? `&_t=${Date.now()}` : '';
+      const url = `/api/player-database?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}${cacheBuster}`;
+      
+      console.log('[PlayerDatabase] Fetching from optimized endpoint', forceRefresh ? '(force refresh)' : '');
+      const startTime = Date.now();
+      
+      const response = await fetch(url, {
+        cache: 'no-store', // Ensure no caching
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       });
       
-      if (missingTags.length > 0) {
-        console.log(`Fetching names for ${missingTags.length} missing tags:`, missingTags.slice(0, 5));
-        
-        // Try canonical snapshots first (fastest, most reliable)
-        const canonicalNames = await fetchPlayerNamesFromCanonical(missingTags);
-        if (Object.keys(canonicalNames).length > 0) {
-          console.log(`Fetched ${Object.keys(canonicalNames).length} names from canonical:`, Object.keys(canonicalNames).slice(0, 5));
-          Object.assign(playerNames, canonicalNames);
-        }
-        
-        // Only try Clash API as last resort for any still missing (this is slowest)
-        const finalMissing = missingTags.filter(tag => !playerNames[tag] || playerNames[tag] === 'Unknown Player');
-        if (finalMissing.length > 0) {
-          console.log(`Fetching ${finalMissing.length} remaining tags from Clash API`);
-          const cocNames = await fetchPlayerNamesFromCoC(finalMissing);
-          console.log(`Fetched ${Object.keys(cocNames).length} names from Clash API`);
-          Object.assign(playerNames, cocNames);
-        }
-        
-        // Update names in playerDataMap
-        playerDataMap.forEach((data, tag) => {
-          if (playerNames[tag] && (data.name === 'Unknown Player' || !data.name)) {
-            data.name = playerNames[tag];
-          }
-        });
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${await response.text().catch(() => '')}`);
       }
-
-      // Convert to PlayerRecord format
-      playerDataMap.forEach((data, tag) => {
-        const isCurrentMember = currentMemberTagsSet.has(tag);
-        
-        // Use updated name from playerNames map if available
-        const finalName = playerNames[tag] || data.name || 'Unknown Player';
-        
-        playerRecords.push({
-          tag,
-          name: finalName,
-          notes: data.notes,
-          warning: data.warnings.length > 0 ? data.warnings[0] : undefined,
-          tenureActions: data.tenureActions,
-          departureActions: data.departureActions,
-          lastUpdated: data.lastUpdated,
-          isCurrentMember
-        });
-      });
-
-
-      // Add current members who don't have any data yet
-      rosterMembers.forEach(({ tag, name }: any) => {
-        if (!playerDataMap.has(tag)) {
-          playerRecords.push({
-            tag,
-            name,
-            notes: [],
-            warning: undefined,
-            tenureActions: [],
-            departureActions: [],
-            lastUpdated: new Date().toISOString(),
-            isCurrentMember: true
-          });
-        }
-      });
-
-      // Sort by last updated
-      playerRecords.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
-      setPlayers(playerRecords);
+      
+      const result = await response.json();
+      const duration = Date.now() - startTime;
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load player database');
+      }
+      
+      console.log(`[PlayerDatabase] Loaded ${result.data.length} players in ${duration}ms`);
+      
+      setPlayers(result.data);
       
       // Save to cache
-      saveToCache(playerRecords);
+      saveToCache(result.data);
       
       setLoading(false);
     } catch (error) {
@@ -593,7 +251,7 @@ export default function PlayerDatabasePage() {
       setErrorMessage('Failed to load player database. Please try again.');
       setLoading(false);
     }
-  }, [fetchCurrentMembers, loadFromSupabase, fetchPlayerNamesFromCanonical, fetchPlayerNamesFromResolver, fetchPlayerNamesFromCoC, loadCachedData, saveToCache, showArchived]);
+  }, [loadCachedData, saveToCache, showArchived]);
 
   // Load roster if not already loaded (for clan name in header)
   useEffect(() => {
@@ -1366,15 +1024,17 @@ export default function PlayerDatabasePage() {
                 <RefreshCw className="w-4 h-4" />
                 <span>Refresh</span>
               </Button>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={openAddPlayerModal}
-                className="flex items-center space-x-2"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Add Player</span>
-              </Button>
+              <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={openAddPlayerModal}
+                  className="flex items-center space-x-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Add Player</span>
+                </Button>
+              </LeadershipGuard>
             </div>
           }
         />
@@ -1609,8 +1269,25 @@ export default function PlayerDatabasePage() {
                     >
                       <td className="px-6 py-4">
                         <div>
-                          <div className="text-sm font-medium text-high-contrast">
-                            {player.name}
+                          <div className="flex items-center gap-2">
+                            <div className="text-sm font-medium text-high-contrast">
+                              {player.name}
+                            </div>
+                            {player.linkedAccounts && player.linkedAccounts.length > 0 && (
+                              <span 
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300"
+                                title={(() => {
+                                  const accounts = player.linkedAccounts!.map(a => {
+                                    const status = a.membershipStatus === 'current' ? ' (Current)' : 
+                                                   a.membershipStatus === 'former' ? ' (Former)' : '';
+                                    return `${a.name || a.tag}${status}`;
+                                  }).join(', ');
+                                  return `Linked to ${player.linkedAccounts!.length} account(s): ${accounts}`;
+                                })()}
+                              >
+                                🔗 {player.linkedAccounts.length}
+                              </span>
+                            )}
                           </div>
                           <div className="text-xs text-muted opacity-75">
                             {player.tag}
@@ -1706,35 +1383,43 @@ export default function PlayerDatabasePage() {
 
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">Warn on Return</p>
-                  <div className="flex items-center space-x-3">
-                    <label className="flex items-center space-x-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedPlayer.warning?.isActive || false}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            openWarningModal();
-                          } else {
-                            removePlayerWarning(selectedPlayer.tag);
-                          }
-                        }}
-                        className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
-                      />
+                  <LeadershipGuard requiredPermission="canModifyClanData" fallback={
+                    <div className="flex items-center space-x-2">
                       <span className="text-sm text-gray-900 dark:text-white">
                         {selectedPlayer.warning?.isActive ? 'Warning Active' : 'No Warning Set'}
                       </span>
-                    </label>
-                    {selectedPlayer.warning?.isActive && (
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        onClick={() => removePlayerWarning(selectedPlayer.tag)}
-                        className="text-xs"
-                      >
-                        Remove Warning
-                      </Button>
-                    )}
-                  </div>
+                    </div>
+                  }>
+                    <div className="flex items-center space-x-3">
+                      <label className="flex items-center space-x-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={selectedPlayer.warning?.isActive || false}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              openWarningModal();
+                            } else {
+                              removePlayerWarning(selectedPlayer.tag);
+                            }
+                          }}
+                          className="w-4 h-4 text-blue-600 bg-white border-gray-300 rounded focus:ring-blue-500 focus:ring-2"
+                        />
+                        <span className="text-sm text-gray-900 dark:text-white">
+                          {selectedPlayer.warning?.isActive ? 'Warning Active' : 'No Warning Set'}
+                        </span>
+                      </label>
+                      {selectedPlayer.warning?.isActive && (
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={() => removePlayerWarning(selectedPlayer.tag)}
+                          className="text-xs"
+                        >
+                          Remove Warning
+                        </Button>
+                      )}
+                    </div>
+                  </LeadershipGuard>
                   {selectedPlayer.warning?.isActive && (
                     <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
                       <p className="text-sm text-red-800 font-medium mb-1">Warning Note:</p>
@@ -1748,86 +1433,90 @@ export default function PlayerDatabasePage() {
 
                   
                   {/* Quick Actions for Leaders */}
-                  <div className="mb-4 p-3 bg-white/5 border border-white/10 rounded-lg">
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quick Actions</p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        const action = prompt('Edit Tenure:\n\n1. Grant tenure\n2. Revoke tenure\n\nEnter 1 or 2:');
-                        if (!action || (action !== '1' && action !== '2')) return;
-                        const reason = prompt(`Reason for ${action === '1' ? 'granting' : 'revoking'} tenure:`);
-                        if (!reason) return;
-                        addTenureAction(
-                          selectedPlayer.tag,
-                          action === '1' ? 'granted' : 'revoked',
-                          reason,
-                          'Current Leader'
-                        );
-                      }}
-                      className="flex items-center justify-center space-x-1 text-xs"
-                    >
-                      <span>🛠️</span>
-                      <span>Edit Tenure</span>
-                    </Button>
-                    <Button
-                        variant="warning"
-                        size="sm"
-                        onClick={() => {
-                          // Show a more detailed departure recording dialog
-                          const departureType = prompt(
-                            'How did this player leave?\n\n' +
-                            '1. Left voluntarily\n' +
-                            '2. Kicked for inactivity\n' +
-                            '3. Kicked for behavior\n' +
-                            '4. Kicked for war performance\n' +
-                            '5. Kicked for other reasons\n\n' +
-                            'Enter number (1-5):'
-                          );
-                          
-                          if (!departureType || !['1', '2', '3', '4', '5'].includes(departureType)) {
-                            return;
-                          }
-                          
-                          const reasonMap: Record<string, string> = {
-                            '1': 'Left voluntarily',
-                            '2': 'Kicked for inactivity', 
-                            '3': 'Kicked for behavior',
-                            '4': 'Kicked for war performance',
-                            '5': 'Kicked for other reasons'
-                          };
-                          
-                          const additionalNotes = prompt('Additional notes (optional):');
-                          const fullReason = additionalNotes ? 
-                            `${reasonMap[departureType]} - ${additionalNotes}` : 
-                            reasonMap[departureType];
-                          
-                          const type = departureType === '1' ? 'voluntary' : 'kicked: other';
-                          
-                          addDepartureAction(selectedPlayer.tag, fullReason, type as any, 'Current Leader');
-                        }}
-                      className="flex items-center justify-center space-x-1 text-xs"
-                      >
-                      <span>👋</span>
-                      <span>Record Departure</span>
-                      </Button>
-                    </div>
-                  </div>
+                  <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                    <div className="mb-4 p-3 bg-white/5 border border-white/10 rounded-lg">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">Quick Actions</p>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => {
+                            const action = prompt('Edit Tenure:\n\n1. Grant tenure\n2. Revoke tenure\n\nEnter 1 or 2:');
+                            if (!action || (action !== '1' && action !== '2')) return;
+                            const reason = prompt(`Reason for ${action === '1' ? 'granting' : 'revoking'} tenure:`);
+                            if (!reason) return;
+                            addTenureAction(
+                              selectedPlayer.tag,
+                              action === '1' ? 'granted' : 'revoked',
+                              reason,
+                              'Current Leader'
+                            );
+                          }}
+                          className="flex items-center justify-center space-x-1 text-xs"
+                        >
+                          <span>🛠️</span>
+                          <span>Edit Tenure</span>
+                        </Button>
+                        <Button
+                            variant="warning"
+                            size="sm"
+                            onClick={() => {
+                              // Show a more detailed departure recording dialog
+                              const departureType = prompt(
+                                'How did this player leave?\n\n' +
+                                '1. Left voluntarily\n' +
+                                '2. Kicked for inactivity\n' +
+                                '3. Kicked for behavior\n' +
+                                '4. Kicked for war performance\n' +
+                                '5. Kicked for other reasons\n\n' +
+                                'Enter number (1-5):'
+                              );
+                              
+                              if (!departureType || !['1', '2', '3', '4', '5'].includes(departureType)) {
+                                return;
+                              }
+                              
+                              const reasonMap: Record<string, string> = {
+                                '1': 'Left voluntarily',
+                                '2': 'Kicked for inactivity', 
+                                '3': 'Kicked for behavior',
+                                '4': 'Kicked for war performance',
+                                '5': 'Kicked for other reasons'
+                              };
+                              
+                              const additionalNotes = prompt('Additional notes (optional):');
+                              const fullReason = additionalNotes ? 
+                                `${reasonMap[departureType]} - ${additionalNotes}` : 
+                                reasonMap[departureType];
+                              
+                              const type = departureType === '1' ? 'voluntary' : 'kicked: other';
+                              
+                              addDepartureAction(selectedPlayer.tag, fullReason, type as any, 'Current Leader');
+                            }}
+                          className="flex items-center justify-center space-x-1 text-xs"
+                          >
+                          <span>👋</span>
+                          <span>Record Departure</span>
+                          </Button>
+                        </div>
+                      </div>
+                    </LeadershipGuard>
 
                 {/* Player Timeline */}
                 <div>
                   <div className="flex items-center justify-between mb-3">
                     <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">Player History</p>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={openAddNoteModal}
-                      className="flex items-center space-x-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Add Note</span>
-                    </Button>
+                    <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={openAddNoteModal}
+                        className="flex items-center space-x-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Note</span>
+                      </Button>
+                    </LeadershipGuard>
                   </div>
                   <div className="border border-white/10 rounded-lg bg-white/5">
                     <div className="p-4 max-w-full">
@@ -1860,15 +1549,17 @@ export default function PlayerDatabasePage() {
                                     </p>
                                   </div>
                                 </div>
-                                <button
-                                  onClick={() => openEditEventModal(event)}
-                                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
-                                  title="Edit this event"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                                  </svg>
-                                </button>
+                                <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                                  <button
+                                    onClick={() => openEditEventModal(event)}
+                                    className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0 border border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500"
+                                    title="Edit this event"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                </LeadershipGuard>
                               </div>
                               <p className="text-sm text-gray-600 dark:text-gray-300 mt-2 break-words overflow-wrap-anywhere pr-4">
                                 {event.description}
@@ -2168,13 +1859,15 @@ export default function PlayerDatabasePage() {
               </div>
               
               <div className="flex items-center justify-between">
-                <Button
-                  variant="ghost"
-                  onClick={deleteTimelineEvent}
-                  className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20"
-                >
-                  Archive Event
-                </Button>
+                <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                  <Button
+                    variant="ghost"
+                    onClick={deleteTimelineEvent}
+                    className="text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20"
+                  >
+                    Archive Event
+                  </Button>
+                </LeadershipGuard>
                 <div className="flex items-center space-x-3">
                   <Button
                     variant="ghost"
@@ -2182,13 +1875,15 @@ export default function PlayerDatabasePage() {
                   >
                     Cancel
                   </Button>
-                  <Button
-                    variant="primary"
-                    onClick={updateTimelineEvent}
-                    disabled={!editEventData.description.trim()}
-                  >
-                    Update Event
-                  </Button>
+                  <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                    <Button
+                      variant="primary"
+                      onClick={updateTimelineEvent}
+                      disabled={!editEventData.description.trim()}
+                    >
+                      Update Event
+                    </Button>
+                  </LeadershipGuard>
                 </div>
               </div>
             </div>

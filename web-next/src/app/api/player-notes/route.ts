@@ -1,7 +1,52 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { createApiContext } from '@/lib/api-context';
 import { normalizeTag } from '@/lib/tags';
+import { cfg } from '@/lib/config';
+
+/**
+ * Lookup player name from tag using canonical snapshots or members table
+ */
+async function lookupPlayerName(clanTag: string, playerTag: string): Promise<string | null> {
+  const supabase = getSupabaseServerClient();
+  
+  // Try canonical snapshots first (most reliable)
+  const { data: snapshot } = await supabase
+    .from('canonical_member_snapshots')
+    .select('payload')
+    .eq('player_tag', playerTag)
+    .eq('clan_tag', clanTag)
+    .order('snapshot_date', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  
+  if (snapshot?.payload?.member?.name) {
+    return snapshot.payload.member.name;
+  }
+  
+  // Fallback to members table
+  const { data: clanRow } = await supabase
+    .from('clans')
+    .select('id')
+    .eq('tag', clanTag)
+    .maybeSingle();
+  
+  if (clanRow?.id) {
+    const { data: member } = await supabase
+      .from('members')
+      .select('name')
+      .eq('clan_id', clanRow.id)
+      .eq('tag', playerTag)
+      .maybeSingle();
+    
+    if (member?.name) {
+      return member.name;
+    }
+  }
+  
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
@@ -63,13 +108,24 @@ export async function POST(request: NextRequest) {
     const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
     const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
     
+    // If playerName not provided, look it up from tag
+    let finalPlayerName = playerName?.trim();
+    if (!finalPlayerName || finalPlayerName === 'Unknown Player') {
+      const lookedUpName = await lookupPlayerName(clanTag, playerTag);
+      if (lookedUpName) {
+        finalPlayerName = lookedUpName;
+      } else {
+        finalPlayerName = playerName || null; // Store what was provided, even if null
+      }
+    }
+    
     const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
       .from('player_notes')
       .insert({
         clan_tag: clanTag,
         player_tag: playerTag,
-        player_name: playerName,
+        player_name: finalPlayerName,
         note: note.trim(),
         custom_fields: customFields,
         created_by: createdBy

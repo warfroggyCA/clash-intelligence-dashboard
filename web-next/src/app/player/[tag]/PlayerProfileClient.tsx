@@ -1182,6 +1182,10 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   const [warningSaving, setWarningSaving] = useState(false);
   const [showEquipmentTierModal, setShowEquipmentTierModal] = useState(false);
   const [expandedChart, setExpandedChart] = useState<'dna' | 'stats' | null>(null);
+  const [linkedAccounts, setLinkedAccounts] = useState<Array<{ tag: string; name: string | null }>>([]);
+  const [showAddAliasModal, setShowAddAliasModal] = useState(false);
+  const [aliasTagInput, setAliasTagInput] = useState("");
+  const [aliasSaving, setAliasSaving] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!normalizedTag) return;
@@ -1206,6 +1210,27 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
       setError(null);
     }
   }, [initialProfile]);
+
+  // Load linked accounts
+  useEffect(() => {
+    if (!normalizedTag || !clanTag) return;
+    
+    const loadLinkedAccounts = async () => {
+      try {
+        const response = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`);
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            setLinkedAccounts(result.data || []);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load linked accounts:', err);
+      }
+    };
+    
+    loadLinkedAccounts();
+  }, [normalizedTag, clanTag]);
 
   useEffect(() => {
     let cancelled = false;
@@ -2236,6 +2261,102 @@ const HERO_LABELS: Record<string, string> = {
     router.back();
   }, [router]);
 
+  const handleAddAlias = useCallback(async () => {
+    if (!aliasTagInput.trim() || !clanTag || !normalizedTag) return;
+    
+    setAliasSaving(true);
+    try {
+      const inputTag = normalizeTag(aliasTagInput.trim());
+      if (!inputTag) {
+        showToast("Invalid player tag format", "error");
+        return;
+      }
+
+      console.log('[Add Alias] Attempting to link:', { clanTag, tag1: normalizedTag, tag2: inputTag });
+      
+      const response = await fetch('/api/player-aliases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clanTag,
+          playerTag1: normalizedTag,
+          playerTag2: inputTag,
+          createdBy: currentUserEmail || 'Unknown',
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Add Alias] API error:', response.status, errorText);
+        try {
+          const errorJson = JSON.parse(errorText);
+          showToast(errorJson.error || `Failed to link accounts (${response.status})`, "error");
+        } catch {
+          showToast(`Failed to link accounts: ${errorText}`, "error");
+        }
+        return;
+      }
+
+      const result = await response.json();
+      console.log('[Add Alias] API response:', result);
+      
+      if (!result.success) {
+        console.error('[Add Alias] API returned success=false:', result.error);
+        showToast(result.error || 'Failed to link accounts', "error");
+        return;
+      }
+
+      showToast("Alias linked successfully", "success");
+      setAliasTagInput("");
+      setShowAddAliasModal(false);
+      
+      // Reload linked accounts
+      const refreshResponse = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`);
+      if (refreshResponse.ok) {
+        const refreshResult = await refreshResponse.json();
+        if (refreshResult.success) {
+          setLinkedAccounts(refreshResult.data || []);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to add alias:', err);
+      showToast("Failed to add alias: " + (err.message || "Unknown error"), "error");
+    } finally {
+      setAliasSaving(false);
+    }
+  }, [aliasTagInput, clanTag, normalizedTag, currentUserEmail]);
+
+  const handleRemoveAlias = useCallback(async (linkedTag: string) => {
+    if (!clanTag || !normalizedTag) return;
+    
+    try {
+      const response = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag1=${encodeURIComponent(normalizedTag)}&playerTag2=${encodeURIComponent(linkedTag)}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        showToast(result.error || 'Failed to remove alias link', "error");
+        return;
+      }
+
+      showToast("Alias link removed", "success");
+      
+      // Reload linked accounts
+      const refreshResponse = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`);
+      if (refreshResponse.ok) {
+        const refreshResult = await refreshResponse.json();
+        if (refreshResult.success) {
+          setLinkedAccounts(refreshResult.data || []);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to remove alias:', err);
+      showToast("Failed to remove alias: " + (err.message || "Unknown error"), "error");
+    }
+  }, [clanTag, normalizedTag]);
+
 
   const aliasList = history?.aliases ?? [];
 
@@ -2611,15 +2732,58 @@ const HERO_LABELS: Record<string, string> = {
                               </p>
                             )}
                           </div>
-                          <div className="cursor-help" title="Alternative names or aliases this player has used while in the clan. Helps track players who change their in-game name frequently.">
+                          <div className="cursor-help" title="Alternative names this player has used (same account, different name). Separate from Linked Accounts which are different player accounts owned by the same person.">
                             <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
-                              Clan Alias
+                              Name History
                             </p>
                             <p className="mt-2 text-sm text-slate-200">
                               {aliasList.length
                                 ? aliasList.slice(0, 2).map((alias) => alias.name).join(", ")
-                                : "No alternate names recorded"}
+                                : "No name changes recorded"}
                             </p>
+                          </div>
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                                Linked Accounts
+                              </p>
+                              {canViewLeadership && (
+                                <Button
+                                  variant="secondary"
+                                  size="sm"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => setShowAddAliasModal(true)}
+                                >
+                                  <Plus className="h-3 w-3 mr-1" />
+                                  Add
+                                </Button>
+                              )}
+                            </div>
+                            <div className="mt-2 space-y-1">
+                              {linkedAccounts.length > 0 ? (
+                                linkedAccounts.map((linked) => (
+                                  <div key={linked.tag} className="flex items-center justify-between text-sm">
+                                    <Link
+                                      href={`/player/${linked.tag.replace('#', '')}`}
+                                      className="text-blue-400 hover:text-blue-300 hover:underline"
+                                    >
+                                      {linked.name || linked.tag}
+                                    </Link>
+                                    {canViewLeadership && (
+                                      <button
+                                        onClick={() => handleRemoveAlias(linked.tag)}
+                                        className="text-red-400 hover:text-red-300 text-xs"
+                                        title="Remove link"
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <p className="text-sm text-slate-400">No linked accounts</p>
+                              )}
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -3146,10 +3310,19 @@ const HERO_LABELS: Record<string, string> = {
                             )}
                             {activeWarning && (
                               <div className="mt-4 rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-amber-200 shadow-[0_20px_45px_-30px_rgba(251,191,36,0.8)]">
-                                <p className="text-sm font-semibold">Active warning on file</p>
-                                <p className="mt-1 text-xs text-amber-100/80">
-                                  {activeWarning.warningNote}
-                                </p>
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <p className="text-sm font-semibold">Active warning on file</p>
+                                    <p className="mt-1 text-xs text-amber-100/80">
+                                      {activeWarning.warningNote}
+                                    </p>
+                                  </div>
+                                  {activeWarning.warningNote?.includes('[Propagated from') && (
+                                    <span className="ml-2 text-xs text-amber-300/70 bg-amber-500/20 px-2 py-1 rounded" title="This warning was propagated from a linked alias account">
+                                      Linked
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -3938,6 +4111,66 @@ const HERO_LABELS: Record<string, string> = {
                 disabled={!noteText.trim()}
               >
                 Save note
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {canViewLeadership && showAddAliasModal && (
+        <Modal
+          isOpen={showAddAliasModal}
+          onClose={() => {
+            if (!aliasSaving) {
+              setShowAddAliasModal(false);
+              setAliasTagInput("");
+            }
+          }}
+          title="Link Player Account"
+          size="lg"
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">
+              Link a separate player account (alias) to this player. When any linked account receives a warning, all linked accounts will inherit it.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-slate-200 mb-2">
+                Player Tag
+              </label>
+              <input
+                type="text"
+                value={aliasTagInput}
+                onChange={(e) => setAliasTagInput(e.target.value)}
+                placeholder="#ABC123XYZ"
+                className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-slate-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                disabled={aliasSaving}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !aliasSaving && aliasTagInput.trim()) {
+                    handleAddAlias();
+                  }
+                }}
+              />
+              <p className="mt-1 text-xs text-slate-400">
+                Enter the player tag of the account to link (e.g., #ABC123XYZ)
+              </p>
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setShowAddAliasModal(false);
+                  setAliasTagInput("");
+                }}
+                disabled={aliasSaving}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                onClick={handleAddAlias}
+                disabled={aliasSaving || !aliasTagInput.trim()}
+              >
+                {aliasSaving ? "Linking..." : "Link Account"}
               </Button>
             </div>
           </div>

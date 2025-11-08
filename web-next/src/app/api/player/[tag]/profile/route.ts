@@ -6,7 +6,7 @@ import { cfg } from '@/lib/config';
 import { readTenureDetails } from '@/lib/tenure';
 import { CANONICAL_MEMBER_SNAPSHOT_VERSION } from '@/types/canonical-member-snapshot';
 import type { CanonicalMemberSnapshotV1 } from '@/types/canonical-member-snapshot';
-import type { PlayerTimelinePoint, PlayerSummarySupabase } from '@/types/player-profile-supabase';
+import type { PlayerTimelinePoint, PlayerSummarySupabase, SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
 import type { Member, MemberEnriched, PlayerActivityTimelineEvent } from '@/types';
 import {
   buildTimelineFromPlayerDay,
@@ -16,6 +16,7 @@ import {
   type TimelineComputation,
 } from '@/lib/activity/timeline';
 import { calculateHistoricalTrophiesForPlayer } from '@/lib/business/historical-trophies';
+import { getPlayer } from '@/lib/coc';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Keep API route fresh, but page will cache via server component
@@ -273,6 +274,109 @@ export async function GET(
     );
 
     if (!filteredRows.length) {
+      // Fallback: Try to fetch player data from CoC API if not in our snapshots
+      // This is useful for linked alias accounts that may not be in our clan
+      console.log(`[player-profile] Player ${normalizedTag} not found in snapshots, attempting CoC API fetch`);
+      
+      try {
+        const cleanTag = normalizedTag.replace('#', '');
+        const cocPlayer = await getPlayer(cleanTag);
+        
+        if (cocPlayer && cocPlayer.name) {
+          console.log(`[player-profile] Successfully fetched ${normalizedTag} from CoC API: ${cocPlayer.name}`);
+          
+          // Extract clan info if available (CoC API includes clan object)
+          const clanInfo = (cocPlayer as any).clan || null;
+          
+          // Build a minimal profile from CoC API data
+          const minimalProfile: SupabasePlayerProfilePayload = {
+            summary: {
+              name: cocPlayer.name || 'Unknown Player',
+              tag: normalizedTag,
+              clanName: clanInfo?.name || null,
+              clanTag: clanInfo?.tag ? normalizeTag(clanInfo.tag) : null,
+              role: clanInfo?.role || null,
+              townHallLevel: cocPlayer.townHallLevel || null,
+              trophies: cocPlayer.trophies || null,
+              rankedTrophies: null,
+              seasonTotalTrophies: null,
+              lastWeekTrophies: null,
+              rushPercent: null,
+              league: {
+                id: cocPlayer.league?.id || null,
+                name: cocPlayer.league?.name || null,
+                trophies: cocPlayer.trophies || null,
+                iconSmall: cocPlayer.league?.iconUrls?.small || null,
+                iconMedium: cocPlayer.league?.iconUrls?.medium || null,
+              },
+              rankedLeague: {
+                id: null,
+                name: null,
+                trophies: null,
+                iconSmall: null,
+                iconMedium: null,
+              },
+              battleModeTrophies: cocPlayer.versusTrophies || null,
+              donations: {
+                given: cocPlayer.donations || null,
+                received: cocPlayer.donationsReceived || null,
+                balance: (cocPlayer.donations || 0) - (cocPlayer.donationsReceived || 0),
+              },
+              war: {
+                stars: null,
+                attackWins: cocPlayer.attackWins || null,
+                defenseWins: null,
+                preference: null,
+              },
+              builderBase: {
+                hallLevel: null,
+                trophies: cocPlayer.versusTrophies || null,
+                battleWins: cocPlayer.versusBattleWins || null,
+                leagueId: null,
+                leagueName: null,
+              },
+              capitalContributions: cocPlayer.clanCapitalContributions || null,
+              activityScore: null,
+              activity: null,
+              lastSeen: null,
+              tenureDays: null,
+              tenureAsOf: null,
+              heroLevels: cocPlayer.heroes ? cocPlayer.heroes.reduce((acc: Record<string, unknown>, hero) => {
+                const key = hero.name?.toLowerCase().replace(/\s+/g, '') || '';
+                acc[key] = hero.level || hero.currentLevel || 0;
+                return acc;
+              }, {}) : null,
+              bestTrophies: null,
+              bestVersusTrophies: null,
+              pets: null,
+              superTroopsActive: null,
+              equipmentLevels: null,
+              achievements: {
+                count: null,
+                score: null,
+              },
+              expLevel: null,
+            },
+            timeline: [],
+            history: null,
+            leadership: {
+              notes: [],
+              warnings: [],
+              tenureActions: [],
+              departureActions: [],
+            },
+            evaluations: [],
+            joinerEvents: [],
+            vip: null,
+          };
+          
+          return NextResponse.json({ success: true, data: minimalProfile });
+        }
+      } catch (cocError: any) {
+        console.warn(`[player-profile] Failed to fetch ${normalizedTag} from CoC API:`, cocError.message);
+        // Fall through to return 404
+      }
+      
       return NextResponse.json({ success: false, error: 'Player not found in canonical snapshots' }, { status: 404 });
     }
 

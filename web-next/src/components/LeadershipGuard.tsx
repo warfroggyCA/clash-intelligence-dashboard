@@ -1,7 +1,6 @@
 import React from 'react';
 import { useLeadership } from '../hooks/useLeadership';
 import { type RolePermissions } from '../lib/leadership';
-import { cfg } from '../lib/config';
 
 interface LeadershipGuardProps {
   children: React.ReactNode;
@@ -20,10 +19,8 @@ export default function LeadershipGuard({
 }: LeadershipGuardProps) {
   const { permissions, isLoading, error } = useLeadership();
 
-  // Bypass access control during development
-  if (cfg.isDevelopment) {
-    return <>{children}</>;
-  }
+  // Note: Removed development bypass to ensure RBAC works correctly in all environments
+  // If you need to test as a different role, use the impersonation feature instead
 
   if (isLoading) {
     return (

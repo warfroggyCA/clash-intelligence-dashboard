@@ -12,6 +12,8 @@ import { getPlayer, extractHeroLevels } from '@/lib/coc';
 import { getLatestSnapshot } from '@/lib/snapshots';
 import { cached } from '@/lib/cache';
 import { evaluateApplicant } from '@/lib/applicants';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { cfg } from '@/lib/config';
 
 export async function GET(request: NextRequest) {
   const { json, logger } = createApiContext(request, '/api/applicants/evaluate');
@@ -23,7 +25,7 @@ export async function GET(request: NextRequest) {
       return json({ success: false, error: 'tag is required' }, { status: 400 });
     }
     const playerTag = normalizeTag(parsed.data.tag);
-    const clanTag = parsed.data.clanTag ? normalizeTag(parsed.data.clanTag) : undefined;
+    const clanTag = parsed.data.clanTag ? normalizeTag(parsed.data.clanTag) : normalizeTag(cfg.homeClanTag);
     if (!isValidTag(playerTag)) {
       return json({ success: false, error: 'Provide a valid player tag like #XXXXXXX' }, { status: 400 });
     }
@@ -74,6 +76,53 @@ export async function GET(request: NextRequest) {
 
     const result = evaluateApplicant(applicant, rosterMembers);
     logger.info('Evaluated applicant', { tag: playerTag, clanTag, score: result.score });
+
+    // Automatically add player to Player Database by creating a note with evaluation details
+    if (clanTag && isValidTag(clanTag)) {
+      try {
+        const supabase = getSupabaseAdminClient();
+        
+        // Build evaluation summary note
+        const breakdownSummary = result.breakdown
+          .map(b => `${b.category}: ${b.points}/${b.maxPoints} - ${b.details}`)
+          .join('\n');
+        
+        const evaluationNote = `Applicant Evaluation - Score: ${result.score}/100 (${result.recommendation})\n\n${breakdownSummary}`;
+        
+        // Create a note in the Player Database with evaluation details
+        // This ensures the player appears in the Player Database immediately
+        const { error: insertError } = await supabase
+          .from('player_notes')
+          .insert({
+            clan_tag: clanTag,
+            player_tag: playerTag,
+            player_name: applicant.name,
+            note: evaluationNote,
+            custom_fields: {
+              evaluation_score: result.score,
+              evaluation_recommendation: result.recommendation,
+              evaluation_type: 'applicant_evaluation',
+              town_hall_level: applicant.townHallLevel,
+              trophies: applicant.trophies,
+            },
+            created_by: 'System',
+          });
+        
+        if (insertError) {
+          throw insertError;
+        }
+        
+        logger.info('Added player to Player Database', { tag: playerTag, clanTag });
+      } catch (dbError: any) {
+        // Don't fail the evaluation if database write fails, just log it
+        logger.warn('Failed to add player to Player Database', { 
+          tag: playerTag, 
+          clanTag, 
+          error: dbError?.message 
+        });
+      }
+    }
+
     return json({ success: true, data: { applicant, evaluation: result } satisfies { applicant: Member; evaluation: any } });
   } catch (e: any) {
     return json<ApiResponse>({ success: false, error: e?.message || 'Failed to evaluate applicant' }, { status: 500 });

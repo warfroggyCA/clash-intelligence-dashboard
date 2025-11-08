@@ -33,14 +33,21 @@ export interface RankedMember extends RosterMember {
  * Calculate donation ratio for a member
  */
 function calculateDonationRatio(member: RosterMember): number {
-  const given = member.donations ?? 0;
-  const received = member.donationsReceived ?? 0;
+  // Handle null/undefined by converting to 0
+  const given = typeof member.donations === 'number' ? member.donations : (member.donations ?? 0);
+  const received = typeof member.donationsReceived === 'number' ? member.donationsReceived : (member.donationsReceived ?? 0);
   
-  if (received === 0) {
-    // If they've given but received nothing, ratio is their donations / 10
-    return given > 0 ? given / 10 : 0;
+  // If no donations given, ratio is 0
+  if (given === 0) {
+    return 0;
   }
   
+  // If they've given but received nothing, ratio is their donations / 10
+  if (received === 0) {
+    return given / 10;
+  }
+  
+  // Normal case: given / received
   return given / received;
 }
 
@@ -106,13 +113,24 @@ export function rankByVIP(members: RosterMember[]): RankedMember[] {
  */
 export function rankByDonationRatio(members: RosterMember[]): RankedMember[] {
   const ranked = members
-    .map(m => ({
-      ...m,
-      value: calculateDonationRatio(m),
-    }))
-    .filter(m => m.value > 0 || (m.donations ?? 0) > 0) // Include anyone who has given donations
+    .map(m => {
+      // Ensure we have numeric values (handle null/undefined, preserve 0)
+      const given = typeof m.donations === 'number' ? m.donations : (m.donations ?? 0);
+      const received = typeof m.donationsReceived === 'number' ? m.donationsReceived : (m.donationsReceived ?? 0);
+      
+      return {
+        ...m,
+        donations: given,
+        donationsReceived: received,
+        value: calculateDonationRatio({ ...m, donations: given, donationsReceived: received }),
+      };
+    })
+    .filter(m => {
+      // Include anyone who has given donations (value > 0 means they have donations)
+      return m.donations > 0;
+    })
     .sort((a, b) => b.value - a.value); // Descending (highest ratio first)
-
+  
   return ranked.map((member, index) => {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
@@ -213,13 +231,18 @@ export function rankByActivity(members: RosterMember[]): RankedMember[] {
  */
 export function rankByDonationsGiven(members: RosterMember[]): RankedMember[] {
   const ranked = members
-    .map(m => ({
-      ...m,
-      value: m.donations ?? 0,
-    }))
+    .map(m => {
+      // Ensure we have numeric values (handle null/undefined, preserve 0)
+      const donations = typeof m.donations === 'number' ? m.donations : (m.donations ?? 0);
+      return {
+        ...m,
+        donations,
+        value: donations,
+      };
+    })
     .filter(m => m.value > 0) // Only include members who have given donations
     .sort((a, b) => b.value - a.value); // Descending (highest first)
-
+  
   return ranked.map((member, index) => {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
