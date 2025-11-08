@@ -367,7 +367,10 @@ export async function GET(
             },
             evaluations: [],
             joinerEvents: [],
-            vip: null,
+            vip: {
+              current: null,
+              history: [],
+            },
           };
           
           return NextResponse.json({ success: true, data: minimalProfile });
