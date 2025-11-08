@@ -51,6 +51,8 @@ export interface RosterMember extends Omit<Member, 'tenure_as_of'> {
   tenure_as_of?: string | null | undefined; // Override to allow null
   lastWeekTrophies?: number | null;
   seasonTotalTrophies?: number | null;
+  cumulativeDonationsGiven?: number | null;
+  cumulativeDonationsReceived?: number | null;
   vip?: {
     score: number;
     rank: number;
@@ -120,6 +122,9 @@ function toRosterMember(raw: Record<string, any>): RosterMember {
     donationsReceived: typeof raw.donationsReceived === 'number' 
       ? raw.donationsReceived 
       : (typeof raw.donations_received === 'number' ? raw.donations_received : (raw.donationsReceived ?? raw.donations_received ?? 0)),
+    // Cumulative donations (accumulate over tenure, reset on leave/rejoin)
+    cumulativeDonationsGiven: typeof raw.cumulative_donations_given === 'number' ? raw.cumulative_donations_given : (raw.cumulativeDonationsGiven ?? 0),
+    cumulativeDonationsReceived: typeof raw.cumulative_donations_received === 'number' ? raw.cumulative_donations_received : (raw.cumulativeDonationsReceived ?? 0),
     warStars: raw.warStars ?? raw.war_stars ?? raw.enriched?.warStars ?? null,
     clanCapitalContributions: raw.clanCapitalContributions ?? raw.capitalContributions ?? raw.capital_contributions ?? raw.enriched?.capitalContributions ?? null,
     rankedLeagueId:

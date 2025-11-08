@@ -13,6 +13,7 @@ import { daysSinceToDate } from '@/lib/date';
 import { extractEnrichedFields } from './field-extractors';
 import { createInitialTenureForJoiners } from '@/lib/services/tenure-service';
 import { calculateAndStoreVIP } from './calculate-vip';
+import { calculateActivityScore } from '@/lib/business/calculations';
 
 export interface StagedIngestionResult {
   success: boolean;
@@ -596,6 +597,40 @@ async function runTransformPhase(jobId: string, snapshot: FullClanSnapshot): Pro
   }
 }
 
+/**
+ * Calculate donation deltas and detect season resets
+ * Returns the amount to add to cumulative totals
+ */
+function calculateDonationDelta(
+  current: number | null | undefined,
+  previous: number | null | undefined,
+  isNewJoiner: boolean
+): { delta: number; isSeasonReset: boolean } {
+  const currentVal = typeof current === 'number' ? current : 0;
+  const previousVal = typeof previous === 'number' ? previous : 0;
+
+  // New joiners start fresh - their current donations are the starting point
+  if (isNewJoiner) {
+    return { delta: currentVal, isSeasonReset: false };
+  }
+
+  // First snapshot (no previous data) - start at current
+  if (previousVal === 0 && currentVal > 0) {
+    return { delta: currentVal, isSeasonReset: false };
+  }
+
+  const delta = currentVal - previousVal;
+
+  // Season reset detection: if donations drop significantly (more than 1000), 
+  // it's likely a season reset. Add the previous total to cumulative.
+  if (delta < -1000) {
+    return { delta: previousVal, isSeasonReset: true };
+  }
+
+  // Normal case: add the delta (could be positive or small negative)
+  return { delta: Math.max(0, delta), isSeasonReset: false };
+}
+
 async function runUpsertMembersPhase(jobId: string, transformedData: TransformedData, snapshotDate?: string): Promise<PhaseResult> {
   const startTime = Date.now();
   
@@ -622,7 +657,7 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
 
     const { data: existingMemberRows, error: existingMembersError } = await supabase
       .from('members')
-      .select('tag')
+      .select('id, tag, cumulative_donations_given, cumulative_donations_received')
       .eq('clan_id', clanRow.id);
 
     if (existingMembersError) {
@@ -646,31 +681,121 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
 
     const newlyJoinedTags = Array.from(memberMapByTag.keys()).filter((tag) => !existingTags.has(tag));
 
-    // Upsert members with new typed fields
-    const memberUpserts = transformedData.memberData.map((member) => ({
-      clan_id: clanRow.id,
-      tag: member.tag,
-      name: member.name,
-      th_level: member.townHallLevel,
-      role: member.role,
-      league: member.league, // Keep legacy field for compatibility
-      builder_league: member.builderBaseLeague,
-      // New typed fields
-      league_id: member.league_id,
-      league_name: member.league_name,
-      league_trophies: member.league_trophies,
-      league_icon_small: member.league_icon_small,
-      league_icon_medium: member.league_icon_medium,
-      battle_mode_trophies: member.battle_mode_trophies,
-      ranked_trophies: member.ranked_trophies,
-      ranked_league_id: member.ranked_league_id,
-      ranked_league_name: member.ranked_league_name,
-      ranked_modifier: member.ranked_modifier,
-      equipment_flags: member.equipment_flags,
-      tenure_days: member.tenure_days ?? null,
-      tenure_as_of: member.tenure_as_of ?? null,
-      updated_at: new Date().toISOString(),
-    }));
+    // Fetch previous snapshot donations for existing members to calculate deltas
+    const existingMemberIds = (existingMemberRows ?? [])
+      .map(row => row.id)
+      .filter((id): id is string => Boolean(id));
+
+    let previousDonationsMap = new Map<string, { given: number; received: number }>();
+    
+    if (existingMemberIds.length > 0) {
+      // Get the most recent snapshot before this one
+      const { data: previousSnapshot } = await supabase
+        .from('roster_snapshots')
+        .select('id, fetched_at')
+        .eq('clan_id', clanRow.id)
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (previousSnapshot) {
+        // Fetch previous snapshot's donations
+        const { data: previousStats } = await supabase
+          .from('member_snapshot_stats')
+          .select('member_id, donations, donations_received')
+          .eq('snapshot_id', previousSnapshot.id)
+          .in('member_id', existingMemberIds);
+
+        if (previousStats) {
+          previousStats.forEach((stat: any) => {
+            previousDonationsMap.set(stat.member_id, {
+              given: stat.donations ?? 0,
+              received: stat.donations_received ?? 0,
+            });
+          });
+        }
+      }
+    }
+
+    // Create member ID lookup
+    const memberIdByTag = new Map<string, string>();
+    (existingMemberRows ?? []).forEach(row => {
+      const normalized = normalizeTag(row.tag);
+      if (normalized) {
+        memberIdByTag.set(normalized, row.id);
+      }
+    });
+
+    // Calculate cumulative donations for each member
+    const cumulativeDonationsMap = new Map<string, { given: number; received: number }>();
+    
+    transformedData.memberData.forEach((member) => {
+      const normalized = normalizeTag(member.tag);
+      if (!normalized) return;
+
+      const memberId = memberIdByTag.get(normalized);
+      if (!memberId) return; // New member, will be handled in upsert
+
+      const isNewJoiner = newlyJoinedTags.includes(normalized);
+      const previous = previousDonationsMap.get(memberId);
+      const existing = existingMemberRows?.find(r => r.id === memberId);
+
+      const currentGiven = member.donations ?? 0;
+      const currentReceived = member.donations_received ?? 0;
+
+      const givenDelta = calculateDonationDelta(currentGiven, previous?.given, isNewJoiner);
+      const receivedDelta = calculateDonationDelta(currentReceived, previous?.received, isNewJoiner);
+
+      const existingCumulativeGiven = existing?.cumulative_donations_given ?? 0;
+      const existingCumulativeReceived = existing?.cumulative_donations_received ?? 0;
+
+      cumulativeDonationsMap.set(normalized, {
+        given: existingCumulativeGiven + givenDelta.delta,
+        received: existingCumulativeReceived + receivedDelta.delta,
+      });
+    });
+
+    // Upsert members with new typed fields and cumulative donations
+    const memberUpserts = transformedData.memberData.map((member) => {
+      const normalized = normalizeTag(member.tag);
+      const cumulative = cumulativeDonationsMap.get(normalized ?? '') ?? { given: 0, received: 0 };
+      const isNewJoiner = normalized ? newlyJoinedTags.includes(normalized) : false;
+      
+      // New joiners start with their current donations as cumulative
+      const finalCumulativeGiven = isNewJoiner 
+        ? (member.donations ?? 0) 
+        : cumulative.given;
+      const finalCumulativeReceived = isNewJoiner 
+        ? (member.donations_received ?? 0) 
+        : cumulative.received;
+
+      return {
+        clan_id: clanRow.id,
+        tag: member.tag,
+        name: member.name,
+        th_level: member.townHallLevel,
+        role: member.role,
+        league: member.league, // Keep legacy field for compatibility
+        builder_league: member.builderBaseLeague,
+        // New typed fields
+        league_id: member.league_id,
+        league_name: member.league_name,
+        league_trophies: member.league_trophies,
+        league_icon_small: member.league_icon_small,
+        league_icon_medium: member.league_icon_medium,
+        battle_mode_trophies: member.battle_mode_trophies,
+        ranked_trophies: member.ranked_trophies,
+        ranked_league_id: member.ranked_league_id,
+        ranked_league_name: member.ranked_league_name,
+        ranked_modifier: member.ranked_modifier,
+        equipment_flags: member.equipment_flags,
+        tenure_days: member.tenure_days ?? null,
+        tenure_as_of: member.tenure_as_of ?? null,
+        cumulative_donations_given: finalCumulativeGiven,
+        cumulative_donations_received: finalCumulativeReceived,
+        updated_at: new Date().toISOString(),
+      };
+    });
 
     const { data: memberRows, error: memberError } = await supabase
       .from('members')
@@ -1182,6 +1307,36 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         currentRankedTrophies: currentRanked,
       };
 
+      // Calculate activity score
+      // Extract hero levels from hero_levels JSONB
+      const heroLevels = member.hero_levels ?? {};
+      const memberForActivity: Member = {
+        name: member.name,
+        tag: member.tag,
+        role: member.role ?? undefined,
+        townHallLevel: member.townHallLevel ?? undefined,
+        trophies: member.trophies ?? undefined,
+        rankedTrophies: member.ranked_trophies ?? undefined,
+        rankedLeagueId: member.ranked_league_id ?? undefined,
+        rankedLeagueName: member.ranked_league_name ?? undefined,
+        donations: member.donations ?? undefined,
+        donationsReceived: member.donations_received ?? undefined,
+        bk: typeof heroLevels.bk === 'number' ? heroLevels.bk : undefined,
+        aq: typeof heroLevels.aq === 'number' ? heroLevels.aq : undefined,
+        gw: typeof heroLevels.gw === 'number' ? heroLevels.gw : undefined,
+        rc: typeof heroLevels.rc === 'number' ? heroLevels.rc : undefined,
+        mp: typeof heroLevels.mp === 'number' ? heroLevels.mp : undefined,
+        enriched: {
+          warStars: enriched.warStars ?? undefined,
+          capitalContributions: enriched.capitalContributions ?? undefined,
+          equipmentLevels: enriched.equipmentLevels ?? undefined,
+          petLevels: enriched.petLevels ?? undefined,
+        },
+      } as Member;
+
+      const activityEvidence = calculateActivityScore(memberForActivity);
+      const activityScore = activityEvidence.score ?? null;
+
       return {
         snapshot_id: latestSnapshot.id,
         member_id: memberId,
@@ -1192,7 +1347,7 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
         donations: member.donations ?? 0,
         donations_received: member.donations_received ?? 0,
         hero_levels: member.hero_levels ?? null,
-        activity_score: null,
+        activity_score: activityScore,
         rush_percent: member.rush_percent ?? null,
         extras: extrasPayload,
         // New typed fields
