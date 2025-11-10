@@ -24,6 +24,7 @@ export interface StagedIngestionJobResult {
 
 export interface RunStagedIngestionJobOptions extends StagedIngestionOptions {
   runPostProcessing?: boolean;
+  forceInsights?: boolean; // Force insights generation even if data is current
 }
 
 /**
@@ -31,7 +32,7 @@ export interface RunStagedIngestionJobOptions extends StagedIngestionOptions {
  * This replaces the old runIngestionJob with a more robust, phase-based approach.
  */
 export async function runStagedIngestionJob(options: RunStagedIngestionJobOptions = {}): Promise<StagedIngestionJobResult> {
-  const { runPostProcessing = true, ...stagedOptions } = options;
+  const { runPostProcessing = true, forceInsights = false, ...stagedOptions } = options;
   let clanTag = stagedOptions.clanTag || cfg.homeClanTag;
   
   // CRITICAL SAFEGUARD: Prevent accidental use of wrong clan tag
@@ -81,6 +82,22 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
         const isAfterScheduledRuns = currentHour > 6 || (currentHour === 6 && currentMinute >= 0);
         
         if (latestDate >= todayIso && isAfterScheduledRuns) {
+          // If forceInsights is true, skip the fetch but still run post-processing to generate insights
+          if (forceInsights) {
+            console.log(`[StagedIngestion] forceInsights=true, data is current but will generate insights anyway`);
+            // Skip to post-processing directly (this will generate insights from existing data)
+            const postProcessingResult = await runPostProcessingSteps(clanTag, stagedOptions.jobId);
+            return {
+              clanTag,
+              success: true,
+              ingestionResult: { skipped: true, reason: 'up_to_date_but_insights_forced', latestDate },
+              changeSummary: postProcessingResult.changeSummary,
+              gameChatMessages: postProcessingResult.gameChatMessages,
+              playersResolved: postProcessingResult.playersResolved,
+              resolutionErrors: postProcessingResult.resolutionErrors,
+              insightsGenerated: postProcessingResult.insightsGenerated,
+            };
+          }
           console.log(`[StagedIngestion] Up-to-date for ${clanTag} (latest ${latestDate}) and past scheduled runs — skipping fetch`);
           return { clanTag, success: true, ingestionResult: { skipped: true, reason: 'up_to_date', latestDate } };
         } else if (latestDate >= todayIso && !isAfterScheduledRuns) {

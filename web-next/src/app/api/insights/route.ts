@@ -20,6 +20,8 @@ const CACHE_TTL_SECONDS = 10;
 const QuerySchema = z.object({
   clanTag: z.string().min(1, 'clanTag is required'),
   date: z.string().optional(),
+  _refresh: z.string().optional(), // Cache-busting parameter (ignored but allows bypass)
+  nocache: z.string().optional(), // Force bypass server-side cache
 });
 
 const SaveSchema = z.object({
@@ -47,7 +49,8 @@ export async function GET(request: NextRequest) {
       return json({ success: false, error: 'clanTag query parameter is required' }, { status: 400 });
     }
 
-    const { clanTag, date } = parsed.data;
+    const { clanTag, date, nocache } = parsed.data;
+    const bypassCache = Boolean(nocache || parsed.data._refresh); // Bypass cache if nocache or _refresh param present
 
     const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const rateKey = `insights:${clanTag}:${date ?? 'latest'}:${ip}`;
@@ -65,9 +68,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const payload = date
-      ? await cached(['insights', clanTag, date], () => getSmartInsightsPayloadByDate(clanTag, date), CACHE_TTL_SECONDS)
-      : await cached(['insights', clanTag, 'latest'], () => getLatestSmartInsightsPayload(clanTag), CACHE_TTL_SECONDS);
+    // Bypass cache if nocache or _refresh parameter is present
+    const payload = bypassCache
+      ? (date
+          ? await getSmartInsightsPayloadByDate(clanTag, date)
+          : await getLatestSmartInsightsPayload(clanTag))
+      : (date
+          ? await cached(['insights', clanTag, date], () => getSmartInsightsPayloadByDate(clanTag, date), CACHE_TTL_SECONDS)
+          : await cached(['insights', clanTag, 'latest'], () => getLatestSmartInsightsPayload(clanTag), CACHE_TTL_SECONDS));
 
     if (!payload) {
       return json({ success: false, error: 'No insights payload available' }, { status: 404 });

@@ -8,11 +8,11 @@ import type { CustomPermissions } from '@/components/settings/PermissionManager'
 /**
  * GET /api/access/permissions
  * Get custom permissions for a clan
+ * All authenticated users can read permissions (needed to check their own permissions)
  */
 export async function GET(req: NextRequest) {
   try {
-    // Require Leader role (not Co-Leader)
-    requireLeader(req);
+    // Allow all authenticated users to read permissions (no role check needed for GET)
 
     const { searchParams } = new URL(req.url);
     const clanTagParam = searchParams.get('clanTag');
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   try {
     // Require Leader role (not Co-Leader)
-    requireLeader(req);
+    await requireLeader(req);
 
     const body = await req.json();
     const { clanTag: clanTagParam, customPermissions } = body;

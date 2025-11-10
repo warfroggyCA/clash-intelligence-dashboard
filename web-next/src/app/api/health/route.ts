@@ -77,9 +77,14 @@ export async function POST(request: Request) {
       
       console.log('[Health/DirectIngestion] Starting direct ingestion job for', targetClanTag);
       
+      // Check for forceInsights parameter to regenerate insights even if data is current
+      const urlObj = new URL(request.url);
+      const forceInsights = urlObj.searchParams.get('forceInsights') === 'true';
+      
       const result = await runStagedIngestionJob({
         clanTag: targetClanTag,
-        runPostProcessing: true
+        runPostProcessing: true,
+        forceInsights: forceInsights
       });
       
       console.log('[Health/DirectIngestion] Direct ingestion completed:', result.success ? 'SUCCESS' : 'FAILED');
@@ -101,16 +106,31 @@ export async function POST(request: Request) {
       
       // Format response similar to what the UI expects
       const ingestionResult = result.ingestionResult as any;
+      
+      // Extract member count from the upsertMembers phase row_delta, or from transform phase metadata
+      const memberCount = ingestionResult?.phases?.upsertMembers?.row_delta 
+        ?? ingestionResult?.phases?.transform?.metadata?.memberCount
+        ?? ingestionResult?.phases?.fetch?.metadata?.snapshot?.memberSummaries?.length
+        ?? 0;
+      
       const responseData = [{
         clanTag: result.clanTag,
         success: result.success,
-        memberCount: ingestionResult?.memberCount ?? ingestionResult?.phases?.canonical?.memberCount ?? 0,
+        memberCount,
         changesDetected: result.changeSummary ? 'Yes' : 'No',
         playersResolved: result.playersResolved ?? 0,
         summary: result.changeSummary,
         skipped: ingestionResult?.skipped ?? false,
-        reason: ingestionResult?.reason,
-        insightsGenerated: result.insightsGenerated ?? false
+        reason: ingestionResult?.reason || (memberCount === 0 && result.success ? 'No members processed - check ingestion logs' : undefined),
+        insightsGenerated: result.insightsGenerated ?? false,
+        error: result.error,
+        phases: ingestionResult?.phases ? {
+          fetch: ingestionResult.phases.fetch?.success,
+          transform: ingestionResult.phases.transform?.success,
+          upsertMembers: ingestionResult.phases.upsertMembers?.success,
+          writeSnapshot: ingestionResult.phases.writeSnapshot?.success,
+          writeStats: ingestionResult.phases.writeStats?.success,
+        } : undefined
       }];
       
       return json({

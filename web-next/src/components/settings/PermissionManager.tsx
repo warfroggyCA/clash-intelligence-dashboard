@@ -18,7 +18,8 @@ export type PermissionKey =
   | 'canModifyClanData'
   | 'canManageAccess'
   | 'canViewSensitiveData'
-  | 'canViewLeadershipFeatures';
+  | 'canViewLeadershipFeatures'
+  | 'canViewAuditLog';
 
 export interface PermissionSet {
   canViewRoster: boolean;
@@ -30,6 +31,7 @@ export interface PermissionSet {
   canManageAccess: boolean;
   canViewSensitiveData: boolean;
   canViewLeadershipFeatures: boolean;
+  canViewAuditLog: boolean;
 }
 
 export interface CustomPermissions {
@@ -50,6 +52,7 @@ const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
   canManageAccess: 'Manage user access and permissions',
   canViewSensitiveData: 'View sensitive data (notes, warnings, departure reasons)',
   canViewLeadershipFeatures: 'View leadership-only features',
+  canViewAuditLog: 'View audit log of all changes made by leadership',
 };
 
 const PERMISSION_GROUPS: Array<{ label: string; permissions: PermissionKey[] }> = [
@@ -63,7 +66,7 @@ const PERMISSION_GROUPS: Array<{ label: string; permissions: PermissionKey[] }> 
   },
   {
     label: 'Data Management',
-    permissions: ['canModifyClanData', 'canManageAccess'],
+    permissions: ['canModifyClanData', 'canManageAccess', 'canViewAuditLog'],
   },
   {
     label: 'Advanced Features',

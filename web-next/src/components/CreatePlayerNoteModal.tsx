@@ -64,7 +64,7 @@ export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName
         }
         return acc;
       }, {}),
-      createdBy: currentUser?.email || currentUser?.id || undefined,
+      // createdBy is now automatically set by the API
     };
 
     fetch('/api/player-notes', {

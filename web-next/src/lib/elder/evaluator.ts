@@ -5,7 +5,8 @@ import type { ElderEvaluatorOptions, ElderMetricInputs, ElderRecommendation } fr
 const DEFAULT_PROMOTION_THRESHOLD = 70;
 const DEFAULT_MONITOR_THRESHOLD = 55;
 const DEFAULT_CONSECUTIVE_THRESHOLD = 55;
-const TENURE_MINIMUM = 90;
+const DEFAULT_TENURE_MINIMUM = 90;
+const DEFAULT_FAILING_DIMENSION_THRESHOLD = 40;
 
 const formatRecommendation = (base: string, failing: string[]): string => {
   if (!failing.length) return base;
@@ -19,12 +20,14 @@ export function evaluateElderCandidate(
   const promotionThreshold = options.promotionThreshold ?? DEFAULT_PROMOTION_THRESHOLD;
   const monitorThreshold = options.monitorThreshold ?? DEFAULT_MONITOR_THRESHOLD;
   const consecutiveThreshold = options.consecutiveThreshold ?? DEFAULT_CONSECUTIVE_THRESHOLD;
+  const tenureMinimum = options.tenureMinimum ?? DEFAULT_TENURE_MINIMUM;
+  const failingDimensionThreshold = options.failingDimensionThreshold ?? DEFAULT_FAILING_DIMENSION_THRESHOLD;
 
   const consistency = normalizeMetric(input.consistency);
   const generosity = normalizeMetric(input.generosity);
   const performance = normalizeMetric(input.performance);
-  const score = computeElderScore(input);
-  const failing = identifyFailingDimensions(input);
+  const score = computeElderScore(input, options.weights);
+  const failing = identifyFailingDimensions(input, failingDimensionThreshold, options.weights);
   const normalizedRole = input.role ? parseRole(input.role) : input.isElder ? 'elder' : 'member';
   const alreadyHigherLeadership = normalizedRole === 'leader' || normalizedRole === 'coLeader';
   const alreadyElder = normalizedRole === 'elder';
@@ -32,7 +35,7 @@ export function evaluateElderCandidate(
   let band: 'promote' | 'monitor' | 'risk' | 'ineligible';
   let recommendation: string;
 
-  if (input.tenureDays < TENURE_MINIMUM) {
+  if (input.tenureDays < tenureMinimum) {
     band = 'ineligible';
     recommendation = 'Not eligible—too new';
     return {

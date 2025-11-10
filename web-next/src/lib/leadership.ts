@@ -103,6 +103,7 @@ export interface RolePermissions {
   canManageChangeDashboard: boolean;
   canViewLeadershipFeatures: boolean;
   canManageAccess: boolean;
+  canViewAuditLog: boolean;
 }
 
 export function getRolePermissions(role: ClanRole): RolePermissions {
@@ -115,7 +116,8 @@ export function getRolePermissions(role: ClanRole): RolePermissions {
     canGenerateCoachingInsights: isLeadership,
     canManageChangeDashboard: isLeadership,
     canViewLeadershipFeatures: isLeadership,
-    canManageAccess: role === 'leader' // Only leaders can manage access
+    canManageAccess: role === 'leader', // Only leaders can manage access
+    canViewAuditLog: role === 'leader' // Only leaders can view audit log by default
   };
 }
 

@@ -12,13 +12,13 @@ export async function requireRole(req: NextRequest, allowedRoles: ClanRoleName[]
 
   const user = await getAuthenticatedUser();
   if (!user) {
-    throw new Response('Unauthorized', { status: 401 });
+    throw NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
   }
 
   const roles = await getUserClanRoles(user.id);
   const clanTag = cfg.homeClanTag;
   if (!hasRole(roles, clanTag, allowedRoles)) {
-    throw new Response('Forbidden', { status: 403 });
+    throw NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
   return { user, roles };

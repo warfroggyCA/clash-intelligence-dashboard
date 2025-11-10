@@ -158,6 +158,7 @@ export async function GET(
             };
 
             // Track last REAL (non-carried-forward) hero levels for delta comparison
+            // This tracks the highest level we've ever seen for each hero (to detect data quality issues)
             const lastRealHeroLevels = {
               bk: null as number | null,
               aq: null as number | null,
@@ -165,6 +166,19 @@ export async function GET(
               rc: null as number | null,
               mp: null as number | null,
             };
+
+            // Track the maximum level we've seen for each hero (to detect data anomalies)
+            const maxSeenLevels = {
+              bk: null as number | null,
+              aq: null as number | null,
+              gw: null as number | null,
+              rc: null as number | null,
+              mp: null as number | null,
+            };
+
+            // Track which upgrades have already been reported to prevent duplicates
+            // Key format: "hero:fromLevel→toLevel" (e.g., "aq:57→58")
+            const reportedUpgrades = new Set<string>();
 
             for (const stat of statsData) {
               const snapshot = snapshotMap.get(stat.snapshot_id);
@@ -241,15 +255,47 @@ export async function GET(
                       const currLevel = currentHeroData[hero]!;
                       const prevRealLevel = lastRealHeroLevels[hero];
                       
+                      // Validate data quality: if current level is lower than max we've seen, skip this data point
+                      // (likely bad/missing data causing incorrect comparison)
+                      const maxSeen = maxSeenLevels[hero];
+                      if (maxSeen !== null && currLevel < maxSeen) {
+                        // Data anomaly: level went backwards, skip this snapshot's hero data
+                        // Don't update lastRealHeroLevels or report upgrades for this hero in this snapshot
+                        continue;
+                      }
+                      
+                      // Update max seen level
+                      if (maxSeen === null || currLevel > maxSeen) {
+                        maxSeenLevels[hero] = currLevel;
+                      }
+                      
                       // Only report upgrade if:
                       // 1. We have a previous real level (not first data point)
                       // 2. There's an actual increase
-                      if (prevRealLevel !== null && currLevel > prevRealLevel) {
-                        heroUpgrades.push(`${heroLabels[hero]}: ${prevRealLevel} → ${currLevel}`);
+                      // 3. Current level is >= max seen (data quality check)
+                      // 4. We haven't already reported this exact upgrade transition
+                      if (prevRealLevel !== null && currLevel > prevRealLevel && currLevel >= (maxSeen ?? 0)) {
+                        const upgradeKey = `${hero}:${prevRealLevel}→${currLevel}`;
+                        if (!reportedUpgrades.has(upgradeKey)) {
+                          heroUpgrades.push(`${heroLabels[hero]}: ${prevRealLevel} → ${currLevel}`);
+                          reportedUpgrades.add(upgradeKey);
+                        }
                       }
                       
-                      // Always update last real level when we have actual data
-                      lastRealHeroLevels[hero] = currLevel;
+                      // Update last real level when we have actual data
+                      // Update if: (1) first time seeing this hero, or (2) level actually changed (and is valid)
+                      // This prevents updating when we see the same level multiple times, which could cause false duplicates
+                      if (lastRealHeroLevels[hero] === null) {
+                        // First time seeing this hero - initialize
+                        lastRealHeroLevels[hero] = currLevel;
+                      } else if (currLevel > lastRealHeroLevels[hero]) {
+                        // Level increased - update (upgrade was already reported above)
+                        lastRealHeroLevels[hero] = currLevel;
+                      } else if (currLevel === lastRealHeroLevels[hero]) {
+                        // Same level - don't update (no change)
+                        // This is fine, just don't update
+                      }
+                      // If currLevel < lastRealHeroLevels[hero], we already skipped above due to data anomaly
                     }
                   }
                 }
@@ -344,12 +390,49 @@ export async function GET(
     // Sort by date (oldest first) and deduplicate by date (keep latest entry per day)
     historicalData.sort((a, b) => a.fetchedAt.localeCompare(b.fetchedAt));
     
-    // Deduplicate: keep only the latest snapshot per day
+    // Deduplicate: keep only the latest snapshot per day, but merge upgrades from all snapshots on that day
     const uniqueByDate = new Map<string, HistoricalDataPoint>();
+    const upgradesByDate = new Map<string, Set<string>>(); // Track all upgrades per date
+    
     for (const point of historicalData) {
-      uniqueByDate.set(point.date, point); // Later entries overwrite earlier ones for same date
+      // Collect upgrades for this date
+      if (point.deltas?.heroUpgrades && point.deltas.heroUpgrades.length > 0) {
+        if (!upgradesByDate.has(point.date)) {
+          upgradesByDate.set(point.date, new Set());
+        }
+        point.deltas.heroUpgrades.forEach(upgrade => {
+          upgradesByDate.get(point.date)!.add(upgrade);
+        });
+      }
+      
+      // Keep latest snapshot per day (overwrites earlier ones)
+      uniqueByDate.set(point.date, point);
     }
-    const deduplicatedData = Array.from(uniqueByDate.values());
+    
+    // Merge collected upgrades into the kept snapshots
+    const deduplicatedData = Array.from(uniqueByDate.values()).map(point => {
+      const upgradesForDate = upgradesByDate.get(point.date);
+      if (upgradesForDate && upgradesForDate.size > 0) {
+        // Merge upgrades from all snapshots on this date
+        const mergedUpgrades = Array.from(upgradesForDate);
+        if (point.deltas) {
+          point.deltas.heroUpgrades = mergedUpgrades;
+        } else {
+          point.deltas = {
+            trophies: 0,
+            rankedTrophies: 0,
+            donations: 0,
+            donationsReceived: 0,
+            warStars: 0,
+            clanCapitalContributions: 0,
+            heroUpgrades: mergedUpgrades,
+            townHallUpgrade: false,
+            roleChange: false,
+          };
+        }
+      }
+      return point;
+    });
 
     // Extract player name if available
     let playerName = playerTag;

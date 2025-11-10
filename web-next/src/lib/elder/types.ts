@@ -30,4 +30,11 @@ export interface ElderEvaluatorOptions {
   consecutiveThreshold?: number; // default 55
   promotionThreshold?: number;   // default 70
   monitorThreshold?: number;     // default 55
+  tenureMinimum?: number;        // default 90
+  failingDimensionThreshold?: number; // default 40
+  weights?: {
+    consistency?: number;  // default 0.40 (40%)
+    generosity?: number;   // default 0.35 (35%)
+    performance?: number;   // default 0.25 (25%)
+  };
 }
