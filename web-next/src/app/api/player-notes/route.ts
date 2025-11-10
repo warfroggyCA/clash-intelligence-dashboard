@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireLeadership, getCurrentUserIdentifier } from '@/lib/api/role-check';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { createApiContext } from '@/lib/api-context';
@@ -98,8 +99,10 @@ export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
+    requireLeadership(request);
+    
     const body = await request.json();
-    const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, customFields = {}, createdBy } = body;
+    const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, customFields = {} } = body;
     
     if (!clanTagParam || !playerTagParam || !note) {
       return json({ success: false, error: 'clanTag, playerTag, and note are required' }, { status: 400 });
@@ -107,6 +110,9 @@ export async function POST(request: NextRequest) {
     
     const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
     const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
+    
+    // Automatically get the current user's identifier
+    const createdBy = await getCurrentUserIdentifier(request, clanTag);
     
     // If playerName not provided, look it up from tag
     let finalPlayerName = playerName?.trim();
@@ -149,6 +155,8 @@ export async function PUT(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
+    requireLeadership(request);
+    
     const body = await request.json();
     const { id, note, customFields } = body;
     
@@ -156,6 +164,8 @@ export async function PUT(request: NextRequest) {
       return json({ success: false, error: 'id and note are required' }, { status: 400 });
     }
     
+    // Note: We don't have updated_by field yet, but we can add it if needed
+    // For now, we'll just track the update timestamp
     const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
       .from('player_notes')
@@ -184,19 +194,24 @@ export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
+    requireLeadership(request);
+    
     const body = await request.json();
-    const { id, archivedBy } = body;
+    const { id, clanTag } = body;
     
     if (!id) {
       return json({ success: false, error: 'id is required' }, { status: 400 });
     }
+    
+    // Automatically get the current user's identifier
+    const archivedBy = await getCurrentUserIdentifier(request, clanTag);
     
     const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
       .from('player_notes')
       .update({
         archived_at: new Date().toISOString(),
-        archived_by: archivedBy || 'System'
+        archived_by: archivedBy
       })
       .eq('id', id)
       .select()

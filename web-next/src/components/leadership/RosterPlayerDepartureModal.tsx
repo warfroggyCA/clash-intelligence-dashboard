@@ -25,7 +25,6 @@ export function RosterPlayerDepartureModal({
 }: RosterPlayerDepartureModalProps) {
   const [departureType, setDepartureType] = useState<DepartureType>('voluntary');
   const [reason, setReason] = useState('');
-  const [recordedBy, setRecordedBy] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,10 +34,6 @@ export function RosterPlayerDepartureModal({
   const handleSubmit = async () => {
     if (!reason.trim()) {
       setError('Please provide a short reason so other leaders understand the context.');
-      return;
-    }
-    if (!recordedBy.trim()) {
-      setError('Please add your name so this action is attributed.');
       return;
     }
 
@@ -53,11 +48,10 @@ export function RosterPlayerDepartureModal({
           playerTag: normalizedPlayerTag,
           playerName,
           actionType: 'departure',
-          createdBy: recordedBy.trim(),
+          // createdBy and recordedBy are now automatically set by the API
           actionData: {
             reason: reason.trim(),
             departureType,
-            recordedBy: recordedBy.trim(),
           },
         }),
       });
@@ -127,16 +121,6 @@ export function RosterPlayerDepartureModal({
               rows={3}
               placeholder="Short explanation for leadership history"
               className="w-full rounded-md border border-slate-700/70 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-orange-500/60 focus:outline-none focus:ring-1 focus:ring-orange-500/40"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-200">Recorded By *</label>
-            <Input
-              value={recordedBy}
-              onChange={(e) => setRecordedBy(e.target.value)}
-              placeholder="Your name or initials"
-              className="mt-1 border-slate-700/70 bg-slate-900/80 text-slate-100"
             />
           </div>
 

@@ -5,6 +5,7 @@ import { normalizeTag, isValidTag } from '@/lib/tags';
 import { GlassCard } from '@/components/ui';
 import { ElderAssessmentCard } from '@/components/settings/ElderAssessmentCard';
 import PermissionManager from '@/components/settings/PermissionManager';
+import AuditLog from '@/components/settings/AuditLog';
 import { showToast } from '@/lib/toast';
 import { useLeadership } from '@/hooks/useLeadership';
 import { cfg } from '@/lib/config';
@@ -14,13 +15,13 @@ import { clearSmartInsightsPayload } from '@/lib/smart-insights-cache';
 import {
   Settings,
   Shield,
-  Key,
   RefreshCw,
   Home,
   Users,
   Palette,
   Bell,
   Database,
+  FileText,
 } from 'lucide-react';
 
 export interface SettingsContentProps {
@@ -55,8 +56,6 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
   const [newRoleEmail, setNewRoleEmail] = useState('');
   const [newRoleTag, setNewRoleTag] = useState('');
   const [newRoleRole, setNewRoleRole] = useState<ClanRoleName>('member');
-  const [linkCode, setLinkCode] = useState<string | null>(null);
-  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
 
   const { permissions } = useLeadership();
   const effectiveClanTag = normalizeTag(clanTag || homeClan || newHomeClan || '#');
@@ -120,7 +119,17 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       setRolesLoading(true);
       setRolesMessage('');
       const res = await fetch(`/api/admin/roles?clanTag=${encodeURIComponent(effectiveClanTag)}`);
-      const body = await res.json();
+      
+      // Handle non-JSON responses (e.g., plain text "Unauthorized")
+      let body;
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        body = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server error: ${res.status} ${res.statusText}`);
+      }
+      
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || 'Failed to load roles');
       }
@@ -153,7 +162,17 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: entry.id, playerTag: entry.playerTag, role: entry.role }),
       });
-      const body = await res.json();
+      
+      // Handle non-JSON responses (e.g., plain text "Unauthorized")
+      let body;
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        body = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server error: ${res.status} ${res.statusText}`);
+      }
+      
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || 'Failed to update role');
       }
@@ -173,7 +192,17 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       setRolesLoading(true);
       setRolesMessage('');
       const res = await fetch(`/api/admin/roles?id=${id}`, { method: 'DELETE' });
-      const body = await res.json();
+      
+      // Handle non-JSON responses (e.g., plain text "Unauthorized")
+      let body;
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        body = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server error: ${res.status} ${res.statusText}`);
+      }
+      
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || 'Failed to remove role');
       }
@@ -205,7 +234,17 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
           clanTag: effectiveClanTag,
         }),
       });
-      const body = await res.json();
+      
+      // Handle non-JSON responses (e.g., plain text "Unauthorized")
+      let body;
+      const contentType = res.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        body = await res.json();
+      } else {
+        const text = await res.text();
+        throw new Error(text || `Server error: ${res.status} ${res.statusText}`);
+      }
+      
       if (!res.ok || !body?.success) {
         throw new Error(body?.error || 'Failed to grant access');
       }
@@ -222,20 +261,6 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
     }
   };
 
-  const handleGenerateLinkCode = async () => {
-    try {
-      setIsGeneratingLink(true);
-      const random = Math.random().toString(36).slice(2, 8).toUpperCase();
-      const generated = `LDR-${random}`;
-      setLinkCode(generated);
-      setRolesMessage('New verification code generated. Add this to the clan description when promoting a leader.');
-    } catch (error) {
-      console.error('Failed to generate link code', error);
-      setRolesMessage('Failed to generate link code');
-    } finally {
-      setIsGeneratingLink(false);
-    }
-  };
 
   const roleOptions: Array<{ value: ClanRoleName; label: string }> = [
     { value: 'leader', label: 'Leader' },
@@ -341,7 +366,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
   const containerClass =
     layout === 'modal'
       ? 'space-y-6 max-h-[70vh] overflow-y-auto w-full'
-      : 'settings-content mx-auto w-full max-w-5xl space-y-8';
+      : 'settings-content w-full space-y-8';
 
   return (
     <div className={containerClass}>
@@ -385,25 +410,6 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
             icon={<Shield className="h-5 w-5" aria-hidden />}
             title="Clan Permissions"
             subtitle="Manage leadership access and invite new Supabase users."
-            actions={
-              <button
-                onClick={handleGenerateLinkCode}
-                disabled={isGeneratingLink}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {isGeneratingLink ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
-                    Generating…
-                  </>
-                ) : (
-                  <>
-                    <Key className="h-4 w-4" aria-hidden />
-                    Generate Link Code
-                  </>
-                )}
-              </button>
-            }
             className="space-y-4"
           >
             {rolesMessage && (
@@ -415,26 +421,6 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
                 }`}
               >
                 {rolesMessage}
-              </div>
-            )}
-
-            {linkCode && (
-              <div className="rounded-2xl border border-dashed border-blue-400/50 bg-brand-surfaceSubtle/80 px-4 py-3 text-xs text-blue-100">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <span className="font-semibold text-blue-200">Verification Code:&nbsp;</span>
-                    <span className="font-mono tracking-widest text-blue-100">{linkCode}</span>
-                  </div>
-                  <button
-                    onClick={() => navigator.clipboard?.writeText?.(linkCode)}
-                    className="text-xs font-semibold text-blue-200 hover:text-blue-100"
-                  >
-                    Copy
-                  </button>
-                </div>
-                <p className="mt-2 text-[11px] text-blue-200/80">
-                  Place this code in the clan description for 15 minutes to verify a new leader or co-leader.
-                </p>
               </div>
             )}
 
@@ -566,9 +552,30 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
 
           {/* Permission Manager - Only Leaders can customize permissions */}
           {permissions.canManageAccess && (
-            <PermissionManager clanTag={clanTag || cfg.homeClanTag} />
+            <GlassCard
+              id="permission-manager"
+              icon={<Shield className="h-5 w-5" aria-hidden />}
+              title="Permission Manager"
+              subtitle="Configure custom permissions for each access level."
+              className="space-y-4"
+            >
+              <PermissionManager clanTag={clanTag || cfg.homeClanTag} />
+            </GlassCard>
           )}
         </>
+      )}
+
+      {/* Audit Log - Can be granted to any role via Permission Manager */}
+      {permissions.canViewAuditLog && (
+        <GlassCard
+          id="audit-log"
+          icon={<FileText className="h-5 w-5" aria-hidden />}
+          title="Audit Log"
+          subtitle="View all changes made by leadership. Permission can be granted to other roles via Permission Manager."
+          className="space-y-4"
+        >
+          <AuditLog clanTag={clanTag || cfg.homeClanTag} />
+        </GlassCard>
       )}
 
       <GlassCard

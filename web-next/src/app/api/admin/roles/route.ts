@@ -54,9 +54,16 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ success: true, data: { roles } });
   } catch (error: any) {
-    const status = error?.message === 'Clan not found' ? 404 : error instanceof Response ? error.status : 500;
-    const message = error instanceof Response ? undefined : error?.message || 'Internal Server Error';
-    if (error instanceof Response) return error;
+    // Handle NextResponse errors (from requireRole)
+    if (error instanceof NextResponse) {
+      return error;
+    }
+    // Handle plain Response errors (legacy)
+    if (error instanceof Response) {
+      return error;
+    }
+    const status = error?.message === 'Clan not found' ? 404 : 500;
+    const message = error?.message || 'Internal Server Error';
     console.error('[admin/roles] GET error', error);
     return NextResponse.json({ success: false, error: message }, { status });
   }
@@ -101,7 +108,14 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    if (error instanceof Response) return error;
+    // Handle NextResponse errors (from requireRole)
+    if (error instanceof NextResponse) {
+      return error;
+    }
+    // Handle plain Response errors (legacy)
+    if (error instanceof Response) {
+      return error;
+    }
     console.error('[admin/roles] POST error', error);
     return NextResponse.json({ success: false, error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
@@ -125,7 +139,14 @@ export async function PATCH(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    if (error instanceof Response) return error;
+    // Handle NextResponse errors (from requireRole)
+    if (error instanceof NextResponse) {
+      return error;
+    }
+    // Handle plain Response errors (legacy)
+    if (error instanceof Response) {
+      return error;
+    }
     console.error('[admin/roles] PATCH error', error);
     return NextResponse.json({ success: false, error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
@@ -149,7 +170,14 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    if (error instanceof Response) return error;
+    // Handle NextResponse errors (from requireRole)
+    if (error instanceof NextResponse) {
+      return error;
+    }
+    // Handle plain Response errors (legacy)
+    if (error instanceof Response) {
+      return error;
+    }
     console.error('[admin/roles] DELETE error', error);
     return NextResponse.json({ success: false, error: error?.message || 'Internal Server Error' }, { status: 500 });
   }

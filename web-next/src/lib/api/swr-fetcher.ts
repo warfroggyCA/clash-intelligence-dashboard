@@ -94,3 +94,46 @@ export async function playerProfileFetcher(url: string) {
   return fetchPlayerProfileSupabase(tag);
 }
 
+/**
+ * Smart insights fetcher
+ * Fetches smart insights payload from /api/insights
+ */
+export async function insightsFetcher(url: string) {
+  // Add nocache parameter to bypass server-side cache when revalidating
+  const urlObj = new URL(url, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5050');
+  // Only add nocache if not already present (to avoid duplicates)
+  if (!urlObj.searchParams.has('nocache') && !urlObj.searchParams.has('_refresh')) {
+    urlObj.searchParams.set('nocache', '1');
+  }
+  const finalUrl = urlObj.pathname + urlObj.search;
+  
+  const response = await fetchWithRetry(
+    finalUrl,
+    {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache',
+        'Pragma': 'no-cache',
+      },
+    },
+    {
+      maxRetries: 3,
+      initialDelay: 1000,
+      maxDelay: 5000,
+    }
+  );
+
+  const apiData = await response.json();
+
+  // Handle standard API response format
+  if (apiData.success === false) {
+    const error: any = new Error(apiData.error || `API request failed: ${finalUrl}`);
+    error.status = response.status;
+    throw error;
+  }
+
+  // Extract the payload from the response
+  // API returns: { success: true, data: { smartInsightsPayload: ..., payload: ... } }
+  return apiData.data?.smartInsightsPayload ?? apiData.data?.payload ?? null;
+}
+

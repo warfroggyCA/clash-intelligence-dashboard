@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
+import useSWR from 'swr';
 import { ClipboardCheck, Copy, Check, Sparkles, Newspaper } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import { LeadershipOnly } from '@/components/LeadershipGuard';
@@ -9,14 +10,16 @@ import { QuickActions } from '@/components/layout/QuickActions';
 import IngestionMonitor from '@/components/layout/IngestionMonitor';
 import ApplicantsPanel from '@/components/ApplicantsPanel';
 import TodaysBriefing from '@/components/TodaysBriefing';
-import NewsFeed from '@/components/leadership/NewsFeed';
+import NewsFeed, { type NewsFeedRef } from '@/components/leadership/NewsFeed';
 import { Button } from '@/components/ui';
 import GlassCard from '@/components/ui/GlassCard';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import { insightsFetcher } from '@/lib/api/swr-fetcher';
 import type { ActivityEvidence, Roster } from '@/types';
+import type { SmartInsightsPayload } from '@/lib/smart-insights';
 
 interface JoinerRecord {
   id: string;
@@ -233,34 +236,20 @@ export default function LeadershipDashboard() {
   const clanNameFromSelector = useDashboardStore(selectors.clanName);
   const clanDisplayName = (roster?.clanName ?? roster?.meta?.clanName ?? clanNameFromSelector) || '...Heck Yeah...';
   
-  const loadSmartInsights = useDashboardStore((state) => state.loadSmartInsights);
-  const smartInsights = useDashboardStore(selectors.smartInsights);
-  const smartInsightsStatus = useDashboardStore(selectors.smartInsightsStatus);
-  const smartInsightsError = useDashboardStore(selectors.smartInsightsError);
+  // NewsFeed now handles its own data fetching via SWR
+  const newsFeedRef = useRef<NewsFeedRef>(null);
+
+  // Fetch smart insights separately for gameChatMessages (since NewsFeed handles its own fetch)
+  const { data: smartInsights } = useSWR<SmartInsightsPayload | null>(
+    clanTag ? `/api/insights?clanTag=${encodeURIComponent(clanTag)}` : null,
+    insightsFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      refreshInterval: 0,
+    }
+  );
   const gameChatMessages = useMemo(() => smartInsights?.context?.gameChatMessages ?? [], [smartInsights]);
-
-  // Load roster if not already loaded (for clan name in header and Quick Actions)
-  useEffect(() => {
-    if (!roster && clanTag) {
-      console.log('[LeadershipDashboard] Loading roster for clanTag:', clanTag);
-      void loadRoster(clanTag);
-    }
-  }, [roster, clanTag, loadRoster]);
-
-  // Load smart insights when component mounts
-  useEffect(() => {
-    if (clanTag) {
-      void loadSmartInsights(clanTag, { force: false });
-    }
-  }, [clanTag, loadSmartInsights]);
-
-  // Also try to load insights if roster isn't loaded but we have a clanTag
-  useEffect(() => {
-    if (!roster && clanTag) {
-      // Try loading insights even without roster
-      void loadSmartInsights(clanTag, { force: false });
-    }
-  }, [roster, clanTag, loadSmartInsights]);
 
   const [showIngestionMonitor, setShowIngestionMonitor] = useState(false);
   const [activeJobId, setActiveJobId] = useState<string | undefined>(undefined);
@@ -277,18 +266,10 @@ export default function LeadershipDashboard() {
   }, []);
 
   const handleRefreshInsights = useCallback(async () => {
-    if (!clanTag) {
-      console.error('[LeadershipDashboard] No clanTag available for loading insights');
-      return;
+    if (newsFeedRef.current) {
+      await newsFeedRef.current.refresh();
     }
-    console.log('[LeadershipDashboard] Refreshing insights for clanTag:', clanTag);
-    try {
-      await loadSmartInsights(clanTag, { force: true });
-      console.log('[LeadershipDashboard] Insights refresh completed');
-    } catch (error) {
-      console.error('[LeadershipDashboard] Failed to refresh insights:', error);
-    }
-  }, [clanTag, loadSmartInsights]);
+  }, []);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -637,24 +618,21 @@ export default function LeadershipDashboard() {
                  >
                    <div className="mb-4 flex items-center justify-between">
                      <div className="text-xs text-slate-400">
-                       {smartInsightsStatus === 'loading' && 'Loading insights...'}
-                       {smartInsightsStatus === 'error' && smartInsightsError && `Error: ${smartInsightsError}`}
-                       {smartInsightsStatus === 'success' && !smartInsights && 'No insights available yet'}
-                       {smartInsightsStatus === 'success' && smartInsights && 'Insights loaded'}
-                       {!clanTag && <span className="text-amber-400 ml-2">(No clan tag)</span>}
+                       {!clanTag && <span className="text-amber-400">(No clan tag)</span>}
+                       {clanTag && <span>Latest insights from ingestion</span>}
                      </div>
                      <Button
                        onClick={handleRefreshInsights}
-                       disabled={!clanTag || smartInsightsStatus === 'loading'}
+                       disabled={!clanTag}
                        variant="outline"
                        size="sm"
                        className="text-xs"
                        title={!clanTag ? `No clan tag available. Current: ${clanTag || 'null'}` : 'Force refresh insights from API'}
                      >
-                       {smartInsightsStatus === 'loading' ? 'Loading...' : 'Refresh Insights'}
+                       Refresh Insights
                      </Button>
                    </div>
-                   <NewsFeed />
+                   <NewsFeed ref={newsFeedRef} clanTag={clanTag} />
                  </GlassCard>
 
           {/* Today's Briefing / AI Insights */}

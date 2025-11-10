@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireLeadership } from '@/lib/api/role-check';
+import { requireLeadership, getCurrentUserIdentifier } from '@/lib/api/role-check';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { createApiContext } from '@/lib/api-context';
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
     requireLeadership(request);
     
     const body = await request.json();
-    const { clanTag: clanTagParam, playerTag1, playerTag2, createdBy } = body;
+    const { clanTag: clanTagParam, playerTag1, playerTag2 } = body;
     
     if (!clanTagParam || !playerTag1 || !playerTag2) {
       return json({ success: false, error: 'clanTag, playerTag1, and playerTag2 are required' }, { status: 400 });
@@ -125,6 +125,9 @@ export async function POST(request: NextRequest) {
     if (!clanTag || !tag1 || !tag2 || !isValidTag(clanTag) || !isValidTag(tag1) || !isValidTag(tag2)) {
       return json({ success: false, error: 'Invalid clan tag or player tags' }, { status: 400 });
     }
+
+    // Automatically get the current user's identifier
+    const createdBy = await getCurrentUserIdentifier(request, clanTag);
 
     // Validate tag format only - allow linking even if tags don't exist in current clan
     // (they might be former members or from other clans)
@@ -179,7 +182,7 @@ export async function POST(request: NextRequest) {
             player_name: tag2Name,
             warning_note: `[Propagated from ${tag1}] ${warnings1.warning_note}`,
             is_active: true,
-            created_by: createdBy || 'System',
+            created_by: createdBy,
           });
         
         console.log(`[Alias Link] Propagated warning from ${tag1} to ${tag2}`);
@@ -205,7 +208,7 @@ export async function POST(request: NextRequest) {
             player_name: tag1Name,
             warning_note: `[Propagated from ${tag2}] ${warnings2.warning_note}`,
             is_active: true,
-            created_by: createdBy || 'System',
+            created_by: createdBy,
           });
         
         console.log(`[Alias Link] Propagated warning from ${tag2} to ${tag1}`);

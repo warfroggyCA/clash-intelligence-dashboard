@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireLeadership, getCurrentUserIdentifier } from '@/lib/api/role-check';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { createApiContext } from '@/lib/api-context';
@@ -133,8 +134,10 @@ export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
   
   try {
+    requireLeadership(request);
+    
     const body = await request.json();
-    const { clanTag, playerTag, playerName, actionType, actionData, createdBy } = body;
+    const { clanTag, playerTag, playerName, actionType, actionData } = body;
     const normalizedClanTag = clanTag ? normalizeTag(clanTag) ?? clanTag : clanTag;
     const normalizedPlayerTag = normalizeTag(playerTag ?? '') ?? playerTag;
     const clanTagForWrite = normalizedClanTag ?? clanTag;
@@ -144,11 +147,14 @@ export async function POST(request: NextRequest) {
       return json({ success: false, error: 'clanTag, playerTag, and actionType are required' }, { status: 400 });
     }
     
+    // Automatically get the current user's identifier
+    const createdBy = await getCurrentUserIdentifier(request, clanTagForWrite);
+    
     const supabase = getSupabaseAdminClient();
     let data: any;
     
     if (actionType === 'tenure') {
-      const { action, reason, grantedBy, tenureDays, asOf } = actionData ?? {};
+      const { action, reason, tenureDays, asOf } = actionData ?? {};
       if (action && !['granted', 'revoked'].includes(action)) {
         return json({ success: false, error: 'Invalid tenure action' }, { status: 400 });
       }
@@ -192,6 +198,7 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // Use createdBy for both grantedBy and createdBy (automatically set from logged-in user)
       const result = await applyTenureAction({
         clanTag: normalizedClanTag ?? clanTag,
         playerTag: normalizedPlayerTag ?? playerTag,
@@ -200,8 +207,8 @@ export async function POST(request: NextRequest) {
         asOf: asOfIso,
         reason: reason ?? null,
         action: resolvedAction,
-        grantedBy: grantedBy ?? null,
-        createdBy: createdBy ?? grantedBy ?? null,
+        grantedBy: createdBy,
+        createdBy: createdBy,
       });
 
       data = {
@@ -231,6 +238,7 @@ export async function POST(request: NextRequest) {
         }
       }
       
+      // Use createdBy for both recorded_by and created_by (automatically set from logged-in user)
       const { data: result, error } = await supabase
         .from('player_departure_actions')
         .insert({
@@ -239,7 +247,7 @@ export async function POST(request: NextRequest) {
           player_name: finalPlayerName,
           reason,
           departure_type: departureType,
-          recorded_by: actionData.recordedBy,
+          recorded_by: createdBy,
           created_by: createdBy
         })
         .select()
@@ -266,12 +274,17 @@ export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
   
   try {
+    requireLeadership(request);
+    
     const body = await request.json();
-    const { id, actionType, archivedBy } = body;
+    const { id, actionType, clanTag } = body;
     
     if (!id || !actionType) {
       return json({ success: false, error: 'id and actionType are required' }, { status: 400 });
     }
+    
+    // Automatically get the current user's identifier
+    const archivedBy = await getCurrentUserIdentifier(request, clanTag);
     
     const supabase = getSupabaseAdminClient();
     let data: any;
@@ -281,7 +294,7 @@ export async function DELETE(request: NextRequest) {
         .from('player_tenure_actions')
         .update({
           archived_at: new Date().toISOString(),
-          archived_by: archivedBy || 'System'
+          archived_by: archivedBy
         })
         .eq('id', id)
         .select()
@@ -298,7 +311,7 @@ export async function DELETE(request: NextRequest) {
         .from('player_departure_actions')
         .update({
           archived_at: new Date().toISOString(),
-          archived_by: archivedBy || 'System'
+          archived_by: archivedBy
         })
         .eq('id', id)
         .select()

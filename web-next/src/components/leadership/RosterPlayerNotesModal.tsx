@@ -37,7 +37,6 @@ export function RosterPlayerNotesModal({ playerTag, playerName, clanTag, onClose
   const [error, setError] = useState<string | null>(null);
   const [notes, setNotes] = useState<PlayerNoteRecord[]>([]);
   const [noteText, setNoteText] = useState('');
-  const [createdBy, setCreatedBy] = useState('');
   const [customFields, setCustomFields] = useState<DraftField[]>([]);
 
   const normalizedClanTag = useMemo(() => normalizeTag(clanTag) ?? clanTag, [clanTag]);
@@ -108,7 +107,7 @@ export function RosterPlayerNotesModal({ playerTag, playerName, clanTag, onClose
             }
             return acc;
           }, {}),
-          createdBy: createdBy.trim() || null,
+          // createdBy is now automatically set by the API
         }),
       });
 
@@ -136,7 +135,8 @@ export function RosterPlayerNotesModal({ playerTag, playerName, clanTag, onClose
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id,
-          archivedBy: createdBy.trim() || 'System',
+          clanTag: normalizedClanTag,
+          // archivedBy is now automatically set by the API
         }),
       });
       if (!response.ok) {
@@ -181,18 +181,6 @@ export function RosterPlayerNotesModal({ playerTag, playerName, clanTag, onClose
                 rows={4}
                 className="mt-1 w-full rounded-md border border-slate-700/70 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-blue-500/60 focus:outline-none focus:ring-1 focus:ring-blue-500/40"
               />
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="block text-sm font-medium text-slate-200">Attributed To</label>
-                <Input
-                  value={createdBy}
-                  onChange={(e) => setCreatedBy(e.target.value)}
-                  placeholder="Your name or initials"
-                  className="mt-1 border-slate-700/70 bg-slate-900/80 text-slate-100"
-                />
-              </div>
             </div>
 
             <div>

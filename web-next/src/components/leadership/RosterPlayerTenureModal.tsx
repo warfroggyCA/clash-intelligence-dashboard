@@ -33,7 +33,6 @@ export function RosterPlayerTenureModal({
 }: RosterPlayerTenureModalProps) {
   const [action, setAction] = useState<'granted' | 'revoked'>(defaultAction);
   const [reason, setReason] = useState('');
-  const [grantedBy, setGrantedBy] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const updateRosterMemberTenure = useDashboardStore((state) => state.updateRosterMemberTenure);
@@ -69,10 +68,6 @@ export function RosterPlayerTenureModal({
   }, [currentTenure]);
 
   const handleSubmit = async () => {
-    if (!grantedBy.trim()) {
-      setError('Please add your name so other leaders know who recorded this change.');
-      return;
-    }
     const trimmedDays = tenureInput.trim();
     const match = trimmedDays.match(/\d+/);
     if (!match) {
@@ -92,11 +87,10 @@ export function RosterPlayerTenureModal({
           playerTag: normalizedPlayerTag,
           playerName,
           actionType: 'tenure',
-          createdBy: grantedBy.trim(),
+          // createdBy and grantedBy are now automatically set by the API
           actionData: {
             action,
             reason: reason.trim() || null,
-            grantedBy: grantedBy.trim(),
             tenureDays: baseDays,
             asOf: asOfIso,
           },
@@ -203,16 +197,6 @@ export function RosterPlayerTenureModal({
               rows={3}
               placeholder="Context for leadership (optional)"
               className="w-full rounded-md border border-slate-700/70 bg-slate-900/80 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-blue-500/60 focus:outline-none focus:ring-1 focus:ring-blue-500/40"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-200">Recorded By *</label>
-            <Input
-              value={grantedBy}
-              onChange={(e) => setGrantedBy(e.target.value)}
-              placeholder="Your name or initials"
-              className="mt-1 border-slate-700/70 bg-slate-900/80 text-slate-100"
             />
           </div>
 

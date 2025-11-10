@@ -61,8 +61,9 @@ async function triggerNewJob() {
   return payload.data.jobId as string;
 }
 
-async function triggerDirectIngestion() {
-  const res = await fetch('/api/health?cron=true', {
+async function triggerDirectIngestion(forceInsights = false) {
+  const url = forceInsights ? '/api/health?cron=true&forceInsights=true' : '/api/health?cron=true';
+  const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -83,6 +84,7 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
   const [error, setError] = useState<string | null>(null);
   const [triggering, setTriggering] = useState(false);
   const [directTriggering, setDirectTriggering] = useState(false);
+  const [forceInsightsTriggering, setForceInsightsTriggering] = useState(false);
   const [directResult, setDirectResult] = useState<any>(null);
 
   useEffect(() => {
@@ -150,12 +152,25 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
     try {
       setDirectTriggering(true);
       setError(null);
-      const result = await triggerDirectIngestion();
+      const result = await triggerDirectIngestion(false);
       setDirectResult(result);
     } catch (err: any) {
       setError(err.message || 'Failed to trigger direct ingestion');
     } finally {
       setDirectTriggering(false);
+    }
+  };
+
+  const handleForceInsights = async () => {
+    try {
+      setForceInsightsTriggering(true);
+      setError(null);
+      const result = await triggerDirectIngestion(true);
+      setDirectResult(result);
+    } catch (err: any) {
+      setError(err.message || 'Failed to force insights generation');
+    } finally {
+      setForceInsightsTriggering(false);
     }
   };
 
@@ -242,10 +257,18 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
         </button>
         <button
           onClick={handleDirectIngestion}
-          disabled={directTriggering}
+          disabled={directTriggering || forceInsightsTriggering}
           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {directTriggering ? 'Running…' : 'Direct Ingestion' }
+          {directTriggering ? 'Running…' : 'Direct Ingestion'}
+        </button>
+        <button
+          onClick={handleForceInsights}
+          disabled={directTriggering || forceInsightsTriggering}
+          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Generate insights even if data is current (skips data fetch)"
+        >
+          {forceInsightsTriggering ? 'Generating…' : 'Force Insights'}
         </button>
         {jobId && (
           <span className="text-sm font-mono text-slate-500">Job ID: {jobId}</span>
@@ -259,19 +282,79 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
       )}
 
       {directResult && (
-        <div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
-          <h3 className="text-sm font-semibold text-green-800 mb-2">✅ Direct Ingestion Successful!</h3>
-          <div className="text-xs text-green-700 space-y-1">
+        <div className={`mb-4 rounded-lg border p-3 ${
+          directResult.some((r: any) => r.skipped) 
+            ? 'border-amber-200 bg-amber-50' 
+            : directResult.some((r: any) => r.error)
+            ? 'border-red-200 bg-red-50'
+            : 'border-green-200 bg-green-50'
+        }`}>
+          <h3 className={`text-sm font-semibold mb-2 ${
+            directResult.some((r: any) => r.skipped)
+              ? 'text-amber-800'
+              : directResult.some((r: any) => r.error)
+              ? 'text-red-800'
+              : 'text-green-800'
+          }`}>
+            {directResult.some((r: any) => r.skipped) 
+              ? '⏭️ Ingestion Skipped' 
+              : directResult.some((r: any) => r.error)
+              ? '❌ Direct Ingestion Failed'
+              : '✅ Direct Ingestion Successful!'}
+          </h3>
+          <div className={`text-xs space-y-1 ${
+            directResult.some((r: any) => r.skipped)
+              ? 'text-amber-700'
+              : directResult.some((r: any) => r.error)
+              ? 'text-red-700'
+              : 'text-green-700'
+          }`}>
             {directResult.map((result: any, index: number) => (
-              <div key={index} className="border-b border-green-200 pb-2 last:border-b-0">
+              <div key={index} className="border-b border-current/20 pb-2 last:border-b-0">
                 <div><strong>Clan:</strong> {result.clanTag}</div>
-                <div><strong>Members:</strong> {result.memberCount}</div>
-                <div><strong>Changes:</strong> {result.changesDetected}</div>
-                <div><strong>Players Resolved:</strong> {result.playersResolved}</div>
-                {result.summary && (
-                  <div className="mt-2 p-2 bg-green-100 rounded text-xs">
-                    <strong>Summary:</strong> {result.summary}
-                  </div>
+                {result.skipped ? (
+                  <>
+                    <div><strong>Status:</strong> Skipped</div>
+                    <div><strong>Reason:</strong> {result.reason || 'Unknown'}</div>
+                    {result.reason === 'up_to_date' && (
+                      <div className="mt-1 text-xs italic">Data already exists for today. Ingestion skipped to avoid duplicates.</div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <div><strong>Members:</strong> {result.memberCount}</div>
+                    {result.memberCount === 0 && result.success && (
+                      <div className="mt-1 text-xs italic text-amber-600">
+                        ⚠️ No members processed. This may indicate:
+                        <ul className="list-disc list-inside mt-1 ml-2">
+                          <li>Clan API returned empty data</li>
+                          <li>All phases were skipped</li>
+                          <li>Check server logs for details</li>
+                        </ul>
+                      </div>
+                    )}
+                    <div><strong>Changes:</strong> {result.changesDetected}</div>
+                    <div><strong>Players Resolved:</strong> {result.playersResolved}</div>
+                    {result.phases && (
+                      <div className="mt-1 text-xs">
+                        <strong>Phases:</strong> Fetch: {result.phases.fetch ? '✓' : '✗'}, 
+                        Transform: {result.phases.transform ? '✓' : '✗'}, 
+                        Upsert: {result.phases.upsertMembers ? '✓' : '✗'}, 
+                        Snapshot: {result.phases.writeSnapshot ? '✓' : '✗'}, 
+                        Stats: {result.phases.writeStats ? '✓' : '✗'}
+                      </div>
+                    )}
+                    {result.error && (
+                      <div className="mt-2 p-2 bg-red-100 rounded text-xs text-red-800">
+                        <strong>Error:</strong> {result.error}
+                      </div>
+                    )}
+                    {result.summary && (
+                      <div className="mt-2 p-2 bg-green-100 rounded text-xs">
+                        <strong>Summary:</strong> {result.summary}
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             ))}

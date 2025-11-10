@@ -42,6 +42,7 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageAccess: false,
     canViewSensitiveData: false,
     canViewLeadershipFeatures: false,
+    canViewAuditLog: false,
   },
   member: {
     canViewRoster: true,
@@ -53,6 +54,7 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageAccess: false,
     canViewSensitiveData: false,
     canViewLeadershipFeatures: false,
+    canViewAuditLog: false,
   },
   elder: {
     canViewRoster: true,
@@ -64,6 +66,7 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageAccess: false,
     canViewSensitiveData: true,
     canViewLeadershipFeatures: true,
+    canViewAuditLog: false,
   },
   coleader: {
     canViewRoster: true,
@@ -75,6 +78,7 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageAccess: false,
     canViewSensitiveData: true,
     canViewLeadershipFeatures: true,
+    canViewAuditLog: false,
   },
   leader: {
     canViewRoster: true,
@@ -86,6 +90,7 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canManageAccess: true,
     canViewSensitiveData: true,
     canViewLeadershipFeatures: true,
+    canViewAuditLog: true,
   },
 };
 
