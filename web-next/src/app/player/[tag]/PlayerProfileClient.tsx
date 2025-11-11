@@ -31,6 +31,7 @@ import {
   ChevronDown,
   ChevronUp,
   MoreVertical,
+  Users,
 } from "lucide-react";
 import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { normalizeTag } from "@/lib/tags";
@@ -52,6 +53,7 @@ import DonationChart from "@/components/player/DonationChart";
 import PlayerActivityAnalytics from "@/components/player/PlayerActivityAnalytics";
 import PlayerDNARadar from "@/components/PlayerDNARadar";
 import StatsRadarChart from "@/components/player/StatsRadarChart";
+import PlayerComparisonView from "@/components/player/PlayerComparisonView";
 import { calculatePlayerDNA, classifyPlayerArchetype, calculateClanDNA } from "@/lib/player-dna";
 import { generateDNABreakdown } from "@/lib/player-dna-breakdown";
 import { HERO_MAX_LEVELS, EQUIPMENT_MAX_LEVELS, EQUIPMENT_NAME_ALIASES, type Member } from "@/types";
@@ -67,7 +69,7 @@ const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayou
   ssr: false,
 });
 
-type TabKey = "overview" | "history" | "evaluations" | "metrics" | "analysis";
+type TabKey = "overview" | "history" | "evaluations" | "metrics" | "analysis" | "comparison";
 
 type TimelineTone = "default" | "positive" | "warning";
 
@@ -1210,7 +1212,11 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   }, [actionsMenuOpen]);
 
   // Use SWR for player profile fetching with caching
-  const profileKey = normalizedTag ? `/api/player/${encodeURIComponent(normalizedTag)}/profile` : null;
+  // Include clanTag in the key so it refetches when clan changes
+  const normalizedClanTag = normalizeTag(clanTag);
+  const profileKey = normalizedTag 
+    ? `/api/player/${encodeURIComponent(normalizedTag)}/profile${normalizedClanTag ? `?clanTag=${encodeURIComponent(normalizedClanTag)}` : ''}`
+    : null;
   const { data: profile, error: swrError, isLoading, mutate: mutateProfile } = useSWR<SupabasePlayerProfilePayload>(
     profileKey,
     playerProfileFetcher,
@@ -1837,9 +1843,38 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     return HERO_MAX_LEVELS[summary.townHallLevel] ?? null;
   }, [summary?.townHallLevel]);
 
-  const heroLevels = summary?.heroLevels && typeof summary.heroLevels === "object"
-    ? summary.heroLevels
-    : {};
+  // Normalize hero level keys from API format (barbarianking, archerqueen) to short keys (bk, aq)
+  const heroLevels = useMemo(() => {
+    if (!summary?.heroLevels || typeof summary.heroLevels !== "object") return {};
+    
+    const raw = summary.heroLevels as Record<string, unknown>;
+    const normalized: Record<string, number> = {};
+    
+    // Map full hero names to short keys
+    const heroKeyMap: Record<string, string> = {
+      'barbarianking': 'bk',
+      'archerqueen': 'aq',
+      'grandwarden': 'gw',
+      'royalchampion': 'rc',
+      'minionprince': 'mp',
+      'battlemachine': 'mp', // Battle Machine is also MP
+      'battlecopter': 'mp', // Battle Copter is also MP
+    };
+    
+    // Try both full names and short keys
+    Object.entries(raw).forEach(([key, value]) => {
+      const lowerKey = key.toLowerCase();
+      const shortKey = heroKeyMap[lowerKey] || lowerKey;
+      if (['bk', 'aq', 'gw', 'rc', 'mp'].includes(shortKey)) {
+        const numValue = typeof value === 'number' ? value : (typeof value === 'string' ? Number(value) : 0);
+        if (Number.isFinite(numValue) && numValue > 0) {
+          normalized[shortKey] = numValue;
+        }
+      }
+    });
+    
+    return normalized;
+  }, [summary?.heroLevels]);
 
   // Get clan hero averages from the API response
   const clanHeroAverages = profile?.clanHeroAverages || {};
@@ -2400,7 +2435,7 @@ const HERO_LABELS: Record<string, string> = {
 
           {/* Compact Tab Navigation with Actions */}
           <div className="mb-4 sm:mb-6 flex flex-wrap items-center gap-1 sm:gap-2">
-            {(["overview", "history", "evaluations", "metrics", "analysis"] as TabKey[]).map((tab) => (
+            {(["overview", "history", "evaluations", "metrics", "analysis", "comparison"] as TabKey[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
@@ -2418,6 +2453,7 @@ const HERO_LABELS: Record<string, string> = {
                 {tab === "evaluations" && <SquarePen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                 {tab === "metrics" && <Activity className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                 {tab === "analysis" && <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
+                {tab === "comparison" && <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />}
                 <span className="hidden sm:inline">{tab === "analysis" ? "Player Analysis" : tab}</span>
               </button>
             ))}
@@ -4104,6 +4140,17 @@ const HERO_LABELS: Record<string, string> = {
                     <p className="text-sm text-slate-200">{kudosSuggestion}</p>
                   </GlassCard>
                 </div>
+              )}
+
+              {activeTab === "comparison" && (
+                <PlayerComparisonView
+                  playerTag={normalizedTag}
+                  playerName={summary?.name}
+                  playerTrophies={summary?.seasonTotalTrophies ?? summary?.bestTrophies ?? summary?.trophies ?? summary?.rankedTrophies ?? undefined}
+                  playerTownHall={summary?.townHallLevel ?? undefined}
+                  playerLeagueName={summary?.rankedLeague.name ?? summary?.league.name ?? undefined}
+                  clanTag={clanTag}
+                />
               )}
             </div>
           )}

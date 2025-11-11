@@ -80,7 +80,7 @@ export async function rosterFetcher(url: string) {
  * Uses the existing fetchPlayerProfileSupabase function
  */
 export async function playerProfileFetcher(url: string) {
-  // Extract tag from URL like '/api/player/#ABC123/profile'
+  // Extract tag from URL like '/api/player/#ABC123/profile' or '/api/player/#ABC123/profile?clanTag=...'
   const match = url.match(/\/api\/player\/([^/]+)\/profile/);
   if (!match) {
     throw new Error('Invalid player profile URL');
@@ -88,10 +88,14 @@ export async function playerProfileFetcher(url: string) {
 
   const tag = decodeURIComponent(match[1]);
   
+  // Extract clanTag from URL query params if present
+  const urlObj = new URL(url, window.location.origin);
+  const clanTag = urlObj.searchParams.get('clanTag');
+  
   // Use existing fetch function (it already has retry logic)
   const { fetchPlayerProfileSupabase } = await import('@/lib/player-profile-supabase');
   
-  return fetchPlayerProfileSupabase(tag);
+  return fetchPlayerProfileSupabase(tag, clanTag);
 }
 
 /**

@@ -104,9 +104,10 @@ export default function PlayerDatabasePage() {
 
   const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
 
-  // Get cache key based on showArchived flag
-  const getCacheKey = useCallback((archived: boolean) => {
-    return `playerDatabase:cache:v1:${archived ? 'archived' : 'active'}`;
+  // Get cache key based on clanTag and showArchived flag
+  const getCacheKey = useCallback((archived: boolean, currentClanTag: string) => {
+    const normalizedClanTag = normalizeTag(currentClanTag) || 'default';
+    return `playerDatabase:cache:v1:${normalizedClanTag}:${archived ? 'archived' : 'active'}`;
   }, []);
 
   // Load cached data from localStorage
@@ -114,7 +115,7 @@ export default function PlayerDatabasePage() {
     if (typeof window === 'undefined') return null;
     
     try {
-      const cacheKey = getCacheKey(showArchived);
+      const cacheKey = getCacheKey(showArchived, clanTag);
       const cached = localStorage.getItem(cacheKey);
       if (!cached) return null;
       
@@ -134,14 +135,14 @@ export default function PlayerDatabasePage() {
       console.error('Failed to load cached player database:', error);
       return null;
     }
-  }, [showArchived, getCacheKey]);
+  }, [showArchived, getCacheKey, clanTag]);
 
   // Save data to cache
   const saveToCache = useCallback((data: PlayerRecord[]) => {
     if (typeof window === 'undefined') return;
     
     try {
-      const cacheKey = getCacheKey(showArchived);
+      const cacheKey = getCacheKey(showArchived, clanTag);
       const cacheData = {
         data,
         timestamp: Date.now(),
@@ -151,7 +152,7 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Failed to save player database cache:', error);
     }
-  }, [showArchived, getCacheKey]);
+  }, [showArchived, getCacheKey, clanTag]);
 
   // Handle column sorting
   const handleSort = (field: 'name' | 'lastUpdated' | 'noteCount' | 'status') => {
@@ -212,10 +213,14 @@ export default function PlayerDatabasePage() {
     }
 
     try {
-      const clanTag = '#2PR8R8V8P'; // Your clan tag
+      // Use clanTag from store (already normalized)
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        throw new Error('No clan tag available');
+      }
       // Add cache-busting parameter when forcing refresh
       const cacheBuster = forceRefresh ? `&_t=${Date.now()}` : '';
-      const url = `/api/player-database?clanTag=${encodeURIComponent(clanTag)}&includeArchived=${showArchived}${cacheBuster}`;
+      const url = `/api/player-database?clanTag=${encodeURIComponent(normalizedClanTag)}&includeArchived=${showArchived}${cacheBuster}`;
       
       console.log('[PlayerDatabase] Fetching from optimized endpoint', forceRefresh ? '(force refresh)' : '');
       const startTime = Date.now();
@@ -256,7 +261,7 @@ export default function PlayerDatabasePage() {
       setErrorMessage('Failed to load player database. Please try again.');
       setLoading(false);
     }
-  }, [loadCachedData, saveToCache, showArchived]);
+  }, [loadCachedData, saveToCache, showArchived, clanTag]); // Reload when clan changes
 
   // Load roster if not already loaded (for clan name in header)
   useEffect(() => {
@@ -372,7 +377,10 @@ export default function PlayerDatabasePage() {
     console.log('Updating timeline event:', { editingEvent, editEventData });
 
     try {
-      const clanTag = '#2PR8R8V8P';
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        throw new Error('No clan tag available');
+      }
       
       // For now, let's just update the local data since the API might not support PUT
       // This is a temporary solution until we can implement proper API updates
@@ -522,15 +530,17 @@ export default function PlayerDatabasePage() {
   // Invalidate cache helper
   const invalidateCache = useCallback(() => {
     if (typeof window === 'undefined') return;
+    // Invalidate cache for current clan (both archived and active)
     try {
-      // Invalidate both archived and active caches
-      localStorage.removeItem('playerDatabase:cache:v1:archived');
-      localStorage.removeItem('playerDatabase:cache:v1:active');
+      const activeKey = getCacheKey(false, clanTag);
+      const archivedKey = getCacheKey(true, clanTag);
+      localStorage.removeItem(activeKey);
+      localStorage.removeItem(archivedKey);
       setCacheTimestamp(null);
     } catch (error) {
       console.error('Failed to invalidate cache:', error);
     }
-  }, []);
+  }, [getCacheKey, clanTag]);
 
   const handleRefresh = () => {
     invalidateCache();
@@ -547,7 +557,11 @@ export default function PlayerDatabasePage() {
         setErrorMessage('Player tag is invalid. Please include a # and only use valid characters.');
         return;
       }
-      const clanTag = '#2PR8R8V8P';
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        setErrorMessage('No clan tag available');
+        return;
+      }
       const playerName = selectedPlayer?.name || 'Unknown Player';
       
       const response = await fetch('/api/player-notes', {
@@ -556,7 +570,7 @@ export default function PlayerDatabasePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clanTag,
+          clanTag: normalizedClanTag,
           playerTag: normalizedTag,
           playerName,
           note: noteText.trim(),
@@ -580,7 +594,7 @@ export default function PlayerDatabasePage() {
       console.error('Error adding note:', error);
       setErrorMessage(`Error adding note: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [selectedPlayer, loadPlayerDatabase]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
 
   const editNote = useCallback(async (playerTag: string, noteIndex: number, newText: string) => {
     if (!newText.trim()) return;
@@ -672,7 +686,7 @@ export default function PlayerDatabasePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clanTag: '#2PR8R8V8P',
+          clanTag: normalizeTag(clanTag) || clanTag,
           playerTag: normalizedTag,
           playerName: playerName.trim(),
           note: noteText.trim(),
@@ -716,7 +730,10 @@ export default function PlayerDatabasePage() {
     if (!warningNote.trim()) return;
 
     try {
-      const clanTag = '#2PR8R8V8P';
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        throw new Error('No clan tag available');
+      }
       const playerName = selectedPlayer?.name || 'Unknown Player';
       
       const response = await fetch('/api/player-warnings', {
@@ -725,7 +742,7 @@ export default function PlayerDatabasePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clanTag,
+          clanTag: normalizedClanTag,
           playerTag,
           playerName,
           warningNote: warningNote.trim(),
@@ -748,13 +765,16 @@ export default function PlayerDatabasePage() {
       console.error('Error setting warning:', error);
       setErrorMessage(`Error setting warning: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [selectedPlayer, loadPlayerDatabase]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
 
   const removePlayerWarning = useCallback(async (playerTag: string) => {
     try {
-      const clanTag = '#2PR8R8V8P';
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        throw new Error('No clan tag available');
+      }
       
-      const response = await fetch(`/api/player-warnings?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(playerTag)}`, {
+      const response = await fetch(`/api/player-warnings?clanTag=${encodeURIComponent(normalizedClanTag)}&playerTag=${encodeURIComponent(playerTag)}`, {
         method: 'DELETE',
       });
 
@@ -782,7 +802,10 @@ export default function PlayerDatabasePage() {
   // Tenure management functions
   const addTenureAction = useCallback(async (playerTag: string, action: 'granted' | 'revoked', reason?: string, grantedBy?: string) => {
     try {
-      const clanTag = '#2PR8R8V8P';
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        throw new Error('No clan tag available');
+      }
       const playerName = selectedPlayer?.name || 'Unknown Player';
       
       const response = await fetch('/api/player-actions', {
@@ -791,7 +814,7 @@ export default function PlayerDatabasePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clanTag,
+          clanTag: normalizedClanTag,
           playerTag,
           playerName,
           actionType: 'tenure',
@@ -813,12 +836,15 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Error adding tenure action:', error);
     }
-  }, [selectedPlayer, loadPlayerDatabase]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
 
   // Departure management functions
   const addDepartureAction = useCallback(async (playerTag: string, reason: string, type: 'voluntary' | 'kicked: inactive' | 'kicked: other', recordedBy?: string) => {
     try {
-      const clanTag = '#2PR8R8V8P';
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        throw new Error('No clan tag available');
+      }
       const playerName = selectedPlayer?.name || 'Unknown Player';
       
       const response = await fetch('/api/player-actions', {
@@ -827,7 +853,7 @@ export default function PlayerDatabasePage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clanTag,
+          clanTag: normalizedClanTag,
           playerTag,
           playerName,
           actionType: 'departure',
@@ -849,7 +875,7 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Error adding departure action:', error);
     }
-  }, [selectedPlayer, loadPlayerDatabase]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
 
 
   // Generate timeline from player data

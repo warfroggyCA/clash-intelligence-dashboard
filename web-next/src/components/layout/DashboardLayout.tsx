@@ -13,6 +13,7 @@ import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
 import NewSnapshotIndicator from './NewSnapshotIndicator';
+import { ClanSwitcher } from './ClanSwitcher';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
@@ -310,6 +311,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                 )}
               </div>
             )}
+
+            {/* Clan Switcher */}
+            <ClanSwitcher />
 
             {/* New snapshot indicator (manual refresh) */}
             <NewSnapshotIndicator />

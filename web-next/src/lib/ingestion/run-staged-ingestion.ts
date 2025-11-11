@@ -8,7 +8,7 @@ import { insightsEngine } from '@/lib/smart-insights';
 import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from '@/lib/insights-storage';
 import { saveAISummary } from '@/lib/supabase';
 import { sendIngestionFailure, sendIngestionWarning } from './alerting';
-import { detectChanges, saveChangeSummary, getSnapshotBeforeDate, type MemberChange } from '@/lib/snapshots';
+import { detectChanges, saveChangeSummary, getSnapshotBeforeDate, getLatestSnapshot, type MemberChange } from '@/lib/snapshots';
 
 export interface StagedIngestionJobResult {
   clanTag: string;
@@ -245,20 +245,25 @@ async function runPostProcessingSteps(clanTag: string, jobId?: string): Promise<
     console.log(`[PostProcessing] Generating insights for ${clanTag}`);
     try {
         // Get clan data for insights generation
-        const clanData = await getSnapshotBeforeDate(clanTag, new Date().toISOString().split('T')[0]);
+        // Prefer currentSnapshot (from today's ingestion), otherwise get the absolute latest snapshot (including today)
+        // This ensures we use the most recent data available, not just data from before today
+        const clanData = currentSnapshot || await getLatestSnapshot(clanTag);
         if (!clanData) {
           throw new Error('No clan data available for insights generation');
         }
+        
+        // Use the snapshot date from the data we're using, not today's date
+        const snapshotDateForInsights = clanData.date || currentSnapshot?.date || new Date().toISOString().split('T')[0];
         
         const insightsBundle = await insightsEngine.processBundle(
           clanData,
           changes,
           clanTag,
-          currentSnapshot?.date || new Date().toISOString().split('T')[0]
+          snapshotDateForInsights
         );
         
         await saveInsightsBundle(insightsBundle);
-        await cachePlayerDNAForClan(clanData, clanTag, currentSnapshot?.date || new Date().toISOString().split('T')[0]);
+        await cachePlayerDNAForClan(clanData, clanTag, snapshotDateForInsights);
         result.insightsGenerated = true;
     } catch (insightsError: any) {
       console.warn(`[PostProcessing] Insights generation failed: ${insightsError.message}`);

@@ -388,7 +388,7 @@ export class InsightsEngine {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that summarizes Clash of Clans clan activity in a concise, engaging way. Focus on the most important changes and present them in a friendly, clan-leader tone."
+          content: "You are a helpful assistant that summarizes Clash of Clans clan activity in a concise, engaging way. Focus on the most important changes and present them in a friendly, clan-leader tone. NEVER include 'undefined', 'NaN', or placeholder values in your response. Only mention players and values that are explicitly provided in the data."
         },
         {
           role: "user",
@@ -399,7 +399,10 @@ export class InsightsEngine {
       temperature: 0.7,
     });
 
-    const content = response.choices[0]?.message?.content || "No changes to report.";
+    let content = response.choices[0]?.message?.content || "No changes to report.";
+    
+    // Sanitize AI output to remove any undefined/NaN values that might have slipped through
+    content = this.sanitizeAIContent(content);
 
     return {
       type: 'change_summary',
@@ -773,24 +776,36 @@ Format as JSON:
   }
 
   private async generatePerformanceAnalysis(clanData: any): Promise<SnapshotSummaryAnalysis> {
+    // Filter out invalid members (missing names, invalid data)
+    const validMembers = (clanData.members || []).filter((member: any) => {
+      return member?.name && typeof member.name === 'string' && member.name.trim().length > 0;
+    });
+
+    // Helper to safely format values
+    const safeValue = (value: any, fallback: string = 'N/A'): string => {
+      if (value === null || value === undefined) return fallback;
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return fallback;
+      return String(value);
+    };
+
     const prompt = `Analyze this Clash of Clans clan data and provide a comprehensive performance summary:
 
 CLAN OVERVIEW:
-- Name: ${clanData.clanName} (${clanData.clanTag})
-- Total Members: ${clanData.memberCount}
-- Average Town Hall Level: ${clanData.averageTownHall}
-- Average Trophies: ${clanData.averageTrophies}
-- Total Donations: ${clanData.totalDonations}
+- Name: ${safeValue(clanData.clanName, 'Unknown Clan')} (${safeValue(clanData.clanTag, 'Unknown')})
+- Total Members: ${validMembers.length}
+- Average Town Hall Level: ${safeValue(clanData.averageTownHall, 'N/A')}
+- Average Trophies: ${safeValue(clanData.averageTrophies, 'N/A')}
+- Total Donations: ${safeValue(clanData.totalDonations, '0')}
 
 MEMBER ANALYSIS:
-${clanData.members.map((member: any) => `
-${member.name} (${member.tag})
-- Role: ${member.role}
-- Town Hall: ${member.townHallLevel}
-- Trophies: ${member.trophies}
-- Donations: ${member.donations} given, ${member.donationsReceived} received
-- Tenure: ${member.tenure || 0} days
-- Last Seen: ${member.lastSeen || 0} days ago
+${validMembers.map((member: any) => `
+${safeValue(member.name, 'Unknown Member')} (${safeValue(member.tag, 'Unknown')})
+- Role: ${safeValue(member.role, 'member')}
+- Town Hall: ${safeValue(member.townHallLevel || member.townHall || member.th, 'N/A')}
+- Trophies: ${safeValue(member.trophies, '0')}
+- Donations: ${safeValue(member.donations, '0')} given, ${safeValue(member.donationsReceived, '0')} received
+- Tenure: ${safeValue(member.tenure || member.tenure_days, '0')} days
+- Last Seen: ${safeValue(member.lastSeen, '0')} days ago
 `).join('')}
 
 Please provide a comprehensive analysis covering:
@@ -802,7 +817,8 @@ Please provide a comprehensive analysis covering:
 6. Notable achievements or concerns
 7. Recommendations for clan management
 
-Format your response as a clear, actionable summary that would be useful for clan leadership.`;
+Format your response as a clear, actionable summary that would be useful for clan leadership.
+IMPORTANT: Only mention players and values that are explicitly listed above. Do not include "undefined", "NaN", or any placeholder values.`;
 
     if (!this.openai) {
       throw new Error('OpenAI client not initialized');
@@ -813,7 +829,7 @@ Format your response as a clear, actionable summary that would be useful for cla
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that provides comprehensive analysis of Clash of Clans clan data. Provide detailed, actionable insights for clan leadership."
+          content: "You are a helpful assistant that provides comprehensive analysis of Clash of Clans clan data. Provide detailed, actionable insights for clan leadership. NEVER include 'undefined', 'NaN', or placeholder values in your response."
         },
         {
           role: "user",
@@ -824,7 +840,10 @@ Format your response as a clear, actionable summary that would be useful for cla
       temperature: 0.7,
     });
 
-    const content = response.choices[0]?.message?.content || "Analysis pending.";
+    let content = response.choices[0]?.message?.content || "Analysis pending.";
+    
+    // Sanitize AI output
+    content = this.sanitizeAIContent(content);
 
     return {
       type: 'performance_review',
@@ -836,17 +855,121 @@ Format your response as a clear, actionable summary that would be useful for cla
   }
 
   private buildChangeSummaryPrompt(changes: MemberChange[], clanTag: string, date: string): string {
-    const changeTypes = changes.reduce((acc, change) => {
+    // Filter out invalid changes: missing names or invalid data
+    // NOTE: We include left_member changes as they are newsworthy
+    const validChanges = changes.filter(c => {
+      // Must have a valid member name
+      if (!c.member?.name || typeof c.member.name !== 'string' || c.member.name.trim().length === 0) return false;
+      return true;
+    });
+
+    if (validChanges.length === 0) {
+      return `Clan ${clanTag} activity summary for ${date}:
+
+No significant changes detected in the clan today.`;
+    }
+
+    const changeTypes = validChanges.reduce((acc, change) => {
       acc[change.type] = (acc[change.type] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
 
-    const significantChanges = changes.filter(c => 
-      c.type === 'town_hall_upgrade' || 
-      c.type === 'hero_upgrade' || 
-      c.type === 'trophy_change' ||
-      c.type === 'role_change'
-    );
+    // Helper to safely format values, filtering out undefined/null/NaN
+    const safeValue = (value: any, fallback: string = 'N/A'): string => {
+      if (value === null || value === undefined) return fallback;
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return fallback;
+      return String(value);
+    };
+
+    const significantChanges = validChanges
+      .filter(c => 
+        c.type === 'town_hall_upgrade' || 
+        c.type === 'hero_upgrade' || 
+        c.type === 'trophy_change' ||
+        c.type === 'role_change' ||
+        c.type === 'new_member' ||
+        c.type === 'left_member' ||
+        c.type === 'donation_change'
+      )
+      .map(change => {
+        const member = safeValue(change.member?.name, 'Unknown Member');
+        
+        switch (change.type) {
+          case 'town_hall_upgrade': {
+            const newLevel = safeValue((change as any).newLevel || change.newValue, null);
+            if (newLevel === 'N/A' || newLevel === null) return null;
+            return `- ${member} upgraded to Town Hall ${newLevel}`;
+          }
+          case 'hero_upgrade': {
+            const hero = safeValue((change as any).hero, null);
+            const newLevel = safeValue((change as any).newLevel || change.newValue, null);
+            if (hero === 'N/A' || hero === null || newLevel === 'N/A' || newLevel === null) return null;
+            return `- ${member} upgraded ${hero} to level ${newLevel}`;
+          }
+          case 'trophy_change': {
+            const prevTrophies = typeof change.previousValue === 'number' ? change.previousValue : null;
+            const newTrophies = typeof change.newValue === 'number' ? change.newValue : null;
+            if (prevTrophies === null || newTrophies === null || isNaN(prevTrophies) || isNaN(newTrophies)) {
+              // Try to extract from description
+              const match = change.description?.match(/(-?\d+)/);
+              if (match) {
+                const delta = parseInt(match[0], 10);
+                if (!isNaN(delta) && isFinite(delta)) {
+                  return `- ${member} ${delta > 0 ? 'gained' : 'lost'} ${Math.abs(delta)} trophies`;
+                }
+              }
+              return null;
+            }
+            const changeAmount = newTrophies - prevTrophies;
+            if (changeAmount === 0) return null;
+            return `- ${member} ${changeAmount > 0 ? 'gained' : 'lost'} ${Math.abs(changeAmount)} trophies (${prevTrophies} → ${newTrophies})`;
+          }
+          case 'role_change': {
+            const newRole = safeValue((change as any).newRole || change.newValue, null);
+            if (newRole === 'N/A' || newRole === null) return null;
+            return `- ${member} became ${newRole}`;
+          }
+          case 'new_member':
+            return `- ${member} joined the clan`;
+          case 'left_member': {
+            // Include departure news - format with available context if we have it
+            const role = safeValue(change.member?.role, null);
+            const townHall = safeValue(change.member?.townHallLevel || (change.member as any)?.townHall, null);
+            const contextParts: string[] = [];
+            if (role && role !== 'N/A' && role !== 'member') {
+              contextParts.push(`former ${role}`);
+            }
+            if (townHall && townHall !== 'N/A') {
+              contextParts.push(`TH${townHall}`);
+            }
+            const context = contextParts.length > 0 ? ` (${contextParts.join(', ')})` : '';
+            return `- ${member} left the clan${context}`;
+          }
+          case 'donation_change': {
+            const prevDonations = typeof change.previousValue === 'number' ? change.previousValue : null;
+            const newDonations = typeof change.newValue === 'number' ? change.newValue : null;
+            if (prevDonations === null || newDonations === null || isNaN(prevDonations) || isNaN(newDonations)) {
+              return null;
+            }
+            const delta = newDonations - prevDonations;
+            if (delta === 0) return null;
+            return `- ${member} ${delta > 0 ? 'donated' : 'received'} ${Math.abs(delta)} troops`;
+          }
+          default:
+            // Use description if available and valid
+            if (change.description && !change.description.includes('undefined') && !change.description.includes('NaN')) {
+              return `- ${member}: ${change.description}`;
+            }
+            return null;
+        }
+      })
+      .filter((line): line is string => line !== null && line.length > 0);
+
+    if (significantChanges.length === 0) {
+      return `Clan ${clanTag} activity summary for ${date}:
+
+Minor changes detected, but no significant updates to report.`;
+    }
 
     return `Clan ${clanTag} activity summary for ${date}:
 
@@ -854,41 +977,100 @@ CHANGE OVERVIEW:
 ${Object.entries(changeTypes).map(([type, count]) => `- ${type}: ${count}`).join('\n')}
 
 SIGNIFICANT CHANGES:
-${significantChanges.map(change => {
-      const member = change.member.name;
-      switch (change.type) {
-        case 'town_hall_upgrade':
-          return `- ${member} upgraded to Town Hall ${(change as any).newLevel}`;
-        case 'hero_upgrade':
-          return `- ${member} upgraded ${(change as any).hero} to level ${(change as any).newLevel}`;
-        case 'trophy_change':
-          const changeAmount = (change as any).changeAmount;
-          return `- ${member} ${changeAmount > 0 ? 'gained' : 'lost'} ${Math.abs(changeAmount)} trophies`;
-        case 'role_change':
-          return `- ${member} became ${(change as any).newRole}`;
-        default:
-          return `- ${member}: ${change.type}`;
-      }
-    }).join('\n')}
+${significantChanges.join('\n')}
 
-Provide an engaging, concise summary highlighting the most important changes and achievements.`;
+Provide an engaging, concise summary (2-3 sentences) highlighting the most important changes and achievements. 
+IMPORTANT: Only mention players and values that are explicitly listed above. Do not include "undefined", "NaN", or any placeholder values. 
+If a value is missing, simply omit that detail rather than including a placeholder.`;
+  }
+
+  /**
+   * Sanitize AI-generated content to remove undefined, NaN, and invalid placeholder values
+   */
+  private sanitizeAIContent(content: string): string {
+    if (!content || typeof content !== 'string') return content;
+    
+    let sanitized = content;
+    
+    // Remove sentences containing "undefined" or "NaN" (case-insensitive)
+    sanitized = sanitized
+      .split(/[.!?]+/)
+      .filter(sentence => {
+        const lower = sentence.toLowerCase();
+        return !lower.includes('undefined') && 
+               !lower.includes('nan') && 
+               !lower.match(/\bundefined\b/) &&
+               !lower.match(/\bnan\b/) &&
+               !lower.match(/leveled up an undefined/) &&
+               !lower.match(/upgraded an undefined/) &&
+               !lower.match(/to undefined/);
+      })
+      .join('. ')
+      .trim();
+    
+    // Remove any remaining "undefined" or "NaN" strings and fix common patterns
+    sanitized = sanitized
+      .replace(/\bundefined\b/gi, '')
+      .replace(/\bNaN\b/g, '')
+      .replace(/reaching undefined level/gi, 'leveled up')
+      .replace(/upgraded to undefined/gi, 'upgraded')
+      .replace(/upgraded an undefined to undefined/gi, 'upgraded')
+      .replace(/leveled up an undefined to undefined/gi, 'leveled up')
+      .replace(/an undefined to undefined/gi, '')
+      .replace(/undefined to undefined/gi, '')
+      .replace(/lost NaN trophies/gi, 'experienced trophy changes')
+      .replace(/gained NaN trophies/gi, 'experienced trophy changes')
+      .replace(/undefined level/gi, 'a new level')
+      .replace(/level undefined/gi, 'a new level')
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\s*,\s*,/g, ',') // Remove double commas
+      .replace(/\s*\.\s*\./g, '.') // Remove double periods
+      .trim();
+    
+    // Remove sentences that are too short, incomplete, or contain invalid patterns
+    sanitized = sanitized
+      .split(/[.!?]+/)
+      .filter(s => {
+        const trimmed = s.trim();
+        if (trimmed.length < 10) return false;
+        if (trimmed.match(/^(also|additionally|furthermore|moreover),?\s*$/i)) return false;
+        const lower = trimmed.toLowerCase();
+        // Filter out sentences that still contain problematic patterns
+        if (lower.includes('undefined') || lower.includes('nan')) return false;
+        if (lower.match(/leveled up an?\s*$/)) return false; // Incomplete sentences
+        if (lower.match(/upgraded an?\s*$/)) return false; // Incomplete sentences
+        return true;
+      })
+      .join('. ')
+      .trim();
+    
+    // Ensure proper sentence endings
+    if (sanitized && !sanitized.match(/[.!?]$/)) {
+      sanitized += '.';
+    }
+    
+    return sanitized || "No significant changes detected in the clan today.";
   }
 
   private extractInsights(content: string): string[] {
     // Simple extraction of insights from AI content
-    const sentences = content.split(/[.!?]+/).filter(s => s.trim().length > 10);
-    return sentences.slice(0, 3).map(s => s.trim());
+    const sanitized = this.sanitizeAIContent(content);
+    const sentences = sanitized.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    return sentences.slice(0, 3).map(s => s.trim()).filter(s => !s.toLowerCase().includes('undefined') && !s.toLowerCase().includes('nan'));
   }
 
   private extractRecommendations(content: string): string[] {
     // Simple extraction of recommendations from AI content
-    const sentences = content.split(/[.!?]+/).filter(s => 
+    const sanitized = this.sanitizeAIContent(content);
+    const sentences = sanitized.split(/[.!?]+/).filter(s => 
       s.trim().length > 10 && 
       (s.toLowerCase().includes('recommend') || 
        s.toLowerCase().includes('should') || 
        s.toLowerCase().includes('consider'))
     );
-    return sentences.slice(0, 3).map(s => s.trim());
+    return sentences.slice(0, 3)
+      .map(s => s.trim())
+      .filter(s => !s.toLowerCase().includes('undefined') && !s.toLowerCase().includes('nan'));
   }
 
   // Rush percentage calculation methods (same as enhanced manual generation)

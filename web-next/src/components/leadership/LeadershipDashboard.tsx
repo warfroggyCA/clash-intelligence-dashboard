@@ -266,10 +266,46 @@ export default function LeadershipDashboard() {
   }, []);
 
   const handleRefreshInsights = useCallback(async () => {
-    if (newsFeedRef.current) {
-      await newsFeedRef.current.refresh();
+    if (!clanTag) {
+      console.warn('[LeadershipDashboard] No clanTag available for refresh');
+      return;
     }
-  }, []);
+    
+    try {
+      // First, try to trigger insight generation with forceInsights flag
+      // This will generate new insights from the latest snapshot data
+      const response = await fetch('/api/health?cron=true&forceInsights=true', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('[LeadershipDashboard] Failed to force insights generation:', errorData);
+        // Fallback to just refreshing the cache
+        if (newsFeedRef.current) {
+          await newsFeedRef.current.refresh();
+        }
+        return;
+      }
+      
+      const result = await response.json();
+      console.log('[LeadershipDashboard] Insights generation triggered:', result);
+      
+      // Wait a moment for insights to be saved, then refresh the display
+      setTimeout(async () => {
+        if (newsFeedRef.current) {
+          await newsFeedRef.current.refresh();
+        }
+      }, 2000);
+    } catch (error) {
+      console.error('[LeadershipDashboard] Error refreshing insights:', error);
+      // Fallback to just refreshing the cache
+      if (newsFeedRef.current) {
+        await newsFeedRef.current.refresh();
+      }
+    }
+  }, [clanTag]);
 
   const numberFormatter = useMemo(() => new Intl.NumberFormat(), []);
 
@@ -627,9 +663,9 @@ export default function LeadershipDashboard() {
                        variant="outline"
                        size="sm"
                        className="text-xs"
-                       title={!clanTag ? `No clan tag available. Current: ${clanTag || 'null'}` : 'Force refresh insights from API'}
+                       title={!clanTag ? `No clan tag available. Current: ${clanTag || 'null'}` : 'Generate new insights from latest snapshot data'}
                      >
-                       Refresh Insights
+                       Generate Insights
                      </Button>
                    </div>
                    <NewsFeed ref={newsFeedRef} clanTag={clanTag} />

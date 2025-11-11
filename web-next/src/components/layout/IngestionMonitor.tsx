@@ -1,7 +1,10 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { RefreshCw } from 'lucide-react';
+import { normalizeTag } from '@/lib/tags';
+import { getRoleHeaders } from '@/lib/api/role-header';
 
 interface IngestionJobStep {
   name: string;
@@ -34,6 +37,17 @@ interface IngestionMonitorProps {
   pollIntervalMs?: number;
   onClose(): void;
   onJobIdChange?: (jobId: string | undefined) => void;
+}
+
+interface ClanIngestionStatus {
+  clanTag: string;
+  clanName?: string;
+  hasData: boolean;
+  lastJobStatus?: 'pending' | 'running' | 'completed' | 'failed';
+  lastJobAt?: string;
+  lastSnapshotAt?: string;
+  isStale: boolean;
+  memberCount?: number;
 }
 
 async function fetchJobRecord(jobId: string) {
@@ -86,6 +100,9 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
   const [directTriggering, setDirectTriggering] = useState(false);
   const [forceInsightsTriggering, setForceInsightsTriggering] = useState(false);
   const [directResult, setDirectResult] = useState<any>(null);
+  const [clanStatuses, setClanStatuses] = useState<ClanIngestionStatus[]>([]);
+  const [loadingStatuses, setLoadingStatuses] = useState(false);
+  const [showMultiClanView, setShowMultiClanView] = useState(false);
 
   useEffect(() => {
     if (initialJobId) {
@@ -174,6 +191,35 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
     }
   };
 
+  const fetchClanStatuses = useCallback(async () => {
+    try {
+      setLoadingStatuses(true);
+      const response = await fetch('/api/tracked-clans/status', {
+        headers: {
+          ...getRoleHeaders(),
+        },
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setClanStatuses(result.data.statuses || []);
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch clan statuses:', err);
+    } finally {
+      setLoadingStatuses(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchClanStatuses();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchClanStatuses, 30000);
+    return () => clearInterval(interval);
+  }, [fetchClanStatuses]);
+
   const renderStepStatus = (step: IngestionJobStep) => {
     const statusColor = {
       pending: 'bg-gray-200 text-gray-700',
@@ -246,6 +292,90 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
           ×
         </button>
       </div>
+
+      {/* Multi-Clan Status Toggle */}
+      {clanStatuses.length > 0 && (
+        <div className="mb-4 flex items-center gap-2">
+          <button
+            onClick={() => setShowMultiClanView(!showMultiClanView)}
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            {showMultiClanView ? 'Show Single Job' : 'Show All Clans'}
+          </button>
+          <button
+            onClick={() => void fetchClanStatuses()}
+            disabled={loadingStatuses}
+            className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loadingStatuses ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      )}
+
+      {/* Multi-Clan Status View */}
+      {showMultiClanView && clanStatuses.length > 0 && (
+        <div className="mb-6 space-y-3">
+          <h3 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">Tracked Clans Status</h3>
+          <div className="space-y-2">
+            {clanStatuses.map((clan) => {
+              const statusColor = clan.isStale
+                ? 'border-red-200 bg-red-50'
+                : clan.lastJobStatus === 'running'
+                ? 'border-blue-200 bg-blue-50'
+                : clan.lastJobStatus === 'failed'
+                ? 'border-red-200 bg-red-50'
+                : 'border-green-200 bg-green-50';
+
+              const statusDotColor = clan.isStale
+                ? 'bg-red-400'
+                : clan.lastJobStatus === 'running'
+                ? 'bg-blue-400'
+                : clan.lastJobStatus === 'failed'
+                ? 'bg-red-400'
+                : 'bg-green-400';
+
+              return (
+                <div key={clan.clanTag} className={`border rounded-lg p-3 ${statusColor}`}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full ${statusDotColor} flex-shrink-0`} />
+                        <span className="font-semibold text-slate-800">{clan.clanName || clan.clanTag}</span>
+                        {clan.lastJobStatus && (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-white/80 text-slate-600">
+                            {clan.lastJobStatus}
+                          </span>
+                        )}
+                      </div>
+                      {clan.clanName && (
+                        <div className="mt-0.5 text-xs font-mono text-slate-600">
+                          {clan.clanTag}
+                        </div>
+                      )}
+                      {clan.lastJobAt && (
+                        <div className="mt-1 text-xs text-slate-600">
+                          Last job: {formatDistanceToNow(new Date(clan.lastJobAt), { addSuffix: true })}
+                        </div>
+                      )}
+                      {clan.memberCount !== undefined && (
+                        <div className="text-xs text-slate-600">
+                          {clan.memberCount} members
+                        </div>
+                      )}
+                      {clan.isStale && (
+                        <div className="mt-1 text-xs text-red-600 font-semibold">
+                          ⚠️ Data is stale (more than 6 hours old)
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <div className="flex items-center gap-3 mb-4">
         <button

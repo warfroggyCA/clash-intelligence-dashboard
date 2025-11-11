@@ -60,6 +60,35 @@ export async function GET(req: NextRequest) {
 
     if (clanError) {
       if (clanError.code === 'PGRST116') {
+        // Clan not in database - check if it's a tracked clan
+        try {
+          const { promises: fs } = await import('fs');
+          const { join } = await import('path');
+          const trackedClansPath = join(process.cwd(), 'scripts', 'tracked-clans.json');
+          const trackedClansContent = await fs.readFile(trackedClansPath, 'utf-8');
+          const trackedClans: { clans: string[] } = JSON.parse(trackedClansContent);
+          const isTracked = trackedClans.clans.some(t => normalizeTag(t) === clanTag);
+          
+          if (isTracked) {
+            // It's a tracked clan but no data yet - return empty roster in the expected format
+            return NextResponse.json({
+              success: true,
+              data: {
+                clan: {
+                  tag: clanTag,
+                  name: null,
+                  logo_url: null,
+                },
+                snapshot: null,
+                members: [],
+              },
+            });
+          }
+        } catch (trackedCheckError) {
+          // If we can't check tracked clans, fall through to 404
+          console.warn('[roster] Failed to check tracked clans:', trackedCheckError);
+        }
+        
         return NextResponse.json({ success: false, error: 'Clan not found' }, { status: 404 });
       }
       throw clanError;

@@ -1,3 +1,4 @@
+import { cookies } from 'next/headers';
 import PlayerProfileClient from './PlayerProfileClient';
 import { getInitialPlayerProfile } from './get-initial-profile';
 import type { SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
@@ -15,7 +16,10 @@ export default async function PlayerPage({ params }: PlayerPageProps) {
   let initialProfile: SupabasePlayerProfilePayload | null = null;
 
   try {
-    initialProfile = await getInitialPlayerProfile(tag);
+    // Try to read clanTag from cookie for server-side rendering
+    const cookieStore = await cookies();
+    const cookieClanTag = cookieStore.get('currentClanTag')?.value;
+    initialProfile = await getInitialPlayerProfile(tag, cookieClanTag);
   } catch (error) {
     console.error('[PlayerPage] Failed to load initial player profile', error);
   }

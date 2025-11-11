@@ -19,10 +19,11 @@ function resolveBaseUrl(): string {
   return 'http://localhost:5050';
 }
 
-function buildPlayerProfileUrl(baseUrl: string, playerTag: string): string {
+function buildPlayerProfileUrl(baseUrl: string, playerTag: string, clanTag?: string | null): string {
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
   const encodedTag = encodeURIComponent(playerTag);
-  return `${normalizedBase}/api/player/${encodedTag}/profile`;
+  const queryParams = clanTag ? `?clanTag=${encodeURIComponent(clanTag)}` : '';
+  return `${normalizedBase}/api/player/${encodedTag}/profile${queryParams}`;
 }
 
 interface PlayerProfileApiResponse {
@@ -31,14 +32,15 @@ interface PlayerProfileApiResponse {
   error?: string;
 }
 
-export async function getInitialPlayerProfile(playerTag: string): Promise<SupabasePlayerProfilePayload> {
+export async function getInitialPlayerProfile(playerTag: string, clanTag?: string | null): Promise<SupabasePlayerProfilePayload> {
   const normalizedTag = normalizeTag(playerTag);
   if (!normalizedTag) {
     throw new Error('Player tag is required');
   }
 
   const baseUrl = resolveBaseUrl();
-  const url = buildPlayerProfileUrl(baseUrl, normalizedTag);
+  const normalizedClanTag = clanTag ? normalizeTag(clanTag) : null;
+  const url = buildPlayerProfileUrl(baseUrl, normalizedTag, normalizedClanTag);
 
   const response = await fetch(url, {
     method: 'GET',

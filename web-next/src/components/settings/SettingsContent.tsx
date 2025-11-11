@@ -12,6 +12,7 @@ import { cfg } from '@/lib/config';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import type { ClanRole } from '@/lib/leadership';
 import { clearSmartInsightsPayload } from '@/lib/smart-insights-cache';
+import { getRoleHeaders } from '@/lib/api/role-header';
 import {
   Settings,
   Shield,
@@ -22,6 +23,8 @@ import {
   Bell,
   Database,
   FileText,
+  Plus,
+  X,
 } from 'lucide-react';
 
 export interface SettingsContentProps {
@@ -644,6 +647,16 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       </GlassCard>
 
       <GlassCard
+        id="tracked-clans"
+        icon={<Database className="h-5 w-5" aria-hidden />}
+        title="Multi-Clan Tracking"
+        subtitle="Manage clans tracked by Mac ingestion cron jobs. All tracked clans will be ingested daily."
+        className="space-y-4"
+      >
+        <TrackedClansManager />
+      </GlassCard>
+
+      <GlassCard
         id="force-refresh"
         icon={<RefreshCw className="h-5 w-5" aria-hidden />}
         title="Force full refresh"
@@ -732,6 +745,169 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-300 hover:text-slate-100">
             Close
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Tracked Clans Manager Component
+function TrackedClansManager() {
+  const [trackedClans, setTrackedClans] = useState<string[]>([]);
+  const [newClanTag, setNewClanTag] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
+
+  const fetchTrackedClans = useCallback(async () => {
+    try {
+      setFetching(true);
+      const response = await fetch('/api/tracked-clans', {
+        headers: {
+          ...getRoleHeaders(),
+        },
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setTrackedClans(result.data.clans || []);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch tracked clans:', error);
+    } finally {
+      setFetching(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetchTrackedClans();
+  }, [fetchTrackedClans]);
+
+  const handleAddClan = async () => {
+    if (!newClanTag.trim()) {
+      showToast('Please enter a clan tag', 'error');
+      return;
+    }
+
+    const normalizedTag = normalizeTag(newClanTag);
+    if (!isValidTag(normalizedTag)) {
+      showToast('Invalid clan tag format', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await fetch('/api/tracked-clans', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...getRoleHeaders(),
+        },
+        body: JSON.stringify({ clanTag: normalizedTag }),
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setTrackedClans(result.data.clans);
+        setNewClanTag('');
+        showToast(`Added ${normalizedTag} to tracked clans`, 'success');
+      } else {
+        showToast(result.error || 'Failed to add clan', 'error');
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Failed to add clan', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRemoveClan = async (clanTag: string) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/tracked-clans?clanTag=${encodeURIComponent(clanTag)}`, {
+        method: 'DELETE',
+        headers: {
+          ...getRoleHeaders(),
+        },
+      });
+
+      const result = await response.json();
+      
+      if (result.success) {
+        setTrackedClans(result.data.clans);
+        showToast(`Removed ${clanTag} from tracked clans`, 'success');
+      } else {
+        showToast(result.error || 'Failed to remove clan', 'error');
+      }
+    } catch (error: any) {
+      showToast(error.message || 'Failed to remove clan', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  if (fetching) {
+    return <div className="text-sm text-slate-400">Loading tracked clans...</div>;
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          type="text"
+          value={newClanTag}
+          onChange={(e) => setNewClanTag(e.target.value)}
+          placeholder="#2PR8R8V8P"
+          className="flex-1 rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-300"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !loading) {
+              void handleAddClan();
+            }
+          }}
+        />
+        <button
+          onClick={handleAddClan}
+          disabled={loading || !newClanTag.trim()}
+          className="inline-flex items-center gap-2 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? (
+            <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
+          ) : (
+            <Plus className="h-4 w-4" aria-hidden />
+          )}
+          Add Clan
+        </button>
+      </div>
+
+      {trackedClans.length === 0 ? (
+        <p className="text-sm text-slate-400">No clans are currently being tracked. Add a clan tag above to start tracking.</p>
+      ) : (
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Tracked Clans ({trackedClans.length})</p>
+          <div className="space-y-2">
+            {trackedClans.map((tag) => (
+              <div
+                key={tag}
+                className="flex items-center justify-between rounded-lg border border-slate-700/50 bg-slate-800/40 px-3 py-2"
+              >
+                <span className="font-mono text-sm text-slate-200">{tag}</span>
+                <button
+                  onClick={() => void handleRemoveClan(tag)}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs text-slate-400 transition hover:bg-slate-700/50 hover:text-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+                  title="Remove from tracking"
+                >
+                  <X className="h-3.5 w-3.5" aria-hidden />
+                </button>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-slate-400">
+            Mac cron jobs will ingest all tracked clans daily at 4:30 AM and 5:30 AM UTC.
+          </p>
         </div>
       )}
     </div>
