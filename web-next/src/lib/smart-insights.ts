@@ -782,9 +782,9 @@ Format as JSON:
     });
 
     // Helper to safely format values
-    const safeValue = (value: any, fallback: string = 'N/A'): string => {
-      if (value === null || value === undefined) return fallback;
-      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return fallback;
+    const safeValue = (value: any, fallback: string | null | undefined = 'N/A'): string | null => {
+      if (value === null || value === undefined) return fallback === null ? null : (fallback ?? 'N/A');
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return fallback === null ? null : (fallback ?? 'N/A');
       return String(value);
     };
 
@@ -875,9 +875,9 @@ No significant changes detected in the clan today.`;
     }, {} as Record<string, number>);
 
     // Helper to safely format values, filtering out undefined/null/NaN
-    const safeValue = (value: any, fallback: string = 'N/A'): string => {
-      if (value === null || value === undefined) return fallback;
-      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return fallback;
+    const safeValue = (value: any, fallback: string | null | undefined = 'N/A'): string | null => {
+      if (value === null || value === undefined) return fallback === null ? null : (fallback ?? 'N/A');
+      if (typeof value === 'number' && (isNaN(value) || !isFinite(value))) return fallback === null ? null : (fallback ?? 'N/A');
       return String(value);
     };
 
