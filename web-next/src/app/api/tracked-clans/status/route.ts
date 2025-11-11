@@ -1,6 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import { join } from 'path';
 import { normalizeTag } from '@/lib/tags';
 import { createApiContext } from '@/lib/api/route-helpers';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
@@ -8,21 +6,20 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface TrackedClansConfig {
-  clans: string[];
-}
-
-const CONFIG_PATH = join(process.cwd(), 'scripts', 'tracked-clans.json');
-
 async function readTrackedClans(): Promise<string[]> {
-  try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf-8');
-    const config: TrackedClansConfig = JSON.parse(content);
-    return config.clans || [];
-  } catch (error) {
-    // File doesn't exist, return empty array
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('tracked_clans')
+    .select('clan_tag')
+    .eq('is_active', true)
+    .order('added_at', { ascending: true });
+  
+  if (error) {
+    console.error('[TrackedClansStatus] Failed to read from Supabase:', error);
     return [];
   }
+  
+  return (data || []).map(row => row.clan_tag);
 }
 
 interface ClanIngestionStatus {

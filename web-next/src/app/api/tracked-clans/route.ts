@@ -1,34 +1,83 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import { join } from 'path';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { createApiContext } from '@/lib/api/route-helpers';
-import { requireLeader } from '@/lib/api/role-check';
+import { requireLeader, getCurrentUserIdentifier } from '@/lib/api/role-check';
+import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { runStagedIngestionJob } from '@/lib/ingestion/run-staged-ingestion';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-interface TrackedClansConfig {
-  clans: string[];
+async function readTrackedClans(): Promise<string[]> {
+  const supabase = getSupabaseServerClient();
+  const { data, error } = await supabase
+    .from('tracked_clans')
+    .select('clan_tag')
+    .eq('is_active', true)
+    .order('added_at', { ascending: true });
+  
+  if (error) {
+    console.error('[TrackedClans] Failed to read from Supabase:', error);
+    return [];
+  }
+  
+  return (data || []).map(row => row.clan_tag);
 }
 
-const CONFIG_PATH = join(process.cwd(), 'scripts', 'tracked-clans.json');
-
-async function readTrackedClans(): Promise<string[]> {
-  try {
-    const content = await fs.readFile(CONFIG_PATH, 'utf-8');
-    const config: TrackedClansConfig = JSON.parse(content);
-    return config.clans || [];
-  } catch (error) {
-    // File doesn't exist, return empty array
-    return [];
+async function addTrackedClan(clanTag: string, addedBy: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from('tracked_clans')
+    .insert({
+      clan_tag: clanTag,
+      added_by: addedBy,
+      is_active: true,
+    });
+  
+  if (error) {
+    // If it's a unique constraint violation, that's okay (already exists)
+    if (error.code === '23505') {
+      // Check if it's inactive, and if so, reactivate it
+      const { data: existing } = await supabase
+        .from('tracked_clans')
+        .select('is_active')
+        .eq('clan_tag', clanTag)
+        .maybeSingle();
+      
+      if (existing && !existing.is_active) {
+        await supabase
+          .from('tracked_clans')
+          .update({ is_active: true, added_by: addedBy, updated_at: new Date().toISOString() })
+          .eq('clan_tag', clanTag);
+      }
+      return;
+    }
+    throw error;
   }
 }
 
-async function writeTrackedClans(clans: string[]): Promise<void> {
-  const config: TrackedClansConfig = { clans };
-  await fs.writeFile(CONFIG_PATH, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+async function removeTrackedClan(clanTag: string): Promise<void> {
+  const supabase = getSupabaseServerClient();
+  const { error } = await supabase
+    .from('tracked_clans')
+    .update({ is_active: false, updated_at: new Date().toISOString() })
+    .eq('clan_tag', clanTag);
+  
+  if (error) {
+    throw error;
+  }
+}
+
+async function isClanTracked(clanTag: string): Promise<boolean> {
+  const supabase = getSupabaseServerClient();
+  const { data } = await supabase
+    .from('tracked_clans')
+    .select('id')
+    .eq('clan_tag', clanTag)
+    .eq('is_active', true)
+    .maybeSingle();
+  
+  return !!data;
 }
 
 // GET /api/tracked-clans - Get list of tracked clans
@@ -49,6 +98,7 @@ export async function GET(request: NextRequest) {
     const clans = await readTrackedClans();
     return json({ success: true, data: { clans } });
   } catch (error: any) {
+    console.error('[TrackedClans GET] Error:', error);
     return json({ success: false, error: error.message || 'Failed to read tracked clans' }, { status: 500 });
   }
 }
@@ -79,16 +129,19 @@ export async function POST(request: NextRequest) {
       return json({ success: false, error: 'Invalid clan tag format' }, { status: 400 });
     }
 
-    const clans = await readTrackedClans();
-    
     // Check if already tracked
-    if (clans.includes(normalizedTag)) {
+    if (await isClanTracked(normalizedTag)) {
       return json({ success: false, error: 'Clan is already being tracked' }, { status: 400 });
     }
 
-    // Add to list
-    clans.push(normalizedTag);
-    await writeTrackedClans(clans);
+    // Get current user identifier for audit trail
+    const addedBy = await getCurrentUserIdentifier(request);
+
+    // Add to database
+    await addTrackedClan(normalizedTag, addedBy);
+    
+    // Get updated list
+    const clans = await readTrackedClans();
 
     // Trigger immediate ingestion in the background to establish baseline data
     runStagedIngestionJob({
@@ -134,18 +187,19 @@ export async function DELETE(request: NextRequest) {
     }
 
     const normalizedTag = normalizeTag(clanTagParam);
-    const clans = await readTrackedClans();
     
-    // Remove from list
-    const filteredClans = clans.filter(tag => normalizeTag(tag) !== normalizedTag);
-    
-    if (filteredClans.length === clans.length) {
+    // Check if clan is tracked
+    if (!(await isClanTracked(normalizedTag))) {
       return json({ success: false, error: 'Clan not found in tracked list' }, { status: 404 });
     }
 
-    await writeTrackedClans(filteredClans);
+    // Remove (soft delete) from database
+    await removeTrackedClan(normalizedTag);
+    
+    // Get updated list
+    const clans = await readTrackedClans();
 
-    return json({ success: true, data: { clans: filteredClans } });
+    return json({ success: true, data: { clans } });
   } catch (error: any) {
     return json({ success: false, error: error.message || 'Failed to remove tracked clan' }, { status: 500 });
   }

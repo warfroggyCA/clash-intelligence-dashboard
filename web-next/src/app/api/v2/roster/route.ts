@@ -62,14 +62,14 @@ export async function GET(req: NextRequest) {
       if (clanError.code === 'PGRST116') {
         // Clan not in database - check if it's a tracked clan
         try {
-          const { promises: fs } = await import('fs');
-          const { join } = await import('path');
-          const trackedClansPath = join(process.cwd(), 'scripts', 'tracked-clans.json');
-          const trackedClansContent = await fs.readFile(trackedClansPath, 'utf-8');
-          const trackedClans: { clans: string[] } = JSON.parse(trackedClansContent);
-          const isTracked = trackedClans.clans.some(t => normalizeTag(t) === clanTag);
+          const { data: trackedClan } = await supabase
+            .from('tracked_clans')
+            .select('clan_tag')
+            .eq('clan_tag', clanTag)
+            .eq('is_active', true)
+            .maybeSingle();
           
-          if (isTracked) {
+          if (trackedClan) {
             // It's a tracked clan but no data yet - return empty roster in the expected format
             return NextResponse.json({
               success: true,
