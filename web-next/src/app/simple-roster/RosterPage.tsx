@@ -42,6 +42,7 @@ import { RosterSkeleton } from '@/components/ui/RosterSkeleton';
 import { ErrorDisplay, categorizeError } from '@/components/ui/ErrorDisplay';
 import { rosterFetcher } from '@/lib/api/swr-fetcher';
 import { rosterSWRConfig } from '@/lib/api/swr-config';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
 
 // Lazy load DashboardLayout to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
@@ -209,15 +210,25 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const lastRefreshRef = useRef<number>(0);
   const staleCheckRef = useRef<boolean>(false);
   
+  // Get selectedClanTag from store to use in SWR key
+  const selectedClanTag = useDashboardStore((state) => state.clanTag);
+  const normalizedClanTag = selectedClanTag ? normalizeTag(selectedClanTag) : null;
+  
+  // Build SWR key with clanTag query parameter
+  const swrKey = normalizedClanTag 
+    ? `/api/v2/roster?clanTag=${encodeURIComponent(normalizedClanTag)}`
+    : '/api/v2/roster';
+  
   // Use SWR for data fetching with caching
   const { data: roster, error: swrError, isLoading, mutate } = useSWR<RosterData>(
-    '/api/v2/roster',
+    swrKey,
     rosterFetcher,
     {
       ...rosterSWRConfig,
       fallbackData: initialRoster ?? undefined, // Use initial data if available
       onSuccess: (data) => {
         console.log('[SimpleRoster] SWR loaded roster:', {
+          clanTag: normalizedClanTag,
           clanName: data.clanName,
           memberCount: data.members.length,
         });
@@ -1608,18 +1619,27 @@ ${donationBalance > 0 ? 'Receives more than gives' : donationBalance < 0 ? 'Give
                     </div>
                     <div title={`Town Hall ${player.townHallLevel ?? '?'}`} className="relative cursor-help" style={{ width: '36px', height: '36px' }}>
                       <Image 
-                        src={`/assets/clash/Townhalls/TH${player.townHallLevel ?? 0}.png`}
+                        src={`/assets/clash/Townhalls/TH${player.townHallLevel ?? 0}.png${player.townHallLevel === 17 ? '?v=3' : ''}`}
                         alt={`TH${player.townHallLevel ?? 0}`}
                         width={36}
                         height={36}
                         className="w-full h-full object-contain"
+                        unoptimized={player.townHallLevel === 17}
                         onError={(e) => {
+                          // Hide the broken image but keep the number badge
                           e.currentTarget.style.display = 'none';
-                          e.currentTarget.parentElement!.innerHTML = '🏰';
+                          // Add emoji fallback without removing the number badge
+                          const parent = e.currentTarget.parentElement;
+                          if (parent && !parent.querySelector('.emoji-fallback')) {
+                            const emoji = document.createElement('div');
+                            emoji.className = 'emoji-fallback absolute inset-0 flex items-center justify-center text-2xl';
+                            emoji.textContent = '🏰';
+                            parent.appendChild(emoji);
+                          }
                         }}
                       />
                       <span 
-                        className="absolute bottom-0 right-0 text-white font-bold text-[10px] sm:text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
+                        className="absolute bottom-0 right-0 z-10 text-white font-bold text-[10px] sm:text-xs drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]"
                         style={{ textShadow: '1px 1px 2px rgba(0,0,0,0.9), -1px -1px 2px rgba(0,0,0,0.9)' }}
                       >
                         {player.townHallLevel}

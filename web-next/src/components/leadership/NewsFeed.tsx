@@ -83,54 +83,138 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
     void fetchLatestSummary();
   }, [clanTag]);
 
+  // Helper function to sanitize content for display
+  const sanitizeContent = (content: string | null | undefined): string | null => {
+    if (!content || typeof content !== 'string') return null;
+    
+    let sanitized = content.trim();
+    
+    // Remove sentences containing "undefined" or "NaN" (case-insensitive)
+    sanitized = sanitized
+      .split(/[.!?]+/)
+      .filter(sentence => {
+        const lower = sentence.toLowerCase();
+        return !lower.includes('undefined') && 
+               !lower.includes('nan') && 
+               !lower.match(/\bundefined\b/) &&
+               !lower.match(/\bnan\b/) &&
+               !lower.match(/leveled up an undefined/) &&
+               !lower.match(/upgraded an undefined/) &&
+               !lower.match(/to undefined/);
+      })
+      .join('. ')
+      .trim();
+    
+    // Remove any remaining "undefined" or "NaN" strings and fix common patterns
+    sanitized = sanitized
+      .replace(/\bundefined\b/gi, '')
+      .replace(/\bNaN\b/g, '')
+      .replace(/reaching undefined level/gi, 'leveled up')
+      .replace(/upgraded to undefined/gi, 'upgraded')
+      .replace(/upgraded an undefined to undefined/gi, 'upgraded')
+      .replace(/leveled up an undefined to undefined/gi, 'leveled up')
+      .replace(/an undefined to undefined/gi, '')
+      .replace(/undefined to undefined/gi, '')
+      .replace(/lost NaN trophies/gi, 'experienced trophy changes')
+      .replace(/gained NaN trophies/gi, 'experienced trophy changes')
+      .replace(/undefined level/gi, 'a new level')
+      .replace(/level undefined/gi, 'a new level')
+      .replace(/\s+/g, ' ') // Normalize whitespace
+      .replace(/\s*,\s*,/g, ',') // Remove double commas
+      .replace(/\s*\.\s*\./g, '.') // Remove double periods
+      .trim();
+    
+    // Remove sentences that are too short, incomplete, or contain invalid patterns
+    sanitized = sanitized
+      .split(/[.!?]+/)
+      .filter(s => {
+        const trimmed = s.trim();
+        if (trimmed.length < 10) return false;
+        if (trimmed.match(/^(also|additionally|furthermore|moreover),?\s*$/i)) return false;
+        const lower = trimmed.toLowerCase();
+        // Filter out sentences that still contain problematic patterns
+        if (lower.includes('undefined') || lower.includes('nan')) return false;
+        if (lower.match(/leveled up an?\s*$/)) return false; // Incomplete sentences
+        if (lower.match(/upgraded an?\s*$/)) return false; // Incomplete sentences
+        return true;
+      })
+      .join('. ')
+      .trim();
+    
+    if (sanitized.length < 30) return null;
+    
+    // Ensure proper sentence ending
+    if (sanitized && !sanitized.match(/[.!?]$/)) {
+      sanitized += '.';
+    }
+    
+    return sanitized || null;
+  };
+
   const headlineParagraph = useMemo(() => {
     if (!smartInsights) {
       // If no smart insights, use latest AI summary from database
-      return latestAISummary;
+      return sanitizeContent(latestAISummary);
     }
 
     // Prioritize AI-generated content (these are full narratives from OpenAI)
     // Change Summary content is AI-generated based on all recent changes
     const changeContent = smartInsights.context?.changeSummary?.content;
-    if (changeContent && typeof changeContent === 'string' && changeContent.trim().length > 30) {
-      console.log('[NewsFeed] Using changeSummary.content for headline paragraph', changeContent.substring(0, 100));
-      return changeContent.trim();
+    if (changeContent && typeof changeContent === 'string') {
+      const sanitized = sanitizeContent(changeContent);
+      if (sanitized) {
+        console.log('[NewsFeed] Using changeSummary.content for headline paragraph', sanitized.substring(0, 100));
+        return sanitized;
+      }
     }
 
     // Performance Analysis content is AI-generated based on clan performance data
     const perfContent = smartInsights.context?.performanceAnalysis?.content;
-    if (perfContent && typeof perfContent === 'string' && perfContent.trim().length > 30) {
-      console.log('[NewsFeed] Using performanceAnalysis.content for headline paragraph', perfContent.substring(0, 100));
-      return perfContent.trim();
+    if (perfContent && typeof perfContent === 'string') {
+      const sanitized = sanitizeContent(perfContent);
+      if (sanitized) {
+        console.log('[NewsFeed] Using performanceAnalysis.content for headline paragraph', sanitized.substring(0, 100));
+        return sanitized;
+      }
     }
 
     // Fallback to briefing summary (this is just concatenated headlines, not AI-generated)
     // Also check briefing highlights for content
     const briefingSummary = smartInsights.briefing?.summary;
-    if (briefingSummary && typeof briefingSummary === 'string' && briefingSummary.trim().length > 30) {
-      console.log('[NewsFeed] Using briefing.summary for headline paragraph (fallback)', briefingSummary.substring(0, 100));
-      return briefingSummary.trim();
+    if (briefingSummary && typeof briefingSummary === 'string') {
+      const sanitized = sanitizeContent(briefingSummary);
+      if (sanitized) {
+        console.log('[NewsFeed] Using briefing.summary for headline paragraph (fallback)', sanitized.substring(0, 100));
+        return sanitized;
+      }
     }
     
     // If briefing summary is too short, try to build one from highlights
     const briefingHighlights = smartInsights.briefing?.highlights;
     if (briefingHighlights && briefingHighlights.length > 0) {
       const highlightTexts = briefingHighlights
-        .map(h => h.detail ? `${h.headline}: ${h.detail}` : h.headline)
-        .filter(Boolean);
+        .map(h => {
+          const text = h.detail ? `${h.headline}: ${h.detail}` : h.headline;
+          return sanitizeContent(text);
+        })
+        .filter((text): text is string => text !== null);
       if (highlightTexts.length > 0) {
         const combinedText = highlightTexts.join('. ') + '.';
-        if (combinedText.trim().length > 30) {
-          console.log('[NewsFeed] Using briefing highlights for headline paragraph', combinedText.substring(0, 100));
-          return combinedText.trim();
+        const sanitized = sanitizeContent(combinedText);
+        if (sanitized) {
+          console.log('[NewsFeed] Using briefing highlights for headline paragraph', sanitized.substring(0, 100));
+          return sanitized;
         }
       }
     }
 
     // Final fallback: use latest AI summary from database
     if (latestAISummary) {
-      console.log('[NewsFeed] Using latest AI summary from database');
-      return latestAISummary;
+      const sanitized = sanitizeContent(latestAISummary);
+      if (sanitized) {
+        console.log('[NewsFeed] Using latest AI summary from database');
+        return sanitized;
+      }
     }
 
     console.log('[NewsFeed] No suitable headline paragraph found');
@@ -142,18 +226,28 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
 
     if (!smartInsights) return items;
 
+    // Helper to sanitize item text
+    const sanitizeItemText = (text: string | null | undefined): string | null => {
+      if (!text || typeof text !== 'string') return null;
+      const sanitized = sanitizeContent(text);
+      return sanitized && sanitized.length > 10 ? sanitized : null;
+    };
+
     // AI-generated Briefing Highlights
     if (smartInsights.briefing?.highlights?.length) {
       smartInsights.briefing.highlights.forEach((highlight) => {
         const text = highlight.detail 
           ? `${highlight.headline}: ${highlight.detail}` 
           : highlight.headline;
-        items.push({
-          id: `highlight-${highlight.id}`,
-          text,
-          priority: highlight.priority,
-          category: highlight.category,
-        });
+        const sanitized = sanitizeItemText(text);
+        if (sanitized) {
+          items.push({
+            id: `highlight-${highlight.id}`,
+            text: sanitized,
+            priority: highlight.priority,
+            category: highlight.category,
+          });
+        }
       });
     }
 
@@ -164,24 +258,30 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       // Add insights as bullet points
       if (changeSummary.insights?.length) {
         changeSummary.insights.forEach((insight, index) => {
-          items.push({
-            id: `changeinsight-${index}`,
-            text: insight,
-            priority: changeSummary.priority,
-            category: 'changes',
-          });
+          const sanitized = sanitizeItemText(insight);
+          if (sanitized) {
+            items.push({
+              id: `changeinsight-${index}`,
+              text: sanitized,
+              priority: changeSummary.priority,
+              category: 'changes',
+            });
+          }
         });
       }
 
       // Add recommendations
       if (changeSummary.recommendations?.length) {
         changeSummary.recommendations.forEach((rec, index) => {
-          items.push({
-            id: `changerec-${index}`,
-            text: rec,
-            priority: changeSummary.priority === 'high' ? 'medium' : changeSummary.priority,
-            category: 'coaching',
-          });
+          const sanitized = sanitizeItemText(rec);
+          if (sanitized) {
+            items.push({
+              id: `changerec-${index}`,
+              text: sanitized,
+              priority: changeSummary.priority === 'high' ? 'medium' : changeSummary.priority,
+              category: 'coaching',
+            });
+          }
         });
       }
     }
@@ -193,24 +293,30 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       // Add insights
       if (perfAnalysis.insights?.length) {
         perfAnalysis.insights.forEach((insight, index) => {
-          items.push({
-            id: `perfinsight-${index}`,
-            text: insight,
-            priority: perfAnalysis.priority,
-            category: 'performance',
-          });
+          const sanitized = sanitizeItemText(insight);
+          if (sanitized) {
+            items.push({
+              id: `perfinsight-${index}`,
+              text: sanitized,
+              priority: perfAnalysis.priority,
+              category: 'performance',
+            });
+          }
         });
       }
 
       // Add recommendations
       if (perfAnalysis.recommendations?.length) {
         perfAnalysis.recommendations.forEach((rec, index) => {
-          items.push({
-            id: `perfrec-${index}`,
-            text: rec,
-            priority: perfAnalysis.priority === 'high' ? 'medium' : perfAnalysis.priority,
-            category: 'coaching',
-          });
+          const sanitized = sanitizeItemText(rec);
+          if (sanitized) {
+            items.push({
+              id: `perfrec-${index}`,
+              text: sanitized,
+              priority: perfAnalysis.priority === 'high' ? 'medium' : perfAnalysis.priority,
+              category: 'coaching',
+            });
+          }
         });
       }
     }
@@ -221,12 +327,15 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
         const text = headline.detail 
           ? `${headline.title}: ${headline.detail}` 
           : headline.title;
-        items.push({
-          id: headline.id,
-          text,
-          priority: headline.priority,
-          category: headline.category,
-        });
+        const sanitized = sanitizeItemText(text);
+        if (sanitized) {
+          items.push({
+            id: headline.id,
+            text: sanitized,
+            priority: headline.priority,
+            category: headline.category,
+          });
+        }
       });
     }
 
@@ -235,12 +344,15 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       smartInsights.coaching.forEach((tip) => {
         // Use description or title as the bullet point
         const text = tip.description || tip.title;
-        items.push({
-          id: `coaching-${tip.id}`,
-          text,
-          priority: tip.priority,
-          category: 'coaching',
-        });
+        const sanitized = sanitizeItemText(text);
+        if (sanitized) {
+          items.push({
+            id: `coaching-${tip.id}`,
+            text: sanitized,
+            priority: tip.priority,
+            category: 'coaching',
+          });
+        }
       });
     }
 
@@ -257,13 +369,25 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
   const dataDate = smartInsights?.metadata?.snapshotDate;
   const generatedAt = smartInsights?.metadata?.generatedAt;
   const isStale = useMemo(() => {
-    if (!dataDate) return false;
-    const dataDateObj = new Date(dataDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const daysDiff = Math.floor((today.getTime() - dataDateObj.getTime()) / (1000 * 60 * 60 * 24));
-    return daysDiff > 1; // Stale if more than 1 day old
-  }, [dataDate]);
+    // Check both snapshot date and generation time
+    // Data is stale if snapshot is >1 day old OR generation is >2 days old
+    if (dataDate) {
+      const dataDateObj = new Date(dataDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const daysDiff = Math.floor((today.getTime() - dataDateObj.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysDiff > 1) return true; // Snapshot is stale
+    }
+    
+    if (generatedAt) {
+      const generatedAtObj = new Date(generatedAt);
+      const now = new Date();
+      const hoursDiff = (now.getTime() - generatedAtObj.getTime()) / (1000 * 60 * 60);
+      if (hoursDiff > 48) return true; // Generated more than 2 days ago
+    }
+    
+    return false;
+  }, [dataDate, generatedAt]);
 
   if (isLoadingInsights || isRefreshing) {
     return (

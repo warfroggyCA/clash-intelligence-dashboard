@@ -857,8 +857,8 @@ export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
   14: { bk: 85, aq: 85, gw: 60, rc: 30, mp: 55 },
   15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 60 },
   16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 },
-  // Placeholder for TH17 (icon support exists); caps to be confirmed
-  17: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 },
+  // TH17 max levels (updated based on actual game data)
+  17: { bk: 100, aq: 100, gw: 90, rc: 75, mp: 100 },
 };
 
 /**

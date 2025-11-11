@@ -146,6 +146,7 @@ function mapLeadership(bundle: any): PlayerLeadershipBundle {
 
 export async function fetchPlayerProfileSupabase(
   tag: string,
+  clanTag?: string | null,
   init?: RequestInit,
 ): Promise<SupabasePlayerProfilePayload> {
   if (!tag) {
@@ -156,8 +157,18 @@ export async function fetchPlayerProfileSupabase(
   const { getRoleHeaders } = await import('@/lib/api/role-header');
   const roleHeaders = getRoleHeaders();
 
+  // Get clanTag from parameter or from query params if provided, or from store
+  const urlParams = new URLSearchParams();
+  if (clanTag) {
+    urlParams.set('clanTag', clanTag);
+  } else if (init?.headers && 'x-clan-tag' in init.headers) {
+    urlParams.set('clanTag', init.headers['x-clan-tag'] as string);
+  }
+  const queryString = urlParams.toString();
+  const url = `/api/player/${encodeURIComponent(tag)}/profile${queryString ? `?${queryString}` : ''}`;
+
   const response = await fetchWithRetry(
-    `/api/player/${encodeURIComponent(tag)}/profile`,
+    url,
     {
       ...init,
       cache: 'no-store',

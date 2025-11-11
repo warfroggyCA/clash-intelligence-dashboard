@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.clashintelligence.ingestion</string>
+    
+    <key>ProgramArguments</key>
+    <array>
+        <string>TSX_PATH</string>
+        <string>ABSOLUTE_PATH_TO_WEB_NEXT/scripts/mac-ingestion.ts</string>
+        <string>--all</string>
+    </array>
+    
+    <key>WorkingDirectory</key>
+    <string>ABSOLUTE_PATH_TO_WEB_NEXT</string>
+    
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/opt/homebrew/opt/node@20/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+        <key>NODE_ENV</key>
+        <string>development</string>
+        <key>COC_DISABLE_PROXY</key>
+        <string>true</string>
+    </dict>
+    
+    <key>StandardInPath</key>
+    <string>/dev/null</string>
+    
+    <key>StandardOutPath</key>
+    <string>HOME_LIBRARY_LOGS/clash-intelligence-ingestion.log</string>
+    
+    <key>StandardErrorPath</key>
+    <string>HOME_LIBRARY_LOGS/clash-intelligence-ingestion-error.log</string>
+    
+    <key>StartCalendarInterval</key>
+    <array>
+        <dict>
+            <key>Hour</key>
+            <integer>4</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+        <dict>
+            <key>Hour</key>
+            <integer>5</integer>
+            <key>Minute</key>
+            <integer>30</integer>
+        </dict>
+    </array>
+    
+    <key>RunAtLoad</key>
+    <false/>
+    
+    <key>KeepAlive</key>
+    <false/>
+</dict>
+</plist>
+

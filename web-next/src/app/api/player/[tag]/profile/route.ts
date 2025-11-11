@@ -239,14 +239,15 @@ async function fetchCanonicalSnapshots(
 
   if (clanTag) {
     const { data, error } = await baseSelect.eq('clan_tag', clanTag);
-    if (!error && data?.length) {
-      return data as CanonicalSnapshotRow[];
-    }
     if (error && error.code !== 'PGRST205') {
       throw error;
     }
+    // If clanTag is explicitly provided, return only results for that clan (even if empty)
+    // Don't fall back to all snapshots - this ensures we get clan-specific data
+    return (data ?? []) as CanonicalSnapshotRow[];
   }
 
+  // Only fetch all snapshots if no clanTag was specified
   const { data, error } = await baseSelect;
   if (error) {
     throw error;
@@ -255,7 +256,7 @@ async function fetchCanonicalSnapshots(
 }
 
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { tag: string } }
 ) {
   try {
@@ -266,9 +267,12 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Player tag is required' }, { status: 400 });
     }
 
-    const homeClanTag = cfg.homeClanTag ? normalizeTag(cfg.homeClanTag) : null;
+    // Get clanTag from query parameter, fallback to homeClanTag
+    const { searchParams } = new URL(req.url);
+    const requestedClanTag = searchParams.get('clanTag');
+    const clanTag = requestedClanTag ? normalizeTag(requestedClanTag) : (cfg.homeClanTag ? normalizeTag(cfg.homeClanTag) : null);
 
-    const canonicalRows = await fetchCanonicalSnapshots(supabase, normalizedTag, homeClanTag);
+    const canonicalRows = await fetchCanonicalSnapshots(supabase, normalizedTag, clanTag);
     const filteredRows = canonicalRows.filter(
       (row) => row.payload?.schemaVersion === CANONICAL_MEMBER_SNAPSHOT_VERSION,
     );
@@ -288,13 +292,58 @@ export async function GET(
           // Extract clan info if available (CoC API includes clan object)
           const clanInfo = (cocPlayer as any).clan || null;
           
+          // Calculate clan hero averages if clanTag was requested
+          let clanHeroAverages: Record<string, number> = {};
+          if (clanTag) {
+            try {
+              const { data: rosterRows } = await supabase
+                .from('canonical_member_snapshots')
+                .select('payload')
+                .eq('clan_tag', clanTag)
+                .order('snapshot_date', { ascending: false })
+                .limit(50);
+              
+              if (rosterRows && rosterRows.length > 0) {
+                const totals: Record<string, { sum: number; count: number }> = {
+                  bk: { sum: 0, count: 0 },
+                  aq: { sum: 0, count: 0 },
+                  gw: { sum: 0, count: 0 },
+                  rc: { sum: 0, count: 0 },
+                  mp: { sum: 0, count: 0 },
+                };
+                
+                rosterRows.forEach((row) => {
+                  const payload = row.payload as CanonicalMemberSnapshotV1;
+                  if (payload?.member?.heroLevels) {
+                    const heroLevels = payload.member.heroLevels;
+                    ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
+                      const value = heroLevels[heroKey as keyof typeof heroLevels];
+                      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+                        totals[heroKey].sum += value;
+                        totals[heroKey].count += 1;
+                      }
+                    });
+                  }
+                });
+                
+                Object.entries(totals).forEach(([hero, data]) => {
+                  if (data.count > 0) {
+                    clanHeroAverages[hero] = data.sum / data.count;
+                  }
+                });
+              }
+            } catch (error) {
+              console.warn('Failed to calculate clan hero averages for CoC fallback:', error);
+            }
+          }
+          
           // Build a minimal profile from CoC API data
           const minimalProfile: SupabasePlayerProfilePayload = {
             summary: {
               name: cocPlayer.name || 'Unknown Player',
               tag: normalizedTag,
               clanName: clanInfo?.name || null,
-              clanTag: clanInfo?.tag ? normalizeTag(clanInfo.tag) : null,
+              clanTag: clanTag || (clanInfo?.tag ? normalizeTag(clanInfo.tag) : null),
               role: clanInfo?.role || null,
               townHallLevel: cocPlayer.townHallLevel || null,
               trophies: cocPlayer.trophies || null,
@@ -367,6 +416,7 @@ export async function GET(
             },
             evaluations: [],
             joinerEvents: [],
+            clanHeroAverages: clanHeroAverages,
             vip: {
               current: null,
               history: [],
@@ -385,7 +435,8 @@ export async function GET(
 
     const latestSnapshot = filteredRows[0].payload;
     const latestSnapshotDate = filteredRows[0].snapshot_date;
-    const clanTag = latestSnapshot.clanTag ?? filteredRows[0].clan_tag ?? homeClanTag;
+    // Use requested clanTag if provided, otherwise fall back to snapshot's clanTag
+    const resolvedClanTag = clanTag ?? latestSnapshot.clanTag ?? filteredRows[0].clan_tag ?? null;
     
     // Log the latest snapshot date for debugging
     console.log(`[player-profile] Latest snapshot date for ${normalizedTag}: ${latestSnapshotDate}`);
@@ -393,7 +444,7 @@ export async function GET(
     const { data: clanRow, error: clanError } = await supabase
       .from('clans')
       .select('id, tag, name, logo_url')
-      .eq('tag', clanTag)
+      .eq('tag', resolvedClanTag)
       .maybeSingle();
     if (clanError && clanError.code !== 'PGRST116') {
       throw clanError;
@@ -501,13 +552,13 @@ export async function GET(
 
     // Calculate clan hero averages for comparison
     let clanHeroAverages: Record<string, number> = {};
-    if (clanTag) {
+    if (resolvedClanTag) {
       try {
         // Fetch current roster data for clan averages
         const { data: rosterRows, error: rosterError } = await supabase
           .from('canonical_member_snapshots')
           .select('payload')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .order('snapshot_date', { ascending: false })
           .limit(50); // Get recent snapshots
 
@@ -556,13 +607,13 @@ export async function GET(
       townHallLevel: 0,
       vipScore: 0,
     };
-    if (clanTag) {
+    if (resolvedClanTag) {
       try {
         // Fetch most recent snapshot for each clan member
         const { data: latestSnapshotRows } = await supabase
           .from('canonical_member_snapshots')
           .select('payload, snapshot_date, player_tag')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .order('snapshot_date', { ascending: false });
 
         if (latestSnapshotRows && latestSnapshotRows.length > 0) {
@@ -667,11 +718,11 @@ export async function GET(
       }
     }
 
-    const { data: historyRow, error: historyError } = clanTag
+    const { data: historyRow, error: historyError } = resolvedClanTag
       ? await supabase
           .from('player_history')
           .select('*')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .eq('player_tag', normalizedTag)
           .maybeSingle()
       : { data: null, error: null };
@@ -679,11 +730,11 @@ export async function GET(
       throw historyError;
     }
 
-    const { data: notesRows, error: notesError } = clanTag
+    const { data: notesRows, error: notesError } = resolvedClanTag
       ? await supabase
           .from('player_notes')
           .select('id, created_at, note, custom_fields, created_by')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .eq('player_tag', normalizedTag)
           .order('created_at', { ascending: false })
       : { data: [], error: null };
@@ -691,11 +742,11 @@ export async function GET(
       throw notesError;
     }
 
-    const { data: warningsRows, error: warningsError } = clanTag
+    const { data: warningsRows, error: warningsError } = resolvedClanTag
       ? await supabase
           .from('player_warnings')
           .select('id, created_at, warning_note, is_active, created_by')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .eq('player_tag', normalizedTag)
           .order('created_at', { ascending: false })
       : { data: [], error: null };
@@ -703,11 +754,11 @@ export async function GET(
       throw warningsError;
     }
 
-    const { data: tenureRows, error: tenureError } = clanTag
+    const { data: tenureRows, error: tenureError } = resolvedClanTag
       ? await supabase
           .from('player_tenure_actions')
           .select('id, created_at, action, reason, granted_by, created_by')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .eq('player_tag', normalizedTag)
           .order('created_at', { ascending: false })
       : { data: [], error: null };
@@ -715,11 +766,11 @@ export async function GET(
       throw tenureError;
     }
 
-    const { data: departureRows, error: departureError } = clanTag
+    const { data: departureRows, error: departureError } = resolvedClanTag
       ? await supabase
           .from('player_departure_actions')
           .select('id, created_at, reason, departure_type, recorded_by, created_by')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .eq('player_tag', normalizedTag)
           .order('created_at', { ascending: false })
       : { data: [], error: null };
@@ -727,11 +778,11 @@ export async function GET(
       throw departureError;
     }
 
-    const { data: evaluationRows, error: evaluationError } = clanTag
+    const { data: evaluationRows, error: evaluationError } = resolvedClanTag
       ? await supabase
           .from('applicant_evaluations')
           .select('id, status, score, recommendation, rush_percent, evaluation, applicant, created_at, updated_at')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .eq('player_tag', normalizedTag)
           .order('created_at', { ascending: false })
       : { data: [], error: null };
@@ -739,11 +790,11 @@ export async function GET(
       throw evaluationError;
     }
 
-    const { data: joinerRows, error: joinerError } = clanTag
+    const { data: joinerRows, error: joinerError } = resolvedClanTag
       ? await supabase
           .from('joiner_events')
           .select('id, detected_at, status, metadata')
-          .eq('clan_tag', clanTag)
+          .eq('clan_tag', resolvedClanTag)
           .eq('player_tag', normalizedTag)
           .order('detected_at', { ascending: false })
       : { data: [], error: null };
@@ -844,7 +895,7 @@ export async function GET(
 
     // Check user role to filter leadership data
     // TODO: Replace with real auth check when authentication is implemented
-    const userRole = _req.headers.get('x-user-role') || 'member';
+    const userRole = req.headers.get('x-user-role') || 'member';
     const isLeadership = userRole === 'leader' || userRole === 'coLeader' || userRole === 'coleader';
 
     const responsePayload = {
