@@ -4145,7 +4145,7 @@ const HERO_LABELS: Record<string, string> = {
               {activeTab === "comparison" && (
                 <PlayerComparisonView
                   playerTag={normalizedTag}
-                  playerName={summary?.name}
+                  playerName={summary?.name ?? undefined}
                   playerTrophies={summary?.seasonTotalTrophies ?? summary?.bestTrophies ?? summary?.trophies ?? summary?.rankedTrophies ?? undefined}
                   playerTownHall={summary?.townHallLevel ?? undefined}
                   playerLeagueName={summary?.rankedLeague.name ?? summary?.league.name ?? undefined}
