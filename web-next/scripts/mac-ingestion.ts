@@ -44,23 +44,29 @@ function log(message: string, ...args: any[]) {
   }
 }
 
-interface TrackedClansConfig {
-  clans: string[];
-}
-
 async function loadTrackedClans(): Promise<string[]> {
-  const configPath = join(process.cwd(), 'scripts', 'tracked-clans.json');
   try {
-    const configContent = readFileSync(configPath, 'utf-8');
-    const config: TrackedClansConfig = JSON.parse(configContent);
-    if (config.clans && Array.isArray(config.clans) && config.clans.length > 0) {
-      return config.clans;
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from('tracked_clans')
+      .select('clan_tag')
+      .eq('is_active', true)
+      .order('added_at', { ascending: true });
+    
+    if (error) {
+      log('Warning: Failed to load tracked clans from Supabase:', error.message);
+      // Fall back to home clan
+      return [cfg.homeClanTag];
     }
-  } catch (error) {
-    // Config file doesn't exist or invalid, use default
+    
+    if (data && data.length > 0) {
+      return data.map(row => row.clan_tag);
+    }
+  } catch (error: any) {
+    log('Warning: Failed to load tracked clans:', error.message);
   }
   
-  // Default to home clan if no config
+  // Default to home clan if no config or error
   return [cfg.homeClanTag];
 }
 
