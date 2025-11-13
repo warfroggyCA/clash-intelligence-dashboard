@@ -38,13 +38,13 @@
     <array>
         <dict>
             <key>Hour</key>
-            <integer>4</integer>
+            <integer>23</integer>
             <key>Minute</key>
             <integer>30</integer>
         </dict>
         <dict>
             <key>Hour</key>
-            <integer>5</integer>
+            <integer>0</integer>
             <key>Minute</key>
             <integer>30</integer>
         </dict>

@@ -111,7 +111,7 @@ launchctl load "$INSTALLED_PLIST"
 if [ $? -eq 0 ]; then
     echo "✅ LaunchAgent loaded successfully!"
     echo ""
-    echo "📅 Schedule: Daily at 4:30 AM UTC and 5:30 AM UTC (matching Vercel cron)"
+    echo "📅 Schedule: Daily at 11:30 PM EST (4:30 AM UTC) and 12:30 AM EST (5:30 AM UTC)"
     echo "📁 Logs: $LOG_DIR/clash-intelligence-ingestion.log"
     echo ""
     echo "Useful commands:"
