@@ -21,11 +21,66 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const supabase = getSupabaseAdminClient();
+
+  // Check if Mac cron already ran successfully today (fallback check)
   try {
-    console.log(`[Cron ${executionId}] Starting daily ingestion job at ${startTime}`);
+    const todayIso = new Date().toISOString().slice(0, 10);
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    
+    // Check for successful Mac ingestion in the last hour
+    const { data: macRun, error: macCheckError } = await supabase
+      .from('ingest_logs')
+      .select('job_name, status, finished_at, details')
+      .eq('job_name', 'mac-ingestion-cron')
+      .eq('status', 'completed')
+      .gte('finished_at', oneHourAgo)
+      .order('finished_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (!macCheckError && macRun) {
+      // Mac already ran successfully - skip Vercel execution
+      console.log(`[Cron ${executionId}] ⏭️  Mac ingestion already completed at ${macRun.finished_at} - skipping Vercel fallback`);
+      
+      // Log that we skipped
+      await supabase.from('ingest_logs').insert({
+        job_name: 'daily-ingestion-cron',
+        status: 'skipped',
+        started_at: startTime,
+        finished_at: new Date().toISOString(),
+        details: {
+          execution_id: executionId,
+          source: 'vercel-cron',
+          reason: 'mac_already_ran',
+          mac_run_finished_at: macRun.finished_at,
+          mac_run_details: macRun.details
+        }
+      });
+      
+      return NextResponse.json({ 
+        success: true, 
+        skipped: true,
+        reason: 'mac_already_ran',
+        mac_run_at: macRun.finished_at,
+        execution_id: executionId,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    if (macCheckError) {
+      console.warn(`[Cron ${executionId}] Warning: Failed to check Mac run status:`, macCheckError.message);
+      // Continue with Vercel execution if check fails
+    }
+  } catch (macCheckException: any) {
+    console.warn(`[Cron ${executionId}] Warning: Exception checking Mac run status:`, macCheckException.message);
+    // Continue with Vercel execution if check fails
+  }
+
+  try {
+    console.log(`[Cron ${executionId}] Mac did not run (or check failed) - proceeding with Vercel fallback ingestion at ${startTime}`);
     
     // Log execution start to database for tracking
-    const supabase = getSupabaseAdminClient();
     await supabase.from('ingest_logs').insert({
       job_name: 'daily-ingestion-cron',
       status: 'running',
