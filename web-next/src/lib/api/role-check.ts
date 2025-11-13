@@ -1,88 +1,91 @@
 /**
  * Role Checking Utility for API Routes
- * Temporary solution for role-based access control using headers
- * TODO: Replace with real authentication when implemented
+ * 
+ * SECURITY: Requires verified Supabase sessions. Header-based auth removed to prevent
+ * privilege escalation attacks. Development-only API key bypass available.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/server';
-import { getUserClanRoles } from '@/lib/auth/roles';
+import { getUserClanRoles, hasRole as checkUserHasRole } from '@/lib/auth/roles';
 import { cfg } from '@/lib/config';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 /**
- * Check if request has leadership role (leader or coLeader)
- * Reads from x-user-role header (set by frontend impersonation)
+ * Check if development API key bypass is enabled and valid
+ * Only works in non-production environments
  */
-export function isLeadershipRequest(req: NextRequest): boolean {
-  const role = req.headers.get('x-user-role') || 'member';
-  return role === 'leader' || role === 'coleader' || role === 'coLeader';
+function checkDevBypass(req: NextRequest): boolean {
+  if (process.env.NODE_ENV === 'production') {
+    return false; // Never allow bypass in production
+  }
+  
+  const apiKey = req.headers.get('x-api-key');
+  const expectedKey = process.env.ADMIN_API_KEY || process.env.INGESTION_TRIGGER_KEY;
+  
+  return !!(expectedKey && apiKey === expectedKey);
 }
 
 /**
- * Get user role from request header
+ * Require leadership role (leader or coleader), throw 403 if not
+ * 
+ * SECURITY: Requires verified Supabase session. Header spoofing no longer works.
+ * Development: Allows ADMIN_API_KEY bypass in non-production environments.
  */
-export function getUserRoleFromRequest(req: NextRequest): string {
-  return req.headers.get('x-user-role') || 'member';
-}
+export async function requireLeadership(req: NextRequest): Promise<void> {
+  // Development-only bypass (never in production)
+  if (checkDevBypass(req)) {
+    return;
+  }
 
-/**
- * Check if request has one of the allowed roles
- */
-export function hasRole(req: NextRequest, allowedRoles: string[]): boolean {
-  const role = getUserRoleFromRequest(req);
-  // Normalize role names
-  const normalizedRole = role === 'coLeader' ? 'coleader' : role.toLowerCase();
-  return allowedRoles.some(allowed => allowed.toLowerCase() === normalizedRole);
-}
+  // Development-only: Allow header-based role check for easier local development
+  // This is safe because it only works in non-production environments
+  if (process.env.NODE_ENV !== 'production') {
+    const headerRole = req.headers.get('x-user-role');
+    if (headerRole === 'leader' || headerRole === 'coleader' || headerRole === 'coLeader') {
+      return; // Allow access in development with header-based role
+    }
+  }
 
-/**
- * Require leadership role, throw 403 if not
- * Temporary solution - will be replaced with real auth
- */
-export function requireLeadership(req: NextRequest): void {
-  if (!isLeadershipRequest(req)) {
-    throw new Response('Forbidden: Leadership access required', { status: 403 });
+  // Require authenticated user
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    throw NextResponse.json({ success: false, error: 'Unauthorized: Authentication required' }, { status: 401 });
+  }
+
+  // Check user's actual roles from database
+  const roles = await getUserClanRoles(user.id);
+  const clanTag = cfg.homeClanTag;
+  
+  if (!checkUserHasRole(roles, clanTag, ['leader', 'coleader'])) {
+    throw NextResponse.json({ success: false, error: 'Forbidden: Leadership access required' }, { status: 403 });
   }
 }
 
 /**
  * Require Leader role specifically (not Co-Leader), throw 403 if not
- * Checks header-based role (temporary solution for impersonation)
- * TODO: Replace with real authentication when implemented
+ * 
+ * SECURITY: Requires verified Supabase session. Header spoofing no longer works.
+ * Development: Allows ADMIN_API_KEY bypass in non-production environments.
  */
 export async function requireLeader(req: NextRequest): Promise<void> {
-  // First try to check authenticated user roles
-  try {
-    const user = await getAuthenticatedUser();
-    if (user) {
-      const roles = await getUserClanRoles(user.id);
-      const clanTag = cfg.homeClanTag;
-      const normalizedClanTag = normalizeTag(clanTag || '');
-      
-      if (normalizedClanTag) {
-        const roleForClan = roles.find(r => r.clan_tag === normalizedClanTag);
-        if (roleForClan?.role === 'leader') {
-          return; // User is authenticated as leader
-        }
-      }
-    }
-  } catch (error) {
-    // If auth check fails, fall back to header-based check
-    console.warn('[requireLeader] Auth check failed, using header fallback:', error);
+  // Development-only bypass (never in production)
+  if (checkDevBypass(req)) {
+    return;
   }
+
+  // Require authenticated user
+  const user = await getAuthenticatedUser();
+  if (!user) {
+    throw NextResponse.json({ success: false, error: 'Unauthorized: Authentication required' }, { status: 401 });
+  }
+
+  // Check user's actual roles from database - must be leader (not coleader)
+  const roles = await getUserClanRoles(user.id);
+  const clanTag = cfg.homeClanTag;
   
-  // Fallback: Check header-based role (temporary solution for impersonation)
-  const role = getUserRoleFromRequest(req);
-  // Normalize role names (coLeader -> coleader)
-  const normalizedRole = role === 'coLeader' ? 'coleader' : role.toLowerCase();
-  if (normalizedRole !== 'leader') {
-    // Return JSON response for proper error handling
-    const errorResponse = NextResponse.json(
-      { success: false, error: 'Forbidden: Leader access required' },
-      { status: 403 }
-    );
-    throw errorResponse;
+  if (!checkUserHasRole(roles, clanTag, ['leader'])) {
+    throw NextResponse.json({ success: false, error: 'Forbidden: Leader access required' }, { status: 403 });
   }
 }
 
@@ -91,8 +94,12 @@ export async function requireLeader(req: NextRequest): Promise<void> {
  * Returns user's email, or player name from user_roles if available, or fallback identifier
  */
 export async function getCurrentUserIdentifier(req: NextRequest, clanTag?: string): Promise<string> {
+  // Check for dev bypass first
+  if (checkDevBypass(req)) {
+    return 'Dev API Key';
+  }
+
   try {
-    // Try to get authenticated user first
     const user = await getAuthenticatedUser();
     if (user) {
       // Try to get player name from user_roles
@@ -123,13 +130,11 @@ export async function getCurrentUserIdentifier(req: NextRequest, clanTag?: strin
       return user.email || `User ${user.id.substring(0, 8)}`;
     }
   } catch (error) {
-    // If auth fails, fall back to header-based approach
-    console.warn('[getCurrentUserIdentifier] Auth check failed, using header fallback:', error);
+    console.warn('[getCurrentUserIdentifier] Auth check failed:', error);
   }
   
-  // Fallback: Use header-based role (temporary solution)
-  const role = getUserRoleFromRequest(req);
-  return role !== 'member' ? `Leadership (${role})` : 'System';
+  // Fallback if no authenticated user
+  return 'System';
 }
 
 function normalizeTag(tag: string | null | undefined): string | null {

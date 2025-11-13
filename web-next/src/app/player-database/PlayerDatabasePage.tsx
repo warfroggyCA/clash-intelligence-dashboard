@@ -83,6 +83,11 @@ export default function PlayerDatabasePage() {
   const [showAddNoteModal, setShowAddNoteModal] = useState(false);
   const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
   const [showWarningModal, setShowWarningModal] = useState(false);
+  const [showMarkReturnedModal, setShowMarkReturnedModal] = useState(false);
+  const [returnNoteText, setReturnNoteText] = useState('');
+  const [returnTenureAward, setReturnTenureAward] = useState('');
+  const [markingReturned, setMarkingReturned] = useState(false);
+  const [departureTenure, setDepartureTenure] = useState<number | null>(null);
   const [editingNote, setEditingNote] = useState<PlayerNote | null>(null);
   const [newNoteText, setNewNoteText] = useState('');
   const [newPlayerTag, setNewPlayerTag] = useState('');
@@ -229,16 +234,48 @@ export default function PlayerDatabasePage() {
       const { getRoleHeaders } = await import('@/lib/api/role-header');
       const roleHeaders = getRoleHeaders();
       
+      // Add dev API key bypass if in development
+      const headers: Record<string, string> = {
+        'Cache-Control': 'no-cache',
+        ...roleHeaders,
+      };
+      
+      // In development, add API key for bypass if available
+      if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
+        // Check if we have an API key stored or in env (client-side can't access process.env directly)
+        // The API key should be set via environment variable on the server
+        // For now, rely on Supabase auth or the server-side check
+      }
+      
       const response = await fetch(url, {
         cache: 'no-store', // Ensure no caching
-        headers: {
-          'Cache-Control': 'no-cache',
-          ...roleHeaders,
-        },
+        headers,
       });
       
+      // Handle auth errors (401/403) - they return JSON in the body
       if (!response.ok) {
-        throw new Error(`API returned ${response.status}: ${await response.text().catch(() => '')}`);
+        let errorMessage = `API returned ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error) {
+            errorMessage = errorData.error;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch {
+          // If JSON parsing fails, try text
+          const text = await response.text().catch(() => '');
+          if (text) errorMessage = text;
+        }
+        
+        // Provide more helpful error messages
+        if (response.status === 401) {
+          errorMessage = 'Authentication required. Please sign in to access the player database.';
+        } else if (response.status === 403) {
+          errorMessage = 'Access denied. Leadership role required to view the player database.';
+        }
+        
+        throw new Error(errorMessage);
       }
       
       const result = await response.json();
@@ -877,6 +914,63 @@ export default function PlayerDatabasePage() {
     }
   }, [selectedPlayer, loadPlayerDatabase, clanTag]);
 
+  // Mark player as returned
+  const handleMarkReturned = useCallback(async () => {
+    if (!selectedPlayer) return;
+
+    setMarkingReturned(true);
+    try {
+      const normalizedClanTag = normalizeTag(clanTag);
+      if (!normalizedClanTag) {
+        throw new Error('No clan tag available');
+      }
+
+      // Add role header for server-side authentication
+      const { getRoleHeaders } = await import('@/lib/api/role-header');
+      const roleHeaders = getRoleHeaders();
+      
+      const response = await fetch('/api/player-history/mark-returned', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...roleHeaders,
+        },
+        body: JSON.stringify({
+          clanTag: normalizedClanTag,
+          playerTag: selectedPlayer.tag,
+          playerName: selectedPlayer.name,
+          note: returnNoteText.trim() || undefined,
+          awardPreviousTenure: returnTenureAward ? parseInt(returnTenureAward, 10) : undefined,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to mark player as returned (${response.status})`);
+      }
+
+      // Close modal and reset state
+      setShowMarkReturnedModal(false);
+      setReturnNoteText('');
+      setReturnTenureAward('');
+      
+      // Refresh player database and roster
+      invalidateCache();
+      loadPlayerDatabase(true);
+      await loadRoster(normalizedClanTag, { mode: 'snapshot', force: true });
+      
+      // Close player modal and show success
+      setShowPlayerModal(false);
+      setSelectedPlayer(null);
+      
+      alert('Player marked as returned! They should now appear in the roster.');
+    } catch (error: any) {
+      console.error('Error marking player as returned:', error);
+      setErrorMessage(error.message || 'Failed to mark player as returned');
+    } finally {
+      setMarkingReturned(false);
+    }
+  }, [selectedPlayer, clanTag, returnNoteText, returnTenureAward, invalidateCache, loadPlayerDatabase, loadRoster]);
 
   // Generate timeline from player data
   const generatePlayerTimeline = useCallback((player: PlayerRecord): TimelineEvent[] => {
@@ -1529,6 +1623,171 @@ export default function PlayerDatabasePage() {
                           <span>👋</span>
                           <span>Record Departure</span>
                           </Button>
+                        {!selectedPlayer.isCurrentMember && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={async () => {
+                              setReturnNoteText('');
+                              setReturnTenureAward('');
+                              setDepartureTenure(null);
+                              
+                              // Try to get departure tenure from multiple sources
+                              try {
+                                const normalizedClanTag = normalizeTag(clanTag);
+                                if (normalizedClanTag && selectedPlayer.tag) {
+                                  let foundTenure: number | null = null;
+                                  
+                                  console.log('[MarkReturned] Checking departure tenure for:', selectedPlayer.tag);
+                                  console.log('[MarkReturned] Player record:', {
+                                    departureActions: selectedPlayer.departureActions,
+                                    notes: selectedPlayer.notes?.length,
+                                    notesData: selectedPlayer.notes,
+                                  });
+                                  
+                                  // First, check notes for "Tenure at Departure" in customFields (most reliable)
+                                  if (selectedPlayer.notes && selectedPlayer.notes.length > 0) {
+                                    console.log('[MarkReturned] Checking notes for tenure...');
+                                    // Look for departure notes (check in reverse order for most recent)
+                                    for (let i = selectedPlayer.notes.length - 1; i >= 0; i--) {
+                                      const note = selectedPlayer.notes[i];
+                                      console.log('[MarkReturned] Note:', i, 'customFields:', JSON.stringify(note.customFields, null, 2));
+                                      if (note.customFields) {
+                                        // Check various possible field names
+                                        const tenureStr = note.customFields['Tenure at Departure'] || 
+                                                         note.customFields['Tenure at departure'] ||
+                                                         note.customFields['tenureAtDeparture'] ||
+                                                         note.customFields['Tenure At Departure'];
+                                        console.log('[MarkReturned] Checking tenureStr:', tenureStr);
+                                        if (tenureStr) {
+                                          const tenureNum = parseInt(String(tenureStr), 10);
+                                          console.log('[MarkReturned] Found tenure in note:', tenureStr, '->', tenureNum);
+                                          if (!isNaN(tenureNum) && tenureNum > 0) {
+                                            foundTenure = tenureNum;
+                                            break;
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  
+                                  // Check departureActions
+                                  if (foundTenure == null && selectedPlayer.departureActions && selectedPlayer.departureActions.length > 0) {
+                                    console.log('[MarkReturned] Checking departureActions...', JSON.stringify(selectedPlayer.departureActions, null, 2));
+                                    const lastDeparture = selectedPlayer.departureActions[selectedPlayer.departureActions.length - 1];
+                                    console.log('[MarkReturned] Last departure:', JSON.stringify(lastDeparture, null, 2));
+                                    if ((lastDeparture as any).tenureAtDeparture != null) {
+                                      foundTenure = (lastDeparture as any).tenureAtDeparture;
+                                    }
+                                  }
+                                  
+                                  // Fallback: fetch from player_history API
+                                  if (foundTenure == null) {
+                                    console.log('[MarkReturned] Fetching from player_history API...');
+                                    const { getRoleHeaders } = await import('@/lib/api/role-header');
+                                    const roleHeaders = getRoleHeaders();
+                                    const response = await fetch(
+                                      `/api/player-history?clanTag=${encodeURIComponent(normalizedClanTag)}&playerTag=${encodeURIComponent(selectedPlayer.tag)}`,
+                                      {
+                                        headers: roleHeaders,
+                                      }
+                                    );
+                                    if (response.ok) {
+                                      const data = await response.json();
+                                      console.log('[MarkReturned] History API response:', JSON.stringify(data, null, 2));
+                                      if (data.success && data.data && data.data.length > 0) {
+                                        const history = data.data[0];
+                                        console.log('[MarkReturned] History data:', JSON.stringify(history, null, 2));
+                                        // Check total_tenure from history record
+                                        if (history.total_tenure != null && history.total_tenure > 0) {
+                                          console.log('[MarkReturned] Found total_tenure in history:', history.total_tenure);
+                                          foundTenure = history.total_tenure;
+                                        }
+                                        // Find the last departure movement
+                                        if (foundTenure == null) {
+                                          const movements = history.movements || [];
+                                          const departures = movements.filter((m: any) => m.type === 'departed');
+                                          console.log('[MarkReturned] Departures in history:', JSON.stringify(departures, null, 2));
+                                          if (departures.length > 0) {
+                                            const lastDeparture = departures[departures.length - 1];
+                                            console.log('[MarkReturned] Last departure movement:', JSON.stringify(lastDeparture, null, 2));
+                                            if (lastDeparture.tenureAtDeparture != null) {
+                                              foundTenure = lastDeparture.tenureAtDeparture;
+                                            }
+                                          }
+                                        }
+                                        // Also check notes in history
+                                        if (foundTenure == null && history.notes) {
+                                          console.log('[MarkReturned] Checking history notes...', JSON.stringify(history.notes, null, 2));
+                                          for (let i = history.notes.length - 1; i >= 0; i--) {
+                                            const note = history.notes[i];
+                                            console.log('[MarkReturned] History note:', i, JSON.stringify(note, null, 2));
+                                            if (note.customFields) {
+                                              const tenureStr = note.customFields['Tenure at Departure'] || 
+                                                               note.customFields['Tenure at departure'] ||
+                                                               note.customFields['tenureAtDeparture'] ||
+                                                               note.customFields['Tenure At Departure'];
+                                              console.log('[MarkReturned] History note tenureStr:', tenureStr);
+                                              if (tenureStr) {
+                                                const tenureNum = parseInt(String(tenureStr), 10);
+                                                if (!isNaN(tenureNum) && tenureNum > 0) {
+                                                  foundTenure = tenureNum;
+                                                  break;
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                  
+                                  // Final fallback: Try to get from player profile (last known tenure)
+                                  if (foundTenure == null) {
+                                    console.log('[MarkReturned] Trying player profile API for last known tenure...');
+                                    try {
+                                      const { getRoleHeaders } = await import('@/lib/api/role-header');
+                                      const roleHeaders = getRoleHeaders();
+                                      const profileResponse = await fetch(
+                                        `/api/player/${encodeURIComponent(selectedPlayer.tag)}/profile?clanTag=${encodeURIComponent(normalizedClanTag)}`,
+                                        {
+                                          headers: roleHeaders,
+                                        }
+                                      );
+                                      if (profileResponse.ok) {
+                                        const profileData = await profileResponse.json();
+                                        console.log('[MarkReturned] Profile API response:', JSON.stringify(profileData, null, 2));
+                                        if (profileData.success && profileData.data?.summary?.tenureDays != null) {
+                                          const profileTenure = profileData.data.summary.tenureDays;
+                                          console.log('[MarkReturned] Found tenure in profile:', profileTenure);
+                                          if (profileTenure > 0) {
+                                            foundTenure = profileTenure;
+                                          }
+                                        }
+                                      }
+                                    } catch (profileError) {
+                                      console.warn('[MarkReturned] Failed to fetch profile:', profileError);
+                                    }
+                                  }
+                                  
+                                  console.log('[MarkReturned] Final foundTenure:', foundTenure);
+                                  if (foundTenure != null) {
+                                    setDepartureTenure(foundTenure);
+                                    setReturnTenureAward(foundTenure.toString());
+                                  }
+                                }
+                              } catch (error) {
+                                console.error('[MarkReturned] Failed to fetch departure tenure:', error);
+                              }
+                              
+                              setShowMarkReturnedModal(true);
+                            }}
+                            className="flex items-center justify-center space-x-1 text-xs"
+                          >
+                            <span>✅</span>
+                            <span>Mark Returned</span>
+                          </Button>
+                        )}
                         </div>
                       </div>
                     </LeadershipGuard>
@@ -1916,6 +2175,102 @@ export default function PlayerDatabasePage() {
                     </Button>
                   </LeadershipGuard>
                 </div>
+              </div>
+            </div>
+          )}
+        </Modal>
+
+        {/* Mark Returned Modal */}
+        <Modal
+          isOpen={showMarkReturnedModal}
+          onClose={() => {
+            setShowMarkReturnedModal(false);
+            setReturnNoteText('');
+            setReturnTenureAward('');
+            setErrorMessage(null);
+          }}
+          title="Mark Player as Returned"
+          size="md"
+        >
+          {selectedPlayer && (
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-slate-400 mb-2">Player</p>
+                <p className="text-slate-100 font-medium">{selectedPlayer.name}</p>
+                <p className="text-xs text-slate-400 font-mono">{selectedPlayer.tag}</p>
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">
+                  Return Note (Optional)
+                </label>
+                <textarea
+                  value={returnNoteText}
+                  onChange={(e) => setReturnNoteText(e.target.value)}
+                  placeholder="e.g., Player returned today, ready to participate in wars..."
+                  className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/40 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-100 placeholder-slate-500"
+                  rows={4}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-slate-300 mb-2">
+                  Award Previous Tenure (Optional)
+                </label>
+                {departureTenure !== null && (
+                  <div className="mb-2 p-2 bg-blue-900/30 border border-blue-700/40 rounded-lg">
+                    <p className="text-xs text-blue-300">
+                      <strong>Tenure at departure:</strong> {departureTenure} days
+                      {returnTenureAward === departureTenure.toString() && (
+                        <span className="ml-2 text-green-300">(Pre-filled)</span>
+                      )}
+                    </p>
+                  </div>
+                )}
+                <input
+                  type="number"
+                  value={returnTenureAward}
+                  onChange={(e) => setReturnTenureAward(e.target.value)}
+                  placeholder={departureTenure !== null ? `${departureTenure} days (from departure record)` : "Days of previous tenure to add"}
+                  min="0"
+                  className="w-full px-3 py-2 bg-slate-800/50 border border-slate-700/40 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-slate-100 placeholder-slate-500"
+                />
+                <p className="text-xs text-slate-400 mt-1">
+                  {departureTenure !== null 
+                    ? `The player had ${departureTenure} days of tenure when they left. This value has been pre-filled, but you can adjust it if needed.`
+                    : "Tenure at departure was not recorded. If this player had previous tenure before leaving, enter the number of days to add back. You can leave this blank if they had no previous tenure."
+                  }
+                </p>
+              </div>
+
+              {errorMessage && (
+                <div className="p-3 bg-red-900/30 border border-red-700/40 rounded-lg">
+                  <p className="text-sm text-red-300">{errorMessage}</p>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end space-x-3 pt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setShowMarkReturnedModal(false);
+                    setReturnNoteText('');
+                    setReturnTenureAward('');
+                    setErrorMessage(null);
+                  }}
+                  disabled={markingReturned}
+                >
+                  Cancel
+                </Button>
+                <LeadershipGuard requiredPermission="canModifyClanData" fallback={null}>
+                  <Button
+                    variant="primary"
+                    onClick={handleMarkReturned}
+                    disabled={markingReturned}
+                  >
+                    {markingReturned ? 'Marking Returned...' : 'Mark as Returned'}
+                  </Button>
+                </LeadershipGuard>
               </div>
             </div>
           )}

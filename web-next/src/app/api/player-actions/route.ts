@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireLeadership, getCurrentUserIdentifier } from '@/lib/api/role-check';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 import { applyTenureAction } from '@/lib/services/tenure-service';
 import { ymdNowUTC } from '@/lib/date';
 import { readLedgerEffective } from '@/lib/tenure';
@@ -54,6 +54,20 @@ async function lookupPlayerName(clanTag: string, playerTag: string): Promise<str
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
+  
+  try {
+    // Require leadership to view player actions (tenure/departure notes)
+    await requireLeadership(request);
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
+  }
   
   try {
     const { searchParams } = new URL(request.url);
@@ -134,7 +148,7 @@ export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
   
   try {
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const body = await request.json();
     const { clanTag, playerTag, playerName, actionType, actionData } = body;
@@ -274,7 +288,7 @@ export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
   
   try {
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const body = await request.json();
     const { id, actionType, clanTag } = body;

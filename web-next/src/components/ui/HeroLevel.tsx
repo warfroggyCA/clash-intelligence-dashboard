@@ -12,6 +12,7 @@ interface HeroLevelProps {
   clanAverageCount?: number;
   clanAverageSource?: 'roster' | 'profile';
   tooltip?: string;
+  hideTrackBackground?: boolean; // If true, removes the track background for better contrast
 }
 
 const sizeClasses = {
@@ -51,7 +52,8 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
   clanAverage,
   clanAverageCount,
   clanAverageSource,
-  tooltip
+  tooltip,
+  hideTrackBackground = false
 }) => {
   const safeLevel = Number.isFinite(level) ? Math.max(level, 0) : 0;
   const safeMax = Number.isFinite(maxLevel) ? Math.max(maxLevel, 0) : 0;
@@ -100,11 +102,15 @@ export const HeroLevel: React.FC<HeroLevelProps> = ({
       </div>
       {showProgress && !unavailable && (
         <div
-          className={`hero-progress-track relative w-full rounded-full ${progressHeightClasses[size]} overflow-hidden`}
+          className={`relative w-full rounded-full ${progressHeightClasses[size]} overflow-hidden ${
+            hideTrackBackground ? '' : 'hero-progress-track'
+          }`}
           aria-label={progressTitle}
         >
           <div 
-            className={`bg-gradient-to-r ${config.color} ${progressHeightClasses[size]} rounded-full transition-all duration-500 ease-out`}
+            className={`bg-gradient-to-r ${config.color} ${progressHeightClasses[size]} rounded-full transition-all duration-500 ease-out ${
+              hideTrackBackground ? 'shadow-lg' : ''
+            }`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
           />
           {averagePercentage !== null ? (

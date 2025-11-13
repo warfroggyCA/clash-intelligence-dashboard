@@ -123,6 +123,30 @@ if (!FIXIE_URL) {
 // Development mode - skip API calls to save Fixie quota
 const DEV_MODE = process.env.NODE_ENV === 'development' && process.env.SKIP_API_CALLS === 'true';
 
+// Debug logging control - gate verbose logs in production
+// Set DEBUG_COC_API=true to enable verbose logging in production
+const DEBUG_COC_API = process.env.DEBUG_COC_API === 'true' || process.env.NODE_ENV === 'development';
+
+/**
+ * Log debug/info messages only in development or when DEBUG_COC_API is enabled
+ * Errors are always logged regardless of debug flag
+ */
+function debugLog(...args: any[]): void {
+  if (DEBUG_COC_API) {
+    console.log(...args);
+  }
+}
+
+/**
+ * Log warnings only in development or when DEBUG_COC_API is enabled
+ * Critical warnings are always logged
+ */
+function debugWarn(...args: any[]): void {
+  if (DEBUG_COC_API) {
+    console.warn(...args);
+  }
+}
+
 // Simple in-memory cache to reduce API calls
 const cache = new Map<string, { data: any; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
@@ -227,7 +251,7 @@ async function api<T>(path: string): Promise<T> {
   
   // Development mode - use mock data to save Fixie quota
   if (DEV_MODE) {
-    console.log(`[DEV MODE] Using mock data for: ${path}`);
+    debugLog(`[DEV MODE] Using mock data for: ${path}`);
     
     // Return mock clan data
     if (path.includes('/clans/')) {
@@ -249,7 +273,7 @@ async function api<T>(path: string): Promise<T> {
   // Check cache first
   const cached = getCached<T>(path);
   if (cached) {
-    console.log(`[Cache Hit] Using cached data for ${path}`);
+    debugLog(`[Cache Hit] Using cached data for ${path}`);
     return cached;
   }
 
@@ -258,7 +282,7 @@ async function api<T>(path: string): Promise<T> {
   if (!token) {
     // In development, fall back to mock data if no token
     if (process.env.NODE_ENV === 'development') {
-      console.log(`[DEV MODE] No COC_API_TOKEN, using mock data for: ${path}`);
+      debugLog(`[DEV MODE] No COC_API_TOKEN, using mock data for: ${path}`);
       
       // Return mock clan data
       if (path.includes('/clans/')) {
@@ -286,8 +310,8 @@ async function api<T>(path: string): Promise<T> {
   const attemptModes: Array<'proxy' | 'direct'> = [];
   const canUseProxy = Boolean(FIXIE_URL) && !DISABLE_PROXY;
   
-  // Log proxy configuration for debugging
-  console.log(`[CoC API] Proxy config - Environment: ${isProduction ? 'PRODUCTION' : isDevelopment ? 'DEVELOPMENT' : 'UNKNOWN'}, FIXIE_URL: ${FIXIE_URL ? 'SET' : 'NOT SET'}, DISABLE_PROXY: ${DISABLE_PROXY}, canUseProxy: ${canUseProxy}`);
+  // Log proxy configuration for debugging (only in debug mode)
+  debugLog(`[CoC API] Proxy config - Environment: ${isProduction ? 'PRODUCTION' : isDevelopment ? 'DEVELOPMENT' : 'UNKNOWN'}, FIXIE_URL: ${FIXIE_URL ? 'SET' : 'NOT SET'}, DISABLE_PROXY: ${DISABLE_PROXY}, canUseProxy: ${canUseProxy}`);
   
   // PRODUCTION: Must use Fixie, no direct connections allowed
   if (isProduction) {
@@ -315,7 +339,7 @@ async function api<T>(path: string): Promise<T> {
         }
       }
     } else {
-      console.warn(`[CoC API] Development mode: Proxy not available, using direct connection`);
+      debugWarn(`[CoC API] Development mode: Proxy not available, using direct connection`);
       while (attemptModes.length < MAX_RETRIES) {
         attemptModes.push('direct');
       }
@@ -335,7 +359,7 @@ async function api<T>(path: string): Promise<T> {
         }
       }
     } else {
-      console.warn(`[CoC API] WARNING: Proxy not available - using direct connection`);
+      debugWarn(`[CoC API] WARNING: Proxy not available - using direct connection`);
       while (attemptModes.length < MAX_RETRIES) {
         attemptModes.push('direct');
       }
@@ -359,7 +383,7 @@ async function api<T>(path: string): Promise<T> {
 
       setCached(path, data);
       if (lastError) {
-        console.warn(`[CoC API] Recovered after ${attemptNumber}/${totalAttempts} attempts for ${path}`);
+        debugWarn(`[CoC API] Recovered after ${attemptNumber}/${totalAttempts} attempts for ${path}`);
       }
       return data;
     } catch (error: any) {
@@ -376,7 +400,8 @@ async function api<T>(path: string): Promise<T> {
         console.error(`[CoC API] 403 Forbidden on direct connection - FIXIE_URL is ${FIXIE_URL ? 'SET' : 'NOT SET'}. This likely means Fixie proxy is not configured in production environment.`);
       }
       
-      console.warn(`[CoC API] Attempt ${attemptNumber}/${totalAttempts} (${modeLabel}) failed for ${path}: ${error?.message || error}`);
+      // Only log retry attempts in debug mode - final errors are logged below
+      debugWarn(`[CoC API] Attempt ${attemptNumber}/${totalAttempts} (${modeLabel}) failed for ${path}: ${error?.message || error}`);
 
       if (mode === 'proxy' && (!ALLOW_PROXY_FALLBACK || isClientError)) {
         // If proxy fails and fallback disabled or client error, stop immediately
@@ -433,26 +458,25 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
     maxRedirects: 5,
   };
   
-  // Log proxy URL (masked for security)
-  const maskedFixieUrl = FIXIE_URL.replace(/^https?:\/\/[^:]+:[^@]+@/, 'https://***:***@');
+  // Log proxy URL (masked for security) - only in debug mode
   const fixieHost = FIXIE_URL.match(/@([^:]+)/)?.[1] || 'unknown';
-  console.log(`[API Call] (proxy via Fixie ${fixieHost}) ${path}`);
-  console.log(`[API Call] Proxy config - FIXIE_URL format: ${FIXIE_URL.startsWith('http') ? 'valid' : 'invalid'}, length: ${FIXIE_URL.length}`);
+  debugLog(`[API Call] (proxy via Fixie ${fixieHost}) ${path}`);
+  debugLog(`[API Call] Proxy config - FIXIE_URL format: ${FIXIE_URL.startsWith('http') ? 'valid' : 'invalid'}, length: ${FIXIE_URL.length}`);
   
   try {
     const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
     axiosConfig.httpsAgent = proxyAgent;
     axiosConfig.httpAgent = proxyAgent;
 
-    // Log the exact URL and headers being sent (but mask sensitive data)
+    // Log request details (but mask sensitive data) - only in debug mode
     const maskedToken = token ? `${token.substring(0, 8)}...${token.substring(token.length - 4)}` : 'MISSING';
-    console.log(`[API Call] (proxy) Making request to: ${BASE}${path}`);
-    console.log(`[API Call] (proxy) Authorization header: Bearer ${maskedToken}`);
-    console.log(`[API Call] (proxy) Proxy agent configured: ${proxyAgent ? 'YES' : 'NO'}`);
+    debugLog(`[API Call] (proxy) Making request to: ${BASE}${path}`);
+    debugLog(`[API Call] (proxy) Authorization header: Bearer ${maskedToken}`);
+    debugLog(`[API Call] (proxy) Proxy agent configured: ${proxyAgent ? 'YES' : 'NO'}`);
 
     const response = await axios.get(`${BASE}${path}`, axiosConfig);
-    console.log(`[API Call] (proxy) SUCCESS for ${path} - Status: ${response.status}`);
-    console.log(`[API Call] (proxy) Response headers:`, JSON.stringify(response.headers));
+    debugLog(`[API Call] (proxy) SUCCESS for ${path} - Status: ${response.status}`);
+    debugLog(`[API Call] (proxy) Response headers:`, JSON.stringify(response.headers));
     return response.data as T;
   } catch (error: any) {
     if (error?.response) {
@@ -461,17 +485,24 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
       const data = error.response.data;
       const headers = error.response.headers;
       
+      // Always log errors, but reduce verbosity in production
       console.error(`[API Call] (proxy) FAILED ${status} ${statusText} for ${path}`);
-      console.error(`[API Call] Response data:`, JSON.stringify(data));
-      console.error(`[API Call] Response headers:`, JSON.stringify(headers));
+      
+      // Only log full response data/headers in debug mode (can be large)
+      if (DEBUG_COC_API) {
+        console.error(`[API Call] Response data:`, JSON.stringify(data));
+        console.error(`[API Call] Response headers:`, JSON.stringify(headers));
+      }
       
       // Check if the error is actually from the proxy or from CoC API
       if (status === 403) {
         console.error(`[API Call] 403 Forbidden through Fixie proxy. Possible causes:`);
         console.error(`  1. CoC API token is invalid or revoked`);
         console.error(`  2. Fixie proxy IP is not whitelisted in CoC API key settings`);
-        console.error(`     → Run /api/debug/fixie-ip to get Fixie IP addresses`);
-        console.error(`     → Whitelist these IPs in https://developer.clashofclans.com/#/account/apikey`);
+        if (DEBUG_COC_API) {
+          console.error(`     → Run /api/debug/fixie-ip to get Fixie IP addresses`);
+          console.error(`     → Whitelist these IPs in https://developer.clashofclans.com/#/account/apikey`);
+        }
         console.error(`  3. API key permissions are insufficient`);
         console.error(`  4. API key rate limits exceeded`);
       }
@@ -482,10 +513,12 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
       throw proxiedError;
     }
     
-    // Network/proxy errors
+    // Network/proxy errors - always log message, stack only in debug mode
     console.error(`[API Call] (proxy) REQUEST FAILED for ${path}:`, error?.message || error);
-    console.error(`[API Call] Error code:`, error?.code);
-    console.error(`[API Call] Error stack:`, error?.stack);
+    if (DEBUG_COC_API) {
+      console.error(`[API Call] Error code:`, error?.code);
+      console.error(`[API Call] Error stack:`, error?.stack);
+    }
     
     const proxiedError: any = new Error(`CoC API proxy request failed: ${error?.message || error}`);
     proxiedError.code = error?.code;
@@ -495,7 +528,7 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
 }
 
 async function requestDirect<T>(path: string, token: string): Promise<T> {
-  console.log(`[API Call] ${path}`);
+  debugLog(`[API Call] ${path}`);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
@@ -574,7 +607,7 @@ export async function getClanCurrentWar(clanTag: string) {
     return await api<CoCCurrentWar>(`/clans/${t}/currentwar`);
   } catch (error: any) {
     // API returns 404/403 when war log hidden or no war
-    console.warn('[CoC] Failed to load current war', error?.message || error);
+    debugWarn('[CoC] Failed to load current war', error?.message || error);
     return null;
   }
 }
@@ -586,7 +619,7 @@ export async function getClanCapitalRaidSeasons(clanTag: string, limit = 5) {
     const res = await api<{ items: CoCCapitalRaidSeason[] }>(`/clans/${t}/capitalraidseasons?limit=${safeLimit}`);
     return Array.isArray(res?.items) ? res.items : [];
   } catch (error: any) {
-    console.warn('[CoC] Failed to load capital raid seasons', error?.message || error);
+    debugWarn('[CoC] Failed to load capital raid seasons', error?.message || error);
     return [];
   }
 }

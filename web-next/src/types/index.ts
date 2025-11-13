@@ -851,12 +851,12 @@ export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
   9: { bk: 30, aq: 30, mp: 5 },
   10: { bk: 40, aq: 40, mp: 10 },
   11: { bk: 50, aq: 50, gw: 20, mp: 15 },
-  12: { bk: 65, aq: 65, gw: 40, mp: 20 },
-  13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 50 },
+  12: { bk: 65, aq: 65, gw: 40, mp: 65 }, // Fixed: MP max is 65 at TH12, not 20
+  13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 75 }, // Fixed: MP max is 75 at TH13, not 50
   // Oct 2025: BK/AQ/GW +5 moved down to TH14
-  14: { bk: 85, aq: 85, gw: 60, rc: 30, mp: 55 },
-  15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 60 },
-  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 65 },
+  14: { bk: 85, aq: 85, gw: 60, rc: 30, mp: 80 }, // Fixed: MP max is 80 at TH14, not 55
+  15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 90 }, // Fixed: MP max is 90 at TH15, not 60
+  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 95 }, // Fixed: MP max is 95 at TH16, not 65
   // TH17 max levels (updated based on actual game data)
   17: { bk: 100, aq: 100, gw: 90, rc: 75, mp: 100 },
 };

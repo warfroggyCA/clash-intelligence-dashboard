@@ -37,7 +37,8 @@ import {
 } from '@/lib/export/roster-export';
 import { showToast } from '@/lib/toast';
 import LeaderboardView from '@/components/roster/LeaderboardView';
-import { List, Trophy, ChevronDown, ChevronUp } from 'lucide-react';
+import { PlayerCard } from '@/components/roster/PlayerCard';
+import { List, Trophy, ChevronDown, ChevronUp, LayoutGrid } from 'lucide-react';
 import { RosterSkeleton } from '@/components/ui/RosterSkeleton';
 import { ErrorDisplay, categorizeError } from '@/components/ui/ErrorDisplay';
 import { rosterFetcher } from '@/lib/api/swr-fetcher';
@@ -278,7 +279,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [showRightFade, setShowRightFade] = useState(false);
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const [viewMode, setViewMode] = useState<'table' | 'leaderboard'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'leaderboard' | 'cards'>('table');
   
   // Collapsible summary section - default to collapsed so roster is immediately visible
   const [summaryExpanded, setSummaryExpanded] = useState(() => {
@@ -695,6 +696,21 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
                   <span className="hidden sm:inline ml-1.5">Table</span>
                 </button>
                 <button
+                  onClick={() => setViewMode('cards')}
+                  className={`
+                    flex items-center justify-center p-1.5 sm:px-2 sm:py-1 rounded-md text-xs sm:text-sm font-medium transition-all min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0
+                    ${viewMode === 'cards' 
+                      ? 'bg-brand-surfaceRaised text-brand-text-primary shadow-sm' 
+                      : 'text-brand-text-secondary hover:text-brand-text-primary hover:bg-brand-surface-hover'
+                    }
+                  `}
+                  title="Card view - Visual card layout"
+                  aria-label="Card view"
+                >
+                  <LayoutGrid className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1.5">Cards</span>
+                </button>
+                <button
                   onClick={() => setViewMode('leaderboard')}
                   className={`
                     flex items-center justify-center p-1.5 sm:px-2 sm:py-1 rounded-md text-xs sm:text-sm font-medium transition-all min-h-[36px] min-w-[36px] sm:min-h-0 sm:min-w-0
@@ -1033,6 +1049,18 @@ Helps identify engaged vs. inactive members."
               members={roster.members} 
               currentPlayerTag={null} // TODO: Get current user's tag if available
             />
+          </div>
+        ) : viewMode === 'cards' ? (
+          <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden w-full p-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {sortedMembers.map((member) => (
+                <PlayerCard 
+                  key={member.tag} 
+                  member={member as Member} 
+                  clanHeroAverages={roster?.clanHeroAverages}
+                />
+              ))}
+            </div>
           </div>
         ) : (
           <>

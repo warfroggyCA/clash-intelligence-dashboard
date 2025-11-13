@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireLeadership, getCurrentUserIdentifier } from '@/lib/api/role-check';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
 
@@ -53,6 +53,20 @@ export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
+    // Require leadership to view player notes
+    await requireLeadership(request);
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
+  }
+  
+  try {
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');
     const playerTagParam = searchParams.get('playerTag');
@@ -99,7 +113,7 @@ export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const body = await request.json();
     const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, customFields = {} } = body;
@@ -155,7 +169,7 @@ export async function PUT(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const body = await request.json();
     const { id, note, customFields } = body;
@@ -194,7 +208,7 @@ export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
   
   try {
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const body = await request.json();
     const { id, clanTag } = body;

@@ -41,6 +41,7 @@ export interface RosterApiResponse {
       snapshotDate: string | null;
       isStale: boolean;
     };
+    clanHeroAverages?: Record<string, number | { average: number; count: number }>;
   };
   error?: string;
 }
@@ -97,6 +98,7 @@ export interface RosterData {
     seasonStart?: string | null;
     seasonEnd?: string | null;
   };
+  clanHeroAverages?: Record<string, number | { average: number; count: number }>;
 }
 
 function toRosterMember(raw: Record<string, any>): RosterMember {
@@ -162,9 +164,17 @@ function toRosterMember(raw: Record<string, any>): RosterMember {
 }
 
 export function transformRosterApiResponse(response: RosterApiResponse): RosterData {
-  if (!response?.success || !response.data || !response.data.clan || !Array.isArray(response.data.members)) {
-    throw new Error('Invalid API response format');
+  if (!response?.success || !response.data) {
+    throw new Error('Invalid API response format: missing success or data');
   }
+  
+  // Handle case where clan might be null or missing
+  if (!response.data.clan) {
+    throw new Error('Invalid API response format: missing clan data');
+  }
+  
+  // Ensure members is an array (default to empty array if missing)
+  const members = Array.isArray(response.data.members) ? response.data.members : [];
 
   const snapshot = response.data.snapshot ?? {};
   const metadata = snapshot.metadata ?? {};
@@ -178,7 +188,7 @@ export function transformRosterApiResponse(response: RosterApiResponse): RosterD
     snapshot.member_count ??
     (metadata as any).memberCount ??
     (metadata as any).member_count ??
-    response.data.members.length ?? 0;
+    members.length ?? 0;
 
   const normalizedMetadata = {
     snapshotDate,
@@ -196,7 +206,7 @@ export function transformRosterApiResponse(response: RosterApiResponse): RosterD
     seasonEnd: snapshot.seasonEnd ?? snapshot.season_end ?? (metadata as any).seasonEnd ?? (metadata as any).season_end ?? null,
   } as RosterData['snapshotMetadata'];
 
-  const rosterMembers = response.data.members.map((member) => toRosterMember(member));
+  const rosterMembers = members.map((member) => toRosterMember(member));
 
   // Use snapshotDate as lastUpdated if available, otherwise use fetchedAt
   const lastUpdated = snapshotDate || fetchedAt || null;
@@ -219,6 +229,7 @@ export function transformRosterApiResponse(response: RosterApiResponse): RosterD
       seasonStart: normalizedMetadata?.seasonStart ?? null,
       seasonEnd: normalizedMetadata?.seasonEnd ?? null,
     },
+    clanHeroAverages: response.data.clanHeroAverages ?? {},
   } satisfies RosterData;
 }
 

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireLeadership, getCurrentUserIdentifier } from '@/lib/api/role-check';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { getLinkedTags, getLinkedTagsWithNames, linkPlayerTags, unlinkPlayerTags, areTagsLinked } from '@/lib/player-aliases';
 
@@ -109,7 +109,7 @@ export async function POST(request: NextRequest) {
   
   try {
     // Require leadership role to create alias links
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const body = await request.json();
     const { clanTag: clanTagParam, playerTag1, playerTag2 } = body;
@@ -244,7 +244,7 @@ export async function DELETE(request: NextRequest) {
   
   try {
     // Require leadership role to delete alias links
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');

@@ -75,15 +75,17 @@ const delay = (ms: number): Promise<void> => {
 
 /**
  * Check if error is retryable
+ * SECURITY: Use optional chaining to prevent crashes when error.message is undefined
  */
 const isRetryableError = (error: any): boolean => {
   // Network errors, timeouts, and 5xx errors are retryable
+  const message = error?.message?.toLowerCase() || '';
   return (
     !error.status || // Network error
     error.status >= 500 || // Server error
     error.status === 429 || // Rate limited
-    error.message.includes('timeout') ||
-    error.message.includes('network')
+    message.includes('timeout') ||
+    message.includes('network')
   );
 };
 

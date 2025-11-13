@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
 import { getLinkedTags } from '@/lib/player-aliases';
-import { requireLeadership, isLeadershipRequest } from '@/lib/api/role-check';
+import { requireLeadership } from '@/lib/api/role-check';
 
 /**
  * Lookup player name from tag using canonical snapshots or members table
@@ -55,7 +55,7 @@ export async function GET(request: NextRequest) {
   
   try {
     // Require leadership role to view warnings
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
   
   try {
     // Require leadership role to create warnings
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const body = await request.json();
     const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, warningNote, createdBy } = body;
@@ -220,7 +220,7 @@ export async function DELETE(request: NextRequest) {
   
   try {
     // Require leadership role to delete warnings
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');

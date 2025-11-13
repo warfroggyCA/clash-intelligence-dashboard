@@ -2,10 +2,14 @@ import { cookies } from 'next/headers';
 import { createServerClient } from '@supabase/ssr';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-let cachedClient: SupabaseClient | null = null;
-
+/**
+ * Get a fresh Supabase auth client for the current request.
+ * Creates a new client per request to prevent cross-request cookie reuse.
+ * 
+ * SECURITY: Previously cached a singleton which captured the first request's
+ * cookies, causing cross-tenant data leaks. Now creates fresh client each time.
+ */
 function getSupabaseAuthClient(): SupabaseClient {
-  if (cachedClient) return cachedClient;
   const cookieStore = cookies();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -14,7 +18,8 @@ function getSupabaseAuthClient(): SupabaseClient {
     throw new Error('Supabase credentials missing for auth client');
   }
 
-  cachedClient = createServerClient(supabaseUrl, supabaseKey, {
+  // Create fresh client per request to prevent cookie reuse across requests
+  return createServerClient(supabaseUrl, supabaseKey, {
     cookies: {
       get(name) {
         return cookieStore.get(name)?.value;
@@ -27,8 +32,6 @@ function getSupabaseAuthClient(): SupabaseClient {
       },
     },
   });
-
-  return cachedClient;
 }
 
 export async function getAuthenticatedUser() {

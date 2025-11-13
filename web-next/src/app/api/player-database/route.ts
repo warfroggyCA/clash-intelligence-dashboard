@@ -8,6 +8,21 @@ import { getLinkedTags, getLinkedTagsWithNames } from '@/lib/player-aliases';
 
 export const dynamic = 'force-dynamic';
 
+// Debug logging control - gate verbose logs in production
+const DEBUG_PLAYER_DB = process.env.DEBUG_PLAYER_DATABASE === 'true' || process.env.NODE_ENV === 'development';
+
+function debugLog(...args: any[]): void {
+  if (DEBUG_PLAYER_DB) {
+    console.log(...args);
+  }
+}
+
+function debugWarn(...args: any[]): void {
+  if (DEBUG_PLAYER_DB) {
+    console.warn(...args);
+  }
+}
+
 /**
  * Optimized endpoint for Player Database page.
  * Combines notes, warnings, actions, and player names in efficient queries.
@@ -15,7 +30,7 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // Require leadership role to view player database (contains notes/warnings)
-    requireLeadership(request);
+    await requireLeadership(request);
     
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag') || cfg.homeClanTag;
@@ -111,19 +126,26 @@ export async function GET(request: NextRequest) {
       return !upperTag.includes('TEST');
     });
 
-    console.log(`[player-database] Processing ${uniqueTags.length} unique player tags`);
+    debugLog(`[player-database] Processing ${uniqueTags.length} unique player tags`);
 
     // Step 2.5: Find all linked alias tags and fetch their data
     const linkedTagsSet = new Set<string>();
     const tagToLinkedTagsMap = new Map<string, string[]>();
     
     // Query all alias links for the unique tags
+    // SECURITY: Use parameterized queries instead of string interpolation to prevent query injection
     if (uniqueTags.length > 0) {
+      // Build safe .or() filter with properly encoded values
+      // Format: field1.in.(val1,val2),field2.in.(val1,val2)
+      // Encode each tag to handle special characters like #
+      const encodedTags = uniqueTags.map(tag => encodeURIComponent(tag));
+      const orFilter = `player_tag_1.in.(${encodedTags.join(',')}),player_tag_2.in.(${encodedTags.join(',')})`;
+      
       const { data: aliasLinks, error: aliasLinksError } = await supabaseAdmin
         .from('player_alias_links')
         .select('player_tag_1, player_tag_2')
         .eq('clan_tag', clanTag)
-        .or(`player_tag_1.in.(${uniqueTags.join(',')}),player_tag_2.in.(${uniqueTags.join(',')})`);
+        .or(orFilter);
 
       if (!aliasLinksError && aliasLinks) {
         // Build bidirectional map
@@ -151,7 +173,7 @@ export async function GET(request: NextRequest) {
     const linkedTagsArray = Array.from(linkedTagsSet).filter(tag => !uniqueTags.includes(tag));
     
     if (linkedTagsArray.length > 0) {
-      console.log(`[player-database] Found ${linkedTagsArray.length} linked alias tags`);
+      debugLog(`[player-database] Found ${linkedTagsArray.length} linked alias tags`);
       
       // Fetch warnings and notes for linked tags
       const [linkedNotesResult, linkedWarningsResult] = await Promise.all([
@@ -167,7 +189,7 @@ export async function GET(request: NextRequest) {
           }
           const result = await linkedNotesQuery;
           if (result.error) {
-            console.warn('Error fetching linked notes:', result.error);
+            debugWarn('Error fetching linked notes:', result.error);
             return [];
           }
           return result.data || [];
@@ -181,7 +203,7 @@ export async function GET(request: NextRequest) {
           .in('player_tag', linkedTagsArray)
           .then(result => {
             if (result.error) {
-              console.warn('Error fetching linked warnings:', result.error);
+              debugWarn('Error fetching linked warnings:', result.error);
               return [];
             }
             return result.data || [];
@@ -263,7 +285,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    console.log(`[player-database] Resolved ${playerNamesMap.size} player names`);
+    debugLog(`[player-database] Resolved ${playerNamesMap.size} player names`);
 
     // Step 4: Aggregate data by player tag
     // First pass: collect all stored names from notes/warnings/actions
@@ -556,18 +578,18 @@ export async function GET(request: NextRequest) {
     });
     
     // Resolve names for each linked tag using a comprehensive lookup strategy
-    console.log(`[player-database] Resolving names for ${allLinkedTags.size} linked accounts`);
+    debugLog(`[player-database] Resolving names for ${allLinkedTags.size} linked accounts`);
     for (const linkedTag of allLinkedTags) {
       // Ensure tag is normalized
       const normalizedLinkedTag = normalizeTag(linkedTag) || linkedTag;
       let resolvedName: string | null = null;
       
-      console.log(`[player-database] Resolving name for linked account: ${linkedTag} (normalized: ${normalizedLinkedTag})`);
+      debugLog(`[player-database] Resolving name for linked account: ${linkedTag} (normalized: ${normalizedLinkedTag})`);
       
       // Priority 1: Check if name is already in playerNamesMap (from canonical snapshots/members)
       if (playerNamesMap.has(normalizedLinkedTag)) {
         resolvedName = playerNamesMap.get(normalizedLinkedTag)!;
-        console.log(`[player-database] Found name in playerNamesMap: ${normalizedLinkedTag} → ${resolvedName}`);
+        debugLog(`[player-database] Found name in playerNamesMap: ${normalizedLinkedTag} → ${resolvedName}`);
       }
       
       // Priority 2: Check if this tag has data in playerDataMap (from notes/warnings/actions)
@@ -575,7 +597,7 @@ export async function GET(request: NextRequest) {
         const tagData = playerDataMap.get(normalizedLinkedTag);
         if (tagData?.name && tagData.name !== 'Unknown Player') {
           resolvedName = tagData.name;
-          console.log(`[player-database] Found name in playerDataMap: ${normalizedLinkedTag} → ${resolvedName}`);
+          debugLog(`[player-database] Found name in playerDataMap: ${normalizedLinkedTag} → ${resolvedName}`);
         }
       }
       
@@ -589,7 +611,7 @@ export async function GET(request: NextRequest) {
         
         if (storedName) {
           resolvedName = storedName;
-          console.log(`[player-database] Found name in stored records: ${normalizedLinkedTag} → ${resolvedName}`);
+          debugLog(`[player-database] Found name in stored records: ${normalizedLinkedTag} → ${resolvedName}`);
         }
       }
       
@@ -605,27 +627,27 @@ export async function GET(request: NextRequest) {
         
         if (snapshot?.payload?.member?.name) {
           resolvedName = snapshot.payload.member.name;
-          console.log(`[player-database] Found name in canonical snapshots: ${normalizedLinkedTag} → ${resolvedName}`);
+          debugLog(`[player-database] Found name in canonical snapshots: ${normalizedLinkedTag} → ${resolvedName}`);
         }
       }
       
       // Priority 5: Last resort - CoC API lookup (for newly added linked accounts)
       if (!resolvedName || resolvedName === 'Unknown Player') {
-        console.log(`[player-database] No name found yet for ${normalizedLinkedTag}, attempting CoC API lookup...`);
+        debugLog(`[player-database] No name found yet for ${normalizedLinkedTag}, attempting CoC API lookup...`);
         try {
           const { getPlayer } = await import('@/lib/coc');
           // Remove # prefix for API call
           const cleanTag = normalizedLinkedTag.replace('#', '');
-          console.log(`[player-database] Attempting CoC API lookup for linked account: ${linkedTag} → normalized: ${normalizedLinkedTag} → clean: ${cleanTag}`);
+          debugLog(`[player-database] Attempting CoC API lookup for linked account: ${linkedTag} → normalized: ${normalizedLinkedTag} → clean: ${cleanTag}`);
           const cocPlayer = await getPlayer(cleanTag);
           if (cocPlayer?.name) {
             resolvedName = cocPlayer.name;
-            console.log(`[player-database] ✅ Resolved linked account name via CoC API: ${normalizedLinkedTag} → ${cocPlayer.name}`);
+            debugLog(`[player-database] ✅ Resolved linked account name via CoC API: ${normalizedLinkedTag} → ${cocPlayer.name}`);
           } else {
-            console.warn(`[player-database] ⚠️ CoC API returned no name for ${normalizedLinkedTag} (response: ${JSON.stringify(cocPlayer)})`);
+            debugWarn(`[player-database] ⚠️ CoC API returned no name for ${normalizedLinkedTag}`);
           }
         } catch (cocError: any) {
-          console.warn(`[player-database] ❌ Failed to lookup ${normalizedLinkedTag} via CoC API:`, cocError.message, cocError.stack);
+          debugWarn(`[player-database] ❌ Failed to lookup ${normalizedLinkedTag} via CoC API:`, cocError.message);
         }
       }
       
@@ -636,9 +658,9 @@ export async function GET(request: NextRequest) {
         if (normalizedLinkedTag !== linkedTag) {
           linkedAccountNamesMap.set(linkedTag, resolvedName);
         }
-        console.log(`[player-database] Stored resolved name: ${normalizedLinkedTag} → ${resolvedName}`);
+        debugLog(`[player-database] Stored resolved name: ${normalizedLinkedTag} → ${resolvedName}`);
       } else {
-        console.warn(`[player-database] ⚠️ Could not resolve name for ${normalizedLinkedTag} (resolvedName: ${resolvedName})`);
+        debugWarn(`[player-database] ⚠️ Could not resolve name for ${normalizedLinkedTag}`);
       }
     }
     
@@ -648,7 +670,7 @@ export async function GET(request: NextRequest) {
       if (data.name === 'Unknown Player' && allLinkedTags.has(tag)) {
         const resolvedName = linkedAccountNamesMap.get(tag);
         if (resolvedName && resolvedName !== 'Unknown Player') {
-          console.log(`[player-database] Updating playerDataMap name for ${tag}: Unknown Player → ${resolvedName}`);
+          debugLog(`[player-database] Updating playerDataMap name for ${tag}: Unknown Player → ${resolvedName}`);
           data.name = resolvedName;
         }
       }
@@ -762,6 +784,7 @@ export async function GET(request: NextRequest) {
     players.sort((a, b) => b.lastUpdated.localeCompare(a.lastUpdated));
 
     const duration = Date.now() - startTime;
+    // Always log completion time (useful for performance monitoring)
     console.log(`[player-database] Completed in ${duration}ms: ${players.length} players`);
 
     return NextResponse.json({
@@ -774,9 +797,12 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: any) {
-    // Handle 403 Forbidden from requireLeadership
-    if (error instanceof Response && error.status === 403) {
-      return error;
+    // Handle 401/403 errors from requireLeadership (NextResponse extends Response)
+    if (error instanceof Response) {
+      const status = error.status;
+      if (status === 401 || status === 403) {
+        return error;
+      }
     }
     console.error('[player-database] Error:', error);
     return NextResponse.json(
