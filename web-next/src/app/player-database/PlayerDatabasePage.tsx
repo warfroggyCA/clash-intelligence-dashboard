@@ -235,9 +235,14 @@ export default function PlayerDatabasePage() {
       const roleHeaders = getRoleHeaders();
       
       // Add dev API key bypass if in development
+      // getRoleHeaders() returns a plain object, but HeadersInit type includes Headers
+      // Convert to plain Record<string, string> to satisfy TypeScript
+      const roleHeadersObj = roleHeaders instanceof Headers
+        ? Object.fromEntries(Array.from(roleHeaders.entries()))
+        : (roleHeaders as Record<string, string>);
       const headers: Record<string, string> = {
         'Cache-Control': 'no-cache',
-        ...roleHeaders,
+        ...roleHeadersObj,
       };
       
       // In development, add API key for bypass if available
