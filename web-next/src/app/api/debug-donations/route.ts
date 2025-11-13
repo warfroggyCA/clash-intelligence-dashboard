@@ -1,7 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { requireLeadership } from '@/lib/api/role-check';
 
 export async function GET(req: NextRequest) {
+  try {
+    // Require leadership or dev API key (never public in production)
+    await requireLeadership(req);
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
+  }
+  
   try {
     const supabase = getSupabaseServerClient();
     
@@ -13,6 +28,14 @@ export async function GET(req: NextRequest) {
 
     if (error) {
       throw error;
+    }
+
+    // Guard against empty array
+    if (!canonicalSnapshot || canonicalSnapshot.length === 0) {
+      return NextResponse.json(
+        { success: false, error: 'No canonical snapshots found' },
+        { status: 404 }
+      );
     }
 
     const member = canonicalSnapshot[0].payload.member;

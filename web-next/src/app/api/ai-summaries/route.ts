@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { normalizeTag } from '@/lib/tags';
 

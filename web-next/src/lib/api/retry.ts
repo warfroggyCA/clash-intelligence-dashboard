@@ -21,6 +21,11 @@ const DEFAULT_OPTIONS: Required<RetryOptions> = {
  * Check if an error is retryable
  */
 export function isRetryableError(error: any): boolean {
+  // If explicitly marked as non-retryable, don't retry
+  if (error?.retryable === false) {
+    return false;
+  }
+
   // Network errors are retryable
   if (
     error?.message?.includes('fetch') ||
@@ -109,10 +114,15 @@ export async function fetchWithRetry(
       const response = await fetch(url, options);
 
       // Throw error for non-ok responses so retry logic can handle them
+      // Don't retry 4xx errors (client errors) - they're permanent
       if (!response.ok) {
         const error: any = new Error(`HTTP ${response.status}: ${response.statusText}`);
         error.status = response.status;
         error.response = response;
+        // Mark 4xx errors as non-retryable
+        if (response.status >= 400 && response.status < 500) {
+          error.retryable = false;
+        }
         throw error;
       }
 

@@ -25,11 +25,13 @@ export async function getLinkedTags(
   }
 
   // Query both directions: where tag is player_tag_1 or player_tag_2
+  // SECURITY: Use properly encoded values to prevent query injection
+  const encodedTag = encodeURIComponent(normalizedPlayerTag);
   const { data, error } = await supabase
     .from('player_alias_links')
     .select('player_tag_1, player_tag_2')
     .eq('clan_tag', normalizedClanTag)
-    .or(`player_tag_1.eq.${normalizedPlayerTag},player_tag_2.eq.${normalizedPlayerTag}`);
+    .or(`player_tag_1.eq.${encodedTag},player_tag_2.eq.${encodedTag}`);
 
   if (error) {
     console.error('Error fetching linked tags:', error);

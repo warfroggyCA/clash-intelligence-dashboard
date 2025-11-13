@@ -152,14 +152,13 @@ export function useLeadership(): UseLeadershipResult {
     const accessPerms = getAccessLevelPermissions(accessLevel, customPermissions);
     const permissions = accessPermissionsToRolePermissions(accessPerms);
     
-    // Debug logging (remove in production)
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[useLeadership] impersonatedRole:', impersonatedRole);
-      console.log('[useLeadership] role:', role);
-      console.log('[useLeadership] accessLevel:', accessLevel);
-      console.log('[useLeadership] customPermissions:', JSON.stringify(customPermissions, null, 2));
-      console.log('[useLeadership] accessPerms.canViewAuditLog:', accessPerms.canViewAuditLog);
-      console.log('[useLeadership] permissions.canViewAuditLog:', permissions.canViewAuditLog);
+    // Debug logging (only log once per unique state to reduce console spam)
+    if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined') {
+      const logKey = `${role}-${accessLevel}-${JSON.stringify(customPermissions)}`;
+      if (!(window as any).__useLeadershipLastLog || (window as any).__useLeadershipLastLog !== logKey) {
+        (window as any).__useLeadershipLastLog = logKey;
+        console.log('[useLeadership]', { role, accessLevel, customPermissions: customPermissions ? 'present' : 'null' });
+      }
     }
     
     return { check, permissions };

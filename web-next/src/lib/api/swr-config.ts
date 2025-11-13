@@ -25,12 +25,26 @@ export const defaultSWRConfig: SWRConfiguration = {
   // Error retry configuration
   errorRetryCount: 3,
   errorRetryInterval: 1000,
-  
-  // Keep previous data while revalidating (better UX)
-  keepPreviousData: true,
-  
-  // Don't show loading state if we have cached data
-  fallbackData: undefined,
+  // Don't retry on 4xx errors (client errors like 404)
+  // SWR 2.x uses onErrorRetry callback
+  onErrorRetry: (error: any, key: string, config: any, revalidate: any, { retryCount }: any) => {
+    const status = error?.status || error?.response?.status;
+    // Don't retry 4xx errors (except 408 timeout and 429 rate limit)
+    if (status >= 400 && status < 500) {
+      if (status === 408 || status === 429) {
+        // Retry timeout and rate limit errors
+        if (retryCount < (config.errorRetryCount || 3)) {
+          setTimeout(() => revalidate({ retryCount }), config.errorRetryInterval || 1000);
+        }
+      }
+      // Don't retry other 4xx errors (like 404)
+      return;
+    }
+    // Retry network errors and 5xx errors
+    if (retryCount < (config.errorRetryCount || 3)) {
+      setTimeout(() => revalidate({ retryCount }), config.errorRetryInterval || 1000);
+    }
+  },
 };
 
 /**

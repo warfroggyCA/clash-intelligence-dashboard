@@ -43,28 +43,25 @@ export async function apiFetcher<T = any>(url: string): Promise<T> {
  * Transforms the API response to RosterData format
  */
 export async function rosterFetcher(url: string) {
-  // Fetch raw response first to check structure
-  const response = await fetchWithRetry(
-    url,
-    {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
+  // Fetch raw response - don't use fetchWithRetry here since it throws on non-ok responses
+  // We want to read the JSON body even for 404s
+  const response = await fetch(url, {
+    cache: 'no-store',
+    headers: {
+      'Cache-Control': 'no-cache',
     },
-    {
-      maxRetries: 3,
-      initialDelay: 1000,
-      maxDelay: 5000,
-    }
-  );
+  });
 
   const apiData = await response.json();
 
-  // Handle standard API response format
+  // Handle standard API response format (including 404s with JSON bodies)
   if (apiData.success === false) {
     const error: any = new Error(apiData.error || `API request failed: ${url}`);
     error.status = response.status;
+    // Mark 4xx errors as non-retryable
+    if (response.status >= 400 && response.status < 500) {
+      error.retryable = false;
+    }
     throw error;
   }
 

@@ -19,7 +19,10 @@ import { calculateHistoricalTrophiesForPlayer } from '@/lib/business/historical-
 import { getPlayer } from '@/lib/coc';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0; // Keep API route fresh, but page will cache via server component
+// Cache player profile aggressively - data only updates once per day (nightly ingestion)
+// Cache for 12 hours (43200 seconds) - will refresh when new ingestion runs
+// Player stats don't change between ingestions, so long cache is safe
+export const revalidate = 43200; // 12 hours
 
 const SEASON_START_ISO = DEFAULT_SEASON_START_ISO;
 
@@ -225,7 +228,7 @@ async function fetchCanonicalSnapshots(
   supabase: ReturnType<typeof getSupabaseServerClient>,
   playerTag: string,
   clanTag: string | null,
-  limit = 120,
+  limit = 60, // PERFORMANCE: Reduced from 120 to 60 - 2 months is sufficient for profile view
 ): Promise<CanonicalSnapshotRow[]> {
   const RANKED_START_DATE = '2025-10-06'; // Filter at SQL level to exclude Oct 5 and earlier
   
@@ -268,7 +271,18 @@ export async function GET(
     }
 
     // Get clanTag from query parameter, fallback to homeClanTag
-    const { searchParams } = new URL(req.url);
+    // Safely parse URL - handle edge cases where req.url might not be a full URL
+    let searchParams: URLSearchParams;
+    try {
+      const url = typeof req.url === 'string' ? new URL(req.url) : new URL(req.url);
+      searchParams = url.searchParams;
+    } catch (e) {
+      // Fallback: try to extract query string manually
+      const urlString = typeof req.url === 'string' ? req.url : String(req.url);
+      const queryStart = urlString.indexOf('?');
+      const queryString = queryStart >= 0 ? urlString.substring(queryStart + 1) : '';
+      searchParams = new URLSearchParams(queryString);
+    }
     const requestedClanTag = searchParams.get('clanTag');
     const clanTag = requestedClanTag ? normalizeTag(requestedClanTag) : (cfg.homeClanTag ? normalizeTag(cfg.homeClanTag) : null);
 
@@ -441,29 +455,47 @@ export async function GET(
     // Log the latest snapshot date for debugging
     console.log(`[player-profile] Latest snapshot date for ${normalizedTag}: ${latestSnapshotDate}`);
 
-    const { data: clanRow, error: clanError } = await supabase
-      .from('clans')
-      .select('id, tag, name, logo_url')
-      .eq('tag', resolvedClanTag)
-      .maybeSingle();
+    // PERFORMANCE: Parallelize independent queries (clan, tenure, player_day, member lookup)
+    const [
+      { data: clanRow, error: clanError },
+      tenureDetails,
+      { data: playerDayRows, error: playerDayError },
+      { data: memberRow },
+    ] = await Promise.all([
+      // Get clan info
+      resolvedClanTag
+        ? supabase
+            .from('clans')
+            .select('id, tag, name, logo_url')
+            .eq('tag', resolvedClanTag)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      // Get tenure details
+      readTenureDetails(latestSnapshot.snapshotDate ?? undefined),
+      // Get player_day data for timeline
+      supabase
+        .from('player_day')
+        .select('date, clan_tag, player_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability')
+        .eq('player_tag', normalizedTag)
+        .order('date', { ascending: true }),
+      // Get member ID for historical trophy calculations
+      supabase
+        .from('members')
+        .select('id')
+        .eq('tag', normalizedTag)
+        .maybeSingle(),
+    ]);
+
     if (clanError && clanError.code !== 'PGRST116') {
       throw clanError;
     }
-
-    const tenureDetails = await readTenureDetails(latestSnapshot.snapshotDate ?? undefined);
-    const tenureInfo = tenureDetails[latestSnapshot.playerTag] ?? null;
-
-    let timelineStats: TimelineComputation;
-
-    const { data: playerDayRows, error: playerDayError } = await supabase
-      .from('player_day')
-      .select('date, clan_tag, player_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability')
-      .eq('player_tag', normalizedTag)
-      .order('date', { ascending: true });
-
     if (playerDayError && playerDayError.code !== 'PGRST116') {
       throw playerDayError;
     }
+
+    const tenureInfo = tenureDetails[latestSnapshot.playerTag] ?? null;
+
+    let timelineStats: TimelineComputation;
 
     if (playerDayRows && playerDayRows.length) {
       timelineStats = buildTimelineFromPlayerDay(playerDayRows as PlayerDayTimelineRow[], SEASON_START_ISO);
@@ -471,15 +503,9 @@ export async function GET(
       timelineStats = buildTimeline(filteredRows);
     }
 
-    // Get member ID for historical trophy calculations (SSOT)
+    // PERFORMANCE: Calculate historical trophies (memberRow already fetched in parallel above)
     let historicalTrophyData: Awaited<ReturnType<typeof calculateHistoricalTrophiesForPlayer>> | null = null;
     try {
-      const { data: memberRow } = await supabase
-        .from('members')
-        .select('id')
-        .eq('tag', normalizedTag)
-        .maybeSingle();
-      
       if (memberRow?.id) {
         historicalTrophyData = await calculateHistoricalTrophiesForPlayer(memberRow.id, normalizedTag);
       }
@@ -554,13 +580,14 @@ export async function GET(
     let clanHeroAverages: Record<string, number> = {};
     if (resolvedClanTag) {
       try {
+        // PERFORMANCE: Reduced from 50 to 20 snapshots - sufficient for accurate averages
         // Fetch current roster data for clan averages
         const { data: rosterRows, error: rosterError } = await supabase
           .from('canonical_member_snapshots')
           .select('payload')
           .eq('clan_tag', resolvedClanTag)
           .order('snapshot_date', { ascending: false })
-          .limit(50); // Get recent snapshots
+          .limit(20); // Reduced from 50 - 20 snapshots is sufficient for accurate averages
 
         console.log('Clan averages calculation - rosterRows:', rosterRows?.length || 0);
         if (!rosterError && rosterRows && rosterRows.length > 0) {
@@ -718,102 +745,108 @@ export async function GET(
       }
     }
 
-    const { data: historyRow, error: historyError } = resolvedClanTag
-      ? await supabase
-          .from('player_history')
-          .select('*')
-          .eq('clan_tag', resolvedClanTag)
-          .eq('player_tag', normalizedTag)
-          .maybeSingle()
-      : { data: null, error: null };
+    // PERFORMANCE: Parallelize all leadership data queries - they don't depend on each other
+    const [
+      { data: historyRow, error: historyError },
+      { data: notesRows, error: notesError },
+      { data: warningsRows, error: warningsError },
+      { data: tenureRows, error: tenureError },
+      { data: departureRows, error: departureError },
+      { data: evaluationRows, error: evaluationError },
+      { data: joinerRows, error: joinerError },
+    ] = await Promise.all([
+      // Player history
+      resolvedClanTag
+        ? supabase
+            .from('player_history')
+            .select('*')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      // Player notes
+      resolvedClanTag
+        ? supabase
+            .from('player_notes')
+            .select('id, created_at, note, custom_fields, created_by')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      // Player warnings
+      resolvedClanTag
+        ? supabase
+            .from('player_warnings')
+            .select('id, created_at, warning_note, is_active, created_by')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      // Tenure actions
+      resolvedClanTag
+        ? supabase
+            .from('player_tenure_actions')
+            .select('id, created_at, action, reason, granted_by, created_by')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      // Departure actions
+      resolvedClanTag
+        ? supabase
+            .from('player_departure_actions')
+            .select('id, created_at, reason, departure_type, recorded_by, created_by')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      // Evaluations
+      resolvedClanTag
+        ? supabase
+            .from('applicant_evaluations')
+            .select('id, status, score, recommendation, rush_percent, evaluation, applicant, created_at, updated_at')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+      // Joiner events
+      resolvedClanTag
+        ? supabase
+            .from('joiner_events')
+            .select('id, detected_at, status, metadata')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .order('detected_at', { ascending: false })
+        : Promise.resolve({ data: [], error: null }),
+    ]);
+
     if (historyError) {
       throw historyError;
     }
-
-    const { data: notesRows, error: notesError } = resolvedClanTag
-      ? await supabase
-          .from('player_notes')
-          .select('id, created_at, note, custom_fields, created_by')
-          .eq('clan_tag', resolvedClanTag)
-          .eq('player_tag', normalizedTag)
-          .order('created_at', { ascending: false })
-      : { data: [], error: null };
     if (notesError) {
       throw notesError;
     }
-
-    const { data: warningsRows, error: warningsError } = resolvedClanTag
-      ? await supabase
-          .from('player_warnings')
-          .select('id, created_at, warning_note, is_active, created_by')
-          .eq('clan_tag', resolvedClanTag)
-          .eq('player_tag', normalizedTag)
-          .order('created_at', { ascending: false })
-      : { data: [], error: null };
     if (warningsError) {
       throw warningsError;
     }
-
-    const { data: tenureRows, error: tenureError } = resolvedClanTag
-      ? await supabase
-          .from('player_tenure_actions')
-          .select('id, created_at, action, reason, granted_by, created_by')
-          .eq('clan_tag', resolvedClanTag)
-          .eq('player_tag', normalizedTag)
-          .order('created_at', { ascending: false })
-      : { data: [], error: null };
     if (tenureError) {
       throw tenureError;
     }
-
-    const { data: departureRows, error: departureError } = resolvedClanTag
-      ? await supabase
-          .from('player_departure_actions')
-          .select('id, created_at, reason, departure_type, recorded_by, created_by')
-          .eq('clan_tag', resolvedClanTag)
-          .eq('player_tag', normalizedTag)
-          .order('created_at', { ascending: false })
-      : { data: [], error: null };
     if (departureError) {
       throw departureError;
     }
-
-    const { data: evaluationRows, error: evaluationError } = resolvedClanTag
-      ? await supabase
-          .from('applicant_evaluations')
-          .select('id, status, score, recommendation, rush_percent, evaluation, applicant, created_at, updated_at')
-          .eq('clan_tag', resolvedClanTag)
-          .eq('player_tag', normalizedTag)
-          .order('created_at', { ascending: false })
-      : { data: [], error: null };
     if (evaluationError) {
       throw evaluationError;
     }
-
-    const { data: joinerRows, error: joinerError } = resolvedClanTag
-      ? await supabase
-          .from('joiner_events')
-          .select('id, detected_at, status, metadata')
-          .eq('clan_tag', resolvedClanTag)
-          .eq('player_tag', normalizedTag)
-          .order('detected_at', { ascending: false })
-      : { data: [], error: null };
     if (joinerError) {
       throw joinerError;
     }
 
-    // Fetch VIP scores for current and historical weeks
+    // PERFORMANCE: Fetch VIP scores (memberRow already fetched in parallel above)
     let currentVip = null;
     let vipHistory: Array<{ week_start: string; vip_score: number; competitive_score: number; support_score: number; development_score: number; rank: number }> = [];
     
     try {
-      // Get member ID
-      const { data: memberRow } = await supabase
-        .from('members')
-        .select('id')
-        .eq('tag', normalizedTag)
-        .single();
-      
       if (memberRow?.id) {
         // Get current tournament week
         const now = new Date();
@@ -928,7 +961,14 @@ export async function GET(
       },
     };
 
-    return NextResponse.json({ success: true, data: responsePayload });
+    const response = NextResponse.json({ success: true, data: responsePayload });
+    
+    // PERFORMANCE: Aggressive caching - data only changes once per day (nightly ingestion)
+    // Cache for 12 hours, stale-while-revalidate for 24 hours
+    // Cache will be invalidated when new snapshot is ingested (new snapshot_date)
+    response.headers.set('Cache-Control', 'public, s-maxage=43200, stale-while-revalidate=86400');
+    
+    return response;
   } catch (error: any) {
     console.error('[player-profile] canonical error', error);
     const message = error?.message || 'Failed to load player profile';

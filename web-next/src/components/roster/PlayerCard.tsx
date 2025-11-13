@@ -17,9 +17,10 @@ import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 interface PlayerCardProps {
   member: Member;
   onSelect?: (member: Member) => void;
+  clanHeroAverages?: Record<string, number | { average: number; count: number }>;
 }
 
-export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
+export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect, clanHeroAverages = {} }) => {
   const rushPercent = calculateRushPercentage(member);
   const donations = calculateDonationBalance(member);
   const activity = resolveMemberActivity(member);
@@ -32,6 +33,28 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
   const seasonTotalDisplay = (member as any).seasonTotalTrophies != null
     ? ((member as any).seasonTotalTrophies as number).toLocaleString()
     : '—';
+  
+  // Extract clan average and count for a hero
+  const getClanAverage = (heroKey: string): { average: number; count: number } | null => {
+    const data = clanHeroAverages[heroKey.toLowerCase()];
+    if (!data) return null;
+    
+    // Handle both formats: number (legacy) or { average, count } (new)
+    if (typeof data === 'number' && Number.isFinite(data) && data > 0) {
+      // Legacy format: just average, estimate count
+      return { average: data, count: Math.max(1, Math.round(data)) };
+    }
+    
+    if (typeof data === 'object' && data !== null && 'average' in data && 'count' in data) {
+      const avg = (data as { average: number; count: number }).average;
+      const cnt = (data as { average: number; count: number }).count;
+      if (typeof avg === 'number' && Number.isFinite(avg) && avg > 0 && typeof cnt === 'number' && cnt > 0) {
+        return { average: avg, count: cnt };
+      }
+    }
+    
+    return null;
+  };
 
   const handleClick = () => {
     if (onSelect) {
@@ -86,13 +109,86 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect }) => {
       <div className="player-card__hero-section rounded-xl p-3 shadow-inner">
         <p className="mb-2 text-xs uppercase tracking-widest text-muted-contrast">Hero Progress</p>
         <div className="space-y-2">
-          <HeroLevel hero="BK" level={member.bk || 0} maxLevel={heroCaps.bk || 0} showName={false} size="sm" />
-          <HeroLevel hero="AQ" level={member.aq || 0} maxLevel={heroCaps.aq || 0} showName={false} size="sm" />
-          <HeroLevel hero="GW" level={member.gw || 0} maxLevel={heroCaps.gw || 0} showName={false} size="sm" />
-          <HeroLevel hero="RC" level={member.rc || 0} maxLevel={heroCaps.rc || 0} showName={false} size="sm" />
-          {heroCaps.mp ? (
-            <HeroLevel hero="MP" level={member.mp || 0} maxLevel={heroCaps.mp || 0} showName={false} size="sm" />
-          ) : null}
+          {(() => {
+            const bkAvg = getClanAverage('bk');
+            return (
+              <HeroLevel 
+                hero="BK" 
+                level={member.bk || 0} 
+                maxLevel={heroCaps.bk || 0} 
+                showName={true} 
+                size="sm" 
+                hideTrackBackground
+                clanAverage={bkAvg?.average}
+                clanAverageCount={bkAvg?.count}
+                clanAverageSource="roster"
+              />
+            );
+          })()}
+          {(() => {
+            const aqAvg = getClanAverage('aq');
+            return (
+              <HeroLevel 
+                hero="AQ" 
+                level={member.aq || 0} 
+                maxLevel={heroCaps.aq || 0} 
+                showName={true} 
+                size="sm" 
+                hideTrackBackground
+                clanAverage={aqAvg?.average}
+                clanAverageCount={aqAvg?.count}
+                clanAverageSource="roster"
+              />
+            );
+          })()}
+          {(() => {
+            const gwAvg = getClanAverage('gw');
+            return (
+              <HeroLevel 
+                hero="GW" 
+                level={member.gw || 0} 
+                maxLevel={heroCaps.gw || 0} 
+                showName={true} 
+                size="sm" 
+                hideTrackBackground
+                clanAverage={gwAvg?.average}
+                clanAverageCount={gwAvg?.count}
+                clanAverageSource="roster"
+              />
+            );
+          })()}
+          {(() => {
+            const rcAvg = getClanAverage('rc');
+            return (
+              <HeroLevel 
+                hero="RC" 
+                level={member.rc || 0} 
+                maxLevel={heroCaps.rc || 0} 
+                showName={true} 
+                size="sm" 
+                hideTrackBackground
+                clanAverage={rcAvg?.average}
+                clanAverageCount={rcAvg?.count}
+                clanAverageSource="roster"
+              />
+            );
+          })()}
+          {heroCaps.mp ? (() => {
+            const mpAvg = getClanAverage('mp');
+            return (
+              <HeroLevel 
+                hero="MP" 
+                level={member.mp || 0} 
+                maxLevel={heroCaps.mp || 0} 
+                showName={true} 
+                size="sm" 
+                hideTrackBackground
+                clanAverage={mpAvg?.average}
+                clanAverageCount={mpAvg?.count}
+                clanAverageSource="roster"
+              />
+            );
+          })() : null}
         </div>
       </div>
 

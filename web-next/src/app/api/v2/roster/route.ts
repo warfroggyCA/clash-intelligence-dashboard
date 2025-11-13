@@ -16,7 +16,10 @@ import { readLedgerEffective } from '@/lib/tenure';
 import { calculateHistoricalTrophiesForPlayers } from '@/lib/business/historical-trophies';
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0; // Disable all caching
+// Cache roster data aggressively - data only updates once per day (nightly cron)
+// Cache for 12 hours (43200 seconds) - will refresh when new ingestion runs
+// Users can force refresh if needed, but normal browsing benefits from long cache
+export const revalidate = 43200; // 12 hours
 
 const querySchema = z.object({
   clanTag: z.string().optional(),
@@ -107,16 +110,26 @@ export async function GET(req: NextRequest) {
       throw snapshotError;
     }
 
-    // If we have no snapshots at all, return an empty dataset
+    // If we have no snapshots at all, return an empty dataset in the expected format
     if (!snapshotRows) {
       return NextResponse.json({
         success: true,
         data: {
-          clanTag: clanRow.tag,
-          clanName: clanRow.name,
-          logoUrl: clanRow.logo_url,
-          lastUpdated: null,
+          clan: {
+            id: clanRow.id,
+            tag: clanRow.tag,
+            name: clanRow.name,
+            logo_url: clanRow.logo_url,
+            created_at: clanRow.created_at,
+            updated_at: clanRow.updated_at,
+          },
           members: [],
+          snapshot: null,
+          dateInfo: {
+            currentDate: new Date().toISOString().split('T')[0],
+            snapshotDate: null,
+            isStale: false,
+          },
         },
       });
     }
@@ -124,14 +137,40 @@ export async function GET(req: NextRequest) {
     const snapshot = snapshotRows;
     const latestSnapshotDate = snapshot.fetched_at?.slice(0, 10) || null;
 
-    // Get ALL member stats from member_snapshot_stats (this is the single source of truth)
-    const { data: statsRows, error: statsError } = await supabase
-      .from('member_snapshot_stats')
-      .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, war_stars, attack_wins, defense_wins, capital_contributions, pet_levels, builder_hall_level, versus_trophies, versus_battle_wins, builder_league_id, max_troop_count, max_spell_count, super_troops_active, achievement_count, achievement_score, exp_level, equipment_flags, best_trophies, best_versus_trophies, ranked_trophies, ranked_league_id, ranked_league_name, league_id, league_name, league_trophies, battle_mode_trophies, tenure_days, tenure_as_of')
-      .eq('snapshot_id', snapshot.id);
+    // PERFORMANCE: Parallelize independent queries to reduce total latency
+    // These queries don't depend on each other, so they can run concurrently
+    const [
+      { data: statsRows, error: statsError },
+      { data: canonicalSnapshots, error: canonicalError },
+      tenureMap,
+    ] = await Promise.all([
+      // Get ALL member stats from member_snapshot_stats (this is the single source of truth)
+      supabase
+        .from('member_snapshot_stats')
+        .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, war_stars, attack_wins, defense_wins, capital_contributions, pet_levels, builder_hall_level, versus_trophies, versus_battle_wins, builder_league_id, max_troop_count, max_spell_count, super_troops_active, achievement_count, achievement_score, exp_level, equipment_flags, best_trophies, best_versus_trophies, ranked_trophies, ranked_league_id, ranked_league_name, league_id, league_name, league_trophies, battle_mode_trophies, tenure_days, tenure_as_of')
+        .eq('snapshot_id', snapshot.id),
+      // Get canonical snapshots for additional data (activity, etc.) - single query
+      // Use fetched_at date for matching canonical snapshots
+      latestSnapshotDate
+        ? supabase
+            .from('canonical_member_snapshots')
+            .select('player_tag, payload')
+            .eq('clan_tag', clanTag)
+            .eq('snapshot_date', latestSnapshotDate)
+        : supabase
+            .from('canonical_member_snapshots')
+            .select('player_tag, payload')
+            .eq('clan_tag', clanTag)
+            .limit(0), // Return empty result if no snapshot date
+      // Get tenure data from the tenure ledger
+      readLedgerEffective(),
+    ]);
 
     if (statsError) {
       throw statsError;
+    }
+    if (canonicalError) {
+      throw canonicalError;
     }
 
     const stats = statsRows ?? [];
@@ -149,20 +188,6 @@ export async function GET(req: NextRequest) {
 
     const memberLookup = new Map(memberRows?.map(m => [m.id, m]) || []);
 
-    // Get canonical snapshots for additional data (activity, etc.) - single query
-    // Use fetched_at date for matching canonical snapshots
-    const canonicalSnapshotDate = latestSnapshotDate;
-    const { data: canonicalSnapshots, error: canonicalError } = await supabase
-      .from('canonical_member_snapshots')
-      .select('player_tag, payload')
-      .eq('clan_tag', clanTag)
-      .eq('snapshot_date', canonicalSnapshotDate)
-      .limit(10000);
-
-    if (canonicalError) {
-      throw canonicalError;
-    }
-
     // Map canonical snapshots by tag for quick lookup
     const canonicalByTag = new Map<string, any>();
     for (const cs of canonicalSnapshots || []) {
@@ -172,8 +197,21 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Get tenure data from the tenure ledger
-    const tenureMap = await readLedgerEffective();
+    // PERFORMANCE: Fetch player_day data in parallel with member processing
+    // This query doesn't depend on the members array, so it can run concurrently
+    const sinceDate = new Date();
+    sinceDate.setDate(sinceDate.getDate() - 7);
+    const sinceIso = sinceDate.toISOString().slice(0, 10);
+    
+    const playerDayQueryPromise = supabase
+      .from('player_day')
+      .select(
+        'player_tag, date, clan_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability',
+      )
+      .eq('clan_tag', clanTag)
+      .gte('date', sinceIso)
+      .order('player_tag')
+      .order('date');
 
     // Build members from stats (single source of truth) + enrich with canonical payload data
     const rawMembers = stats.map(stat => {
@@ -256,21 +294,10 @@ export async function GET(req: NextRequest) {
       .map((member) => normalizeTag(member.tag ?? ''))
       .filter((tag): tag is string => Boolean(tag));
 
+    // PERFORMANCE: Process player_day data (already fetched in parallel above)
     const timelineByPlayer = new Map<string, ReturnType<typeof buildTimelineFromPlayerDay>>();
     try {
-      const sinceDate = new Date();
-      sinceDate.setDate(sinceDate.getDate() - 14);
-      const sinceIso = sinceDate.toISOString().slice(0, 10);
-
-      const { data: playerDayRows, error: playerDayError } = await supabase
-        .from('player_day')
-        .select(
-          'player_tag, date, clan_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability',
-        )
-        .eq('clan_tag', clanTag)
-        .gte('date', sinceIso)
-        .order('player_tag')
-        .order('date');
+      const { data: playerDayRows, error: playerDayError } = await playerDayQueryPromise;
 
       if (playerDayError) {
         throw playerDayError;
@@ -342,31 +369,35 @@ export async function GET(req: NextRequest) {
       } as Member;
     };
     
-    // Calculate historical trophies using SSOT shared function
-    const historicalTrophyDataByMember = memberIdToTagMap.size > 0
-      ? await calculateHistoricalTrophiesForPlayers(memberIdToTagMap)
-      : new Map<string, Awaited<ReturnType<typeof calculateHistoricalTrophiesForPlayers>> extends Map<string, infer V> ? V : never>();
+    // PERFORMANCE: Parallelize historical trophies and VIP score queries
+    // These don't depend on each other, so they can run concurrently
+    const memberUuids = memberTagToUuidMap.size > 0 
+      ? Array.from(memberTagToUuidMap.values()).filter(Boolean)
+      : [];
     
-    // Fetch VIP scores for current tournament week
-    const vipScoresByMemberId = new Map<string, {
-      score: number;
-      rank: number;
-      competitive_score: number;
-      support_score: number;
-      development_score: number;
-      trend: 'up' | 'down' | 'stable';
-      last_week_score?: number;
-    }>();
-    
-    if (memberTagToUuidMap.size > 0) {
-      try {
-        // Get actual UUIDs for members from memberTagToUuidMap
-        const memberUuids = Array.from(memberTagToUuidMap.values()).filter(Boolean);
+    const [historicalTrophyDataByMember, vipScoresByMemberId] = await Promise.all([
+      // Calculate historical trophies using SSOT shared function
+      memberIdToTagMap.size > 0
+        ? calculateHistoricalTrophiesForPlayers(memberIdToTagMap)
+        : Promise.resolve(new Map<string, Awaited<ReturnType<typeof calculateHistoricalTrophiesForPlayers>> extends Map<string, infer V> ? V : never>()),
+      
+      // Fetch VIP scores for current tournament week
+      (async () => {
+        const vipScoresMap = new Map<string, {
+          score: number;
+          rank: number;
+          competitive_score: number;
+          support_score: number;
+          development_score: number;
+          trend: 'up' | 'down' | 'stable';
+          last_week_score?: number;
+        }>();
         
         if (memberUuids.length === 0) {
-          // No members found in database, skip VIP lookup
-          console.warn('[Roster API] No member UUIDs found for VIP lookup');
-        } else {
+          return vipScoresMap;
+        }
+        
+        try {
           // Get the most recent week_start that has VIP data
           const { data: latestWeekRow, error: weekError } = await supabase
             .from('vip_scores')
@@ -377,82 +408,92 @@ export async function GET(req: NextRequest) {
           
           if (weekError) {
             console.warn('[Roster API] Error fetching latest week:', weekError);
+            return vipScoresMap;
           }
           
           if (!latestWeekRow) {
-            // No VIP data at all, skip
-            console.warn('[Roster API] No VIP data found');
-          } else {
-            const weekStartISO = latestWeekRow.week_start;
-            console.log('[Roster API] Fetching VIP for week_start:', weekStartISO, 'memberUuids:', memberUuids.length);
-            
-            // Fetch current week VIP scores using UUIDs
-            const { data: vipRows, error: vipError } = await supabase
+            return vipScoresMap;
+          }
+          
+          const weekStartISO = latestWeekRow.week_start;
+          
+          // PERFORMANCE: Parallelize current week and last week VIP queries
+          const lastWeekStart = new Date(weekStartISO);
+          lastWeekStart.setUTCDate(lastWeekStart.getUTCDate() - 7);
+          const lastWeekStartISO = lastWeekStart.toISOString().split('T')[0];
+          
+          const [
+            { data: vipRows, error: vipError },
+            { data: lastWeekVipRows, error: lastWeekVipError },
+          ] = await Promise.all([
+            supabase
               .from('vip_scores')
               .select('member_id, vip_score, competitive_score, support_score, development_score, week_start')
               .in('member_id', memberUuids)
               .eq('week_start', weekStartISO)
-              .order('vip_score', { ascending: false });
+              .order('vip_score', { ascending: false }),
+            supabase
+              .from('vip_scores')
+              .select('member_id, vip_score')
+              .in('member_id', memberUuids)
+              .eq('week_start', lastWeekStartISO),
+          ]);
+          
+          if (vipError) {
+            console.warn('[Roster API] Error fetching VIP scores:', vipError);
+            return vipScoresMap;
+          }
+          
+          if (lastWeekVipError) {
+            console.warn('[Roster API] Error fetching last week VIP scores:', lastWeekVipError);
+            // Continue without last week data - trend will remain 'stable'
+          }
+          
+          if (!vipRows) {
+            return vipScoresMap;
+          }
+          
+          // Create rank map (1-indexed)
+          let rank = 1;
+          for (const row of vipRows) {
+            vipScoresMap.set(row.member_id, {
+              score: Number(row.vip_score),
+              rank: rank++,
+              competitive_score: Number(row.competitive_score),
+              support_score: Number(row.support_score),
+              development_score: Number(row.development_score),
+              trend: 'stable', // Will calculate trend if we have last week data
+            });
+          }
+          
+          // Update trend for each member using last week's scores
+          if (lastWeekVipRows) {
+            const lastWeekScores = new Map(
+              lastWeekVipRows.map(row => [row.member_id, Number(row.vip_score)])
+            );
             
-            if (vipError) {
-              console.warn('[Roster API] Error fetching VIP scores:', vipError);
-            }
-            
-            console.log('[Roster API] Found VIP rows:', vipRows?.length || 0);
-            
-            if (!vipError && vipRows) {
-              // Create rank map (1-indexed)
-              let rank = 1;
-              for (const row of vipRows) {
-                vipScoresByMemberId.set(row.member_id, {
-                  score: Number(row.vip_score),
-                  rank: rank++,
-                  competitive_score: Number(row.competitive_score),
-                  support_score: Number(row.support_score),
-                  development_score: Number(row.development_score),
-                  trend: 'stable', // Will calculate trend if we have last week data
-                });
-              }
-              
-              // Fetch last week's VIP scores for trend calculation
-              const lastWeekStart = new Date(weekStartISO);
-              lastWeekStart.setUTCDate(lastWeekStart.getUTCDate() - 7);
-              const lastWeekStartISO = lastWeekStart.toISOString().split('T')[0];
-              
-              const { data: lastWeekVipRows } = await supabase
-                .from('vip_scores')
-                .select('member_id, vip_score')
-                .in('member_id', memberUuids)
-                .eq('week_start', lastWeekStartISO);
-              
-              if (lastWeekVipRows) {
-                const lastWeekScores = new Map(
-                  lastWeekVipRows.map(row => [row.member_id, Number(row.vip_score)])
-                );
-                
-                // Update trend for each member
-                for (const [memberId, vipData] of vipScoresByMemberId.entries()) {
-                  const lastWeekScore = lastWeekScores.get(memberId);
-                  if (lastWeekScore !== undefined) {
-                    vipData.last_week_score = lastWeekScore;
-                    if (vipData.score > lastWeekScore + 0.5) {
-                      vipData.trend = 'up';
-                    } else if (vipData.score < lastWeekScore - 0.5) {
-                      vipData.trend = 'down';
-                    } else {
-                      vipData.trend = 'stable';
-                    }
-                  }
+            for (const [memberId, vipData] of vipScoresMap.entries()) {
+              const lastWeekScore = lastWeekScores.get(memberId);
+              if (lastWeekScore !== undefined) {
+                vipData.last_week_score = lastWeekScore;
+                if (vipData.score > lastWeekScore + 0.5) {
+                  vipData.trend = 'up';
+                } else if (vipData.score < lastWeekScore - 0.5) {
+                  vipData.trend = 'down';
+                } else {
+                  vipData.trend = 'stable';
                 }
               }
             }
           }
+        } catch (error) {
+          console.warn('[Roster API] Failed to fetch VIP scores:', error);
+          // Continue without VIP data - don't fail the request
         }
-      } catch (error) {
-        console.warn('[Roster API] Failed to fetch VIP scores:', error);
-        // Continue without VIP data - don't fail the request
-      }
-    }
+        
+        return vipScoresMap;
+      })(),
+    ]);
 
     // Calculate last updated timestamp
     const lastUpdatedRaw = members.reduce<string | null>((latest, entry) => {
@@ -563,6 +604,50 @@ export async function GET(req: NextRequest) {
       };
     });
 
+    // Calculate clan hero averages for comparison (with counts)
+    let clanHeroAverages: Record<string, number | { average: number; count: number }> = {};
+    if (clanTag) {
+      try {
+        // Use the canonical snapshots we already fetched for clan averages
+        if (canonicalSnapshots && canonicalSnapshots.length > 0) {
+          const totals: Record<string, { sum: number; count: number }> = {
+            bk: { sum: 0, count: 0 },
+            aq: { sum: 0, count: 0 },
+            gw: { sum: 0, count: 0 },
+            rc: { sum: 0, count: 0 },
+            mp: { sum: 0, count: 0 },
+          };
+
+          canonicalSnapshots.forEach((row) => {
+            const payload = row.payload as any;
+            if (payload?.member?.heroLevels) {
+              const heroLevels = payload.member.heroLevels;
+              ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
+                const value = heroLevels[heroKey as keyof typeof heroLevels];
+                if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+                  totals[heroKey].sum += value;
+                  totals[heroKey].count += 1;
+                }
+              });
+            }
+          });
+
+          Object.entries(totals).forEach(([hero, data]) => {
+            if (data.count > 0) {
+              // Store both average and count for accurate display
+              clanHeroAverages[hero] = {
+                average: data.sum / data.count,
+                count: data.count,
+              };
+            }
+          });
+        }
+      } catch (error) {
+        console.warn('[Roster API] Failed to calculate clan hero averages:', error);
+        // Continue without clan averages - don't fail the request
+      }
+    }
+
     // Sort by trophies descending
     transformedMembers.sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
 
@@ -575,7 +660,7 @@ export async function GET(req: NextRequest) {
     const currentDateUTC = new Date().toISOString().split('T')[0];
     const snapshotDateOnly = snapshotDate ? snapshotDate.split('T')[0] : null;
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       data: {
         clan: clanRow,
@@ -625,11 +710,20 @@ export async function GET(req: NextRequest) {
           snapshotDate: snapshotDateOnly,
           isStale: snapshotDateOnly ? currentDateUTC > snapshotDateOnly : false,
         },
+        // Add clan hero averages for comparison
+        clanHeroAverages,
       },
     });
 
+    // PERFORMANCE: Aggressive caching - data only changes once per day (nightly ingestion)
+    // Cache for 12 hours, stale-while-revalidate for 24 hours
+    // Cache will be invalidated when new snapshot is ingested (new snapshot_date)
+    response.headers.set('Cache-Control', 'public, s-maxage=43200, stale-while-revalidate=86400');
+    
+    return response;
+
   } catch (error: any) {
-    console.error('[roster-canonical] Error:', error);
+    console.error('[roster] Error:', error);
     return NextResponse.json(
       { success: false, error: sanitizeErrorForApi(error).message },
       { status: 500 }

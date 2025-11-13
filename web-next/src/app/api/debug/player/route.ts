@@ -2,14 +2,30 @@
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getPlayer, extractHeroLevels } from "@/lib/coc";
 import { z } from 'zod';
 import type { ApiResponse } from '@/types';
 import { createApiContext } from '@/lib/api/route-helpers';
+import { requireLeadership } from '@/lib/api/role-check';
 
-export async function GET(req: Request) {
+export async function GET(req: NextRequest) {
   const { json } = createApiContext(req, '/api/debug/player');
+  
+  try {
+    // Require leadership or dev API key (never public in production)
+    await requireLeadership(req);
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
+  }
+  
   try {
     const url = new URL(req.url);
     const Schema = z.object({ tag: z.string() });

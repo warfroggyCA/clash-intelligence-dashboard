@@ -729,11 +729,29 @@ Format as JSON:
   private async generateGameChatMessages(changes: MemberChange[]): Promise<string[]> {
     const messages: string[] = [];
     
+    // Helper to extract hero name from description (same as ai-summarizer.ts)
+    const getHeroDisplayName = (description: string): string => {
+      if (description.includes('BK') || description.includes('Barbarian King')) return 'Barbarian King';
+      if (description.includes('AQ') || description.includes('Archer Queen')) return 'Archer Queen';
+      if (description.includes('GW') || description.includes('Grand Warden')) return 'Grand Warden';
+      if (description.includes('RC') || description.includes('Royal Champion')) return 'Royal Champion';
+      if (description.includes('MP') || description.includes('Minion Prince')) return 'Minion Prince';
+      // Fallback: try to extract from description
+      const match = description.match(/(\w+(?:\s+\w+)?)/i);
+      return match ? match[1] : 'Hero';
+    };
+    
     for (const change of changes) {
       if (change.type === 'hero_upgrade') {
-        const hero = (change as any).hero;
-        const level = (change as any).newLevel;
+        // FIX: Use description and newValue instead of non-existent hero/newLevel properties
+        const hero = getHeroDisplayName(change.description);
+        const level = Number(change.newValue) || 0;
         const player = change.member.name;
+        
+        if (!hero || !level || level === 0) {
+          // Skip invalid hero upgrades
+          continue;
+        }
         
         let emoji = "💪";
         if (level >= 50) emoji = "⚡";
@@ -741,33 +759,42 @@ Format as JSON:
         
         messages.push(`${emoji} ${player} upgraded their ${hero} to level ${level}! ${level >= 50 ? "Great progress!" : "Keep it up!"} ${level >= 70 ? "🚀" : "🎯"}`);
       } else if (change.type === 'town_hall_upgrade') {
-        const level = (change as any).newLevel;
-        const player = change.member.name;
-        messages.push(`🏰 ${player} upgraded to Town Hall ${level}! Welcome to the next level! 🎊`);
-      } else if (change.type === 'trophy_change') {
-        const changeAmount = (change as any).changeAmount;
-        const newTrophies = (change as any).newTrophies;
-        const oldTrophies = newTrophies - changeAmount;
+        // FIX: Use newValue instead of newLevel
+        const level = Number(change.newValue) || 0;
         const player = change.member.name;
         
-        if (changeAmount > 0) {
+        if (level > 0) {
+          messages.push(`🏰 ${player} upgraded to Town Hall ${level}! Welcome to the next level! 🎊`);
+        }
+      } else if (change.type === 'trophy_change') {
+        // FIX: Use newValue and previousValue instead of changeAmount/newTrophies
+        const newTrophies = Number(change.newValue) || 0;
+        const oldTrophies = Number(change.previousValue) || 0;
+        const changeAmount = newTrophies - oldTrophies;
+        const player = change.member.name;
+        
+        if (changeAmount >= 100) {
           messages.push(`📈 ${player} just pushed ${changeAmount} trophies! From ${oldTrophies} to ${newTrophies}! 🚀`);
         }
       } else if (change.type === 'donation_change') {
-        const changeAmount = (change as any).changeAmount;
+        // FIX: Use newValue and previousValue instead of changeAmount
+        const newDonations = Number(change.newValue) || 0;
+        const oldDonations = Number(change.previousValue) || 0;
+        const changeAmount = newDonations - oldDonations;
         const player = change.member.name;
         
-        if (changeAmount > 100) {
+        if (changeAmount >= 500) {
           messages.push(`💝 ${player} donated ${changeAmount} troops today! You're a donation machine! 🏆`);
         }
       } else if (change.type === 'role_change') {
-        const newRole = (change as any).newRole;
+        // FIX: Use newValue instead of newRole
+        const newRole = change.newValue;
         const player = change.member.name;
         
-        if (newRole === 'coLeader') {
+        if (newRole === 'coLeader' || newRole === 'co-leader') {
           messages.push(`💎 Congratulations ${player} on becoming Co-Leader! Well deserved! 🎊`);
         } else if (newRole === 'elder') {
-          messages.push(`⭐ Congratulations ${player} on becoming elder! Well deserved! 🎊`);
+          messages.push(`⭐ Congratulations ${player} on becoming Elder! Well deserved! 🎊`);
         }
       }
     }

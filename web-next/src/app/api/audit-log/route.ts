@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireLeader, getUserRoleFromRequest } from '@/lib/api/role-check';
+import { requireLeader } from '@/lib/api/role-check';
+import { getAuthenticatedUser } from '@/lib/auth/server';
+import { getUserClanRoles } from '@/lib/auth/roles';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
-import { createApiContext } from '@/lib/api-context';
+import { createApiContext } from '@/lib/api/route-helpers';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
 import { getAccessLevelPermissions, type AccessLevel } from '@/lib/access-management';
@@ -33,19 +35,34 @@ async function checkCanViewAuditLog(request: NextRequest, clanTag: string): Prom
     // Not a leader, check custom permissions
   }
   
-  // Get user's role from header
-  const roleHeader = getUserRoleFromRequest(request);
-  const role = clanRoleFromName(roleHeader);
-  
-  // Map ClanRole to AccessLevel
-  const accessLevelMap: Record<string, AccessLevel> = {
-    'leader': 'leader',
-    'coLeader': 'coleader',
-    'coleader': 'coleader',
-    'elder': 'elder',
-    'member': 'member',
-  };
-  const accessLevel = accessLevelMap[role] || 'member';
+  // Get user's role from authenticated session (not header)
+  let accessLevel: AccessLevel = 'member';
+  try {
+    const user = await getAuthenticatedUser();
+    if (user) {
+      const roles = await getUserClanRoles(user.id);
+      const clanTag = cfg.homeClanTag;
+      const normalizedClanTag = normalizeTag(clanTag || '');
+      
+      if (normalizedClanTag) {
+        const roleForClan = roles.find(r => r.clan_tag === normalizedClanTag);
+        if (roleForClan) {
+          // Map database role to AccessLevel
+          const roleMap: Record<string, AccessLevel> = {
+            'leader': 'leader',
+            'coleader': 'coleader',
+            'elder': 'elder',
+            'member': 'member',
+            'viewer': 'member',
+          };
+          accessLevel = roleMap[roleForClan.role] || 'member';
+        }
+      }
+    }
+  } catch (error) {
+    // If auth fails, default to member access level
+    console.warn('[audit-log] Failed to get user role, defaulting to member:', error);
+  }
   
   // Get custom permissions
   const supabase = getSupabaseAdminClient();

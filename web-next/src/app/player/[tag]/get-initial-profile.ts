@@ -42,28 +42,41 @@ export async function getInitialPlayerProfile(playerTag: string, clanTag?: strin
   const normalizedClanTag = clanTag ? normalizeTag(clanTag) : null;
   const url = buildPlayerProfileUrl(baseUrl, normalizedTag, normalizedClanTag);
 
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      Accept: 'application/json',
-    },
-    cache: 'no-store', // Always fetch fresh data to prevent stale data issues
-    next: {
-      tags: ['player-profile', `player-profile:${normalizedTag}`],
-    },
-  });
+  // Add timeout to prevent hanging (30 seconds)
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-  if (!response.ok) {
-    throw new Error(`Failed to load player profile: ${response.status}`);
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/json',
+      },
+      cache: 'no-store', // Always fetch fresh data to prevent stale data issues
+      signal: controller.signal,
+      next: {
+        tags: ['player-profile', `player-profile:${normalizedTag}`],
+      },
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      throw new Error(`Failed to load player profile: ${response.status}`);
+    }
+
+    const payload = (await response.json()) as PlayerProfileApiResponse;
+    
+    if (!payload.success || !payload.data) {
+      throw new Error(payload.error || 'Invalid player profile response');
+    }
+
+    return payload.data;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Player profile request timed out after 30 seconds');
+    }
+    throw error;
   }
-
-  const payload = (await response.json()) as PlayerProfileApiResponse;
-  
-  if (!payload.success || !payload.data) {
-    throw new Error(payload.error || 'Invalid player profile response');
-  }
-
-  return payload.data;
 }
-
-
