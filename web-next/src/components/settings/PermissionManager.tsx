@@ -46,7 +46,7 @@ const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
   canViewRoster: 'View clan roster and member list',
   canViewBasicStats: 'View basic player statistics',
   canAccessDiscordPublisher: 'Access Discord webhook publishing',
-  canGenerateCoachingInsights: 'Generate AI coaching insights',
+  canGenerateCoachingInsights: 'Generate coaching insights',
   canManageChangeDashboard: 'Manage change dashboard (joiner/departure alerts)',
   canModifyClanData: 'Modify clan data (notes, warnings, tenure)',
   canManageAccess: 'Manage user access and permissions',

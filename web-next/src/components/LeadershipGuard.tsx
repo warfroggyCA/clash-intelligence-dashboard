@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { useLeadership } from '../hooks/useLeadership';
 import { type RolePermissions } from '../lib/leadership';

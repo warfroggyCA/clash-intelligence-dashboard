@@ -24,6 +24,14 @@
     {
       "path": "/api/cron/daily-ingestion", 
       "schedule": "45 5 * * *"
+    },
+    {
+      "path": "/api/cron/war-ingestion",
+      "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/cron/capital-ingestion",
+      "schedule": "0 7 * * 1"
     }
   ],
 

@@ -153,12 +153,12 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
 
   const headlineParagraph = useMemo(() => {
     if (!smartInsights) {
-      // If no smart insights, use latest AI summary from database
+      // If no smart insights, use latest summary from database
       return sanitizeContent(latestAISummary);
     }
 
-    // Prioritize AI-generated content (these are full narratives from OpenAI)
-    // Change Summary content is AI-generated based on all recent changes
+    // Prioritize generated content (full narratives from insights engine)
+    // Change Summary content is generated based on all recent changes
     const changeContent = smartInsights.context?.changeSummary?.content;
     if (changeContent && typeof changeContent === 'string') {
       const sanitized = sanitizeContent(changeContent);
@@ -168,7 +168,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       }
     }
 
-    // Performance Analysis content is AI-generated based on clan performance data
+    // Performance Analysis content is generated based on clan performance data
     const perfContent = smartInsights.context?.performanceAnalysis?.content;
     if (perfContent && typeof perfContent === 'string') {
       const sanitized = sanitizeContent(perfContent);
@@ -178,7 +178,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       }
     }
 
-    // Fallback to briefing summary (this is just concatenated headlines, not AI-generated)
+    // Fallback to briefing summary (concatenated headlines)
     // Also check briefing highlights for content
     const briefingSummary = smartInsights.briefing?.summary;
     if (briefingSummary && typeof briefingSummary === 'string') {
@@ -208,11 +208,11 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       }
     }
 
-    // Final fallback: use latest AI summary from database
+    // Final fallback: use latest summary from database
     if (latestAISummary) {
       const sanitized = sanitizeContent(latestAISummary);
       if (sanitized) {
-        console.log('[NewsFeed] Using latest AI summary from database');
+        console.log('[NewsFeed] Using latest summary from database');
         return sanitized;
       }
     }
@@ -233,7 +233,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       return sanitized && sanitized.length > 10 ? sanitized : null;
     };
 
-    // AI-generated Briefing Highlights
+    // Briefing Highlights
     if (smartInsights.briefing?.highlights?.length) {
       smartInsights.briefing.highlights.forEach((highlight) => {
         const text = highlight.detail 
@@ -251,7 +251,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       });
     }
 
-    // AI-generated Change Summary - parse insights and recommendations (skip main content since it's in headline)
+    // Change Summary - parse insights and recommendations (skip main content since it's in headline)
     if (smartInsights.context?.changeSummary) {
       const changeSummary = smartInsights.context.changeSummary;
       
@@ -286,7 +286,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       }
     }
 
-    // AI-generated Performance Analysis - parse insights and recommendations (skip main content since it's in headline)
+    // Performance Analysis - parse insights and recommendations (skip main content since it's in headline)
     if (smartInsights.context?.performanceAnalysis) {
       const perfAnalysis = smartInsights.context.performanceAnalysis;
 
@@ -321,7 +321,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       }
     }
 
-    // AI-generated Headlines
+    // Headlines
     if (smartInsights.headlines?.length) {
       smartInsights.headlines.forEach((headline) => {
         const text = headline.detail 
@@ -339,7 +339,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       });
     }
 
-    // AI-generated Coaching Recommendations
+    // Coaching Recommendations
     if (smartInsights.coaching?.length) {
       smartInsights.coaching.forEach((tip) => {
         // Use description or title as the bullet point
@@ -393,7 +393,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
     return (
       <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-6 text-center">
         <p className="text-sm text-slate-400">
-          {isRefreshing ? 'Refreshing insights...' : 'Loading AI-generated insights...'}
+          {isRefreshing ? 'Refreshing insights...' : 'Loading insights...'}
         </p>
       </div>
     );
@@ -405,7 +405,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
         <p className="text-sm text-amber-400">
           {insightsError.status === 404 
             ? 'No insights available yet. Run an ingestion to generate them.'
-            : 'Unable to load AI-generated insights. Run an ingestion to generate them.'}
+            : 'Unable to load insights. Run an ingestion to generate them.'}
         </p>
       </div>
     );
@@ -424,7 +424,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
   if (!headlineParagraph && newsItems.length === 0) {
     return (
       <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-6 text-center">
-        <p className="text-sm text-slate-400">No AI-generated insights available yet. Run an ingestion to generate a news feed.</p>
+        <p className="text-sm text-slate-400">No insights available yet. Run an ingestion to generate a news feed.</p>
       </div>
     );
   }

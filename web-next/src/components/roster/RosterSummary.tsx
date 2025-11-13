@@ -449,7 +449,7 @@ const RosterSummaryInner = () => {
       sections.push(
         <div key="recent-wars" className="rounded-2xl bg-brand-surfaceSubtle/60 p-4">
           <div className="mb-3 flex items-center gap-2">
-            <span className="text-base">📊</span>
+            <span className="text-base">🏆</span>
             <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-300">Recent Wars</h3>
           </div>
           <div className="space-y-2">

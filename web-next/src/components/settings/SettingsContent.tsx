@@ -51,6 +51,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
   const [newUserRole, setNewUserRole] = useState(userRole);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isIngestingCapital, setIsIngestingCapital] = useState(false);
   const [message, setMessage] = useState('');
 
   const [roleEntries, setRoleEntries] = useState<RoleEntry[]>([]);
@@ -361,6 +362,44 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       showToast('Force refresh failed', 'error');
     } finally {
       setIsRefreshing(false);
+    }
+  };
+
+  const handleCapitalIngestion = async () => {
+    clearMessage();
+    if (!clanTag) {
+      setMessage('Load a clan first to enable capital ingestion');
+      return;
+    }
+    setIsIngestingCapital(true);
+    try {
+      const roleHeaders = getRoleHeaders();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        ...(roleHeaders instanceof Headers
+          ? Object.fromEntries(Array.from(roleHeaders.entries()))
+          : (roleHeaders as Record<string, string>)),
+      };
+
+      const response = await fetch('/api/admin/capital-ingestion', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ clanTag, seasonLimit: 20 }), // Increased to get more weekends
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMessage(`Capital ingestion completed! ${result.seasons_ingested} seasons, ${result.weekends_ingested} weekends, ${result.participants_ingested} participants ingested.`);
+        showToast('Capital raid data ingested successfully!', 'success');
+      } else {
+        setMessage(`Capital ingestion failed: ${result.error || 'Unknown error'}`);
+        showToast('Capital ingestion failed', 'error');
+      }
+    } catch (error: any) {
+      console.error('Capital ingestion error:', error);
+      setMessage(`Capital ingestion failed: ${error?.message || 'Please try again.'}`);
+      showToast('Capital ingestion failed', 'error');
+    } finally {
+      setIsIngestingCapital(false);
     }
   };
 
@@ -684,6 +723,36 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
           )}
         </button>
         {!clanTag && <p className="text-xs text-rose-200">Load a clan first to enable force refresh.</p>}
+      </GlassCard>
+
+      <GlassCard
+        id="capital-ingestion"
+        icon={<Home className="h-5 w-5" aria-hidden />}
+        title="Capital Raid Ingestion"
+        subtitle="Fetch and store capital raid data from Clash of Clans API."
+        className="space-y-3"
+      >
+        <p className="text-sm text-slate-200">
+          Manually trigger capital raid data ingestion. Fetches the last 10 raid weekends and updates existing records or inserts new ones.
+        </p>
+        <button
+          onClick={handleCapitalIngestion}
+          disabled={isIngestingCapital || !clanTag}
+          className="inline-flex items-center gap-2 rounded-md bg-purple-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-purple-400 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {isIngestingCapital ? (
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" aria-hidden />
+              Ingesting…
+            </>
+          ) : (
+            <>
+              <Home className="h-4 w-4" aria-hidden />
+              Ingest Capital Raid Data
+            </>
+          )}
+        </button>
+        {!clanTag && <p className="text-xs text-purple-200">Load a clan first to enable capital ingestion.</p>}
       </GlassCard>
 
       <GlassCard
