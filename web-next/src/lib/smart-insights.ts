@@ -305,7 +305,7 @@ export class InsightsEngine {
         this.generatePlayerDNAInsights(clanData),
         this.generateClanDNAInsights(clanData),
         this.generateGameChatMessages(changes),
-        this.generatePerformanceAnalysis(clanData)
+        this.generatePerformanceAnalysis(clanData, date)
       ]);
 
       // Process results and handle any failures gracefully
@@ -388,7 +388,7 @@ export class InsightsEngine {
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that summarizes Clash of Clans clan activity in a concise, engaging way. Focus on the most important changes and present them in a friendly, clan-leader tone. NEVER include 'undefined', 'NaN', or placeholder values in your response. Only mention players and values that are explicitly provided in the data."
+          content: "You are a helpful assistant that summarizes Clash of Clans clan activity in a concise, engaging way. Focus on the most important changes and present them in a friendly, clan-leader tone. CRITICAL: Use ONLY the exact player names provided (do not shorten or modify them). Use ONLY the snapshot date provided - do not mention any other dates. NEVER include 'undefined', 'NaN', or placeholder values. Only mention players and values that are explicitly provided in the data. Be specific with numbers and achievements."
         },
         {
           role: "user",
@@ -802,7 +802,7 @@ Format as JSON:
     return messages;
   }
 
-  private async generatePerformanceAnalysis(clanData: any): Promise<SnapshotSummaryAnalysis> {
+  private async generatePerformanceAnalysis(clanData: any, snapshotDate?: string): Promise<SnapshotSummaryAnalysis> {
     // Filter out invalid members (missing names, invalid data)
     const validMembers = (clanData.members || []).filter((member: any) => {
       return member?.name && typeof member.name === 'string' && member.name.trim().length > 0;
@@ -815,7 +815,13 @@ Format as JSON:
       return String(value);
     };
 
+    // Get snapshot date from parameter, clanData, or fallback
+    const dateToUse = snapshotDate || clanData.snapshotDate || clanData.date || 'the latest snapshot';
+    
     const prompt = `Analyze this Clash of Clans clan data and provide a comprehensive performance summary:
+
+SNAPSHOT DATE: ${dateToUse}
+IMPORTANT: This analysis is for data from ${dateToUse} ONLY. Do not mention any other dates.
 
 CLAN OVERVIEW:
 - Name: ${safeValue(clanData.clanName, 'Unknown Clan')} (${safeValue(clanData.clanTag, 'Unknown')})
@@ -835,17 +841,23 @@ ${safeValue(member.name, 'Unknown Member')} (${safeValue(member.tag, 'Unknown')}
 - Last Seen: ${safeValue(member.lastSeen, '0')} days ago
 `).join('')}
 
-Please provide a comprehensive analysis covering:
-1. Overall clan health and activity levels
-2. Member progression and development patterns
-3. Donation patterns and clan support
-4. Potential areas for improvement
-5. Member retention and engagement insights
-6. Notable achievements or concerns
-7. Recommendations for clan management
+Provide a comprehensive analysis covering:
+1. Overall clan health and activity levels (be specific with numbers)
+2. Member progression and development patterns (mention specific players and their achievements)
+3. Donation patterns and clan support (highlight top donators by name with exact numbers)
+4. Potential areas for improvement (be specific about which members need attention)
+5. Member retention and engagement insights (mention specific inactive members if any)
+6. Notable achievements or concerns (highlight specific players and their accomplishments)
+7. Recommendations for clan management (actionable, specific advice)
 
-Format your response as a clear, actionable summary that would be useful for clan leadership.
-IMPORTANT: Only mention players and values that are explicitly listed above. Do not include "undefined", "NaN", or any placeholder values.`;
+CRITICAL REQUIREMENTS:
+- Use ONLY the exact player names as listed above (do not shorten, modify, or abbreviate names - use them exactly as shown)
+- Use ONLY the snapshot date ${dateToUse} - do not mention any other dates
+- Be specific with numbers - mention exact trophy counts, donation amounts, etc.
+- Only mention players and values that are explicitly listed above
+- Do not include "undefined", "NaN", or any placeholder values
+- Focus on data-driven insights based on the actual numbers provided
+- Write in a professional but engaging tone suitable for clan leadership`;
 
     if (!this.openai) {
       throw new Error('OpenAI client not initialized');
@@ -856,7 +868,7 @@ IMPORTANT: Only mention players and values that are explicitly listed above. Do 
       messages: [
         {
           role: "system",
-          content: "You are a helpful assistant that provides comprehensive analysis of Clash of Clans clan data. Provide detailed, actionable insights for clan leadership. NEVER include 'undefined', 'NaN', or placeholder values in your response."
+          content: "You are a helpful assistant that provides comprehensive analysis of Clash of Clans clan data. Provide detailed, actionable insights for clan leadership. CRITICAL: Use ONLY the exact player names provided (do not shorten or modify them). Use ONLY the snapshot date provided - do not mention any other dates. Be specific with numbers and achievements. NEVER include 'undefined', 'NaN', or placeholder values. Only mention players and values that are explicitly provided in the data."
         },
         {
           role: "user",
@@ -998,7 +1010,13 @@ No significant changes detected in the clan today.`;
 Minor changes detected, but no significant updates to report.`;
     }
 
-    return `Clan ${clanTag} activity summary for ${date}:
+    // Format date for clarity (ensure it's clear this is the snapshot date)
+    const formattedDate = date || 'the latest snapshot';
+    
+    return `Clan ${clanTag} activity summary for ${formattedDate}:
+
+SNAPSHOT DATE: ${formattedDate}
+IMPORTANT: This summary is for data from ${formattedDate} ONLY. Do not mention any other dates.
 
 CHANGE OVERVIEW:
 ${Object.entries(changeTypes).map(([type, count]) => `- ${type}: ${count}`).join('\n')}
@@ -1006,9 +1024,14 @@ ${Object.entries(changeTypes).map(([type, count]) => `- ${type}: ${count}`).join
 SIGNIFICANT CHANGES:
 ${significantChanges.join('\n')}
 
-Provide an engaging, concise summary (2-3 sentences) highlighting the most important changes and achievements. 
-IMPORTANT: Only mention players and values that are explicitly listed above. Do not include "undefined", "NaN", or any placeholder values. 
-If a value is missing, simply omit that detail rather than including a placeholder.`;
+Provide an engaging, concise summary (2-3 sentences) highlighting the most important changes and achievements from ${formattedDate}. 
+CRITICAL REQUIREMENTS:
+- Use ONLY the exact player names as listed above (do not shorten or modify names)
+- Use ONLY the snapshot date ${formattedDate} - do not mention any other dates
+- Only mention players and values that are explicitly listed above
+- Do not include "undefined", "NaN", or any placeholder values
+- If a value is missing, simply omit that detail rather than including a placeholder
+- Be specific with numbers and achievements - mention exact trophy gains, donation amounts, etc.`;
   }
 
   /**

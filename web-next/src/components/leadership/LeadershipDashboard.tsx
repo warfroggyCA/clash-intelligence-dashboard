@@ -671,7 +671,7 @@ export default function LeadershipDashboard() {
                    <NewsFeed ref={newsFeedRef} clanTag={clanTag} />
                  </GlassCard>
 
-          {/* Today's Briefing / AI Insights */}
+          {/* Today's Briefing / Daily Insights */}
           <GlassCard
             title="Daily Insights"
             subtitle="High-level observations and news from the latest data ingestion"

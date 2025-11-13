@@ -65,6 +65,10 @@ export const TabNavigation: React.FC<TabNavigationProps> = ({ className = "" }) 
       router.push('/player-database');
     } else if (tabId === 'warplanning') {
       router.push('/war');
+    } else if (tabId === 'waranalytics') {
+      router.push('/war-analytics');
+    } else if (tabId === 'capitalanalytics') {
+      router.push('/capital-analytics');
     } else if (tabId === 'discord') {
       router.push('/discord');
     } else if (tabId === 'leadership') {

@@ -51,6 +51,20 @@ export const TAB_CONFIGS: TabConfig[] = [
     requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
   },
   {
+    id: 'waranalytics',
+    label: 'War Analytics',
+    icon: '📊',
+    description: 'Comprehensive war performance intelligence and metrics',
+    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  },
+  {
+    id: 'capitalanalytics',
+    label: 'Capital Analytics',
+    icon: '🏛️',
+    description: 'Capital raid performance analytics and metrics',
+    requires: ({ permissions }) => permissions.canViewLeadershipFeatures,
+  },
+  {
     id: 'database',
     label: 'Player Database',
     icon: '🗄️',

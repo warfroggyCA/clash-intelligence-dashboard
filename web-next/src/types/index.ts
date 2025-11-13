@@ -709,6 +709,8 @@ export type TabType =
   | "intelligence" 
   | "discord"
   | "warplanning"
+  | "waranalytics"
+  | "capitalanalytics"
   | "leadership";
 
 /**

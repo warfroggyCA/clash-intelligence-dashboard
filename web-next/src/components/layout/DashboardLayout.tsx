@@ -9,6 +9,7 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
+import { QuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import DevStatusBadge from './DevStatusBadge';
@@ -443,10 +444,14 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       {/* Header */}
       <DashboardHeader fallbackClanName={fallbackClanName} explicitClanName={propClanName} />
       
-      {/* Command Toolbar */}
+      {/* Quick Actions & Tabs Toolbar */}
       {!hideNavigation && (
         <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-2 pb-1.5 pt-1.5 sm:px-4 sm:pb-2 sm:pt-2">
           <div className="flex flex-col gap-1.5 sm:gap-2">
+            {/* Quick Actions - Now above tabs */}
+            <QuickActions className="w-full" />
+            
+            {/* Tabs - Now below Quick Actions */}
             <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
               {disableTabNavigation ? (
                 <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
