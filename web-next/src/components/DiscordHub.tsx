@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import DiscordPublisher from '@/components/DiscordPublisher';
 import { GlassCard } from '@/components/ui';
 import type { Roster } from '@/types';
@@ -75,7 +75,7 @@ export const DiscordHub: React.FC<DiscordHubProps> = ({ clanTag, clanName, roste
     void fetchWarPlanSummary();
   }, [clanTag]);
 
-  const handleLoadRoster = async () => {
+  const handleLoadRoster = useCallback(async () => {
     if (!clanTag) return;
     setLoadingRoster(true);
     try {
@@ -83,7 +83,7 @@ export const DiscordHub: React.FC<DiscordHubProps> = ({ clanTag, clanName, roste
     } finally {
       setLoadingRoster(false);
     }
-  };
+  }, [clanTag, loadRoster]);
 
   useEffect(() => {
     if (!clanTag) return;
@@ -92,7 +92,7 @@ export const DiscordHub: React.FC<DiscordHubProps> = ({ clanTag, clanName, roste
     if (hasAutoRequestedRoster.current) return;
     hasAutoRequestedRoster.current = true;
     void handleLoadRoster();
-  }, [clanTag, roster, loadingRoster]);
+  }, [clanTag, roster, loadingRoster, handleLoadRoster]);
 
   return (
     <div className="space-y-6">

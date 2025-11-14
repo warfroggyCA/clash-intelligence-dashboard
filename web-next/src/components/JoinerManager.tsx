@@ -156,7 +156,7 @@ export default function JoinerManager({ clanTag, onClose, onNotificationChange, 
                 <div className="flex items-center gap-2 text-orange-700">
                   <AlertCircle className="w-4 h-4" />
                   <span>
-                    <strong>Name changed:</strong> Was "{metadata.previousName}", now "{notification.playerName}"
+                    <strong>Name changed:</strong> Was &ldquo;{metadata.previousName}&rdquo;, now &ldquo;{notification.playerName}&rdquo;
                   </span>
                 </div>
               )}

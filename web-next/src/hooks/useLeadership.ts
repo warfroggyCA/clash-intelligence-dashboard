@@ -2,7 +2,6 @@ import { useMemo, useState, useEffect } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { checkLeadershipAccess, getRolePermissions, type LeadershipCheck, type RolePermissions, type ClanRole, clanRoleFromName } from '../lib/leadership';
 import { getAccessLevelPermissions, type AccessLevel } from '@/lib/access-management';
-import { getRoleHeaders } from '@/lib/api/role-header';
 import { normalizeTag } from '@/lib/tags';
 
 export interface UseLeadershipResult {
@@ -34,10 +33,9 @@ function useCustomPermissions() {
     const fetchCustomPermissions = async () => {
       try {
         setLoading(true);
-        const roleHeaders = getRoleHeaders();
         const response = await fetch(
           `/api/access/permissions?clanTag=${encodeURIComponent(normalizedClanTag)}`,
-          { headers: roleHeaders }
+          { credentials: 'same-origin' }
         );
 
         if (cancelled) return;

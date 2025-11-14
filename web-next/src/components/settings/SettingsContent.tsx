@@ -12,7 +12,6 @@ import { cfg } from '@/lib/config';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import type { ClanRole } from '@/lib/leadership';
 import { clearSmartInsightsPayload } from '@/lib/smart-insights-cache';
-import { getRoleHeaders } from '@/lib/api/role-header';
 import {
   Settings,
   Shield,
@@ -373,17 +372,10 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
     }
     setIsIngestingCapital(true);
     try {
-      const roleHeaders = getRoleHeaders();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        ...(roleHeaders instanceof Headers
-          ? Object.fromEntries(Array.from(roleHeaders.entries()))
-          : (roleHeaders as Record<string, string>)),
-      };
-
       const response = await fetch('/api/admin/capital-ingestion', {
         method: 'POST',
-        headers,
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clanTag, seasonLimit: 20 }), // Increased to get more weekends
       });
       const result = await response.json();
@@ -831,9 +823,7 @@ function TrackedClansManager() {
     try {
       setFetching(true);
       const response = await fetch('/api/tracked-clans', {
-        headers: {
-          ...getRoleHeaders(),
-        },
+        credentials: 'same-origin',
       });
       
       if (response.ok) {
@@ -869,9 +859,9 @@ function TrackedClansManager() {
       setLoading(true);
       const response = await fetch('/api/tracked-clans', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          ...getRoleHeaders(),
         },
         body: JSON.stringify({ clanTag: normalizedTag }),
       });
@@ -897,9 +887,7 @@ function TrackedClansManager() {
       setLoading(true);
       const response = await fetch(`/api/tracked-clans?clanTag=${encodeURIComponent(clanTag)}`, {
         method: 'DELETE',
-        headers: {
-          ...getRoleHeaders(),
-        },
+        credentials: 'same-origin',
       });
 
       const result = await response.json();

@@ -118,7 +118,7 @@ const FAQSections: React.FC<FAQSectionsProps> = ({ className }) => {
           </Card>
           <Card title="Interactive tooling" className="md:col-span-2">
             <ul className="space-y-1">
-              <li><Link href="/" className="text-brand-primary hover:underline">Roster dashboard</Link> → click the ACE leader tile for the live breakdown modal.</li>
+              <li><Link href="/app" className="text-brand-primary hover:underline">Roster dashboard</Link> → click the ACE leader tile for the live breakdown modal.</li>
               <li><Link href="/docs/ace_score_spec.md#pseudocode-concise" className="text-brand-primary hover:underline">Pseudocode exhibit</Link> shows the exact loop each component runs.</li>
               <li><Link href="/docs/architecture/data-spine" className="text-brand-primary hover:underline">Data spine guide</Link> covers where the `extras.ace` payload is persisted in Supabase.</li>
             </ul>

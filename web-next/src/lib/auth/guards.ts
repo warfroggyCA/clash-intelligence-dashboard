@@ -2,12 +2,30 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from './server';
 import { getUserClanRoles, hasRole, ClanRoleName } from './roles';
 import { cfg } from '@/lib/config';
+import { normalizeTag } from '@/lib/tags';
 
-export async function requireRole(req: NextRequest, allowedRoles: ClanRoleName[]) {
+interface RequireRoleOptions {
+  clanTag?: string | null;
+}
+
+function resolveClanTag(input?: string | null): string {
+  const fallback = cfg.homeClanTag ?? '';
+  const normalized = normalizeTag(input || fallback);
+  if (!normalized) {
+    throw NextResponse.json({ success: false, error: 'Clan tag not configured' }, { status: 500 });
+  }
+  return normalized;
+}
+
+export async function requireRole(
+  req: NextRequest,
+  allowedRoles: ClanRoleName[],
+  options?: RequireRoleOptions
+) {
   const apiKey = req.headers.get('x-api-key');
   const expectedKey = process.env.ADMIN_API_KEY || process.env.INGESTION_TRIGGER_KEY;
   if (expectedKey && apiKey === expectedKey) {
-    return { user: null, roles: [] };
+    return { user: null, roles: [], clanTag: resolveClanTag(options?.clanTag) };
   }
 
   const user = await getAuthenticatedUser();
@@ -16,11 +34,11 @@ export async function requireRole(req: NextRequest, allowedRoles: ClanRoleName[]
   }
 
   const roles = await getUserClanRoles(user.id);
-  const clanTag = cfg.homeClanTag;
+  const clanTag = resolveClanTag(options?.clanTag);
   if (!hasRole(roles, clanTag, allowedRoles)) {
     throw NextResponse.json({ success: false, error: 'Forbidden' }, { status: 403 });
   }
 
-  return { user, roles };
+  return { user, roles, clanTag };
 }
 

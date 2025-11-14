@@ -357,6 +357,8 @@ interface DashboardState {
   isHydrated: boolean;
   currentAccessMember: AccessMember | null;
   accessPermissions: RolePermissions;
+  sessionStatus: 'idle' | 'loading' | 'ready' | 'error';
+  sessionError: string | null;
   
   // Modals & UI
   showAccessManager: boolean;
@@ -512,10 +514,7 @@ const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change h
 const SMART_INSIGHTS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours cache for smart insights
 // auto-refresh removed
 
-const DEFAULT_IMPERSONATED_ROLE: ClanRoleName | null =
-  process.env.NEXT_PUBLIC_ALLOW_ANON_ACCESS === 'true' || process.env.NODE_ENV !== 'production'
-    ? 'leader'
-    : null;
+const DEFAULT_IMPERSONATED_ROLE: ClanRoleName | null = null;
 
 const initialState = {
   // Core Data
@@ -592,6 +591,8 @@ const initialState = {
   isTriggeringIngestion: false,
   ingestionRunError: null,
   isRefreshingData: false,
+  sessionStatus: 'idle' as const,
+  sessionError: null as string | null,
 };
 
 // =============================================================================
@@ -791,7 +792,24 @@ export const useDashboardStore = create<DashboardState>()(
       },
       setCurrentUser: (currentUser) => set({ currentUser }),
       setUserRoles: (userRoles) => set({ userRoles }),
-      setImpersonatedRole: (impersonatedRole) => set({ impersonatedRole }),
+      setImpersonatedRole: (impersonatedRole) => {
+        const state = get();
+        const normalizedClanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
+        const hasLeadershipAccess = normalizedClanTag
+          ? state.userRoles.some(
+              (role) =>
+                role.clan_tag === normalizedClanTag &&
+                (role.role === 'leader' || role.role === 'coleader')
+            )
+          : false;
+
+        if (!hasLeadershipAccess) {
+          set({ impersonatedRole: null });
+          return;
+        }
+
+        set({ impersonatedRole });
+      },
       setRosterViewMode: (mode) => set({ rosterViewMode: mode }),
       loadIngestionHealth: async (clanTag: string) => {
         try {
@@ -1354,24 +1372,65 @@ export const useDashboardStore = create<DashboardState>()(
       },
 
       hydrateSession: async () => {
+        const state = get();
+        if (state.sessionStatus === 'loading') {
+          return;
+        }
+
+        set({ sessionStatus: 'loading', sessionError: null });
+
         try {
-          const res = await fetch('/api/session', { cache: 'no-store' });
+          const res = await fetch('/api/session', { cache: 'no-store', credentials: 'same-origin' });
           if (!res.ok) {
-            set({ currentUser: null, userRoles: [] });
+            set({
+              currentUser: null,
+              userRoles: [],
+              sessionStatus: 'error',
+              sessionError: 'Unable to load session',
+              impersonatedRole: null,
+            });
             return;
           }
           const body = await res.json();
           if (!body?.success) {
-            set({ currentUser: null, userRoles: [] });
+            set({
+              currentUser: null,
+              userRoles: [],
+              sessionStatus: 'error',
+              sessionError: body?.error || 'Unable to load session',
+              impersonatedRole: null,
+            });
             return;
           }
+
+          const roles: UserRoleRecord[] = body.data?.roles ?? [];
+          const nextUser = body.data?.user ?? null;
+          const currentState = get();
+          const normalizedClanTag = normalizeTag(currentState.clanTag || currentState.homeClan || cfg.homeClanTag || '');
+          const hasLeadershipAccess = normalizedClanTag
+            ? roles.some(
+                (role) =>
+                  role.clan_tag === normalizedClanTag &&
+                  (role.role === 'leader' || role.role === 'coleader')
+              )
+            : false;
+
           set({
-            currentUser: body.data?.user ?? null,
-            userRoles: body.data?.roles ?? [],
+            currentUser: nextUser,
+            userRoles: roles,
+            sessionStatus: 'ready',
+            sessionError: null,
+            impersonatedRole: hasLeadershipAccess ? currentState.impersonatedRole : null,
           });
         } catch (error) {
           console.warn('[hydrateSession] Failed', error);
-          set({ currentUser: null, userRoles: [] });
+          set({
+            currentUser: null,
+            userRoles: [],
+            sessionStatus: 'error',
+            sessionError: 'Failed to connect to session endpoint',
+            impersonatedRole: null,
+          });
         }
       },
 

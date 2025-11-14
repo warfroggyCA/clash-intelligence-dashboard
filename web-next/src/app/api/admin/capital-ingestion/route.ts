@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ingestCapitalData } from '@/lib/ingestion/capital-ingestion';
 import { requireLeadership } from '@/lib/api/role-check';
 import { cfg } from '@/lib/config';
+import { normalizeTag } from '@/lib/tags';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,35 +19,20 @@ function isAuthorized(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    // Require leadership OR admin API key
-    let authorized = false;
-    
-    // Try admin API key first (for automation/scripts)
-    if (isAuthorized(req)) {
-      authorized = true;
-    } else {
-      // Try leadership authentication (for UI)
-      try {
-        await requireLeadership(req);
-        authorized = true;
-      } catch {
-        // Not authorized
-      }
-    }
-
-    if (!authorized) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await req.json().catch(() => ({}));
     const { clanTag, seasonLimit = 10 } = body;
-    
-    const targetClanTag = clanTag || cfg.homeClanTag;
+    const targetClanTag = normalizeTag(clanTag || cfg.homeClanTag || '');
+
     if (!targetClanTag) {
       return NextResponse.json({ 
         success: false, 
         error: 'No clan tag provided and no default clan configured' 
       }, { status: 400 });
+    }
+
+    const hasApiKey = isAuthorized(req);
+    if (!hasApiKey) {
+      await requireLeadership(req, { clanTag: targetClanTag });
     }
 
     console.log(`[AdminAPI] Starting capital ingestion for ${targetClanTag} (limit: ${seasonLimit})`);

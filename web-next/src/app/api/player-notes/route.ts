@@ -4,7 +4,6 @@ import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { createApiContext } from '@/lib/api/route-helpers';
 import { normalizeTag } from '@/lib/tags';
-import { cfg } from '@/lib/config';
 
 /**
  * Lookup player name from tag using canonical snapshots or members table
@@ -49,12 +48,51 @@ async function lookupPlayerName(clanTag: string, playerTag: string): Promise<str
   return null;
 }
 
+async function resolveClanTagForNote(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  noteId: string,
+  candidate?: string | null
+): Promise<string | null> {
+  const normalizedCandidate = candidate ? normalizeTag(candidate) : null;
+  if (normalizedCandidate) {
+    return normalizedCandidate;
+  }
+  if (!noteId) {
+    return null;
+  }
+  const { data, error } = await supabase
+    .from('player_notes')
+    .select('clan_tag')
+    .eq('id', noteId)
+    .maybeSingle();
+  if (error) {
+    console.error('[player-notes] Failed to resolve clan tag for note', error);
+    return null;
+  }
+  return data?.clan_tag ? normalizeTag(data.clan_tag) : null;
+}
+
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
+  const { searchParams } = new URL(request.url);
+  const clanTagParam = searchParams.get('clanTag');
+  const playerTagParam = searchParams.get('playerTag');
+  const includeArchived = searchParams.get('includeArchived') === 'true';
+  
+  if (!clanTagParam) {
+    return json({ success: false, error: 'clanTag is required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  if (!clanTag) {
+    return json({ success: false, error: 'Invalid clan tag' }, { status: 400 });
+  }
+  
+  const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
   
   try {
     // Require leadership to view player notes
-    await requireLeadership(request);
+    await requireLeadership(request, { clanTag });
   } catch (error: any) {
     // Handle 403 Forbidden from requireLeadership
     if (error instanceof Response && error.status === 403) {
@@ -67,18 +105,6 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    const { searchParams } = new URL(request.url);
-    const clanTagParam = searchParams.get('clanTag');
-    const playerTagParam = searchParams.get('playerTag');
-    const includeArchived = searchParams.get('includeArchived') === 'true';
-    
-    if (!clanTagParam) {
-      return json({ success: false, error: 'clanTag is required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
-    const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
-    
     const supabase = getSupabaseAdminClient();
     let query = supabase
       .from('player_notes')
@@ -111,19 +137,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  
+  const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, customFields = {} } = body;
+  
+  if (!clanTagParam || !playerTagParam || !note) {
+    return json({ success: false, error: 'clanTag, playerTag, and note are required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  const playerTag = normalizeTag(playerTagParam);
+  
+  if (!clanTag || !playerTag) {
+    return json({ success: false, error: 'Invalid clanTag or playerTag' }, { status: 400 });
+  }
   
   try {
-    await requireLeadership(request);
-    
-    const body = await request.json();
-    const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, customFields = {} } = body;
-    
-    if (!clanTagParam || !playerTagParam || !note) {
-      return json({ success: false, error: 'clanTag, playerTag, and note are required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
-    const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
+    await requireLeadership(request, { clanTag });
     
     // Automatically get the current user's identifier
     const createdBy = await getCurrentUserIdentifier(request, clanTag);
@@ -167,20 +200,27 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { id, note, customFields, clanTag: clanTagParam } = body;
+  
+  if (!id || !note) {
+    return json({ success: false, error: 'id and note are required' }, { status: 400 });
+  }
+  
+  const supabase = getSupabaseAdminClient();
+  const clanTag = await resolveClanTagForNote(supabase, id, clanTagParam);
+  if (!clanTag) {
+    return json({ success: false, error: 'Unable to resolve clan for note' }, { status: 404 });
+  }
   
   try {
-    await requireLeadership(request);
-    
-    const body = await request.json();
-    const { id, note, customFields } = body;
-    
-    if (!id || !note) {
-      return json({ success: false, error: 'id and note are required' }, { status: 400 });
-    }
+    await requireLeadership(request, { clanTag });
     
     // Note: We don't have updated_by field yet, but we can add it if needed
     // For now, we'll just track the update timestamp
-    const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
       .from('player_notes')
       .update({
@@ -206,21 +246,28 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { id, clanTag: clanTagParam } = body;
+  
+  if (!id) {
+    return json({ success: false, error: 'id is required' }, { status: 400 });
+  }
+  
+  const supabase = getSupabaseAdminClient();
+  const clanTag = await resolveClanTagForNote(supabase, id, clanTagParam);
+  if (!clanTag) {
+    return json({ success: false, error: 'Unable to resolve clan for note' }, { status: 404 });
+  }
   
   try {
-    await requireLeadership(request);
-    
-    const body = await request.json();
-    const { id, clanTag } = body;
-    
-    if (!id) {
-      return json({ success: false, error: 'id is required' }, { status: 400 });
-    }
-    
+    await requireLeadership(request, { clanTag });
+        
     // Automatically get the current user's identifier
     const archivedBy = await getCurrentUserIdentifier(request, clanTag);
     
-    const supabase = getSupabaseAdminClient();
     const { data, error } = await supabase
       .from('player_notes')
       .update({
@@ -245,16 +292,24 @@ export async function DELETE(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-notes');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { id, action, clanTag: clanTagParam } = body; // action: 'unarchive'
+  
+  if (!id || !action) {
+    return json({ success: false, error: 'id and action are required' }, { status: 400 });
+  }
+  
+  const supabase = getSupabaseAdminClient();
+  const clanTag = await resolveClanTagForNote(supabase, id, clanTagParam);
+  if (!clanTag) {
+    return json({ success: false, error: 'Unable to resolve clan for note' }, { status: 404 });
+  }
   
   try {
-    const body = await request.json();
-    const { id, action } = body; // action: 'unarchive'
-    
-    if (!id || !action) {
-      return json({ success: false, error: 'id and action are required' }, { status: 400 });
-    }
-    
-    const supabase = getSupabaseAdminClient();
+    await requireLeadership(request, { clanTag });
     let data: any;
     
     if (action === 'unarchive') {

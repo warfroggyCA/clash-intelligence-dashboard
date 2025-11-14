@@ -497,7 +497,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
       {headlineParagraph && (
         <div className="rounded-lg border border-cyan-700/50 bg-cyan-900/20 p-4">
           <div className="mb-2 flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Today's Overview</span>
+            <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Today&rsquo;s Overview</span>
           </div>
           <p className="text-sm leading-relaxed text-cyan-100 whitespace-pre-wrap">{headlineParagraph}</p>
         </div>

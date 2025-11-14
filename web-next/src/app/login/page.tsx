@@ -22,7 +22,7 @@ export default function LoginPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-        router.push('/');
+        router.push('/app');
       }
     };
     checkUser();
@@ -57,7 +57,7 @@ export default function LoginPage() {
         if (error) {
           setError(error.message);
         } else {
-          router.push('/');
+          router.push('/app');
         }
       }
     } catch (err: any) {
@@ -92,24 +92,25 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="max-w-md w-full space-y-8">
-        <div className="text-center">
-          <div className="mx-auto h-16 w-16 bg-gradient-to-br from-clash-gold to-clash-orange rounded-full flex items-center justify-center mb-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-4 py-10 text-white">
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-10">
+        <div className="text-center space-y-3">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-clash-gold/60 bg-slate-900/70 shadow-[0_10px_30px_rgba(0,0,0,0.45)]">
             <span className="text-2xl">⚔️</span>
           </div>
-          <h2 className="text-3xl font-bold text-gray-900">
+          <p className="text-xs uppercase tracking-[0.35em] text-clash-gold/80">
             Clash Intelligence
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to access your clan dashboard
+          </p>
+          <h1 className="text-4xl font-semibold">Leadership Access Portal</h1>
+          <p className="text-sm text-slate-400 max-w-xl mx-auto">
+            Sign in to access the Clash Intelligence dashboard and keep your clan&rsquo;s intel in one command center.
           </p>
         </div>
 
-        <div className="bg-white py-8 px-6 shadow-xl rounded-2xl border border-gray-100">
+        <div className="w-full max-w-xl rounded-[32px] border border-clash-gold/40 bg-slate-900/70 px-8 py-10 shadow-[0_35px_90px_-35px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-200">
                 Email address
               </label>
               <input
@@ -120,14 +121,14 @@ export default function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-clash-gold focus:border-clash-gold"
+                className="mt-2 block w-full rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-clash-gold focus:border-clash-gold"
                 placeholder="Enter your email"
               />
             </div>
 
             {!isSignUp && (
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-200">
                   Password
                 </label>
                 <input
@@ -137,7 +138,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-clash-gold focus:border-clash-gold"
+                  className="mt-2 block w-full rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-clash-gold focus:border-clash-gold"
                   placeholder="Enter your password"
                 />
               </div>
@@ -145,7 +146,7 @@ export default function LoginPage() {
 
             {isSignUp && (
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+                <label htmlFor="password" className="block text-sm font-medium text-slate-200">
                   Password
                 </label>
                 <input
@@ -156,14 +157,14 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-clash-gold focus:border-clash-gold"
+                  className="mt-2 block w-full rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-clash-gold focus:border-clash-gold"
                   placeholder="Create a password"
                 />
               </div>
             )}
 
             {error && (
-              <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md">
+              <div className="rounded-2xl border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-200">
                 {error}
               </div>
             )}
@@ -172,7 +173,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full"
+                className="w-full rounded-2xl border-0 bg-gradient-to-r from-clash-orange to-clash-gold text-slate-950 shadow-[0_15px_30px_rgba(253,199,76,0.35)] transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-clash-gold"
                 size="lg"
               >
                 {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
@@ -184,7 +185,7 @@ export default function LoginPage() {
                   variant="outline"
                   onClick={handleMagicLink}
                   disabled={loading || !email}
-                  className="w-full"
+                  className="w-full rounded-2xl border border-slate-700/70 bg-slate-900/40 text-slate-200 hover:bg-slate-800/70"
                 >
                   Send Magic Link
                 </Button>
@@ -196,16 +197,15 @@ export default function LoginPage() {
             <button
               type="button"
               onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm text-clash-gold hover:text-clash-orange"
+              className="text-sm font-medium text-clash-gold hover:text-clash-orange"
             >
               {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
             </button>
           </div>
         </div>
 
-        <div className="text-center text-xs text-gray-500">
-          <p>Clash Intelligence Dashboard</p>
-          <p>For clan leaders and co-leaders</p>
+        <div className="text-center text-xs uppercase tracking-[0.3em] text-slate-500">
+          Built for leadership • Secure access only
         </div>
       </div>
     </div>

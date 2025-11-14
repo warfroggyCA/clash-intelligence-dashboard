@@ -19,12 +19,13 @@ function isAuthorized(req: NextRequest): boolean {
 
 export async function POST(req: NextRequest) {
   try {
-    const { user } = await requireRole(req, ['leader', 'coleader']);
     const json = await req.json().catch(() => ({}));
     const parsed = bodySchema.safeParse(json);
     if (!parsed.success) {
       return NextResponse.json({ success: false, error: 'Invalid payload' }, { status: 400 });
     }
+
+    await requireRole(req, ['leader', 'coleader'], { clanTag: parsed.data.clanTag });
 
     const results = await runIngestionJob({ clanTag: parsed.data.clanTag, jobId: parsed.data.jobId });
     return NextResponse.json({ success: true, data: results });

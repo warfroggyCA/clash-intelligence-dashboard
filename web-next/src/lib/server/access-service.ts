@@ -48,7 +48,16 @@ interface UpdateMemberParams {
   updates: Partial<Pick<AddMemberParams, 'name' | 'accessLevel' | 'cocPlayerTag' | 'email' | 'notes'>>;
 }
 
-const supabaseAvailable = cfg.useSupabase && Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY);
+function isSupabaseAvailable(): boolean {
+  if (process.env.ACCESS_SERVICE_FORCE_MEMORY === 'true') {
+    return false;
+  }
+  return (
+    cfg.useSupabase &&
+    Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY) &&
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL)
+  );
+}
 const memoryStore = new Map<string, MemoryAccessConfig>();
 
 interface MemoryAccessConfig {
@@ -217,7 +226,7 @@ function createConfigMemory(params: CreateConfigParams) {
 }
 
 export async function createAccessConfig(params: CreateConfigParams) {
-  if (supabaseAvailable) {
+  if (isSupabaseAvailable()) {
     return createConfigSupabase(params);
   }
   return createConfigMemory(params);
@@ -280,7 +289,7 @@ function fetchMembersMemory(clanTag: string) {
 
 export async function listAccessMembers(clanTag: string) {
   const normalized = normalizeClanTag(clanTag);
-  const data = supabaseAvailable
+  const data = isSupabaseAvailable()
     ? await fetchMembersSupabase(normalized)
     : fetchMembersMemory(normalized);
   if (!data) {
@@ -291,7 +300,7 @@ export async function listAccessMembers(clanTag: string) {
 
 export async function getAccessConfigSummary(clanTag: string) {
   const normalized = normalizeClanTag(clanTag);
-  const data = supabaseAvailable
+  const data = isSupabaseAvailable()
     ? await fetchMembersSupabase(normalized)
     : fetchMembersMemory(normalized);
   if (!data) {
@@ -307,12 +316,12 @@ export async function getAccessConfigSummary(clanTag: string) {
 
 export async function authenticateAccessMember(clanTag: string, candidatePassword: string) {
   const normalized = normalizeClanTag(clanTag);
-  const data = supabaseAvailable
+  const data = isSupabaseAvailable()
     ? await fetchMembersSupabase(normalized)
     : fetchMembersMemory(normalized);
   if (!data) return null;
 
-  if (supabaseAvailable) {
+  if (isSupabaseAvailable()) {
     for (const member of data.members) {
       const hash = member.raw.password_hash as string;
       if (member.raw.is_active && passwordsMatch(hash, candidatePassword)) {
@@ -341,7 +350,7 @@ export async function addAccessMember(params: AddMemberParams) {
   const password = generateAccessPassword();
   const passwordHash = hashAccessPassword(password);
 
-  if (supabaseAvailable) {
+  if (isSupabaseAvailable()) {
     const supabase = getSupabaseAdminClient();
     const supaData = await fetchMembersSupabase(normalized);
     if (!supaData) {
@@ -423,7 +432,7 @@ export async function updateAccessMember(params: UpdateMemberParams) {
     }
   }
 
-  if (supabaseAvailable) {
+  if (isSupabaseAvailable()) {
     const supabase = getSupabaseAdminClient();
     if (Object.keys(payload).length === 0) {
       const { data, error } = await supabase
@@ -471,7 +480,7 @@ export async function updateAccessMember(params: UpdateMemberParams) {
 export async function deactivateAccessMember(clanTag: string, memberId: string) {
   const normalized = normalizeClanTag(clanTag);
   const now = new Date().toISOString();
-  if (supabaseAvailable) {
+  if (isSupabaseAvailable()) {
     const supabase = getSupabaseAdminClient();
     const { error } = await supabase
       .from('clan_access_members')

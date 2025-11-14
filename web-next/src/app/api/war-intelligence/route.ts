@@ -12,11 +12,9 @@ export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/war-intelligence');
 
   try {
-    // Require leadership access
-    await requireLeadership(request);
-
     const { searchParams } = new URL(request.url);
     const clanTag = searchParams.get('clanTag');
+    await requireLeadership(request, { clanTag });
     const playerTag = searchParams.get('playerTag');
     const daysBack = searchParams.get('daysBack') ? Number(searchParams.get('daysBack')) : undefined;
     const minWars = searchParams.get('minWars') ? Number(searchParams.get('minWars')) : undefined;

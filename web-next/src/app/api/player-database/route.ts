@@ -28,23 +28,23 @@ function debugWarn(...args: any[]): void {
  * Combines notes, warnings, actions, and player names in efficient queries.
  */
 export async function GET(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const clanTagParam = searchParams.get('clanTag') || cfg.homeClanTag;
+  const includeArchived = searchParams.get('includeArchived') === 'true';
+  
+  if (!clanTagParam) {
+    return NextResponse.json({ success: false, error: 'clanTag is required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  if (!clanTag) {
+    return NextResponse.json({ success: false, error: 'Invalid clan tag' }, { status: 400 });
+  }
+
   try {
     // Require leadership role to view player database (contains notes/warnings)
-    await requireLeadership(request);
+    await requireLeadership(request, { clanTag });
     
-    const { searchParams } = new URL(request.url);
-    const clanTagParam = searchParams.get('clanTag') || cfg.homeClanTag;
-    const includeArchived = searchParams.get('includeArchived') === 'true';
-    
-    if (!clanTagParam) {
-      return NextResponse.json({ success: false, error: 'clanTag is required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam);
-    if (!clanTag) {
-      return NextResponse.json({ success: false, error: 'Invalid clan tag' }, { status: 400 });
-    }
-
     const supabaseAdmin = getSupabaseAdminClient();
     const supabaseServer = getSupabaseServerClient();
 
@@ -811,4 +811,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

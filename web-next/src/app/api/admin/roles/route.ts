@@ -22,10 +22,14 @@ async function getClanId(supabase: ReturnType<typeof getSupabaseServerClient>, c
 
 export async function GET(req: NextRequest) {
   try {
-    await requireRole(req, ['leader', 'coleader']);
     const supabase = getSupabaseServerClient();
     const { searchParams } = new URL(req.url);
-    const clanTag = searchParams.get('clanTag') || cfg.homeClanTag;
+    const clanTagParam = searchParams.get('clanTag') || cfg.homeClanTag;
+    const clanTag = normalizeTag(clanTagParam || '');
+    if (!clanTag) {
+      return NextResponse.json({ success: false, error: 'Clan tag is required' }, { status: 400 });
+    }
+    await requireRole(req, ['leader', 'coleader'], { clanTag });
     const clan = await getClanId(supabase, clanTag);
 
     const { data, error } = await supabase
@@ -84,10 +88,14 @@ const updateSchema = z.object({
 
 export async function POST(req: NextRequest) {
   try {
-    await requireRole(req, ['leader']);
     const payload = createSchema.parse(await req.json());
     const supabase = getSupabaseServerClient();
-    const clan = await getClanId(supabase, payload.clanTag || cfg.homeClanTag);
+    const clanTag = normalizeTag(payload.clanTag || cfg.homeClanTag || '');
+    if (!clanTag) {
+      return NextResponse.json({ success: false, error: 'Clan tag is required' }, { status: 400 });
+    }
+    await requireRole(req, ['leader'], { clanTag });
+    const clan = await getClanId(supabase, clanTag);
 
     const userResponse = await supabase.auth.admin.listUsers();
     const user = userResponse?.data?.users?.find(u => u.email === payload.email);
@@ -123,9 +131,21 @@ export async function POST(req: NextRequest) {
 
 export async function PATCH(req: NextRequest) {
   try {
-    await requireRole(req, ['leader']);
     const payload = updateSchema.parse(await req.json());
     const supabase = getSupabaseServerClient();
+
+    const { data: roleRecord, error: roleError } = await supabase
+      .from('user_roles')
+      .select('id, clan_id, clans(tag)')
+      .eq('id', payload.id)
+      .maybeSingle();
+
+    if (roleError || !roleRecord?.clans?.tag) {
+      return NextResponse.json({ success: false, error: 'Role entry not found' }, { status: 404 });
+    }
+
+    const clanTag = normalizeTag(roleRecord.clans.tag);
+    await requireRole(req, ['leader'], { clanTag });
 
     const { error } = await supabase
       .from('user_roles')
@@ -154,7 +174,6 @@ export async function PATCH(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    await requireRole(req, ['leader']);
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
     if (!id) {
@@ -162,6 +181,20 @@ export async function DELETE(req: NextRequest) {
     }
 
     const supabase = getSupabaseServerClient();
+
+    const { data: roleRecord, error: roleError } = await supabase
+      .from('user_roles')
+      .select('id, clans(tag)')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (roleError || !roleRecord?.clans?.tag) {
+      return NextResponse.json({ success: false, error: 'Role entry not found' }, { status: 404 });
+    }
+
+    const clanTag = normalizeTag(roleRecord.clans.tag);
+    await requireRole(req, ['leader'], { clanTag });
+
     const { error } = await supabase
       .from('user_roles')
       .delete()

@@ -7,6 +7,7 @@ import { detectChanges, saveChangeSummary, getLatestSnapshot } from '@/lib/snaps
 import { generateChangeSummary } from '@/lib/ai-summarizer';
 import { insightsEngine } from '@/lib/smart-insights';
 import { saveInsightsBundle, generateSnapshotSummary } from '@/lib/insights-storage';
+import { requireLeadership } from '@/lib/api/role-check';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -16,15 +17,6 @@ export async function POST(req: NextRequest) {
   const { json, logger } = createApiContext(req, '/api/admin/force-refresh');
   
   try {
-    const leadershipToken = process.env.LEADERSHIP_TOKEN;
-    if (leadershipToken) {
-      const provided = req.headers.get('x-leadership-token') || '';
-      if (provided !== leadershipToken) {
-        logger.warn('Rejected force refresh without valid leadership token');
-        return json({ success: false, error: 'Unauthorized' }, { status: 401 });
-      }
-    }
-
     const body = await req.json();
     const Schema = z.object({ 
       clanTag: z.string(),
@@ -41,6 +33,14 @@ export async function POST(req: NextRequest) {
     
     if (!isValidTag(clanTag)) {
       return json({ success: false, error: 'Provide a valid clanTag like #2PR8R8V8P' }, { status: 400 });
+    }
+
+    const leadershipToken = process.env.LEADERSHIP_TOKEN;
+    const providedToken = req.headers.get('x-leadership-token') || '';
+    const tokenValid = Boolean(leadershipToken && providedToken === leadershipToken);
+
+    if (!tokenValid) {
+      await requireLeadership(req, { clanTag });
     }
 
     logger.info('Starting force refresh', { clanTag, includeInsights });

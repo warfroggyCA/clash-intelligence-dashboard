@@ -52,21 +52,24 @@ async function lookupPlayerName(clanTag: string, playerTag: string): Promise<str
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-warnings');
+  const { searchParams } = new URL(request.url);
+  const clanTagParam = searchParams.get('clanTag');
+  const playerTagParam = searchParams.get('playerTag');
+  
+  if (!clanTagParam) {
+    return json({ success: false, error: 'clanTag is required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  if (!clanTag) {
+    return json({ success: false, error: 'Invalid clan tag' }, { status: 400 });
+  }
+  
+  const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
   
   try {
     // Require leadership role to view warnings
-    await requireLeadership(request);
-    
-    const { searchParams } = new URL(request.url);
-    const clanTagParam = searchParams.get('clanTag');
-    const playerTagParam = searchParams.get('playerTag');
-    
-    if (!clanTagParam) {
-      return json({ success: false, error: 'clanTag is required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
-    const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
+    await requireLeadership(request, { clanTag });
     
     const supabase = getSupabaseAdminClient();
     let query = supabase
@@ -100,20 +103,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-warnings');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, warningNote, createdBy } = body;
+  
+  if (!clanTagParam || !playerTagParam || !warningNote) {
+    return json({ success: false, error: 'clanTag, playerTag, and warningNote are required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  const playerTag = normalizeTag(playerTagParam);
+  
+  if (!clanTag || !playerTag) {
+    return json({ success: false, error: 'Invalid clan tag or player tag' }, { status: 400 });
+  }
   
   try {
     // Require leadership role to create warnings
-    await requireLeadership(request);
-    
-    const body = await request.json();
-    const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, warningNote, createdBy } = body;
-    
-    if (!clanTagParam || !playerTagParam || !warningNote) {
-      return json({ success: false, error: 'clanTag, playerTag, and warningNote are required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
-    const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
+    await requireLeadership(request, { clanTag });
     
     // If playerName not provided, look it up from tag
     let finalPlayerName = playerName?.trim();
@@ -217,21 +226,24 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-warnings');
+  const { searchParams } = new URL(request.url);
+  const clanTagParam = searchParams.get('clanTag');
+  const playerTagParam = searchParams.get('playerTag');
+  
+  if (!clanTagParam || !playerTagParam) {
+    return json({ success: false, error: 'clanTag and playerTag are required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  const playerTag = normalizeTag(playerTagParam);
+  
+  if (!clanTag || !playerTag) {
+    return json({ success: false, error: 'Invalid clan tag or player tag' }, { status: 400 });
+  }
   
   try {
     // Require leadership role to delete warnings
-    await requireLeadership(request);
-    
-    const { searchParams } = new URL(request.url);
-    const clanTagParam = searchParams.get('clanTag');
-    const playerTagParam = searchParams.get('playerTag');
-    
-    if (!clanTagParam || !playerTagParam) {
-      return json({ success: false, error: 'clanTag and playerTag are required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
-    const playerTag = normalizeTag(playerTagParam) ?? playerTagParam;
+    await requireLeadership(request, { clanTag });
     
     const supabase = getSupabaseAdminClient();
     const { error } = await supabase

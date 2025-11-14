@@ -153,10 +153,6 @@ export async function fetchPlayerProfileSupabase(
     throw new Error('Player tag is required');
   }
 
-  // Add role header for server-side filtering
-  const { getRoleHeaders } = await import('@/lib/api/role-header');
-  const roleHeaders = getRoleHeaders();
-
   // Get clanTag from parameter or from query params if provided, or from store
   const urlParams = new URLSearchParams();
   if (clanTag) {
@@ -172,10 +168,8 @@ export async function fetchPlayerProfileSupabase(
     {
       ...init,
       cache: 'no-store',
-      headers: {
-        ...init?.headers,
-        ...roleHeaders,
-      },
+      credentials: 'same-origin',
+      headers: init?.headers,
     },
     {
       maxRetries: 3,

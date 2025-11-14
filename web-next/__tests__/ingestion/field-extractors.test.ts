@@ -233,6 +233,7 @@ describe('extractBuilderBaseMetrics', () => {
       versusTrophies: 2800,
       versusBattleWins: 450,
       builderLeagueId: 44000026,
+      builderLeagueName: 'Steel League III',
     });
   });
 
@@ -243,6 +244,7 @@ describe('extractBuilderBaseMetrics', () => {
       versusTrophies: null,
       versusBattleWins: null,
       builderLeagueId: null,
+      builderLeagueName: null,
     });
   });
 });
@@ -262,6 +264,7 @@ describe('extractWarStats', () => {
       attackWins: 2150,
       defenseWins: 850,
       capitalContributions: 125000,
+      warPreference: null,
     });
   });
 
@@ -272,6 +275,7 @@ describe('extractWarStats', () => {
       attackWins: null,
       defenseWins: null,
       capitalContributions: null,
+      warPreference: null,
     });
   });
 
