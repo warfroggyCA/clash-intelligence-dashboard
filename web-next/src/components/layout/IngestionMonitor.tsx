@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { RefreshCw } from 'lucide-react';
 import { normalizeTag } from '@/lib/tags';
-import { getRoleHeaders } from '@/lib/api/role-header';
 
 interface IngestionJobStep {
   name: string;
@@ -195,9 +194,7 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
     try {
       setLoadingStatuses(true);
       const response = await fetch('/api/tracked-clans/status', {
-        headers: {
-          ...getRoleHeaders(),
-        },
+        credentials: 'same-origin',
       });
 
       if (response.ok) {

@@ -40,21 +40,6 @@ const updateSchema = z.object({
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-history');
-  
-  try {
-    // Require leadership to access player history
-    await requireLeadership(request);
-  } catch (error: any) {
-    // Handle 403 Forbidden from requireLeadership
-    if (error instanceof Response && error.status === 403) {
-      return error;
-    }
-    if (error instanceof Response && error.status === 401) {
-      return error;
-    }
-    throw error;
-  }
-  
   const params = Object.fromEntries(request.nextUrl.searchParams.entries());
   const parsed = getQuerySchema.safeParse(params);
   if (!parsed.success) {
@@ -64,6 +49,20 @@ export async function GET(request: NextRequest) {
   const clanTag = normalizeTag(parsed.data.clanTag);
   if (!clanTag || !isValidTag(clanTag)) {
     return json({ success: false, error: 'Invalid clanTag' }, { status: 400 });
+  }
+
+  try {
+    // Require leadership to access player history
+    await requireLeadership(request, { clanTag });
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
   }
 
   const supabase = getSupabaseAdminClient();
@@ -103,21 +102,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-history');
-  
-  try {
-    // Require leadership to modify player history
-    await requireLeadership(request);
-  } catch (error: any) {
-    // Handle 403 Forbidden from requireLeadership
-    if (error instanceof Response && error.status === 403) {
-      return error;
-    }
-    if (error instanceof Response && error.status === 401) {
-      return error;
-    }
-    throw error;
-  }
-  
   const payload = await request.json().catch(() => ({}));
   const parsed = upsertSchema.safeParse(payload);
   if (!parsed.success) {
@@ -129,7 +113,21 @@ export async function POST(request: NextRequest) {
   if (!clanTag || !playerTag || !isValidTag(clanTag) || !isValidTag(playerTag)) {
     return json({ success: false, error: 'Invalid clanTag or playerTag' }, { status: 400 });
   }
-
+  
+  try {
+    // Require leadership to modify player history
+    await requireLeadership(request, { clanTag });
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
+  }
+  
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase
     .from('player_history')
@@ -154,21 +152,6 @@ export async function POST(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-history');
-  
-  try {
-    // Require leadership to modify player history
-    await requireLeadership(request);
-  } catch (error: any) {
-    // Handle 403 Forbidden from requireLeadership
-    if (error instanceof Response && error.status === 403) {
-      return error;
-    }
-    if (error instanceof Response && error.status === 401) {
-      return error;
-    }
-    throw error;
-  }
-  
   const payload = await request.json().catch(() => ({}));
   const parsed = updateSchema.safeParse(payload);
   if (!parsed.success) {
@@ -180,7 +163,21 @@ export async function PATCH(request: NextRequest) {
   if (!clanTag || !playerTag || !isValidTag(clanTag) || !isValidTag(playerTag)) {
     return json({ success: false, error: 'Invalid clanTag or playerTag' }, { status: 400 });
   }
-
+  
+  try {
+    // Require leadership to modify player history
+    await requireLeadership(request, { clanTag });
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
+  }
+  
   const updates: Record<string, unknown> = {};
   if (parsed.data.status) updates.status = parsed.data.status;
   if (parsed.data.movements) updates.movements = parsed.data.movements;
@@ -209,22 +206,6 @@ export async function PATCH(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-history');
-  
-  try {
-    // Require leadership to delete player history
-    const { requireLeadership } = await import('@/lib/api/role-check');
-    await requireLeadership(request);
-  } catch (error: any) {
-    // Handle 403 Forbidden from requireLeadership
-    if (error instanceof Response && error.status === 403) {
-      return error;
-    }
-    if (error instanceof Response && error.status === 401) {
-      return error;
-    }
-    throw error;
-  }
-  
   const params = Object.fromEntries(request.nextUrl.searchParams.entries());
   const parsed = getQuerySchema.safeParse(params);
   if (!parsed.success || !parsed.data.playerTag) {
@@ -236,7 +217,20 @@ export async function DELETE(request: NextRequest) {
   if (!clanTag || !playerTag || !isValidTag(clanTag) || !isValidTag(playerTag)) {
     return json({ success: false, error: 'Invalid clanTag or playerTag' }, { status: 400 });
   }
-
+  
+  try {
+    // Require leadership to delete player history
+    await requireLeadership(request, { clanTag });
+  } catch (error: any) {
+    // Handle 403 Forbidden from requireLeadership
+    if (error instanceof Response && error.status === 403) {
+      return error;
+    }
+    if (error instanceof Response && error.status === 401) {
+      return error;
+    }
+    throw error;
+  }
   const supabase = getSupabaseAdminClient();
   const { error } = await supabase
     .from('player_history')
@@ -250,4 +244,3 @@ export async function DELETE(request: NextRequest) {
 
   return json({ success: true });
 }
-

@@ -2,17 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { createApiContext } from '@/lib/api/route-helpers';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { getAuthenticatedUser } from '@/lib/auth/server';
+import { getUserClanRoles } from '@/lib/auth/roles';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-async function readTrackedClans(): Promise<string[]> {
+async function readTrackedClans(allowedClanTags?: string[]): Promise<string[]> {
   const supabase = getSupabaseServerClient();
-  const { data, error } = await supabase
+  let query = supabase
     .from('tracked_clans')
     .select('clan_tag')
     .eq('is_active', true)
     .order('added_at', { ascending: true });
+
+  if (allowedClanTags && allowedClanTags.length > 0) {
+    query = query.in('clan_tag', allowedClanTags);
+  }
+
+  const { data, error } = await query;
   
   if (error) {
     console.error('[TrackedClansStatus] Failed to read from Supabase:', error);
@@ -38,7 +46,22 @@ export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/tracked-clans/status');
 
   try {
-    const trackedClans = await readTrackedClans();
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const roles = await getUserClanRoles(user.id);
+    const leadershipTags = roles
+      .filter((role) => role.role === 'leader' || role.role === 'coleader')
+      .map((role) => normalizeTag(role.clan_tag))
+      .filter((tag): tag is string => Boolean(tag));
+
+    if (!leadershipTags.length) {
+      return json({ success: true, data: { statuses: [] } });
+    }
+
+    const trackedClans = await readTrackedClans(leadershipTags);
     const supabase = getSupabaseServerClient();
 
     // Get status for each tracked clan

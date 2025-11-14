@@ -22,7 +22,7 @@ export default function FAQPage() {
             We collected the questions clan leadership teams ask most often—covering data sources, ACE scoring, operations, and troubleshooting. Bookmark this hub and share it with co-leads.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs uppercase tracking-[0.24em] text-slate-400">
-            <Link href="/" className="rounded-full border border-white/10 px-4 py-2 transition hover:border-brand-primary/60 hover:text-slate-100">
+            <Link href="/app" className="rounded-full border border-white/10 px-4 py-2 transition hover:border-brand-primary/60 hover:text-slate-100">
               ← Back to dashboard
             </Link>
             <Link href="/docs/architecture/data-spine" className="rounded-full border border-white/10 px-4 py-2 transition hover:border-brand-primary/60 hover:text-slate-100">

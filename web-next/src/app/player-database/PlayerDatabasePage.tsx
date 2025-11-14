@@ -17,6 +17,8 @@ import type { Roster } from '@/types';
 // Lazy load components to avoid module-time side effects
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
+const PLAYER_DB_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
+
 interface PlayerNote {
   id?: string;
   timestamp: string;
@@ -107,8 +109,6 @@ export default function PlayerDatabasePage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [cacheTimestamp, setCacheTimestamp] = useState<string | null>(null);
 
-  const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
-
   // Get cache key based on clanTag and showArchived flag
   const getCacheKey = useCallback((archived: boolean, currentClanTag: string) => {
     const normalizedClanTag = normalizeTag(currentClanTag) || 'default';
@@ -128,7 +128,7 @@ export default function PlayerDatabasePage() {
       if (!parsed.data || !parsed.timestamp) return null;
       
       const age = Date.now() - parsed.timestamp;
-      if (age > CACHE_TTL_MS) {
+      if (age > PLAYER_DB_CACHE_TTL_MS) {
         // Cache expired, remove it
         localStorage.removeItem(cacheKey);
         return null;
@@ -230,31 +230,12 @@ export default function PlayerDatabasePage() {
       console.log('[PlayerDatabase] Fetching from optimized endpoint', forceRefresh ? '(force refresh)' : '');
       const startTime = Date.now();
       
-      // Add role header for server-side filtering
-      const { getRoleHeaders } = await import('@/lib/api/role-header');
-      const roleHeaders = getRoleHeaders();
-      
-      // Add dev API key bypass if in development
-      // getRoleHeaders() returns a plain object, but HeadersInit type includes Headers
-      // Convert to plain Record<string, string> to satisfy TypeScript
-      const roleHeadersObj = roleHeaders instanceof Headers
-        ? Object.fromEntries(Array.from(roleHeaders.entries()))
-        : (roleHeaders as Record<string, string>);
-      const headers: Record<string, string> = {
-        'Cache-Control': 'no-cache',
-        ...roleHeadersObj,
-      };
-      
-      // In development, add API key for bypass if available
-      if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
-        // Check if we have an API key stored or in env (client-side can't access process.env directly)
-        // The API key should be set via environment variable on the server
-        // For now, rely on Supabase auth or the server-side check
-      }
-      
       const response = await fetch(url, {
         cache: 'no-store', // Ensure no caching
-        headers,
+        credentials: 'same-origin',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
       });
       
       // Handle auth errors (401/403) - they return JSON in the body
@@ -314,7 +295,7 @@ export default function PlayerDatabasePage() {
 
   useEffect(() => {
     loadPlayerDatabase();
-  }, [loadPlayerDatabase]);
+  }, [loadPlayerDatabase, clanTag, invalidateCache]);
 
   // Ensure body scroll is enabled on mount and cleanup on unmount
   useEffect(() => {
@@ -636,7 +617,7 @@ export default function PlayerDatabasePage() {
       console.error('Error adding note:', error);
       setErrorMessage(`Error adding note: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag, invalidateCache]);
 
   const editNote = useCallback(async (playerTag: string, noteIndex: number, newText: string) => {
     if (!newText.trim()) return;
@@ -751,7 +732,7 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Error adding player:', error);
     }
-  }, [loadPlayerDatabase]);
+  }, [loadPlayerDatabase, clanTag, invalidateCache]);
 
   const openAddPlayerModal = useCallback(() => {
     setNewPlayerTag('');
@@ -807,7 +788,7 @@ export default function PlayerDatabasePage() {
       console.error('Error setting warning:', error);
       setErrorMessage(`Error setting warning: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag, invalidateCache]);
 
   const removePlayerWarning = useCallback(async (playerTag: string) => {
     try {
@@ -829,7 +810,7 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Error removing warning:', error);
     }
-  }, [loadPlayerDatabase]);
+  }, [loadPlayerDatabase, clanTag, invalidateCache]);
 
   const openWarningModal = useCallback(() => {
     setWarningNoteText('');
@@ -878,7 +859,7 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Error adding tenure action:', error);
     }
-  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag, invalidateCache]);
 
   // Departure management functions
   const addDepartureAction = useCallback(async (playerTag: string, reason: string, type: 'voluntary' | 'kicked: inactive' | 'kicked: other', recordedBy?: string) => {
@@ -917,7 +898,7 @@ export default function PlayerDatabasePage() {
     } catch (error) {
       console.error('Error adding departure action:', error);
     }
-  }, [selectedPlayer, loadPlayerDatabase, clanTag]);
+  }, [selectedPlayer, loadPlayerDatabase, clanTag, invalidateCache]);
 
   // Mark player as returned
   const handleMarkReturned = useCallback(async () => {
@@ -930,15 +911,11 @@ export default function PlayerDatabasePage() {
         throw new Error('No clan tag available');
       }
 
-      // Add role header for server-side authentication
-      const { getRoleHeaders } = await import('@/lib/api/role-header');
-      const roleHeaders = getRoleHeaders();
-      
       const response = await fetch('/api/player-history/mark-returned', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          ...roleHeaders,
         },
         body: JSON.stringify({
           clanTag: normalizedClanTag,
@@ -1689,12 +1666,10 @@ export default function PlayerDatabasePage() {
                                   // Fallback: fetch from player_history API
                                   if (foundTenure == null) {
                                     console.log('[MarkReturned] Fetching from player_history API...');
-                                    const { getRoleHeaders } = await import('@/lib/api/role-header');
-                                    const roleHeaders = getRoleHeaders();
                                     const response = await fetch(
                                       `/api/player-history?clanTag=${encodeURIComponent(normalizedClanTag)}&playerTag=${encodeURIComponent(selectedPlayer.tag)}`,
                                       {
-                                        headers: roleHeaders,
+                                        credentials: 'same-origin',
                                       }
                                     );
                                     if (response.ok) {
@@ -1751,12 +1726,10 @@ export default function PlayerDatabasePage() {
                                   if (foundTenure == null) {
                                     console.log('[MarkReturned] Trying player profile API for last known tenure...');
                                     try {
-                                      const { getRoleHeaders } = await import('@/lib/api/role-header');
-                                      const roleHeaders = getRoleHeaders();
                                       const profileResponse = await fetch(
                                         `/api/player/${encodeURIComponent(selectedPlayer.tag)}/profile?clanTag=${encodeURIComponent(normalizedClanTag)}`,
                                         {
-                                          headers: roleHeaders,
+                                          credentials: 'same-origin',
                                         }
                                       );
                                       if (profileResponse.ok) {

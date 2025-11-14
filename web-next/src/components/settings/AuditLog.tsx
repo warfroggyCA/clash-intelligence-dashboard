@@ -3,7 +3,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
-import { getRoleHeaders } from '@/lib/api/role-header';
 import { FileText, Link2, Award, UserX, Shield, Search, Filter } from 'lucide-react';
 import type { AuditLogEntry } from '@/app/api/audit-log/route';
 
@@ -40,9 +39,7 @@ export default function AuditLog({ clanTag }: AuditLogProps) {
         }
         
         const response = await fetch(`/api/audit-log?${params.toString()}`, {
-          headers: {
-            ...getRoleHeaders(),
-          },
+          credentials: 'same-origin',
         });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));

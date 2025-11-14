@@ -262,7 +262,7 @@ export function ElderAssessmentCard() {
     });
 
     handleEvaluate(inputs);
-  }, [roster, isLoadingRoster, handleEvaluate, criteria]);
+  }, [roster, isLoadingRoster, handleEvaluate]);
 
   // Auto-evaluate from roster when it loads (only once)
   useEffect(() => {
@@ -502,7 +502,7 @@ export function ElderAssessmentCard() {
                         <div className="group relative">
                           <Info className="h-3 w-3 text-slate-500 cursor-help" />
                           <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Minimum Elder Readiness Score required to recommend promotion to Elder status. Scores at or above this threshold are marked as "Promote".
+                            Minimum Elder Readiness Score required to recommend promotion to Elder status. Scores at or above this threshold are marked as &ldquo;Promote&rdquo;.
                           </div>
                         </div>
                       </div>
@@ -526,7 +526,7 @@ export function ElderAssessmentCard() {
                         <div className="group relative">
                           <Info className="h-3 w-3 text-slate-500 cursor-help" />
                           <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Score threshold for the "Monitor" band. Candidates between Monitor and Promotion thresholds are close but need more observation before promotion.
+                            Score threshold for the &ldquo;Monitor&rdquo; band. Candidates between Monitor and Promotion thresholds are close but need more observation before promotion.
                           </div>
                         </div>
                       </div>
@@ -540,7 +540,7 @@ export function ElderAssessmentCard() {
                       onChange={(e) => updateCriteria({ monitorThreshold: Number(e.target.value) })}
                       className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
                     />
-                    <p className="text-[10px] text-slate-400">Score for "Monitor" band (default: 55)</p>
+                    <p className="text-[10px] text-slate-400">Score for &ldquo;Monitor&rdquo; band (default: 55)</p>
                   </div>
 
                   <div className="space-y-2">
@@ -550,7 +550,7 @@ export function ElderAssessmentCard() {
                         <div className="group relative">
                           <Info className="h-3 w-3 text-slate-500 cursor-help" />
                           <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Minimum number of days a member must have been in the clan to be eligible for Elder promotion. Members below this threshold are marked as "Ineligible".
+                            Minimum number of days a member must have been in the clan to be eligible for Elder promotion. Members below this threshold are marked as &ldquo;Ineligible&rdquo;.
                           </div>
                         </div>
                       </div>
@@ -575,7 +575,7 @@ export function ElderAssessmentCard() {
                         <div className="group relative">
                           <Info className="h-3 w-3 text-slate-500 cursor-help" />
                           <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Minimum score required for each individual dimension (Consistency, Generosity, Performance). If any dimension falls below this threshold, it's flagged as a "failing dimension" in recommendations. Dimensions with zero weight are not checked.
+                            Minimum score required for each individual dimension (Consistency, Generosity, Performance). If any dimension falls below this threshold, it&rsquo;s flagged as a &ldquo;failing dimension&rdquo; in recommendations. Dimensions with zero weight are not checked.
                           </div>
                         </div>
                       </div>
@@ -589,7 +589,7 @@ export function ElderAssessmentCard() {
                       onChange={(e) => updateCriteria({ failingDimensionThreshold: Number(e.target.value) })}
                       className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
                     />
-                    <p className="text-[10px] text-slate-400">Minimum score per dimension to avoid "fail" (default: 40)</p>
+                    <p className="text-[10px] text-slate-400">Minimum score per dimension to avoid &ldquo;fail&rdquo; (default: 40)</p>
                   </div>
                 </div>
 
@@ -812,7 +812,7 @@ export function ElderAssessmentCard() {
                   <div className="group relative">
                     <Info className="h-3.5 w-3.5 text-slate-500 cursor-help" />
                     <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                      Score thresholds determine which band (Promote, Monitor, Risk, Ineligible) each candidate falls into based on their Elder Readiness Score.
+                            Score thresholds determine which band (Promote, Monitor, Risk, Ineligible) each candidate falls into based on their Elder Readiness Score.
                     </div>
                   </div>
                 </div>
@@ -824,7 +824,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                          Minimum Elder Readiness Score required to recommend promotion to Elder status. Scores at or above this threshold are marked as "Promote".
+                            Minimum Elder Readiness Score required to recommend promotion to Elder status. Scores at or above this threshold are marked as &ldquo;Promote&rdquo;.
                         </div>
                       </div>
                     </div>
@@ -848,7 +848,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                          Score threshold for the "Monitor" band. Candidates between Monitor and Promotion thresholds are close but need more observation before promotion.
+                            Score threshold for the &ldquo;Monitor&rdquo; band. Candidates between Monitor and Promotion thresholds are close but need more observation before promotion.
                         </div>
                       </div>
                     </div>
@@ -862,7 +862,7 @@ export function ElderAssessmentCard() {
                     onChange={(e) => updateCriteria({ monitorThreshold: Number(e.target.value) })}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
-                  <p className="text-[10px] text-slate-400">Score for "Monitor" band (default: 55)</p>
+                    <p className="text-[10px] text-slate-400">Score for &ldquo;Monitor&rdquo; band (default: 55)</p>
                 </div>
 
                 <div className="space-y-2">
@@ -872,7 +872,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                          Minimum number of days a member must have been in the clan to be eligible for Elder promotion. Members below this threshold are marked as "Ineligible".
+                            Minimum number of days a member must have been in the clan to be eligible for Elder promotion. Members below this threshold are marked as &ldquo;Ineligible&rdquo;.
                         </div>
                       </div>
                     </div>
@@ -897,7 +897,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                          Minimum score required for each individual dimension (Consistency, Generosity, Performance). If any dimension falls below this threshold, it's flagged as a "failing dimension" in recommendations. Dimensions with zero weight are not checked.
+                            Minimum score required for each individual dimension (Consistency, Generosity, Performance). If any dimension falls below this threshold, it&rsquo;s flagged as a &ldquo;failing dimension&rdquo; in recommendations. Dimensions with zero weight are not checked.
                         </div>
                       </div>
                     </div>
@@ -911,7 +911,7 @@ export function ElderAssessmentCard() {
                     onChange={(e) => updateCriteria({ failingDimensionThreshold: Number(e.target.value) })}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
                   />
-                  <p className="text-[10px] text-slate-400">Minimum score per dimension to avoid "fail" (default: 40)</p>
+                    <p className="text-[10px] text-slate-400">Minimum score per dimension to avoid &ldquo;fail&rdquo; (default: 40)</p>
                 </div>
               </div>
 

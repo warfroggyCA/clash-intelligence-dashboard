@@ -80,6 +80,8 @@ export async function GET(request: NextRequest) {
       return json({ success: false, error: 'Invalid clan tag or player tag' }, { status: 400 });
     }
 
+    await requireLeadership(request, { clanTag });
+
     if (includeNames) {
       const linkedTagsWithNames = await getLinkedTagsWithNames(clanTag, playerTag);
       return json({ success: true, data: linkedTagsWithNames });
@@ -106,25 +108,27 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-aliases');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { clanTag: clanTagParam, playerTag1, playerTag2 } = body;
+  
+  if (!clanTagParam || !playerTag1 || !playerTag2) {
+    return json({ success: false, error: 'clanTag, playerTag1, and playerTag2 are required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  const tag1 = normalizeTag(playerTag1);
+  const tag2 = normalizeTag(playerTag2);
+  
+  if (!clanTag || !tag1 || !tag2 || !isValidTag(clanTag) || !isValidTag(tag1) || !isValidTag(tag2)) {
+    return json({ success: false, error: 'Invalid clan tag or player tags' }, { status: 400 });
+  }
   
   try {
     // Require leadership role to create alias links
-    await requireLeadership(request);
-    
-    const body = await request.json();
-    const { clanTag: clanTagParam, playerTag1, playerTag2 } = body;
-    
-    if (!clanTagParam || !playerTag1 || !playerTag2) {
-      return json({ success: false, error: 'clanTag, playerTag1, and playerTag2 are required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam);
-    const tag1 = normalizeTag(playerTag1);
-    const tag2 = normalizeTag(playerTag2);
-    
-    if (!clanTag || !tag1 || !tag2 || !isValidTag(clanTag) || !isValidTag(tag1) || !isValidTag(tag2)) {
-      return json({ success: false, error: 'Invalid clan tag or player tags' }, { status: 400 });
-    }
+    await requireLeadership(request, { clanTag });
 
     // Automatically get the current user's identifier
     const createdBy = await getCurrentUserIdentifier(request, clanTag);
@@ -243,9 +247,6 @@ export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-aliases');
   
   try {
-    // Require leadership role to delete alias links
-    await requireLeadership(request);
-    
     const { searchParams } = new URL(request.url);
     const clanTagParam = searchParams.get('clanTag');
     const playerTag1Param = searchParams.get('playerTag1');
@@ -262,6 +263,9 @@ export async function DELETE(request: NextRequest) {
     if (!clanTag || !tag1 || !tag2 || !isValidTag(clanTag) || !isValidTag(tag1) || !isValidTag(tag2)) {
       return json({ success: false, error: 'Invalid clan tag or player tags' }, { status: 400 });
     }
+
+    // Require leadership role to delete alias links
+    await requireLeadership(request, { clanTag });
 
     const result = await unlinkPlayerTags(clanTag, tag1, tag2);
     
@@ -280,4 +284,3 @@ export async function DELETE(request: NextRequest) {
     return json({ success: false, error: sanitizeErrorForApi(error).message }, { status: error?.status || 500 });
   }
 }
-

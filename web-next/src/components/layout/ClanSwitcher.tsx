@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { ChevronDown, Check, RefreshCw } from 'lucide-react';
 import { normalizeTag } from '@/lib/tags';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
-import { getRoleHeaders } from '@/lib/api/role-header';
 import { formatDistanceToNow } from 'date-fns';
 import { showToast } from '@/lib/toast';
 
@@ -26,22 +25,32 @@ export function ClanSwitcher() {
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { clanTag, setClanTag, loadRoster, homeClan } = useDashboardStore();
+  const { clanTag, setClanTag, loadRoster, homeClan, userRoles } = useDashboardStore();
   const currentClanTag = normalizeTag(clanTag || homeClan || '');
+  const leadershipClanTags = useMemo(() => {
+    return userRoles
+      .filter((role) => role.role === 'leader' || role.role === 'coleader')
+      .map((role) => normalizeTag(role.clan_tag))
+      .filter((tag): tag is string => Boolean(tag));
+  }, [userRoles]);
+  const leadershipClanTagSet = useMemo(() => new Set(leadershipClanTags), [leadershipClanTags]);
+  const canUseSwitcher = leadershipClanTags.length > 0;
 
   const fetchTrackedClans = useCallback(async () => {
     try {
       setLoading(true);
       const response = await fetch('/api/tracked-clans/status', {
-        headers: {
-          ...getRoleHeaders(),
-        },
+        credentials: 'same-origin',
       });
 
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setTrackedClans(result.data.statuses || []);
+          const statuses = (result.data.statuses || []) as TrackedClan[];
+          const filteredStatuses = statuses.filter((status) =>
+            leadershipClanTagSet.has(normalizeTag(status.clanTag))
+          );
+          setTrackedClans(filteredStatuses);
         }
       }
     } catch (error) {
@@ -49,14 +58,19 @@ export function ClanSwitcher() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [leadershipClanTagSet]);
 
   useEffect(() => {
+    if (!canUseSwitcher) {
+      setTrackedClans([]);
+      setLoading(false);
+      return;
+    }
     void fetchTrackedClans();
     // Refresh every 30 seconds
     const interval = setInterval(fetchTrackedClans, 30000);
     return () => clearInterval(interval);
-  }, [fetchTrackedClans]);
+  }, [fetchTrackedClans, canUseSwitcher]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -116,7 +130,7 @@ export function ClanSwitcher() {
       showToast(`Switched to ${displayName}`, 'success');
       
       // Force a full page reload to ensure all components update with new clan
-      window.location.href = '/';
+      window.location.href = '/app';
     } catch (error: any) {
       console.error('[ClanSwitcher] Failed to switch clan:', error);
       showToast(error.message || 'Failed to switch clan', 'error');
@@ -131,6 +145,10 @@ export function ClanSwitcher() {
     : currentClan?.lastJobStatus === 'failed'
     ? 'text-red-400'
     : 'text-green-400';
+
+  if (!canUseSwitcher) {
+    return null;
+  }
 
   if (loading && trackedClans.length === 0) {
     return null; // Don't show anything while loading initially
@@ -221,4 +239,3 @@ export function ClanSwitcher() {
     </div>
   );
 }
-

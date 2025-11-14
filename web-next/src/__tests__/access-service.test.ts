@@ -8,15 +8,28 @@ import {
 } from '@/lib/server/access-service';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
-beforeEach(() => {
-  __resetMemoryAccessStore();
-  // Only clear Supabase credentials if we're testing memory fallback
-  if (process.env.NODE_ENV === 'test' && process.env.TEST_MEMORY_FALLBACK === 'true') {
-    process.env.SUPABASE_SERVICE_ROLE_KEY = '';
+const originalForceMemory = process.env.ACCESS_SERVICE_FORCE_MEMORY;
+
+beforeAll(() => {
+  process.env.ACCESS_SERVICE_FORCE_MEMORY = 'true';
+});
+
+afterAll(() => {
+  if (originalForceMemory === undefined) {
+    delete process.env.ACCESS_SERVICE_FORCE_MEMORY;
+  } else {
+    process.env.ACCESS_SERVICE_FORCE_MEMORY = originalForceMemory;
   }
 });
 
+beforeEach(() => {
+  __resetMemoryAccessStore();
+});
+
 afterEach(async () => {
+  if (process.env.ACCESS_SERVICE_FORCE_MEMORY === 'true') {
+    return;
+  }
   // Clean up test data from Supabase
   try {
     const supabase = getSupabaseAdminClient();

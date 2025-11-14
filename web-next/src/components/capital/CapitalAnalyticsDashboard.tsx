@@ -9,7 +9,6 @@ import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import type { CapitalAnalyticsResult } from '@/lib/capital-analytics/engine';
 import { generateCapitalCoachingRecommendations, compareCapitalToClanAverage } from '@/lib/capital-analytics/metrics';
-import { getRoleHeaders } from '@/lib/api/role-header';
 import { Loader2, TrendingUp, TrendingDown, Coins, Award, Target, Users, TrendingUp as TrendingUpIcon } from 'lucide-react';
 
 interface CapitalAnalyticsDashboardProps {
@@ -18,15 +17,13 @@ interface CapitalAnalyticsDashboardProps {
 }
 
 const fetcher = async (url: string): Promise<CapitalAnalyticsResult> => {
-  const roleHeaders = getRoleHeaders();
-  const headers: Record<string, string> = {
-    'Cache-Control': 'no-cache',
-    ...(roleHeaders instanceof Headers
-      ? Object.fromEntries(Array.from(roleHeaders.entries()))
-      : (roleHeaders as Record<string, string>)),
-  };
-
-  const response = await fetch(url, { headers });
+  const response = await fetch(url, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!response.ok) {
     const errorText = await response.text().catch(() => response.statusText);
     throw new Error(`Failed to fetch capital analytics: ${errorText}`);

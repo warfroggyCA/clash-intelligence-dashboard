@@ -123,10 +123,9 @@ describe('getInitialRosterData', () => {
 
     expect(url).toBe('https://demo.vercel.app/api/v2/roster?clanTag=%232PR8R8V8P');
     expect(options).toMatchObject({
-      cache: 'force-cache',
+      cache: 'no-store',
       headers: expect.objectContaining({ Accept: 'application/json' }),
       next: {
-        revalidate: ROSTER_REVALIDATE_SECONDS,
         tags: expect.arrayContaining(['roster', 'roster:#2PR8R8V8P']),
       },
     });
@@ -155,6 +154,7 @@ describe('getInitialRosterData', () => {
     await expect(getInitialRosterData('#2PR8R8V8P')).rejects.toThrow('Failed to load roster: 500');
   });
 });
+
 
 
 

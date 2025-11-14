@@ -274,7 +274,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
     checkAndRefresh(); // Check immediately
     
     return () => clearInterval(interval);
-  }, [roster?.lastUpdated, refreshTrigger]);
+  }, [roster?.lastUpdated, refreshTrigger, mutate]);
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [showRightFade, setShowRightFade] = useState(false);
@@ -614,7 +614,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           onRetry={() => {
             mutate(); // SWR mutate triggers revalidation
           }}
-          onGoHome={() => window.location.href = '/'}
+          onGoHome={() => window.location.href = '/app'}
         />
       </DashboardLayout>
     );
@@ -630,7 +630,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           onRetry={() => {
             mutate(); // SWR mutate triggers revalidation
           }}
-          onGoHome={() => window.location.href = '/'}
+          onGoHome={() => window.location.href = '/app'}
         />
       </DashboardLayout>
     );

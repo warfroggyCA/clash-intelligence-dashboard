@@ -8,6 +8,8 @@ import { CANONICAL_MEMBER_SNAPSHOT_VERSION } from '@/types/canonical-member-snap
 import type { CanonicalMemberSnapshotV1 } from '@/types/canonical-member-snapshot';
 import type { PlayerTimelinePoint, PlayerSummarySupabase, SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
 import type { Member, MemberEnriched, PlayerActivityTimelineEvent } from '@/types';
+import { getAuthenticatedUser } from '@/lib/auth/server';
+import { getUserClanRoles } from '@/lib/auth/roles';
 import {
   buildTimelineFromPlayerDay,
   mapTimelinePointsToActivityEvents,
@@ -270,6 +272,12 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Player tag is required' }, { status: 400 });
     }
 
+    const user = await getAuthenticatedUser();
+    if (!user) {
+      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+    }
+    const userRoles = await getUserClanRoles(user.id);
+
     // Get clanTag from query parameter, fallback to homeClanTag
     // Safely parse URL - handle edge cases where req.url might not be a full URL
     let searchParams: URLSearchParams;
@@ -451,6 +459,13 @@ export async function GET(
     const latestSnapshotDate = filteredRows[0].snapshot_date;
     // Use requested clanTag if provided, otherwise fall back to snapshot's clanTag
     const resolvedClanTag = clanTag ?? latestSnapshot.clanTag ?? filteredRows[0].clan_tag ?? null;
+    const normalizedResolvedClanTag = resolvedClanTag ? normalizeTag(resolvedClanTag) : null;
+    if (normalizedResolvedClanTag) {
+      const hasClanAccess = userRoles.some((role) => role.clan_tag === normalizedResolvedClanTag);
+      if (!hasClanAccess) {
+        return NextResponse.json({ success: false, error: 'Forbidden: Clan access required' }, { status: 403 });
+      }
+    }
     
     // Log the latest snapshot date for debugging
     console.log(`[player-profile] Latest snapshot date for ${normalizedTag}: ${latestSnapshotDate}`);
@@ -926,10 +941,14 @@ export async function GET(
       // Continue without VIP data
     }
 
-    // Check user role to filter leadership data
-    // TODO: Replace with real auth check when authentication is implemented
-    const userRole = req.headers.get('x-user-role') || 'member';
-    const isLeadership = userRole === 'leader' || userRole === 'coLeader' || userRole === 'coleader';
+    // Determine if current user has leadership access for this clan
+    const isLeadership = normalizedResolvedClanTag
+      ? userRoles.some(
+          (role) =>
+            role.clan_tag === normalizedResolvedClanTag &&
+            (role.role === 'leader' || role.role === 'coleader')
+        )
+      : false;
 
     const responsePayload = {
       summary,

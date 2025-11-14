@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { RefreshCw, Save, RotateCcw, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { AccessLevel, ACCESS_LEVEL_PERMISSIONS, getAccessLevelDisplayName } from '@/lib/access-management';
 import GlassCard from '@/components/ui/GlassCard';
@@ -87,38 +87,11 @@ export default function PermissionManager({ clanTag, className }: PermissionMana
   const [hasChanges, setHasChanges] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  // Only Leaders can access this
-  if (!permissions.canManageAccess || !check.isLeader) {
-    return (
-      <GlassCard
-        title="Permission Manager"
-        subtitle="Access Denied"
-        className={className}
-      >
-        <div className="text-center py-8">
-          <div className="text-4xl mb-4">🔒</div>
-          <p className="text-brand-text-secondary">
-            Only clan Leaders can manage permissions. Co-Leaders and other roles cannot modify permission settings.
-          </p>
-        </div>
-      </GlassCard>
-    );
-  }
-
-  // Load custom permissions on mount
-  useEffect(() => {
-    loadCustomPermissions();
-  }, [clanTag]);
-
-  const loadCustomPermissions = async () => {
+  const loadCustomPermissions = useCallback(async () => {
     try {
       setLoading(true);
-      // Add role header for server-side verification
-      const { getRoleHeaders } = await import('@/lib/api/role-header');
-      const roleHeaders = getRoleHeaders();
-      
       const response = await fetch(`/api/access/permissions?clanTag=${encodeURIComponent(clanTag)}`, {
-        headers: roleHeaders,
+        credentials: 'same-origin',
       });
       
       if (!response.ok) {
@@ -147,7 +120,32 @@ export default function PermissionManager({ clanTag, className }: PermissionMana
     } finally {
       setLoading(false);
     }
-  };
+  }, [clanTag]);
+
+  // Load custom permissions on mount when access is available
+  useEffect(() => {
+    if (permissions.canManageAccess && check.isLeader) {
+      void loadCustomPermissions();
+    }
+  }, [permissions.canManageAccess, check.isLeader, loadCustomPermissions]);
+
+  // Only Leaders can access this
+  if (!permissions.canManageAccess || !check.isLeader) {
+    return (
+      <GlassCard
+        title="Permission Manager"
+        subtitle="Access Denied"
+        className={className}
+      >
+        <div className="text-center py-8">
+          <div className="text-4xl mb-4">🔒</div>
+          <p className="text-brand-text-secondary">
+            Only clan Leaders can manage permissions. Co-Leaders and other roles cannot modify permission settings.
+          </p>
+        </div>
+      </GlassCard>
+    );
+  }
 
   const getEffectivePermissions = (level: AccessLevel): PermissionSet => {
     const defaults = ACCESS_LEVEL_PERMISSIONS[level];
@@ -189,15 +187,11 @@ export default function PermissionManager({ clanTag, className }: PermissionMana
   const savePermissions = async () => {
     try {
       setSaving(true);
-      // Add role header for server-side verification
-      const { getRoleHeaders } = await import('@/lib/api/role-header');
-      const roleHeaders = getRoleHeaders();
-      
       const response = await fetch('/api/access/permissions', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: {
           'Content-Type': 'application/json',
-          ...roleHeaders,
         },
         body: JSON.stringify({
           clanTag,

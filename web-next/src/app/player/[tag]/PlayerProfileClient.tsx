@@ -118,6 +118,22 @@ const formatPercent = (value: number | null | undefined) => {
 
 const formatSignedNumber = (value: number) => (value > 0 ? `+${formatNumber(value)}` : formatNumber(value));
 
+const HERO_ICON_MAP: Record<string, { src: string; alt: string }> = {
+  BK: { src: '/assets/heroes/Barbarian_King.png', alt: 'Barbarian King' },
+  AQ: { src: '/assets/heroes/Archer_Queen.png', alt: 'Archer Queen' },
+  GW: { src: '/assets/heroes/Grand_Warden.png', alt: 'Grand Warden' },
+  RC: { src: '/assets/heroes/Royal_Champion.png', alt: 'Royal Champion' },
+  MP: { src: '/assets/heroes/Minion_Prince.png', alt: 'Minion Prince' },
+};
+
+const HERO_LABELS: Record<string, string> = {
+  BK: 'Barbarian King',
+  AQ: 'Archer Queen',
+  GW: 'Grand Warden',
+  RC: 'Royal Champion',
+  MP: 'Minion Prince',
+};
+
 const formatDate = (value: string | null | undefined) => {
   if (!value) return "—";
   try {
@@ -1880,23 +1896,6 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   const clanHeroAverages = profile?.clanHeroAverages || {};
   console.log('Clan hero averages from API:', clanHeroAverages);
 
-  // Hero icon mapping
-const HERO_ICON_MAP: Record<string, { src: string; alt: string }> = {
-  BK: { src: '/assets/heroes/Barbarian_King.png', alt: 'Barbarian King' },
-  AQ: { src: '/assets/heroes/Archer_Queen.png', alt: 'Archer Queen' },
-  GW: { src: '/assets/heroes/Grand_Warden.png', alt: 'Grand Warden' },
-  RC: { src: '/assets/heroes/Royal_Champion.png', alt: 'Royal Champion' },
-  MP: { src: '/assets/heroes/Minion_Prince.png', alt: 'Minion Prince' },
-};
-
-const HERO_LABELS: Record<string, string> = {
-  BK: 'Barbarian King',
-  AQ: 'Archer Queen',
-  GW: 'Grand Warden',
-  RC: 'Royal Champion',
-  MP: 'Minion Prince',
-};
-
   const petEntries = useMemo(() => {
     if (!summary?.pets) return [] as Array<[string, number]>;
     return Object.entries(summary.pets).sort(
@@ -1921,8 +1920,14 @@ const HERO_LABELS: Record<string, string> = {
     });
   }, [summary?.equipmentLevels]);
 
-  const superTroopList = summary?.superTroopsActive ?? [];
-  const achievementSummary = summary?.achievements ?? { count: null, score: null };
+  const superTroopList = useMemo(
+    () => summary?.superTroopsActive ?? [],
+    [summary?.superTroopsActive]
+  );
+  const achievementSummary = useMemo(
+    () => summary?.achievements ?? { count: null, score: null },
+    [summary?.achievements]
+  );
 
   const handleCopySummary = useCallback(() => {
     if (!summary) return;
@@ -2409,7 +2414,7 @@ const HERO_LABELS: Record<string, string> = {
           mutateProfile(); // SWR mutate triggers revalidation
         }}
         onGoBack={handleGoBack}
-        onGoHome={() => router.push('/')}
+        onGoHome={() => router.push('/app')}
       />
     );
   };
@@ -3265,19 +3270,12 @@ const HERO_LABELS: Record<string, string> = {
                                 <div key={hero} className="rounded-xl border border-slate-600/50 bg-slate-800/30 p-4">
                                   {/* Hero Header */}
                                   <div className="flex items-center gap-3 mb-4 pb-3 border-b border-slate-600/30">
-                                    <img 
+                                    <Image 
                                       src={getHeroImage(hero)}
                                       alt={hero}
-                                      className="w-10 h-10 object-contain"
-                                      onError={(e) => {
-                                        // Fallback to text if image fails to load
-                                        const target = e.target as HTMLImageElement;
-                                        target.style.display = 'none';
-                                        const fallback = document.createElement('span');
-                                        fallback.textContent = hero.charAt(0);
-                                        fallback.className = 'w-10 h-10 flex items-center justify-center bg-slate-600 rounded text-sm font-bold text-white';
-                                        target.parentNode?.appendChild(fallback);
-                                      }}
+                                      width={40}
+                                      height={40}
+                                      className="h-10 w-10 object-contain"
                                     />
                                     <h4 className="text-lg font-semibold text-slate-200">{hero}</h4>
                                   </div>

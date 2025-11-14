@@ -9,7 +9,6 @@ import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import type { WarIntelligenceResult } from '@/lib/war-intelligence/engine';
 import { generateCoachingRecommendations, compareToClanAverage } from '@/lib/war-intelligence/metrics';
-import { getRoleHeaders } from '@/lib/api/role-header';
 import { Loader2, TrendingUp, TrendingDown, Minus, Target, Shield, Zap, Award } from 'lucide-react';
 
 interface WarIntelligenceDashboardProps {
@@ -18,15 +17,13 @@ interface WarIntelligenceDashboardProps {
 }
 
 const fetcher = async (url: string): Promise<WarIntelligenceResult> => {
-  const roleHeaders = getRoleHeaders();
-  const headers: Record<string, string> = {
-    'Cache-Control': 'no-cache',
-    ...(roleHeaders instanceof Headers
-      ? Object.fromEntries(Array.from(roleHeaders.entries()))
-      : (roleHeaders as Record<string, string>)),
-  };
-
-  const response = await fetch(url, { headers });
+  const response = await fetch(url, {
+    cache: 'no-store',
+    credentials: 'same-origin',
+    headers: {
+      'Cache-Control': 'no-cache',
+    },
+  });
   if (!response.ok) {
     const errorText = await response.text().catch(() => response.statusText);
     throw new Error(`Failed to fetch war intelligence: ${errorText}`);

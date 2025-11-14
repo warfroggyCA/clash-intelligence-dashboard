@@ -6,5 +6,5 @@
 import { redirect } from 'next/navigation';
 
 export default function SimpleRosterRedirect() {
-  redirect('/');
+  redirect('/app');
 }

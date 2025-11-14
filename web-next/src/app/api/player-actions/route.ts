@@ -54,10 +54,25 @@ async function lookupPlayerName(clanTag: string, playerTag: string): Promise<str
 
 export async function GET(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
+  const { searchParams } = new URL(request.url);
+  const clanTagParam = searchParams.get('clanTag');
+  const playerTagParam = searchParams.get('playerTag');
+  const actionType = searchParams.get('type'); // 'tenure' or 'departure'
+  const includeArchived = searchParams.get('includeArchived') === 'true';
+  
+  if (!clanTagParam) {
+    return json({ success: false, error: 'clanTag is required' }, { status: 400 });
+  }
+  
+  const clanTag = normalizeTag(clanTagParam);
+  if (!clanTag) {
+    return json({ success: false, error: 'Invalid clanTag' }, { status: 400 });
+  }
+  const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
   
   try {
     // Require leadership to view player actions (tenure/departure notes)
-    await requireLeadership(request);
+    await requireLeadership(request, { clanTag });
   } catch (error: any) {
     // Handle 403 Forbidden from requireLeadership
     if (error instanceof Response && error.status === 403) {
@@ -70,18 +85,6 @@ export async function GET(request: NextRequest) {
   }
   
   try {
-    const { searchParams } = new URL(request.url);
-    const clanTagParam = searchParams.get('clanTag');
-    const playerTagParam = searchParams.get('playerTag');
-    const actionType = searchParams.get('type'); // 'tenure' or 'departure'
-    const includeArchived = searchParams.get('includeArchived') === 'true';
-    
-    if (!clanTagParam) {
-      return json({ success: false, error: 'clanTag is required' }, { status: 400 });
-    }
-    
-    const clanTag = normalizeTag(clanTagParam) ?? clanTagParam;
-    const playerTag = playerTagParam ? (normalizeTag(playerTagParam) ?? playerTagParam) : null;
     
     const supabase = getSupabaseAdminClient();
     let data: any[] = [];
@@ -146,20 +149,26 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { clanTag, playerTag, playerName, actionType, actionData } = body;
+  
+  if (!clanTag || !playerTag || !actionType) {
+    return json({ success: false, error: 'clanTag, playerTag, and actionType are required' }, { status: 400 });
+  }
+  
+  const normalizedClanTag = normalizeTag(clanTag);
+  const normalizedPlayerTag = normalizeTag(playerTag ?? '');
+  if (!normalizedClanTag || !normalizedPlayerTag) {
+    return json({ success: false, error: 'Invalid clanTag or playerTag' }, { status: 400 });
+  }
+  const clanTagForWrite = normalizedClanTag;
+  const playerTagForWrite = normalizedPlayerTag;
   
   try {
-    await requireLeadership(request);
-    
-    const body = await request.json();
-    const { clanTag, playerTag, playerName, actionType, actionData } = body;
-    const normalizedClanTag = clanTag ? normalizeTag(clanTag) ?? clanTag : clanTag;
-    const normalizedPlayerTag = normalizeTag(playerTag ?? '') ?? playerTag;
-    const clanTagForWrite = normalizedClanTag ?? clanTag;
-    const playerTagForWrite = normalizedPlayerTag ?? playerTag;
-    
-    if (!clanTag || !playerTag || !actionType) {
-      return json({ success: false, error: 'clanTag, playerTag, and actionType are required' }, { status: 400 });
-    }
+    await requireLeadership(request, { clanTag: clanTagForWrite });
     
     // Automatically get the current user's identifier
     const createdBy = await getCurrentUserIdentifier(request, clanTagForWrite);
@@ -204,7 +213,7 @@ export async function POST(request: NextRequest) {
       // If playerName not provided, look it up from tag
       let finalPlayerName = playerName?.trim();
       if (!finalPlayerName || finalPlayerName === 'Unknown Player') {
-        const lookedUpName = await lookupPlayerName(normalizedClanTag ?? clanTag, normalizedPlayerTag ?? playerTag);
+        const lookedUpName = await lookupPlayerName(clanTagForWrite, playerTagForWrite);
         if (lookedUpName) {
           finalPlayerName = lookedUpName;
         } else {
@@ -214,8 +223,8 @@ export async function POST(request: NextRequest) {
       
       // Use createdBy for both grantedBy and createdBy (automatically set from logged-in user)
       const result = await applyTenureAction({
-        clanTag: normalizedClanTag ?? clanTag,
-        playerTag: normalizedPlayerTag ?? playerTag,
+        clanTag: clanTagForWrite,
+        playerTag: playerTagForWrite,
         playerName: finalPlayerName,
         baseDays,
         asOf: asOfIso,
@@ -286,19 +295,26 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { id, actionType, clanTag } = body;
+  
+  if (!id || !actionType) {
+    return json({ success: false, error: 'id and actionType are required' }, { status: 400 });
+  }
+  
+  const normalizedClanTag = normalizeTag(clanTag ?? '');
+  if (!normalizedClanTag) {
+    return json({ success: false, error: 'Valid clanTag is required' }, { status: 400 });
+  }
   
   try {
-    await requireLeadership(request);
-    
-    const body = await request.json();
-    const { id, actionType, clanTag } = body;
-    
-    if (!id || !actionType) {
-      return json({ success: false, error: 'id and actionType are required' }, { status: 400 });
-    }
+    await requireLeadership(request, { clanTag: normalizedClanTag });
     
     // Automatically get the current user's identifier
-    const archivedBy = await getCurrentUserIdentifier(request, clanTag);
+    const archivedBy = await getCurrentUserIdentifier(request, normalizedClanTag);
     
     const supabase = getSupabaseAdminClient();
     let data: any;
@@ -350,16 +366,42 @@ export async function DELETE(request: NextRequest) {
 
 export async function PATCH(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-actions');
+  const body = await request.json().catch(() => null);
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { id, actionType, action, clanTag: clanTagParam } = body; // action: 'unarchive'
+  
+  if (!id || !actionType || !action) {
+    return json({ success: false, error: 'id, actionType, and action are required' }, { status: 400 });
+  }
+  
+  const supabase = getSupabaseAdminClient();
+  let clanTag: string | null = clanTagParam ? normalizeTag(clanTagParam) : null;
+  
+  if (!clanTag) {
+    const sourceTable = actionType === 'tenure' ? 'player_tenure_actions' : actionType === 'departure' ? 'player_departure_actions' : null;
+    if (!sourceTable) {
+      return json({ success: false, error: 'Invalid action type' }, { status: 400 });
+    }
+    const { data: actionRecord, error: lookupError } = await supabase
+      .from(sourceTable)
+      .select('clan_tag')
+      .eq('id', id)
+      .maybeSingle();
+    if (lookupError) {
+      console.error('[player-actions] Failed to resolve clan tag for action', lookupError);
+      return json({ success: false, error: 'Failed to resolve clan context' }, { status: 500 });
+    }
+    clanTag = actionRecord?.clan_tag ? normalizeTag(actionRecord.clan_tag) : null;
+  }
+  
+  if (!clanTag) {
+    return json({ success: false, error: 'Unable to resolve clan for action' }, { status: 404 });
+  }
   
   try {
-    const body = await request.json();
-    const { id, actionType, action } = body; // action: 'unarchive'
-    
-    if (!id || !actionType || !action) {
-      return json({ success: false, error: 'id, actionType, and action are required' }, { status: 400 });
-    }
-    
-    const supabase = getSupabaseAdminClient();
+    await requireLeadership(request, { clanTag });
     let data: any;
     
     if (action === 'unarchive') {

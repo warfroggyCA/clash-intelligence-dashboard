@@ -73,7 +73,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
   const hasLeadershipRole = userRoles.some(
     (entry) => entry.clan_tag === normalizedClanTagValue && (entry.role === 'leader' || entry.role === 'coleader')
   );
-  const canShowRoleMenu = cfg.isDevelopment || hasLeadershipRole;
+  const canShowRoleMenu = hasLeadershipRole;
   const router = useRouter();
   const actualRoleLabel = getRoleDisplayName(clanRoleFromName(actualRoleName));
   const viewingRoleLabel = getRoleDisplayName(clanRoleFromName(viewingRoleName));
@@ -231,7 +231,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
           </div>
           <div className="flex flex-col items-center gap-2 text-center">
             <div className="flex items-center justify-center gap-3">
-              <Link href="/" className="relative flex h-12 w-12 items-center justify-center sm:h-14 sm:w-14 hover:opacity-80 transition-opacity cursor-pointer" title="Go to Roster">
+              <Link href="/app" className="relative flex h-12 w-12 items-center justify-center sm:h-14 sm:w-14 hover:opacity-80 transition-opacity cursor-pointer" title="Go to Roster">
                 <Image
                   src={logoSrc}
                   alt="Clan Logo"
@@ -242,7 +242,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                 />
               </Link>
               <Link
-                href="/"
+                href="/app"
                 className={`font-semibold leading-tight text-slate-100 transition-all duration-200 hover:text-white hover:scale-105 cursor-pointer ${isScrolled ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}
                 style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
                 title="Go to Roster"
@@ -431,68 +431,70 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const disableTabNavigation = process.env.NEXT_PUBLIC_DISABLE_TAB_NAV === 'true';
 
   return (
-    <div className={`min-h-screen w-full ${className}`} style={{ overflowX: 'hidden' }}>
-      {/* Skip to main content link */}
-      {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-      <a 
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-6 focus:py-3 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-xl focus:font-semibold"
-      >
-        Skip to main content
-      </a>
-      
-      {/* Header */}
-      <DashboardHeader fallbackClanName={fallbackClanName} explicitClanName={propClanName} />
-      
-      {/* Quick Actions & Tabs Toolbar */}
-      {!hideNavigation && (
-        <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-2 pb-1.5 pt-1.5 sm:px-4 sm:pb-2 sm:pt-2">
-          <div className="flex flex-col gap-1.5 sm:gap-2">
-            {/* Quick Actions - Now above tabs */}
-            <QuickActions className="w-full" />
-            
-            {/* Tabs - Now below Quick Actions */}
-            <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
-              {disableTabNavigation ? (
-                <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
-              ) : (
-                <TabNavigation className="px-1.5 sm:px-2" />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {/* Main Content */}
-      <main id="main-content" role="main" tabIndex={-1} className="dashboard-main w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
-        <div className="space-y-6">
-          {children}
-        </div>
-      </main>
-      
-      {/* Footer */}
-      <footer className="w-full bg-gray-800 border-t border-gray-600 mt-12">
-        <div className="w-full px-6 py-4">
-          <div className="flex items-center justify-between text-sm text-gray-200">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center gap-2">
-                <div className="h-2 w-2 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                <span className="font-semibold !text-white" style={{ color: '#ffffff' }}>Clash Intelligence Dashboard</span>
+    <AuthGate>
+      <div className={`min-h-screen w-full ${className}`} style={{ overflowX: 'hidden' }}>
+        {/* Skip to main content link */}
+        {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
+        <a 
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-6 focus:py-3 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-xl focus:font-semibold"
+        >
+          Skip to main content
+        </a>
+        
+        {/* Header */}
+        <DashboardHeader fallbackClanName={fallbackClanName} explicitClanName={propClanName} />
+        
+        {/* Quick Actions & Tabs Toolbar */}
+        {!hideNavigation && (
+          <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-2 pb-1.5 pt-1.5 sm:px-4 sm:pb-2 sm:pt-2">
+            <div className="flex flex-col gap-1.5 sm:gap-2">
+              {/* Quick Actions - Now above tabs */}
+              <QuickActions className="w-full" />
+              
+              {/* Tabs - Now below Quick Actions */}
+              <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
+                {disableTabNavigation ? (
+                  <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
+                ) : (
+                  <TabNavigation className="px-1.5 sm:px-2" />
+                )}
               </div>
-              <span className="text-gray-400">•</span>
-              <span className="font-mono bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-xs font-semibold border border-gray-600">
-                v{process.env.NEXT_PUBLIC_APP_VERSION || '0.21.0'}
-              </span>
-              <span className="text-gray-400">•</span>
-              <span className="text-gray-400">a warfroggy project</span>
             </div>
           </div>
-        </div>
-      </footer>
-      
-      {/* Modals Container */}
-      <ModalsContainer />
-    </div>
+        )}
+        
+        {/* Main Content */}
+        <main id="main-content" role="main" tabIndex={-1} className="dashboard-main w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
+          <div className="space-y-6">
+            {children}
+          </div>
+        </main>
+        
+        {/* Footer */}
+        <footer className="w-full bg-gray-800 border-t border-gray-600 mt-12">
+          <div className="w-full px-6 py-4">
+            <div className="flex items-center justify-between text-sm text-gray-200">
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-2 w-2 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+                  <span className="font-semibold !text-white" style={{ color: '#ffffff' }}>Clash Intelligence Dashboard</span>
+                </div>
+                <span className="text-gray-400">•</span>
+                <span className="font-mono bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-xs font-semibold border border-gray-600">
+                  v{process.env.NEXT_PUBLIC_APP_VERSION || '0.21.0'}
+                </span>
+                <span className="text-gray-400">•</span>
+                <span className="text-gray-400">a warfroggy project</span>
+              </div>
+            </div>
+          </div>
+        </footer>
+        
+        {/* Modals Container */}
+        <ModalsContainer />
+      </div>
+    </AuthGate>
   );
 };
 

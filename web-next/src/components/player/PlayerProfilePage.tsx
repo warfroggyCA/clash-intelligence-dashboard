@@ -142,7 +142,7 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
       <button
         type="button"
         className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
-        onClick={() => router.push('/')}
+        onClick={() => router.push('/app')}
       >
         <Home className="h-4 w-4" aria-hidden /> Home
       </button>
@@ -159,7 +159,7 @@ export const PlayerProfilePage: React.FC<PlayerProfilePageProps> = ({ data }) =>
       <button
         type="button"
         className="inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-slate-200 transition hover:bg-brand-surfaceRaised"
-        onClick={() => router.push('/')}
+        onClick={() => router.push('/app')}
       >
         <Home className="h-4 w-4" aria-hidden /> Home
       </button>

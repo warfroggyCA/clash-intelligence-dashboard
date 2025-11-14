@@ -105,7 +105,7 @@ export default function RetiredProfileClient({ tag }: { tag: string }) {
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-lg font-semibold text-gray-100">Notes</h2>
           <Link
-            href="/"
+            href="/app"
             className="text-xs text-blue-400 hover:text-blue-300 underline"
           >
             Back to dashboard

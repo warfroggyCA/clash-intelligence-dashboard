@@ -16,9 +16,26 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(request: NextRequest) {
   const { json } = createApiContext(request, '/api/player-history/mark-returned');
+  const body = await request.json().catch(() => null);
+  
+  if (!body) {
+    return json({ success: false, error: 'Invalid payload' }, { status: 400 });
+  }
+  const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, awardPreviousTenure } = body;
+  
+  if (!clanTagParam || !playerTagParam) {
+    return json({ success: false, error: 'clanTag and playerTag are required' }, { status: 400 });
+  }
+
+  const clanTag = normalizeTag(clanTagParam);
+  const playerTag = normalizeTag(playerTagParam);
+  
+  if (!clanTag || !playerTag || !isValidTag(clanTag) || !isValidTag(playerTag)) {
+    return json({ success: false, error: 'Invalid clanTag or playerTag' }, { status: 400 });
+  }
   
   try {
-    await requireLeadership(request);
+    await requireLeadership(request, { clanTag });
   } catch (error: any) {
     // Handle 403 Forbidden from requireLeadership
     if (error instanceof Response && error.status === 403) {
@@ -31,20 +48,6 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = await request.json();
-    const { clanTag: clanTagParam, playerTag: playerTagParam, playerName, note, awardPreviousTenure } = body;
-    
-    if (!clanTagParam || !playerTagParam) {
-      return json({ success: false, error: 'clanTag and playerTag are required' }, { status: 400 });
-    }
-
-    const clanTag = normalizeTag(clanTagParam);
-    const playerTag = normalizeTag(playerTagParam);
-    
-    if (!clanTag || !playerTag || !isValidTag(clanTag) || !isValidTag(playerTag)) {
-      return json({ success: false, error: 'Invalid clanTag or playerTag' }, { status: 400 });
-    }
-
     const supabase = getSupabaseAdminClient();
     const recordedBy = await getCurrentUserIdentifier(request, clanTag);
     const now = new Date().toISOString();
@@ -185,4 +188,3 @@ export async function POST(request: NextRequest) {
     return json({ success: false, error: error.message || 'Failed to mark player as returned' }, { status: 500 });
   }
 }
-

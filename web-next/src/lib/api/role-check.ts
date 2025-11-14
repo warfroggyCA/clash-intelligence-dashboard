@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/server';
 import { getUserClanRoles, hasRole as checkUserHasRole } from '@/lib/auth/roles';
 import { cfg } from '@/lib/config';
+import { normalizeTag } from '@/lib/tags';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 /**
@@ -32,19 +33,23 @@ function checkDevBypass(req: NextRequest): boolean {
  * SECURITY: Requires verified Supabase session. Header spoofing no longer works.
  * Development: Allows ADMIN_API_KEY bypass in non-production environments.
  */
-export async function requireLeadership(req: NextRequest): Promise<void> {
+interface RequireOptions {
+  clanTag?: string | null;
+}
+
+function resolveClanTag(input?: string | null): string {
+  const fallback = cfg.homeClanTag ?? '';
+  const normalized = normalizeTag(input || fallback);
+  if (!normalized) {
+    throw NextResponse.json({ success: false, error: 'Clan tag not configured' }, { status: 500 });
+  }
+  return normalized;
+}
+
+export async function requireLeadership(req: NextRequest, options?: RequireOptions): Promise<void> {
   // Development-only bypass (never in production)
   if (checkDevBypass(req)) {
     return;
-  }
-
-  // Development-only: Allow header-based role check for easier local development
-  // This is safe because it only works in non-production environments
-  if (process.env.NODE_ENV !== 'production') {
-    const headerRole = req.headers.get('x-user-role');
-    if (headerRole === 'leader' || headerRole === 'coleader' || headerRole === 'coLeader') {
-      return; // Allow access in development with header-based role
-    }
   }
 
   // Require authenticated user
@@ -55,7 +60,7 @@ export async function requireLeadership(req: NextRequest): Promise<void> {
 
   // Check user's actual roles from database
   const roles = await getUserClanRoles(user.id);
-  const clanTag = cfg.homeClanTag;
+  const clanTag = resolveClanTag(options?.clanTag);
   
   if (!checkUserHasRole(roles, clanTag, ['leader', 'coleader'])) {
     throw NextResponse.json({ success: false, error: 'Forbidden: Leadership access required' }, { status: 403 });
@@ -68,7 +73,7 @@ export async function requireLeadership(req: NextRequest): Promise<void> {
  * SECURITY: Requires verified Supabase session. Header spoofing no longer works.
  * Development: Allows ADMIN_API_KEY bypass in non-production environments.
  */
-export async function requireLeader(req: NextRequest): Promise<void> {
+export async function requireLeader(req: NextRequest, options?: RequireOptions): Promise<void> {
   // Development-only bypass (never in production)
   if (checkDevBypass(req)) {
     return;
@@ -82,7 +87,7 @@ export async function requireLeader(req: NextRequest): Promise<void> {
 
   // Check user's actual roles from database - must be leader (not coleader)
   const roles = await getUserClanRoles(user.id);
-  const clanTag = cfg.homeClanTag;
+  const clanTag = resolveClanTag(options?.clanTag);
   
   if (!checkUserHasRole(roles, clanTag, ['leader'])) {
     throw NextResponse.json({ success: false, error: 'Forbidden: Leader access required' }, { status: 403 });
@@ -135,11 +140,5 @@ export async function getCurrentUserIdentifier(req: NextRequest, clanTag?: strin
   
   // Fallback if no authenticated user
   return 'System';
-}
-
-function normalizeTag(tag: string | null | undefined): string | null {
-  if (!tag) return null;
-  const normalized = tag.trim().toUpperCase();
-  return normalized.startsWith('#') ? normalized : `#${normalized}`;
 }
 
