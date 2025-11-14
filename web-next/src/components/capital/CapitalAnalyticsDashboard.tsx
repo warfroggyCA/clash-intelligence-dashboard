@@ -77,18 +77,20 @@ export default function CapitalAnalyticsDashboard({
   }
 
   if (!data || data.metrics.length === 0) {
-    const hasWeekends = (data?.totalWeekends || 0) > 0;
-    const hasParticipants = (data?.weekendsWithParticipants || 0) > 0;
-    
+    const totalWeekendsCount = data?.totalWeekends ?? 0;
+    const weekendsWithParticipantsCount = data?.weekendsWithParticipants ?? 0;
+    const hasWeekends = totalWeekendsCount > 0;
+    const hasParticipants = weekendsWithParticipantsCount > 0;
+
+    const message = !hasWeekends
+      ? 'No capital raid data available for the selected period. Capital ingestion may need to run first.'
+      : !hasParticipants
+        ? `Found ${totalWeekendsCount} raid weekend${totalWeekendsCount === 1 ? '' : 's'}, but no participant data available. Note: The Clash API only returns member participation data for the current/ongoing weekend. Historical weekends do not include participant details.`
+        : `Found ${weekendsWithParticipantsCount} weekend(s) with participant data, but need at least 3 to calculate meaningful metrics. The Clash API only returns member participation data for the current/ongoing weekend.`;
+
     return (
       <div className={`rounded-xl border border-slate-700/50 bg-slate-800/30 p-6 text-center ${className}`}>
-        <p className="text-slate-400">
-          {!hasWeekends
-            ? 'No capital raid data available for the selected period. Capital ingestion may need to run first.'
-            : !hasParticipants
-            ? `Found ${data.totalWeekends} raid weekends, but no participant data available. Note: The Clash API only returns member participation data for the current/ongoing weekend. Historical weekends do not include participant details.`
-            : `Found ${data.weekendsWithParticipants} weekend(s) with participant data, but need at least 3 to calculate meaningful metrics. The Clash API only returns member participation data for the current/ongoing weekend.`}
-        </p>
+        <p className="text-slate-400">{message}</p>
       </div>
     );
   }
