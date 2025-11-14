@@ -19,7 +19,7 @@
   "crons": [
     {
       "path": "/api/cron/daily-ingestion",
-      "schedule": "45 4,5 * * *"
+      "schedule": "45 5 * * *"
     },
     {
       "path": "/api/cron/war-ingestion",
