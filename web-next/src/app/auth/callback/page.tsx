@@ -14,29 +14,53 @@ export default function AuthCallback() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          console.error('Auth callback error:', error);
-          router.push('/login?error=' + encodeURIComponent(error.message));
+        const currentUrl = new URL(window.location.href);
+        const code = currentUrl.searchParams.get('code');
+
+        if (code) {
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          if (error || !data.session) {
+            throw error || new Error('Invalid session exchange');
+          }
+          router.replace('/app');
           return;
         }
 
-        if (data.session) {
-          // Successful authentication, redirect to dashboard
-          router.push('/app');
-        } else {
-          // No session, redirect to login
-          router.push('/login');
+        if (window.location.hash) {
+          const hashParams = new URLSearchParams(window.location.hash.substring(1));
+          const accessToken = hashParams.get('access_token');
+          const refreshToken = hashParams.get('refresh_token');
+          if (accessToken && refreshToken) {
+            const { data, error } = await supabase.auth.setSession({
+              access_token: accessToken,
+              refresh_token: refreshToken,
+            });
+            if (error || !data.session) {
+              throw error || new Error('Unable to set session');
+            }
+            router.replace('/app');
+            return;
+          }
         }
+
+        const { data, error } = await supabase.auth.getSession();
+        if (error) {
+          throw error;
+        }
+        if (data.session) {
+          router.replace('/app');
+          return;
+        }
+
+        router.replace('/login?error=Sign%20in%20required');
       } catch (err) {
         console.error('Auth callback error:', err);
-        router.push('/login?error=Authentication failed');
+        router.replace('/login?error=Authentication%20failed');
       }
     };
 
-    handleAuthCallback();
-  }, [supabase.auth, router]);
+    void handleAuthCallback();
+  }, [supabase, router]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 flex items-center justify-center">
