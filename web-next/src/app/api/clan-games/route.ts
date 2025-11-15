@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
       .from('clan_game_seasons')
       .select('id, clan_tag, season_id, start_date, end_date, total_points, reward_tier, created_at, raw')
       .eq('clan_tag', clanTag)
-      .order('start_date', { ascending: false, nullsLast: true })
+      .order('start_date', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(parsed.data.limit ?? 12);
 
