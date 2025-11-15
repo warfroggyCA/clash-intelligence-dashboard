@@ -22,6 +22,7 @@ import { GlassCard } from '@/components/ui';
 import { AuthGate } from './AuthGuard';
 import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
+import { supabase } from '@/lib/supabase';
 
 
 // =============================================================================
@@ -66,6 +67,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
   const userRoles = useDashboardStore((state) => state.userRoles);
   const impersonatedRole = useDashboardStore((state) => state.impersonatedRole);
   const setImpersonatedRole = useDashboardStore((state) => state.setImpersonatedRole);
+  const currentUser = useDashboardStore((state) => state.currentUser);
+  const setCurrentUser = useDashboardStore((state) => state.setCurrentUser);
+  const setUserRoles = useDashboardStore((state) => state.setUserRoles);
   const normalizedClanTagValue = normalizeTag(clanTag || homeClan || cfg.homeClanTag || '');
   const matchedRole = userRoles.find((entry) => entry.clan_tag === normalizedClanTagValue);
   const actualRoleName: ClanRoleName = matchedRole?.role || 'viewer';
@@ -85,6 +89,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
         ? 'coleader'
         : 'member');
   const accessLevelLabel = getAccessLevelDisplayName(inferredAccessLevel);
+  const userDisplayName = currentUser?.name || currentUser?.email || 'Leadership';
+  const userSecondary = currentUser?.email && currentUser?.name ? currentUser.email : null;
+  const userInitials = (currentUser?.name || currentUser?.email || '?')
+    .split(' ')
+    .map((part) => part.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
 
   // Shrink-on-scroll state
@@ -92,7 +104,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
   const SCROLL_ACTIVATE_THRESHOLD = 64;
   const SCROLL_DEACTIVATE_THRESHOLD = 24;
   const [roleMenuOpen, setRoleMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
   const roleMenuRef = useRef<HTMLDivElement>(null);
+  const userMenuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement | null>(null);
 
   const updateHeaderMetrics = useCallback((height: number) => {
@@ -153,6 +168,17 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [roleMenuOpen]);
 
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [userMenuOpen]);
+
   // Define handleLoadHome first before using it in useEffect
   const handleLoadHome = useCallback(async () => {
     if (!homeClan) {
@@ -197,6 +223,35 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
       handleLoadHome();
     }
   }, [clanTag, homeClan, handleLoadHome]);
+
+  const handleSignOut = useCallback(async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      if (supabase) {
+        await supabase.auth.signOut();
+      } else {
+        await fetch('/api/logout', {
+          method: 'POST',
+          cache: 'no-store',
+        }).catch(() => {
+          // ignore if endpoint missing
+        });
+      }
+    } catch (error) {
+      console.error('[DashboardLayout] Failed to sign out', error);
+      setMessage('Failed to sign out. Please try again.');
+      setIsSigningOut(false);
+      return;
+    }
+
+    setCurrentUser(null);
+    setUserRoles([]);
+    setImpersonatedRole(null);
+    setUserMenuOpen(false);
+    setIsSigningOut(false);
+    router.push('/login');
+  }, [isSigningOut, router, setCurrentUser, setUserRoles, setImpersonatedRole, setMessage]);
 
   const handleRefresh = async () => {
     console.log('[DashboardLayout] Refresh button clicked');
@@ -318,6 +373,37 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
 
             {/* New snapshot indicator (manual refresh) */}
             <NewSnapshotIndicator />
+
+            {currentUser && (
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  onClick={() => setUserMenuOpen((prev) => !prev)}
+                  className="inline-flex items-center gap-3 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-2 py-1.5 text-left text-xs text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
+                >
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-surfaceSubtle text-sm font-semibold text-white">
+                    {userInitials}
+                  </span>
+                  <span className="hidden sm:flex flex-col leading-tight">
+                    <span className="text-[10px] uppercase tracking-wide text-slate-400">Signed in</span>
+                    <span className="text-xs font-semibold text-slate-100">{userDisplayName}</span>
+                    {userSecondary && <span className="text-[11px] text-slate-400">{userSecondary}</span>}
+                  </span>
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 top-full z-50 mt-2 w-48 rounded-2xl border border-brand-border/80 bg-brand-surfaceRaised/95 p-3 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)]">
+                    <div className="text-[11px] uppercase tracking-wide text-slate-400 mb-2">Account</div>
+                    <button
+                      onClick={handleSignOut}
+                      disabled={isSigningOut}
+                      className="flex w-full items-center justify-between rounded-xl bg-red-500/10 px-3 py-2 text-left text-sm font-semibold text-red-200 transition-colors hover:bg-red-500/20 disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      Sign out
+                      <span className="text-xs">{isSigningOut ? '…' : '→'}</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="relative group">
               <button 
