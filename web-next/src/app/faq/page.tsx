@@ -16,10 +16,10 @@ export default function FAQPage() {
             <span>Clash Intelligence Dashboard</span>
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-slate-50 sm:text-4xl">
-            Everything leaders need to run the ACE dashboard with confidence
+            Everything leadership teams need to run the VIP dashboard with confidence
           </h1>
           <p className="text-sm text-slate-300 sm:text-base">
-            We collected the questions clan leadership teams ask most often—covering data sources, ACE scoring, operations, and troubleshooting. Bookmark this hub and share it with co-leads.
+            We collected the questions clan leaders ask most often about data refreshes, VIP scoring, onboarding, and day-to-day operations. Bookmark this hub and share it with co-leads so everyone speaks the same language.
           </p>
           <div className="flex flex-wrap items-center justify-center gap-4 text-xs uppercase tracking-[0.24em] text-slate-400">
             <Link href="/app" className="rounded-full border border-white/10 px-4 py-2 transition hover:border-brand-primary/60 hover:text-slate-100">

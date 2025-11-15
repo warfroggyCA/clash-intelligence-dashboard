@@ -92,6 +92,7 @@ const createSchema = z.object({
   playerTag: z.string().optional(),
   role: RoleEnum,
   clanTag: z.string().optional(),
+  password: z.string().min(8, 'Password must be at least 8 characters').optional(),
 });
 
 const updateSchema = z.object({
@@ -111,10 +112,30 @@ export async function POST(req: NextRequest) {
     await requireRole(req, ['leader'], { clanTag });
     const clan = await getClanId(supabase, clanTag);
 
-    const userResponse = await supabase.auth.admin.listUsers();
-    const user = userResponse?.data?.users?.find(u => u.email === payload.email);
+    const normalizedEmail = payload.email.toLowerCase();
+    const userResponse = await supabase.auth.admin.listUsers({ perPage: 1000 });
+    let user = userResponse?.data?.users?.find(u => (u.email || '').toLowerCase() === normalizedEmail);
+
     if (!user) {
-      return NextResponse.json({ success: false, error: 'User not found for provided email' }, { status: 404 });
+      if (!payload.password) {
+        return NextResponse.json(
+          { success: false, error: 'User not found for provided email. Include an initial password to create an account.' },
+          { status: 400 }
+        );
+      }
+      const { data: createdUser, error: createError } = await supabase.auth.admin.createUser({
+        email: payload.email,
+        password: payload.password,
+        email_confirm: true,
+        user_metadata: {
+          created_by: 'leader_invite',
+          clanTag,
+        },
+      });
+      if (createError || !createdUser?.user) {
+        throw createError ?? new Error('Failed to create Supabase user');
+      }
+      user = createdUser.user;
     }
 
     const { error } = await supabase
@@ -229,4 +250,3 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ success: false, error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }
-

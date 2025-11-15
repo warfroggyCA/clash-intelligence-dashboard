@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
 import { Button } from '@/components/ui';
@@ -10,7 +10,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isSignUp, setIsSignUp] = useState(false);
   const router = useRouter();
   const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -22,11 +21,26 @@ export default function LoginPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+          setActiveSessionEmail(session.user?.email ?? null);
         router.push('/app');
       }
     };
     checkUser();
   }, [supabase.auth, router]);
+
+  const logoutCurrentSession = useCallback(async () => {
+    try {
+      await fetch('/api/logout', {
+        method: 'POST',
+        cache: 'no-store',
+      }).catch(() => {
+        // ignore failures here; client sign-out still runs
+      });
+      await supabase.auth.signOut();
+    } catch (logoutError) {
+      console.warn('[login] Failed to clear existing session', logoutError);
+    }
+  }, [supabase]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,55 +48,15 @@ export default function LoginPage() {
     setError('');
 
     try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
-          },
-        });
-        
-        if (error) {
-          setError(error.message);
-        } else {
-          setError('Check your email for the confirmation link!');
-        }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (error) {
-          setError(error.message);
-        } else {
-          router.push('/app');
-        }
-      }
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMagicLink = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { error } = await supabase.auth.signInWithPassword({
         email,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        password,
       });
       
       if (error) {
         setError(error.message);
       } else {
-        setError('Check your email for the magic link!');
+        router.push('/app');
       }
     } catch (err: any) {
       setError(err.message);
@@ -126,42 +100,21 @@ export default function LoginPage() {
               />
             </div>
 
-            {!isSignUp && (
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-200">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-2 block w-full rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-clash-gold focus:border-clash-gold"
-                  placeholder="Enter your password"
-                />
-              </div>
-            )}
-
-            {isSignUp && (
-              <div>
-                <label htmlFor="password" className="block text-sm font-medium text-slate-200">
-                  Password
-                </label>
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  autoComplete="new-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="mt-2 block w-full rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-clash-gold focus:border-clash-gold"
-                  placeholder="Create a password"
-                />
-              </div>
-            )}
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-slate-200">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="mt-2 block w-full rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-clash-gold focus:border-clash-gold"
+                placeholder="Enter your password"
+              />
+            </div>
 
             {error && (
               <div className="rounded-2xl border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-200">
@@ -176,31 +129,13 @@ export default function LoginPage() {
                 className="w-full rounded-2xl border-0 bg-gradient-to-r from-clash-orange to-clash-gold text-slate-950 shadow-[0_15px_30px_rgba(253,199,76,0.35)] transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-clash-gold"
                 size="lg"
               >
-                {loading ? 'Please wait...' : isSignUp ? 'Sign Up' : 'Sign In'}
+                {loading ? 'Please wait...' : 'Sign In'}
               </Button>
-
-              {!isSignUp && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleMagicLink}
-                  disabled={loading || !email}
-                  className="w-full rounded-2xl border border-slate-700/70 bg-slate-900/40 text-slate-200 hover:bg-slate-800/70"
-                >
-                  Send Magic Link
-                </Button>
-              )}
             </div>
           </form>
 
-          <div className="mt-6 text-center">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-sm font-medium text-clash-gold hover:text-clash-orange"
-            >
-              {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
-            </button>
+          <div className="mt-6 text-center text-sm text-slate-400">
+            Need access? Contact your clan leadership—they provision accounts inside the dashboard.
           </div>
         </div>
 
