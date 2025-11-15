@@ -412,7 +412,7 @@ interface DashboardState {
   lastKnownIngestionVersion: string | null;
   // auto-refresh removed
 
-  currentUser: { id: string; email?: string | null } | null;
+  currentUser: { id: string; email?: string | null; name?: string | null } | null;
   userRoles: UserRoleRecord[];
   impersonatedRole?: ClanRoleName | null;
   rosterViewMode: 'table' | 'cards';
