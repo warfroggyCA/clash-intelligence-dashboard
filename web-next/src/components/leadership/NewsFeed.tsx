@@ -368,7 +368,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
             {dataFreshnessLabel && `Data ${dataFreshnessLabel}`}
             {insightsGeneratedLabel && ` • Insights ${insightsGeneratedLabel}`}
           </span>
-          <Button size="xs" variant="ghost" onClick={() => void refreshData()} disabled={isRefreshing}>
+          <Button size="sm" variant="ghost" onClick={() => void refreshData()} disabled={isRefreshing}>
             {isRefreshing ? 'Refreshing…' : 'Refresh'}
           </Button>
         </div>
