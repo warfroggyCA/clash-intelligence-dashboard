@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useShallow } from 'zustand/react/shallow';
 import useSWR from 'swr';
-import { ClipboardCheck, Copy, Check, Sparkles, Newspaper } from 'lucide-react';
+import { ClipboardCheck, Copy, Check, Sparkles, Newspaper, Trophy } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-import { LeadershipOnly } from '@/components/LeadershipGuard';
+import LeadershipGuard, { LeadershipOnly } from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
 import IngestionMonitor from '@/components/layout/IngestionMonitor';
 import ApplicantsPanel from '@/components/ApplicantsPanel';
@@ -13,6 +13,8 @@ import TodaysBriefing from '@/components/TodaysBriefing';
 import NewsFeed, { type NewsFeedRef } from '@/components/leadership/NewsFeed';
 import { Button } from '@/components/ui';
 import GlassCard from '@/components/ui/GlassCard';
+import ClanGamesHistoryCard from '@/components/ClanGamesHistoryCard';
+import ClanGamesManager from '@/components/leadership/ClanGamesManager';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
@@ -679,6 +681,20 @@ export default function LeadershipDashboard() {
             className="bg-slate-900/70 border border-slate-800/80"
           >
             <TodaysBriefing />
+          </GlassCard>
+
+          <GlassCard
+            title="Clan Games Tracker"
+            subtitle="Historical totals for each Clan Games event. Leaders can update the numbers after every event."
+            icon={<Trophy className="h-5 w-5" />}
+            className="bg-slate-900/70 border border-slate-800/80"
+          >
+            <div className="grid gap-6 lg:grid-cols-2">
+              <ClanGamesHistoryCard clanTag={clanTag} className="order-2 lg:order-1" />
+              <LeadershipGuard requiredPermission="canManageClanData" fallback={null}>
+                <ClanGamesManager clanTag={clanTag} />
+              </LeadershipGuard>
+            </div>
           </GlassCard>
 
           {/* Game Chat Messages */}

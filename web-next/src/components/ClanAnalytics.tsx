@@ -3,6 +3,8 @@
 import React, { useMemo } from "react";
 import { useDashboardStore, selectors, useShallow } from "@/lib/stores/dashboard-store";
 import { safeLocaleString } from '@/lib/date';
+import { cfg } from '@/lib/config';
+import ClanGamesHistoryCard from '@/components/ClanGamesHistoryCard';
 
 const sectionClass =
   "bg-white/90 backdrop-blur-sm border border-white/40 rounded-2xl shadow-lg p-6 flex flex-col gap-4";
@@ -15,6 +17,7 @@ export default function ClanAnalytics() {
   const snapshotDetails = useDashboardStore(selectors.snapshotDetails);
   const roster = useDashboardStore(useShallow((state) => state.roster));
   const snapshotAgeHours = useDashboardStore(selectors.dataAge);
+  const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag || null);
 
   const memberCount = snapshotMetadata?.memberCount ?? roster?.members?.length ?? 0;
 
@@ -236,6 +239,14 @@ export default function ClanAnalytics() {
           ) : (
             <p className="text-sm text-gray-500">No capital raid data available.</p>
           )}
+        </div>
+      </section>
+
+      <section className={sectionClass}>
+        <h2 className={titleClass}>Clan Games History</h2>
+        <p className={subtitleClass}>Manual record of total clan points for each completed Clan Games.</p>
+        <div className="mt-4">
+          <ClanGamesHistoryCard clanTag={clanTag} />
         </div>
       </section>
     </div>

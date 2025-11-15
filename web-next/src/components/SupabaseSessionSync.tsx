@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import type { Session } from '@supabase/supabase-js';
+import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { syncServerSession } from '@/lib/auth/session-sync';
@@ -28,7 +28,7 @@ export default function SupabaseSessionSync() {
     const supabase = getBrowserSupabase();
     let isMounted = true;
 
-    const syncAndHydrate = async (event: string, session: Session | null) => {
+    const syncAndHydrate = async (event: AuthChangeEvent | 'INITIAL_SESSION', session: Session | null) => {
       await syncServerSession(event, session);
       if (isMounted) {
         await hydrateSession();
@@ -44,7 +44,7 @@ export default function SupabaseSessionSync() {
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       await syncAndHydrate(event, session);
     });
 
@@ -56,4 +56,3 @@ export default function SupabaseSessionSync() {
 
   return null;
 }
-
