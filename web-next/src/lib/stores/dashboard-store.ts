@@ -294,6 +294,7 @@ interface DashboardState {
   roster: Roster | null;
   clanTag: string;
   homeClan: string | null;
+  hasAutoLoadedHomeClan: boolean;
   message: string;
   status: Status;
   
@@ -500,6 +501,7 @@ interface DashboardState {
   dismissAllJoinerNotifications: () => void;
   hydrateRosterFromCache: () => boolean;
   hydrateSession: () => Promise<void>;
+  autoLoadHomeClanIfNeeded: () => Promise<void>;
   setImpersonatedRole: (role: ClanRoleName | null) => void;
   setRosterViewMode: (mode: 'table' | 'cards') => void;
 }
@@ -521,6 +523,7 @@ const initialState = {
   roster: null,
   clanTag: DEFAULT_CLAN_TAG,
   homeClan: DEFAULT_CLAN_TAG,
+  hasAutoLoadedHomeClan: false,
   message: '',
   status: 'idle' as Status,
   
@@ -683,7 +686,13 @@ export const useDashboardStore = create<DashboardState>()(
         } catch {}
       },
       setClanTag: (clanTag) => set({ clanTag }),
-      setHomeClan: (homeClan) => set({ homeClan }),
+      setHomeClan: (homeClan) => {
+        const normalized = homeClan ? (normalizeTag(homeClan) || homeClan) : null;
+        set({ homeClan: normalized, hasAutoLoadedHomeClan: false });
+        if (normalized) {
+          void get().autoLoadHomeClanIfNeeded();
+        }
+      },
       setMessage: (message) => set({ message }),
       setStatus: (status) => set({ status }),
       
@@ -790,7 +799,11 @@ export const useDashboardStore = create<DashboardState>()(
         });
         saveSmartInsightsPayload(clan, payload);
       },
-      setCurrentUser: (currentUser) => set({ currentUser }),
+      setCurrentUser: (currentUser) =>
+        set((state) => ({
+          currentUser,
+          hasAutoLoadedHomeClan: currentUser ? state.hasAutoLoadedHomeClan : false,
+        })),
       setUserRoles: (userRoles) => set({ userRoles }),
       setImpersonatedRole: (impersonatedRole) => {
         const state = get();
@@ -842,6 +855,32 @@ export const useDashboardStore = create<DashboardState>()(
       // COMPLEX ACTIONS
       // =============================================================================
       
+      autoLoadHomeClanIfNeeded: async () => {
+        const state = get();
+        if (state.hasAutoLoadedHomeClan) return;
+        if (state.sessionStatus !== 'ready') return;
+
+        const normalizedHome = normalizeTag(state.homeClan || '') || null;
+        const normalizedClan = normalizeTag(state.clanTag || '') || null;
+        const fallback = normalizeTag(cfg.homeClanTag || '') || null;
+        const targetClanTag = normalizedHome || normalizedClan || fallback;
+        if (!targetClanTag) return;
+
+        const rosterClanTag = normalizeTag(state.roster?.clanTag || '') || null;
+        if (state.roster?.members?.length && rosterClanTag === targetClanTag) {
+          set({ hasAutoLoadedHomeClan: true, clanTag: targetClanTag });
+          return;
+        }
+
+        set({ hasAutoLoadedHomeClan: true, clanTag: targetClanTag });
+        try {
+          await state.loadRoster(targetClanTag, { force: false });
+        } catch (error) {
+          console.warn('[DashboardStore] Failed to auto-load home clan', error);
+          set({ hasAutoLoadedHomeClan: false });
+        }
+      },
+
       resetDashboard: () => set(initialState),
       loadRoster: async (clanTag: string, options: { mode?: 'snapshot' | 'live'; force?: boolean } = {}) => {
         const {
@@ -1422,6 +1461,7 @@ export const useDashboardStore = create<DashboardState>()(
             sessionError: null,
             impersonatedRole: hasLeadershipAccess ? currentState.impersonatedRole : null,
           });
+          void get().autoLoadHomeClanIfNeeded();
         } catch (error) {
           console.warn('[hydrateSession] Failed', error);
           set({

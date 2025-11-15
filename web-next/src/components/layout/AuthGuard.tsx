@@ -20,14 +20,19 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
 
   if (sessionStatus === 'idle' || sessionStatus === 'loading') {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6 text-center">
         <div className="space-y-2">
           <h2 className="text-2xl font-semibold">Checking access…</h2>
           <p className="text-sm text-muted-foreground max-w-sm">
-            Hang tight while we verify your leadership credentials.
+            Hang tight while we verify your leadership credentials. If this message doesn’t clear, head back to the sign-in page and try again.
           </p>
         </div>
-        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-clash-gold" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-clash-gold" />
+          <Link href="/login">
+            <Button variant="outline">Return to Sign In</Button>
+          </Link>
+        </div>
       </div>
     );
   }
