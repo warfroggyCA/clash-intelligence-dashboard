@@ -691,7 +691,7 @@ export default function LeadershipDashboard() {
           >
             <div className="grid gap-6 lg:grid-cols-2">
               <ClanGamesHistoryCard clanTag={clanTag} className="order-2 lg:order-1" />
-              <LeadershipGuard requiredPermission="canManageClanData" fallback={null}>
+              <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
                 <ClanGamesManager clanTag={clanTag} />
               </LeadershipGuard>
             </div>
