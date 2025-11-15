@@ -6,6 +6,7 @@ import { ThemeProvider } from '@/lib/contexts/theme-context';
 import TooltipManager from '@/components/TooltipManager';
 import HydrationGate from '@/components/HydrationGate';
 import { SWRProvider } from '@/components/providers/SWRProvider';
+import SupabaseSessionSync from '@/components/SupabaseSessionSync';
 
 const INITIAL_THEME_SCRIPT = `
 (() => {
@@ -64,13 +65,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const disableHydrationGate = process.env.NEXT_PUBLIC_DISABLE_HYDRATION_GATE === 'true';
   const disableThemeInitScript = process.env.NEXT_PUBLIC_DISABLE_THEME_INIT_SCRIPT === 'true';
 
-  const content = disableHydrationGate ? (
-    children
-  ) : (
-    <HydrationGate>
+  const contentWithSession = (
+    <>
+      <SupabaseSessionSync />
       {children}
-    </HydrationGate>
+    </>
   );
+
+  const content = disableHydrationGate ? contentWithSession : <HydrationGate>{contentWithSession}</HydrationGate>;
 
   const appTree = disableThemeProvider ? (
     <SWRProvider>
