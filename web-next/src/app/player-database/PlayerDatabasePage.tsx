@@ -295,7 +295,7 @@ export default function PlayerDatabasePage() {
 
   useEffect(() => {
     loadPlayerDatabase();
-  }, [loadPlayerDatabase, clanTag, invalidateCache]);
+  }, [loadPlayerDatabase]);
 
   // Ensure body scroll is enabled on mount and cleanup on unmount
   useEffect(() => {
