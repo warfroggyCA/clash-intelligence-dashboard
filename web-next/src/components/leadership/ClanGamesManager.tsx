@@ -20,7 +20,7 @@ export default function ClanGamesManager({ clanTag: propClanTag }: ClanGamesMana
   const clanTag = propClanTag || fallbackClan;
   const normalizedTag = clanTag ? normalizeTag(clanTag) : null;
   const { permissions } = useLeadership();
-  const canManage = permissions.canManageClanData;
+  const canManage = Boolean(permissions.canManageNotes || permissions.canManageAccess || permissions.canManageDiscord);
   const { entries, refresh, isLoading } = useClanGamesHistory(normalizedTag, 20);
 
   const [seasonLabel, setSeasonLabel] = useState('');
