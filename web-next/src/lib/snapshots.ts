@@ -10,6 +10,14 @@ import { rateLimiter } from './rate-limiter';
 import { getSupabaseAdminClient } from './supabase-admin';
 import type { FullClanSnapshot, MemberSummary } from './full-snapshot';
 
+const HERO_DISPLAY_NAMES = {
+  bk: 'Barbarian King',
+  aq: 'Archer Queen',
+  gw: 'Grand Warden',
+  rc: 'Royal Champion',
+  mp: 'Minion Prince',
+} as const;
+
 export type Member = {
   name: string;
   tag: string;
@@ -69,6 +77,8 @@ export type MemberChange = {
   };
   previousValue?: any;
   newValue?: any;
+  hero?: string;
+  heroKey?: string;
   description: string;
 };
 
@@ -477,6 +487,7 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
       const currLevel = currentMember[hero];
       
       if (prevLevel !== currLevel && currLevel !== null && currLevel !== undefined && currLevel > (prevLevel || 0)) {
+        const heroName = HERO_DISPLAY_NAMES[hero] || hero.toUpperCase();
         changes.push({
           type: 'hero_upgrade',
           member: {
@@ -487,6 +498,8 @@ export function detectChanges(previous: DailySnapshot, current: DailySnapshot): 
           },
           previousValue: prevLevel,
           newValue: currLevel,
+          hero: heroName,
+          heroKey: hero,
           description: `${currentMember.name} upgraded ${hero.toUpperCase()} to level ${currLevel}`
         });
       }

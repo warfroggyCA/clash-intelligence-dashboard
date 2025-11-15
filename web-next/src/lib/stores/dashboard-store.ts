@@ -589,7 +589,7 @@ const initialState = {
   currentUser: null,
   userRoles: [],
   impersonatedRole: DEFAULT_IMPERSONATED_ROLE,
-  rosterViewMode: 'table' as const,
+  rosterViewMode: 'cards' as const,
   ingestionHealth: null,
   isTriggeringIngestion: false,
   ingestionRunError: null,

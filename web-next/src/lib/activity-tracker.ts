@@ -3,6 +3,14 @@
 
 import { Member, DailySnapshot, MemberChange } from './snapshots';
 
+const HERO_DISPLAY_NAMES = {
+  bk: 'Barbarian King',
+  aq: 'Archer Queen',
+  gw: 'Grand Warden',
+  rc: 'Royal Champion',
+  mp: 'Minion Prince',
+} as const;
+
 export type ActivityLevel = 'Very High' | 'High' | 'Medium' | 'Low' | 'Inactive';
 
 export type ActivityEvidence = {
@@ -237,6 +245,7 @@ export function detectEnhancedChanges(previous: DailySnapshot, current: DailySna
       const currLevel = currentMember[hero];
       
       if (prevLevel !== currLevel && currLevel !== null && currLevel !== undefined && currLevel > (prevLevel || 0)) {
+        const heroName = HERO_DISPLAY_NAMES[hero] || hero.toUpperCase();
         changes.push({
           type: 'hero_upgrade',
           member: {
@@ -247,6 +256,8 @@ export function detectEnhancedChanges(previous: DailySnapshot, current: DailySna
           },
           previousValue: prevLevel,
           newValue: currLevel,
+          hero: heroName,
+          heroKey: hero,
           description: `${currentMember.name} upgraded ${hero.toUpperCase()} to level ${currLevel}`
         });
       }
@@ -390,4 +401,3 @@ function generateEvidenceString(change: MemberChange): string {
       return `${type}: ${change.description}`;
   }
 }
-

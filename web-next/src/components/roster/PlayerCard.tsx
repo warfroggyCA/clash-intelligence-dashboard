@@ -93,7 +93,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect, clanHe
         <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="lg" showText={false} />
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         <StatChip label="Trophies" value={(member as any).rankedTrophies ?? member.trophies ?? 0} icon="🏆" />
         <StatChip label="Rush" value={`${rushPercent.toFixed(1)}%`} icon={rushPercent >= 70 ? '🔥' : rushPercent >= 40 ? '⚠️' : '✅'} />
         <StatChip label="Running" value={seasonTotalDisplay} icon="⭐" tone="positive" />
@@ -229,11 +229,12 @@ function StatChip({ label, value, icon, tone = 'default' }: StatChipProps) {
   } as const;
 
   return (
-    <div className={`rounded-xl px-3 py-2 text-sm flex flex-col gap-1 shadow-inner ${toneClasses[tone]}`}>
-      <span className="text-[10px] uppercase tracking-wider text-muted-contrast">{label}</span>
-      <span className="text-base font-semibold flex items-center gap-1 text-high-contrast">
-        <span>{icon}</span> {value}
-      </span>
+    <div className={`rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-2 shadow-inner ${toneClasses[tone]}`}>
+      <span className="text-base leading-none">{icon}</span>
+      <div className="flex flex-col leading-tight">
+        <span className="text-[10px] uppercase tracking-wide text-muted-contrast">{label}</span>
+        <span className="text-sm font-semibold text-high-contrast">{value}</span>
+      </div>
     </div>
   );
 }

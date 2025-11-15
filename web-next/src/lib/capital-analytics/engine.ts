@@ -54,6 +54,25 @@ export interface CapitalAnalyticsResult {
     averageROI: number;
     averageOverallScore: number;
   };
+  latestWeekendSummary?: CapitalWeekendSummary | null;
+}
+
+export interface CapitalWeekendSummary {
+  weekendId: string;
+  startTime: Date | null;
+  endTime: Date | null;
+  totalLoot: number;
+  totalAttacks: number;
+  averageLootPerAttack: number;
+  participationCount: number;
+  bonusAttacks: number;
+  topContributors: Array<{
+    playerTag: string;
+    playerName: string;
+    attacks: number;
+    loot: number;
+    bonusLoot: number;
+  }>;
 }
 
 export interface CapitalAnalyticsOptions {
@@ -103,12 +122,18 @@ export async function calculateCapitalAnalytics(
     throw new Error(`Failed to fetch weekends: ${weekendsError.message}`);
   }
 
+  const latestWeekendSummary =
+    weekends && weekends.length
+      ? await buildLatestCapitalWeekendSummary(weekends[0], supabase)
+      : null;
+
   if (!weekends || weekends.length < minWeekends) {
     return {
       clanTag: normalizedClanTag,
       periodStart,
       periodEnd,
       totalWeekends: weekends?.length || 0,
+      weekendsWithParticipants: 0,
       metrics: [],
       clanAverages: {
         averageLootPerAttack: 0,
@@ -117,6 +142,7 @@ export async function calculateCapitalAnalytics(
         averageROI: 0,
         averageOverallScore: 0,
       },
+      latestWeekendSummary,
     };
   }
 
@@ -212,6 +238,7 @@ export async function calculateCapitalAnalytics(
         averageROI: 0,
         averageOverallScore: 0,
       },
+      latestWeekendSummary,
     };
   }
 
@@ -352,6 +379,7 @@ export async function calculateCapitalAnalytics(
     periodStart,
     periodEnd,
     totalWeekends,
+    weekendsWithParticipants: validWeekends.length,
     metrics,
     clanAverages: {
       averageLootPerAttack: Math.round(averageLootPerAttack),
@@ -360,6 +388,45 @@ export async function calculateCapitalAnalytics(
       averageROI: Math.round(averageROI),
       averageOverallScore: Math.round(averageOverallScore),
     },
+    latestWeekendSummary,
   };
 }
 
+async function buildLatestCapitalWeekendSummary(
+  weekend: any,
+  supabase: ReturnType<typeof getSupabaseAdminClient>
+): Promise<CapitalWeekendSummary> {
+  const { data: participants } = await supabase
+    .from('capital_raid_participants')
+    .select('player_tag, player_name, attack_count, total_loot, bonus_loot')
+    .eq('weekend_id', weekend.id)
+    .order('total_loot', { ascending: false })
+    .limit(50);
+
+  const totalAttacks = participants?.reduce((sum, entry) => sum + (entry.attack_count || 0), 0) ?? 0;
+  const totalLoot = participants?.reduce((sum, entry) => sum + (entry.total_loot || 0), 0) ?? (weekend.total_loot || 0);
+  const bonusAttacks = participants?.reduce((sum, entry) => sum + (entry.bonus_loot && entry.bonus_loot > 0 ? 1 : 0), 0) ?? 0;
+  const averageLoot = totalAttacks > 0 ? Math.round(totalLoot / totalAttacks) : 0;
+  const topContributors =
+    participants
+      ?.slice(0, 5)
+      .map((entry) => ({
+        playerTag: entry.player_tag,
+        playerName: entry.player_name || entry.player_tag,
+        attacks: entry.attack_count || 0,
+        loot: entry.total_loot || 0,
+        bonusLoot: entry.bonus_loot || 0,
+      })) ?? [];
+
+  return {
+    weekendId: weekend.id,
+    startTime: weekend.start_time ? new Date(weekend.start_time) : null,
+    endTime: weekend.end_time ? new Date(weekend.end_time) : null,
+    totalLoot,
+    totalAttacks,
+    averageLootPerAttack: averageLoot,
+    participationCount: participants?.length ?? 0,
+    bonusAttacks,
+    topContributors,
+  };
+}
