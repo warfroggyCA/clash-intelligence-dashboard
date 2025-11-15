@@ -21,7 +21,6 @@ export default function LoginPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-          setActiveSessionEmail(session.user?.email ?? null);
         router.push('/app');
       }
     };
