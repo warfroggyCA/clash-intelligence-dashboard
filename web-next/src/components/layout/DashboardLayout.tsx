@@ -228,14 +228,19 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
     if (isSigningOut) return;
     setIsSigningOut(true);
     try {
+      const logoutResponse = await fetch('/api/logout', {
+        method: 'POST',
+        cache: 'no-store',
+      });
+
+      if (!logoutResponse.ok) {
+        const message = await logoutResponse.text().catch(() => '');
+        throw new Error(message || 'Failed to terminate session');
+      }
+
       if (supabase) {
-        await supabase.auth.signOut();
-      } else {
-        await fetch('/api/logout', {
-          method: 'POST',
-          cache: 'no-store',
-        }).catch(() => {
-          // ignore if endpoint missing
+        await supabase.auth.signOut().catch(() => {
+          // Ignore local errors; server session already cleared
         });
       }
     } catch (error) {
