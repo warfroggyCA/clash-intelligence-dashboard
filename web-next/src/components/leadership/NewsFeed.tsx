@@ -1,10 +1,17 @@
 "use client";
 
-import { useMemo, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
-import useSWR from 'swr';
-import { insightsFetcher } from '@/lib/api/swr-fetcher';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { useShallow } from 'zustand/react/shallow';
+import { formatDistanceToNow } from 'date-fns';
+import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
-import type { SmartInsightsPayload } from '@/lib/smart-insights';
+import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
+import { generateAlerts } from '@/lib/alerts-engine';
+import type { Member } from '@/lib/clan-metrics';
+import type { ChangeSummary } from '@/types';
+import { Button } from '@/components/ui';
+import { showToast } from '@/lib/toast';
+import { AlertTriangle, ClipboardCheck, Bell, Sparkles, Check } from 'lucide-react';
 
 interface NewsFeedProps {
   clanTag?: string | null;
@@ -14,511 +21,475 @@ export interface NewsFeedRef {
   refresh: () => Promise<void>;
 }
 
+type Priority = 'high' | 'medium' | 'low';
+type EventSource = 'alert' | 'change';
+
+interface ActionEvent {
+  id: string;
+  source: EventSource;
+  title: string;
+  detail: string;
+  priority: Priority;
+  category: string;
+  actionable?: string;
+  players?: string[];
+  bullets?: string[];
+  timestamp?: string;
+  summaryDate?: string;
+  createdAt?: string;
+  actionType: 'local' | 'server';
+  isActioned: boolean;
+  unread?: boolean;
+}
+
+interface HighlightCard {
+  id: string;
+  title: string;
+  detail?: string | null;
+  badge?: string | null;
+  category?: string | null;
+}
+
+const ACTION_STORAGE_KEY = 'leadership-feed-actioned';
+const HISTORY_TTL_MS = 10 * 60 * 1000; // 10 minutes
+const INSIGHTS_TTL_MS = 10 * 60 * 1000;
+
 const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag }, ref) => {
-  // Simple Architecture: Fetch insights directly from API using SWR
-  const clanTag = propClanTag || cfg.homeClanTag || '#2PR8R8V8P'; // Fallback to default
-  const swrKey = clanTag ? `/api/insights?clanTag=${encodeURIComponent(clanTag)}` : null;
-  const { data: smartInsights, error: insightsError, isLoading: isLoadingInsights, mutate } = useSWR<SmartInsightsPayload | null>(
-    swrKey,
-    insightsFetcher,
-    {
-      revalidateOnFocus: true, // Check for new data when user returns to the page
-      revalidateOnReconnect: true, // Check for new data when network reconnects
-      refreshInterval: 5 * 60 * 1000, // Check every 5 minutes for new insights
-      dedupingInterval: 60 * 1000, // Dedupe requests within 1 minute
-    }
+  const fallbackClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag || '');
+  const resolvedClanTag = normalizeTag(propClanTag || fallbackClanTag || '');
+
+  const roster = useDashboardStore(useShallow((state) => state.roster));
+  const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
+  const { smartInsights, smartInsightsStatus } = useDashboardStore(useShallow((state) => ({
+    smartInsights: state.smartInsights,
+    smartInsightsStatus: state.smartInsightsStatus,
+  })));
+  const historyEntry = useDashboardStore((state) =>
+    resolvedClanTag ? state.historyByClan[resolvedClanTag] : undefined
   );
+  const loadHistory = useDashboardStore((state) => state.loadHistory);
+  const mutateHistoryItems = useDashboardStore((state) => state.mutateHistoryItems);
+  const loadSmartInsights = useDashboardStore((state) => state.loadSmartInsights);
 
-  // Track if we're manually refreshing
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [lastRefreshedAt, setLastRefreshedAt] = useState<number | null>(null);
+  const [localCompleted, setLocalCompleted] = useState<Set<string>>(new Set());
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
 
-  // Expose refresh function via ref
-  useImperativeHandle(ref, () => ({
-    refresh: async () => {
-      if (!clanTag) return;
-      setIsRefreshing(true);
+  // Hydrate actioned events from localStorage
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const key = resolvedClanTag ? `${ACTION_STORAGE_KEY}:${resolvedClanTag}` : null;
+    if (!key) {
+      setLocalCompleted(new Set());
+      return;
+    }
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setLocalCompleted(new Set(Array.isArray(parsed) ? parsed : []));
+      } else {
+        setLocalCompleted(new Set());
+      }
+    } catch (error) {
+      console.warn('[Leadership NewsFeed] Failed to load local action state:', error);
+      setLocalCompleted(new Set());
+    }
+  }, [resolvedClanTag]);
+
+  const persistLocalCompleted = useCallback(
+    (next: Set<string>) => {
+      setLocalCompleted(new Set(next));
+      if (typeof window === 'undefined') return;
+      if (!resolvedClanTag) return;
       try {
-        // Force a fresh fetch by calling mutate with revalidate: true
-        // This will re-fetch using the same SWR key, bypassing cache
-        console.log('[NewsFeed] Refreshing insights for clanTag:', clanTag);
-        
-        // Use mutate with revalidate to force a fresh fetch
-        // SWR will use the same key but bypass cache and fetch fresh data
-        await mutate(undefined, { revalidate: true });
-        
-        setLastRefreshedAt(Date.now());
-        console.log('[NewsFeed] Refresh completed');
+        localStorage.setItem(`${ACTION_STORAGE_KEY}:${resolvedClanTag}`, JSON.stringify([...next]));
       } catch (error) {
-        console.error('[NewsFeed] Refresh failed:', error);
-      } finally {
-        setIsRefreshing(false);
+        console.warn('[Leadership NewsFeed] Failed to persist action state:', error);
       }
     },
-  }), [mutate, clanTag]);
+    [resolvedClanTag]
+  );
 
-  const [latestAISummary, setLatestAISummary] = useState<string | null>(null);
-
-  // Fetch latest AI summary from database as fallback
+  // Ensure history data is loaded and refreshed periodically
   useEffect(() => {
-    if (!clanTag) return;
-
-    const fetchLatestSummary = async () => {
-      try {
-        const response = await fetch(`/api/ai-summaries?clanTag=${encodeURIComponent(clanTag)}&limit=1`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data?.length > 0) {
-            const summary = data.data[0].summary;
-            if (summary && typeof summary === 'string' && summary.trim().length > 30) {
-              setLatestAISummary(summary.trim());
-            }
-          }
-        }
-      } catch (error) {
-        console.error('[NewsFeed] Failed to fetch latest AI summary:', error);
-      }
-    };
-
-    void fetchLatestSummary();
-  }, [clanTag]);
-
-  // Helper function to sanitize content for display
-  const sanitizeContent = (content: string | null | undefined): string | null => {
-    if (!content || typeof content !== 'string') return null;
-    
-    let sanitized = content.trim();
-    
-    // Remove sentences containing "undefined" or "NaN" (case-insensitive)
-    sanitized = sanitized
-      .split(/[.!?]+/)
-      .filter(sentence => {
-        const lower = sentence.toLowerCase();
-        return !lower.includes('undefined') && 
-               !lower.includes('nan') && 
-               !lower.match(/\bundefined\b/) &&
-               !lower.match(/\bnan\b/) &&
-               !lower.match(/leveled up an undefined/) &&
-               !lower.match(/upgraded an undefined/) &&
-               !lower.match(/to undefined/);
-      })
-      .join('. ')
-      .trim();
-    
-    // Remove any remaining "undefined" or "NaN" strings and fix common patterns
-    sanitized = sanitized
-      .replace(/\bundefined\b/gi, '')
-      .replace(/\bNaN\b/g, '')
-      .replace(/reaching undefined level/gi, 'leveled up')
-      .replace(/upgraded to undefined/gi, 'upgraded')
-      .replace(/upgraded an undefined to undefined/gi, 'upgraded')
-      .replace(/leveled up an undefined to undefined/gi, 'leveled up')
-      .replace(/an undefined to undefined/gi, '')
-      .replace(/undefined to undefined/gi, '')
-      .replace(/lost NaN trophies/gi, 'experienced trophy changes')
-      .replace(/gained NaN trophies/gi, 'experienced trophy changes')
-      .replace(/undefined level/gi, 'a new level')
-      .replace(/level undefined/gi, 'a new level')
-      .replace(/\s+/g, ' ') // Normalize whitespace
-      .replace(/\s*,\s*,/g, ',') // Remove double commas
-      .replace(/\s*\.\s*\./g, '.') // Remove double periods
-      .trim();
-    
-    // Remove sentences that are too short, incomplete, or contain invalid patterns
-    sanitized = sanitized
-      .split(/[.!?]+/)
-      .filter(s => {
-        const trimmed = s.trim();
-        if (trimmed.length < 10) return false;
-        if (trimmed.match(/^(also|additionally|furthermore|moreover),?\s*$/i)) return false;
-        const lower = trimmed.toLowerCase();
-        // Filter out sentences that still contain problematic patterns
-        if (lower.includes('undefined') || lower.includes('nan')) return false;
-        if (lower.match(/leveled up an?\s*$/)) return false; // Incomplete sentences
-        if (lower.match(/upgraded an?\s*$/)) return false; // Incomplete sentences
-        return true;
-      })
-      .join('. ')
-      .trim();
-    
-    if (sanitized.length < 30) return null;
-    
-    // Ensure proper sentence ending
-    if (sanitized && !sanitized.match(/[.!?]$/)) {
-      sanitized += '.';
+    if (!resolvedClanTag) return;
+    const lastFetched = historyEntry?.lastFetched ?? 0;
+    const isStale = Date.now() - lastFetched > HISTORY_TTL_MS;
+    if ((!historyEntry || isStale) && historyEntry?.status !== 'loading') {
+      void loadHistory(resolvedClanTag, { force: !historyEntry });
     }
-    
-    return sanitized || null;
-  };
+  }, [resolvedClanTag, historyEntry, loadHistory]);
 
-  const headlineParagraph = useMemo(() => {
-    if (!smartInsights) {
-      // If no smart insights, use latest summary from database
-      return sanitizeContent(latestAISummary);
+  // Ensure smart insights are loaded
+  useEffect(() => {
+    if (!resolvedClanTag) return;
+    void loadSmartInsights(resolvedClanTag, { ttlMs: INSIGHTS_TTL_MS });
+  }, [resolvedClanTag, loadSmartInsights]);
+
+  // Expose refresh handle
+  const refreshData = useCallback(async () => {
+    if (!resolvedClanTag) return;
+    setIsRefreshing(true);
+    try {
+      await Promise.allSettled([
+        loadHistory(resolvedClanTag, { force: true }),
+        loadSmartInsights(resolvedClanTag, { force: true }),
+      ]);
+    } finally {
+      setIsRefreshing(false);
     }
+  }, [resolvedClanTag, loadHistory, loadSmartInsights]);
 
-    // Prioritize generated content (full narratives from insights engine)
-    // Change Summary content is generated based on all recent changes
-    const changeContent = smartInsights.context?.changeSummary?.content;
-    if (changeContent && typeof changeContent === 'string') {
-      const sanitized = sanitizeContent(changeContent);
-      if (sanitized) {
-        console.log('[NewsFeed] Using changeSummary.content for headline paragraph', sanitized.substring(0, 100));
-        return sanitized;
-      }
+  useImperativeHandle(ref, () => ({ refresh: refreshData }), [refreshData]);
+
+  // Members data for alerts
+  const members: Member[] = useMemo(() => {
+    return (roster?.members as Member[]) || [];
+  }, [roster?.members?.length]);
+
+  const alerts = useMemo(() => {
+    if (!members.length) return [];
+    try {
+      return generateAlerts(members);
+    } catch (error) {
+      console.warn('[Leadership NewsFeed] Failed to generate alerts:', error);
+      return [];
     }
+  }, [members]);
 
-    // Performance Analysis content is generated based on clan performance data
-    const perfContent = smartInsights.context?.performanceAnalysis?.content;
-    if (perfContent && typeof perfContent === 'string') {
-      const sanitized = sanitizeContent(perfContent);
-      if (sanitized) {
-        console.log('[NewsFeed] Using performanceAnalysis.content for headline paragraph', sanitized.substring(0, 100));
-        return sanitized;
-      }
-    }
+  const priorityWeight: Record<Priority, number> = { high: 3, medium: 2, low: 1 };
 
-    // Fallback to briefing summary (concatenated headlines)
-    // Also check briefing highlights for content
-    const briefingSummary = smartInsights.briefing?.summary;
-    if (briefingSummary && typeof briefingSummary === 'string') {
-      const sanitized = sanitizeContent(briefingSummary);
-      if (sanitized) {
-        console.log('[NewsFeed] Using briefing.summary for headline paragraph (fallback)', sanitized.substring(0, 100));
-        return sanitized;
-      }
-    }
-    
-    // If briefing summary is too short, try to build one from highlights
-    const briefingHighlights = smartInsights.briefing?.highlights;
-    if (briefingHighlights && briefingHighlights.length > 0) {
-      const highlightTexts = briefingHighlights
-        .map(h => {
-          const text = h.detail ? `${h.headline}: ${h.detail}` : h.headline;
-          return sanitizeContent(text);
-        })
-        .filter((text): text is string => text !== null);
-      if (highlightTexts.length > 0) {
-        const combinedText = highlightTexts.join('. ') + '.';
-        const sanitized = sanitizeContent(combinedText);
-        if (sanitized) {
-          console.log('[NewsFeed] Using briefing highlights for headline paragraph', sanitized.substring(0, 100));
-          return sanitized;
-        }
-      }
-    }
-
-    // Final fallback: use latest summary from database
-    if (latestAISummary) {
-      const sanitized = sanitizeContent(latestAISummary);
-      if (sanitized) {
-        console.log('[NewsFeed] Using latest summary from database');
-        return sanitized;
-      }
-    }
-
-    console.log('[NewsFeed] No suitable headline paragraph found');
-    return null;
-  }, [smartInsights, latestAISummary]);
-
-  const newsItems = useMemo(() => {
-    const items: Array<{ id: string; text: string; priority: 'high' | 'medium' | 'low'; category: string }> = [];
-
-    if (!smartInsights) return items;
-
-    // Helper to sanitize item text
-    const sanitizeItemText = (text: string | null | undefined): string | null => {
-      if (!text || typeof text !== 'string') return null;
-      const sanitized = sanitizeContent(text);
-      return sanitized && sanitized.length > 10 ? sanitized : null;
-    };
-
-    // Briefing Highlights
-    if (smartInsights.briefing?.highlights?.length) {
-      smartInsights.briefing.highlights.forEach((highlight) => {
-        const text = highlight.detail 
-          ? `${highlight.headline}: ${highlight.detail}` 
-          : highlight.headline;
-        const sanitized = sanitizeItemText(text);
-        if (sanitized) {
-          items.push({
-            id: `highlight-${highlight.id}`,
-            text: sanitized,
-            priority: highlight.priority,
-            category: highlight.category,
-          });
-        }
-      });
-    }
-
-    // Change Summary - parse insights and recommendations (skip main content since it's in headline)
-    if (smartInsights.context?.changeSummary) {
-      const changeSummary = smartInsights.context.changeSummary;
-      
-      // Add insights as bullet points
-      if (changeSummary.insights?.length) {
-        changeSummary.insights.forEach((insight, index) => {
-          const sanitized = sanitizeItemText(insight);
-          if (sanitized) {
-            items.push({
-              id: `changeinsight-${index}`,
-              text: sanitized,
-              priority: changeSummary.priority,
-              category: 'changes',
-            });
-          }
-        });
-      }
-
-      // Add recommendations
-      if (changeSummary.recommendations?.length) {
-        changeSummary.recommendations.forEach((rec, index) => {
-          const sanitized = sanitizeItemText(rec);
-          if (sanitized) {
-            items.push({
-              id: `changerec-${index}`,
-              text: sanitized,
-              priority: changeSummary.priority === 'high' ? 'medium' : changeSummary.priority,
-              category: 'coaching',
-            });
-          }
-        });
-      }
-    }
-
-    // Performance Analysis - parse insights and recommendations (skip main content since it's in headline)
-    if (smartInsights.context?.performanceAnalysis) {
-      const perfAnalysis = smartInsights.context.performanceAnalysis;
-
-      // Add insights
-      if (perfAnalysis.insights?.length) {
-        perfAnalysis.insights.forEach((insight, index) => {
-          const sanitized = sanitizeItemText(insight);
-          if (sanitized) {
-            items.push({
-              id: `perfinsight-${index}`,
-              text: sanitized,
-              priority: perfAnalysis.priority,
-              category: 'performance',
-            });
-          }
-        });
-      }
-
-      // Add recommendations
-      if (perfAnalysis.recommendations?.length) {
-        perfAnalysis.recommendations.forEach((rec, index) => {
-          const sanitized = sanitizeItemText(rec);
-          if (sanitized) {
-            items.push({
-              id: `perfrec-${index}`,
-              text: sanitized,
-              priority: perfAnalysis.priority === 'high' ? 'medium' : perfAnalysis.priority,
-              category: 'coaching',
-            });
-          }
-        });
-      }
-    }
-
-    // Headlines
-    if (smartInsights.headlines?.length) {
-      smartInsights.headlines.forEach((headline) => {
-        const text = headline.detail 
-          ? `${headline.title}: ${headline.detail}` 
-          : headline.title;
-        const sanitized = sanitizeItemText(text);
-        if (sanitized) {
-          items.push({
-            id: headline.id,
-            text: sanitized,
-            priority: headline.priority,
-            category: headline.category,
-          });
-        }
-      });
-    }
-
-    // Coaching Recommendations
-    if (smartInsights.coaching?.length) {
-      smartInsights.coaching.forEach((tip) => {
-        // Use description or title as the bullet point
-        const text = tip.description || tip.title;
-        const sanitized = sanitizeItemText(text);
-        if (sanitized) {
-          items.push({
-            id: `coaching-${tip.id}`,
-            text: sanitized,
-            priority: tip.priority,
-            category: 'coaching',
-          });
-        }
-      });
-    }
-
-    // Sort by priority (high first), then by category
-    const priorityOrder = { high: 0, medium: 1, low: 2 };
-    return items.sort((a, b) => {
-      const priorityDiff = priorityOrder[a.priority] - priorityOrder[b.priority];
-      if (priorityDiff !== 0) return priorityDiff;
-      return a.category.localeCompare(b.category);
+  const alertEvents: ActionEvent[] = useMemo(() => {
+    return alerts.map((alert) => {
+      const idBase = [
+        alert.category,
+        alert.title,
+        alert.metric || '',
+        [...alert.affectedMembers].sort().join('-'),
+      ].join(':');
+      return {
+        id: `alert:${idBase}`,
+        source: 'alert',
+        title: alert.title,
+        detail: alert.description,
+        actionable: alert.actionable,
+        priority: alert.priority,
+        category: alert.category,
+        players: alert.affectedMembers,
+        timestamp: alert.timestamp,
+        actionType: 'local',
+        isActioned: false,
+      };
     });
+  }, [alerts]);
+
+  const changeEvents: ActionEvent[] = useMemo(() => {
+    if (!historyEntry?.items?.length) return [];
+    const summaries = historyEntry.items.slice(0, 5);
+    return summaries
+      .filter((summary) => Array.isArray(summary.changes) && summary.changes.length > 0)
+      .map((summary) => {
+        const prettyDate = (() => {
+          try {
+            const date = summary.createdAt || summary.date;
+            if (!date) return 'Snapshot review';
+            return new Date(date).toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+            });
+          } catch {
+            return 'Snapshot review';
+          }
+        })();
+
+        return {
+          id: `change:${summary.date}:${summary.createdAt ?? ''}`,
+          source: 'change',
+          title: `Snapshot ${prettyDate}`,
+          detail: summary.summary || 'Snapshot recorded updates for the clan.',
+          priority: summary.unread ? 'high' : summary.actioned ? 'low' : 'medium',
+          category: 'changes',
+          timestamp: summary.createdAt || summary.date,
+          bullets: summary.changes?.map((change) => change.description) ?? [],
+          actionType: 'server',
+          summaryDate: summary.date,
+          createdAt: summary.createdAt,
+          isActioned: summary.actioned,
+          unread: summary.unread,
+        };
+      });
+  }, [historyEntry?.items]);
+
+  const actionQueue: ActionEvent[] = useMemo(() => {
+    const events = [...alertEvents, ...changeEvents];
+    return events
+      .sort((a, b) => {
+        const aWeight = priorityWeight[a.priority] + (a.unread ? 1 : 0);
+        const bWeight = priorityWeight[b.priority] + (b.unread ? 1 : 0);
+        return bWeight - aWeight;
+      })
+      .slice(0, 8);
+  }, [alertEvents, changeEvents]);
+
+  const highlightCards: HighlightCard[] = useMemo(() => {
+    const highlights = smartInsights?.briefing?.highlights ?? [];
+    if (!highlights.length) {
+      const recognition = smartInsights?.recognition?.players ?? [];
+      return recognition.slice(0, 3).map((player) => ({
+        id: `recognition:${player.tag}`,
+        title: `${player.name} recognized`,
+        detail: player.reason ?? 'Consistent performance flagged by VIP.',
+        badge: player.category ?? 'recognition',
+      }));
+    }
+    return highlights.slice(0, 4).map((highlight) => ({
+      id: highlight.id ?? `highlight:${highlight.category}:${highlight.headline}`,
+      title: highlight.headline,
+      detail: highlight.detail,
+      badge: highlight.priority?.toUpperCase() ?? 'VIP',
+      category: highlight.category,
+    }));
   }, [smartInsights]);
 
-  // Calculate data freshness - MUST be before any conditional returns (Rules of Hooks)
-  const dataDate = smartInsights?.metadata?.snapshotDate;
-  const generatedAt = smartInsights?.metadata?.generatedAt;
-  const isStale = useMemo(() => {
-    // Check both snapshot date and generation time
-    // Data is stale if snapshot is >1 day old OR generation is >2 days old
-    if (dataDate) {
-      const dataDateObj = new Date(dataDate);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      const daysDiff = Math.floor((today.getTime() - dataDateObj.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysDiff > 1) return true; // Snapshot is stale
-    }
-    
-    if (generatedAt) {
-      const generatedAtObj = new Date(generatedAt);
-      const now = new Date();
-      const hoursDiff = (now.getTime() - generatedAtObj.getTime()) / (1000 * 60 * 60);
-      if (hoursDiff > 48) return true; // Generated more than 2 days ago
-    }
-    
-    return false;
-  }, [dataDate, generatedAt]);
+  const overviewSummary = smartInsights?.briefing?.summary ?? smartInsights?.context?.changeSummary?.content;
+  const dataDate = smartInsights?.metadata?.snapshotDate ?? snapshotMetadata?.snapshotDate ?? null;
+  const generatedAt = smartInsights?.metadata?.generatedAt ?? null;
 
-  if (isLoadingInsights || isRefreshing) {
-    return (
-      <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-6 text-center">
-        <p className="text-sm text-slate-400">
-          {isRefreshing ? 'Refreshing insights...' : 'Loading insights...'}
-        </p>
-      </div>
-    );
-  }
+  const isHistoryLoading = historyEntry?.status === 'loading';
+  const historyError = historyEntry?.status === 'error' ? historyEntry.error : null;
 
-  if (insightsError) {
-    return (
-      <div className="rounded-lg border border-amber-700/50 bg-amber-900/20 p-6 text-center">
-        <p className="text-sm text-amber-400">
-          {insightsError.status === 404 
-            ? 'No insights available yet. Run an ingestion to generate them.'
-            : 'Unable to load insights. Run an ingestion to generate them.'}
-        </p>
-      </div>
-    );
-  }
+  const localCompletedIds = localCompleted;
 
-  const formatDate = (dateStr: string | undefined) => {
-    if (!dateStr) return null;
-    try {
-      const date = new Date(dateStr);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    } catch {
-      return dateStr;
-    }
-  };
+  const handleToggleAction = useCallback(
+    async (event: ActionEvent) => {
+      if (event.isActioned) return;
+      if (event.actionType === 'server') {
+        if (!resolvedClanTag || !event.summaryDate) return;
+        setPendingAction(event.id);
+        try {
+          const response = await fetch('/api/snapshots/changes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ clanTag: resolvedClanTag, date: event.summaryDate, action: 'actioned' }),
+          });
 
-  if (!headlineParagraph && newsItems.length === 0) {
-    return (
-      <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 p-6 text-center">
-        <p className="text-sm text-slate-400">No insights available yet. Run an ingestion to generate a news feed.</p>
-      </div>
-    );
-  }
+          if (!response.ok) {
+            const message = await response.text().catch(() => 'Failed to update event');
+            throw new Error(message);
+          }
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'changes':
-        return 'text-blue-400';
-      case 'recognition':
-      case 'spotlight':
-        return 'text-emerald-400';
-      case 'coaching':
-        return 'text-amber-400';
-      case 'performance':
-        return 'text-purple-400';
-      case 'briefing':
-        return 'text-cyan-400';
-      case 'war':
-        return 'text-red-400';
-      case 'donation':
-        return 'text-green-400';
+          mutateHistoryItems(resolvedClanTag, (items) =>
+            items.map((item) => {
+              if (item.date === event.summaryDate) {
+                return { ...item, actioned: true, unread: false };
+              }
+              return item;
+            })
+          );
+        } catch (error: any) {
+          console.error('[Leadership NewsFeed] Failed to mark change event as actioned:', error);
+          showToast(error?.message || 'Failed to update event', 'error');
+        } finally {
+          setPendingAction(null);
+        }
+      } else {
+        const next = new Set(localCompletedIds);
+        if (next.has(event.id)) {
+          next.delete(event.id);
+        } else {
+          next.add(event.id);
+        }
+        persistLocalCompleted(next);
+      }
+    },
+    [resolvedClanTag, localCompletedIds, mutateHistoryItems, persistLocalCompleted]
+  );
+
+  const isEventCompleted = useCallback(
+    (event: ActionEvent) => {
+      if (event.actionType === 'server') {
+        return event.isActioned;
+      }
+      return localCompletedIds.has(event.id);
+    },
+    [localCompletedIds]
+  );
+
+  const priorityTone = (priority: Priority) => {
+    switch (priority) {
+      case 'high':
+        return 'text-red-300';
+      case 'medium':
+        return 'text-amber-300';
+      case 'low':
+        return 'text-slate-300';
       default:
         return 'text-slate-300';
     }
   };
 
-  const getPriorityIndicator = (priority: 'high' | 'medium' | 'low') => {
-    switch (priority) {
-      case 'high':
-        return '●';
-      case 'medium':
-        return '○';
-      case 'low':
-        return '▪';
-      default:
-        return '•';
+  const dataFreshnessLabel = useMemo(() => {
+    if (!dataDate) return 'Unknown';
+    try {
+      return formatDistanceToNow(new Date(dataDate), { addSuffix: true });
+    } catch {
+      return 'Unknown';
     }
-  };
+  }, [dataDate]);
+
+  const insightsGeneratedLabel = useMemo(() => {
+    if (!generatedAt) return null;
+    try {
+      return formatDistanceToNow(new Date(generatedAt), { addSuffix: true });
+    } catch {
+      return null;
+    }
+  }, [generatedAt]);
 
   return (
     <div className="space-y-4">
-      {/* Data freshness indicator */}
-      {(dataDate || generatedAt || lastRefreshedAt) && (
-        <div className={`rounded-lg border px-3 py-2 text-xs ${
-          isStale 
-            ? 'border-amber-700/50 bg-amber-900/20 text-amber-300' 
-            : 'border-slate-700/50 bg-slate-800/30 text-slate-400'
-        }`}>
-          <div className="flex items-center justify-between">
-            <span>
-              {dataDate && `Data from ${formatDate(dataDate)}`}
-              {generatedAt && dataDate && ' • '}
-              {generatedAt && `Generated ${formatDate(generatedAt)}`}
-              {lastRefreshedAt && (
-                <span className="ml-2 text-emerald-400">
-                  • Refreshed {new Date(lastRefreshedAt).toLocaleTimeString()}
-                </span>
-              )}
-            </span>
-            {isStale && (
-              <span className="ml-2 rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
-                Stale
-              </span>
-            )}
-          </div>
+      <div
+        className={`rounded-lg border px-3 py-2 text-xs ${
+          isRefreshing
+            ? 'border-blue-700/50 bg-blue-900/20 text-blue-200'
+            : 'border-slate-700/50 bg-slate-900/30 text-slate-400'
+        }`}
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            {dataDate ? `Snapshot ${new Date(dataDate).toLocaleDateString()} • ` : ''}
+            {dataFreshnessLabel && `Data ${dataFreshnessLabel}`}
+            {insightsGeneratedLabel && ` • Insights ${insightsGeneratedLabel}`}
+          </span>
+          <Button size="xs" variant="ghost" onClick={() => void refreshData()} disabled={isRefreshing}>
+            {isRefreshing ? 'Refreshing…' : 'Refresh'}
+          </Button>
         </div>
-      )}
+      </div>
 
-      {/* Headline Paragraph - State of the Union */}
-      {headlineParagraph && (
+      {overviewSummary && (
         <div className="rounded-lg border border-cyan-700/50 bg-cyan-900/20 p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-cyan-300">Today&rsquo;s Overview</span>
+          <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">
+            <Sparkles className="h-4 w-4" />
+            Today&rsquo;s Overview
           </div>
-          <p className="text-sm leading-relaxed text-cyan-100 whitespace-pre-wrap">{headlineParagraph}</p>
+          <p className="text-sm leading-relaxed text-cyan-50 whitespace-pre-wrap">{overviewSummary}</p>
         </div>
       )}
 
-      {/* Bullet Points */}
-      {newsItems.length > 0 && (
-        <div className="space-y-2">
-          {newsItems.map((item) => (
-            <div
-              key={item.id}
-              className={`flex items-start gap-3 rounded-lg border border-slate-700/50 bg-slate-800/30 px-4 py-3 text-sm transition-colors hover:bg-slate-800/50`}
-            >
-              <span className={`text-lg leading-none ${getCategoryColor(item.category)}`}>
-                {getPriorityIndicator(item.priority)}
-              </span>
-              <p className={`flex-1 ${getCategoryColor(item.category)}`}>{item.text}</p>
-            </div>
-          ))}
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+          <AlertTriangle className="h-4 w-4 text-amber-400" />
+          Action Queue
         </div>
-      )}
+
+        {historyError && (
+          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-200">
+            {historyError}
+          </div>
+        )}
+
+        {actionQueue.length === 0 ? (
+          <div className="rounded-lg border border-slate-800/60 bg-slate-900/40 px-3 py-4 text-sm text-slate-400">
+            No actionable items right now. You&rsquo;re all caught up!
+          </div>
+        ) : (
+          actionQueue.map((event) => {
+            const completed = isEventCompleted(event);
+            return (
+              <div
+                key={event.id}
+                className={`rounded-lg border px-4 py-3 text-sm transition ${
+                  completed ? 'border-green-700/40 bg-green-900/20' : 'border-slate-800/60 bg-slate-900/40'
+                }`}
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-wide">
+                      <span className={`${priorityTone(event.priority)} font-semibold`}>
+                        {event.priority.toUpperCase()}
+                      </span>
+                      <span className="text-slate-400">{event.category}</span>
+                      {event.unread && (
+                        <span className="rounded-full bg-amber-500/20 px-2 py-0.5 text-[10px] font-semibold text-amber-300">
+                          New
+                        </span>
+                      )}
+                      {completed && (
+                        <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-semibold text-emerald-300">
+                          <Check className="h-3 w-3" />
+                          Done
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-slate-100 font-semibold">{event.title}</div>
+                    <p className="text-slate-300 leading-relaxed">{event.detail}</p>
+                    {event.bullets && event.bullets.length > 0 && (
+                      <ul className="list-disc list-inside text-slate-300 space-y-1">
+                        {event.bullets.slice(0, 4).map((bullet, index) => (
+                          <li key={`${event.id}-bullet-${index}`}>{bullet}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {event.players && event.players.length > 0 && (
+                      <div className="text-xs text-slate-400">
+                        Players: {event.players.map((tag) => tag.replace('#', '')).join(', ')}
+                      </div>
+                    )}
+                    {event.actionable && (
+                      <div className="rounded-md border border-slate-700/60 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
+                        <ClipboardCheck className="mr-2 inline h-3 w-3 text-emerald-300" />
+                        {event.actionable}
+                      </div>
+                    )}
+                  </div>
+
+                  {!completed && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={pendingAction === event.id}
+                      onClick={() => void handleToggleAction(event)}
+                      className="self-start"
+                    >
+                      {event.actionType === 'server' ? 'Mark Actioned' : 'Mark Done'}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-200">
+          <Bell className="h-4 w-4 text-sky-400" />
+          Latest Highlights
+        </div>
+        {smartInsightsStatus === 'loading' && (
+          <div className="text-xs text-slate-400">Loading highlights…</div>
+        )}
+        {highlightCards.length === 0 ? (
+          <div className="rounded-lg border border-slate-800/60 bg-slate-900/40 px-3 py-4 text-sm text-slate-400">
+            No highlights available. Run a fresh ingestion to populate VIP stories.
+          </div>
+        ) : (
+          <div className="grid gap-3 md:grid-cols-2">
+            {highlightCards.map((card) => (
+              <div key={card.id} className="rounded-lg border border-slate-800/60 bg-slate-900/40 p-4">
+                <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-400">
+                  <span>{card.badge || card.category || 'VIP Highlight'}</span>
+                  <Sparkles className="h-3 w-3 text-slate-500" />
+                </div>
+                <div className="mt-2 text-sm font-semibold text-slate-100">{card.title}</div>
+                {card.detail && <p className="mt-1 text-sm text-slate-300">{card.detail}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 });
@@ -526,4 +497,3 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
 NewsFeed.displayName = 'NewsFeed';
 
 export default NewsFeed;
-

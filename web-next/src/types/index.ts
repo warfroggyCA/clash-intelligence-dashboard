@@ -659,6 +659,19 @@ export interface ChangeSummary {
   gameChatMessages?: string[];
 }
 
+export interface ClanGamesSeasonEntry {
+  id: string;
+  clanTag: string;
+  seasonId: string;
+  label: string;
+  startDate: string | null;
+  endDate: string | null;
+  totalPoints: number;
+  notes?: string | null;
+  recordedBy?: string | null;
+  createdAt: string;
+}
+
 // =============================================================================
 // UI & COMPONENT TYPES
 // =============================================================================

@@ -1267,7 +1267,9 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     
     const loadLinkedAccounts = async () => {
       try {
-        const response = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`);
+      const response = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`, {
+        credentials: 'same-origin',
+      });
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
@@ -2314,6 +2316,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
       const response = await fetch('/api/player-aliases', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           clanTag,
           playerTag1: normalizedTag,
@@ -2348,7 +2351,9 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
       setShowAddAliasModal(false);
       
       // Reload linked accounts
-      const refreshResponse = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`);
+      const refreshResponse = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`, {
+        credentials: 'same-origin',
+      });
       if (refreshResponse.ok) {
         const refreshResult = await refreshResponse.json();
         if (refreshResult.success) {
@@ -2369,6 +2374,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
     try {
       const response = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag1=${encodeURIComponent(normalizedTag)}&playerTag2=${encodeURIComponent(linkedTag)}`, {
         method: 'DELETE',
+        credentials: 'same-origin',
       });
 
       const result = await response.json();
@@ -2381,7 +2387,9 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
       showToast("Alias link removed", "success");
       
       // Reload linked accounts
-      const refreshResponse = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`);
+      const refreshResponse = await fetch(`/api/player-aliases?clanTag=${encodeURIComponent(clanTag)}&playerTag=${encodeURIComponent(normalizedTag)}&includeNames=true`, {
+        credentials: 'same-origin',
+      });
       if (refreshResponse.ok) {
         const refreshResult = await refreshResponse.json();
         if (refreshResult.success) {
