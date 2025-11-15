@@ -770,36 +770,38 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
         </div>
       </GlassCard>
 
-      <GlassCard
-        id="role-impersonation"
-        icon={<Settings className="h-5 w-5" aria-hidden />}
-        title="Session role"
-        subtitle="Preview the dashboard as another clan role without changing access."
-        className="space-y-3"
-      >
-        <p className="text-sm text-slate-200">
-          Adjust the impersonated role to match what leaders or members see. This only changes your current session.
-        </p>
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={newUserRole}
-            onChange={(event) => setNewUserRole(event.target.value as ClanRoleName)}
-            className="rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-300"
-          >
-            {roleOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={handleSaveUserRole}
-            className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-400"
-          >
-            Apply role view
-          </button>
-        </div>
-      </GlassCard>
+      {permissions.canManageAccess && (
+        <GlassCard
+          id="role-impersonation"
+          icon={<Settings className="h-5 w-5" aria-hidden />}
+          title="Session role"
+          subtitle="Preview the dashboard as another clan role without changing access."
+          className="space-y-3"
+        >
+          <p className="text-sm text-slate-200">
+            Adjust the impersonated role to match what leaders or members see. This only changes your current session.
+          </p>
+          <div className="flex flex-wrap items-center gap-2">
+            <select
+              value={newUserRole}
+              onChange={(event) => setNewUserRole(event.target.value as ClanRoleName)}
+              className="rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-amber-500 focus:outline-none focus:ring-2 focus:ring-amber-300"
+            >
+              {roleOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={handleSaveUserRole}
+              className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-3 py-2 text-sm font-semibold text-amber-950 transition hover:bg-amber-400"
+            >
+              Apply role view
+            </button>
+          </div>
+        </GlassCard>
+      )}
 
       {layout === 'modal' && onClose && (
         <div className="flex justify-end">
