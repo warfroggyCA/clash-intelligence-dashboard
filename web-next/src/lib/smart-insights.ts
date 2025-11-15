@@ -1229,7 +1229,15 @@ function buildContributionScores(changes: MemberChange[]): ContributionScore[] {
         break;
       }
       case 'hero_upgrade': {
-        addContribution(tag, name, 12, change.description || 'Hero upgrade');
+        const heroName = (change as any).hero || 'Hero';
+        const level =
+          typeof change.newValue === 'number'
+            ? change.newValue
+            : (change.description?.match(/(\d+)/)?.[0]
+                ? parseInt(change.description.match(/(\d+)/)![0], 10)
+                : null);
+        const detail = level ? `${heroName} → ${level}` : `${heroName} upgrade`;
+        addContribution(tag, name, 12, detail);
         break;
       }
       case 'town_hall_upgrade': {

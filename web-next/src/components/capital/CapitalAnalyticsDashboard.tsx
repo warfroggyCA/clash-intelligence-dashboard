@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import useSWR from 'swr';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
-import type { CapitalAnalyticsResult } from '@/lib/capital-analytics/engine';
+import type { CapitalAnalyticsResult, CapitalWeekendSummary } from '@/lib/capital-analytics/engine';
 import { generateCapitalCoachingRecommendations, compareCapitalToClanAverage } from '@/lib/capital-analytics/metrics';
 import { Loader2, TrendingUp, TrendingDown, Coins, Award, Target, Users, TrendingUp as TrendingUpIcon } from 'lucide-react';
 
@@ -73,30 +73,36 @@ export default function CapitalAnalyticsDashboard({
     );
   }
 
-  if (!data || data.metrics.length === 0) {
-    const totalWeekendsCount = data?.totalWeekends ?? 0;
-    const weekendsWithParticipantsCount = data?.weekendsWithParticipants ?? 0;
-    const hasWeekends = totalWeekendsCount > 0;
-    const hasParticipants = weekendsWithParticipantsCount > 0;
-
-    const message = !hasWeekends
-      ? 'No capital raid data available for the selected period. Capital ingestion may need to run first.'
-      : !hasParticipants
-        ? `Found ${totalWeekendsCount} raid weekend${totalWeekendsCount === 1 ? '' : 's'}, but no participant data available. Note: The Clash API only returns member participation data for the current/ongoing weekend. Historical weekends do not include participant details.`
-        : `Found ${weekendsWithParticipantsCount} weekend(s) with participant data, but need at least 3 to calculate meaningful metrics. The Clash API only returns member participation data for the current/ongoing weekend.`;
-
+  if (!data) {
     return (
       <div className={`rounded-xl border border-slate-700/50 bg-slate-800/30 p-6 text-center ${className}`}>
-        <p className="text-slate-400">{message}</p>
+        <p className="text-slate-400">No capital raid data available yet.</p>
       </div>
     );
   }
 
-  const { metrics, clanAverages, totalWeekends, periodStart, periodEnd } = data;
+  const { metrics, clanAverages, totalWeekends, periodStart, periodEnd, latestWeekendSummary } = data;
+  const hasAnalytics = metrics.length > 0;
+  const totalWeekendsCount = data.totalWeekends ?? 0;
+  const weekendsWithParticipantsCount = data.weekendsWithParticipants ?? 0;
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header */}
+      {/* Latest Event Overview */}
+      <LatestRaidOverview summary={latestWeekendSummary} />
+
+      {!hasAnalytics && (
+        <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4 text-sm text-slate-300">
+          {totalWeekendsCount === 0
+            ? 'No raid weekends recorded yet. Once a raid completes, the overview above will populate automatically.'
+            : weekendsWithParticipantsCount < 3
+              ? `Only ${weekendsWithParticipantsCount || 0} weekend(s) include participant data. Trending analytics unlock after three weekends, but the latest raid summary remains available above.`
+              : 'Collecting more raid weekends to unlock the full analytics suite…'}
+        </div>
+      )}
+
+      {hasAnalytics && (
+        <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">Capital Raid Analytics</h2>
@@ -334,6 +340,72 @@ export default function CapitalAnalyticsDashboard({
           </div>
         </div>
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+function LatestRaidOverview({ summary }: { summary?: CapitalWeekendSummary | null }) {
+  if (!summary) {
+    return (
+      <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 p-5 text-slate-300">
+        <h3 className="text-lg font-semibold text-white mb-1">Latest Raid Overview</h3>
+        <p className="text-sm text-slate-400">No raid weekend data captured yet.</p>
+      </div>
+    );
+  }
+
+  const eventDate = summary.startTime ? new Date(summary.startTime).toLocaleDateString() : 'Unknown date';
+
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Latest Raid Weekend</h3>
+          <p className="text-sm text-slate-400">Started {eventDate}</p>
+        </div>
+        <div className="flex flex-wrap gap-3 text-sm text-white">
+          <span className="rounded-full bg-slate-800/70 px-3 py-1">
+            Total Loot <span className="font-semibold">{summary.totalLoot.toLocaleString()}</span>
+          </span>
+          <span className="rounded-full bg-slate-800/70 px-3 py-1">
+            Attacks <span className="font-semibold">{summary.totalAttacks}</span>
+          </span>
+          <span className="rounded-full bg-slate-800/70 px-3 py-1">
+            Avg Loot/Atk <span className="font-semibold">{summary.averageLootPerAttack.toLocaleString()}</span>
+          </span>
+          <span className="rounded-full bg-slate-800/70 px-3 py-1">
+            Participants <span className="font-semibold">{summary.participationCount}</span>
+          </span>
+        </div>
+      </div>
+      {summary.topContributors.length > 0 && (
+        <div className="mt-4">
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Top contributors</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {summary.topContributors.slice(0, 4).map((contributor) => (
+              <div
+                key={contributor.playerTag}
+                className="rounded-lg border border-slate-700/60 bg-slate-900/50 px-3 py-2 text-sm text-slate-200 flex items-center justify-between"
+              >
+                <div>
+                  <div className="font-semibold text-white">{contributor.playerName}</div>
+                  <div className="text-xs text-slate-400">
+                    {contributor.attacks} attacks • {contributor.bonusLoot > 0 ? 'Bonus earned' : 'No bonus'}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-base font-semibold text-amber-300">
+                    {contributor.loot.toLocaleString()}
+                  </div>
+                  <div className="text-[11px] uppercase tracking-wider text-slate-400">Loot</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -382,4 +454,3 @@ function MetricCard({ title, value, max, icon, color, format = 'percentage' }: M
     </div>
   );
 }
-

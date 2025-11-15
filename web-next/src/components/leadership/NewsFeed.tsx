@@ -148,6 +148,16 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
     return (roster?.members as Member[]) || [];
   }, [roster?.members?.length]);
 
+  const memberNameLookup = useMemo(() => {
+    const lookup = new Map<string, string>();
+    members.forEach((member) => {
+      if (member.tag) {
+        lookup.set(normalizeTag(member.tag), member.name || member.tag);
+      }
+    });
+    return lookup;
+  }, [members]);
+
   const alerts = useMemo(() => {
     if (!members.length) return [];
     try {
@@ -176,13 +186,16 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
         actionable: alert.actionable,
         priority: alert.priority,
         category: alert.category,
-        players: alert.affectedMembers,
+        players: alert.affectedMembers.map((tag) => {
+          const normalized = normalizeTag(tag);
+          return memberNameLookup.get(normalized) || tag.replace('#', '');
+        }),
         timestamp: alert.timestamp,
         actionType: 'local',
         isActioned: false,
       };
     });
-  }, [alerts]);
+  }, [alerts, memberNameLookup]);
 
   const changeEvents: ActionEvent[] = useMemo(() => {
     if (!historyEntry?.items?.length) return [];
@@ -259,6 +272,13 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
   }, [smartInsights]);
 
   const overviewSummary = smartInsights?.briefing?.summary ?? smartInsights?.context?.changeSummary?.content;
+  const overviewBlocks = useMemo(() => {
+    if (!overviewSummary) return [];
+    return overviewSummary
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }, [overviewSummary]);
   const dataDate = smartInsights?.metadata?.snapshotDate ?? snapshotMetadata?.snapshotDate ?? null;
   const generatedAt = smartInsights?.metadata?.generatedAt ?? null;
 
@@ -374,13 +394,21 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
         </div>
       </div>
 
-      {overviewSummary && (
+      {overviewBlocks.length > 0 && (
         <div className="rounded-lg border border-cyan-700/50 bg-cyan-900/20 p-4">
           <div className="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-cyan-300">
             <Sparkles className="h-4 w-4" />
             Today&rsquo;s Overview
           </div>
-          <p className="text-sm leading-relaxed text-cyan-50 whitespace-pre-wrap">{overviewSummary}</p>
+          <div className="max-h-48 overflow-auto pr-1">
+            <ul className="list-disc list-inside space-y-2 text-sm leading-relaxed text-cyan-50">
+              {overviewBlocks.map((block, index) => (
+                <li key={`overview-${index}`} className="whitespace-pre-wrap">
+                  {block}
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
 
@@ -439,9 +467,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
                       </ul>
                     )}
                     {event.players && event.players.length > 0 && (
-                      <div className="text-xs text-slate-400">
-                        Players: {event.players.map((tag) => tag.replace('#', '')).join(', ')}
-                      </div>
+                      <div className="text-xs text-slate-400">Players: {event.players.join(', ')}</div>
                     )}
                     {event.actionable && (
                       <div className="rounded-md border border-slate-700/60 bg-slate-900/40 px-3 py-2 text-xs text-slate-300">
@@ -490,7 +516,35 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
                   <Sparkles className="h-3 w-3 text-slate-500" />
                 </div>
                 <div className="mt-2 text-sm font-semibold text-slate-100">{card.title}</div>
-                {card.detail && <p className="mt-1 text-sm text-slate-300">{card.detail}</p>}
+                {card.detail && (
+                  <ul className="mt-2 space-y-1 text-sm text-slate-300 list-disc list-inside">
+                    {card.detail
+                      .split(/\n|\s*-\s+/)
+                      .map((raw) => raw.trim())
+                      .filter(Boolean)
+                      .map((entry, index) => {
+                        const [label, ...rest] = entry.split(':');
+                        const value = rest.join(':').trim();
+                        const normalizedLabel = label.trim();
+                        const normalizedValue =
+                          value && value.toLowerCase().startsWith(normalizedLabel.toLowerCase())
+                            ? value.slice(normalizedLabel.length).trim()
+                            : value;
+                        return (
+                          <li key={`${card.id}-detail-${index}`}>
+                            {rest.length > 0 ? (
+                              <>
+                                <span className="font-semibold text-slate-200">{normalizedLabel}:</span>{' '}
+                                {normalizedValue || '—'}
+                              </>
+                            ) : (
+                              entry
+                            )}
+                          </li>
+                        );
+                      })}
+                  </ul>
+                )}
               </div>
             ))}
           </div>

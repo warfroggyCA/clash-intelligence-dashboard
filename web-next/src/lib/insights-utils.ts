@@ -10,21 +10,25 @@ export function groupMemberChanges(changes: MemberChange[]): AggregatedChange[] 
   const map = new Map<string, AggregatedChange>();
 
   const describeChange = (change: MemberChange): string | null => {
-    const { member, type, previousValue, newValue, description } = change;
+    const { type, previousValue, newValue, description } = change;
+    const numericDelta =
+      typeof newValue === 'number' && typeof previousValue === 'number'
+        ? newValue - previousValue
+        : null;
     switch (type) {
       case 'trophy_change': {
-        const delta = typeof change.newValue === 'number' && typeof change.previousValue === 'number'
-          ? change.newValue - change.previousValue
-          : change.description?.match(/(-?\d+)/)?.[0]
-          ? parseInt(change.description.match(/(-?\d+)/)![0], 10)
-          : 0;
+        const delta =
+          numericDelta ??
+          (change.description?.match(/(-?\d+)/)?.[0]
+            ? parseInt(change.description.match(/(-?\d+)/)![0], 10)
+            : 0);
         if (!delta) return null;
         const verb = delta > 0 ? 'gained' : 'lost';
         return `${verb} ${Math.abs(delta)} trophies`;
       }
       case 'hero_upgrade': {
-        const hero = (change as any).hero || 'Hero';
-        const level = (change as any).newLevel || newValue;
+        const hero = (change as any).hero || (change as any).heroName || 'Hero';
+        const level = (change as any).newLevel ?? newValue;
         if (!level) return `${hero} upgrade`; 
         return `${hero} → ${level}`;
       }
@@ -33,16 +37,38 @@ export function groupMemberChanges(changes: MemberChange[]): AggregatedChange[] 
         return level ? `Town Hall → ${level}` : 'Town Hall upgrade';
       }
       case 'donation_change': {
-        const delta = typeof newValue === 'number' && typeof previousValue === 'number'
-          ? newValue - previousValue
-          : description?.match(/(-?\d+)/)?.[0]
-          ? parseInt(description.match(/(-?\d+)/)![0], 10)
-          : 0;
+        const delta =
+          numericDelta ??
+          (description?.match(/(-?\d+)/)?.[0]
+            ? parseInt(description.match(/(-?\d+)/)![0], 10)
+            : 0);
         if (!delta) return null;
         const monthly = delta >= 1000;
         return delta > 0
           ? `${delta} troops donated${monthly ? ' (heavy support)' : ''}`
           : `${Math.abs(delta)} troops received`;
+      }
+      case 'donation_received_change': {
+        if (!numericDelta) return null;
+        return `${Math.abs(numericDelta)} troops received`;
+      }
+      case 'attack_wins_change': {
+        if (!numericDelta) return null;
+        return `Attack wins +${numericDelta}`;
+      }
+      case 'versus_battle_wins_change': {
+        if (!numericDelta) return null;
+        return `Versus wins +${numericDelta}`;
+      }
+      case 'versus_trophies_change': {
+        if (!numericDelta) return null;
+        const verb = numericDelta > 0 ? '+' : '-';
+        return `Versus trophies ${verb}${Math.abs(numericDelta)}`;
+      }
+      case 'capital_contributions_change': {
+        if (!numericDelta) return null;
+        const formatted = Math.round(numericDelta).toLocaleString();
+        return `Capital gold +${formatted}`;
       }
       case 'new_member':
         return 'Joined the clan';

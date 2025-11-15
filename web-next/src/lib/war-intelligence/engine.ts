@@ -55,6 +55,28 @@ export interface WarIntelligenceResult {
     averageHoldRate: number;
     averageOverallScore: number;
   };
+  latestWarSummary?: WarSummary | null;
+}
+
+export interface WarSummary {
+  warId: string;
+  startTime: Date | null;
+  endTime: Date | null;
+  teamSize: number | null;
+  result: string | null;
+  clanStars: number;
+  opponentStars: number;
+  attacksUsed: number;
+  attacksAvailable: number;
+  averageStars: number;
+  missedAttacks: number;
+  topAttackers: Array<{
+    playerTag: string;
+    playerName: string;
+    totalStars: number;
+    averageDestruction: number;
+    attacks: number;
+  }>;
 }
 
 export interface WarIntelligenceOptions {
@@ -95,6 +117,11 @@ export async function calculateWarIntelligence(
     throw new Error(`Failed to fetch wars: ${warsError.message}`);
   }
 
+  const latestWarSummary =
+    wars && wars.length
+      ? await buildLatestWarSummary(wars[0], normalizedClanTag, supabase)
+      : null;
+
   if (!wars || wars.length < minWars) {
     return {
       clanTag: normalizedClanTag,
@@ -108,6 +135,7 @@ export async function calculateWarIntelligence(
         averageHoldRate: 0,
         averageOverallScore: 0,
       },
+      latestWarSummary,
     };
   }
 
@@ -416,6 +444,81 @@ export async function calculateWarIntelligence(
       averageHoldRate: Math.round(averageHoldRate * 100) / 100,
       averageOverallScore: Math.round(averageOverallScore),
     },
+    latestWarSummary,
   };
 }
 
+async function buildLatestWarSummary(
+  war: any,
+  clanTag: string,
+  supabase: ReturnType<typeof getSupabaseAdminClient>
+): Promise<WarSummary> {
+  const [membersRes, attacksRes] = await Promise.all([
+    supabase
+      .from('clan_war_members')
+      .select('player_tag, player_name, attacks, stars, destruction')
+      .eq('war_id', war.id)
+      .eq('is_home', true),
+    supabase
+      .from('clan_war_attacks')
+      .select('attacker_tag, attacker_name, stars, destruction')
+      .eq('war_id', war.id)
+      .eq('attacker_clan_tag', clanTag),
+  ]);
+
+  const members = membersRes.data ?? [];
+  const attacks = attacksRes.data ?? [];
+  const attacksUsed = members.reduce((sum, member) => sum + (member.attacks || 0), 0);
+  const attacksAvailable = (war.team_size || members.length) * 2;
+  const attackStats = new Map<
+    string,
+    { playerTag: string; playerName: string; stars: number; destruction: number; count: number }
+  >();
+
+  attacks.forEach((attack) => {
+    if (!attack.attacker_tag) return;
+    const entry =
+      attackStats.get(attack.attacker_tag) ||
+      {
+        playerTag: attack.attacker_tag,
+        playerName: attack.attacker_name || attack.attacker_tag,
+        stars: 0,
+        destruction: 0,
+        count: 0,
+      };
+    entry.stars += attack.stars || 0;
+    entry.destruction += attack.destruction || 0;
+    entry.count += 1;
+    attackStats.set(attack.attacker_tag, entry);
+  });
+
+  const topAttackers = Array.from(attackStats.values())
+    .sort((a, b) => b.stars - a.stars || b.destruction - a.destruction)
+    .slice(0, 5)
+    .map((entry) => ({
+      playerTag: entry.playerTag,
+      playerName: entry.playerName,
+      totalStars: entry.stars,
+      averageDestruction: entry.count > 0 ? Math.round((entry.destruction / entry.count) * 10) / 10 : 0,
+      attacks: entry.count,
+    }));
+
+  const totalStars = attacks.reduce((sum, attack) => sum + (attack.stars || 0), 0);
+  const averageStars = attacksUsed > 0 ? Math.round((totalStars / attacksUsed) * 100) / 100 : 0;
+  const missedAttacks = Math.max(attacksAvailable - attacksUsed, 0);
+
+  return {
+    warId: war.id,
+    startTime: war.battle_start ? new Date(war.battle_start) : null,
+    endTime: war.battle_end ? new Date(war.battle_end) : null,
+    teamSize: war.team_size ?? null,
+    result: war.result ?? null,
+    clanStars: war.clan_stars ?? 0,
+    opponentStars: war.opponent_stars ?? 0,
+    attacksUsed,
+    attacksAvailable,
+    averageStars,
+    missedAttacks,
+    topAttackers,
+  };
+}

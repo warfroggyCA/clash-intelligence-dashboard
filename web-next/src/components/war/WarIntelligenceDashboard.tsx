@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import useSWR from 'swr';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
-import type { WarIntelligenceResult } from '@/lib/war-intelligence/engine';
+import type { WarIntelligenceResult, WarSummary } from '@/lib/war-intelligence/engine';
 import { generateCoachingRecommendations, compareToClanAverage } from '@/lib/war-intelligence/metrics';
 import { Loader2, TrendingUp, TrendingDown, Minus, Target, Shield, Zap, Award } from 'lucide-react';
 
@@ -73,23 +73,32 @@ export default function WarIntelligenceDashboard({
     );
   }
 
-  if (!data || data.metrics.length === 0) {
+  if (!data) {
     return (
       <div className={`rounded-xl border border-slate-700/50 bg-slate-800/30 p-6 text-center ${className}`}>
-        <p className="text-slate-400">
-          {data?.totalWars === 0 
-            ? 'No war data available for the selected period. War ingestion may need to run first.'
-            : 'Insufficient war data to calculate metrics. Need at least 3 wars with participation.'}
-        </p>
+        <p className="text-slate-400">No war history captured yet.</p>
       </div>
     );
   }
 
-  const { metrics, clanAverages, totalWars, periodStart, periodEnd } = data;
+  const { metrics, clanAverages, totalWars, periodStart, periodEnd, latestWarSummary } = data;
+  const hasAnalytics = metrics.length > 0;
 
   return (
     <div className={`space-y-6 ${className}`}>
-      {/* Header */}
+      {/* Latest War Overview */}
+      <LatestWarOverview summary={latestWarSummary} />
+
+      {!hasAnalytics && (
+        <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4 text-sm text-slate-300">
+          {data.totalWars === 0
+            ? 'No wars recorded in this period yet. Once a war completes, the overview above will populate automatically.'
+            : 'Need at least three wars with participation to unlock the trend analytics below. Latest war details remain available above.'}
+        </div>
+      )}
+
+      {hasAnalytics && (
+        <>
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-2xl font-bold text-white">War Performance Intelligence</h2>
@@ -306,6 +315,81 @@ export default function WarIntelligenceDashboard({
           </div>
         </div>
       </div>
+      </>
+      )}
+    </div>
+  );
+}
+
+function LatestWarOverview({ summary }: { summary?: WarSummary | null }) {
+  if (!summary) {
+    return (
+      <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 p-5 text-slate-300">
+        <h3 className="text-lg font-semibold text-white mb-1">Latest War Overview</h3>
+        <p className="text-sm text-slate-400">No recent war data available.</p>
+      </div>
+    );
+  }
+
+  const warDate = summary.startTime ? new Date(summary.startTime).toLocaleDateString() : 'Unknown date';
+  const resultBadge =
+    summary.clanStars > summary.opponentStars
+      ? 'bg-emerald-500/20 text-emerald-200'
+      : summary.clanStars < summary.opponentStars
+        ? 'bg-rose-500/20 text-rose-200'
+        : 'bg-slate-600/30 text-slate-200';
+
+  return (
+    <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg p-5 space-y-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="text-lg font-semibold text-white">Latest War</h3>
+          <p className="text-sm text-slate-400">Started {warDate}</p>
+        </div>
+        <div className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${resultBadge}`}>
+          {summary.result || 'Result pending'}
+        </div>
+      </div>
+      <div className="grid gap-3 md:grid-cols-4 text-white">
+        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+          <div className="text-xs uppercase tracking-wider text-slate-400">Stars</div>
+          <div className="text-2xl font-semibold">{summary.clanStars} - {summary.opponentStars}</div>
+        </div>
+        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+          <div className="text-xs uppercase tracking-wider text-slate-400">Attacks Used</div>
+          <div className="text-2xl font-semibold">{summary.attacksUsed}/{summary.attacksAvailable}</div>
+        </div>
+        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+          <div className="text-xs uppercase tracking-wider text-slate-400">Average Stars</div>
+          <div className="text-2xl font-semibold">{summary.averageStars.toFixed(2)}</div>
+        </div>
+        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+          <div className="text-xs uppercase tracking-wider text-slate-400">Missed Attacks</div>
+          <div className="text-2xl font-semibold">{summary.missedAttacks}</div>
+        </div>
+      </div>
+      {summary.topAttackers.length > 0 && (
+        <div>
+          <p className="text-xs uppercase tracking-[0.2em] text-slate-400 mb-2">Top performers</p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {summary.topAttackers.slice(0, 4).map((attacker) => (
+              <div
+                key={attacker.playerTag}
+                className="rounded-lg border border-slate-700/60 bg-slate-900/50 px-3 py-2 text-sm text-slate-200 flex items-center justify-between"
+              >
+                <div>
+                  <div className="font-semibold text-white">{attacker.playerName}</div>
+                  <div className="text-xs text-slate-400">{attacker.attacks} attacks • Avg {attacker.averageDestruction}%</div>
+                </div>
+                <div className="text-right">
+                  <div className="text-base font-semibold text-amber-300">{attacker.totalStars}⭐</div>
+                  <div className="text-[11px] uppercase tracking-wider text-slate-400">Stars</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -348,4 +432,3 @@ function MetricCard({ title, value, max, icon, color }: MetricCardProps) {
     </div>
   );
 }
-

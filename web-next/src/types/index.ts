@@ -638,11 +638,13 @@ export interface MemberChange {
   member: {
     tag: string;
     name: string;
-    previousValue?: any;
-    newValue?: any;
   };
   description: string;
   timestamp: string;
+  previousValue?: any;
+  newValue?: any;
+  hero?: string | null;
+  heroKey?: string | null;
 }
 
 /**

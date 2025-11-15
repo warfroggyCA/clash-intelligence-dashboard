@@ -510,14 +510,28 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
             </svg>
             <span>Copy Summary</span>
           </Button>
+          <Button
+            onClick={handleGenerateInsightsSummary}
+            disabled={!hasData || isGeneratingSummary || !insightsEnabled}
+            loading={isGeneratingSummary}
+            variant="primary"
+            size="sm"
+            className={`${actionButtonBaseClasses} w-full sm:w-auto`}
+            title={insightsEnabled ? "Generate daily summary with automated insights of changes since last snapshot" : "Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)"}
+          >
+            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+            </svg>
+            <span>Insights Summary</span>
+          </Button>
 
-          <div className="relative" ref={exportMenuRef}>
+          <div className="relative ml-auto" ref={exportMenuRef}>
             <Button
               onClick={() => setShowExportMenu(!showExportMenu)}
               disabled={!hasData || isExporting}
               variant="primary"
               size="sm"
-              className={`${actionButtonBaseClasses} w-full pr-8 sm:w-auto`}
+              className={`${actionButtonBaseClasses} relative w-full pr-8 sm:w-auto`}
               title="Export snapshot data in various formats"
             >
               <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -574,21 +588,6 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
               </div>
             )}
           </div>
-
-          <Button
-            onClick={handleGenerateInsightsSummary}
-            disabled={!hasData || isGeneratingSummary || !insightsEnabled}
-            loading={isGeneratingSummary}
-            variant="primary"
-            size="sm"
-            className={`${actionButtonBaseClasses} w-full sm:w-auto`}
-            title={insightsEnabled ? "Generate daily summary with automated insights of changes since last snapshot" : "Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)"}
-          >
-            <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-            </svg>
-            <span>Insights Summary</span>
-          </Button>
         </div>
         {smartInsightsError && (
           <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-xs text-rose-200">
