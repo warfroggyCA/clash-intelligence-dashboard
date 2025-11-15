@@ -201,28 +201,54 @@ export async function getLinkedTagsWithNames(
   const supabase = getSupabaseAdminClient();
   
   // Try to get names from canonical snapshots first
-  const { data: snapshots } = await supabase
-    .from('canonical_member_snapshots')
-    .select('player_tag, payload')
-    .eq('clan_tag', normalizeTag(clanTag))
-    .in('player_tag', linkedTags)
-    .order('snapshot_date', { ascending: false });
+  const normalizedLinkedTags = linkedTags
+    .map((tag) => normalizeTag(tag))
+    .filter((tag): tag is string => Boolean(tag));
 
   const nameMap = new Map<string, string>();
-  
-  if (snapshots) {
-    const seenTags = new Set<string>();
-    for (const snapshot of snapshots) {
-      const tag = snapshot.player_tag;
-      if (!seenTags.has(tag) && snapshot.payload?.member?.name) {
-        seenTags.add(tag);
-        nameMap.set(tag, snapshot.payload.member.name);
+
+  if (normalizedLinkedTags.length > 0) {
+    // Fetch latest known names from canonical snapshots across any clan
+    const { data: snapshots } = await supabase
+      .from('canonical_member_snapshots')
+      .select('player_tag, payload')
+      .in('player_tag', normalizedLinkedTags)
+      .order('snapshot_date', { ascending: false });
+
+    if (snapshots) {
+      const seenTags = new Set<string>();
+      for (const snapshot of snapshots) {
+        const tag = snapshot.player_tag;
+        if (!seenTags.has(tag) && snapshot.payload?.member?.name) {
+          seenTags.add(tag);
+          nameMap.set(tag, snapshot.payload.member.name);
+        }
+      }
+    }
+
+    // Fallback: check members table for any unresolved tags
+    const missingTags = normalizedLinkedTags.filter((tag) => !nameMap.has(tag));
+    if (missingTags.length > 0) {
+      const { data: memberRows } = await supabase
+        .from('members')
+        .select('tag, name')
+        .in('tag', missingTags);
+
+      if (memberRows) {
+        memberRows.forEach((row) => {
+          if (row?.tag && row?.name) {
+            const normalizedTag = normalizeTag(row.tag);
+            if (normalizedTag && !nameMap.has(normalizedTag)) {
+              nameMap.set(normalizedTag, row.name);
+            }
+          }
+        });
       }
     }
   }
 
-  // Return all linked tags with names (or null if name not found)
-  return linkedTags.map(tag => ({
+  // Return all linked tags with names (or null if not found)
+  return normalizedLinkedTags.map((tag) => ({
     tag,
     name: nameMap.get(tag) || null,
   }));
