@@ -246,10 +246,11 @@ export async function GET(request: NextRequest) {
         // Group by player_tag and get the latest (first) snapshot for each
         const seenTags = new Set<string>();
         for (const snapshot of nameSnapshots) {
-          const tag = snapshot.player_tag;
-          if (!seenTags.has(tag) && snapshot.payload?.member?.name) {
-            seenTags.add(tag);
-            playerNamesMap.set(tag, snapshot.payload.member.name);
+          const normalizedSnapshotTag = normalizeTag(snapshot.player_tag) || snapshot.player_tag;
+          if (!normalizedSnapshotTag) continue;
+          if (!seenTags.has(normalizedSnapshotTag) && snapshot.payload?.member?.name) {
+            seenTags.add(normalizedSnapshotTag);
+            playerNamesMap.set(normalizedSnapshotTag, snapshot.payload.member.name);
           }
         }
       }
