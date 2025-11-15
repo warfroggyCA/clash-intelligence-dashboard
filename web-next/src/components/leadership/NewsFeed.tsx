@@ -235,13 +235,19 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
   const highlightCards: HighlightCard[] = useMemo(() => {
     const highlights = smartInsights?.briefing?.highlights ?? [];
     if (!highlights.length) {
-      const recognition = smartInsights?.recognition?.players ?? [];
-      return recognition.slice(0, 3).map((player) => ({
-        id: `recognition:${player.tag}`,
-        title: `${player.name} recognized`,
-        detail: player.reason ?? 'Consistent performance flagged by VIP.',
-        badge: player.category ?? 'recognition',
-      }));
+      const recognitionEntries = [
+        ...(smartInsights?.recognition?.spotlights ?? []),
+        ...(smartInsights?.recognition?.watchlist ?? []),
+        ...(smartInsights?.recognition?.callouts ?? []),
+      ];
+      if (recognitionEntries.length) {
+        return recognitionEntries.slice(0, 3).map((entry) => ({
+          id: entry.id ?? `recognition:${entry.playerTag}`,
+          title: `${entry.playerName} highlighted`,
+          detail: entry.reason ?? 'Recognition recorded in the latest insights.',
+          badge: entry.emphasis?.toUpperCase() ?? 'VIP',
+        }));
+      }
     }
     return highlights.slice(0, 4).map((highlight) => ({
       id: highlight.id ?? `highlight:${highlight.category}:${highlight.headline}`,
