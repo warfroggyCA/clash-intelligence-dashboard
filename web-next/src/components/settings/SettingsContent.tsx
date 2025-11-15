@@ -59,9 +59,22 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
   const [newRoleEmail, setNewRoleEmail] = useState('');
   const [newRoleTag, setNewRoleTag] = useState('');
   const [newRoleRole, setNewRoleRole] = useState<ClanRoleName>('member');
+  const [newRolePassword, setNewRolePassword] = useState('');
 
   const { permissions } = useLeadership();
   const effectiveClanTag = normalizeTag(clanTag || homeClan || newHomeClan || '#');
+
+  const generatePassword = useCallback(() => {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
+    const length = 14;
+    let result = '';
+    for (let i = 0; i < length; i += 1) {
+      const idx = Math.floor(Math.random() * alphabet.length);
+      result += alphabet[idx];
+    }
+    setNewRolePassword(result);
+    return result;
+  }, []);
   
   // Load settings from localStorage on mount
   useEffect(() => {
@@ -227,6 +240,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
     try {
       setRolesLoading(true);
       setRolesMessage('');
+      const initialPassword = newRolePassword.trim() || undefined;
       const res = await fetch('/api/admin/roles', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -235,6 +249,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
           playerTag: newRoleTag ? normalizeTag(newRoleTag) : undefined,
           role: newRoleRole,
           clanTag: effectiveClanTag,
+          password: initialPassword,
         }),
       });
       
@@ -254,8 +269,9 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       setNewRoleEmail('');
       setNewRoleTag('');
       setNewRoleRole('member');
+      setNewRolePassword('');
       await loadRoleEntries();
-      setRolesMessage('Access granted successfully');
+      setRolesMessage(initialPassword ? 'Account created and access granted' : 'Access granted successfully');
     } catch (error: any) {
       console.error('Failed to add role:', error);
       setRolesMessage(error?.message || 'Failed to grant access');
@@ -569,6 +585,28 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
                   placeholder="#2PR8R8V8P"
                   className="mt-1 rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300"
                 />
+              </label>
+              <label className="flex flex-col text-xs font-semibold text-slate-300">
+                Initial password (optional)
+                <div className="mt-1 flex gap-2">
+                  <input
+                    type="text"
+                    value={newRolePassword}
+                    onChange={(event) => setNewRolePassword(event.target.value)}
+                    placeholder="Generate or enter a password"
+                    className="flex-1 rounded-md border border-slate-600 bg-slate-900/60 px-3 py-2 text-sm text-slate-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  />
+                  <button
+                    type="button"
+                    onClick={generatePassword}
+                    className="rounded-md border border-slate-500 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-200 transition hover:bg-slate-800"
+                  >
+                    Generate
+                  </button>
+                </div>
+                <span className="mt-1 text-[11px] font-normal text-slate-400">
+                  Required for new accounts. Leave blank to link an existing Supabase user.
+                </span>
               </label>
               <div className="flex justify-end">
                 <button
