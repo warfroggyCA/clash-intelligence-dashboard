@@ -20,6 +20,20 @@ async function getClanId(supabase: ReturnType<typeof getSupabaseServerClient>, c
   return { id: clanRow.id, tag: normalized };
 }
 
+type RoleRecordWithClan = {
+  clans?: { tag?: string } | Array<{ tag?: string }>;
+};
+
+function getRoleClanTag(record: RoleRecordWithClan | null | undefined): string | null {
+  if (!record?.clans) {
+    return null;
+  }
+  if (Array.isArray(record.clans)) {
+    return record.clans[0]?.tag ?? null;
+  }
+  return record.clans.tag ?? null;
+}
+
 export async function GET(req: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
@@ -140,11 +154,11 @@ export async function PATCH(req: NextRequest) {
       .eq('id', payload.id)
       .maybeSingle();
 
-    if (roleError || !roleRecord?.clans?.tag) {
+    if (roleError || !getRoleClanTag(roleRecord)) {
       return NextResponse.json({ success: false, error: 'Role entry not found' }, { status: 404 });
     }
 
-    const clanTag = normalizeTag(roleRecord.clans.tag);
+    const clanTag = normalizeTag(getRoleClanTag(roleRecord) || '');
     await requireRole(req, ['leader'], { clanTag });
 
     const { error } = await supabase
@@ -188,11 +202,11 @@ export async function DELETE(req: NextRequest) {
       .eq('id', id)
       .maybeSingle();
 
-    if (roleError || !roleRecord?.clans?.tag) {
+    if (roleError || !getRoleClanTag(roleRecord)) {
       return NextResponse.json({ success: false, error: 'Role entry not found' }, { status: 404 });
     }
 
-    const clanTag = normalizeTag(roleRecord.clans.tag);
+    const clanTag = normalizeTag(getRoleClanTag(roleRecord) || '');
     await requireRole(req, ['leader'], { clanTag });
 
     const { error } = await supabase
