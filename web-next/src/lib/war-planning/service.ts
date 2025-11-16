@@ -270,7 +270,10 @@ async function fetchLiveWarProfile(tag: string): Promise<WarPlanProfile | null> 
     return {
       tag: normalizedTag,
       name: player.name || normalizedTag,
-      clanTag: player.clan?.tag ? normalizeTag(player.clan.tag) : null,
+      clanTag:
+        ('clan' in (player as any) && (player as any).clan?.tag)
+          ? normalizeTag((player as any).clan.tag)
+          : null,
       thLevel: player.townHallLevel ?? null,
       rankedTrophies:
         player.legendStatistics?.currentSeason?.trophies ?? player.trophies ?? null,
