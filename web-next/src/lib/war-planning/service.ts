@@ -6,6 +6,7 @@ import {
   type WarPlanAnalysis,
   type WarPlanProfile,
 } from './analysis';
+import { getPlayer, extractHeroLevels } from '@/lib/coc';
 import { enhanceWarPlanAnalysis } from './ai-briefing';
 
 export const WAR_PLAN_SELECT_FIELDS =
@@ -213,29 +214,73 @@ async function loadProfiles(
     latestByPlayer.set(normalized, row);
   });
 
+  const profileMap = new Map<string, WarPlanProfile>();
+  const tagsNeedingLive = new Set<string>();
+
+  cleanTags.forEach((tag) => {
+    const row = latestByPlayer.get(tag);
+    if (!row) {
+      tagsNeedingLive.add(tag);
+      return;
+    }
+    const payload = (row.payload as any) ?? {};
+    const member = payload.member ?? {};
+    const ranked = member.ranked ?? {};
+    const war = member.war ?? {};
+    const heroes = member.heroLevels ?? payload.heroLevels ?? {};
+
+    const profile: WarPlanProfile = {
+      tag,
+      name: member.name ?? tag,
+      clanTag: row.clan_tag ?? null,
+      thLevel: member.townHallLevel ?? null,
+      rankedTrophies: ranked.trophies ?? member.trophies ?? null,
+      warStars: war.stars ?? null,
+      heroLevels: normalizeHeroLevels(heroes),
+    };
+
+    profileMap.set(tag, profile);
+
+    if (profile.thLevel == null) {
+      tagsNeedingLive.add(tag);
+    }
+  });
+
+  for (const tag of tagsNeedingLive) {
+    try {
+      const liveProfile = await fetchLiveWarProfile(tag);
+      if (liveProfile) {
+        profileMap.set(tag, liveProfile);
+      }
+    } catch (error) {
+      console.warn('[WarPlanning] Failed to fetch live player profile', tag, error);
+    }
+  }
+
   return cleanTags
-    .map((tag) => {
-      const row = latestByPlayer.get(tag);
-      if (!row) return null;
-      const payload = (row.payload as any) ?? {};
-      const member = payload.member ?? {};
-      const ranked = member.ranked ?? {};
-      const war = member.war ?? {};
-      const heroes = member.heroLevels ?? payload.heroLevels ?? {};
+    .map((tag) => profileMap.get(tag))
+    .filter((profile): profile is WarPlanProfile => Boolean(profile));
+}
 
-      const profile: WarPlanProfile = {
-        tag,
-        name: member.name ?? tag,
-        clanTag: row.clan_tag ?? null,
-        thLevel: member.townHallLevel ?? null,
-        rankedTrophies: ranked.trophies ?? member.trophies ?? null,
-        warStars: war.stars ?? null,
-        heroLevels: normalizeHeroLevels(heroes),
-      };
-
-      return profile;
-    })
-    .filter((profile): profile is WarPlanProfile => profile !== null);
+async function fetchLiveWarProfile(tag: string): Promise<WarPlanProfile | null> {
+  try {
+    const player = await getPlayer(tag);
+    if (!player) return null;
+    const normalizedTag = normalizeTag(player.tag || tag);
+    return {
+      tag: normalizedTag,
+      name: player.name || normalizedTag,
+      clanTag: player.clan?.tag ? normalizeTag(player.clan.tag) : null,
+      thLevel: player.townHallLevel ?? null,
+      rankedTrophies:
+        player.legendStatistics?.currentSeason?.trophies ?? player.trophies ?? null,
+      warStars: player.warStars ?? null,
+      heroLevels: normalizeHeroLevels(extractHeroLevels(player) as Record<string, number | null>),
+    };
+  } catch (error) {
+    console.warn('[WarPlanning] Live player fetch failed', tag, error);
+    return null;
+  }
 }
 
 function fillMissingProfiles(

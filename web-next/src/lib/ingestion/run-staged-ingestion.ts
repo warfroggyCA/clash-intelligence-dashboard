@@ -25,6 +25,7 @@ export interface StagedIngestionJobResult {
 export interface RunStagedIngestionJobOptions extends StagedIngestionOptions {
   runPostProcessing?: boolean;
   forceInsights?: boolean; // Force insights generation even if data is current
+  forceFetch?: boolean; // Force ingestion fetch even if data already exists today
 }
 
 /**
@@ -32,7 +33,7 @@ export interface RunStagedIngestionJobOptions extends StagedIngestionOptions {
  * This replaces the old runIngestionJob with a more robust, phase-based approach.
  */
 export async function runStagedIngestionJob(options: RunStagedIngestionJobOptions = {}): Promise<StagedIngestionJobResult> {
-  const { runPostProcessing = true, forceInsights = false, ...stagedOptions } = options;
+  const { runPostProcessing = true, forceInsights = false, forceFetch = false, ...stagedOptions } = options;
   let clanTag = stagedOptions.clanTag || cfg.homeClanTag;
   
   // CRITICAL SAFEGUARD: Prevent accidental use of wrong clan tag
@@ -60,52 +61,56 @@ export async function runStagedIngestionJob(options: RunStagedIngestionJobOption
   try {
     // Check if today's snapshot already exists - but allow second run to proceed
     // This ensures both scheduled runs (4:30 and 5:30 UTC) can execute
-    try {
-      const supabase = getSupabaseAdminClient();
-      const todayIso = new Date().toISOString().slice(0, 10);
-      const now = new Date();
-      const currentHour = now.getUTCHours();
-      const currentMinute = now.getUTCMinutes();
-      
-      // Only skip if we're past 6:00 AM UTC AND data exists for today
-      // This allows both 4:30 and 5:30 runs to proceed, but prevents unnecessary runs later
-      const { data: latestRow, error: latestErr } = await supabase
-        .from('canonical_member_snapshots')
-        .select('snapshot_date')
-        .eq('clan_tag', clanTag)
-        .order('snapshot_date', { ascending: false, nullsFirst: false })
-        .limit(1)
-        .maybeSingle();
+    if (!forceFetch) {
+      try {
+        const supabase = getSupabaseAdminClient();
+        const todayIso = new Date().toISOString().slice(0, 10);
+        const now = new Date();
+        const currentHour = now.getUTCHours();
+        const currentMinute = now.getUTCMinutes();
         
-      if (!latestErr && latestRow?.snapshot_date) {
-        const latestDate = latestRow.snapshot_date.slice(0, 10);
-        const isAfterScheduledRuns = currentHour > 6 || (currentHour === 6 && currentMinute >= 0);
-        
-        if (latestDate >= todayIso && isAfterScheduledRuns) {
-          // If forceInsights is true, skip the fetch but still run post-processing to generate insights
-          if (forceInsights) {
-            console.log(`[StagedIngestion] forceInsights=true, data is current but will generate insights anyway`);
-            // Skip to post-processing directly (this will generate insights from existing data)
-            const postProcessingResult = await runPostProcessingSteps(clanTag, stagedOptions.jobId);
-            return {
-              clanTag,
-              success: true,
-              ingestionResult: { skipped: true, reason: 'up_to_date_but_insights_forced', latestDate },
-              changeSummary: postProcessingResult.changeSummary,
-              gameChatMessages: postProcessingResult.gameChatMessages,
-              playersResolved: postProcessingResult.playersResolved,
-              resolutionErrors: postProcessingResult.resolutionErrors,
-              insightsGenerated: postProcessingResult.insightsGenerated,
-            };
+        // Only skip if we're past 6:00 AM UTC AND data exists for today
+        // This allows both 4:30 and 5:30 runs to proceed, but prevents unnecessary runs later
+        const { data: latestRow, error: latestErr } = await supabase
+          .from('canonical_member_snapshots')
+          .select('snapshot_date')
+          .eq('clan_tag', clanTag)
+          .order('snapshot_date', { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
+          
+        if (!latestErr && latestRow?.snapshot_date) {
+          const latestDate = latestRow.snapshot_date.slice(0, 10);
+          const isAfterScheduledRuns = currentHour > 6 || (currentHour === 6 && currentMinute >= 0);
+          
+          if (latestDate >= todayIso && isAfterScheduledRuns) {
+            // If forceInsights is true, skip the fetch but still run post-processing to generate insights
+            if (forceInsights) {
+              console.log(`[StagedIngestion] forceInsights=true, data is current but will generate insights anyway`);
+              // Skip to post-processing directly (this will generate insights from existing data)
+              const postProcessingResult = await runPostProcessingSteps(clanTag, stagedOptions.jobId);
+              return {
+                clanTag,
+                success: true,
+                ingestionResult: { skipped: true, reason: 'up_to_date_but_insights_forced', latestDate },
+                changeSummary: postProcessingResult.changeSummary,
+                gameChatMessages: postProcessingResult.gameChatMessages,
+                playersResolved: postProcessingResult.playersResolved,
+                resolutionErrors: postProcessingResult.resolutionErrors,
+                insightsGenerated: postProcessingResult.insightsGenerated,
+              };
+            }
+            console.log(`[StagedIngestion] Up-to-date for ${clanTag} (latest ${latestDate}) and past scheduled runs — skipping fetch`);
+            return { clanTag, success: true, ingestionResult: { skipped: true, reason: 'up_to_date', latestDate } };
+          } else if (latestDate >= todayIso && !isAfterScheduledRuns) {
+            console.log(`[StagedIngestion] Data exists for today (${latestDate}), but within scheduled run window — proceeding to ensure both runs complete`);
           }
-          console.log(`[StagedIngestion] Up-to-date for ${clanTag} (latest ${latestDate}) and past scheduled runs — skipping fetch`);
-          return { clanTag, success: true, ingestionResult: { skipped: true, reason: 'up_to_date', latestDate } };
-        } else if (latestDate >= todayIso && !isAfterScheduledRuns) {
-          console.log(`[StagedIngestion] Data exists for today (${latestDate}), but within scheduled run window — proceeding to ensure both runs complete`);
         }
+      } catch (precheckErr) {
+        console.warn('[StagedIngestion] Pre-check failed, continuing with ingestion', precheckErr);
       }
-    } catch (precheckErr) {
-      console.warn('[StagedIngestion] Pre-check failed, continuing with ingestion', precheckErr);
+    } else {
+      console.log('[StagedIngestion] forceFetch enabled — bypassing up-to-date pre-check');
     }
 
     // Run the core staged ingestion pipeline

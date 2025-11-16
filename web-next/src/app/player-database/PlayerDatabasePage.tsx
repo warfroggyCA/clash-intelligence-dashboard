@@ -695,7 +695,10 @@ export default function PlayerDatabasePage() {
   }, []);
 
   const addNewPlayer = useCallback(async (playerTag: string, playerName: string, noteText: string) => {
-    if (!playerTag.trim() || !playerName.trim() || !noteText.trim()) return;
+    if (!playerTag.trim()) {
+      setErrorMessage('Player tag is required.');
+      return;
+    }
 
     try {
       const normalizedTag = normalizeTag(playerTag);
@@ -703,16 +706,19 @@ export default function PlayerDatabasePage() {
         setErrorMessage('Player tag is invalid. Please include a # and only use valid characters.');
         return;
       }
+      const normalizedClanTag = normalizeTag(clanTag) || clanTag;
+      const sanitizedName = playerName.trim();
+      const sanitizedNote = noteText.trim();
       const response = await fetch('/api/player-notes', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          clanTag: normalizeTag(clanTag) || clanTag,
+          clanTag: normalizedClanTag,
           playerTag: normalizedTag,
-          playerName: playerName.trim(),
-          note: noteText.trim(),
+          playerName: sanitizedName || undefined,
+          note: sanitizedNote || 'Player added to database',
           customFields: {},
           createdBy: 'Player Database'
         })
@@ -726,11 +732,14 @@ export default function PlayerDatabasePage() {
         setNewPlayerName('');
         setNewNoteText('');
         setShowAddPlayerModal(false);
+        setErrorMessage(null);
       } else {
         console.error('Failed to add player:', result.error);
+        setErrorMessage(result.error || 'Failed to add player');
       }
     } catch (error) {
       console.error('Error adding player:', error);
+      setErrorMessage(error instanceof Error ? error.message : 'Failed to add player');
     }
   }, [loadPlayerDatabase, clanTag, invalidateCache]);
 
@@ -1929,21 +1938,24 @@ export default function PlayerDatabasePage() {
                 placeholder="e.g., #ABC123DEF"
                 autoFocus
               />
+              <p className="mt-1 text-xs text-muted">
+                Only the player tag is required; we&apos;ll pull the latest name automatically.
+              </p>
             </div>
             
             <div>
               <Input
-                label="Player Name"
+                label="Player Name (optional)"
                 type="text"
                 value={newPlayerName}
                 onChange={(e) => setNewPlayerName(e.target.value)}
-                placeholder="e.g., PlayerName"
+                placeholder="Auto-detected if left blank"
               />
             </div>
             
             <div>
               <label className="block text-sm text-muted mb-2">
-                Initial Note
+                Initial Note (optional)
               </label>
               <textarea
                 value={newNoteText}
@@ -1963,7 +1975,7 @@ export default function PlayerDatabasePage() {
               <Button
                 variant="primary"
                 onClick={() => addNewPlayer(newPlayerTag, newPlayerName, newNoteText)}
-                disabled={!newPlayerTag.trim() || !newPlayerName.trim() || !newNoteText.trim()}
+                disabled={!newPlayerTag.trim()}
               >
                 Add Player
               </Button>

@@ -80,11 +80,13 @@ export async function POST(request: Request) {
       // Check for forceInsights parameter to regenerate insights even if data is current
       const urlObj = new URL(request.url);
       const forceInsights = urlObj.searchParams.get('forceInsights') === 'true';
+      const forceFetch = urlObj.searchParams.get('forceFetch') === 'true';
       
       const result = await runStagedIngestionJob({
         clanTag: targetClanTag,
         runPostProcessing: true,
-        forceInsights: forceInsights
+        forceInsights,
+        forceFetch,
       });
       
       console.log('[Health/DirectIngestion] Direct ingestion completed:', result.success ? 'SUCCESS' : 'FAILED');

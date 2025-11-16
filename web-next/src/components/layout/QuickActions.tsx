@@ -22,6 +22,8 @@ import { useDashboardStore, selectors, useShallow } from '@/lib/stores/dashboard
 import { Button } from '@/components/ui';
 import { api } from '@/lib/api/client';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
+import { formatRosterSummary } from '@/lib/export/roster-export';
+import type { RosterData } from '@/app/simple-roster/roster-transform';
 
 // =============================================================================
 // TYPES
@@ -91,16 +93,17 @@ export const useQuickActions = () => {
 
       const summaryResponse = await api.generateInsightsSummary(clanTag, changesResponse.data.changes, clanData);
         
-        if (summaryResponse.success) {
-          setMessage('Insights summary generated successfully!');
-          setStatus('success');
-        } else {
-          setMessage(summaryResponse.error || 'Failed to generate insights summary');
-          setStatus('error');
-        }
+      if (summaryResponse.success && summaryResponse.data?.summary) {
+        await navigator.clipboard.writeText(summaryResponse.data.summary);
+        setMessage('Insights summary copied to clipboard!');
+        setStatus('success');
       } else {
-        setMessage('No recent changes found to summarize');
+        setMessage(summaryResponse.error || 'Failed to generate insights summary');
         setStatus('error');
+      }
+    } else {
+      setMessage('No recent changes found to summarize');
+      setStatus('error');
       }
     } catch (error) {
       console.error('Failed to generate insights summary:', error);
@@ -256,6 +259,38 @@ export const useQuickActions = () => {
         lines.push('');
       }
 
+      if (roster?.members?.length) {
+        const rosterExportPayload: RosterData = {
+          members: roster.members as any,
+          clanName: roster.clanName || 'Unknown Clan',
+          clanTag: roster.clanTag || '#UNKNOWN',
+          date: snapshotMetadata.snapshotDate ?? roster.date ?? null,
+          snapshotMetadata: {
+            snapshotDate: snapshotMetadata.snapshotDate ?? null,
+            fetchedAt: snapshotMetadata.fetchedAt ?? null,
+            memberCount: snapshotMetadata.memberCount ?? roster.members.length,
+            warLogEntries: snapshotMetadata.warLogEntries ?? 0,
+            capitalSeasons: snapshotMetadata.capitalSeasons ?? 0,
+            version: snapshotMetadata.version ?? 'unknown',
+            payloadVersion: snapshotMetadata.payloadVersion ?? null,
+            ingestionVersion: snapshotMetadata.ingestionVersion ?? null,
+            schemaVersion: snapshotMetadata.schemaVersion ?? null,
+            computedAt: snapshotMetadata.computedAt ?? null,
+            seasonId: snapshotMetadata.seasonId ?? null,
+            seasonStart: snapshotMetadata.seasonStart ?? null,
+            seasonEnd: snapshotMetadata.seasonEnd ?? null,
+          },
+          clanHeroAverages: roster.clanHeroAverages ?? undefined,
+        };
+
+        const rosterTable = formatRosterSummary(rosterExportPayload);
+        lines.push('## Roster Data (Tab Separated)');
+        lines.push('```');
+        lines.push(rosterTable);
+        lines.push('```');
+        lines.push('');
+      }
+
       lines.push('---');
       lines.push(`Generated from nightly snapshot (version ${snapshotMetadata.version}).`);
       await navigator.clipboard.writeText(lines.join('\n'));
@@ -372,6 +407,7 @@ export const useQuickActions = () => {
 export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) => {
   const insightsEnabled = process.env.NEXT_PUBLIC_ENABLE_INSIGHTS === 'true';
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exportAnchor, setExportAnchor] = useState<'desktop' | 'mobile'>('desktop');
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
 
@@ -438,8 +474,136 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
       })}` : ''}`
     : 'Snapshot timing unavailable';
 
+  const renderExportMenu = (variant: 'mobile' | 'desktop') => (
+    <div
+      className={`absolute ${
+        variant === 'mobile' ? 'left-0 mt-1' : 'right-0 mt-2'
+      } w-48 rounded-2xl border border-brand-border/80 bg-brand-surfaceRaised/95 shadow-[0_18px_38px_-28px_rgba(8,15,31,0.72)] backdrop-blur-lg z-20`}
+    >
+      <div className="py-1">
+        <button
+          onClick={() => {
+            handleExportSnapshot('json');
+            setShowExportMenu(false);
+          }}
+          disabled={isExporting}
+          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceSubtle"
+        >
+          <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+          </svg>
+          Export JSON
+        </button>
+        <button
+          onClick={() => {
+            handleExportSnapshot('csv');
+            setShowExportMenu(false);
+          }}
+          disabled={isExporting}
+          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceSubtle"
+        >
+          <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          Export War Log CSV
+        </button>
+        <button
+          onClick={() => {
+            handleCopyRosterJson();
+            setShowExportMenu(false);
+          }}
+          className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-200 hover:bg-brand-surfaceSubtle"
+        >
+          <svg className="h-4 w-4 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2z"></path>
+          </svg>
+          Copy Roster JSON
+        </button>
+      </div>
+    </div>
+  );
+
   return (
-    <section className={`quick-actions-card rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/90 px-4 py-3 text-slate-100 shadow-[0_12px_30px_-24px_rgba(8,15,31,0.68)] ${className}`}>
+    <div className={`${className || ''} space-y-3`} ref={exportMenuRef}>
+      {/* Compact mobile quick actions */}
+      <section className="rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/80 px-3 py-3 text-slate-100 shadow-[0_8px_20px_-16px_rgba(8,15,31,0.65)] sm:hidden">
+        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.28em] text-slate-400">
+          <span>Quick Actions</span>
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${statusTone}`}>
+            <span className="h-1.5 w-1.5 rounded-full bg-current" />
+            {statusLabel}
+          </span>
+        </div>
+        <p className="mt-1 text-[11px] text-slate-400 line-clamp-2">{snapshotSummary}</p>
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          <Button
+            onClick={handleRefreshAll}
+            disabled={!hasData || isRefreshingAll}
+            loading={isRefreshingAll}
+            variant="primary"
+            size="sm"
+            className="w-full text-xs py-2"
+          >
+            Refresh
+          </Button>
+          <a
+            href="/war/prep"
+            className="w-full inline-flex items-center justify-center rounded-xl border border-blue-500/40 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-lg"
+            title="Open War Prep to analyze an opponent (opens new page)"
+          >
+            War Prep
+          </a>
+          <Button
+            onClick={handleCopySnapshotSummary}
+            disabled={!hasData || isCopyingSnapshot}
+            loading={isCopyingSnapshot}
+            variant="primary"
+            size="sm"
+            className="w-full text-xs py-2"
+          >
+            Copy Summary
+          </Button>
+          <Button
+            onClick={handleGenerateInsightsSummary}
+            disabled={!hasData || isGeneratingSummary || !insightsEnabled}
+            loading={isGeneratingSummary}
+            variant="outline"
+            size="sm"
+            className="w-full text-xs py-2"
+            title={insightsEnabled ? 'Generate daily summary with automated insights' : 'Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)'}
+          >
+            Insights
+          </Button>
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="relative">
+            <Button
+              onClick={() => {
+                setExportAnchor('mobile');
+                setShowExportMenu((prev) => !prev);
+              }}
+              disabled={!hasData || isExporting}
+              variant="primary"
+              size="sm"
+              className="w-full text-xs py-2"
+            >
+              Export
+            </Button>
+            {showExportMenu && exportAnchor === 'mobile' && renderExportMenu('mobile')}
+          </div>
+          <Button
+            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs py-2 text-slate-300"
+          >
+            Top ↑
+          </Button>
+        </div>
+      </section>
+
+      {/* Desktop / tablet layout */}
+      <section className="quick-actions-card hidden rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/90 px-4 py-3 text-slate-100 shadow-[0_12px_30px_-24px_rgba(8,15,31,0.68)] sm:block">
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3 text-[11px]">
           <div className="flex flex-col gap-1 text-slate-300">
@@ -600,6 +764,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
         )}
       </div>
     </section>
+    </div>
   );
 };
 

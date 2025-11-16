@@ -89,6 +89,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
         ? 'coleader'
         : 'member');
   const accessLevelLabel = getAccessLevelDisplayName(inferredAccessLevel);
+  const showAccessLevelBadge = accessLevelLabel !== actualRoleLabel;
   const userDisplayName = currentUser?.name || currentUser?.email || 'Leadership';
   const userSecondary = currentUser?.email && currentUser?.name ? currentUser.email : null;
   const userInitials = (currentUser?.name || currentUser?.email || '?')
@@ -313,10 +314,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 justify-end">
-            <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
-              <span className="h-2 w-2 rounded-full bg-brand-primary" />
-              {accessLevelLabel}
-            </span>
+            {showAccessLevelBadge && (
+              <span className="hidden md:inline-flex items-center gap-2 rounded-full border border-brand-border/70 bg-brand-surfaceRaised/80 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-200">
+                <span className="h-2 w-2 rounded-full bg-brand-primary" />
+                Access: {accessLevelLabel}
+              </span>
+            )}
 
             <div className={`inline-flex items-center gap-2 rounded-full border border-brand-border/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ${
               actualRoleName === 'leader'

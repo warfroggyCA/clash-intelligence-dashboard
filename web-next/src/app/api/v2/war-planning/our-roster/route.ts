@@ -35,69 +35,115 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseServerClient();
 
-    const { data: snapshots, error: snapshotError } = await supabase
-      .from('canonical_member_snapshots')
-      .select('player_tag, snapshot_date, payload')
-      .eq('clan_tag', clanTag)
-      .order('snapshot_date', { ascending: false })
-      .limit(120);
+    const { data: clanRow, error: clanError } = await supabase
+      .from('clans')
+      .select('id, tag, name')
+      .eq('tag', clanTag)
+      .maybeSingle();
 
-    if (snapshotError) {
-      throw snapshotError;
+    if (clanError) {
+      throw clanError;
     }
 
-    if (!snapshots?.length) {
+    if (!clanRow) {
       return NextResponse.json({
         success: true,
         data: {
-          clan: { tag: clanTag },
+          clan: { tag: clanTag, name: null },
           roster: [] as LightweightAlly[],
         },
       });
     }
 
-    const latestByPlayer = new Map<string, (typeof snapshots)[number]>();
-    for (const row of snapshots) {
-      const tag = normalizeTag(row.player_tag ?? '');
-      if (!tag || latestByPlayer.has(tag)) continue;
-      latestByPlayer.set(tag, row);
+    const { data: latestSnapshot, error: snapshotError } = await supabase
+      .from('roster_snapshots')
+      .select('id, fetched_at')
+      .eq('clan_id', clanRow.id)
+      .order('fetched_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (snapshotError) {
+      throw snapshotError;
     }
 
-    const roster: LightweightAlly[] = Array.from(latestByPlayer.entries()).map(([tag, row]) => {
-      const payload = (row.payload as any) ?? {};
-      const member = payload.member ?? {};
-      const heroes = member.heroLevels ?? payload.heroLevels ?? {};
-      const war = member.war ?? {};
+    if (!latestSnapshot) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          clan: { tag: clanTag, name: clanRow.name ?? null },
+          roster: [] as LightweightAlly[],
+        },
+      });
+    }
 
-      const heroLevels: Record<string, number | null> = {
-        bk: heroLevelValue(heroes?.bk),
-        aq: heroLevelValue(heroes?.aq),
-        gw: heroLevelValue(heroes?.gw),
-        rc: heroLevelValue(heroes?.rc),
-        mp: heroLevelValue(heroes?.mp),
-      };
+    const { data: statsRows, error: statsError } = await supabase
+      .from('member_snapshot_stats')
+      .select(
+        'member_id, th_level, role, trophies, ranked_trophies, battle_mode_trophies, donations, donations_received, hero_levels, activity_score, war_stars, attack_wins, defense_wins, war_preference, capital_contributions, builder_hall_level, versus_trophies, versus_battle_wins',
+      )
+      .eq('snapshot_id', latestSnapshot.id);
 
-      return {
-        tag,
-        name: member.name ?? tag,
-        thLevel: member.townHallLevel ?? null,
-        role: member.role ?? null,
-        trophies: member.trophies ?? null,
-        rankedTrophies: member.ranked?.trophies ?? null,
-        warStars: war.stars ?? null,
-        heroLevels,
-        activityScore: member.activityScore ?? payload.activityScore ?? null,
-        lastUpdated: row.snapshot_date ?? null,
-        warPreference: war.preference ?? null,
-      };
-    });
+    if (statsError) {
+      throw statsError;
+    }
+
+    if (!statsRows?.length) {
+      return NextResponse.json({
+        success: true,
+        data: {
+          clan: { tag: clanTag, name: clanRow.name ?? null },
+          roster: [] as LightweightAlly[],
+        },
+      });
+    }
+
+    const memberIds = statsRows.map((row) => row.member_id).filter(Boolean);
+
+    let memberRows: Array<{ id: string; tag: string; name: string | null }> = [];
+    if (memberIds.length) {
+      const { data, error: memberError } = await supabase
+        .from('members')
+        .select('id, tag, name')
+        .in('id', memberIds);
+
+      if (memberError) {
+        throw memberError;
+      }
+      memberRows = data ?? [];
+    }
+
+    const memberLookup = new Map(memberRows.map((member) => [member.id, member]));
+
+    const roster: LightweightAlly[] = statsRows
+      .map((row) => {
+        const member = memberLookup.get(row.member_id);
+        if (!member) return null;
+        const tag = normalizeTag(member.tag ?? '');
+        if (!tag) return null;
+        const heroLevels = normalizeHeroLevels(row.hero_levels);
+        return {
+          tag,
+          name: member.name || tag,
+          thLevel: row.th_level ?? null,
+          role: row.role ?? null,
+          trophies: row.battle_mode_trophies ?? row.trophies ?? null,
+          rankedTrophies: row.ranked_trophies ?? row.battle_mode_trophies ?? null,
+          warStars: row.war_stars ?? null,
+          heroLevels,
+          activityScore: row.activity_score ?? null,
+          lastUpdated: latestSnapshot.fetched_at ?? null,
+          warPreference: row.war_preference ?? null,
+        };
+      })
+      .filter((entry): entry is LightweightAlly => Boolean(entry));
 
     roster.sort((a, b) => (b.thLevel ?? 0) - (a.thLevel ?? 0));
 
     return NextResponse.json({
       success: true,
       data: {
-        clan: { tag: clanTag },
+        clan: { tag: clanTag, name: clanRow.name ?? null },
         roster,
       },
     });
@@ -127,3 +173,13 @@ function heroLevelValue(raw: unknown): number | null {
   return null;
 }
 
+function normalizeHeroLevels(raw: unknown): Record<string, number | null> {
+  const base = { bk: null, aq: null, gw: null, rc: null, mp: null } as Record<string, number | null>;
+  if (raw && typeof raw === 'object') {
+    for (const key of Object.keys(base)) {
+      const value = (raw as Record<string, unknown>)[key];
+      base[key as keyof typeof base] = heroLevelValue(value);
+    }
+  }
+  return base;
+}
