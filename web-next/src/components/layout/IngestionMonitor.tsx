@@ -74,9 +74,16 @@ async function triggerNewJob() {
   return payload.data.jobId as string;
 }
 
-async function triggerDirectIngestion(forceInsights = false) {
-  const url = forceInsights ? '/api/health?cron=true&forceInsights=true' : '/api/health?cron=true';
-  const res = await fetch(url, {
+type DirectIngestionOptions = {
+  forceInsights?: boolean;
+  forceFetch?: boolean;
+};
+
+async function triggerDirectIngestion(options: DirectIngestionOptions = {}) {
+  const params = new URLSearchParams({ cron: 'true' });
+  if (options.forceInsights) params.set('forceInsights', 'true');
+  if (options.forceFetch) params.set('forceFetch', 'true');
+  const res = await fetch(`/api/health?${params.toString()}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
   });
@@ -98,6 +105,7 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
   const [triggering, setTriggering] = useState(false);
   const [directTriggering, setDirectTriggering] = useState(false);
   const [forceInsightsTriggering, setForceInsightsTriggering] = useState(false);
+  const [forceFetchTriggering, setForceFetchTriggering] = useState(false);
   const [directResult, setDirectResult] = useState<any>(null);
   const [clanStatuses, setClanStatuses] = useState<ClanIngestionStatus[]>([]);
   const [loadingStatuses, setLoadingStatuses] = useState(false);
@@ -168,7 +176,7 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
     try {
       setDirectTriggering(true);
       setError(null);
-      const result = await triggerDirectIngestion(false);
+      const result = await triggerDirectIngestion();
       setDirectResult(result);
     } catch (err: any) {
       setError(err.message || 'Failed to trigger direct ingestion');
@@ -181,12 +189,25 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
     try {
       setForceInsightsTriggering(true);
       setError(null);
-      const result = await triggerDirectIngestion(true);
+      const result = await triggerDirectIngestion({ forceInsights: true });
       setDirectResult(result);
     } catch (err: any) {
       setError(err.message || 'Failed to force insights generation');
     } finally {
       setForceInsightsTriggering(false);
+    }
+  };
+
+  const handleForceFetch = async () => {
+    try {
+      setForceFetchTriggering(true);
+      setError(null);
+      const result = await triggerDirectIngestion({ forceFetch: true });
+      setDirectResult(result);
+    } catch (err: any) {
+      setError(err.message || 'Failed to force ingestion');
+    } finally {
+      setForceFetchTriggering(false);
     }
   };
 
@@ -391,11 +412,19 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
         </button>
         <button
           onClick={handleForceInsights}
-          disabled={directTriggering || forceInsightsTriggering}
+          disabled={directTriggering || forceInsightsTriggering || forceFetchTriggering}
           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
           title="Generate insights even if data is current (skips data fetch)"
         >
           {forceInsightsTriggering ? 'Generating…' : 'Force Insights'}
+        </button>
+        <button
+          onClick={handleForceFetch}
+          disabled={directTriggering || forceFetchTriggering || forceInsightsTriggering}
+          className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          title="Bypass up-to-date checks and run a full ingestion fetch even if today’s data already exists."
+        >
+          {forceFetchTriggering ? 'Forcing…' : 'Force Fetch'}
         </button>
         {jobId && (
           <span className="text-sm font-mono text-slate-500">Job ID: {jobId}</span>

@@ -8,6 +8,8 @@ const requestSchema = z.object({
   jobId: z.string().optional(),
   skipPhases: z.array(z.string()).optional(),
   runPostProcessing: z.boolean().optional(),
+  forceFetch: z.boolean().optional(),
+  forceInsights: z.boolean().optional(),
 });
 
 function isAuthorized(req: NextRequest): boolean {
@@ -35,7 +37,7 @@ export async function POST(req: NextRequest) {
       }, { status: 400 });
     }
 
-    const { clanTag, jobId, skipPhases, runPostProcessing } = parsed.data;
+    const { clanTag, jobId, skipPhases, runPostProcessing, forceFetch, forceInsights } = parsed.data;
 
     // Use default clan if none provided
     const targetClanTag = clanTag || cfg.homeClanTag;
@@ -53,6 +55,8 @@ export async function POST(req: NextRequest) {
       jobId,
       skipPhases,
       runPostProcessing,
+      forceFetch,
+      forceInsights,
     };
 
     const result = await runStagedIngestionJob(options);
@@ -88,6 +92,8 @@ export async function POST(req: NextRequest) {
 export async function GET(req: NextRequest) {
   const searchParams = new URL(req.url).searchParams;
   const clanTag = searchParams.get('clanTag') || cfg.homeClanTag;
+  const forceFetch = searchParams.get('forceFetch') === 'true';
+  const forceInsights = searchParams.get('forceInsights') === 'true';
   
   if (!clanTag) {
     return NextResponse.json({ 
@@ -105,6 +111,8 @@ export async function GET(req: NextRequest) {
     const result = await runStagedIngestionJob({
       clanTag,
       runPostProcessing: true,
+      forceFetch,
+      forceInsights,
     });
 
     if (result.success) {

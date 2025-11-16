@@ -279,7 +279,7 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const [showRightFade, setShowRightFade] = useState(false);
   const tableScrollRef = useRef<HTMLDivElement>(null);
-  const [viewMode, setViewMode] = useState<'table' | 'leaderboard' | 'cards'>('table');
+  const [viewMode, setViewMode] = useState<'table' | 'leaderboard' | 'cards'>('cards');
   
   // Collapsible summary section - default to collapsed so roster is immediately visible
   const [summaryExpanded, setSummaryExpanded] = useState(() => {

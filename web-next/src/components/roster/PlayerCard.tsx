@@ -1,6 +1,7 @@
 "use client";
 
 import React from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Member } from '@/types';
 import { TownHallBadge, LeagueBadge, HeroLevel, Button, GlassCard } from '@/components/ui';
@@ -30,9 +31,6 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect, clanHe
   const showRoleBadge = roleVariant.tone !== 'member';
   const router = useRouter();
   const leagueInfo = resolveMemberLeague(member);
-  const seasonTotalDisplay = (member as any).seasonTotalTrophies != null
-    ? ((member as any).seasonTotalTrophies as number).toLocaleString()
-    : '—';
   
   // Extract clan average and count for a hero
   const getClanAverage = (heroKey: string): { average: number; count: number } | null => {
@@ -87,22 +85,66 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect, clanHe
               <span className="text-[11px] uppercase tracking-wide text-muted-contrast">Member</span>
             )}
           </div>
-          <h3 className="text-xl font-semibold text-high-contrast drop-shadow-sm">{member.name}</h3>
+          <h3 className="text-xl font-semibold text-high-contrast drop-shadow-sm" style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}>
+            {member.name}
+          </h3>
           <div className="text-xs text-muted-contrast">{member.tag}</div>
         </div>
         <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="lg" showText={false} />
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        <StatChip label="Trophies" value={(member as any).rankedTrophies ?? member.trophies ?? 0} icon="🏆" />
-        <StatChip label="Rush" value={`${rushPercent.toFixed(1)}%`} icon={rushPercent >= 70 ? '🔥' : rushPercent >= 40 ? '⚠️' : '✅'} />
-        <StatChip label="Running" value={seasonTotalDisplay} icon="⭐" tone="positive" />
-        <StatChip label="Donated" value={member.donations ?? 0} icon="💝" tone="positive" />
+        <div className="col-span-2 sm:col-span-3">
+          <StatChip
+            label="Trophies"
+            icon={<StatIcon src="/assets/icons/trophy.svg" alt="Trophy icon" />}
+            tooltip="Current trophy count plus running season total."
+            valueNode={
+              <div className="flex w-full items-start justify-between gap-6 text-[10px] uppercase tracking-[0.18em] text-muted-contrast">
+                <div className="flex flex-col text-left">
+                  <span className="whitespace-nowrap">Trophies Current</span>
+                  <span className="text-base font-semibold text-high-contrast tracking-normal">
+                    {(member as any).rankedTrophies ?? member.trophies ?? 0}
+                  </span>
+                </div>
+                <div className="flex flex-col text-right items-end">
+                  <span className="whitespace-nowrap">Running</span>
+                  <span className="text-base font-semibold text-high-contrast tracking-normal">
+                    {(member as any).seasonTotalTrophies ?? member.seasonTotalTrophies ?? '—'}
+                  </span>
+                </div>
+              </div>
+            }
+          />
+        </div>
+        <StatChip
+          label="Rush"
+          value={`${rushPercent.toFixed(1)}%`}
+          icon={<StatIcon src="/assets/icons/Icon_HV_Resource_Gold_small.png" alt="Rush meter" />}
+          tooltip="Rush index vs. max Town Hall levels (higher = more rushed)."
+        />
+        <StatChip
+          label="Donated"
+          value={member.donations ?? 0}
+          icon={<StatIcon src="/assets/icons/donation.svg" alt="Donations sent" />}
+          tone="positive"
+          tooltip="Troops donated during the current season."
+        />
         <StatChip
           label="Received"
           value={member.donationsReceived ?? 0}
-          icon={donations.isNegative ? '📥' : '📤'}
+          icon={
+            <StatIcon
+              src={donations.isNegative ? '/assets/icons/Clan_Castle.png' : '/assets/icons/Donations-seige.png'}
+              alt="Donations received"
+            />
+          }
           tone={donations.isNegative ? 'warning' : 'muted'}
+          tooltip={
+            donations.isNegative
+              ? 'Troops received this season (receiving more than donating).'
+              : 'Troops received this season.'
+          }
         />
       </div>
 
@@ -215,12 +257,14 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect, clanHe
 
 interface StatChipProps {
   label: string;
-  value: number | string;
-  icon: string;
+  value?: number | string;
+  valueNode?: React.ReactNode;
+  icon: React.ReactNode;
   tone?: 'default' | 'positive' | 'warning' | 'muted';
+  tooltip?: string;
 }
 
-function StatChip({ label, value, icon, tone = 'default' }: StatChipProps) {
+function StatChip({ label, value, valueNode, icon, tone = 'default', tooltip }: StatChipProps) {
   const toneClasses = {
     default: 'player-card__chip',
     positive: 'player-card__chip player-card__chip--positive',
@@ -229,12 +273,29 @@ function StatChip({ label, value, icon, tone = 'default' }: StatChipProps) {
   } as const;
 
   return (
-    <div className={`rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-2 shadow-inner ${toneClasses[tone]}`}>
-      <span className="text-base leading-none">{icon}</span>
+    <div
+      className={`rounded-xl px-2.5 py-1.5 text-xs flex items-center gap-2 shadow-inner ${toneClasses[tone]}`}
+      title={tooltip}
+    >
+      <span className="text-base leading-none flex h-5 w-5 items-center justify-center">{icon}</span>
       <div className="flex flex-col leading-tight">
         <span className="text-[10px] uppercase tracking-wide text-muted-contrast">{label}</span>
-        <span className="text-sm font-semibold text-high-contrast">{value}</span>
+        {valueNode ? (
+          valueNode
+        ) : (
+          <span className="text-sm font-semibold text-high-contrast">{value}</span>
+        )}
       </div>
     </div>
   );
 }
+
+const StatIcon = ({ src, alt }: { src: string; alt: string }) => (
+  <Image
+    src={src}
+    alt={alt}
+    width={20}
+    height={20}
+    className="h-5 w-5 object-contain drop-shadow-sm"
+  />
+);

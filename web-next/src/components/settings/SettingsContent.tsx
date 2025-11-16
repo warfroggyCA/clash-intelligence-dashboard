@@ -62,7 +62,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
   const [newRolePassword, setNewRolePassword] = useState('');
 
   const { permissions } = useLeadership();
-  const effectiveClanTag = normalizeTag(clanTag || homeClan || newHomeClan || '#');
+  const effectiveClanTag = normalizeTag(clanTag || newClanTag || homeClan || newHomeClan || cfg.homeClanTag || '');
 
   const generatePassword = useCallback(() => {
     const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*';
@@ -350,8 +350,9 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
 
   const handleForceRefresh = async () => {
     clearMessage();
-    if (!clanTag) {
-      setMessage('Load a clan first to enable force refresh');
+    const targetClanTag = effectiveClanTag;
+    if (!targetClanTag || !isValidTag(targetClanTag)) {
+      setMessage('Set or select a clan tag before forcing refresh.');
       return;
     }
     setIsRefreshing(true);
@@ -359,11 +360,11 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
       const response = await fetch('/api/admin/force-refresh', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clanTag, includeInsights: true }),
+        body: JSON.stringify({ clanTag: targetClanTag, includeInsights: true }),
       });
       const result = await response.json();
       if (result.success) {
-        clearSmartInsightsPayload(clanTag);
+        clearSmartInsightsPayload(targetClanTag);
         setMessage(`Force refresh completed! ${result.data.memberCount} members, ${result.data.changesDetected} changes detected. Insights: ${result.data.insightsGenerated ? 'Generated' : 'Skipped'}. Refresh page to see updates.`);
         showToast('Force refresh completed successfully! Refresh page to see updates.', 'success');
         // No need to call store methods - components fetch directly from API
@@ -382,8 +383,9 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
 
   const handleCapitalIngestion = async () => {
     clearMessage();
-    if (!clanTag) {
-      setMessage('Load a clan first to enable capital ingestion');
+    const targetClanTag = effectiveClanTag;
+    if (!targetClanTag || !isValidTag(targetClanTag)) {
+      setMessage('Set or select a clan tag before ingesting capital data.');
       return;
     }
     setIsIngestingCapital(true);
@@ -392,7 +394,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
         method: 'POST',
         credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clanTag, seasonLimit: 20 }), // Increased to get more weekends
+        body: JSON.stringify({ clanTag: targetClanTag, seasonLimit: 20 }), // Increased to get more weekends
       });
       const result = await response.json();
       if (result.success) {

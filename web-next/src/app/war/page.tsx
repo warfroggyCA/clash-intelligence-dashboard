@@ -219,6 +219,28 @@ type SavedPlan = {
   opponentClanName?: string | null;
 };
 
+const EMPTY_HERO_LEVELS: HeroLevels = { bk: null, aq: null, gw: null, rc: null, mp: null };
+
+function buildRosterFromProfile(profile?: OpponentProfile | null): RosterMember[] {
+  if (!profile?.roster?.length) return [];
+  return profile.roster.map((player) => {
+    const tag = normalizeTag(player.tag ?? '') || player.tag;
+    return {
+      tag,
+      name: player.name || tag,
+      thLevel: typeof player.th === 'number' ? player.th : null,
+      role: player.role ?? null,
+      trophies: typeof player.trophies === 'number' ? player.trophies : null,
+      rankedTrophies: typeof player.trophies === 'number' ? player.trophies : null,
+      warStars: null,
+      heroLevels: { ...EMPTY_HERO_LEVELS },
+      activityScore: typeof player.readinessScore === 'number' ? player.readinessScore : null,
+      lastUpdated: null,
+      warPreference: null,
+    };
+  });
+}
+
 type SlotBreakdown = {
   slot: number;
   ourTag: string | null;
@@ -348,6 +370,33 @@ const WarCenterPage: React.FC = () => {
   const cleanOpponentTag = normalizedOpponentTag;
   const cleanOurClanTag = normalizedOurClanTag;
 
+  const applyProfileRosterFallback = useCallback(
+    (options?: { resetSelection?: boolean; requireTag?: string }) => {
+      if (!opponentProfile) return false;
+      if (options?.requireTag) {
+        const profileTag = normalizeTag(opponentProfile.clan?.tag ?? '');
+        if (!profileTag || profileTag !== normalizeTag(options.requireTag)) {
+          return false;
+        }
+      }
+      const fallbackRoster = buildRosterFromProfile(opponentProfile);
+      if (!fallbackRoster.length) return false;
+      setOpponentRoster(fallbackRoster);
+      const shouldReset = options?.resetSelection ?? true;
+      if (shouldReset) {
+        setOpponentSelection(new Set());
+      }
+      return true;
+    },
+    [opponentProfile],
+  );
+
+  useEffect(() => {
+    if (!opponentProfile) return;
+    applyProfileRosterFallback();
+    setOpponentError(null);
+  }, [opponentProfile, applyProfileRosterFallback]);
+
   const toggleSelection = (tag: string, target: 'our' | 'opponent') => {
     if (target === 'our') {
       setOurSelection((prev) => {
@@ -457,14 +506,27 @@ const WarCenterPage: React.FC = () => {
         setOpponentSelection(new Set());
       }
     } catch (error) {
-      setOpponentError(error instanceof Error ? error.message : 'Failed to load opponent roster');
-      setOpponentRoster([]);
-      setOpponentSelection(new Set());
-      setOpponentClanName('');
+      const baseMessage = error instanceof Error ? error.message : 'Failed to load opponent roster';
+      const fallbackApplied = applyProfileRosterFallback({
+        resetSelection: !options?.preserveSelection,
+        requireTag: normalizedOpponentTag,
+      });
+      setOpponentError(
+        fallbackApplied
+          ? `${baseMessage}. Showing limited roster from opponent profile instead.`
+          : baseMessage,
+      );
+      if (!fallbackApplied) {
+        setOpponentRoster([]);
+        if (!options?.preserveSelection) {
+          setOpponentSelection(new Set());
+        }
+        setOpponentClanName('');
+      }
     } finally {
       setLoadingOpponents(false);
     }
-  }, [normalizedOpponentTag, opponentClanName]);
+  }, [normalizedOpponentTag, opponentClanName, applyProfileRosterFallback]);
 
   const fetchOpponentProfile = useCallback(
     async (options: { pin?: boolean } = {}) => {
@@ -757,6 +819,7 @@ const WarCenterPage: React.FC = () => {
   ]);
 
   const hasAutoLoadedOurRoster = useRef(false);
+  const autoLoadedClanRef = useRef<string | null>(null);
   const autoFetchOpponentRef = useRef<number | null>(null);
   const planLoadedRef = useRef(false);
   const pendingPlanRef = useRef<SavedPlan | null>(null);
@@ -770,14 +833,14 @@ const WarCenterPage: React.FC = () => {
     };
   }, []);
 
-  // DISABLED: Auto-fetching our roster - now manual only
-  // useEffect(() => {
-  //   if (!hasAutoLoadedOurRoster.current && normalizedOurClanTag && !loadingOurRoster) {
-  //     hasAutoLoadedOurRoster.current = true;
-  //     const preserveSelection = Boolean(pendingPlanRef.current);
-  //     void fetchOurRoster({ preserveSelection });
-  //   }
-  // }, [normalizedOurClanTag, fetchOurRoster, loadingOurRoster]);
+  useEffect(() => {
+    if (!normalizedOurClanTag || loadingOurRoster) return;
+    if (autoLoadedClanRef.current === normalizedOurClanTag && hasAutoLoadedOurRoster.current) return;
+    hasAutoLoadedOurRoster.current = true;
+    autoLoadedClanRef.current = normalizedOurClanTag;
+    const preserveSelection = Boolean(pendingPlanRef.current);
+    void fetchOurRoster({ preserveSelection });
+  }, [normalizedOurClanTag, fetchOurRoster, loadingOurRoster]);
 
   useEffect(() => {
     planLoadedRef.current = false;
@@ -1037,6 +1100,13 @@ const WarCenterPage: React.FC = () => {
     !!normalizedOurClanTag && !!normalizedOpponentTag &&
     normalizedOurSelection.length > 0 && normalizedOpponentSelection.length > 0;
 
+  const currentAnalysis = savedPlan?.analysis ?? matchup?.analysis ?? null;
+  const currentBriefingSource = currentAnalysis
+    ? currentAnalysis.briefing?.source === 'openai'
+      ? `AI (${currentAnalysis.briefing?.model ?? 'OpenAI'})`
+      : 'Heuristic'
+    : null;
+
   const opponentThChips = useMemo(() => {
     if (!opponentProfile) return [] as Array<{ th: string; count: number }>;
     return Object.entries(opponentProfile.thDistribution)
@@ -1276,6 +1346,51 @@ const WarCenterPage: React.FC = () => {
     }
   }, [savedPlan, matchup, ourRoster, opponentRoster, useAI, opponentClanName]);
 
+  const handleCopyDiscordPlan = useCallback(async () => {
+    const analysis = savedPlan?.analysis ?? matchup?.analysis ?? null;
+    const fallbackOur =
+      savedPlan?.ourClanTag || normalizedOurClanTag || (clanName ? `Clan ${clanName}` : 'Our Clan');
+    const fallbackOpponentTag = savedPlan?.opponentClanTag || normalizedOpponentTag || 'Opponent';
+    const derivedOpponentName =
+      savedPlan?.opponentClanName ||
+      opponentClanName ||
+      (opponentProfile?.clan?.name ?? null);
+
+    const text = buildDiscordWarBrief(
+      analysis,
+      savedPlan ?? null,
+      fallbackOur,
+      fallbackOpponentTag,
+      clanName || null,
+      derivedOpponentName,
+    );
+    if (!text) {
+      setPlanError('Run analysis before copying a Discord brief.');
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setPlanMessage('Discord-ready brief copied to clipboard.');
+    } catch (error) {
+      setPlanError('Failed to copy Discord brief.');
+    }
+  }, [
+    savedPlan,
+    matchup,
+    normalizedOurClanTag,
+    normalizedOpponentTag,
+    clanName,
+    opponentClanName,
+  ]);
+
+  const handleLoadPlanClick = useCallback(() => {
+    if (!normalizedOurClanTag) {
+      setPlanError('Set our clan tag before loading a saved plan.');
+      return;
+    }
+    void loadPlan(normalizedOurClanTag);
+  }, [normalizedOurClanTag, loadPlan]);
+
   return (
     <DashboardLayout clanName={clanName || undefined}>
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 p-4 md:p-6">
@@ -1305,7 +1420,14 @@ const WarCenterPage: React.FC = () => {
                 onChange={(event) => setUseAI(event.target.checked)}
                 className="h-4 w-4"
               />
-              <span>AI Analysis</span>
+              <span className="flex flex-col leading-tight">
+                <span>AI Analysis</span>
+                {currentBriefingSource && (
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                    Current: {currentBriefingSource}
+                  </span>
+                )}
+              </span>
             </label>
             <div className="flex items-center gap-2 text-sm">
               <span className="text-xs uppercase text-muted-foreground">Enrich</span>
@@ -1609,7 +1731,10 @@ const WarCenterPage: React.FC = () => {
                     >
                       Re-run Analysis
                     </Button>
-                    <Button onClick={handleCopyPlan}>Copy Payload</Button>
+                <Button onClick={handleCopyPlan}>Copy Payload</Button>
+                <Button variant="outline" onClick={handleCopyDiscordPlan}>
+                  Copy Discord Brief
+                </Button>
                   </>
                 )}
               </div>
@@ -1645,6 +1770,13 @@ const WarCenterPage: React.FC = () => {
           <div className="flex flex-wrap items-center gap-3 mb-3">
             <Button variant="secondary" onClick={handleSavePlan} disabled={!canSavePlan || savingPlan}>
               {savingPlan ? 'Saving…' : 'Save Plan'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={handleLoadPlanClick}
+              disabled={!normalizedOurClanTag || planLoading}
+            >
+              {planLoading ? 'Loading…' : 'Load Saved Plan'}
             </Button>
             {planLoading && <span className="text-xs text-muted-foreground">Loading saved plan…</span>}
             {planMessage && <span className="text-xs text-emerald-400">{planMessage}</span>}
@@ -2012,6 +2144,66 @@ function buildAnalysisReport(analysis: MatchupAnalysis | null | undefined, plan:
   const briefingSource = analysis.briefing ? formatBriefingSource(analysis.briefing) : 'Heuristic';
   lines.push(
     `Generated ${formatTimestamp(analysis.briefing?.generatedAt ?? new Date().toISOString())} • Source: ${briefingSource}`,
+  );
+  return lines.join('\n');
+}
+
+function buildDiscordWarBrief(
+  analysis: MatchupAnalysis | null | undefined,
+  plan: SavedPlan | null,
+  fallbackOur?: string | null,
+  fallbackOpponent?: string | null,
+  ourClanName?: string | null,
+  opponentClanName?: string | null,
+): string | null {
+  if (!analysis) return null;
+  const derivedOur = ourClanName || fallbackOur || plan?.ourClanTag || 'Our Clan';
+  const derivedOpponent =
+    opponentClanName || plan?.opponentClanName || fallbackOpponent || plan?.opponentClanTag || 'Opponent';
+
+  const lines: string[] = [];
+  lines.push(`**War Brief — ${derivedOur} vs ${derivedOpponent}**`);
+  lines.push(`Confidence: ${analysis.summary.confidence.toFixed(1)}% (${analysis.summary.outlook})`);
+  if (analysis.briefing?.headline) {
+    lines.push(`Focus: ${analysis.briefing.headline}`);
+  }
+
+  if (analysis.metrics) {
+    lines.push(`TH Edge: Δ${formatSignedNumber(analysis.metrics.townHall.highTownHallEdge, 0)} • Danger Slots: ${analysis.metrics.rosterReadiness.dangerSlots}`);
+    lines.push(
+      `Hero Firepower: avg ${formatSignedNumber(analysis.metrics.heroFirepower.averageHeroDelta, 1)}, top5 ${formatSignedNumber(
+        analysis.metrics.heroFirepower.topFiveHeroDelta,
+        1,
+      )}`,
+    );
+  }
+
+  const recs = (analysis.recommendations ?? []).slice(0, 3);
+  if (recs.length) {
+    lines.push('');
+    lines.push('__Action Items__');
+    recs.forEach((rec) => lines.push(`• ${rec}`));
+  } else if (analysis.briefing?.bullets?.length) {
+    lines.push('');
+    lines.push('__Action Items__');
+    analysis.briefing.bullets.slice(0, 3).forEach((bullet) => lines.push(`• ${bullet}`));
+  }
+
+  const slots = analysis.slotBreakdown ?? [];
+  if (slots.length) {
+    lines.push('');
+    lines.push(`__Matchups__ (${slots.length})`);
+    slots.forEach((slot) => {
+      const oursRaw = slot.ourName || slot.ourTag || `Slot ${slot.slot}`;
+      const ours = `**${oursRaw}**`;
+      const opp = slot.opponentName || slot.opponentTag || 'Target';
+      lines.push(`${slot.slot}) ${ours} → ${opp} — ${slot.summary}`);
+    });
+  }
+
+  lines.push('');
+  lines.push(
+    `Generated ${formatTimestamp(analysis.briefing?.generatedAt ?? new Date().toISOString())} • Source: ${formatBriefingSource(analysis.briefing)}`,
   );
   return lines.join('\n');
 }
