@@ -136,7 +136,7 @@ export async function GET(req: NextRequest) {
           warPreference: row.war_preference ?? null,
         };
       })
-      .filter((entry): entry is LightweightAlly => Boolean(entry));
+      .filter((entry): entry is LightweightAlly => entry !== null);
 
     roster.sort((a, b) => (b.thLevel ?? 0) - (a.thLevel ?? 0));
 
