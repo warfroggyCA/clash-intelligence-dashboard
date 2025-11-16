@@ -279,7 +279,9 @@ async function fetchLiveWarProfile(tag: string): Promise<WarPlanProfile | null> 
         (('legendStatistics' in (player as any)) ? (player as any).legendStatistics?.currentSeason?.trophies : undefined)
         ?? player.trophies
         ?? null,
-      warStars: player.warStars ?? null,
+      warStars:
+        (('warStars' in (player as any)) ? (player as any).warStars : undefined)
+        ?? null,
       heroLevels: normalizeHeroLevels(extractHeroLevels(player) as Record<string, number | null>),
     };
   } catch (error) {
