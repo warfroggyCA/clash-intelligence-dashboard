@@ -115,28 +115,27 @@ export async function GET(req: NextRequest) {
 
     const memberLookup = new Map(memberRows.map((member) => [member.id, member]));
 
-    const roster: LightweightAlly[] = statsRows
-      .map((row) => {
-        const member = memberLookup.get(row.member_id);
-        if (!member) return null;
-        const tag = normalizeTag(member.tag ?? '');
-        if (!tag) return null;
-        const heroLevels = normalizeHeroLevels(row.hero_levels);
-        return {
-          tag,
-          name: member.name || tag,
-          thLevel: row.th_level ?? null,
-          role: row.role ?? null,
-          trophies: row.battle_mode_trophies ?? row.trophies ?? null,
-          rankedTrophies: row.ranked_trophies ?? row.battle_mode_trophies ?? null,
-          warStars: row.war_stars ?? null,
-          heroLevels,
-          activityScore: row.activity_score ?? null,
-          lastUpdated: latestSnapshot.fetched_at ?? null,
-          warPreference: row.war_preference ?? null,
-        };
-      })
-      .filter((entry): entry is LightweightAlly => entry !== null);
+    const roster: LightweightAlly[] = statsRows.reduce<LightweightAlly[]>((acc, row) => {
+      const member = memberLookup.get(row.member_id);
+      if (!member) return acc;
+      const tag = normalizeTag(member.tag ?? '');
+      if (!tag) return acc;
+      const heroLevels = normalizeHeroLevels(row.hero_levels);
+      acc.push({
+        tag,
+        name: member.name || tag,
+        thLevel: row.th_level ?? null,
+        role: row.role ?? null,
+        trophies: row.battle_mode_trophies ?? row.trophies ?? null,
+        rankedTrophies: row.ranked_trophies ?? row.battle_mode_trophies ?? null,
+        warStars: row.war_stars ?? null,
+        heroLevels,
+        activityScore: row.activity_score ?? null,
+        lastUpdated: latestSnapshot.fetched_at ?? null,
+        warPreference: row.war_preference ?? null,
+      });
+      return acc;
+    }, []);
 
     roster.sort((a, b) => (b.thLevel ?? 0) - (a.thLevel ?? 0));
 
