@@ -280,7 +280,7 @@ export const useQuickActions = () => {
             seasonStart: snapshotMetadata.seasonStart ?? null,
             seasonEnd: snapshotMetadata.seasonEnd ?? null,
           },
-          clanHeroAverages: roster.clanHeroAverages ?? undefined,
+          clanHeroAverages: ('clanHeroAverages' in (roster as any)) ? (roster as any).clanHeroAverages : undefined,
         };
 
         const rosterTable = formatRosterSummary(rosterExportPayload);
