@@ -6,7 +6,7 @@ import {
   type WarPlanProfile,
 } from '@/lib/war-planning/analysis';
 import { enhanceWarPlanAnalysis } from '@/lib/war-planning/ai-briefing';
-import { requirePermission } from '@/lib/api/role-check';
+import { requireLeadership, requirePermission } from '@/lib/api/role-check';
 import { cfg } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
