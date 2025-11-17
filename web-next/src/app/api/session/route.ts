@@ -11,6 +11,7 @@ export async function GET(_req: NextRequest) {
       return NextResponse.json({ success: true, data: { user: null, roles: [] } });
     }
     const roles = await getUserClanRoles(user.id);
+    const needsOnboarding = roles.some((role) => !role.player_tag);
     return NextResponse.json({
       success: true,
       data: {
@@ -19,6 +20,7 @@ export async function GET(_req: NextRequest) {
           email: user.email,
         },
         roles,
+        needsOnboarding,
       },
     });
   } catch (error: any) {
@@ -26,4 +28,3 @@ export async function GET(_req: NextRequest) {
     return NextResponse.json({ success: false, error: error?.message || 'Internal Server Error' }, { status: 500 });
   }
 }
-

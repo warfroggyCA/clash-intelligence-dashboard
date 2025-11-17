@@ -1,8 +1,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { checkLeadershipAccess, getRolePermissions, type LeadershipCheck, type RolePermissions, type ClanRole, clanRoleFromName } from '../lib/leadership';
-import { getAccessLevelPermissions, type AccessLevel } from '@/lib/access-management';
+import { getAccessLevelPermissions } from '@/lib/access-management';
 import { normalizeTag } from '@/lib/tags';
+import { roleToAccessLevel, type CustomPermissions } from '@/lib/access/permission-types';
 
 export interface UseLeadershipResult {
   check: LeadershipCheck;
@@ -17,7 +18,7 @@ export interface UseLeadershipResult {
  */
 function useCustomPermissions() {
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
-  const [customPermissions, setCustomPermissions] = useState<any>(null);
+  const [customPermissions, setCustomPermissions] = useState<CustomPermissions | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -83,19 +84,6 @@ function useCustomPermissions() {
 }
 
 /**
- * Map ClanRole to AccessLevel for permission checking
- */
-function roleToAccessLevel(role: ClanRole): AccessLevel {
-  switch (role) {
-    case 'leader': return 'leader';
-    case 'coLeader': return 'coleader';
-    case 'elder': return 'elder';
-    case 'member': return 'member';
-    default: return 'member';
-  }
-}
-
-/**
  * Convert AccessLevel permissions to RolePermissions
  */
 function accessPermissionsToRolePermissions(
@@ -110,6 +98,9 @@ function accessPermissionsToRolePermissions(
     canViewLeadershipFeatures: accessPerms.canViewLeadershipFeatures,
     canManageAccess: accessPerms.canManageAccess,
     canViewAuditLog: accessPerms.canViewAuditLog,
+    canViewWarPrep: accessPerms.canViewWarPrep,
+    canManageWarPlans: accessPerms.canManageWarPlans,
+    canRunWarAnalysis: accessPerms.canRunWarAnalysis,
   };
 }
 

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { requirePermission } from '@/lib/api/role-check';
+import { cfg } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -12,7 +14,7 @@ interface SelectedPayload {
 export async function POST(req: NextRequest) {
   try {
     const supabase = getSupabaseServerClient();
-    const body = (await req.json().catch(() => ({}))) as SelectedPayload;
+    const body = (await req.json().catch(() => ({}))) as SelectedPayload & { clanTag?: string };
     const rawTags = Array.isArray(body.selectedTags) ? body.selectedTags : [];
     const normalizedTags = rawTags
       .map((tag) => normalizeTag(tag))
@@ -24,6 +26,9 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    const ourClanTag = normalizeTag(body.clanTag ?? '') || cfg.homeClanTag;
+    await requirePermission(req, 'canManageWarPlans', { clanTag: ourClanTag ?? undefined });
 
     const { data: snapshotRows, error: snapshotError } = await supabase
       .from('canonical_member_snapshots')
@@ -132,6 +137,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/selected] POST failed', error);
     return NextResponse.json(
       {
@@ -143,4 +151,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

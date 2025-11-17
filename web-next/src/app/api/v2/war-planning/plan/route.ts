@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { requirePermission } from '@/lib/api/role-check';
+import { requireLeadership } from '@/lib/api/role-check';
 import {
   WAR_PLAN_SELECT_FIELDS,
   fetchWarPlanRecord,
@@ -37,6 +39,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    await requirePermission(req, 'canViewWarPrep', { clanTag: ourClanTag });
+
     const record = await fetchWarPlanRecord(supabase, ourClanTag, opponentClanTag ?? undefined);
 
     return NextResponse.json({
@@ -46,6 +50,9 @@ export async function GET(req: NextRequest) {
         : null,
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/plan] GET failed', error);
     return NextResponse.json(
       {
@@ -63,6 +70,8 @@ export async function POST(req: NextRequest) {
     const supabase = getSupabaseServerClient();
     const payload = await parsePlanPayload(req);
     const aiEnabled = payload.useAI ?? true;
+
+    await requirePermission(req, 'canManageWarPlans', { clanTag: payload.ourClanTag });
 
     const upsertResult = await supabase
       .from('war_plans')
@@ -98,6 +107,9 @@ export async function POST(req: NextRequest) {
       data: { ...serializePlan(queuedPlan), useAI: aiEnabled },
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/plan] POST failed', error);
     return NextResponse.json(
       {
@@ -124,6 +136,8 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
+    await requirePermission(req, 'canManageWarPlans', { clanTag: ourClanTag });
+
     const builder = supabase.from('war_plans').delete().eq('our_clan_tag', ourClanTag);
     const query = opponentClanTag ? builder.eq('opponent_clan_tag', opponentClanTag) : builder;
     const { error } = await query;
@@ -131,6 +145,9 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/plan] DELETE failed', error);
     return NextResponse.json(
       {

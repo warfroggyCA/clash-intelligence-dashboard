@@ -6,6 +6,8 @@ import {
   type WarPlanProfile,
 } from '@/lib/war-planning/analysis';
 import { enhanceWarPlanAnalysis } from '@/lib/war-planning/ai-briefing';
+import { requirePermission } from '@/lib/api/role-check';
+import { cfg } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -70,6 +72,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    await requireLeadership(req, { clanTag: ourClanTag });
+
+    const permissionClanTag = ourClanTag || cfg.homeClanTag;
+    await requirePermission(req, 'canRunWarAnalysis', { clanTag: permissionClanTag ?? undefined });
+
     let ourProfiles = await loadProfiles(supabase, ourSelected, ourClanTag);
     let opponentProfiles = await loadProfiles(supabase, opponentSelected, opponentClanTag);
 
@@ -101,6 +108,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/matchup] POST failed', error);
     return NextResponse.json(
       {

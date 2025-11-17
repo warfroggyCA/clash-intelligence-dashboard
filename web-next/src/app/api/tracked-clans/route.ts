@@ -4,9 +4,17 @@ import { createApiContext } from '@/lib/api/route-helpers';
 import { requireLeader, getCurrentUserIdentifier } from '@/lib/api/role-check';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { runStagedIngestionJob } from '@/lib/ingestion/run-staged-ingestion';
+import { cfg } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const normalizedHomeClanTag = normalizeTag(cfg.homeClanTag || '');
+
+function isHomeClan(tag: string | null | undefined): boolean {
+  if (!normalizedHomeClanTag) return false;
+  return normalizeTag(tag || '') === normalizedHomeClanTag;
+}
 
 async function readTrackedClans(): Promise<string[]> {
   const supabase = getSupabaseServerClient();
@@ -96,7 +104,19 @@ export async function GET(request: NextRequest) {
 
   try {
     const clans = await readTrackedClans();
-    return json({ success: true, data: { clans } });
+    let filtered = clans;
+    if (normalizedHomeClanTag) {
+      const hasHome = clans.some((tag) => normalizeTag(tag) === normalizedHomeClanTag);
+      if (hasHome) {
+        try {
+          await removeTrackedClan(normalizedHomeClanTag);
+        } catch (error) {
+          console.warn('[TrackedClans GET] Failed to deactivate home clan entry:', error);
+        }
+      }
+      filtered = clans.filter((tag) => normalizeTag(tag) !== normalizedHomeClanTag);
+    }
+    return json({ success: true, data: { clans: filtered } });
   } catch (error: any) {
     console.error('[TrackedClans GET] Error:', error);
     return json({ success: false, error: error.message || 'Failed to read tracked clans' }, { status: 500 });
@@ -127,6 +147,13 @@ export async function POST(request: NextRequest) {
     const normalizedTag = normalizeTag(clanTag);
     if (!isValidTag(normalizedTag)) {
       return json({ success: false, error: 'Invalid clan tag format' }, { status: 400 });
+    }
+
+    if (isHomeClan(normalizedTag)) {
+      return json(
+        { success: false, error: 'Home clan is ingested automatically. Track only additional clans.' },
+        { status: 400 },
+      );
     }
 
     // Check if already tracked
@@ -204,4 +231,3 @@ export async function DELETE(request: NextRequest) {
     return json({ success: false, error: error.message || 'Failed to remove tracked clan' }, { status: 500 });
   }
 }
-

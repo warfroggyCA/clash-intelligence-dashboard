@@ -24,6 +24,8 @@ import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import { supabase } from '@/lib/supabase';
 
+const VIEW_ROLE_STORAGE_KEY = 'ci:view-role:v1';
+
 
 // =============================================================================
 // TYPES
@@ -110,6 +112,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
   const roleMenuRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLElement | null>(null);
+  const restoredViewRoleClanRef = useRef<string | null>(null);
 
   const updateHeaderMetrics = useCallback((height: number) => {
     if (typeof document === 'undefined') return;
@@ -270,6 +273,62 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
       await refreshData();
     }
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const normalizedClanTag = normalizedClanTagValue;
+    if (!normalizedClanTag) return;
+
+    if (impersonatedRole) {
+      restoredViewRoleClanRef.current = normalizedClanTag;
+      return;
+    }
+
+    if (restoredViewRoleClanRef.current === normalizedClanTag) {
+      return;
+    }
+
+    try {
+      const raw = window.localStorage.getItem(VIEW_ROLE_STORAGE_KEY);
+      if (!raw) {
+        restoredViewRoleClanRef.current = normalizedClanTag;
+        return;
+      }
+      const stored = JSON.parse(raw) as Record<string, ClanRoleName | null>;
+      const savedRole = stored?.[normalizedClanTag];
+      if (savedRole) {
+        setImpersonatedRole(savedRole);
+      }
+      restoredViewRoleClanRef.current = normalizedClanTag;
+    } catch (error) {
+      console.warn('[DashboardLayout] Failed to restore view-as role', error);
+      restoredViewRoleClanRef.current = normalizedClanTag;
+    }
+  }, [impersonatedRole, normalizedClanTagValue, setImpersonatedRole]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const normalizedClanTag = normalizedClanTagValue;
+    if (!normalizedClanTag) return;
+
+    try {
+      const raw = window.localStorage.getItem(VIEW_ROLE_STORAGE_KEY);
+      const stored = raw ? (JSON.parse(raw) as Record<string, ClanRoleName | null>) : {};
+      if (impersonatedRole) {
+        if (stored[normalizedClanTag] === impersonatedRole) {
+          return;
+        }
+        stored[normalizedClanTag] = impersonatedRole;
+      } else if (stored[normalizedClanTag]) {
+        delete stored[normalizedClanTag];
+      } else {
+        return;
+      }
+      window.localStorage.setItem(VIEW_ROLE_STORAGE_KEY, JSON.stringify(stored));
+    } catch (error) {
+      console.warn('[DashboardLayout] Failed to persist view-as role', error);
+    }
+  }, [impersonatedRole, normalizedClanTagValue]);
 
   // Simplified logo loading - use the known working logo
   const logoSrc = '/clans/2pr8r8v8p.png';

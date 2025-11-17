@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { requirePermission } from '@/lib/api/role-check';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -32,6 +33,8 @@ export async function GET(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    await requirePermission(req, 'canViewWarPrep', { clanTag });
 
     const supabase = getSupabaseServerClient();
 
@@ -147,6 +150,9 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/our-roster] GET failed', error);
     return NextResponse.json(
       {

@@ -43,6 +43,9 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canViewSensitiveData: false,
     canViewLeadershipFeatures: false,
     canViewAuditLog: false,
+    canViewWarPrep: false,
+    canManageWarPlans: false,
+    canRunWarAnalysis: false,
   },
   member: {
     canViewRoster: true,
@@ -55,6 +58,9 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canViewSensitiveData: false,
     canViewLeadershipFeatures: false,
     canViewAuditLog: false,
+    canViewWarPrep: true,
+    canManageWarPlans: false,
+    canRunWarAnalysis: false,
   },
   elder: {
     canViewRoster: true,
@@ -67,6 +73,9 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canViewSensitiveData: true,
     canViewLeadershipFeatures: true,
     canViewAuditLog: false,
+    canViewWarPrep: true,
+    canManageWarPlans: false,
+    canRunWarAnalysis: false,
   },
   coleader: {
     canViewRoster: true,
@@ -79,6 +88,9 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canViewSensitiveData: true,
     canViewLeadershipFeatures: true,
     canViewAuditLog: false,
+    canViewWarPrep: true,
+    canManageWarPlans: true,
+    canRunWarAnalysis: true,
   },
   leader: {
     canViewRoster: true,
@@ -91,6 +103,9 @@ export const ACCESS_LEVEL_PERMISSIONS = {
     canViewSensitiveData: true,
     canViewLeadershipFeatures: true,
     canViewAuditLog: true,
+    canViewWarPrep: true,
+    canManageWarPlans: true,
+    canRunWarAnalysis: true,
   },
 };
 
