@@ -48,7 +48,7 @@ export default function LandingPage() {
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg">
               ⚔️
             </span>
-            <span>Clash Intelligence</span>
+            <span>Clash Intelligence Dashboard</span>
           </div>
           <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
             <Link
@@ -68,7 +68,7 @@ export default function LandingPage() {
 
         <section className="mx-auto flex max-w-6xl flex-col gap-10 px-5 pb-14 pt-6 sm:px-8 md:flex-row md:items-center">
           <div className="flex-1 space-y-8">
-            <p className="text-xs uppercase tracking-[0.4em] text-clash-gold/70">Clan intelligence toolkit</p>
+            <p className="text-xs uppercase tracking-[0.4em] text-clash-gold/70">Clash Intelligence Dashboard</p>
             <div className="space-y-6">
               <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
                 {clanConfig.marketingOnly ? (
@@ -85,7 +85,7 @@ export default function LandingPage() {
                 )}
               </h1>
               <p className="text-base text-slate-300 sm:text-lg">
-                One command center for roster health, war intelligence, capital ROI, and player development. Every insight is clan-aware,
+                The Clash Intelligence Dashboard is your command center for roster health, war intelligence, capital ROI, and player development. Every insight is clan-aware,
                 authenticated, and ready from first scout to final hit.
               </p>
             </div>
