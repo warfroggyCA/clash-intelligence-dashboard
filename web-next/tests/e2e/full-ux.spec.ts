@@ -3,8 +3,8 @@ import { waitForOnboardingState } from './utils/onboarding';
 
 const APEX_HOST = process.env.PLAYWRIGHT_APEX_HOST || 'http://localhost:5050';
 const CLAN_HOST = process.env.PLAYWRIGHT_CLAN_HOST || 'http://heckyeah.localhost:5050';
-const TEST_EMAIL = process.env.PLAYWRIGHT_TEST_EMAIL || 'd.ougfindlay@gmail.com';
-const TEST_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD || 'testaccount';
+const TEST_EMAIL = process.env.PLAYWRIGHT_TEST_EMAIL || 'do.ugfindlay@gmail.com';
+const TEST_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD || 'testuser';
 
 async function signIn(page) {
   await page.goto(`${CLAN_HOST}/login`);
