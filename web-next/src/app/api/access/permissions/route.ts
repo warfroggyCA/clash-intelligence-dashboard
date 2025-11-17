@@ -3,7 +3,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { normalizeTag } from '@/lib/tags';
 import { requireLeader } from '@/lib/api/role-check';
 import { sanitizeErrorForApi } from '@/lib/security/error-sanitizer';
-import type { CustomPermissions } from '@/components/settings/PermissionManager';
+import type { CustomPermissions } from '@/lib/access/permission-types';
 
 /**
  * GET /api/access/permissions
@@ -173,4 +173,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

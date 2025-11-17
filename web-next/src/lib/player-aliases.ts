@@ -8,6 +8,54 @@
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 
+type AliasGraph = Map<string, Set<string>>;
+const aliasGraphCache = new Map<string, { graph: AliasGraph; fetchedAt: number }>();
+const GRAPH_CACHE_TTL_MS = 5 * 60 * 1000;
+
+async function loadAliasGraph(clanTag: string): Promise<AliasGraph> {
+  const normalizedClanTag = normalizeTag(clanTag);
+  if (!normalizedClanTag) {
+    return new Map();
+  }
+
+  const cached = aliasGraphCache.get(normalizedClanTag);
+  if (cached && Date.now() - cached.fetchedAt < GRAPH_CACHE_TTL_MS) {
+    return cached.graph;
+  }
+
+  const supabase = getSupabaseAdminClient();
+  const { data, error } = await supabase
+    .from('player_alias_links')
+    .select('player_tag_1, player_tag_2')
+    .eq('clan_tag', normalizedClanTag);
+
+  if (error) {
+    console.error('Error loading alias graph:', error);
+    return new Map();
+  }
+
+  const graph: AliasGraph = new Map();
+  (data || []).forEach((row) => {
+    const tag1 = normalizeTag(row.player_tag_1);
+    const tag2 = normalizeTag(row.player_tag_2);
+    if (!tag1 || !tag2) return;
+    if (!graph.has(tag1)) graph.set(tag1, new Set());
+    if (!graph.has(tag2)) graph.set(tag2, new Set());
+    graph.get(tag1)!.add(tag2);
+    graph.get(tag2)!.add(tag1);
+  });
+
+  aliasGraphCache.set(normalizedClanTag, { graph, fetchedAt: Date.now() });
+  return graph;
+}
+
+function invalidateAliasGraph(clanTag: string) {
+  const normalizedClanTag = normalizeTag(clanTag);
+  if (normalizedClanTag) {
+    aliasGraphCache.delete(normalizedClanTag);
+  }
+}
+
 /**
  * Get all player tags linked to a given tag
  * Returns all tags that are linked bidirectionally (checks both player_tag_1 and player_tag_2)
@@ -16,7 +64,6 @@ export async function getLinkedTags(
   clanTag: string,
   playerTag: string
 ): Promise<string[]> {
-  const supabase = getSupabaseAdminClient();
   const normalizedClanTag = normalizeTag(clanTag);
   const normalizedPlayerTag = normalizeTag(playerTag);
 
@@ -24,33 +71,29 @@ export async function getLinkedTags(
     return [];
   }
 
-  // Query both directions: where tag is player_tag_1 or player_tag_2
-  const { data, error } = await supabase
-    .from('player_alias_links')
-    .select('player_tag_1, player_tag_2')
-    .eq('clan_tag', normalizedClanTag)
-    .or(`player_tag_1.eq.${normalizedPlayerTag},player_tag_2.eq.${normalizedPlayerTag}`);
+  const graph = await loadAliasGraph(normalizedClanTag);
+  if (!graph.size) return [];
 
-  if (error) {
-    console.error('Error fetching linked tags:', error);
-    return [];
-  }
+  const visited = new Set<string>([normalizedPlayerTag]);
+  const connected = new Set<string>();
+  const stack = [normalizedPlayerTag];
 
-  if (!data || data.length === 0) {
-    return [];
-  }
-
-  // Extract all linked tags (excluding the input tag)
-  const linkedTags = new Set<string>();
-  data.forEach((link) => {
-    if (link.player_tag_1 === normalizedPlayerTag) {
-      linkedTags.add(link.player_tag_2);
-    } else {
-      linkedTags.add(link.player_tag_1);
+  while (stack.length) {
+    const current = stack.pop();
+    if (!current) continue;
+    const neighbors = graph.get(current);
+    if (!neighbors) continue;
+    for (const neighbor of neighbors) {
+      if (!visited.has(neighbor)) {
+        visited.add(neighbor);
+        connected.add(neighbor);
+        stack.push(neighbor);
+      }
     }
-  });
+  }
 
-  return Array.from(linkedTags);
+  connected.delete(normalizedPlayerTag);
+  return Array.from(connected);
 }
 
 /**
@@ -145,6 +188,8 @@ export async function linkPlayerTags(
     return { success: false, error: error.message };
   }
 
+  invalidateAliasGraph(normalizedClanTag);
+
   return { success: true };
 }
 
@@ -181,6 +226,8 @@ export async function unlinkPlayerTags(
     console.error('Error unlinking player tags:', error);
     return { success: false, error: error.message };
   }
+
+  invalidateAliasGraph(normalizedClanTag);
 
   return { success: true };
 }

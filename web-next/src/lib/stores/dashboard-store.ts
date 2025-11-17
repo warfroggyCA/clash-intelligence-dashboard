@@ -358,6 +358,8 @@ interface DashboardState {
   isHydrated: boolean;
   currentAccessMember: AccessMember | null;
   accessPermissions: RolePermissions;
+  needsOnboarding: boolean;
+  setNeedsOnboarding: (needs: boolean) => void;
   sessionStatus: 'idle' | 'loading' | 'ready' | 'error';
   sessionError: string | null;
   
@@ -544,6 +546,8 @@ const initialState = {
   isHydrated: false,
   currentAccessMember: null,
   accessPermissions: ACCESS_LEVEL_PERMISSIONS[DEFAULT_ACCESS_LEVEL],
+  needsOnboarding: false,
+  setNeedsOnboarding: () => {},
   
   // Modals & UI
   showAccessManager: false,
@@ -1427,6 +1431,7 @@ export const useDashboardStore = create<DashboardState>()(
               sessionStatus: 'error',
               sessionError: 'Unable to load session',
               impersonatedRole: null,
+              needsOnboarding: false,
             });
             return;
           }
@@ -1438,6 +1443,7 @@ export const useDashboardStore = create<DashboardState>()(
               sessionStatus: 'error',
               sessionError: body?.error || 'Unable to load session',
               impersonatedRole: null,
+              needsOnboarding: false,
             });
             return;
           }
@@ -1454,12 +1460,14 @@ export const useDashboardStore = create<DashboardState>()(
               )
             : false;
 
+          const needsOnboarding = Boolean(body.data?.needsOnboarding);
           set({
             currentUser: nextUser,
             userRoles: roles,
             sessionStatus: 'ready',
             sessionError: null,
             impersonatedRole: hasLeadershipAccess ? currentState.impersonatedRole : null,
+            needsOnboarding,
           });
           void get().autoLoadHomeClanIfNeeded();
         } catch (error) {
@@ -1470,9 +1478,12 @@ export const useDashboardStore = create<DashboardState>()(
             sessionStatus: 'error',
             sessionError: 'Failed to connect to session endpoint',
             impersonatedRole: null,
+            needsOnboarding: false,
           });
         }
       },
+
+      setNeedsOnboarding: (needsOnboarding) => set({ needsOnboarding }),
 
       canManageAccess: () => {
         const state = get();

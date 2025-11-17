@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { requirePermission } from '@/lib/api/role-check';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -24,6 +25,8 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    await requirePermission(req, 'canManageWarPlans', { clanTag });
 
     const selectedTags = Array.isArray(body.selectedTags) ? body.selectedTags : [];
     const normalizedSelected = selectedTags
@@ -103,6 +106,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/our-selection] POST failed', error);
     return NextResponse.json(
       {
@@ -169,4 +175,3 @@ function buildSelectionSummary(selection: Array<{ thLevel: number | null; heroLe
     notes: selection.length >= 15 ? ['Roster ready for 15v15'] : [],
   };
 }
-

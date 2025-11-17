@@ -415,6 +415,9 @@ export interface RolePermissions {
   canManageChangeDashboard: boolean;
   canViewLeadershipFeatures: boolean;
   canManageAccess: boolean;
+  canViewWarPrep: boolean;
+  canManageWarPlans: boolean;
+  canRunWarAnalysis: boolean;
 }
 
 /**

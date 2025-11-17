@@ -724,7 +724,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
         subtitle="Manage clans tracked by Mac ingestion cron jobs. All tracked clans will be ingested daily."
         className="space-y-4"
       >
-        <TrackedClansManager />
+        <TrackedClansManager homeClan={homeClan || cfg.homeClanTag} />
       </GlassCard>
 
       <GlassCard
@@ -855,11 +855,13 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
 }
 
 // Tracked Clans Manager Component
-function TrackedClansManager() {
+function TrackedClansManager({ homeClan }: { homeClan?: string | null }) {
   const [trackedClans, setTrackedClans] = useState<string[]>([]);
   const [newClanTag, setNewClanTag] = useState('');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
+  const normalizedHomeClan = normalizeTag(homeClan || cfg.homeClanTag || '');
+  const hasHomeClanConfigured = Boolean(normalizedHomeClan);
 
   const fetchTrackedClans = useCallback(async () => {
     try {
@@ -871,7 +873,12 @@ function TrackedClansManager() {
       if (response.ok) {
         const result = await response.json();
         if (result.success) {
-          setTrackedClans(result.data.clans || []);
+          const clans = (result.data.clans || []) as string[];
+          if (normalizedHomeClan) {
+            setTrackedClans(clans.filter((tag) => normalizeTag(tag) !== normalizedHomeClan));
+          } else {
+            setTrackedClans(clans);
+          }
         }
       }
     } catch (error) {
@@ -879,7 +886,7 @@ function TrackedClansManager() {
     } finally {
       setFetching(false);
     }
-  }, []);
+  }, [normalizedHomeClan]);
 
   useEffect(() => {
     void fetchTrackedClans();
@@ -894,6 +901,11 @@ function TrackedClansManager() {
     const normalizedTag = normalizeTag(newClanTag);
     if (!isValidTag(normalizedTag)) {
       showToast('Invalid clan tag format', 'error');
+      return;
+    }
+
+    if (normalizedHomeClan && normalizedTag === normalizedHomeClan) {
+      showToast('Home clan is ingested automatically. Track other clans only.', 'error');
       return;
     }
 
@@ -925,6 +937,11 @@ function TrackedClansManager() {
   };
 
   const handleRemoveClan = async (clanTag: string) => {
+    if (normalizedHomeClan && normalizeTag(clanTag) === normalizedHomeClan) {
+      showToast('Home clan tracking cannot be managed here.', 'error');
+      return;
+    }
+
     try {
       setLoading(true);
       const response = await fetch(`/api/tracked-clans?clanTag=${encodeURIComponent(clanTag)}`, {
@@ -954,6 +971,11 @@ function TrackedClansManager() {
 
   return (
     <div className="space-y-4">
+      {!hasHomeClanConfigured && (
+        <div className="rounded-lg border border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+          Set a home clan above before tracking additional clans. The home clan is ingested automatically.
+        </div>
+      )}
       <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="text"
@@ -966,10 +988,11 @@ function TrackedClansManager() {
               void handleAddClan();
             }
           }}
+          disabled={!hasHomeClanConfigured}
         />
         <button
           onClick={handleAddClan}
-          disabled={loading || !newClanTag.trim()}
+          disabled={loading || !newClanTag.trim() || !hasHomeClanConfigured}
           className="inline-flex items-center gap-2 rounded-md bg-indigo-500 px-3 py-2 text-sm font-semibold text-white transition hover:bg-indigo-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? (
@@ -986,6 +1009,9 @@ function TrackedClansManager() {
       ) : (
         <div className="space-y-2">
           <p className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Tracked Clans ({trackedClans.length})</p>
+          <p className="text-xs text-slate-400">
+            Home clan {normalizedHomeClan || '—'} is automatically ingested and does not appear here.
+          </p>
           <div className="space-y-2">
             {trackedClans.map((tag) => (
               <div

@@ -6,6 +6,7 @@ import {
 } from '@/lib/war-planning/service';
 import type { WarPlanProfile } from '@/lib/war-planning/analysis';
 import { queueWarPlanAnalysis } from '@/lib/war-planning/analysis-job';
+import { requirePermission } from '@/lib/api/role-check';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -31,6 +32,8 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    await requirePermission(req, 'canRunWarAnalysis', { clanTag: ourClanTag });
 
     const plan = await fetchWarPlanRecord(supabase, ourClanTag, opponentClanTag || undefined);
     if (!plan) {
@@ -91,6 +94,9 @@ export async function POST(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/plan/analyze] POST failed', error);
     return NextResponse.json(
       {

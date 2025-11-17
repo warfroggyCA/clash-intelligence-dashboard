@@ -1,31 +1,17 @@
 "use client";
 
 import { useEffect } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
 import type { Session, AuthChangeEvent } from '@supabase/supabase-js';
 
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { syncServerSession } from '@/lib/auth/session-sync';
-
-let browserSupabase: ReturnType<typeof createBrowserClient> | null = null;
-
-function getBrowserSupabase() {
-  if (!browserSupabase) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!supabaseUrl || !supabaseKey) {
-      throw new Error('Supabase client credentials missing');
-    }
-    browserSupabase = createBrowserClient(supabaseUrl, supabaseKey);
-  }
-  return browserSupabase;
-}
+import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export default function SupabaseSessionSync() {
   const hydrateSession = useDashboardStore((state) => state.hydrateSession);
 
   useEffect(() => {
-    const supabase = getBrowserSupabase();
+    const supabase = getSupabaseBrowserClient();
     let isMounted = true;
 
     const syncAndHydrate = async (event: AuthChangeEvent | 'INITIAL_SESSION', session: Session | null) => {

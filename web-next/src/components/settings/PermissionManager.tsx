@@ -8,39 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { showToast } from '@/lib/toast';
 import { cfg } from '@/lib/config';
 import { useLeadership } from '@/hooks/useLeadership';
-
-export type PermissionKey = 
-  | 'canViewRoster'
-  | 'canViewBasicStats'
-  | 'canAccessDiscordPublisher'
-  | 'canGenerateCoachingInsights'
-  | 'canManageChangeDashboard'
-  | 'canModifyClanData'
-  | 'canManageAccess'
-  | 'canViewSensitiveData'
-  | 'canViewLeadershipFeatures'
-  | 'canViewAuditLog';
-
-export interface PermissionSet {
-  canViewRoster: boolean;
-  canViewBasicStats: boolean;
-  canAccessDiscordPublisher: boolean;
-  canGenerateCoachingInsights: boolean;
-  canManageChangeDashboard: boolean;
-  canModifyClanData: boolean;
-  canManageAccess: boolean;
-  canViewSensitiveData: boolean;
-  canViewLeadershipFeatures: boolean;
-  canViewAuditLog: boolean;
-}
-
-export interface CustomPermissions {
-  viewer?: Partial<PermissionSet>;
-  member?: Partial<PermissionSet>;
-  elder?: Partial<PermissionSet>;
-  coleader?: Partial<PermissionSet>;
-  leader?: Partial<PermissionSet>;
-}
+import type { PermissionKey, PermissionSet, CustomPermissions } from '@/lib/access/permission-types';
 
 const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
   canViewRoster: 'View clan roster and member list',
@@ -53,6 +21,9 @@ const PERMISSION_DESCRIPTIONS: Record<PermissionKey, string> = {
   canViewSensitiveData: 'View sensitive data (notes, warnings, departure reasons)',
   canViewLeadershipFeatures: 'View leadership-only features',
   canViewAuditLog: 'View audit log of all changes made by leadership',
+  canViewWarPrep: 'Access the War Prep workspace and read saved plans',
+  canManageWarPlans: 'Modify war plans (select rosters, save or delete plans)',
+  canRunWarAnalysis: 'Run matchup analysis and queue AI briefings',
 };
 
 const PERMISSION_GROUPS: Array<{ label: string; permissions: PermissionKey[] }> = [
@@ -71,6 +42,10 @@ const PERMISSION_GROUPS: Array<{ label: string; permissions: PermissionKey[] }> 
   {
     label: 'Advanced Features',
     permissions: ['canAccessDiscordPublisher', 'canGenerateCoachingInsights'],
+  },
+  {
+    label: 'War Planning',
+    permissions: ['canViewWarPrep', 'canManageWarPlans', 'canRunWarAnalysis'],
   },
 ];
 
@@ -327,10 +302,10 @@ export default function PermissionManager({ clanTag, className }: PermissionMana
             <tbody className="divide-y divide-brand-border/50">
               {PERMISSION_GROUPS.map((group) => (
                 <React.Fragment key={group.label}>
-                  <tr className="bg-brand-surface-secondary/50">
+                  <tr className="bg-brand-surfaceSubtle/70">
                     <td
                       colSpan={allLevels.length + 1}
-                      className="px-4 py-2 text-xs font-semibold text-brand-text-tertiary uppercase tracking-wider"
+                      className="px-4 py-2 text-[11px] font-semibold text-brand-text-secondary uppercase tracking-[0.4em] border-y border-brand-border/60"
                     >
                       {group.label}
                     </td>
@@ -340,8 +315,8 @@ export default function PermissionManager({ clanTag, className }: PermissionMana
                     return (
                       <tr key={permission} className="hover:bg-brand-surface-hover/30 transition-colors">
                         <td className="px-4 py-3">
-                          <div className="flex flex-col">
-                            <span className="text-sm font-medium text-brand-text-primary">
+                          <div className="flex flex-col border-l border-brand-border/40 pl-4">
+                            <span className="text-sm font-semibold text-brand-text-primary">
                               {permission.replace(/can([A-Z])/g, '$1').replace(/([A-Z])/g, ' $1').trim()}
                             </span>
                             <span className="text-xs text-brand-text-tertiary mt-0.5">{description}</span>
@@ -438,4 +413,3 @@ export default function PermissionManager({ clanTag, className }: PermissionMana
     </GlassCard>
   );
 }
-

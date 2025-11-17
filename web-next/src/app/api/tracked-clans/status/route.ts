@@ -4,9 +4,12 @@ import { createApiContext } from '@/lib/api/route-helpers';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { getAuthenticatedUser } from '@/lib/auth/server';
 import { getUserClanRoles } from '@/lib/auth/roles';
+import { cfg } from '@/lib/config';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const normalizedHomeClanTag = normalizeTag(cfg.homeClanTag || '');
 
 async function readTrackedClans(allowedClanTags?: string[]): Promise<string[]> {
   const supabase = getSupabaseServerClient();
@@ -27,7 +30,12 @@ async function readTrackedClans(allowedClanTags?: string[]): Promise<string[]> {
     return [];
   }
   
-  return (data || []).map(row => row.clan_tag);
+  return (data || [])
+    .map(row => row.clan_tag)
+    .filter((tag) => {
+      if (!normalizedHomeClanTag) return true;
+      return normalizeTag(tag) !== normalizedHomeClanTag;
+    });
 }
 
 interface ClanIngestionStatus {
@@ -62,11 +70,19 @@ export async function GET(request: NextRequest) {
     }
 
     const trackedClans = await readTrackedClans(leadershipTags);
+    const finalClans = [...trackedClans];
+    if (
+      normalizedHomeClanTag &&
+      leadershipTags.includes(normalizedHomeClanTag) &&
+      !finalClans.some((tag) => normalizeTag(tag) === normalizedHomeClanTag)
+    ) {
+      finalClans.unshift(normalizedHomeClanTag);
+    }
     const supabase = getSupabaseServerClient();
 
     // Get status for each tracked clan
     const statuses: ClanIngestionStatus[] = await Promise.all(
-      trackedClans.map(async (clanTag) => {
+      finalClans.map(async (clanTag) => {
         const normalizedTag = normalizeTag(clanTag);
 
         // Get clan name from clans table
@@ -122,4 +138,3 @@ export async function GET(request: NextRequest) {
     return json({ success: false, error: error.message || 'Failed to fetch clan statuses' }, { status: 500 });
   }
 }
-

@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Button } from '@/components/ui';
 
@@ -11,12 +12,21 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const hydrateSession = useDashboardStore((state) => state.hydrateSession);
   const sessionStatus = useDashboardStore((state) => state.sessionStatus);
   const sessionError = useDashboardStore((state) => state.sessionError);
+  const needsOnboarding = useDashboardStore((state) => state.needsOnboarding);
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     if (sessionStatus === 'idle') {
       hydrateSession();
     }
   }, [hydrateSession, sessionStatus]);
+
+  useEffect(() => {
+    if (sessionStatus === 'ready' && needsOnboarding && pathname !== '/onboarding') {
+      router.replace('/onboarding');
+    }
+  }, [sessionStatus, needsOnboarding, pathname, router]);
 
   if (sessionStatus === 'idle' || sessionStatus === 'loading') {
     return (
@@ -49,6 +59,22 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         <Link href="/login">
           <Button size="lg">Sign In</Button>
         </Link>
+      </div>
+    );
+  }
+
+  if (sessionStatus === 'ready' && needsOnboarding && pathname !== '/onboarding') {
+    return (
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 text-center">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold">Finish onboarding</h2>
+          <p className="text-sm text-muted-foreground max-w-sm">
+            We’re redirecting you to select your player tags so the dashboard can personalize your access.
+          </p>
+        </div>
+        <Button size="lg" onClick={() => router.replace('/onboarding')}>
+          Go to onboarding
+        </Button>
       </div>
     );
   }

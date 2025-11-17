@@ -1,9 +1,10 @@
 import Link from "next/link";
+import { getActiveClanConfig } from '@/lib/active-clan';
 
 const heroStats = [
   { label: "War plans automated", value: "480+" },
   { label: "Capital raid weekends analyzed", value: "190+" },
-  { label: "Leadership invites sent", value: "60+" },
+  { label: "Clan accounts provisioned", value: "60+" },
 ];
 
 const features = [
@@ -18,15 +19,28 @@ const features = [
     badge: "Capital Analytics",
   },
   {
-    title: "Leadership-Only Operations",
-    body: "Secure dashboards, role-aware ingestion triggers, audit logs, and AI-generated insights—only visible to leaders and co-leaders you approve.",
+    title: "Secure Clan Operations",
+    body: "Role-aware ingestion triggers, audit logs, and AI-generated insights that respect every member's permissions while keeping sensitive data locked down.",
     badge: "Access Control",
   },
 ];
 
 export default function LandingPage() {
+  const clanConfig = getActiveClanConfig();
+  const isClanHost = !clanConfig.marketingOnly;
+  const marketingHero = "The war room for modern clans in Clash of Clans.";
+  const heroHeading = clanConfig.marketingOnly ? marketingHero : clanConfig.theme?.hero || null;
+  const primaryHref = isClanHost ? '/onboarding' : '/login';
+  const primaryLabel = isClanHost ? 'Complete onboarding' : 'Enter Dashboard';
+  const secondaryHref = isClanHost ? '/login' : '/faq';
+  const secondaryLabel = isClanHost ? 'Sign in' : 'View playbook →';
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
+      {!clanConfig.marketingOnly && (
+        <div className="bg-amber-500/10 border-b border-amber-400/30 px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-100">
+          {`Serving the ${clanConfig.displayName} deployment`}
+        </div>
+      )}
       <div className="relative isolate overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.08),transparent_55%)]" />
         <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
@@ -44,7 +58,7 @@ export default function LandingPage() {
               Sign In
             </Link>
             <Link
-              href="mailto:leadership@clashintelligence.gg"
+              href="mailto:info@clashintelligence.com"
               className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-clash-orange to-clash-gold px-4 py-2 text-slate-950 shadow-[0_12px_35px_-18px_rgba(253,199,76,0.55)] transition hover:opacity-90"
             >
               Request Access
@@ -54,28 +68,39 @@ export default function LandingPage() {
 
         <section className="mx-auto flex max-w-6xl flex-col gap-10 px-5 pb-14 pt-6 sm:px-8 md:flex-row md:items-center">
           <div className="flex-1 space-y-8">
-            <p className="text-xs uppercase tracking-[0.4em] text-clash-gold/70">Leadership toolkit</p>
+            <p className="text-xs uppercase tracking-[0.4em] text-clash-gold/70">Clan intelligence toolkit</p>
             <div className="space-y-6">
               <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
-                The war room for modern Clash of Clans leadership.
+                {clanConfig.marketingOnly ? (
+                  marketingHero
+                ) : heroHeading ? (
+                  heroHeading
+                ) : (
+                  <>
+                    Welcome to{' '}
+                    <span style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}>
+                      {clanConfig.displayName}
+                    </span>
+                  </>
+                )}
               </h1>
               <p className="text-base text-slate-300 sm:text-lg">
-                One command center for roster health, war intelligence, capital ROI, and coaching ops. Every insight is clan-aware,
-                authenticated, and ready for the moment you spin up attacks.
+                One command center for roster health, war intelligence, capital ROI, and player development. Every insight is clan-aware,
+                authenticated, and ready from first scout to final hit.
               </p>
             </div>
             <div className="flex flex-wrap gap-4">
               <Link
-                href="/login"
+                href={primaryHref}
                 className="inline-flex items-center justify-center rounded-full bg-gradient-to-r from-clash-orange to-clash-gold px-6 py-3 text-base font-semibold text-slate-950 shadow-[0_18px_40px_-20px_rgba(253,199,76,0.7)] transition hover:opacity-95"
               >
-                Enter Dashboard
+                {primaryLabel}
               </Link>
               <Link
-                href="/faq"
+                href={secondaryHref}
                 className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3 text-base font-semibold text-slate-100 transition hover:border-clash-gold/80"
               >
-                View playbook →
+                {secondaryLabel}
               </Link>
             </div>
             <dl className="grid gap-6 sm:grid-cols-3">
@@ -98,7 +123,7 @@ export default function LandingPage() {
                 <div className="flex items-center justify-between text-sm text-slate-300">
                   <div>
                     <p className="text-xs uppercase tracking-[0.28em] text-slate-500">War briefing</p>
-                    <p className="text-lg font-semibold text-white">Leadership intelligence digest</p>
+                    <p className="text-lg font-semibold text-white">Clan intelligence digest</p>
                   </div>
                   <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">Ready</span>
                 </div>
@@ -125,8 +150,8 @@ export default function LandingPage() {
       </div>
 
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-        <p className="text-xs uppercase tracking-[0.35em] text-clash-gold/70">Why leaders switch</p>
-        <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Everything leadership touches in one pane.</h2>
+        <p className="text-xs uppercase tracking-[0.35em] text-clash-gold/70">Why clans switch</p>
+        <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Everything your clan touches in one pane.</h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {features.map((feature) => (
             <div key={feature.title} className="rounded-3xl border border-white/5 bg-slate-900/70 p-6 shadow-[0_30px_60px_-50px_rgba(15,23,42,1)]">
@@ -143,7 +168,7 @@ export default function LandingPage() {
           <p className="text-xs uppercase tracking-[0.35em] text-clash-gold/70">Ready when you are</p>
           <h3 className="mt-4 text-3xl font-semibold text-white">Lock down your clan intelligence.</h3>
           <p className="mt-3 text-sm text-slate-300 sm:text-base">
-            Sign in if you already have leadership credentials. Need access? Reach out and we’ll onboard your leadership team.
+            Sign in if you already have access. Need credentials? Reach out and we’ll onboard your clan.
           </p>
           <div className="mt-6 flex flex-wrap justify-center">
             <Link

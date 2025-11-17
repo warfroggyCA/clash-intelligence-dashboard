@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { requirePermission } from '@/lib/api/role-check';
+import { cfg } from '@/lib/config';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -31,6 +33,9 @@ export async function GET(req: NextRequest) {
         { status: 400 },
       );
     }
+
+    const ourClanTag = normalizeTag(searchParams.get('ourClanTag') ?? '') || cfg.homeClanTag;
+    await requirePermission(req, 'canViewWarPrep', { clanTag: ourClanTag ?? undefined });
 
     const supabase = getSupabaseServerClient();
 
@@ -176,6 +181,9 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Response && (error.status === 401 || error.status === 403)) {
+      return error;
+    }
     console.error('[war-planning/opponents] GET failed', error);
     return NextResponse.json(
       {

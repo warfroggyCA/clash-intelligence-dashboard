@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button, GlassCard } from '@/components/ui';
 import { normalizeTag } from '@/lib/tags';
 import type { WarPlanAIPayload } from '@/lib/war-planning/analysis';
+import { useLeadership } from '@/hooks/useLeadership';
 
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
@@ -266,6 +267,14 @@ const SectionTitle: React.FC<{ title: string; children?: React.ReactNode }> = ({
 const WarCenterPage: React.FC = () => {
   const router = useRouter();
   const search = useSearchParams();
+  const {
+    permissions,
+    isLoading: permissionsLoading,
+    error: permissionsError,
+  } = useLeadership();
+  const canViewWarPrep = permissions.canViewWarPrep;
+  const canManageWarPlans = permissions.canManageWarPlans;
+  const canRunWarAnalysisPermission = permissions.canRunWarAnalysis;
 
   // Simple state - no Zustand (SSOT from API)
   const [clanTag, setClanTag] = useState('');
@@ -397,21 +406,28 @@ const WarCenterPage: React.FC = () => {
     setOpponentError(null);
   }, [opponentProfile, applyProfileRosterFallback]);
 
-  const toggleSelection = (tag: string, target: 'our' | 'opponent') => {
-    if (target === 'our') {
-      setOurSelection((prev) => {
-        const next = new Set(prev);
-        next.has(tag) ? next.delete(tag) : next.add(tag);
-        return next;
-      });
-    } else {
-      setOpponentSelection((prev) => {
-        const next = new Set(prev);
-        next.has(tag) ? next.delete(tag) : next.add(tag);
-        return next;
-      });
-    }
-  };
+  const toggleSelection = useCallback(
+    (tag: string, target: 'our' | 'opponent') => {
+      if (!canManageWarPlans) {
+        setPlanError('You do not have permission to modify war plan selections.');
+        return;
+      }
+      if (target === 'our') {
+        setOurSelection((prev) => {
+          const next = new Set(prev);
+          next.has(tag) ? next.delete(tag) : next.add(tag);
+          return next;
+        });
+      } else {
+        setOpponentSelection((prev) => {
+          const next = new Set(prev);
+          next.has(tag) ? next.delete(tag) : next.add(tag);
+          return next;
+        });
+      }
+    },
+    [canManageWarPlans],
+  );
 
   useEffect(() => {
     if (!opponentProfile) return;
@@ -630,6 +646,10 @@ const WarCenterPage: React.FC = () => {
   );
 
   const handleClearOpponent = useCallback(async () => {
+    if (!canManageWarPlans) {
+      setOpponentProfileError('You do not have permission to reset or record opponents.');
+      return;
+    }
     // Record opponent in history before clearing
     if (opponentProfile && cleanOurClanTag) {
       const opponentTag = normalizeTag(opponentProfile.clan.tag ?? '') || cleanOpponentTag;
@@ -660,17 +680,25 @@ const WarCenterPage: React.FC = () => {
     setOpponentRoster([]);
     setMatchup(null);
     localStorage.removeItem('war-prep-opponent');
-  }, [opponentProfile, cleanOurClanTag, cleanOpponentTag]);
+  }, [opponentProfile, cleanOurClanTag, cleanOpponentTag, canManageWarPlans]);
 
   const handleClearSelections = useCallback(() => {
+    if (!canManageWarPlans) {
+      setPlanError('You do not have permission to modify selections.');
+      return;
+    }
     setOurSelection(new Set());
     setOpponentSelection(new Set());
     setMatchup(null);
     setPlanMessage(null);
     setPlanError(null);
-  }, []);
+  }, [canManageWarPlans]);
 
   const handlePinOpponent = useCallback(async () => {
+    if (!canManageWarPlans) {
+      setOpponentProfileError('You do not have permission to pin opponents.');
+      return;
+    }
     if (!cleanOurClanTag) {
       setOpponentProfileError('Set our clan tag before pinning an opponent.');
       return;
@@ -696,7 +724,7 @@ const WarCenterPage: React.FC = () => {
       setOpponentProfileError('Failed to pin opponent. Try again.');
       console.warn('[WarCenter] Failed to pin opponent manually', error);
     }
-  }, [cleanOurClanTag, cleanOpponentTag, opponentProfile]);
+  }, [cleanOurClanTag, cleanOpponentTag, opponentProfile, canManageWarPlans]);
 
   // DISABLED: Auto-fetching opponent profile from URL params or pinned - now manual only
   // Users must click "Analyze Opponent" or "Sync Opponent" to fetch
@@ -747,6 +775,10 @@ const WarCenterPage: React.FC = () => {
   }, [search, cleanOurClanTag]);
 
   const runMatchupAnalysis = useCallback(async () => {
+    if (!canRunWarAnalysisPermission) {
+      setAnalysisError('You do not have permission to run matchup analysis.');
+      return;
+    }
     setAnalysisError(null);
     setMatchup(null);
     setRunningAnalysis(true);
@@ -807,6 +839,7 @@ const WarCenterPage: React.FC = () => {
       setRunningAnalysis(false);
     }
   }, [
+    canRunWarAnalysisPermission,
     normalizedOpponentTag,
     normalizedOurClanTag,
     normalizedOpponentSelection,
@@ -984,15 +1017,14 @@ const WarCenterPage: React.FC = () => {
   //   };
   // }, [normalizedOpponentTag, fetchOpponents]);
 
-  // Only auto-load plan if explicitly requested (not on every roster load)
-  // This prevents loading stale plans from finished wars
+  // Auto-load saved plans once our roster is available
   useEffect(() => {
     if (planLoadedRef.current) return;
     if (!normalizedOurClanTag) return;
     if (!ourRoster.length) return;
-    // Don't auto-load - require manual action to load saved plans
     planLoadedRef.current = true;
-  }, [ourRoster, normalizedOurClanTag]);
+    void loadPlan(normalizedOurClanTag);
+  }, [ourRoster, normalizedOurClanTag, loadPlan]);
 
   useEffect(() => {
     const pending = pendingPlanRef.current;
@@ -1094,11 +1126,17 @@ const WarCenterPage: React.FC = () => {
 
   const ourRosterLoaded = ourRoster.length > 0;
   const opponentRosterLoaded = opponentRoster.length > 0;
-  const canRunAnalysis =
-    normalizedOurSelection.length > 0 && normalizedOpponentSelection.length > 0 && !!normalizedOpponentTag;
+  const selectionReady =
+    normalizedOurSelection.length > 0 &&
+    normalizedOpponentSelection.length > 0 &&
+    !!normalizedOpponentTag;
+  const canRunAnalysis = canRunWarAnalysisPermission && selectionReady;
   const canSavePlan =
-    !!normalizedOurClanTag && !!normalizedOpponentTag &&
-    normalizedOurSelection.length > 0 && normalizedOpponentSelection.length > 0;
+    canManageWarPlans &&
+    !!normalizedOurClanTag &&
+    !!normalizedOpponentTag &&
+    normalizedOurSelection.length > 0 &&
+    normalizedOpponentSelection.length > 0;
 
   const currentAnalysis = savedPlan?.analysis ?? matchup?.analysis ?? null;
   const currentBriefingSource = currentAnalysis
@@ -1128,6 +1166,10 @@ const WarCenterPage: React.FC = () => {
   }, [opponentProfile, cleanOpponentTag]);
 
   const handleSavePlan = useCallback(async () => {
+    if (!canManageWarPlans) {
+      setPlanError('You do not have permission to save war plans.');
+      return;
+    }
     if (!canSavePlan) {
       setPlanError('Select players on both sides before saving.');
       return;
@@ -1211,6 +1253,7 @@ const WarCenterPage: React.FC = () => {
       setSavingPlan(false);
     }
   }, [
+    canManageWarPlans,
     canSavePlan,
     normalizedOurClanTag,
     normalizedOpponentTag,
@@ -1238,6 +1281,10 @@ const WarCenterPage: React.FC = () => {
   }, [applyPlan, savedPlan, normalizedOurClanTag, loadPlan]);
 
   const handleRegenerateAnalysis = useCallback(async () => {
+    if (!canRunWarAnalysisPermission) {
+      setPlanError('You do not have permission to re-run analysis.');
+      return;
+    }
     if (!savedPlan) {
       setPlanError('No saved plan to analyze.');
       return;
@@ -1308,7 +1355,7 @@ const WarCenterPage: React.FC = () => {
     } catch (error) {
       setPlanError(error instanceof Error ? error.message : 'Failed to re-run analysis.');
     }
-  }, [savedPlan, ourRoster, opponentRoster, applyPlan, useAI, opponentClanName]);
+  }, [savedPlan, ourRoster, opponentRoster, applyPlan, useAI, opponentClanName, canRunWarAnalysisPermission]);
 
   const handleCopyPlan = useCallback(async () => {
     if (!savedPlan) {
@@ -1391,6 +1438,45 @@ const WarCenterPage: React.FC = () => {
     void loadPlan(normalizedOurClanTag);
   }, [normalizedOurClanTag, loadPlan]);
 
+  if (permissionsLoading) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
+          <GlassCard className="p-6 text-center text-sm text-muted-foreground">
+            Checking war-planning permissions…
+          </GlassCard>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (permissionsError) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
+          <GlassCard className="p-6 text-center text-sm text-destructive">
+            {permissionsError || 'Unable to load permissions for War Center.'}
+          </GlassCard>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!canViewWarPrep) {
+    return (
+      <DashboardLayout>
+        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
+          <GlassCard className="p-6 text-center">
+            <p className="text-lg font-semibold">War Center is restricted</p>
+            <p className="text-sm text-muted-foreground">
+              Your access level does not include War Prep visibility. Ask a leader to grant permission.
+            </p>
+          </GlassCard>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout clanName={clanName || undefined}>
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 p-4 md:p-6">
@@ -1463,13 +1549,18 @@ const WarCenterPage: React.FC = () => {
               >
                 {opponentProfileLoading ? 'Fetching…' : 'Analyze Opponent'}
               </Button>
-              <Button variant="outline" onClick={handlePinOpponent} disabled={!opponentProfile && !cleanOpponentTag}>
+              <Button
+                variant="outline"
+                onClick={handlePinOpponent}
+                disabled={!canManageWarPlans || (!opponentProfile && !cleanOpponentTag)}
+              >
                 Pin Opponent
               </Button>
               {opponentProfile && (
                 <Button 
                   variant="outline" 
                   onClick={handleClearOpponent}
+                  disabled={!canManageWarPlans}
                   className="text-destructive border-destructive hover:bg-destructive/10"
                   title="Clear opponent and record in war history"
                 >
@@ -1638,7 +1729,11 @@ const WarCenterPage: React.FC = () => {
                 {loadingOurRoster ? 'Loading…' : 'Refresh'}
               </Button>
               {(ourSelection.size > 0 || opponentSelection.size > 0) && (
-                <Button variant="outline" onClick={handleClearSelections}>
+                <Button
+                  variant="outline"
+                  onClick={handleClearSelections}
+                  disabled={!canManageWarPlans}
+                >
                   Clear Selections
                 </Button>
               )}
@@ -1661,6 +1756,7 @@ const WarCenterPage: React.FC = () => {
                 selection={ourSelection}
                 onToggle={(tag) => toggleSelection(tag, 'our')}
                 emptyMessage="No members found for this clan."
+                disabled={!canManageWarPlans}
               />
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -1704,6 +1800,7 @@ const WarCenterPage: React.FC = () => {
                 selection={opponentSelection}
                 onToggle={(tag) => toggleSelection(tag, 'opponent')}
                 emptyMessage="No opponent members returned."
+                disabled={!canManageWarPlans}
               />
             ) : (
               <p className="text-sm text-muted-foreground">
@@ -1727,7 +1824,10 @@ const WarCenterPage: React.FC = () => {
                     <Button
                       variant="secondary"
                       onClick={handleRegenerateAnalysis}
-                      disabled={['queued', 'running'].includes((savedPlan.analysisStatus ?? '').toLowerCase())}
+                      disabled={
+                        !canRunWarAnalysisPermission ||
+                        ['queued', 'running'].includes((savedPlan.analysisStatus ?? '').toLowerCase())
+                      }
                     >
                       Re-run Analysis
                     </Button>
@@ -1761,7 +1861,11 @@ const WarCenterPage: React.FC = () => {
                 {runningAnalysis ? 'Analyzing…' : 'Run Analysis'}
               </Button>
               {(ourSelection.size > 0 || opponentSelection.size > 0) && (
-                <Button variant="outline" onClick={handleClearSelections}>
+                <Button
+                  variant="outline"
+                  onClick={handleClearSelections}
+                  disabled={!canManageWarPlans}
+                >
                   Clear Selections
                 </Button>
               )}
@@ -1788,7 +1892,9 @@ const WarCenterPage: React.FC = () => {
           <div className="space-y-4">
             {!canRunAnalysis && (
               <p className="text-sm text-muted-foreground">
-                Select at least one player on each side to run the matchup analysis.
+                {canRunWarAnalysisPermission
+                  ? 'Select at least one player on each side to run the matchup analysis.'
+                  : 'Leadership permission is required to run matchup analysis.'}
               </p>
             )}
             {analysisError && <p className="text-sm text-destructive">{analysisError}</p>}
@@ -1818,7 +1924,8 @@ const RosterList: React.FC<{
   selection: Set<string>;
   onToggle: (tag: string) => void;
   emptyMessage: string;
-}> = ({ roster, selection, onToggle, emptyMessage }) => {
+  disabled?: boolean;
+}> = ({ roster, selection, onToggle, emptyMessage, disabled = false }) => {
   if (!roster.length) {
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
   }
@@ -1831,9 +1938,9 @@ const RosterList: React.FC<{
         return (
           <label
             key={player.tag}
-            className={`flex cursor-pointer flex-col gap-1 rounded border px-3 py-2 transition ${
+            className={`flex flex-col gap-1 rounded border px-3 py-2 transition ${
               isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-primary'
-            }`}
+            } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -1848,7 +1955,12 @@ const RosterList: React.FC<{
               <input
                 type="checkbox"
                 checked={isSelected}
-                onChange={() => onToggle(player.tag)}
+                onChange={() => {
+                  if (!disabled) {
+                    onToggle(player.tag);
+                  }
+                }}
+                disabled={disabled}
                 className="h-4 w-4 flex-shrink-0"
               />
             </div>
