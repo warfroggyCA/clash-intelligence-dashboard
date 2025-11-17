@@ -138,7 +138,7 @@ export function useLeadership(): UseLeadershipResult {
     
     // Get permissions with custom overrides
     const accessLevel = roleToAccessLevel(check.role);
-    const accessPerms = getAccessLevelPermissions(accessLevel, customPermissions);
+    const accessPerms = getAccessLevelPermissions(accessLevel, customPermissions ?? undefined);
     const permissions = accessPermissionsToRolePermissions(accessPerms);
     
     // Debug logging (only log once per unique state to reduce console spam)
@@ -177,6 +177,6 @@ export function useRolePermissions(role: ClanRole): RolePermissions {
   
   // Get permissions with custom overrides
   const accessLevel = roleToAccessLevel(role);
-  const accessPerms = getAccessLevelPermissions(accessLevel, customPermissions);
+  const accessPerms = getAccessLevelPermissions(accessLevel, customPermissions ?? undefined);
   return accessPermissionsToRolePermissions(accessPerms);
 }
