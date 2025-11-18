@@ -2,12 +2,15 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Button, GlassCard } from '@/components/ui';
+import { Button, GlassCard, MetricCard, Tooltip } from '@/components/ui';
+import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { WorkflowSteps } from '@/components/war/WorkflowSteps';
 import { normalizeTag } from '@/lib/tags';
 import type { WarPlanAIPayload } from '@/lib/war-planning/analysis';
 import { useLeadership } from '@/hooks/useLeadership';
+import { TOOLTIP_CONTENT } from '@/lib/tooltips/tooltip-content';
 
 const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
@@ -161,6 +164,7 @@ type OpponentProfile = {
     partialPlayerDetails?: boolean;
   };
   detectedOpponentTag?: string | null;
+  warState?: string | null;
 };
 
 type WarPlanBriefing = {
@@ -376,8 +380,94 @@ const WarCenterPage: React.FC = () => {
     [opponentSelection],
   );
 
+  const planStorageKey = normalizedOurClanTag ? `war-plan:${normalizedOurClanTag}` : null;
+
+  const savePlanToLocal = useCallback(
+    (plan: SavedPlan) => {
+      if (!planStorageKey) return;
+      try {
+        localStorage.setItem(planStorageKey, JSON.stringify(plan));
+      } catch (error) {
+        console.warn('[WarPlanning] Failed to persist plan locally', error);
+      }
+    },
+    [planStorageKey],
+  );
+
+  const loadPlanFromLocal = useCallback((): SavedPlan | null => {
+    if (!planStorageKey) return null;
+    try {
+      const raw = localStorage.getItem(planStorageKey);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object' && parsed.opponentClanTag) {
+        return parsed as SavedPlan;
+      }
+    } catch (error) {
+      console.warn('[WarPlanning] Failed to read plan from local storage', error);
+    }
+    return null;
+  }, [planStorageKey]);
+
+  const clearPlanState = useCallback(() => {
+    pendingPlanRef.current = null;
+    setSavedPlan(null);
+    setPlanMessage(null);
+    setPlanError(null);
+    setMatchup(null);
+    if (planStorageKey) {
+      try {
+        localStorage.removeItem(planStorageKey);
+      } catch (error) {
+        console.warn('[WarPlanning] Failed to clear local plan cache', error);
+      }
+    }
+  }, [planStorageKey]);
+
   const cleanOpponentTag = normalizedOpponentTag;
   const cleanOurClanTag = normalizedOurClanTag;
+
+  const recordOpponentHistory = useCallback(
+    async (profileOverride?: OpponentProfile | null) => {
+      if (!canManageWarPlans) return;
+      if (!cleanOurClanTag) return;
+      const sourceProfile = profileOverride ?? opponentProfile;
+      if (!sourceProfile) return;
+      const opponentTag = normalizeTag(sourceProfile.clan.tag ?? '') || cleanOpponentTag;
+      if (!opponentTag) return;
+      try {
+        await fetch('/api/war/history', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ourClanTag: cleanOurClanTag,
+            opponentTag,
+            opponentName: sourceProfile.clan.name ?? null,
+          }),
+        });
+      } catch (error) {
+        console.warn('[WarCenter] Failed to record war history', error);
+      }
+    },
+    [canManageWarPlans, cleanOurClanTag, cleanOpponentTag, opponentProfile],
+  );
+
+  const clearOpponentState = useCallback(() => {
+    setOpponentProfile(null);
+    setOpponentProfileError(null);
+    setOpponentProfileMessage(null);
+    setOpponentClanTagInput('');
+    setOpponentClanName('');
+    setOpponentSelection(new Set());
+    setOurSelection(new Set());
+    setOpponentRoster([]);
+    try {
+      localStorage.removeItem('war-prep-opponent');
+    } catch {
+      /* ignore */
+    }
+    clearPlanState();
+  }, [clearPlanState]);
 
   const applyProfileRosterFallback = useCallback(
     (options?: { resetSelection?: boolean; requireTag?: string }) => {
@@ -405,6 +495,37 @@ const WarCenterPage: React.FC = () => {
     applyProfileRosterFallback();
     setOpponentError(null);
   }, [opponentProfile, applyProfileRosterFallback]);
+
+  const lastArchivedOpponentTag = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!autoDetectOpponent || !opponentProfile) return;
+    const state = opponentProfile.warState?.toLowerCase() || null;
+    const opponentTag = normalizeTag(opponentProfile.clan.tag ?? '');
+    if (!opponentTag) return;
+
+    if (state === 'warended') {
+      if (lastArchivedOpponentTag.current === opponentTag) return;
+      lastArchivedOpponentTag.current = opponentTag;
+      void (async () => {
+        if (canManageWarPlans) {
+          await recordOpponentHistory(opponentProfile);
+        }
+        clearOpponentState();
+        setOpponentProfileMessage('Last war archived. Ready for the next opponent.');
+      })();
+    } else if (state === 'inwar' || state === 'preparation') {
+      if (lastArchivedOpponentTag.current === opponentTag) {
+        lastArchivedOpponentTag.current = null;
+      }
+    }
+  }, [
+    autoDetectOpponent,
+    opponentProfile,
+    canManageWarPlans,
+    recordOpponentHistory,
+    clearOpponentState,
+  ]);
 
   const toggleSelection = useCallback(
     (tag: string, target: 'our' | 'opponent') => {
@@ -650,37 +771,9 @@ const WarCenterPage: React.FC = () => {
       setOpponentProfileError('You do not have permission to reset or record opponents.');
       return;
     }
-    // Record opponent in history before clearing
-    if (opponentProfile && cleanOurClanTag) {
-      const opponentTag = normalizeTag(opponentProfile.clan.tag ?? '') || cleanOpponentTag;
-      if (opponentTag) {
-        try {
-          await fetch('/api/war/history', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              ourClanTag: cleanOurClanTag,
-              opponentTag: opponentTag,
-              opponentName: opponentProfile.clan.name ?? null,
-            }),
-          });
-        } catch (error) {
-          console.warn('[WarCenter] Failed to record war history', error);
-          // Continue with clearing even if history recording fails
-        }
-      }
-    }
-
-    setOpponentProfile(null);
-    setOpponentProfileError(null);
-    setOpponentProfileMessage(null);
-    setOpponentClanTagInput('');
-    setOpponentClanName('');
-    setOpponentSelection(new Set());
-    setOpponentRoster([]);
-    setMatchup(null);
-    localStorage.removeItem('war-prep-opponent');
-  }, [opponentProfile, cleanOurClanTag, cleanOpponentTag, canManageWarPlans]);
+    await recordOpponentHistory(opponentProfile);
+    clearOpponentState();
+  }, [canManageWarPlans, opponentProfile, recordOpponentHistory, clearOpponentState]);
 
   const handleClearSelections = useCallback(() => {
     if (!canManageWarPlans) {
@@ -882,35 +975,6 @@ const WarCenterPage: React.FC = () => {
     setUseAI(true);
     setOpponentClanName('');
   }, [normalizedOurClanTag]);
-
-  const planStorageKey = normalizedOurClanTag ? `war-plan:${normalizedOurClanTag}` : null;
-
-  const savePlanToLocal = useCallback(
-    (plan: SavedPlan) => {
-      if (!planStorageKey) return;
-      try {
-        localStorage.setItem(planStorageKey, JSON.stringify(plan));
-      } catch (error) {
-        console.warn('[WarPlanning] Failed to persist plan locally', error);
-      }
-    },
-    [planStorageKey],
-  );
-
-  const loadPlanFromLocal = useCallback((): SavedPlan | null => {
-    if (!planStorageKey) return null;
-    try {
-      const raw = localStorage.getItem(planStorageKey);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === 'object' && parsed.opponentClanTag) {
-        return parsed as SavedPlan;
-      }
-    } catch (error) {
-      console.warn('[WarPlanning] Failed to read plan from local storage', error);
-    }
-    return null;
-  }, [planStorageKey]);
 
   useEffect(() => {
     if (!savedPlan) return;
@@ -1144,6 +1208,57 @@ const WarCenterPage: React.FC = () => {
       ? `AI (${currentAnalysis.briefing?.model ?? 'OpenAI'})`
       : 'Heuristic'
     : null;
+
+  const hasRostersReady = ourRosterLoaded && opponentRosterLoaded;
+  const hasSelections = normalizedOurSelection.length > 0 && normalizedOpponentSelection.length > 0;
+  const hasAnalysis = Boolean(matchup);
+  const hasPlanArtifacts = Boolean(savedPlan);
+  const workflowComplete = hasRostersReady && hasSelections && hasAnalysis && hasPlanArtifacts;
+
+  const currentWorkflowStep = useMemo(() => {
+    if (!hasRostersReady) return 1;
+    if (!hasSelections) return 2;
+    if (!hasAnalysis) return 3;
+    if (!hasPlanArtifacts) return 4;
+    return 4;
+  }, [hasRostersReady, hasSelections, hasAnalysis, hasPlanArtifacts]);
+
+  const workflowSteps = useMemo(() => {
+    const resolveStatus = (step: number): 'complete' | 'current' | 'upcoming' => {
+      if (workflowComplete) {
+        return 'complete';
+      }
+      if (step < currentWorkflowStep) return 'complete';
+      if (step === currentWorkflowStep) return 'current';
+      return 'upcoming';
+    };
+    return [
+      {
+        number: 1,
+        title: 'Load Rosters',
+        description: 'Pull our clan & opponent data.',
+        status: resolveStatus(1),
+      },
+      {
+        number: 2,
+        title: 'Select Players',
+        description: 'Choose attackers and targets.',
+        status: resolveStatus(2),
+      },
+      {
+        number: 3,
+        title: 'Analyze',
+        description: 'Run AI/heuristic matchup analysis.',
+        status: resolveStatus(3),
+      },
+      {
+        number: 4,
+        title: 'Review & Share',
+        description: 'Save plans and copy briefs.',
+        status: resolveStatus(4),
+      },
+    ];
+  }, [currentWorkflowStep, workflowComplete]);
 
   const opponentThChips = useMemo(() => {
     if (!opponentProfile) return [] as Array<{ th: string; count: number }>;
@@ -1480,15 +1595,9 @@ const WarCenterPage: React.FC = () => {
   return (
     <DashboardLayout clanName={clanName || undefined}>
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 p-4 md:p-6">
+        <Breadcrumbs className="mb-2" />
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-3">
-            <Link
-              href="/app"
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground transition hover:text-primary"
-            >
-              <span className="text-lg">←</span>
-              <span>Back to Dashboard</span>
-            </Link>
             <div>
               <h1 className="text-3xl font-bold">⚔️ War Center</h1>
               <p className="text-sm text-muted-foreground">
@@ -1507,7 +1616,12 @@ const WarCenterPage: React.FC = () => {
                 className="h-4 w-4"
               />
               <span className="flex flex-col leading-tight">
-                <span>AI Analysis</span>
+                <Tooltip content={TOOLTIP_CONTENT['AI Analysis']?.content ?? 'Enables AI-generated matchup intel'}>
+                  <span className="inline-flex items-center gap-1">
+                    AI Analysis
+                    <span className="text-xs text-muted-foreground">ⓘ</span>
+                  </span>
+                </Tooltip>
                 {currentBriefingSource && (
                   <span className="text-[11px] uppercase tracking-wide text-muted-foreground">
                     Current: {currentBriefingSource}
@@ -1516,7 +1630,12 @@ const WarCenterPage: React.FC = () => {
               </span>
             </label>
             <div className="flex items-center gap-2 text-sm">
-              <span className="text-xs uppercase text-muted-foreground">Enrich</span>
+              <Tooltip content={TOOLTIP_CONTENT['Enrich Level']?.content ?? 'Controls how many top players to enrich'}>
+                <span className="text-xs uppercase text-muted-foreground inline-flex items-center gap-1">
+                  Enrich
+                  <span className="text-[10px]">ⓘ</span>
+                </span>
+              </Tooltip>
               <input
                 type="range"
                 min={4}
@@ -1538,371 +1657,322 @@ const WarCenterPage: React.FC = () => {
           </div>
         </div>
 
-        <GlassCard className="space-y-4 p-4">
-          <SectionTitle title="Opponent Profile">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="secondary"
-                onClick={() => fetchOpponentProfile()}
-                disabled={!canFetchOpponentProfile || opponentProfileLoading || (isSameOpponentLoaded && !autoDetectOpponent)}
-                loading={opponentProfileLoading}
-              >
-                {opponentProfileLoading ? 'Fetching…' : 'Analyze Opponent'}
-              </Button>
-              <Button
-                variant="outline"
-                onClick={handlePinOpponent}
-                disabled={!canManageWarPlans || (!opponentProfile && !cleanOpponentTag)}
-              >
-                Pin Opponent
-              </Button>
-              {opponentProfile && (
-                <Button 
-                  variant="outline" 
-                  onClick={handleClearOpponent}
-                  disabled={!canManageWarPlans}
-                  className="text-destructive border-destructive hover:bg-destructive/10"
-                  title="Clear opponent and record in war history"
-                >
-                  Reset & Record
-                </Button>
-              )}
-            </div>
-          </SectionTitle>
-          <div className="grid gap-4 md:grid-cols-3">
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-muted-foreground">Opponent Tag</label>
-              <input
-                className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
-                placeholder="#OPPONENT"
-                value={opponentClanTagInput}
-                onChange={(event) => setOpponentClanTagInput(event.target.value)}
-                disabled={autoDetectOpponent}
-              />
-              <p className="text-xs text-muted-foreground">{cleanOpponentTag || '—'}</p>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-muted-foreground">Auto-detect Opponent</label>
-              <div className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={autoDetectOpponent}
-                  onChange={(event) => setAutoDetectOpponent(event.target.checked)}
-                />
-                <span>Use current war for {cleanOurClanTag || clanTag || 'our clan'}</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <label className="text-xs uppercase tracking-wide text-muted-foreground">Status</label>
-              <div className="rounded-xl border border-border/60 bg-background/60 px-3 py-2 text-xs text-muted-foreground">
-                {opponentProfileLoading && 'Fetching opponent data…'}
-                {!opponentProfileLoading && opponentProfile && `Loaded ${opponentProfile.roster.length} players.`}
-                {!opponentProfileLoading && !opponentProfile && 'Load an opponent to populate planning.'}
-              </div>
-            </div>
-          </div>
-          {opponentProfileError && (
-            <div className="rounded-xl border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {opponentProfileError}
-            </div>
-          )}
-          {opponentProfileMessage && (
-            <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-400">
-              {opponentProfileMessage}
-            </div>
-          )}
-          {opponentProfile && (
+        <WorkflowSteps steps={workflowSteps} />
+
+        <div className="space-y-6">
+          <CollapsibleSection
+            title="Step 1 · Load Rosters"
+            storageKey="war-workflow-step-1"
+            defaultExpanded={currentWorkflowStep === 1}
+            icon={<span className="text-xs text-muted-foreground">1</span>}
+          >
             <div className="space-y-4">
-              <GlassCard className="space-y-3">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div className="space-y-1">
-                    <p className="text-sm font-semibold">
-                      {opponentProfile.clan.name}{' '}
-                      <span className="text-muted-foreground">({opponentProfile.clan.tag})</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Lv {opponentProfile.clan.level ?? '—'} • {opponentProfile.clan.league?.name ?? 'No league'} • Members{' '}
-                      {opponentProfile.clan.memberCount ?? '—'}
-                    </p>
+              <GlassCard className="space-y-4 p-4">
+                <SectionTitle title="Opponent Profile">
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => fetchOpponentProfile()}
+                      disabled={!canFetchOpponentProfile || opponentProfileLoading || (isSameOpponentLoaded && !autoDetectOpponent)}
+                      loading={opponentProfileLoading}
+                    >
+                      {opponentProfileLoading ? 'Fetching…' : 'Analyze Opponent'}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handlePinOpponent}
+                      disabled={!canManageWarPlans || (!opponentProfile && !cleanOpponentTag)}
+                    >
+                      Pin Opponent
+                    </Button>
+                    {opponentProfile && (
+                      <Button
+                        variant="outline"
+                        onClick={handleClearOpponent}
+                        disabled={!canManageWarPlans}
+                        className="text-destructive border-destructive hover:bg-destructive/10"
+                        title="Clear opponent and record in war history"
+                      >
+                        Reset & Record
+                      </Button>
+                    )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    War record: {opponentProfile.clan.warRecord?.wins ?? 0}-{opponentProfile.clan.warRecord?.losses ?? 0}-
-                    {opponentProfile.clan.warRecord?.ties ?? 0} • Streak {opponentProfile.clan.warRecord?.winStreak ?? 0}
+                </SectionTitle>
+                <div className="grid gap-4 md:grid-cols-3">
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">Opponent Tag</label>
+                    <input
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
+                      placeholder="#OPPONENT"
+                      value={opponentClanTagInput}
+                      onChange={(event) => setOpponentClanTagInput(event.target.value)}
+                    />
+                    <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <input
+                        type="checkbox"
+                        checked={autoDetectOpponent}
+                        onChange={(event) => setAutoDetectOpponent(event.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      Auto-detect opponent (uses last synced war)
+                    </label>
                   </div>
-                </div>
-                <div className="grid gap-2 md:grid-cols-3">
-                  <div className="rounded-2xl border border-border/60 bg-background/60 p-3">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">TH Distribution</p>
-                    <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">Detected Opponent</label>
+                    <div className="rounded-xl border border-border bg-background px-3 py-2 text-sm">
+                      {opponentProfile ? (
+                        <div className="space-y-1">
+                          <div className="font-semibold">{opponentProfile.clan.name ?? 'Unknown'}</div>
+                          <div className="text-xs text-muted-foreground">
+                            {opponentProfile.clan.tag} • Level {opponentProfile.clan.level ?? '—'}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {opponentProfile.clan.warRecord
+                              ? `${opponentProfile.clan.warRecord.wins ?? 0}W-${opponentProfile.clan.warRecord.losses ?? 0}L ${
+                                  opponentProfile.clan.warRecord.winStreak ? `• Streak ${opponentProfile.clan.warRecord.winStreak}` : ''
+                                }`
+                              : 'No war log'}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">No opponent fetched yet.</span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs uppercase tracking-wide text-muted-foreground">Town Hall Spread</label>
+                    <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                       {opponentThChips.length ? (
                         opponentThChips.map((chip) => (
-                          <span
-                            key={chip.th}
-                            className="rounded-full border border-border/60 bg-background/80 px-2 py-0.5 text-xs"
-                          >
+                          <span key={chip.th} className="rounded-full border border-border px-3 py-1">
                             TH{chip.th}: {chip.count}
                           </span>
                         ))
                       ) : (
-                        <span className="text-xs text-muted-foreground">Limited until more players enriched.</span>
+                        <span>No distribution yet</span>
                       )}
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-border/60 bg-background/60 p-3">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Recent Form</p>
-                    <p className="mt-2 text-sm">
-                      {opponentProfile.recentForm.wlt.w}-{opponentProfile.recentForm.wlt.l}-
-                      {opponentProfile.recentForm.wlt.t} • {opponentProfile.recentForm.avgStars?.toFixed(2) ?? '—'}⭐ •{' '}
-                      {opponentProfile.recentForm.avgDestruction ? Math.round(opponentProfile.recentForm.avgDestruction) : '—'}%
-                    </p>
-                  </div>
-                  <div className="rounded-2xl border border-border/60 bg-background/60 p-3">
-                    <p className="text-xs uppercase tracking-wide text-muted-foreground">War Log</p>
-                    <p className="mt-2 text-sm">
-                      {opponentProfile.clan.publicWarLog ? 'Public' : 'Private or unavailable'}
-                    </p>
-                  </div>
                 </div>
               </GlassCard>
 
-              <GlassCard className="space-y-3">
-                <p className="text-sm font-semibold">Briefing</p>
-                <ul className="list-inside list-disc space-y-1 text-sm">
-                  {opponentProfile.briefing.bullets.map((bullet, index) => (
-                    <li key={`briefing-${index}`}>{bullet}</li>
-                  ))}
-                </ul>
-              </GlassCard>
-
-              <GlassCard className="space-y-3">
-                <p className="text-sm font-semibold">Roster (Top {enrichLevel} enriched)</p>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-border/60 text-xs text-muted-foreground">
-                        <th className="py-2 pr-3">Name</th>
-                        <th className="py-2 pr-3">Tag</th>
-                        <th className="py-2 pr-3">Role</th>
-                        <th className="py-2 pr-3">TH</th>
-                        <th className="py-2 pr-3">Readiness</th>
-                        <th className="py-2 pr-3">Donations</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {opponentProfile.roster.map((member) => (
-                        <tr key={member.tag} className="border-b border-border/40">
-                          <td className="py-2 pr-3">{member.name}</td>
-                          <td className="py-2 pr-3 text-muted-foreground">{member.tag}</td>
-                          <td className="py-2 pr-3">{member.role || '—'}</td>
-                          <td className="py-2 pr-3">{member.th ?? '—'}</td>
-                          <td className="py-2 pr-3">{member.readinessScore != null ? `${member.readinessScore}%` : '—'}</td>
-                          <td className="py-2 pr-3">{member.donations ?? 0}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                {(opponentProfile.limitations.couldNotDetectOpponent ||
-                  opponentProfile.limitations.privateWarLog ||
-                  opponentProfile.limitations.partialPlayerDetails) && (
-                  <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                    {opponentProfile.limitations.couldNotDetectOpponent
-                      ? 'Could not auto-detect opponent. Enter a tag to proceed. '
-                      : ''}
-                    {opponentProfile.limitations.privateWarLog
-                      ? 'Opponent war log is private—history limited. '
-                      : ''}
-                    {opponentProfile.limitations.partialPlayerDetails
-                      ? 'Enriched a subset of players to respect rate limits.'
-                      : ''}
+              <div className="grid gap-4 xl:grid-cols-2">
+                <GlassCard className="p-4">
+                  <SectionTitle title="Our Roster">
+                    <div className="flex gap-2">
+                      <Button variant="secondary" onClick={() => fetchOurRoster()} disabled={loadingOurRoster}>
+                        {loadingOurRoster ? 'Loading…' : 'Refresh'}
+                      </Button>
+                    </div>
+                  </SectionTitle>
+                  <div className="flex flex-col gap-3">
+                    <label className="flex flex-col gap-1 text-sm">
+                      Our Clan Tag
+                      <input
+                        value={ourClanTagInput}
+                        onChange={(event) => setOurClanTagInput(event.target.value)}
+                        placeholder="#OURCLAN"
+                        className="rounded border border-border bg-background px-3 py-2"
+                      />
+                    </label>
+                    {ourRosterError && <p className="text-sm text-destructive">{ourRosterError}</p>}
+                    {ourRosterLoaded ? (
+                      <RosterList
+                        roster={ourRoster}
+                        selection={ourSelection}
+                        onToggle={(tag) => toggleSelection(tag, 'our')}
+                        emptyMessage="No members found for this clan."
+                        disabled={!canManageWarPlans}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Load your roster to start selecting participants.</p>
+                    )}
                   </div>
-                )}
-              </GlassCard>
-            </div>
-          )}
-        </GlassCard>
+                </GlassCard>
 
-        <GlassCard className="p-4">
-          <SectionTitle title="Our Roster">
-            <div className="flex gap-2">
-              <Button variant="secondary" onClick={() => fetchOurRoster()} disabled={loadingOurRoster}>
-                {loadingOurRoster ? 'Loading…' : 'Refresh'}
-              </Button>
-              {(ourSelection.size > 0 || opponentSelection.size > 0) && (
-                <Button
-                  variant="outline"
-                  onClick={handleClearSelections}
-                  disabled={!canManageWarPlans}
-                >
-                  Clear Selections
-                </Button>
-              )}
-            </div>
-          </SectionTitle>
-          <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1 text-sm">
-              Our Clan Tag
-              <input
-                value={ourClanTagInput}
-                onChange={(event) => setOurClanTagInput(event.target.value)}
-                placeholder="#OURCLAN"
-                className="rounded border border-border bg-background px-3 py-2"
-              />
-            </label>
-            {ourRosterError && <p className="text-sm text-destructive">{ourRosterError}</p>}
-            {ourRosterLoaded ? (
-              <RosterList
-                roster={ourRoster}
-                selection={ourSelection}
-                onToggle={(tag) => toggleSelection(tag, 'our')}
-                emptyMessage="No members found for this clan."
-                disabled={!canManageWarPlans}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Load your roster to start selecting participants.
-              </p>
-            )}
-          </div>
-        </GlassCard>
-
-        <GlassCard className="p-4">
-          <SectionTitle title="Opponent Roster">
-            <Button variant="secondary" onClick={() => fetchOpponents()} disabled={loadingOpponents}>
-              {loadingOpponents ? 'Loading…' : 'Fetch Opponent'}
-            </Button>
-          </SectionTitle>
-          <div className="flex flex-col gap-3">
-            <label className="flex flex-col gap-1 text-sm">
-              Opponent Clan Tag
-              <input
-                value={opponentClanTagInput}
-                onChange={(event) => setOpponentClanTagInput(event.target.value)}
-                placeholder="#OPPONENT"
-                className="rounded border border-border bg-background px-3 py-2"
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    void fetchOpponents();
-                  }
-                }}
-              />
-            </label>
-            {opponentClanName && (
-              <p className="text-sm text-muted-foreground">
-                Opponent: <span className="font-medium">{opponentClanName}</span>
-              </p>
-            )}
-            {opponentError && <p className="text-sm text-destructive">{opponentError}</p>}
-            {opponentRosterLoaded ? (
-              <RosterList
-                roster={opponentRoster}
-                selection={opponentSelection}
-                onToggle={(tag) => toggleSelection(tag, 'opponent')}
-                emptyMessage="No opponent members returned."
-                disabled={!canManageWarPlans}
-              />
-            ) : (
-              <p className="text-sm text-muted-foreground">
-                Fetch the opponent roster to choose targets for enrichment.
-              </p>
-            )}
-          </div>
-        </GlassCard>
-
-        {savedPlan && (
-          <GlassCard className="p-4">
-            <SectionTitle
-              title={`Saved Plan — vs ${savedPlan.opponentClanName || savedPlan.opponentClanTag}`}
-            >
-              <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={handleReloadSavedPlan}>
-                  {savedPlan ? 'Reload Plan' : 'Load Saved Plan'}
-                </Button>
-                {savedPlan && (
-                  <>
-                    <Button
-                      variant="secondary"
-                      onClick={handleRegenerateAnalysis}
-                      disabled={
-                        !canRunWarAnalysisPermission ||
-                        ['queued', 'running'].includes((savedPlan.analysisStatus ?? '').toLowerCase())
-                      }
-                    >
-                      Re-run Analysis
+                <GlassCard className="p-4">
+                  <SectionTitle title="Opponent Roster">
+                    <Button variant="secondary" onClick={() => fetchOpponents()} disabled={loadingOpponents}>
+                      {loadingOpponents ? 'Loading…' : 'Fetch Opponent'}
                     </Button>
-                <Button onClick={handleCopyPlan}>Copy Payload</Button>
-                <Button variant="outline" onClick={handleCopyDiscordPlan}>
-                  Copy Discord Brief
-                </Button>
-                  </>
-                )}
+                  </SectionTitle>
+                  <div className="flex flex-col gap-3">
+                    <label className="flex flex-col gap-1 text-sm">
+                      Opponent Clan Tag
+                      <input
+                        value={opponentClanTagInput}
+                        onChange={(event) => setOpponentClanTagInput(event.target.value)}
+                        placeholder="#OPPONENT"
+                        className="rounded border border-border bg-background px-3 py-2"
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter') {
+                            event.preventDefault();
+                            void fetchOpponents();
+                          }
+                        }}
+                      />
+                    </label>
+                    {opponentClanName && (
+                      <p className="text-sm text-muted-foreground">
+                        Opponent: <span className="font-medium">{opponentClanName}</span>
+                      </p>
+                    )}
+                    {opponentError && <p className="text-sm text-destructive">{opponentError}</p>}
+                    {opponentRosterLoaded ? (
+                      <RosterList
+                        roster={opponentRoster}
+                        selection={opponentSelection}
+                        onToggle={(tag) => toggleSelection(tag, 'opponent')}
+                        emptyMessage="No opponent members returned."
+                        disabled={!canManageWarPlans}
+                      />
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Fetch the opponent roster to choose targets for enrichment.</p>
+                    )}
+                  </div>
+                </GlassCard>
               </div>
-            </SectionTitle>
-            <p className="text-sm text-muted-foreground flex flex-wrap gap-2">
-              <span>Updated {formatTimestamp(savedPlan.updatedAt)}</span>
-              <span>• Analysis: {formatAnalysisStatus(savedPlan.analysisStatus)}</span>
-              {savedPlan.analysisVersion && <span>• v{savedPlan.analysisVersion}</span>}
-              {savedPlan.analysisJobId && <span>• Job {shortId(savedPlan.analysisJobId)}</span>}
-              {savedPlan.analysisStartedAt && <span>• Started {formatTimestamp(savedPlan.analysisStartedAt)}</span>}
-              {savedPlan.analysisCompletedAt && <span>• Completed {formatTimestamp(savedPlan.analysisCompletedAt)}</span>}
-              {savedPlan.analysis?.briefing && (
-                <span>• Briefing: {formatBriefingSource(savedPlan.analysis.briefing)}</span>
-              )}
-              {savedPlan.opponentClanName && <span>• Opponent: {savedPlan.opponentClanName}</span>}
-            </p>
-          </GlassCard>
-        )}
+            </div>
+          </CollapsibleSection>
 
-        <GlassCard className="p-4">
-          <SectionTitle title="Matchup Analysis">
-            <div className="flex gap-2">
-              <Button onClick={runMatchupAnalysis} disabled={!canRunAnalysis || runningAnalysis}>
-                {runningAnalysis ? 'Analyzing…' : 'Run Analysis'}
-              </Button>
-              {(ourSelection.size > 0 || opponentSelection.size > 0) && (
-                <Button
-                  variant="outline"
-                  onClick={handleClearSelections}
-                  disabled={!canManageWarPlans}
-                >
-                  Clear Selections
+          <CollapsibleSection
+            title="Step 2 · Select Players & Prep Plan"
+            storageKey="war-workflow-step-2"
+            defaultExpanded={currentWorkflowStep === 2}
+            icon={<span className="text-xs text-muted-foreground">2</span>}
+          >
+            <div className="grid gap-4 lg:grid-cols-2">
+              <GlassCard className="p-4 space-y-4">
+                <SectionTitle title="Selection Summary">
+                  {(ourSelection.size > 0 || opponentSelection.size > 0) && (
+                    <Button variant="outline" onClick={handleClearSelections} disabled={!canManageWarPlans}>
+                      Clear selections
+                    </Button>
+                  )}
+                </SectionTitle>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Our selections</p>
+                    <p className="text-3xl font-semibold">{ourSelection.size}</p>
+                    <p className="text-xs text-muted-foreground">Pick the attackers we&rsquo;ll assign.</p>
+                  </div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">Opponent picks</p>
+                    <p className="text-3xl font-semibold">{opponentSelection.size}</p>
+                    <p className="text-xs text-muted-foreground">Target bases to enrich + analyze.</p>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Select at least one player on each side and set the opponent tag to unlock the analysis step.
+                </p>
+              </GlassCard>
+
+              <GlassCard className="p-4 space-y-3">
+                <SectionTitle title="Plan Actions" />
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button variant="secondary" onClick={handleSavePlan} disabled={!canSavePlan || savingPlan}>
+                    {savingPlan ? 'Saving…' : 'Save Plan'}
+                  </Button>
+                  <Button variant="outline" onClick={handleLoadPlanClick} disabled={!normalizedOurClanTag || planLoading}>
+                    {planLoading ? 'Loading…' : 'Load Saved Plan'}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Saving stores your selections, analysis, and opponent info so you can resume prep instantly.
+                </p>
+                {planLoading && <span className="text-xs text-muted-foreground">Loading saved plan…</span>}
+                {planMessage && <span className="text-xs text-emerald-400">{planMessage}</span>}
+                {planError && <span className="text-xs text-destructive">{planError}</span>}
+              </GlassCard>
+            </div>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Step 3 · Run Matchup Analysis"
+            storageKey="war-workflow-step-3"
+            defaultExpanded={currentWorkflowStep === 3}
+            icon={<span className="text-xs text-muted-foreground">3</span>}
+          >
+            <GlassCard className="p-4 space-y-4">
+              <SectionTitle title="Matchup Analysis">
+                <Button onClick={runMatchupAnalysis} disabled={!canRunAnalysis || runningAnalysis}>
+                  {runningAnalysis ? 'Analyzing…' : 'Run Analysis'}
                 </Button>
+              </SectionTitle>
+              <p className="text-xs text-muted-foreground">
+                AI toggle and enrich controls live in the header. Increase enrich to deepen the scouting pool.
+              </p>
+              {!canRunAnalysis && (
+                <p className="text-sm text-muted-foreground">
+                  {canRunWarAnalysisPermission
+                    ? 'Select at least one player on each side to run the matchup analysis.'
+                    : 'Leadership permission is required to run matchup analysis.'}
+                </p>
+              )}
+              {analysisError && <p className="text-sm text-destructive">{analysisError}</p>}
+              {!matchup && (
+                <p className="text-xs text-muted-foreground">Results will appear in Step 4 after the analysis completes.</p>
+              )}
+            </GlassCard>
+          </CollapsibleSection>
+
+          <CollapsibleSection
+            title="Step 4 · Review & Share"
+            storageKey="war-workflow-step-4"
+            defaultExpanded={currentWorkflowStep === 4}
+            icon={<span className="text-xs text-muted-foreground">4</span>}
+          >
+            <div className="space-y-4">
+              {savedPlan && (
+                <GlassCard className="p-4">
+                  <SectionTitle title={`Saved Plan — vs ${savedPlan.opponentClanName || savedPlan.opponentClanTag}`}>
+                    <div className="flex flex-wrap gap-2">
+                      <Button variant="secondary" onClick={handleReloadSavedPlan}>
+                        {savedPlan ? 'Reload Plan' : 'Load Saved Plan'}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={handleRegenerateAnalysis}
+                        disabled={
+                          !canRunWarAnalysisPermission ||
+                          ['queued', 'running'].includes((savedPlan.analysisStatus ?? '').toLowerCase())
+                        }
+                      >
+                        Re-run Analysis
+                      </Button>
+                      <Button onClick={handleCopyPlan}>Copy Payload</Button>
+                      <Button variant="outline" onClick={handleCopyDiscordPlan}>
+                        Copy Discord Brief
+                      </Button>
+                    </div>
+                  </SectionTitle>
+                  <p className="text-sm text-muted-foreground flex flex-wrap gap-2">
+                    <span>Updated {formatTimestamp(savedPlan.updatedAt)}</span>
+                    <span>• Analysis: {formatAnalysisStatus(savedPlan.analysisStatus)}</span>
+                    {savedPlan.analysisVersion && <span>• v{savedPlan.analysisVersion}</span>}
+                    {savedPlan.analysisJobId && <span>• Job {shortId(savedPlan.analysisJobId)}</span>}
+                    {savedPlan.analysisStartedAt && <span>• Started {formatTimestamp(savedPlan.analysisStartedAt)}</span>}
+                    {savedPlan.analysisCompletedAt && (
+                      <span>• Completed {formatTimestamp(savedPlan.analysisCompletedAt)}</span>
+                    )}
+                    {savedPlan.analysis?.briefing && (
+                      <span>• Briefing: {formatBriefingSource(savedPlan.analysis.briefing)}</span>
+                    )}
+                    {savedPlan.opponentClanName && <span>• Opponent: {savedPlan.opponentClanName}</span>}
+                  </p>
+                </GlassCard>
+              )}
+
+              {matchup ? (
+                <MatchupResult matchup={matchup} ourSelection={ourSelection} opponentSelection={opponentSelection} />
+              ) : (
+                <GlassCard className="p-4 text-sm text-muted-foreground">
+                  Run an analysis to generate matchup metrics, recommendations, and slot breakdowns.
+                </GlassCard>
               )}
             </div>
-          </SectionTitle>
-          <div className="flex flex-wrap items-center gap-3 mb-3">
-            <Button variant="secondary" onClick={handleSavePlan} disabled={!canSavePlan || savingPlan}>
-              {savingPlan ? 'Saving…' : 'Save Plan'}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleLoadPlanClick}
-              disabled={!normalizedOurClanTag || planLoading}
-            >
-              {planLoading ? 'Loading…' : 'Load Saved Plan'}
-            </Button>
-            {planLoading && <span className="text-xs text-muted-foreground">Loading saved plan…</span>}
-            {planMessage && <span className="text-xs text-emerald-400">{planMessage}</span>}
-            {planError && <span className="text-xs text-destructive">{planError}</span>}
-            <span className="text-xs text-muted-foreground">
-              AI toggle & enrich controls are available in the header.
-            </span>
-          </div>
-          <div className="space-y-4">
-            {!canRunAnalysis && (
-              <p className="text-sm text-muted-foreground">
-                {canRunWarAnalysisPermission
-                  ? 'Select at least one player on each side to run the matchup analysis.'
-                  : 'Leadership permission is required to run matchup analysis.'}
-              </p>
-            )}
-            {analysisError && <p className="text-sm text-destructive">{analysisError}</p>}
-            {matchup && (
-              <MatchupResult matchup={matchup} ourSelection={ourSelection} opponentSelection={opponentSelection} />
-            )}
-          </div>
-        </GlassCard>
+          </CollapsibleSection>
+        </div>
       </div>
     </DashboardLayout>
   );
@@ -1931,7 +2001,7 @@ const RosterList: React.FC<{
   }
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
       {roster.map((player) => {
         const isSelected = selection.has(player.tag);
         const isOptedIn = player.warPreference === 'in';
@@ -1992,8 +2062,12 @@ const MatchupResult: React.FC<{
   return (
     <div className="space-y-4">
       <div className="grid gap-4 sm:grid-cols-2">
-        <StatCard label="Confidence" value={`${analysis.summary.confidence.toFixed(1)}%`} />
-        <StatCard label="Outlook" value={analysis.summary.outlook} />
+        <MetricCard
+          label="Confidence"
+          value={`${analysis.summary.confidence.toFixed(1)}%`}
+          tooltipKey="Confidence Rating"
+        />
+        <MetricCard label="Outlook" value={analysis.summary.outlook} />
       </div>
 
       {briefing && (
@@ -2027,8 +2101,8 @@ const MatchupResult: React.FC<{
           <InsightCard
             title="Town Hall Edge"
             items={[
-              `Max TH diff: ${formatSignedNumber(metrics.townHall.maxTownHallDiff, 0)}`,
-              `High-tier edge: ${formatSignedNumber(metrics.townHall.highTownHallEdge, 0)}`,
+              { text: `Max TH diff: ${formatSignedNumber(metrics.townHall.maxTownHallDiff, 0)}`, tooltipKey: 'TH Delta' },
+              { text: `High-tier edge: ${formatSignedNumber(metrics.townHall.highTownHallEdge, 0)}`, tooltipKey: 'TH Delta' },
               `Our spread: ${summarizeDistribution(metrics.townHall.ourDistribution)}`,
               `Opponent spread: ${summarizeDistribution(metrics.townHall.opponentDistribution)}`,
             ]}
@@ -2036,16 +2110,16 @@ const MatchupResult: React.FC<{
           <InsightCard
             title="Hero Firepower"
             items={[
-              `Average heroes: ${formatSignedNumber(metrics.heroFirepower.averageHeroDelta, 1)}`,
-              `Top 5 hero delta: ${formatSignedNumber(metrics.heroFirepower.topFiveHeroDelta, 1)}`,
-              `Hero depth delta: ${formatSignedNumber(metrics.heroFirepower.heroDepthDelta, 1)}`,
+              { text: `Average heroes: ${formatSignedNumber(metrics.heroFirepower.averageHeroDelta, 1)}`, tooltipKey: 'Hero Delta' },
+              { text: `Top 5 hero delta: ${formatSignedNumber(metrics.heroFirepower.topFiveHeroDelta, 1)}`, tooltipKey: 'Hero Delta' },
+              { text: `Hero depth delta: ${formatSignedNumber(metrics.heroFirepower.heroDepthDelta, 1)}`, tooltipKey: 'Hero Delta' },
             ]}
           />
           <InsightCard
             title="War Experience"
             items={[
-              `Median war stars: ${formatSignedNumber(metrics.warExperience.medianWarStarDelta, 0)}`,
-              `Veteran edge (≥150 stars): ${formatSignedNumber(metrics.warExperience.veteranCountDelta, 0)}`,
+              { text: `Median war stars: ${formatSignedNumber(metrics.warExperience.medianWarStarDelta, 0)}`, tooltipKey: 'War Stars Delta' },
+              { text: `Veteran edge (≥150 stars): ${formatSignedNumber(metrics.warExperience.veteranCountDelta, 0)}`, tooltipKey: 'War Stars Delta' },
             ]}
           />
           <InsightCard
@@ -2133,13 +2207,30 @@ const MetricList: React.FC<{ metrics: MatchupMetrics }> = ({ metrics }) => (
   </ul>
 );
 
-const InsightCard: React.FC<{ title: string; items: string[] }> = ({ title, items }) => (
+type InsightItem = string | { text: string; tooltipKey?: string };
+
+const InsightCard: React.FC<{ title: string; items: InsightItem[] }> = ({ title, items }) => (
   <GlassCard className="p-4 space-y-2">
     <h3 className="text-lg font-semibold">{title}</h3>
     <ul className="list-disc pl-4 space-y-1 text-sm">
-      {items.map((item, idx) => (
-        <li key={idx}>{item}</li>
-      ))}
+      {items.map((item, idx) => {
+        const resolved = typeof item === 'string' ? { text: item } : item;
+        const tooltipContent = resolved.tooltipKey
+          ? TOOLTIP_CONTENT[resolved.tooltipKey]?.content ?? resolved.text
+          : null;
+        const content = <span>{resolved.text}</span>;
+        return (
+          <li key={idx}>
+            {tooltipContent ? (
+              <Tooltip content={tooltipContent} position="top">
+                {content}
+              </Tooltip>
+            ) : (
+              content
+            )}
+          </li>
+        );
+      })}
     </ul>
   </GlassCard>
 );

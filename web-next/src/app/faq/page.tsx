@@ -25,6 +25,9 @@ export default function FAQPage() {
             <Link href="/app" className="rounded-full border border-white/10 px-4 py-2 transition hover:border-brand-primary/60 hover:text-slate-100">
               ← Back to dashboard
             </Link>
+            <Link href="/help" className="rounded-full border border-white/10 px-4 py-2 transition hover:border-brand-primary/60 hover:text-slate-100">
+              Member help center
+            </Link>
             <Link href="/docs/architecture/data-spine.md" className="rounded-full border border-white/10 px-4 py-2 transition hover:border-brand-primary/60 hover:text-slate-100">
               Data spine docs
             </Link>

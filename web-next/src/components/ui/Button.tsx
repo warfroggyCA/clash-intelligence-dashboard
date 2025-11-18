@@ -48,8 +48,8 @@ const getVariantStyles = (variant: ButtonVariant): string => {
     success: 'bg-gradient-to-r from-emerald-500 via-green-500 to-teal-600 text-white shadow-xl hover:shadow-2xl hover:from-emerald-600 hover:via-teal-500 hover:to-cyan-600 border border-emerald-400/30 backdrop-blur-sm',
     warning: 'bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white shadow-xl hover:shadow-2xl hover:from-amber-600 hover:via-orange-500 hover:to-red-500 border border-amber-400/30 backdrop-blur-sm',
     danger: 'bg-gradient-to-r from-red-500 via-rose-500 to-pink-600 text-white shadow-xl hover:shadow-2xl hover:from-red-600 hover:via-pink-500 hover:to-rose-600 border border-red-400/30 backdrop-blur-sm',
-    ghost: 'bg-white/20 backdrop-blur-sm text-gray-700 hover:bg-white/40 border border-gray-200/50 shadow-lg hover:shadow-xl',
-    outline: 'bg-white/10 backdrop-blur-sm text-blue-600 border-2 border-blue-500/50 hover:bg-blue-50/80 hover:border-blue-600 shadow-lg hover:shadow-xl',
+    ghost: 'bg-slate-800/60 text-slate-100 border border-slate-600/70 shadow-sm hover:bg-slate-700/70 hover:border-slate-400/80 focus-visible:ring-2 focus-visible:ring-slate-300/40',
+    outline: 'bg-blue-500/10 text-blue-100 border border-blue-400/70 shadow-sm hover:bg-blue-500/30 hover:text-white hover:border-blue-300 focus-visible:ring-2 focus-visible:ring-blue-400/60',
   };
   
   return variants[variant];

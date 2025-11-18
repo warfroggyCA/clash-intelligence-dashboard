@@ -9,7 +9,7 @@ const isVercel = !!process.env.VERCEL;
 /**
  * Patterns that might expose file paths or sensitive information
  */
-const SENSITIVE_PATTERNS = [
+const BASE_SENSITIVE_PATTERNS = [
   // File paths (Unix/Mac)
   /\/Users\/[^\/\s]+/g,
   /\/home\/[^\/\s]+/g,
@@ -29,10 +29,18 @@ const SENSITIVE_PATTERNS = [
   // Stack trace file references
   /at\s+[^\s]+\s+\([^)]+\)/g,
   /at\s+[^\s]+:[0-9]+:[0-9]+/g,
-  // Common username patterns (case-insensitive)
-  /dougfindlay/gi,
   // Email addresses (partial sanitization)
   /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
+];
+
+const CUSTOM_KEYWORDS = (process.env.SENSITIVE_ERROR_KEYWORDS || '')
+  .split(',')
+  .map((keyword) => keyword.trim())
+  .filter(Boolean);
+
+const SENSITIVE_PATTERNS = [
+  ...BASE_SENSITIVE_PATTERNS,
+  ...CUSTOM_KEYWORDS.map((keyword) => new RegExp(keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi')),
 ];
 
 /**
@@ -122,4 +130,3 @@ export function sanitizeErrorForApi(error: Error | any): {
 export function containsSensitiveInfo(message: string): boolean {
   return SENSITIVE_PATTERNS.some(pattern => pattern.test(message));
 }
-

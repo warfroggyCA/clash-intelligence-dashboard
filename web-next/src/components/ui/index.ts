@@ -80,3 +80,47 @@ export {
 } from './ErrorDisplay';
 
 export { ErrorBoundary } from './ErrorBoundary';
+
+// UI/UX Foundation Components
+export {
+  Tooltip,
+  type TooltipProps,
+  type TooltipPosition,
+} from './Tooltip';
+
+export {
+  Breadcrumbs,
+  type BreadcrumbItem,
+  type BreadcrumbsProps,
+} from './Breadcrumbs';
+
+export {
+  Tabs,
+  type Tab,
+  type TabsProps,
+} from './Tabs';
+
+export {
+  MetricCard,
+  type MetricCardProps,
+} from './MetricCard';
+
+export {
+  EmptyState,
+  type EmptyStateProps,
+} from './EmptyState';
+
+export {
+  SectionHeader,
+  type SectionHeaderProps,
+} from './SectionHeader';
+
+export {
+  CollapsibleSection,
+  type CollapsibleSectionProps,
+} from './CollapsibleSection';
+
+export {
+  BackToTop,
+  type BackToTopProps,
+} from './BackToTop';

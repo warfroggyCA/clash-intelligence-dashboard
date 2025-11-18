@@ -178,7 +178,7 @@ const FAQSections: React.FC<FAQSectionsProps> = ({ className }) => {
         <Card title="Contact paths">
           <ul className="space-y-1">
             <li>#vip-support channel in the leadership Discord.</li>
-            <li>GitHub Issues → <Link href="https://github.com/warfroggy/clash-intelligence/issues" className="text-brand-primary hover:underline">clash-intelligence/issues</Link>.</li>
+            <li>Email <Link href="mailto:info@clashintelligence.com" className="text-brand-primary hover:underline">info@clashintelligence.com</Link> for access or data issues.</li>
             <li>Direct DM to the ops engineer listed in Settings → Leadership Access footer.</li>
           </ul>
         </Card>

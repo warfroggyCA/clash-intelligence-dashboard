@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
+import Link from 'next/link';
 import { useShallow } from 'zustand/react/shallow';
 import useSWR from 'swr';
 import { ClipboardCheck, Copy, Check, Sparkles, Newspaper, Trophy } from 'lucide-react';
@@ -12,6 +13,8 @@ import ApplicantsPanel from '@/components/ApplicantsPanel';
 import TodaysBriefing from '@/components/TodaysBriefing';
 import NewsFeed, { type NewsFeedRef } from '@/components/leadership/NewsFeed';
 import { Button } from '@/components/ui';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
+import { Tabs } from '@/components/ui/Tabs';
 import GlassCard from '@/components/ui/GlassCard';
 import ClanGamesHistoryCard from '@/components/ClanGamesHistoryCard';
 import ClanGamesManager from '@/components/leadership/ClanGamesManager';
@@ -487,6 +490,7 @@ export default function LeadershipDashboard() {
     <LeadershipOnly className="min-h-screen w-full">
       <DashboardLayout clanName={clanDisplayName && clanDisplayName.trim().length > 0 ? clanDisplayName : undefined} hideNavigation>
         <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-8 space-y-8">
+          <Breadcrumbs className="mb-4" />
           <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl p-8 border border-blue-500/20 shadow-2xl">
             <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-8">
               <div className="flex items-center gap-5">
@@ -545,200 +549,289 @@ export default function LeadershipDashboard() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
-            <div className="xl:col-span-2 bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">Quick Actions</h2>
-                  <p className="text-sm text-blue-100/70">
-                    Trigger on-demand refreshes, exports, or insights when the automated cadence needs a nudge.
-                  </p>
-                </div>
-              </div>
-              <div className="mt-4">
-                <QuickActions className="!border-transparent !bg-gray-900/80 !text-slate-100 shadow-[0_12px_30px_-20px_rgba(8,15,31,0.6)]" />
-              </div>
-            </div>
+          <Tabs
+            tabs={[
+              {
+                id: 'overview',
+                label: 'Overview',
+                content: (
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+                      <div className="xl:col-span-2 bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h2 className="text-xl font-semibold text-white">Quick Actions</h2>
+                            <p className="text-sm text-blue-100/70">
+                              Trigger on-demand refreshes, exports, or insights when the automated cadence needs a nudge.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          <QuickActions className="!border-transparent !bg-gray-900/80 !text-slate-100 shadow-[0_12px_30px_-20px_rgba(8,15,31,0.6)]" />
+                        </div>
+                      </div>
 
-            <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">Ingestion Monitor</h2>
-                  <p className="text-sm text-blue-100/70">
-                    Inspect job history or launch a manual ingestion run when data looks stale.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {showIngestionMonitor ? (
-                    <Button variant="ghost" onClick={() => setShowIngestionMonitor(false)}>
-                      Close
-                    </Button>
-                  ) : (
-                    <Button onClick={() => setShowIngestionMonitor(true)}>Open</Button>
-                  )}
-                </div>
-              </div>
-              <div className="mt-4">
-                {showIngestionMonitor ? (
-                  <IngestionMonitor
-                    jobId={activeJobId}
-                    onClose={() => setShowIngestionMonitor(false)}
-                    onJobIdChange={setActiveJobId}
-                  />
-                ) : (
-                  <div className="rounded-xl border border-dashed border-gray-600/60 bg-gray-800/60 px-4 py-6 text-sm text-blue-100/70">
-                    Monitor is idle. Open it to view job history or kick off a refresh.
-                  </div>
-                )}
-              </div>
-          </div>
-        </div>
+                      <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                          <div>
+                            <h2 className="text-xl font-semibold text-white">Ingestion Monitor</h2>
+                            <p className="text-sm text-blue-100/70">
+                              Inspect job history or launch a manual ingestion run when data looks stale.
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {showIngestionMonitor ? (
+                              <Button variant="ghost" onClick={() => setShowIngestionMonitor(false)}>
+                                Close
+                              </Button>
+                            ) : (
+                              <Button onClick={() => setShowIngestionMonitor(true)}>Open</Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="mt-4">
+                          {showIngestionMonitor ? (
+                            <IngestionMonitor
+                              jobId={activeJobId}
+                              onClose={() => setShowIngestionMonitor(false)}
+                              onJobIdChange={setActiveJobId}
+                            />
+                          ) : (
+                            <div className="rounded-xl border border-dashed border-gray-600/60 bg-gray-800/60 px-4 py-6 text-sm text-blue-100/70">
+                              Monitor is idle. Open it to view job history or kick off a refresh.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
-          {enrichmentInsights && (
-            <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-white">Roster Intelligence Pulse</h2>
-                  <p className="text-sm text-blue-100/70">
-                    Fresh signals surfaced from the enriched snapshot feed. Use this at-a-glance pulse before diving into player detail.
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {enrichmentInsights.averageActivity != null && (
-                    <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-mono text-blue-200">
-                      Avg activity {enrichmentInsights.averageActivity}/100
-                    </span>
-                  )}
-                  {enrichmentInsights.rankedLeader != null && (
-                    <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-mono text-purple-200">
-                      Top ranked {numberFormatter.format(enrichmentInsights.rankedLeader)}
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div
-                className={`mt-6 grid grid-cols-1 gap-4 ${
-                  enrichmentInsights.tenureLeaders.length ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
-                }`}
-              >
-                <InsightList
-                  title="Activity Pulse Leaders"
-                  subtitle="Highest weighted activity scores across the roster."
-                  items={enrichmentInsights.topActivity}
-                />
-                <InsightList
-                  title="Ranked Surge"
-                  subtitle="Current ranked trophies since the most recent ingestion run."
-                  items={enrichmentInsights.topRanked}
-                />
-                <InsightList
-                  title="Personal Best Chase"
-                  subtitle="Players closest to matching their all-time trophy peak."
-                  items={enrichmentInsights.bestChasers}
-                />
-                {enrichmentInsights.tenureLeaders.length > 0 && (
-                  <InsightList
-                    title="Tenure Anchors"
-                    subtitle="Longest continuous roster presence (days credited)."
-                    items={enrichmentInsights.tenureLeaders}
-                  />
-                )}
-              </div>
-            </div>
-          )}
+                    {enrichmentInsights && (
+                      <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <h2 className="text-xl font-semibold text-white">Roster Intelligence Pulse</h2>
+                            <p className="text-sm text-blue-100/70">
+                              Fresh signals surfaced from the enriched snapshot feed. Use this at-a-glance pulse before diving into player detail.
+                            </p>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {enrichmentInsights.averageActivity != null && (
+                              <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-mono text-blue-200">
+                                Avg activity {enrichmentInsights.averageActivity}/100
+                              </span>
+                            )}
+                            {enrichmentInsights.rankedLeader != null && (
+                              <span className="rounded-full bg-purple-500/15 px-3 py-1 text-xs font-mono text-purple-200">
+                                Top ranked {numberFormatter.format(enrichmentInsights.rankedLeader)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div
+                          className={`mt-6 grid grid-cols-1 gap-4 ${
+                            enrichmentInsights.tenureLeaders.length ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+                          }`}
+                        >
+                          <InsightList
+                            title="Activity Pulse Leaders"
+                            subtitle="Highest weighted activity scores across the roster."
+                            items={enrichmentInsights.topActivity}
+                          />
+                          <InsightList
+                            title="Ranked Surge"
+                            subtitle="Current ranked trophies since the most recent ingestion run."
+                            items={enrichmentInsights.topRanked}
+                          />
+                          <InsightList
+                            title="Personal Best Chase"
+                            subtitle="Players closest to matching their all-time trophy peak."
+                            items={enrichmentInsights.bestChasers}
+                          />
+                          {enrichmentInsights.tenureLeaders.length > 0 && (
+                            <InsightList
+                              title="Tenure Anchors"
+                              subtitle="Longest continuous roster presence (days credited)."
+                              items={enrichmentInsights.tenureLeaders}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
 
-                 {/* News Feed */}
-                 <GlassCard
-                   title="News Feed"
-                   subtitle="Bullet-point summary of clan state, changes, and notable items"
-                   icon={<Newspaper className="h-5 w-5" />}
-                   className="bg-slate-900/70 border border-slate-800/80"
-                 >
-                   <div className="mb-4 flex items-center justify-between">
-                     <div className="text-xs text-slate-400">
-                       {!clanTag && <span className="text-amber-400">(No clan tag)</span>}
-                       {clanTag && <span>Latest insights from ingestion</span>}
-                     </div>
-                     <Button
-                       onClick={handleRefreshInsights}
-                       disabled={!clanTag}
-                       variant="outline"
-                       size="sm"
-                       className="text-xs"
-                       title={!clanTag ? `No clan tag available. Current: ${clanTag || 'null'}` : 'Generate new insights from latest snapshot data'}
-                     >
-                       Generate Insights
-                     </Button>
-                   </div>
-                   <NewsFeed ref={newsFeedRef} clanTag={clanTag} />
-                 </GlassCard>
-
-          {/* Today's Briefing / Daily Insights */}
-          <GlassCard
-            title="Daily Insights"
-            subtitle="High-level observations and news from the latest data ingestion"
-            icon={<Sparkles className="h-5 w-5" />}
-            className="bg-slate-900/70 border border-slate-800/80"
-          >
-            <TodaysBriefing />
-          </GlassCard>
-
-          <GlassCard
-            title="Clan Games Tracker"
-            subtitle="Historical totals for each Clan Games event. Leaders can update the numbers after every event."
-            icon={<Trophy className="h-5 w-5" />}
-            className="bg-slate-900/70 border border-slate-800/80"
-          >
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ClanGamesHistoryCard clanTag={clanTag} className="order-2 lg:order-1" />
-              <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
-                <ClanGamesManager clanTag={clanTag} />
-              </LeadershipGuard>
-            </div>
-          </GlassCard>
-
-          {/* Game Chat Messages */}
-          {gameChatMessages.length > 0 && (
-            <GlassCard
-              title="Game Chat Messages"
-              subtitle="Ready-to-paste congratulations and announcements"
-              icon={<Copy className="h-5 w-5" />}
-              className="bg-slate-900/70 border border-slate-800/80"
-            >
-              <div className="space-y-3">
-                {gameChatMessages.map((message, index) => (
-                  <div
-                    key={index}
-                    className="flex items-start justify-between gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-4 hover:bg-slate-800/70 transition-colors"
-                  >
-                    <p className="flex-1 text-sm text-slate-200 whitespace-pre-wrap">{message}</p>
-                    <button
-                      onClick={() => handleCopyGameChatMessage(message, index)}
-                      className="flex-shrink-0 rounded-lg border border-slate-600 bg-slate-700/50 p-2 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
-                      title="Copy to clipboard"
+                    <GlassCard
+                      title="News Feed"
+                      subtitle="Bullet-point summary of clan state, changes, and notable items"
+                      icon={<Newspaper className="h-5 w-5" />}
+                      className="bg-slate-900/70 border border-slate-800/80"
                     >
-                      {copiedMessageIndex === index ? (
-                        <Check className="h-4 w-4 text-emerald-400" />
-                      ) : (
-                        <Copy className="h-4 w-4" />
-                      )}
-                    </button>
+                      <div className="mb-4 flex items-center justify-between">
+                        <div className="text-xs text-slate-400">
+                          {!clanTag && <span className="text-amber-400">(No clan tag)</span>}
+                          {clanTag && <span>Latest insights from ingestion</span>}
+                        </div>
+                        <Button
+                          onClick={handleRefreshInsights}
+                          disabled={!clanTag}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          title={!clanTag ? `No clan tag available. Current: ${clanTag || 'null'}` : 'Generate new insights from latest snapshot data'}
+                        >
+                          Generate Insights
+                        </Button>
+                      </div>
+                      <NewsFeed ref={newsFeedRef} clanTag={clanTag} />
+                    </GlassCard>
                   </div>
-                ))}
-              </div>
-            </GlassCard>
-          )}
+                ),
+              },
+              {
+                id: 'analytics',
+                label: 'Analytics',
+                content: (
+                  <div className="space-y-6">
+                    <GlassCard
+                      title="Daily Insights"
+                      subtitle="High-level observations and news from the latest data ingestion"
+                      icon={<Sparkles className="h-5 w-5" />}
+                      className="bg-slate-900/70 border border-slate-800/80"
+                    >
+                      <TodaysBriefing />
+                    </GlassCard>
 
-          <GlassCard
-            title="Applicant Evaluation System"
-            subtitle="Evaluate potential clan members and manage your applicant shortlist"
-            icon={<ClipboardCheck className="h-5 w-5" />}
-            className="bg-slate-900/70 border border-slate-800/80"
-          >
-            <ApplicantsPanel defaultClanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
-          </GlassCard>
+                    {enrichmentInsights && (
+                      <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <h2 className="text-xl font-semibold text-white">Leadership Recognition</h2>
+                            <p className="text-sm text-blue-100/70">
+                              Key metrics and insights for leadership decision-making.
+                            </p>
+                          </div>
+                        </div>
+                        <div
+                          className={`mt-6 grid grid-cols-1 gap-4 ${
+                            enrichmentInsights.tenureLeaders.length ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+                          }`}
+                        >
+                          <InsightList
+                            title="Activity Pulse Leaders"
+                            subtitle="Highest weighted activity scores across the roster."
+                            items={enrichmentInsights.topActivity}
+                          />
+                          <InsightList
+                            title="Ranked Surge"
+                            subtitle="Current ranked trophies since the most recent ingestion run."
+                            items={enrichmentInsights.topRanked}
+                          />
+                          <InsightList
+                            title="Personal Best Chase"
+                            subtitle="Players closest to matching their all-time trophy peak."
+                            items={enrichmentInsights.bestChasers}
+                          />
+                          {enrichmentInsights.tenureLeaders.length > 0 && (
+                            <InsightList
+                              title="Tenure Anchors"
+                              subtitle="Longest continuous roster presence (days credited)."
+                              items={enrichmentInsights.tenureLeaders}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ),
+              },
+              {
+                id: 'management',
+                label: 'Management',
+                content: (
+                  <div className="space-y-6">
+                    <GlassCard
+                      title="Clan Games Tracker"
+                      subtitle="Historical totals for each Clan Games event. Leaders can update the numbers after every event."
+                      icon={<Trophy className="h-5 w-5" />}
+                      className="bg-slate-900/70 border border-slate-800/80"
+                    >
+                      <div className="grid gap-6 lg:grid-cols-2">
+                        <ClanGamesHistoryCard clanTag={clanTag} className="order-2 lg:order-1" />
+                        <LeadershipGuard requiredPermission="canManageChangeDashboard" fallback={null}>
+                          <ClanGamesManager clanTag={clanTag} />
+                        </LeadershipGuard>
+                      </div>
+                    </GlassCard>
 
-          <JoinerReviewCard clanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
+                    {gameChatMessages.length > 0 && (
+                      <GlassCard
+                        title="Game Chat Messages"
+                        subtitle="Ready-to-paste congratulations and announcements"
+                        icon={<Copy className="h-5 w-5" />}
+                        className="bg-slate-900/70 border border-slate-800/80"
+                      >
+                        <div className="space-y-3">
+                          {gameChatMessages.map((message, index) => (
+                            <div
+                              key={index}
+                              className="flex items-start justify-between gap-3 rounded-lg border border-slate-700/50 bg-slate-800/50 p-4 hover:bg-slate-800/70 transition-colors"
+                            >
+                              <p className="flex-1 text-sm text-slate-200 whitespace-pre-wrap">{message}</p>
+                              <button
+                                onClick={() => handleCopyGameChatMessage(message, index)}
+                                className="flex-shrink-0 rounded-lg border border-slate-600 bg-slate-700/50 p-2 text-slate-300 hover:bg-slate-700 hover:text-slate-100 transition-colors"
+                                title="Copy to clipboard"
+                              >
+                                {copiedMessageIndex === index ? (
+                                  <Check className="h-4 w-4 text-emerald-400" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </GlassCard>
+                    )}
+
+                    <GlassCard
+                      title="Recruitment & Player Database"
+                      subtitle="Evaluate applicants, build shortlists, and sync decisions directly with the Player Database."
+                      icon={<ClipboardCheck className="h-5 w-5" />}
+                      className="bg-slate-900/70 border border-slate-800/80"
+                    >
+                      <div className="space-y-6">
+                        <p className="text-sm text-slate-300">
+                          The Applicant Evaluation workspace writes into the Player Database, so every shortlist and external scan
+                          is ready for follow-up. Use the tools below for quick vetting, or open the full Player Database when you
+                          need deeper history and filters.
+                        </p>
+                        <ApplicantsPanel defaultClanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
+                        <div className="grid gap-4 lg:grid-cols-2">
+                          <JoinerReviewCard clanTag={normalizeTag(clanTag || cfg.homeClanTag)} />
+                          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-sm text-slate-200 space-y-3">
+                            <div>
+                              <h4 className="text-base font-semibold text-white">Open Player Database</h4>
+                              <p className="text-xs text-slate-400 mt-1">
+                                Jump into the Player Database to view linked accounts, warnings, and historical notes before finalizing invites.
+                              </p>
+                            </div>
+                            <Link
+                              href="/player-database"
+                              className="inline-flex items-center justify-center rounded-lg border border-slate-600 bg-slate-800 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700 transition-colors"
+                            >
+                              Launch Player Database
+                            </Link>
+                          </div>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  </div>
+                ),
+              },
+            ]}
+            defaultTab="overview"
+            useUrlState={true}
+            urlParamName="tab"
+          />
         </div>
       </DashboardLayout>
     </LeadershipOnly>

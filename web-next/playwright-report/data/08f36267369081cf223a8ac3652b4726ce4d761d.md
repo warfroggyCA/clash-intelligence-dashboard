@@ -1,0 +1,117 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - paragraph [ref=e9]: Clash Intelligence
+          - generic [ref=e10]: Dashboard
+        - generic [ref=e12]:
+          - link "Go to Roster" [ref=e13] [cursor=pointer]:
+            - /url: /app
+            - img "Clan Logo" [ref=e14] [cursor=pointer]
+            - text: Go to Roster
+          - link "Go to Roster" [ref=e15] [cursor=pointer]:
+            - /url: /app
+            - text: ...HeCk YeAh... Go to Roster
+        - generic [ref=e16]:
+          - generic [ref=e19]: Leader
+          - 'button "View as: Leader" [ref=e21] [cursor=pointer]'
+          - button "Switch between tracked clans" [ref=e23] [cursor=pointer]:
+            - generic [ref=e25] [cursor=pointer]: ...HeCk YeAh...
+            - img [ref=e26] [cursor=pointer]
+            - text: Switch between tracked clans
+          - button "D Signed in do.ugfindlay@gmail.com" [ref=e29] [cursor=pointer]:
+            - generic [ref=e30] [cursor=pointer]: D
+            - generic [ref=e31] [cursor=pointer]:
+              - generic [ref=e32] [cursor=pointer]: Signed in
+              - generic [ref=e33] [cursor=pointer]: do.ugfindlay@gmail.com
+          - button "More options" [ref=e35] [cursor=pointer]: ⋯ More options
+    - generic [ref=e37]:
+      - generic [ref=e38]:
+        - text: War Prep workspace (opens new page) Generate daily summary with automated insights
+        - generic [ref=e40]:
+          - generic [ref=e41]:
+            - generic [ref=e42]:
+              - generic [ref=e43]:
+                - heading "Quick Actions" [level=3] [ref=e44]
+                - generic [ref=e45]: Fresh
+              - generic [ref=e48]: Snapshot 11/17/2025 • Generated 11/17/2025, 12:30:10 AM
+            - generic [ref=e49]: Applies to the active clan snapshot
+          - generic [ref=e50]:
+            - button "Refresh snapshot data and smart insights" [ref=e51] [cursor=pointer]:
+              - img [ref=e52] [cursor=pointer]
+              - generic [ref=e54] [cursor=pointer]: Refresh Data & Insights
+              - text: Refresh snapshot data and smart insights
+            - link "War Prep workspace (opens new page)" [ref=e55] [cursor=pointer]:
+              - /url: /war/prep
+              - img [ref=e56] [cursor=pointer]
+              - generic [ref=e58] [cursor=pointer]: War Prep
+              - generic [ref=e59] [cursor=pointer]: →
+              - text: War Prep workspace (opens new page)
+            - button "Copy snapshot summary (war status, capital raids, etc.)" [ref=e60] [cursor=pointer]:
+              - img [ref=e61] [cursor=pointer]
+              - generic [ref=e63] [cursor=pointer]: Copy Summary
+              - text: Copy snapshot summary (war status, capital raids, etc.)
+            - button "Generate daily summary with automated insights of changes since last snapshot" [ref=e64] [cursor=pointer]:
+              - img [ref=e65] [cursor=pointer]
+              - generic [ref=e67] [cursor=pointer]: Insights Summary
+              - text: Generate daily summary with automated insights of changes since last snapshot
+            - button "Export snapshot data in various formats" [ref=e69] [cursor=pointer]:
+              - img [ref=e70] [cursor=pointer]
+              - generic [ref=e72] [cursor=pointer]: Export
+              - img [ref=e73] [cursor=pointer]
+              - text: Export snapshot data in various formats
+      - navigation "Main navigation tabs" [ref=e76]:
+        - generic [ref=e77]:
+          - button "Daily overview and roster" [ref=e78] [cursor=pointer]:
+            - generic [ref=e79] [cursor=pointer]:
+              - generic [ref=e80] [cursor=pointer]: 🛡️
+              - generic [ref=e81] [cursor=pointer]: Dashboard
+            - text: Daily overview and roster
+          - button "Select lineups and analyze upcoming wars" [ref=e83] [cursor=pointer]:
+            - generic [ref=e84] [cursor=pointer]:
+              - generic [ref=e85] [cursor=pointer]: ⚔️
+              - generic [ref=e86] [cursor=pointer]: War Planning
+            - text: Select lineups and analyze upcoming wars
+          - button "Comprehensive war performance intelligence and metrics" [ref=e87] [cursor=pointer]:
+            - generic [ref=e88] [cursor=pointer]:
+              - generic [ref=e89] [cursor=pointer]: 📊
+              - generic [ref=e90] [cursor=pointer]: War Analytics
+            - text: Comprehensive war performance intelligence and metrics
+          - button "Capital raid performance analytics and metrics" [ref=e91] [cursor=pointer]:
+            - generic [ref=e92] [cursor=pointer]:
+              - generic [ref=e93] [cursor=pointer]: 🏛️
+              - generic [ref=e94] [cursor=pointer]: Capital Analytics
+            - text: Capital raid performance analytics and metrics
+          - button "Player notes, warnings, and tenure records" [ref=e95] [cursor=pointer]:
+            - generic [ref=e96] [cursor=pointer]:
+              - generic [ref=e97] [cursor=pointer]: 🗄️
+              - generic [ref=e98] [cursor=pointer]: Player Database
+            - text: Player notes, warnings, and tenure records
+          - button "Leadership dashboards and initiatives" [ref=e99] [cursor=pointer]:
+            - generic [ref=e100] [cursor=pointer]:
+              - generic [ref=e101] [cursor=pointer]: 👑
+              - generic [ref=e102] [cursor=pointer]: Leadership
+            - text: Leadership dashboards and initiatives
+    - main [ref=e103]:
+      - generic [ref=e105]:
+        - generic [ref=e106]:
+          - heading "Capital Raid Analytics" [level=1] [ref=e107]
+          - paragraph [ref=e108]: Comprehensive analytics and metrics for capital raid performance. Track loot efficiency, carry scores, participation rates, and ROI to identify top performers and improvement opportunities.
+        - generic [ref=e109]:
+          - img [ref=e110]
+          - generic [ref=e112]: Loading capital analytics...
+    - contentinfo [ref=e113]:
+      - generic [ref=e116]:
+        - generic [ref=e119]: Clash Intelligence Dashboard
+        - generic [ref=e120]: •
+        - generic [ref=e121]: v1.3.0
+        - generic [ref=e122]: •
+        - generic [ref=e123]: a warfroggy project
+  - alert [ref=e124]
+```
