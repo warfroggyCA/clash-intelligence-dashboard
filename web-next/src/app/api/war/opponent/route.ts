@@ -71,6 +71,7 @@ type OpponentProfile = {
   briefing: { bullets: string[]; copy: string };
   limitations: { privateWarLog?: boolean; couldNotDetectOpponent?: boolean; partialPlayerDetails?: boolean };
   detectedOpponentTag?: string | null;
+  warState?: string | null;
 };
 
 function readinessFromHeroes(th: number | null | undefined, heroes: OpponentMember['heroes']): { score: number | null; isMax: boolean; isRushed: boolean } {
@@ -141,6 +142,7 @@ export async function GET(request: Request) {
     const ourClanTag = rawOurClanTag ? normalizeTag(rawOurClanTag) : undefined;
     let opponentTag = rawOpponentTag ? normalizeTag(rawOpponentTag) : undefined;
     let detectedOpponentTag: string | null = null;
+    let warState: string | null = null;
     const limitations: OpponentProfile['limitations'] = {};
 
     if (autoDetect && ourClanTag) {
@@ -150,6 +152,7 @@ export async function GET(request: Request) {
       if (maybe && (state === 'preparation' || state === 'inwar' || state === 'warended')) {
         detectedOpponentTag = maybe;
         opponentTag = opponentTag || maybe;
+        warState = state;
       } else if (!opponentTag) {
         limitations.couldNotDetectOpponent = true;
       }
@@ -256,6 +259,7 @@ export async function GET(request: Request) {
       limitations,
       detectedOpponentTag,
       briefing: { bullets: [], copy: '' },
+      warState,
     };
 
     profile.briefing = buildBriefing(profile);
@@ -266,4 +270,3 @@ export async function GET(request: Request) {
     return json({ success: false, error: error?.message || 'Failed to build opponent profile' }, { status: 500 });
   }
 }
-

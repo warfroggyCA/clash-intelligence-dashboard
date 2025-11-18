@@ -40,6 +40,77 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - All columns nullable - no breaking changes
 - Rollback script included in migration file
 
+## [1.51.0] - 2025-01-25
+
+### Added - UI/UX Foundation & Navigation Improvements 🎨
+
+#### Foundation UI Components
+- **Tooltip Component** (`components/ui/Tooltip.tsx`) - Accessible tooltip system with hover/click/focus triggers, multiple positioning options, and keyboard navigation support
+- **Breadcrumbs Component** (`components/ui/Breadcrumbs.tsx`) - Dynamic breadcrumb navigation with automatic route mapping and mobile-responsive design
+- **Tabs Component** (`components/ui/Tabs.tsx`) - Accessible tab navigation with URL state support, keyboard navigation (arrow keys, home/end), and ARIA attributes
+- **MetricCard Component** (`components/ui/MetricCard.tsx`) - Standardized metric display with optional tooltip support, trend indicators, and consistent styling
+- **EmptyState Component** (`components/ui/EmptyState.tsx`) - Empty state component with actionable messaging, optional icons, and primary/secondary action buttons
+- **SectionHeader Component** (`components/ui/SectionHeader.tsx`) - Consistent section titles with optional descriptions, icons, and action buttons
+- **CollapsibleSection Component** (`components/ui/CollapsibleSection.tsx`) - Collapsible/accordion sections with localStorage persistence for user preferences
+- **BackToTop Component** (`components/ui/BackToTop.tsx`) - "Back to top" button for long pages with smooth scroll animation
+
+#### Tooltip Content Library
+- **Centralized Tooltip Definitions** (`lib/tooltips/tooltip-content.ts`) - Comprehensive tooltip content library with:
+  - Metrics & Scores: ACE, WPIE, WCI, VIP, War Efficiency, War Consistency, Activity Score, Rush %, Carry Score, ROI, Loot Efficiency
+  - Abbreviations: TH, BK, AQ, GW, RC, MP (Town Hall and Hero abbreviations)
+  - Status Indicators: Current/Former Member, Warning Level, War Opt-In
+  - War Planning Features: Enrich Level, AI Analysis, Confidence Rating, Hero Delta, TH Delta, Ranked Delta, War Stars Delta
+  - Leadership Features: Roster Intelligence Pulse, Activity Pulse, Ranked Surge, Personal Best Chase, Tenure Anchors
+  - War Analytics Metrics: Average Stars, Missed Attacks, Attack Efficiency
+  - Capital Analytics Metrics: Total Loot, Attacks, Participants, Top Contributors, Bonus Earned
+
+#### Navigation Improvements
+- **Breadcrumb Navigation** added to all major pages:
+  - War Planning (`/war`)
+  - War Analytics (`/war-analytics`)
+  - Capital Analytics (`/capital-analytics`)
+  - Player Database (`/player-database`)
+  - Leadership (`/leadership`)
+- Breadcrumbs automatically generate from route structure with "Dashboard" as home link
+- Created `BreadcrumbsClient.tsx` wrapper for server components
+
+#### Leadership Page Reorganization
+- **Tabbed Interface** for Leadership Dashboard:
+  - **Overview Tab**: Quick Actions, Ingestion Monitor, Roster Intelligence Pulse, News Feed
+  - **Analytics Tab**: Daily Insights, Leadership Recognition metrics (Activity Pulse Leaders, Ranked Surge, Personal Best Chase, Tenure Anchors)
+  - **Management Tab**: Clan Games Tracker, Applicant Evaluation System, Recent Joiners, Game Chat Messages
+- Tabs use URL state (`?tab=overview`, `?tab=analytics`, `?tab=management`) for shareable links
+- All existing functionality preserved with improved organization
+
+#### Planning & Documentation
+- **UI/UX Improvement Implementation Plan** (`UI_UX_IMPROVEMENT_IMPLEMENTATION_PLAN.md`) - Comprehensive 8-phase plan covering:
+  - Foundation components (Phase 1)
+  - Navigation & hierarchy (Phase 2)
+  - Tooltip implementation (Phase 3)
+  - Page length management (Phase 4)
+  - Visual consistency (Phase 5)
+  - Documentation updates (Phase 6)
+  - Testing & validation (Phase 7)
+  - Link audits (Phase 8)
+
+### Changed
+- Leadership Dashboard (`components/leadership/LeadershipDashboard.tsx`) reorganized into tabbed interface for better content organization
+- All target pages now include breadcrumb navigation for improved wayfinding
+- Component exports updated in `components/ui/index.ts` to include all new foundation components
+
+### Technical Details
+- All new components follow existing code patterns and TypeScript conventions
+- Components include full accessibility support (ARIA attributes, keyboard navigation, screen reader compatibility)
+- Tooltip system supports both string and React node content
+- Tabs component supports disabled tabs and badge indicators
+- Breadcrumbs component includes schema.org structured data for SEO
+
+### Notes
+- This release implements Phase 1, Phase 2.1, Phase 2.2, and Phase 3.1 of the UI/UX Improvement Implementation Plan
+- Remaining phases (tooltip implementation on pages, War Planning workflow, collapsible sections, documentation updates) will follow in subsequent releases
+- All components are fully typed and include comprehensive prop interfaces
+- No breaking changes to existing functionality
+
 ## [Unreleased]
 
 ### Added

@@ -7,6 +7,7 @@ import { cookies } from 'next/headers';
 import dynamicImport from 'next/dynamic';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import LeadershipGuard from '@/components/LeadershipGuard';
+import BreadcrumbsClient from '@/components/ui/BreadcrumbsClient';
 
 // Lazy load the dashboard component to avoid SSR issues
 const CapitalAnalyticsDashboard = dynamicImport(
@@ -26,6 +27,7 @@ export default async function CapitalAnalyticsPage() {
     <DashboardLayout>
       <LeadershipGuard requiredPermission="canViewLeadershipFeatures">
         <div className="space-y-6">
+          <BreadcrumbsClient className="mb-2" />
           <div className="rounded-xl border border-brand-border bg-brand-surface p-6">
             <h1 className="text-3xl font-bold text-white mb-2">Capital Raid Analytics</h1>
             <p className="text-slate-400">

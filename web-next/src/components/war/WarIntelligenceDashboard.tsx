@@ -10,6 +10,8 @@ import { normalizeTag } from '@/lib/tags';
 import type { WarIntelligenceResult, WarSummary } from '@/lib/war-intelligence/engine';
 import { generateCoachingRecommendations, compareToClanAverage } from '@/lib/war-intelligence/metrics';
 import { Loader2, TrendingUp, TrendingDown, Minus, Target, Shield, Zap, Award } from 'lucide-react';
+import { Tooltip } from '@/components/ui';
+import { TOOLTIP_CONTENT } from '@/lib/tooltips/tooltip-content';
 
 interface WarIntelligenceDashboardProps {
   clanTag?: string;
@@ -131,6 +133,7 @@ export default function WarIntelligenceDashboard({
           max={100}
           icon={<Target className="h-5 w-5" />}
           color="blue"
+          tooltipKey="War Efficiency"
         />
         <MetricCard
           title="Avg Consistency"
@@ -138,6 +141,7 @@ export default function WarIntelligenceDashboard({
           max={100}
           icon={<TrendingUp className="h-5 w-5" />}
           color="green"
+          tooltipKey="War Consistency"
         />
         <MetricCard
           title="Avg Defensive Hold"
@@ -145,6 +149,7 @@ export default function WarIntelligenceDashboard({
           max={100}
           icon={<Shield className="h-5 w-5" />}
           color="purple"
+          tooltipKey="Defensive Hold Rate"
         />
         <MetricCard
           title="Avg Overall Score"
@@ -152,6 +157,7 @@ export default function WarIntelligenceDashboard({
           max={100}
           icon={<Award className="h-5 w-5" />}
           color="amber"
+          tooltipKey="Overall War Score"
         />
       </div>
 
@@ -168,19 +174,19 @@ export default function WarIntelligenceDashboard({
                   Wars
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  AEI
+                  <TooltipLabel text="AEI" tooltipKey="War Efficiency" />
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Consistency
+                  <TooltipLabel text="Consistency" tooltipKey="War Consistency" />
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Hold Rate
+                  <TooltipLabel text="Hold Rate" tooltipKey="Defensive Hold Rate" />
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Overall
+                  <TooltipLabel text="Overall" tooltipKey="Overall War Score" />
                 </th>
                 <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-slate-300">
-                  Tier
+                  <TooltipLabel text="Tier" tooltipKey="Performance Tier" />
                 </th>
               </tr>
             </thead>
@@ -352,19 +358,27 @@ function LatestWarOverview({ summary }: { summary?: WarSummary | null }) {
       </div>
       <div className="grid gap-3 md:grid-cols-4 text-white">
         <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
-          <div className="text-xs uppercase tracking-wider text-slate-400">Stars</div>
+          <div className="text-xs uppercase tracking-wider text-slate-400">
+            <TooltipLabel text="Stars" tooltipKey="War Stars" />
+          </div>
           <div className="text-2xl font-semibold">{summary.clanStars} - {summary.opponentStars}</div>
         </div>
         <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
-          <div className="text-xs uppercase tracking-wider text-slate-400">Attacks Used</div>
+          <div className="text-xs uppercase tracking-wider text-slate-400">
+            <TooltipLabel text="Attacks Used" tooltipKey="Attacks Used" />
+          </div>
           <div className="text-2xl font-semibold">{summary.attacksUsed}/{summary.attacksAvailable}</div>
         </div>
         <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
-          <div className="text-xs uppercase tracking-wider text-slate-400">Average Stars</div>
+          <div className="text-xs uppercase tracking-wider text-slate-400">
+            <TooltipLabel text="Average Stars" tooltipKey="Average Stars" />
+          </div>
           <div className="text-2xl font-semibold">{summary.averageStars.toFixed(2)}</div>
         </div>
         <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
-          <div className="text-xs uppercase tracking-wider text-slate-400">Missed Attacks</div>
+          <div className="text-xs uppercase tracking-wider text-slate-400">
+            <TooltipLabel text="Missed Attacks" tooltipKey="Missed Attacks" />
+          </div>
           <div className="text-2xl font-semibold">{summary.missedAttacks}</div>
         </div>
       </div>
@@ -400,9 +414,10 @@ interface MetricCardProps {
   max: number;
   icon: React.ReactNode;
   color: 'blue' | 'green' | 'purple' | 'amber';
+  tooltipKey?: string;
 }
 
-function MetricCard({ title, value, max, icon, color }: MetricCardProps) {
+function MetricCard({ title, value, max, icon, color, tooltipKey }: MetricCardProps) {
   const percentage = (value / max) * 100;
   const colorClasses = {
     blue: 'text-blue-400 bg-blue-500/20 border-blue-500/30',
@@ -415,7 +430,16 @@ function MetricCard({ title, value, max, icon, color }: MetricCardProps) {
     <div className={`rounded-xl border ${colorClasses[color]} p-4`}>
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-          {title}
+          {tooltipKey && TOOLTIP_CONTENT[tooltipKey] ? (
+            <Tooltip content={TOOLTIP_CONTENT[tooltipKey]!.content}>
+              <span className="inline-flex items-center gap-1">
+                {title}
+                <span className="text-[10px]">ⓘ</span>
+              </span>
+            </Tooltip>
+          ) : (
+            title
+          )}
         </span>
         {icon}
       </div>
@@ -432,3 +456,17 @@ function MetricCard({ title, value, max, icon, color }: MetricCardProps) {
     </div>
   );
 }
+
+const TooltipLabel: React.FC<{ text: string; tooltipKey?: string }> = ({ text, tooltipKey }) => {
+  if (!tooltipKey || !TOOLTIP_CONTENT[tooltipKey]) {
+    return <span>{text}</span>;
+  }
+  return (
+    <Tooltip content={TOOLTIP_CONTENT[tooltipKey]!.content}>
+      <span className="inline-flex items-center gap-1">
+        {text}
+        <span className="text-[10px]">ⓘ</span>
+      </span>
+    </Tooltip>
+  );
+};

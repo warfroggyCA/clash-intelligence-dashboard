@@ -11,6 +11,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { GlassCard } from '@/components/ui/GlassCard';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import type { Roster } from '@/types';
 
@@ -1119,6 +1120,7 @@ export default function PlayerDatabasePage() {
   return (
     <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
       <div className="space-y-6">
+        <Breadcrumbs className="mb-2" />
         {/* Header */}
         <GlassCard 
           title="Player Database"
