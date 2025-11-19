@@ -2,6 +2,8 @@ import { test } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
 
+test.setTimeout(120_000);
+
 const APEX_HOST = process.env.PLAYWRIGHT_APEX_HOST || 'http://localhost:5050';
 const CLAN_HOST = process.env.PLAYWRIGHT_CLAN_HOST || 'http://heckyeah.localhost:5050';
 const TEST_EMAIL = process.env.PLAYWRIGHT_TEST_EMAIL || 'do.ugfindlay@gmail.com';
@@ -23,10 +25,12 @@ screenshotDirs.forEach((dir) => {
 
 async function signIn(page) {
   await page.goto(`${CLAN_HOST}/login`);
-  await page.getByLabel('Email address').fill(TEST_EMAIL);
+  await page.waitForLoadState('domcontentloaded');
+  await page.getByLabel('Email or Username').fill(TEST_EMAIL);
   await page.getByLabel('Password').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForURL('**/app', { timeout: 10_000 }).catch(() => {});
+  await page.waitForLoadState('domcontentloaded');
   try {
     await page.waitForSelector('h3:has-text("Quick Actions")', { 
       timeout: 10_000,
@@ -39,11 +43,13 @@ async function signIn(page) {
 
 async function signOut(page) {
   await page.goto(`${CLAN_HOST}/api/logout`, { method: 'POST' }).catch(() => {});
+  await page.waitForLoadState('networkidle').catch(() => {});
   await page.waitForTimeout(1000);
 }
 
 test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
   test('capture all dashboard screenshots', async ({ page }) => {
+    test.slow();
     // Set consistent viewport
     await page.setViewportSize({ width: 1280, height: 720 });
 
@@ -52,6 +58,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
 
     // 4.1 Main Dashboard
     await page.goto(`${CLAN_HOST}/app`);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForSelector('h3:has-text("Quick Actions")', { state: 'visible' });
     await page.waitForTimeout(2000); // Wait for content to load
     await page.screenshot({ 
@@ -72,6 +79,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
 
     // 4.2 War Planning
     await page.goto(`${CLAN_HOST}/war`);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(3000); // Wait for war plan to load
     await page.screenshot({ 
       path: 'docs/assets/dashboard/war-planning.png',
@@ -95,6 +103,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
 
     // 4.3 Settings – Active Access
     await page.goto(`${CLAN_HOST}/settings`);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
     // Scroll to Active Access section if needed
     const activeAccess = page.getByText(/Active access/i);
@@ -148,6 +157,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
 
     // 4.5 Generic Landing
     await page.goto(APEX_HOST);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
     await page.screenshot({ 
       path: 'docs/assets/dashboard/landing-generic.png',
@@ -156,6 +166,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
 
     // 4.5 Clan Landing
     await page.goto(CLAN_HOST);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
     await page.screenshot({ 
       path: 'docs/assets/dashboard/landing-heckyeah.png',
@@ -168,6 +179,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
 
     // Login – Generic
     await page.goto(`${APEX_HOST}/login`);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
     await page.screenshot({ 
       path: 'docs/assets/login/login-generic.png',
@@ -176,6 +188,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
 
     // Login – Clan
     await page.goto(`${CLAN_HOST}/login`);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
     await page.screenshot({ 
       path: 'docs/assets/login/login-clan.png',
@@ -184,11 +197,13 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
   });
 
   test('capture onboarding screenshots', async ({ page }) => {
+    test.slow();
     await page.setViewportSize({ width: 1280, height: 720 });
 
     // Onboarding guard (signed out)
     await signOut(page);
     await page.goto(`${CLAN_HOST}/onboarding`);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
     await page.screenshot({ 
       path: 'docs/assets/onboarding/onboarding-signin.png',
@@ -198,6 +213,7 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
     // Sign in and check onboarding state
     await signIn(page);
     await page.goto(`${CLAN_HOST}/onboarding`);
+    await page.waitForLoadState('domcontentloaded');
     await page.waitForTimeout(2000);
 
     // Check if already onboarded
@@ -252,4 +268,3 @@ test.describe('Screenshot Capture for SYSTEM_MANUAL.md', () => {
     }
   });
 });
-

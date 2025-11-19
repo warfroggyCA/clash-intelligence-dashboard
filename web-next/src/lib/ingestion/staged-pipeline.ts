@@ -1,5 +1,5 @@
 import { cfg } from '@/lib/config';
-import { fetchFullClanSnapshot } from '@/lib/full-snapshot';
+import { fetchFullClanSnapshot, persistFullClanSnapshot } from '@/lib/full-snapshot';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { extractHeroLevels } from '@/lib/coc';
@@ -14,6 +14,7 @@ import { extractEnrichedFields } from './field-extractors';
 import { createInitialTenureForJoiners } from '@/lib/services/tenure-service';
 import { calculateAndStoreVIP } from './calculate-vip';
 import { calculateActivityScore } from '@/lib/business/calculations';
+import { persistWarData } from './persist-war-data';
 
 export interface StagedIngestionResult {
   success: boolean;
@@ -101,6 +102,31 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
         throw new Error(`Fetch phase failed: ${result.phases.fetch.error_message}`);
       }
       snapshot = result.phases.fetch.metadata?.snapshot as FullClanSnapshot;
+      
+      // Persist war data immediately after fetch (war data is independent of roster data)
+      if (snapshot) {
+        try {
+          await appendJobLog(jobId, {
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            message: 'Syncing war and raid data to Supabase',
+          });
+          await persistWarData(snapshot);
+          await appendJobLog(jobId, {
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            message: 'War data synced to Supabase',
+          });
+        } catch (warPersistError: any) {
+          await appendJobLog(jobId, {
+            timestamp: new Date().toISOString(),
+            level: 'warn',
+            message: 'Failed to persist war data to Supabase',
+            details: { error: warPersistError?.message || warPersistError },
+          });
+          // Don't fail the entire ingestion if war data persistence fails
+        }
+      }
     }
 
     // Phase 2: Transform
@@ -126,6 +152,31 @@ export async function runStagedIngestion(options: StagedIngestionOptions = {}): 
       result.phases.writeSnapshot = await runWriteSnapshotPhase(jobId, snapshot, transformedData);
       if (!result.phases.writeSnapshot.success) {
         throw new Error(`Write snapshot phase failed: ${result.phases.writeSnapshot.error_message}`);
+      }
+      
+      // Also persist full snapshot to clan_snapshots table (for roster API to read war_log)
+      if (snapshot) {
+        try {
+          await appendJobLog(jobId, {
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            message: 'Writing full snapshot to clan_snapshots table',
+          });
+          await persistFullClanSnapshot(snapshot);
+          await appendJobLog(jobId, {
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            message: 'Full snapshot written to clan_snapshots',
+          });
+        } catch (fullSnapshotError: any) {
+          await appendJobLog(jobId, {
+            timestamp: new Date().toISOString(),
+            level: 'warn',
+            message: 'Failed to write full snapshot to clan_snapshots',
+            details: { error: fullSnapshotError?.message || fullSnapshotError },
+          });
+          // Don't fail the entire ingestion if full snapshot persistence fails
+        }
       }
     }
 

@@ -1702,6 +1702,11 @@ export const useDashboardStore = create<DashboardState>()(
   // TEMPORARILY DISABLED: devtools options might be causing React Error #185
   // );
 );
+
+// Expose store to window for debugging (development only)
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  (window as any).__dashboardStore = useDashboardStore;
+}
     // , {
     //   name: 'dashboard-store',
     //   partialize: (state: DashboardState) => ({

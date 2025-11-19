@@ -110,6 +110,29 @@
 - `tests/e2e/onboarding-auth.spec.ts` – ensures completion flows to `/app`.
 - `tests/e2e/full-ux.spec.ts` – exercises onboarding as part of broader journey and verifies already-onboarded pathways.
 
+#### 3.2 In-Game Chat Verification (`/register`)
+- **Purpose:** Replace email-only invitations with a self-service, clan-chat verification workflow.
+- **Player Flow:** 
+  1. Visit `/register` on the clan subdomain (host resolved via `getActiveClanConfig`).
+  2. Enter Clash player tag (must include `#`). Client validates format; server verifies membership via `canonical_member_snapshots`.
+  3. Receive a short verification code (e.g., `GOLD-BLADE42` or `CLASH-N7P3`), expiration (24h default), clan name, and status pill.
+  4. Post the code verbatim in clan chat and notify leadership; the UI reminds them that username-only accounts skip email notifications.
+- **UI Component:** `src/app/register/RegisterClient.tsx` renders the hero, instructions, FAQ, and result card with Copy button + status badge.
+- **APIs:** 
+  | Route | Description | Auth | Notes |
+  | --- | --- | --- | --- |
+  | `POST /api/register` | Validate tag, ensure player is in clan roster, dedupe pending records, insert row into `pending_registrations`. | Public (host-aware). | Returns `{ registration }` so the UI can show status + expiration immediately. |
+  | `GET /api/register?code=XXXX` | Lookup status by verification code. | Public. | Used for a future “status” page or debugging. |
+  | `GET /api/register/pending?status=pending&clanTag=#TAG` | Leadership list filtered by status. | `requireRole(['leader','coleader'])`. | Enriches each row with `playerName` + last snapshot date. |
+  | `POST /api/register/approve` | Mark record as approved, storing reviewer and timestamp. | Leadership. | Follow-up will also create Supabase accounts and `user_roles` links. |
+  | `POST /api/register/reject` | Mark record as rejected/invalid. | Leadership. | Used when the clan chat post is missing or invalid. |
+- **Leadership UI:** `PendingRegistrations.tsx` (Management tab on Leadership Dashboard) shows filter tabs, status badges, verification code, expiration, roster snapshot date, and Approve/Reject buttons. Visibility is gated by `permissions.canManageAccess`.
+- **Screenshots to capture:** 
+  - `/register` empty form state.
+  - `/register` after generating a pending code.
+  - Leadership Management tab showing at least one pending registration row.
+- **Testing:** Jest specs live under `src/lib/registration/__tests__` (see below). A future Playwright spec should seed a mock registration via Supabase and walk through the leadership approval flow.
+
 ### 3. Onboarding Experience
 - **Entry Conditions:** Redirect logic from `AuthGate`, when `needsOnboarding` flips.
 - **UI Steps:** Roster fetch, selection card, summary panel, success state, already-onboarded screen.
@@ -155,7 +178,7 @@ Each subsection below lists route, purpose, field inventory, backend sources, an
   - **Active Access table (`SettingsContent.tsx`)** – lists each user, email, player tag (if provided). Data from `/api/access/permissions`.
   - **Permissions matrix (`PermissionManager.tsx`)** – headings by feature group (styled via latest UI tweaks). Each permission toggled via role-level selectors.
   - **Tracked Clans (`src/app/api/tracked-clans`)** – home clan locked; additional tracked clans can be added/removed for monitoring.
-  - **Invitations/Requests (planned)** – placeholder referencing `PLAYER_TAG_ONBOARDING_PLAN.md`.
+  - **Registration backlog (future)** – once `/register` is GA, Settings will offer manual overrides plus export of `pending_registrations`. Until then, leadership works out of the dashboard Management tab.
 - **Interactions:** Edit role assignments, remove tracked clans (non-home), copy onboarding links.
 - **Edge Cases:** Non-leaders see read-only view; missing `player_tag` prompts linking guidance.
 - **Screenshots:** 
@@ -164,14 +187,29 @@ Each subsection below lists route, purpose, field inventory, backend sources, an
   - ![Settings - Tracked Clans](./assets/dashboard/settings-tracked-clans.png)
     - **How to reproduce:** From `/settings`, scroll down to Tracked Clans section showing home clan (locked) and any additional tracked clans.
 
-#### 4.4 Player Database (`/player/*`, `/player-database`)
+#### 4.4 Leadership Dashboard – Management Tab
+- **Route:** `/app/leadership` (tabbed interface; `?tab=management`).
+- **Pending Registrations card:** Sits at the top for leaders/coleaders.
+  - Filter pills (pending/approved/rejected/expired/all) drive `status` query param for `/api/register/pending`.
+  - Each row shows player tag, optional player name, verification code (monospace), expiration timestamp, last roster snapshot, and a status pill (color-coded).
+  - Approve/Reject buttons call `/api/register/approve` and `/api/register/reject` respectively; spinner icons show while waiting.
+  - Errors render in-line, and a Refresh button re-fetches data without changing filters.
+- **Other cards on Management tab:**
+  - Clan Games Tracker/Manager (unchanged; references `/api/clan-games`).
+  - Recruitment & Player Database workspace (Applicants panel, Joiner review card, CTA into `/player-database`).
+- **Screenshot TODOs:** 
+  - Pending state with at least one row (capture from leadership test account after inserting a fake row).
+  - Approved filter view to show status badge change.
+  - Management tab overview after restructure (Clan Games, Applicants, etc.).
+
+#### 4.5 Player Database (`/player/*`, `/player-database`)
 - **Player Profile (`/player/%23TAG`):** Shows hero levels, war stats, linked accounts (reciprocal linking enforced via `player-aliases.ts`). Pulls from Supabase canonical views.
 - **Player Database list:** Search/filter interface for all known players; displays TH, role, activity, linked accounts.
 - **Linked Accounts:** Display each alias; selecting one should show the entire alias cluster (bidirectional).
 - **Screenshot:** ![Player Profile](./assets/dashboard/player-profile.png)
   - **How to reproduce:** Sign in as leader, navigate to `/player/%23JL2RPU09` (or any valid player tag), wait for profile to load showing linked accounts.
 
-#### 4.5 Marketing & Clan Landing Pages
+#### 4.6 Marketing & Clan Landing Pages
 - **Generic root (`/` on apex host):** "The war room for modern clans in Clash of Clans." CTA: Request Access (mailto `info@clashintelligence.com`), Sign In (redirect to clan host).
   - **Screenshot:** ![Generic Landing Page](./assets/dashboard/landing-generic.png)
     - **How to reproduce:** Visit `http://localhost:5050/` (apex host), screenshot shows hero section with "The war room..." heading.
@@ -180,12 +218,24 @@ Each subsection below lists route, purpose, field inventory, backend sources, an
     - **How to reproduce:** Visit `http://heckyeah.localhost:5050/` (clan host), screenshot shows "Welcome to HeckYeah" hero with clan branding.
 - **Onboarding landing (`/onboarding` unauthenticated):** Sign-in prompt tailored to clan host.
 
+#### 4.7 Discord Hub (`/discord`)
+- **Purpose:** Leadership-only command center for Discord publishing. Stores the webhook, renders a live preview, and exposes reusable exhibits (Rush Analysis, Donation Report, Activity Report, War Report, and the new War Result builder).
+- **Access:** Leadership tabs now include “Discord,” which links to `/discord`. Quick Actions on the Overview tab also surface a CTA. Page requires `canAccessDiscordPublisher`.
+- **War Result Exhibit:** Auto-detects the latest completed war, fills in the scoreline/differential, and provides inputs for MVP, top performers, bravest attack, and learnings. Preview uses `formatWarResultForDiscord` and posts via `/api/discord/publish`.
+- **Other Exhibits:** Rush analysis (hero underlevels), Donation Report (top/bottom donors), Activity Report (last-seen status), and legacy War Report based on current war + war log.
+- **Screenshots:** Capture Discord hub overview plus War Result form/preview and add under `docs/assets/dashboard/discord-hub.png` / `discord-war-result.png`.
+
 ### 5. API Surface
 | Route | Method | Purpose | Auth Guard | Key Params / Body | Data Source | Notes / Consumers |
 | --- | --- | --- | --- | --- | --- | --- |
 | `/api/session` | GET | Return current user + roles + `needsOnboarding`. | Supabase cookie required. | n/a | `user_roles`, Supabase auth. | Called by `hydrateSession`, AuthGate. |
 | `/api/onboarding/roster` | GET | Latest roster for active clan (host-aware). | Auth required; clan inferred from headers. | `x-clan-tag`. | `canonical_member_snapshots`. | Used by `OnboardingClient` to render card list. |
 | `/api/onboarding/submit-tags` | POST | Persist selected player tag, auto-link minis. | Auth required. | `{ selectedTags: string[] }`. | `user_roles`, `player_aliases`, `canonical_member_snapshots`. | Updates `needsOnboarding`, invoked from onboarding CTA. |
+| `/api/register` | POST | Public registration request, returns verification code + expiration. | Host inferred; no session required. | `{ playerTag }`. | `pending_registrations`, `canonical_member_snapshots`, `user_roles`, `clans`. | Called by `/register` form. |
+| `/api/register` | GET | Lookup registration status via `?code=CLASH-XXXX`. | None. | `code` query. | `pending_registrations`. | Future status page / debugging. |
+| `/api/register/pending` | GET | Leadership view of pending/approved/rejected/expired registrations. | `requireRole` (leader/coleader). | `status`, `clanTag`. | `pending_registrations`, `canonical_member_snapshots`. | Used by `PendingRegistrations` card. |
+| `/api/register/approve` | POST | Mark pending record as approved. | `requireRole`. | `{ registrationId }`. | `pending_registrations`. | Future work: auto-create Supabase user. |
+| `/api/register/reject` | POST | Mark pending record as rejected/expired. | `requireRole`. | `{ registrationId }`. | `pending_registrations`. | Leadership action button. |
 | `/api/v2/war-planning/our-roster` | GET | Clan roster snapshot meta. | Leadership enforced. | Query params for snapshot selection. | Supabase war tables. | War planning store, `/war` UI. |
 | `/api/v2/war-planning/matchup` | POST | Build matchup analysis + optional AI payload. | Leadership. | Clan/opponent tags, plan options. | Supabase snapshots + OpenAI (optional). | Used by `/war` analysis step. |
 | `/api/v2/war-planning/plan` | GET/POST | Load or save war plan. | Leadership; plan scoped to user’s clan. | POST body includes plan slots, notes. | `war_plans`, `war_plan_slots`. | `/war` plan editor & Discord brief builder. |
@@ -338,6 +388,7 @@ Run after significant changes or periodically:
 - **2025-01-XX:** Initial framework + onboarding/auth/hosting sections documented. Added dashboard/API outlines. (Codex)
 - **2025-01-YY:** Added Supabase schema catalog, testing instructions, operational playbooks, glossary, permissions summary, TODO list. (Codex)
 - **2025-11-17:** Added comprehensive screenshots for dashboard, login, onboarding, and landing pages. Screenshots captured via Playwright automation script (`tests/e2e/screenshots.spec.ts`) using leader test account. All major UI surfaces now have visual references embedded in relevant sections.
+- **2025-02-28:** Introduced `/register` workflow, pending registration APIs, Leadership Management card, and registration unit tests. Manual updated with instructions + screenshots TODOs. (Codex)
 
 ---
 

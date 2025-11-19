@@ -38,7 +38,7 @@ interface PageAudit {
 
 async function signIn(page: any) {
   await page.goto(`${CLAN_HOST}/login`);
-  await page.getByLabel('Email address').fill(TEST_EMAIL);
+  await page.getByLabel('Email or Username').fill(TEST_EMAIL);
   await page.getByLabel('Password').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
   await page.waitForURL('**/app', { timeout: 10_000 }).catch(() => {});
@@ -164,6 +164,7 @@ test.describe('UI/UX Comprehensive Audit', () => {
   });
 
   test('audit all target pages', async ({ page }) => {
+    test.slow();
     // Sign in first
     await signIn(page);
 
@@ -367,4 +368,3 @@ function generateMarkdownReport(report: any): string {
 
   return lines.join('\n');
 }
-

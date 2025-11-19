@@ -8,12 +8,14 @@ const TEST_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD || 'testaccount';
 test.describe('Authenticated onboarding flow', () => {
   test('locks user into onboarding until tags are selected', async ({ page }) => {
     await page.goto(`${CLAN_HOST}/login`);
-    await page.getByLabel('Email address').fill(TEST_EMAIL);
+    await page.waitForLoadState('domcontentloaded');
+    await page.getByLabel('Email or Username').fill(TEST_EMAIL);
     await page.getByLabel('Password').fill(TEST_PASSWORD);
     await page.getByRole('button', { name: 'Sign In' }).click();
 
     // Wait for login to complete and redirect
     await page.waitForURL('**/app', { timeout: 10000 }).catch(() => {});
+    await page.waitForLoadState('domcontentloaded');
     
     // Wait for session to be established - check that we're not seeing "Sign In Required"
     await page.waitForFunction(
@@ -24,7 +26,12 @@ test.describe('Authenticated onboarding flow', () => {
       { timeout: 10000 }
     ).catch(() => {});
     
+    // WebKit-specific delay before navigating to onboarding
+    // WebKit often needs extra time for session hydration
+    await page.waitForTimeout(1000);
+    
     await page.goto(`${CLAN_HOST}/onboarding`);
+    await page.waitForLoadState('domcontentloaded');
 
     const state = await waitForOnboardingState(page);
 

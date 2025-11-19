@@ -5,13 +5,14 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui';
 import type { ClanHostConfig } from '@/lib/clan-config';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
+import { syncServerSession } from '@/lib/auth/session-sync';
 
 interface LoginFormClientProps {
   clanConfig: ClanHostConfig;
 }
 
 export function LoginFormClient({ clanConfig }: LoginFormClientProps) {
-  const [email, setEmail] = useState('');
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -48,20 +49,30 @@ export function LoginFormClient({ clanConfig }: LoginFormClientProps) {
     void logoutCurrentSession();
   }, [logoutCurrentSession]);
 
+  const resolveLoginEmail = (value: string): string => {
+    if (value.includes('@')) {
+      return value.trim();
+    }
+    const username = value.replace(/\s+/g, '').toLowerCase();
+    return `${username}@clashintelligence.local`;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email,
+      const loginEmail = resolveLoginEmail(identifier);
+      const { data: sessionData, error: signInError } = await supabase.auth.signInWithPassword({
+        email: loginEmail,
         password,
       });
 
       if (signInError) {
         setError(signInError.message);
       } else {
+        await syncServerSession('SIGNED_IN', sessionData?.session ?? null);
         router.push('/app');
       }
     } catch (err: any) {
@@ -90,20 +101,22 @@ export function LoginFormClient({ clanConfig }: LoginFormClientProps) {
         <div className="w-full max-w-xl rounded-[32px] border border-clash-gold/40 bg-slate-900/70 px-8 py-10 shadow-[0_35px_90px_-35px_rgba(0,0,0,0.9)] backdrop-blur-2xl">
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-200">
-                Email address
+              <label htmlFor="identifier" className="block text-sm font-medium text-slate-200">
+                Email or Username
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
+                id="identifier"
+                name="identifier"
+                type="text"
                 required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
                 className="mt-2 block w-full rounded-2xl border border-slate-700/70 bg-slate-950/40 px-4 py-3 text-sm text-white placeholder-slate-500 shadow-inner focus:outline-none focus:ring-2 focus:ring-clash-gold focus:border-clash-gold"
-                placeholder="Enter your email"
+                placeholder="Enter your email or clan username"
               />
+              <p className="mt-2 text-xs text-slate-400">
+                Prefer usernames? Just enter your clan username (or player tag) and we&rsquo;ll handle the rest. Choosing email enables notifications such as password resets.
+              </p>
             </div>
 
             <div>

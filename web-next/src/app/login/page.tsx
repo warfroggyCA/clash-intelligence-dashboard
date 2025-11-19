@@ -21,16 +21,21 @@ export default function LoginPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Available clan portals</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {clanHosts.map((config) => {
-                const targetHost = config.hostnames[0] || `${config.slug}.clashintelligence.com`;
+                const targetHost =
+                  process.env.NEXT_PUBLIC_USE_HTTP_LINKS === 'true'
+                    ? (config.hostnames[0]?.replace(/^https?:\/\//, '') || `${config.slug}.localhost:5050`)
+                    : (config.hostnames[0] || `${config.slug}.clashintelligence.com`);
+                const protocol = process.env.NEXT_PUBLIC_USE_HTTP_LINKS === 'true' ? 'http://' : 'https://';
                 return (
-                <Link
-                  key={config.slug}
-                  href={`https://${targetHost}/login`}
-                  className="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white transition hover:border-clash-gold/60 hover:text-clash-gold"
-                >
-                  {config.displayName}
-                </Link>
-              );})}
+                  <Link
+                    key={config.slug}
+                    href={`${protocol}${targetHost}/login`}
+                    className="rounded-2xl border border-white/10 bg-slate-950/40 px-4 py-3 text-sm font-semibold text-white transition hover:border-clash-gold/60 hover:text-clash-gold"
+                  >
+                    {config.displayName}
+                  </Link>
+                );
+              })}
             </div>
           </div>
           <p className="text-xs text-slate-500">

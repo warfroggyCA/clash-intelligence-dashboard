@@ -123,6 +123,13 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Toast system: lightweight event-bus (`lib/toast.ts`) and renderer (`components/layout/ToastHub.tsx`).
 - Data source toggle (Live vs Snapshot) in header.
 - Release scripts: `release:patch|minor|major` and `commit` (minor), which bump version, create a tag, and push.
+- **Self-serve registration workflow:**
+  - `/register` public page with step-by-step instructions, verification code display, and FAQ (username vs email accounts).
+  - Supabase migration `20250228_create_pending_registrations.sql` storing clan-tagged requests with expiration and approval metadata.
+  - API suite (`/api/register`, `/api/register/pending`, `/api/register/approve`, `/api/register/reject`) covering public submissions, leadership queues, and approval actions.
+  - Leadership dashboard card (`PendingRegistrations.tsx`) inside the Management tab with filters, status badges, and inline Approve/Reject controls.
+  - Shared registration utilities (`generateVerificationCode`, `validatePlayerInClan`) and Jest coverage.
+  - System manual + plan docs updated with reproduction steps, screenshot TODOs, and change log entry.
 
 ### Changed
 - Footer version now reads from `NEXT_PUBLIC_APP_VERSION`; scripts inject the package version for dev/build/start.
