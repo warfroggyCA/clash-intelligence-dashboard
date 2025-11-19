@@ -139,8 +139,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = payloadSchema.safeParse(body);
     if (!parsed.success) {
+      const errorDetails = parsed.error.flatten();
       return json(
-        { success: false, error: 'Invalid request body', details: parsed.error.flatten() },
+        { 
+          success: false, 
+          error: 'Invalid request body',
+          message: `Validation failed: ${JSON.stringify(errorDetails.fieldErrors)}`
+        },
         { status: 400 }
       );
     }
