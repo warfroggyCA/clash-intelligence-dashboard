@@ -13,6 +13,6 @@ test.describe('Login flows', () => {
   test('clan login shows access form', async ({ page }) => {
     await page.goto(`${CLAN_HOST}/login`);
     await expect(page.getByText('Clan Access Portal')).toBeVisible();
-    await expect(page.getByLabel('Email address')).toBeVisible();
+    await expect(page.getByLabel('Email or Username')).toBeVisible();
   });
 });

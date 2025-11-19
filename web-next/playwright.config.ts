@@ -50,8 +50,10 @@ export default defineConfig({
     ? {
         command: webServerCommand,
         url: baseURL,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: !process.env.CI, // Use existing server if already running (except in CI)
         timeout: 120 * 1000,
+        stdout: 'ignore',
+        stderr: 'pipe',
       }
     : undefined,
 });

@@ -47,6 +47,7 @@ interface ClanIngestionStatus {
   lastSnapshotAt?: string;
   isStale: boolean;
   memberCount?: number;
+  lastJobId?: string;
 }
 
 // GET /api/tracked-clans/status - Get ingestion status for all tracked clans
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
         // Get latest ingestion job
         const { data: latestJob } = await supabase
           .from('ingestion_jobs')
-          .select('status, created_at, updated_at')
+          .select('id, status, created_at, updated_at')
           .eq('clan_tag', normalizedTag)
           .order('created_at', { ascending: false })
           .limit(1)
@@ -129,6 +130,7 @@ export async function GET(request: NextRequest) {
           lastSnapshotAt: lastSnapshotAt || undefined,
           isStale,
           memberCount: latestSnapshot?.member_count || undefined,
+          lastJobId: latestJob?.id || undefined,
         };
       })
     );

@@ -218,7 +218,7 @@ export type HeroCaps = Partial<Record<"bk" | "aq" | "gw" | "rc" | "mp", number>>
 /**
  * Town Hall level type
  */
-export type TownHallLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17;
+export type TownHallLevel = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18;
 
 // =============================================================================
 // ACTIVITY & EVENTS
@@ -786,6 +786,25 @@ export interface ApiResponse<T = any> {
   requestId?: string;
 }
 
+// =============================================================================
+// REGISTRATION TYPES
+// =============================================================================
+
+export type RegistrationStatus = 'pending' | 'approved' | 'rejected' | 'expired';
+
+export interface PendingRegistration {
+  id: string;
+  clanTag: string;
+  playerTag: string;
+  verificationCode: string;
+  status: RegistrationStatus;
+  expiresAt: string;
+  createdAt: string;
+  updatedAt: string;
+  approvedByUserId?: string | null;
+  approvedAt?: string | null;
+}
+
 /**
  * Player note for database
  */
@@ -879,6 +898,8 @@ export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
   16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 95 }, // Fixed: MP max is 95 at TH16, not 65
   // TH17 max levels (updated based on actual game data)
   17: { bk: 100, aq: 100, gw: 90, rc: 75, mp: 100 },
+  // TH18 max levels (November 2025)
+  18: { bk: 105, aq: 105, gw: 80, rc: 55, mp: 95 },
 };
 
 /**

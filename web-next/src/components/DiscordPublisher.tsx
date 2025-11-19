@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { MessageSquare, Send, Settings, AlertTriangle, Users, Trophy, TrendingUp, Swords } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { MessageSquare, Send, Settings, AlertTriangle, Users, Trophy, TrendingUp, Swords, Copy, Check } from "lucide-react";
+import { formatWarResultForDiscord, type WarResultPayload } from "@/lib/export-utils";
+import { normalizeTag } from "@/lib/tags";
 
 interface Member {
   name: string;
@@ -54,6 +56,19 @@ interface WarPlanSummary {
   }>;
 }
 
+interface WarResultNotes {
+  mvpName: string;
+  mvpTag: string;
+  mvpStars: string;
+  mvpSummary: string;
+  topPerformers: Array<{ name: string; tag: string; stars: string; summary: string }>;
+  bravestName: string;
+  bravestTag: string;
+  bravestStars: string;
+  bravestSummary: string;
+  learningsText: string;
+}
+
 // Rush percentage calculation (same as in other components)
 const getTH = (m: any): number => m.townHallLevel ?? m.th ?? 0;
 
@@ -93,12 +108,338 @@ const calculateThCaps = (members: any[]): Map<number, Caps> => {
   return caps;
 };
 
+interface DerivedAttack {
+  memberName: string;
+  memberTag?: string | null;
+  stars: number;
+  destruction: number;
+  order?: number;
+  defenderName?: string | null;
+  defenderTag?: string | null;
+  defenderTownHall?: number;
+  memberPosition?: number;
+}
+
+interface AutoWarPerformer {
+  name: string;
+  tag?: string | null;
+  stars?: number;
+  summary?: string;
+}
+
+interface AutoWarNotes {
+  mvp?: AutoWarPerformer;
+  topPerformers: AutoWarPerformer[];
+  bravest?: AutoWarPerformer;
+  learnings?: string[];
+}
+
+const parseNumber = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+};
+
+const formatAttackSummary = (attack: DerivedAttack): string => {
+  const parts: string[] = [];
+  if (!Number.isNaN(attack.stars)) {
+    parts.push(`${attack.stars}★`);
+  }
+  if (Number.isFinite(attack.destruction)) {
+    parts.push(`${attack.destruction.toFixed(1)}%`);
+  }
+  if (attack.defenderTownHall != null) {
+    parts.push(`TH${attack.defenderTownHall}`);
+  }
+  if (attack.defenderName) {
+    parts.push(`vs ${attack.defenderName}`);
+  } else if (attack.defenderTag) {
+    parts.push(attack.defenderTag);
+  } else if (attack.order != null) {
+    parts.push(`Slot ${attack.order}`);
+  }
+  return parts.join(' • ');
+};
+
+const buildAttackRecord = (member: any, attack: any, index: number): DerivedAttack | null => {
+  const memberName = member?.name || member?.tag || 'Unknown player';
+  const memberTag = member?.tag ?? null;
+  const stars = parseNumber(attack?.stars ?? attack?.attackerStars ?? attack?.starCount) ?? 0;
+  const destruction =
+    parseNumber(
+      attack?.destructionPercentage ??
+        attack?.destruction ??
+        attack?.destruction_percent ??
+        attack?.damagePercent
+    ) ?? 0;
+  const order = parseNumber(attack?.order ?? attack?.attackOrder ?? index + 1);
+  const defenderName =
+    attack?.defenderName ??
+    attack?.defender?.name ??
+    attack?.defender?.playerName ??
+    attack?.defenderPlayerName ??
+    null;
+  const defenderTag =
+    attack?.defenderTag ?? attack?.defender?.tag ?? attack?.defenderPlayerTag ?? null;
+  const defenderTownHall =
+    parseNumber(
+      attack?.defenderTownHallLevel ??
+        attack?.defenderTownhallLevel ??
+        attack?.defenderTownhall ??
+        attack?.defender?.townHallLevel
+    ) ?? undefined;
+  const memberPosition =
+    parseNumber(member?.mapPosition ?? member?.clanRank ?? member?.position ?? null) ?? undefined;
+
+  return {
+    memberName,
+    memberTag,
+    stars,
+    destruction,
+    order: order ?? undefined,
+    defenderName,
+    defenderTag,
+    defenderTownHall,
+    memberPosition,
+  };
+};
+
+const deriveWarResultNotes = (warEntry: any, warResultBase: WarResultPayload | null): AutoWarNotes | null => {
+  if (!warEntry) return null;
+  
+  const clanMembers = Array.isArray(warEntry?.clan?.members) ? warEntry.clan.members : [];
+  
+  // If we have member attack data, use the full auto-fill logic
+  if (clanMembers.length > 0) {
+
+  const teamSize = parseNumber(warEntry?.teamSize ?? warEntry?.clan?.teamSize ?? null) ?? 0;
+
+  const allAttacks: DerivedAttack[] = [];
+  type PerformerStat = {
+    name: string;
+    tag: string | null;
+    stars: number;
+    destruction: number;
+    bestAttack: DerivedAttack | null;
+  };
+  const performerStats: PerformerStat[] = clanMembers
+    .map((member: any) => {
+      const attacks = Array.isArray(member.attacks) ? member.attacks : [];
+      const attackRecords = attacks
+        .map((attack: any, idx: number) => buildAttackRecord(member, attack, idx))
+        .filter(Boolean) as DerivedAttack[];
+      allAttacks.push(...attackRecords);
+      const bestAttack = attackRecords.reduce<DerivedAttack | null>((prev, current) => {
+        if (!prev) return current;
+        if (current.stars > prev.stars) return current;
+        if (current.stars === prev.stars && current.destruction > prev.destruction) return current;
+        return prev;
+      }, null);
+      const stars = parseNumber(member?.stars ?? member?.warStars ?? null) ?? 0;
+      const destruction =
+        parseNumber(member?.destructionPercentage ?? member?.destruction ?? null) ?? 0;
+      return {
+        name: member?.name || member?.tag || 'Unknown player',
+        tag: member?.tag ?? null,
+        stars,
+        destruction,
+        bestAttack,
+      };
+    })
+    .filter((stat: PerformerStat) => stat.name && (stat.stars > 0 || stat.destruction > 0 || stat.bestAttack));
+
+  if (!performerStats.length) return null;
+
+  const sortedPerformers = performerStats.sort((a: PerformerStat, b: PerformerStat) => {
+    const starDiff = b.stars - a.stars;
+    if (starDiff !== 0) return starDiff;
+    const destructionDiff = b.destruction - a.destruction;
+    if (destructionDiff !== 0) return destructionDiff;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+
+  const formatSummary = (stat: PerformerStat): string => {
+    if (stat.bestAttack) {
+      const summary = formatAttackSummary(stat.bestAttack);
+      if (summary) return summary;
+    }
+    const parts: string[] = [];
+    if (stat.stars > 0) {
+      parts.push(`${stat.stars}★`);
+    }
+    if (Number.isFinite(stat.destruction)) {
+      parts.push(`${stat.destruction.toFixed(1)}%`);
+    }
+    return parts.join(' • ') || 'Strong attack';
+  };
+
+  const topPerformers = sortedPerformers.slice(0, 3).map((stat) => ({
+    name: stat.name,
+    tag: stat.tag ?? undefined,
+    stars: Number.isFinite(stat.stars) ? stat.stars : undefined,
+    summary: formatSummary(stat),
+  }));
+
+  const braveryScore = (attack: DerivedAttack): number => {
+    const slotBonus =
+      teamSize && attack.memberPosition
+        ? Math.max(0, attack.memberPosition - Math.max(0, teamSize - 5)) * 0.3
+        : 0;
+    return attack.destruction + (attack.stars || 0) * 2 + slotBonus;
+  };
+
+  const sortedByBravery = allAttacks
+    .slice()
+    .sort((a, b) => {
+      const scoreDiff = braveryScore(b) - braveryScore(a);
+      if (scoreDiff !== 0) return scoreDiff;
+      if ((b.memberPosition ?? 0) !== (a.memberPosition ?? 0)) {
+        return (b.memberPosition ?? 0) - (a.memberPosition ?? 0);
+      }
+      return b.stars - a.stars;
+    });
+
+  const bravestAttack = sortedByBravery[0];
+
+  const mapResultLabel = (result?: string | null): string => {
+    if (!result) return 'War result';
+    const normalized = result.toLowerCase();
+    if (normalized.includes('win')) return 'Victory';
+    if (normalized.includes('loss') || normalized.includes('lose')) return 'Defeat';
+    if (normalized.includes('draw') || normalized.includes('tie')) return 'Draw';
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  };
+
+  const learnings: string[] = [];
+  const opponentName =
+    warResultBase?.opponentName || warEntry?.opponent?.name || warEntry?.opponentName || 'Opponent';
+  const scoreline = `${warResultBase?.ourStars ?? parseNumber(warEntry?.clan?.stars) ?? 0}-${
+    warResultBase?.opponentStars ?? parseNumber(warEntry?.opponent?.stars) ?? 0
+  }`;
+  const percentLine =
+    warResultBase?.ourPercent != null && warResultBase?.opponentPercent != null
+      ? ` (${warResultBase.ourPercent.toFixed(1)}% vs ${warResultBase.opponentPercent.toFixed(1)}%)`
+      : '';
+  learnings.push(
+    `${mapResultLabel(warResultBase?.result ?? warEntry?.result)} vs ${opponentName} (${scoreline}${percentLine})`
+  );
+
+  if (topPerformers.length > 0) {
+    const highlights = topPerformers
+      .slice(0, 2)
+      .map((perf: { name: string; summary?: string }) => `${perf.name}${perf.summary ? ` (${perf.summary})` : ''}`);
+    if (highlights.length) {
+      learnings.push(`Top performers: ${highlights.join(' & ')}.`);
+    }
+  }
+
+  if (bravestAttack) {
+    const braveSummary = formatAttackSummary(bravestAttack);
+    learnings.push(
+      `Bravest attack: ${bravestAttack.memberName}${
+        braveSummary ? ` — ${braveSummary}` : ''
+      }${bravestAttack.memberTag ? ` ${bravestAttack.memberTag}` : ''}.`
+    );
+  }
+
+  if (warResultBase?.result === 'loss') {
+    learnings.push('Hero upgrades and attack planning need reinforcement before the next war.');
+  } else if (warResultBase?.result === 'win') {
+    learnings.push('Duplicate the successful attack plans and keep heroes ready for the next push.');
+  } else {
+    learnings.push('Keep sharpening cleanup plans to tip the balance next war.');
+  }
+
+  return {
+    mvp: topPerformers[0],
+    topPerformers,
+    bravest: bravestAttack
+      ? {
+          name: bravestAttack.memberName,
+          tag: bravestAttack.memberTag ?? undefined,
+          stars: Number.isFinite(bravestAttack.stars) ? bravestAttack.stars : undefined,
+          summary: formatAttackSummary(bravestAttack),
+        }
+      : undefined,
+    learnings,
+  };
+  }
+  
+  // Fallback: If we only have war log summary (no member attack data), return basic learnings
+  const mapResultLabel = (result?: string | null): string => {
+    if (!result) return 'War result';
+    const normalized = result.toLowerCase();
+    if (normalized.includes('win')) return 'Victory';
+    if (normalized.includes('loss') || normalized.includes('lose')) return 'Defeat';
+    if (normalized.includes('draw') || normalized.includes('tie')) return 'Draw';
+    return result.charAt(0).toUpperCase() + result.slice(1);
+  };
+
+  const opponentName =
+    warResultBase?.opponentName || warEntry?.opponent?.name || warEntry?.opponentName || 'Opponent';
+  const scoreline = `${warResultBase?.ourStars ?? parseNumber(warEntry?.clan?.stars) ?? 0}-${
+    warResultBase?.opponentStars ?? parseNumber(warEntry?.opponent?.stars) ?? 0
+  }`;
+  const percentLine =
+    warResultBase?.ourPercent != null && warResultBase?.opponentPercent != null
+      ? ` (${warResultBase.ourPercent.toFixed(1)}% vs ${warResultBase.opponentPercent.toFixed(1)}%)`
+      : '';
+  
+  const basicLearnings: string[] = [];
+  basicLearnings.push(
+    `${mapResultLabel(warResultBase?.result ?? warEntry?.result)} vs ${opponentName} (${scoreline}${percentLine})`
+  );
+
+  if (warResultBase?.result === 'loss') {
+    basicLearnings.push('Hero upgrades and attack planning need reinforcement before the next war.');
+  } else if (warResultBase?.result === 'win') {
+    basicLearnings.push('Duplicate the successful attack plans and keep heroes ready for the next push.');
+  } else {
+    basicLearnings.push('Keep sharpening cleanup plans to tip the balance next war.');
+  }
+
+  // Return minimal auto-fill - just learnings, no MVP/bravest since we don't have attack data
+  return {
+    mvp: undefined,
+    topPerformers: [],
+    bravest: undefined,
+    learnings: basicLearnings,
+  };
+};
+
 export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: DiscordPublisherProps) {
   const [selectedExhibit, setSelectedExhibit] = useState<string>("rushed");
   const [webhookUrl, setWebhookUrl] = useState<string>("");
   const [isPublishing, setIsPublishing] = useState<boolean>(false);
   const [showSettings, setShowSettings] = useState<boolean>(false);
   const [previewMessage, setPreviewMessage] = useState<string>("");
+  const [copied, setCopied] = useState<boolean>(false);
+  const [warResultNotes, setWarResultNotes] = useState<WarResultNotes>({
+    mvpName: "",
+    mvpTag: "",
+    mvpStars: "",
+    mvpSummary: "",
+    topPerformers: Array.from({ length: 3 }, () => ({ name: "", tag: "", stars: "", summary: "" })),
+    bravestName: "",
+    bravestTag: "",
+    bravestStars: "",
+    bravestSummary: "",
+    learningsText: "",
+  });
+  const updateWarResultField = (field: keyof Omit<WarResultNotes, 'topPerformers'>, value: string) => {
+    setWarResultNotes((prev) => ({ ...prev, [field]: value }));
+  };
+  const updateTopPerformer = (index: number, field: keyof WarResultNotes['topPerformers'][number], value: string) => {
+    setWarResultNotes((prev) => {
+      const next = prev.topPerformers.map((perf, idx) =>
+        idx === index ? { ...perf, [field]: value } : perf
+      );
+      return { ...prev, topPerformers: next };
+    });
+  };
 
   // Load webhook URL from localStorage
   useState(() => {
@@ -421,6 +762,369 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
     return message;
   };
 
+  const warEntry = clanData?.snapshotDetails?.warLog?.[0];
+  const currentWar = clanData?.snapshotDetails?.currentWar;
+  const [enrichedWarEntry, setEnrichedWarEntry] = useState<any>(warEntry);
+  const [isEnriching, setIsEnriching] = useState<boolean>(false);
+
+  // Check if currentWar matches the latest war log entry and use its member data
+  useEffect(() => {
+    console.log('[DiscordPublisher] War enrichment check', {
+      hasWarEntry: !!warEntry,
+      warEntryHasMembers: !!(warEntry?.clan?.members?.length),
+      hasCurrentWar: !!currentWar,
+      currentWarHasMembers: !!(currentWar?.clan?.members?.length),
+      warEntryEndTime: warEntry?.endTime,
+      currentWarEndTime: currentWar?.endTime,
+    });
+
+    if (!warEntry) {
+      console.log('[DiscordPublisher] No war entry, clearing enriched entry');
+      setEnrichedWarEntry(null);
+      setIsEnriching(false);
+      return;
+    }
+
+    // If war entry already has member data, use it
+    if (warEntry?.clan?.members?.length) {
+      console.log('[DiscordPublisher] War entry already has member data, using as-is', {
+        memberCount: warEntry.clan.members.length,
+      });
+      setEnrichedWarEntry(warEntry);
+      setIsEnriching(false);
+      return;
+    }
+
+    setIsEnriching(true);
+
+    // Check if currentWar matches this war log entry (by opponent tag and endTime)
+    const warEntryOpponentTag = normalizeTag(warEntry.opponent?.tag || '');
+    const currentWarOpponentTag = normalizeTag(currentWar?.opponent?.tag || '');
+    const warEntryEndTime = warEntry.endTime;
+    const currentWarEndTime = currentWar?.endTime;
+
+    console.log('[DiscordPublisher] Checking currentWar match', {
+      warEntryOpponentTag,
+      currentWarOpponentTag,
+      warEntryEndTime,
+      currentWarEndTime,
+      tagsMatch: warEntryOpponentTag === currentWarOpponentTag,
+      timesMatch: warEntryEndTime === currentWarEndTime,
+    });
+
+    if (
+      currentWar?.clan?.members?.length &&
+      warEntryOpponentTag === currentWarOpponentTag &&
+      warEntryEndTime === currentWarEndTime
+    ) {
+      // Use currentWar's member data since it matches
+      console.log('[DiscordPublisher] currentWar matches war log entry, using currentWar member data', {
+        memberCount: currentWar.clan.members.length,
+      });
+      setEnrichedWarEntry({
+        ...warEntry,
+        clan: {
+          ...warEntry.clan,
+          members: currentWar.clan.members,
+        },
+      });
+      setIsEnriching(false);
+      return;
+    }
+
+    // Try to fetch detailed war data from our database
+    const fetchWarDetails = async () => {
+      try {
+        const warId = warEntry.endTime || warEntry.warId;
+        if (!warId) {
+          console.log('[DiscordPublisher] No warId available, using summary only');
+          setEnrichedWarEntry(warEntry);
+          return;
+        }
+
+        const normalizedClanTag = normalizeTag((clanData as any)?.clanTag || warEntry.clan?.tag || clanTag);
+        const url = `/api/war/${encodeURIComponent(warId)}/details${normalizedClanTag ? `?clanTag=${encodeURIComponent(normalizedClanTag)}` : ''}`;
+        console.log('[DiscordPublisher] Fetching war details from database', { warId, normalizedClanTag, url });
+        
+        const response = await fetch(url);
+        if (!response.ok) {
+          console.log('[DiscordPublisher] War details API returned error', {
+            status: response.status,
+            statusText: response.statusText,
+          });
+          // No detailed data available, use summary
+          setEnrichedWarEntry(warEntry);
+          setIsEnriching(false);
+          return;
+        }
+
+        const result = await response.json();
+        console.log('[DiscordPublisher] War details API response', {
+          success: result.success,
+          memberCount: result.data?.members?.length || 0,
+        });
+
+        if (result.success && result.data?.members?.length) {
+          // Enrich the war entry with member attack data
+          console.log('[DiscordPublisher] Enriching war entry with database member data', {
+            memberCount: result.data.members.length,
+          });
+          setEnrichedWarEntry({
+            ...warEntry,
+            clan: {
+              ...warEntry.clan,
+              members: result.data.members,
+            },
+          });
+        } else {
+          console.log('[DiscordPublisher] No member data in database response, using summary only');
+          setEnrichedWarEntry(warEntry);
+        }
+        setIsEnriching(false);
+      } catch (error) {
+        console.warn('[DiscordPublisher] Failed to fetch war details', error);
+        setEnrichedWarEntry(warEntry);
+        setIsEnriching(false);
+      }
+    };
+
+    fetchWarDetails();
+  }, [warEntry, currentWar, clanData, clanTag]);
+
+  const warResultBase = useMemo<WarResultPayload | null>(() => {
+    if (!warEntry) return null;
+    const ourClan = warEntry.clan || {};
+    const opponentClan = warEntry.opponent || {};
+    const parsePercentValue = (value: any): number | undefined => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+    const normalizedResultRaw = (warEntry.result || '').toString().toLowerCase();
+    let normalizedResult: 'win' | 'loss' | 'draw' = 'draw';
+    if (normalizedResultRaw.includes('win')) {
+      normalizedResult = 'win';
+    } else if (normalizedResultRaw.includes('lose') || normalizedResultRaw.includes('loss')) {
+      normalizedResult = 'loss';
+    }
+    const derivedClanTag =
+      normalizeTag((clanData as any)?.clanTag || ourClan.tag || clanTag) || clanTag;
+
+    return {
+      clanName: clanData?.clanName || ourClan.name || 'Our Clan',
+      clanTag: derivedClanTag,
+      opponentName: opponentClan.name || warEntry.opponentName || 'Opponent',
+      opponentTag: opponentClan.tag || warEntry.opponentTag || 'Unknown',
+      ourStars: Number(ourClan.stars ?? 0),
+      opponentStars: Number(opponentClan.stars ?? 0),
+      ourPercent: parsePercentValue(ourClan.destructionPercentage ?? ourClan.destruction),
+      opponentPercent: parsePercentValue(opponentClan.destructionPercentage ?? opponentClan.destruction),
+      result: normalizedResult,
+      warType: warEntry.teamSize ? `${warEntry.teamSize}v${warEntry.teamSize}` : undefined,
+      warId: warEntry.warId || warEntry.endTime || undefined,
+    };
+  }, [warEntry, clanData, clanTag]);
+
+  const autoWarNotes = useMemo(() => {
+    const notes = deriveWarResultNotes(enrichedWarEntry, warResultBase);
+    console.log('[DiscordPublisher] Auto war notes derived', {
+      hasNotes: !!notes,
+      hasMVP: !!notes?.mvp,
+      mvpName: notes?.mvp?.name,
+      mvpTag: notes?.mvp?.tag,
+      mvpStars: notes?.mvp?.stars,
+      hasBravest: !!notes?.bravest,
+      bravestName: notes?.bravest?.name,
+      bravestTag: notes?.bravest?.tag,
+      bravestStars: notes?.bravest?.stars,
+      topPerformersCount: notes?.topPerformers?.length || 0,
+      topPerformers: notes?.topPerformers?.map(p => ({ name: p.name, tag: p.tag, stars: p.stars })),
+      learningsCount: notes?.learnings?.length || 0,
+      learnings: notes?.learnings,
+    });
+    return notes;
+  }, [enrichedWarEntry, warResultBase]);
+
+  useEffect(() => {
+    console.log('[DiscordPublisher] Auto-fill effect triggered', {
+      hasAutoWarNotes: !!autoWarNotes,
+      isEnriching,
+    });
+
+    // Don't auto-fill while enrichment is in progress
+    if (isEnriching) {
+      console.log('[DiscordPublisher] Enrichment in progress, skipping auto-fill');
+      return;
+    }
+
+    if (!autoWarNotes) {
+      console.log('[DiscordPublisher] No auto war notes, skipping auto-fill');
+      return;
+    }
+
+    setWarResultNotes((prev) => {
+      console.log('[DiscordPublisher] Auto-filling war result notes', {
+        mvpName: autoWarNotes.mvp?.name,
+        bravestName: autoWarNotes.bravest?.name,
+        learningsCount: autoWarNotes.learnings?.length,
+      });
+      let changed = false;
+      const next: WarResultNotes = { ...prev };
+
+      const setIfEmpty = (field: keyof Omit<WarResultNotes, 'topPerformers'>, value?: string | null) => {
+        if (!value) return;
+        const trimmed = value.trim();
+        if (!trimmed) return;
+        if (!prev[field].trim()) {
+          next[field] = trimmed;
+          changed = true;
+        }
+      };
+
+      const setNumberIfEmpty = (field: keyof Omit<WarResultNotes, 'topPerformers'>, value?: number) => {
+        if (value == null || Number.isNaN(value)) return;
+        const currentValue = prev[field];
+        if (typeof currentValue === 'string' && !currentValue.trim()) {
+          next[field] = String(value) as any;
+          changed = true;
+        }
+      };
+
+      setIfEmpty('mvpName', autoWarNotes.mvp?.name ?? null);
+      setIfEmpty('mvpTag', autoWarNotes.mvp?.tag ?? null);
+      setNumberIfEmpty('mvpStars', autoWarNotes.mvp?.stars);
+      setIfEmpty('mvpSummary', autoWarNotes.mvp?.summary ?? null);
+
+      let topPerformersUpdated = false;
+      const updatedPerformers = prev.topPerformers.map((entry, index) => {
+        const auto = autoWarNotes.topPerformers[index];
+        if (!auto) return entry;
+        const hasInput =
+          entry.name.trim() ||
+          entry.tag.trim() ||
+          entry.stars.trim() ||
+          entry.summary.trim();
+        if (hasInput) return entry;
+        topPerformersUpdated = true;
+        return {
+          name: auto.name,
+          tag: auto.tag ?? '',
+          stars: auto.stars != null ? String(auto.stars) : '',
+          summary: auto.summary ?? '',
+        };
+      });
+      if (topPerformersUpdated) {
+        next.topPerformers = updatedPerformers;
+        changed = true;
+      }
+
+      setIfEmpty('bravestName', autoWarNotes.bravest?.name ?? null);
+      setIfEmpty('bravestTag', autoWarNotes.bravest?.tag ?? null);
+      setNumberIfEmpty('bravestStars', autoWarNotes.bravest?.stars);
+      setIfEmpty('bravestSummary', autoWarNotes.bravest?.summary ?? null);
+
+      if (!prev.learningsText.trim() && autoWarNotes.learnings?.length) {
+        next.learningsText = autoWarNotes.learnings.join('\n');
+        changed = true;
+      }
+
+      if (changed) {
+        console.log('[DiscordPublisher] War result notes updated', {
+          mvpName: next.mvpName,
+          mvpTag: next.mvpTag,
+          mvpStars: next.mvpStars,
+          mvpSummary: next.mvpSummary,
+          bravestName: next.bravestName,
+          bravestTag: next.bravestTag,
+          bravestStars: next.bravestStars,
+          bravestSummary: next.bravestSummary,
+          topPerformersCount: next.topPerformers.filter(p => p.name || p.tag).length,
+          learningsLength: next.learningsText.length,
+          learningsPreview: next.learningsText.substring(0, 100),
+        });
+      } else {
+        console.log('[DiscordPublisher] No changes to war result notes (fields already filled)', {
+          currentMVPName: prev.mvpName,
+          currentBravestName: prev.bravestName,
+          currentLearningsLength: prev.learningsText.length,
+        });
+      }
+      return changed ? next : prev;
+    });
+  }, [autoWarNotes, isEnriching]);
+
+  const buildWarResultPayload = (): WarResultPayload | null => {
+    if (!warResultBase) return null;
+    const normalizeOptionalTag = (value: string): string | undefined => {
+      const normalized = normalizeTag(value);
+      if (normalized) return normalized;
+      const trimmed = value.trim();
+      return trimmed ? trimmed : undefined;
+    };
+    const parseStarsValue = (value: string): number | undefined => {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+
+    const mvpName = warResultNotes.mvpName.trim();
+    const mvp =
+      mvpName.length > 0
+        ? {
+            name: mvpName,
+            tag: normalizeOptionalTag(warResultNotes.mvpTag),
+            stars: parseStarsValue(warResultNotes.mvpStars),
+            summary: warResultNotes.mvpSummary.trim() || undefined,
+          }
+        : null;
+
+    const topPerformers = warResultNotes.topPerformers
+      .map((perf) => ({
+        name: perf.name.trim(),
+        tag: normalizeOptionalTag(perf.tag),
+        stars: parseStarsValue(perf.stars),
+        summary: perf.summary.trim() || undefined,
+      }))
+      .filter((perf) => perf.name.length > 0);
+
+    const bravestName = warResultNotes.bravestName.trim();
+    const bravest =
+      bravestName.length > 0
+        ? {
+            name: bravestName,
+            tag: normalizeOptionalTag(warResultNotes.bravestTag),
+            stars: parseStarsValue(warResultNotes.bravestStars),
+            summary: warResultNotes.bravestSummary.trim() || undefined,
+          }
+        : null;
+
+    const learnings = warResultNotes.learningsText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line, index) => {
+        const parts = line.split(' - ');
+        if (parts.length > 1) {
+          const [title, ...rest] = parts;
+          const detail = rest.join(' - ').trim();
+          return {
+            title: title.trim() || `Learning ${index + 1}`,
+            detail: detail || title.trim(),
+          };
+        }
+        return {
+          title: `Learning ${index + 1}`,
+          detail: line,
+        };
+      });
+
+    return {
+      ...warResultBase,
+      mvp,
+      topPerformers: topPerformers.length ? topPerformers : undefined,
+      bravest,
+      learnings: learnings.length ? learnings : undefined,
+    };
+  };
+
   const generateExhibitMessage = (): string => {
     switch (selectedExhibit) {
       case "rushed":
@@ -431,6 +1135,10 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
         return generateActivityExhibit();
       case "war":
         return generateWarReport();
+      case "war-result": {
+        const payload = buildWarResultPayload();
+        return payload ? formatWarResultForDiscord(payload) : "";
+      }
       default:
         return "";
     }
@@ -486,7 +1194,7 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
       setPreviewMessage('');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clanData, selectedExhibit, warPlanSummary]);
+  }, [clanData, selectedExhibit, warPlanSummary, warResultNotes]);
 
   if (!clanData) {
     return (
@@ -542,7 +1250,7 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
       {/* Exhibit Selection */}
       <div className="mb-6">
         <h3 className="font-semibold text-gray-800 mb-3">Select Exhibit to Publish</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
           <button
             onClick={() => { setSelectedExhibit("rushed"); updatePreview(); }}
             className={`p-4 rounded-lg border-2 transition-all ${
@@ -594,13 +1302,258 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
             <div className="font-medium">War Report</div>
             <div className="text-sm opacity-75">Current war & recent results</div>
           </button>
+
+          <button
+            onClick={() => { setSelectedExhibit("war-result"); updatePreview(); }}
+            className={`p-4 rounded-lg border-2 transition-all ${
+              selectedExhibit === "war-result" 
+                ? "border-yellow-500 bg-yellow-50 text-yellow-700" 
+                : "border-gray-200 hover:border-gray-300 text-gray-700"
+            }`}
+          >
+            <Trophy className="w-6 h-6 mx-auto mb-2" />
+            <div className="font-medium">War Result</div>
+            <div className="text-sm opacity-75">Scoreline, MVP, learnings</div>
+          </button>
         </div>
       </div>
+
+      {selectedExhibit === "war-result" && (
+        <div className="mb-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">War Result Configuration</h3>
+            <p className="text-sm text-gray-500">Use your #🏅-war-results webhook for this exhibit.</p>
+          </div>
+          {!warResultBase ? (
+            <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4 text-sm text-gray-600">
+              No completed wars were detected in the latest snapshot. Refresh your clan data after a war ends to enable
+              this exhibit.
+            </div>
+          ) : (
+            <>
+              <div className="rounded-lg border border-purple-200 bg-purple-50 p-4 text-sm text-purple-900">
+                <p className="font-semibold text-lg">
+                  {warResultBase.clanName} {warResultBase.ourStars}-{warResultBase.opponentStars} {warResultBase.opponentName}
+                </p>
+                <p className="mt-1">
+                  <span className="font-semibold">Result:</span>{' '}
+                  {warResultBase.result === 'win' ? 'Victory' : warResultBase.result === 'loss' ? 'Defeat' : 'Draw'}
+                </p>
+                {warResultBase.ourPercent != null && warResultBase.opponentPercent != null && (
+                  <p>
+                    <span className="font-semibold">Destruction:</span>{' '}
+                    {warResultBase.ourPercent.toFixed(1)}% vs {warResultBase.opponentPercent.toFixed(1)}%
+                  </p>
+                )}
+                {warResultBase.warType && (
+                  <p>
+                    <span className="font-semibold">Format:</span> {warResultBase.warType}
+                  </p>
+                )}
+                {warResultBase.warId && (
+                  <p>
+                    <span className="font-semibold">War ID:</span> {warResultBase.warId}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+                  <h4 className="font-semibold text-gray-800">MVP (optional)</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      value={warResultNotes.mvpName}
+                      onChange={(e) => updateWarResultField('mvpName', e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Tag</label>
+                      <input
+                        type="text"
+                        value={warResultNotes.mvpTag}
+                        onChange={(e) => updateWarResultField('mvpTag', e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="#XXXXXXX"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Stars</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="6"
+                        value={warResultNotes.mvpStars}
+                        onChange={(e) => updateWarResultField('mvpStars', e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Summary</label>
+                    <textarea
+                      value={warResultNotes.mvpSummary}
+                      onChange={(e) => updateWarResultField('mvpSummary', e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="e.g., 6 stars, clutch cleanup in slot 5"
+                    />
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-gray-200 p-4 space-y-3">
+                  <h4 className="font-semibold text-gray-800">Bravest Attack (optional)</h4>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Name</label>
+                    <input
+                      type="text"
+                      value={warResultNotes.bravestName}
+                      onChange={(e) => updateWarResultField('bravestName', e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Tag</label>
+                      <input
+                        type="text"
+                        value={warResultNotes.bravestTag}
+                        onChange={(e) => updateWarResultField('bravestTag', e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        placeholder="#XXXXXXX"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">Stars</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="6"
+                        value={warResultNotes.bravestStars}
+                        onChange={(e) => updateWarResultField('bravestStars', e.target.value)}
+                        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">Summary</label>
+                    <textarea
+                      value={warResultNotes.bravestSummary}
+                      onChange={(e) => updateWarResultField('bravestSummary', e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      rows={3}
+                      placeholder="e.g., saved the war with a TH17 dip triple"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-2">Top Performers (optional)</h4>
+                  <div className="space-y-3">
+                    {warResultNotes.topPerformers.map((performer, index) => (
+                      <div key={index} className="rounded-lg border border-gray-200 p-4">
+                        <p className="text-sm font-medium text-gray-700 mb-2">Performer #{index + 1}</p>
+                        <div className="grid md:grid-cols-4 gap-3">
+                          <div className="md:col-span-2">
+                            <label className="block text-xs font-medium text-gray-600">Name</label>
+                            <input
+                              type="text"
+                              value={performer.name}
+                              onChange={(e) => updateTopPerformer(index, 'name', e.target.value)}
+                              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="Player name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600">Tag</label>
+                            <input
+                              type="text"
+                              value={performer.tag}
+                              onChange={(e) => updateTopPerformer(index, 'tag', e.target.value)}
+                              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                              placeholder="#XXXXXXX"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600">Stars</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="6"
+                              value={performer.stars}
+                              onChange={(e) => updateTopPerformer(index, 'stars', e.target.value)}
+                              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+                          </div>
+                        </div>
+                        <div className="mt-3">
+                          <label className="block text-xs font-medium text-gray-600">Highlight</label>
+                          <input
+                            type="text"
+                            value={performer.summary}
+                            onChange={(e) => updateTopPerformer(index, 'summary', e.target.value)}
+                            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            placeholder="e.g., cleaned slot 3 with 3★"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-gray-800 mb-2">Learnings & Takeaways</h4>
+                  <textarea
+                    value={warResultNotes.learningsText}
+                    onChange={(e) => updateWarResultField('learningsText', e.target.value)}
+                    className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={4}
+                    placeholder={"Example:\nEarly aggression - Secure triples in slots 2-4\nTown Hall 17 prep - Practice QCL combos"}
+                  />
+                  <p className="mt-1 text-xs text-gray-500">Enter one learning per line. Lines with “Title - detail” will be formatted together.</p>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Preview */}
       {previewMessage && (
         <div className="mb-6">
-          <h3 className="font-semibold text-gray-800 mb-3">Preview</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-semibold text-gray-800">Preview</h3>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(previewMessage);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                } catch (err) {
+                  console.error('Failed to copy:', err);
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg text-sm font-medium transition-colors"
+              title="Copy message to clipboard"
+            >
+              {copied ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Copied!</span>
+                </>
+              ) : (
+                <>
+                  <Copy className="w-4 h-4" />
+                  <span>Copy</span>
+                </>
+              )}
+            </button>
+          </div>
           <div className="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm whitespace-pre-wrap max-h-96 overflow-y-auto">
             {previewMessage}
           </div>

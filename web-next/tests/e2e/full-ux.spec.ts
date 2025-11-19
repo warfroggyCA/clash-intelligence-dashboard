@@ -8,11 +8,13 @@ const TEST_PASSWORD = process.env.PLAYWRIGHT_TEST_PASSWORD || 'testuser';
 
 async function signIn(page) {
   await page.goto(`${CLAN_HOST}/login`);
-  await page.getByLabel('Email address').fill(TEST_EMAIL);
+  await page.waitForLoadState('domcontentloaded');
+  await page.getByLabel('Email or Username').fill(TEST_EMAIL);
   await page.getByLabel('Password').fill(TEST_PASSWORD);
   await page.getByRole('button', { name: /sign in/i }).click();
   // Wait for navigation to /app
   await page.waitForURL('**/app', { timeout: 10_000 }).catch(() => {});
+  await page.waitForLoadState('domcontentloaded');
   // Wait for session to be fully hydrated by waiting for authenticated content
   // This ensures the session API call has completed and the Zustand store is populated
   try {
@@ -43,10 +45,12 @@ async function signIn(page) {
 test.describe('Full UX journey', () => {
   test('marketing → onboarding → dashboard → settings → player profile', async ({ page }) => {
     await page.goto(APEX_HOST);
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText('The war room for modern clans in Clash of Clans.')).toBeVisible();
     await page.getByRole('link', { name: 'Request Access' }).isVisible();
 
     await page.goto(CLAN_HOST);
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByText('Serving the HeckYeah deployment')).toBeVisible();
     await expect(page.getByText('Welcome to HeckYeah')).toBeVisible();
 
@@ -54,8 +58,9 @@ test.describe('Full UX journey', () => {
 
     // Navigate to onboarding and wait for session to be ready
     await page.goto(`${CLAN_HOST}/onboarding`);
+    await page.waitForLoadState('domcontentloaded');
     // Give the page a moment to start hydrating the session
-    await page.waitForTimeout(500);
+    await page.waitForTimeout(1000); // Increased for Firefox/WebKit
     const onboardingState = await waitForOnboardingState(page);
     if (onboardingState === 'form') {
       await expect(page.getByText('Set up your clan access')).toBeVisible();
@@ -78,21 +83,24 @@ test.describe('Full UX journey', () => {
     }
 
     await page.goto(`${CLAN_HOST}/app`);
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.getByRole('heading', { name: 'Quick Actions' })).toBeVisible();
 
     await page.goto(`${CLAN_HOST}/settings`);
+    await page.waitForLoadState('domcontentloaded');
     // Settings page should show either "Active access" or other settings content
     const activeAccessVisible = await page.getByText(/Active access/i).isVisible().catch(() => false);
     const settingsVisible = await page.getByText(/Clan Permissions|Settings|Maintenance/i).isVisible().catch(() => false);
     if (!activeAccessVisible && !settingsVisible) {
-      // Wait a bit for page to load
-      await page.waitForTimeout(1000);
+      // Wait a bit for page to load (longer for Firefox/WebKit)
+      await page.waitForTimeout(2000);
     }
     // At minimum, the settings page should have loaded
     await expect(page.locator('body')).toContainText(/Settings|Clan|Permissions|Maintenance/i);
 
     // Navigate to a player profile - use a tag from the roster if available, or just verify the page structure
     await page.goto(`${CLAN_HOST}/app`);
+    await page.waitForLoadState('domcontentloaded');
     // Try to find any player link on the dashboard
     const playerLink = page.locator('a[href*="/player/"]').first();
     const hasPlayerLink = await playerLink.isVisible().catch(() => false);
@@ -100,11 +108,13 @@ test.describe('Full UX journey', () => {
     if (hasPlayerLink) {
       // Click the first player link we find
       await playerLink.click();
+      await page.waitForLoadState('domcontentloaded');
       // Verify we're on a player profile page (should have player info, stats, etc.)
       await expect(page.locator('body')).toContainText(/Player|Profile|TH|Level|Trophies/i, { timeout: 5000 });
     } else {
       // Fallback: navigate to a known player tag and verify page loads
       await page.goto(`${CLAN_HOST}/player/%23JL2RPU09`);
+      await page.waitForLoadState('domcontentloaded');
       // Just verify the page loaded (not a 404 or error)
       await expect(page.locator('body')).not.toContainText(/404|Not Found|Error/i, { timeout: 5000 });
     }

@@ -47,6 +47,7 @@ interface ClanIngestionStatus {
   lastSnapshotAt?: string;
   isStale: boolean;
   memberCount?: number;
+  lastJobId?: string;
 }
 
 async function fetchJobRecord(jobId: string) {
@@ -238,6 +239,14 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
     return () => clearInterval(interval);
   }, [fetchClanStatuses]);
 
+  const handleSelectClanJob = useCallback((clan: ClanIngestionStatus) => {
+    if (!clan.lastJobId) return;
+    setShowMultiClanView(false);
+    setJob(null);
+    setJobId(clan.lastJobId);
+    onJobIdChange?.(clan.lastJobId);
+  }, [onJobIdChange]);
+
   const renderStepStatus = (step: IngestionJobStep) => {
     const statusColor = {
       pending: 'bg-gray-200 text-gray-700',
@@ -353,8 +362,18 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
                 ? 'bg-red-400'
                 : 'bg-green-400';
 
+              const clickable = Boolean(clan.lastJobId);
+
               return (
-                <div key={clan.clanTag} className={`border rounded-lg p-3 ${statusColor}`}>
+                <button
+                  key={clan.clanTag}
+                  type="button"
+                  onClick={() => handleSelectClanJob(clan)}
+                  disabled={!clickable}
+                  className={`w-full text-left border rounded-lg p-3 transition ${statusColor} ${
+                    clickable ? 'hover:border-slate-400 hover:shadow-sm' : 'opacity-70 cursor-not-allowed'
+                  }`}
+                >
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
@@ -386,9 +405,19 @@ export default function IngestionMonitor({ jobId: initialJobId, pollIntervalMs =
                           ⚠️ Data is stale (more than 6 hours old)
                         </div>
                       )}
+                      {clan.lastJobId && (
+                        <div className="mt-2 text-xs font-semibold text-blue-700">
+                          View latest job details →
+                        </div>
+                      )}
+                      {!clan.lastJobId && (
+                        <div className="mt-2 text-xs text-slate-500">
+                          No ingestion jobs recorded yet
+                        </div>
+                      )}
                     </div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>

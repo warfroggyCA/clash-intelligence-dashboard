@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect } from 'react';
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { Button } from '@/components/ui';
@@ -15,6 +14,12 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const needsOnboarding = useDashboardStore((state) => state.needsOnboarding);
   const pathname = usePathname();
   const router = useRouter();
+
+  // Ensure login links stay on the current host (for localhost development)
+  const handleLoginClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    router.push('/login');
+  };
 
   useEffect(() => {
     if (sessionStatus === 'idle') {
@@ -39,9 +44,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
         </div>
         <div className="flex flex-col items-center gap-3">
           <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-clash-gold" />
-          <Link href="/login">
-            <Button variant="outline">Return to Sign In</Button>
-          </Link>
+          <Button variant="outline" onClick={handleLoginClick}>
+            Return to Sign In
+          </Button>
         </div>
       </div>
     );
@@ -56,9 +61,9 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
             {sessionError || 'You need to sign in to access leadership tools.'}
           </p>
         </div>
-        <Link href="/login">
-          <Button size="lg">Sign In</Button>
-        </Link>
+        <Button size="lg" onClick={handleLoginClick}>
+          Sign In
+        </Button>
       </div>
     );
   }

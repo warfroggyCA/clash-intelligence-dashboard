@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { cfg } from '@/lib/config';
-import { normalizeTag } from '@/lib/tags';
+import { normalizeTag, safeTagForFilename } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { calculateActivityScore } from '@/lib/business/calculations';
 import type { Member } from '@/types';
@@ -74,10 +74,10 @@ export async function GET(req: NextRequest) {
           
           if (trackedClan) {
             // It's a tracked clan but no data yet - return empty roster in the expected format
-            return NextResponse.json({
-              success: true,
-              data: {
-                clan: {
+        return NextResponse.json({
+          success: true,
+          data: {
+            clan: {
                   tag: clanTag,
                   name: null,
                   logo_url: null,
@@ -136,6 +136,32 @@ export async function GET(req: NextRequest) {
 
     const snapshot = snapshotRows;
     const latestSnapshotDate = snapshot.fetched_at?.slice(0, 10) || null;
+
+    // Also load raw clan_snapshot row so we can expose detailed war data
+    // Note: clan_snapshots uses safeTagForFilename (lowercase, no #) format
+    const safeClanTag = safeTagForFilename(clanTag);
+    const { data: clanSnapshotRow, error: clanSnapshotError } = await supabase
+      .from('clan_snapshots')
+      .select('current_war, war_log, member_summaries, player_details, capital_seasons, metadata')
+      .eq('clan_tag', safeClanTag)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (clanSnapshotError) {
+      console.warn('[roster] Failed to load clan_snapshot for lookup', clanSnapshotError);
+    }
+
+    const snapshotDetails = clanSnapshotRow
+      ? {
+          currentWar: clanSnapshotRow.current_war ?? null,
+          warLog: clanSnapshotRow.war_log ?? [],
+          memberSummaries: clanSnapshotRow.member_summaries ?? [],
+          playerDetails: clanSnapshotRow.player_details ?? [],
+          capitalRaidSeasons: clanSnapshotRow.capital_seasons ?? [],
+          metadata: clanSnapshotRow.metadata ?? {},
+        }
+      : null;
 
     // PERFORMANCE: Parallelize independent queries to reduce total latency
     // These queries don't depend on each other, so they can run concurrently
@@ -703,17 +729,18 @@ export async function GET(req: NextRequest) {
             ingestionVersion: snapshot.ingestion_version ?? null,
             schemaVersion: snapshot.schema_version ?? null,
           },
+          },
+          // Add date comparison metadata
+          dateInfo: {
+            currentDate: currentDateUTC,
+            snapshotDate: snapshotDateOnly,
+            isStale: snapshotDateOnly ? currentDateUTC > snapshotDateOnly : false,
+          },
+          snapshotDetails,
+          // Add clan hero averages for comparison
+          clanHeroAverages,
         },
-        // Add date comparison metadata
-        dateInfo: {
-          currentDate: currentDateUTC,
-          snapshotDate: snapshotDateOnly,
-          isStale: snapshotDateOnly ? currentDateUTC > snapshotDateOnly : false,
-        },
-        // Add clan hero averages for comparison
-        clanHeroAverages,
-      },
-    });
+      });
 
     // PERFORMANCE: Aggressive caching - data only changes once per day (nightly ingestion)
     // Cache for 12 hours, stale-while-revalidate for 24 hours

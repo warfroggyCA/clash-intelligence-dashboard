@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import Link from 'next/link';
 import { useShallow } from 'zustand/react/shallow';
 import useSWR from 'swr';
-import { ClipboardCheck, Copy, Check, Sparkles, Newspaper, Trophy } from 'lucide-react';
+import { ClipboardCheck, Copy, Check, Sparkles, Newspaper, Trophy, MessageSquare } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import LeadershipGuard, { LeadershipOnly } from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
@@ -12,6 +12,7 @@ import IngestionMonitor from '@/components/layout/IngestionMonitor';
 import ApplicantsPanel from '@/components/ApplicantsPanel';
 import TodaysBriefing from '@/components/TodaysBriefing';
 import NewsFeed, { type NewsFeedRef } from '@/components/leadership/NewsFeed';
+import PendingRegistrations from '@/components/leadership/PendingRegistrations';
 import { Button } from '@/components/ui';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { Tabs } from '@/components/ui/Tabs';
@@ -237,6 +238,7 @@ export default function LeadershipDashboard() {
   // Use shared dashboard store (SSOT - Single Source of Truth)
   const roster = useDashboardStore(useShallow((state) => state.roster)) as Roster | null;
   const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag);
+  const normalizedLeadershipClan = useMemo(() => normalizeTag(clanTag || cfg.homeClanTag), [clanTag]);
   const loadRoster = useDashboardStore((state) => state.loadRoster);
   const clanNameFromSelector = useDashboardStore(selectors.clanName);
   const clanDisplayName = (roster?.clanName ?? roster?.meta?.clanName ?? clanNameFromSelector) || '...Heck Yeah...';
@@ -605,6 +607,40 @@ export default function LeadershipDashboard() {
                       </div>
                     </div>
 
+                    <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <h2 className="text-xl font-semibold text-white flex items-center gap-2">
+                            <MessageSquare className="h-5 w-5 text-blue-300" />
+                            Discord Hub
+                          </h2>
+                          <p className="text-sm text-blue-100/70">
+                            Publish war recaps, roster exhibits, or coaching updates to your #🏅-war-results channel without leaving the dashboard.
+                          </p>
+                        </div>
+                        <Link
+                          href="/discord"
+                          className="inline-flex items-center rounded-xl border border-blue-400/60 bg-blue-500/20 px-4 py-2 text-sm font-semibold text-blue-100 transition hover:bg-blue-500/30"
+                        >
+                          Open Discord Hub
+                        </Link>
+                      </div>
+                      <div className="mt-4 grid gap-2 text-sm text-blue-100/80 sm:grid-cols-2">
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                          <p className="font-semibold text-white">War Result Exhibit</p>
+                          <p className="text-xs text-blue-200/80 mt-1">
+                            Capture scoreline, MVP, bravest attack, and learnings, then push to Discord in one click.
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+                          <p className="font-semibold text-white">Webhook Ready</p>
+                          <p className="text-xs text-blue-200/80 mt-1">
+                            Store your #🏅-war-results webhook once and reuse it for rush, activity, and donation exhibits.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
                     {enrichmentInsights && (
                       <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -690,6 +726,7 @@ export default function LeadershipDashboard() {
                 label: 'Analytics',
                 content: (
                   <div className="space-y-6">
+                    <PendingRegistrations clanTag={normalizedLeadershipClan} />
                     <GlassCard
                       title="Daily Insights"
                       subtitle="High-level observations and news from the latest data ingestion"
@@ -821,6 +858,47 @@ export default function LeadershipDashboard() {
                               Launch Player Database
                             </Link>
                           </div>
+                        </div>
+                      </div>
+                    </GlassCard>
+                  </div>
+                ),
+              },
+              {
+                id: 'discord',
+                label: 'Discord',
+                content: (
+                  <div className="space-y-6">
+                    <GlassCard
+                      title="Discord Hub"
+                      subtitle="Draft exhibits, preview your post, and publish straight into clan channels like #🏅-war-results."
+                      icon={<MessageSquare className="h-5 w-5" />}
+                      className="bg-slate-900/70 border border-slate-800/80"
+                    >
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-sm text-blue-100/80">
+                          The Discord Hub lives at <span className="font-mono text-blue-200">/discord</span>. It remembers your webhook,
+                          renders a live preview, and ships War Result exhibits that include scoreline, MVP, top performers, and learnings.
+                        </p>
+                        <Link
+                          href="/discord"
+                          className="inline-flex items-center rounded-2xl bg-blue-500/90 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-400"
+                        >
+                          Launch Discord Hub
+                        </Link>
+                      </div>
+                      <div className="mt-5 grid gap-4 md:grid-cols-2">
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-blue-100/90">
+                          <p className="font-semibold text-white">War Results</p>
+                          <p className="mt-1 text-blue-200/80">
+                            Auto-detect the latest war, add MVP/bravest notes, and post to #🏅-war-results in one click.
+                          </p>
+                        </div>
+                        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-sm text-blue-100/90">
+                          <p className="font-semibold text-white">Other Exhibits</p>
+                          <p className="mt-1 text-blue-200/80">
+                            Rush, donation, and activity reports are available too—perfect for leadership updates or morale boosts.
+                          </p>
                         </div>
                       </div>
                     </GlassCard>

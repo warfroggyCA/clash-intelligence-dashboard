@@ -315,8 +315,9 @@ export function transformResponse(body: ApiRosterResponse): Roster | null {
       metadata?.snapshot_date,
       fetchedAtIso ? fetchedAtIso.slice(0, 10) : null,
     ) ?? (fetchedAtIso ? fetchedAtIso.slice(0, 10) : null);
+  // snapshotDetails is at the top level of body.data, not in metadata
   const resolvedSnapshotDetails =
-    metadata?.snapshotDetails ?? metadata?.snapshot_details ?? null;
+    apiData?.snapshotDetails ?? apiData?.snapshot_details ?? metadata?.snapshotDetails ?? metadata?.snapshot_details ?? null;
   const resolvedSeasonId = seasonId
     ?? apiData?.season_id
     ?? snapshotAny?.seasonId

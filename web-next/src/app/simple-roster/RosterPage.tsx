@@ -1052,7 +1052,7 @@ Helps identify engaged vs. inactive members."
           </div>
         ) : viewMode === 'cards' ? (
           <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden w-full p-6">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {sortedMembers.map((member) => (
                 <PlayerCard 
                   key={member.tag} 

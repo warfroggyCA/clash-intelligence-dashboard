@@ -1,0 +1,660 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - banner [ref=e5]:
+      - generic [ref=e7]:
+        - generic [ref=e8]:
+          - paragraph [ref=e9]: Clash Intelligence
+          - generic [ref=e10]: Dashboard
+        - generic [ref=e12]:
+          - link "Go to Roster" [ref=e13] [cursor=pointer]:
+            - /url: /app
+            - img "Clan Logo" [ref=e14] [cursor=pointer]
+            - text: Go to Roster
+          - link "Go to Roster" [ref=e15] [cursor=pointer]:
+            - /url: /app
+            - text: ...HeCk YeAh...
+        - generic [ref=e16]:
+          - generic [ref=e17]: "Access: Leader"
+          - generic [ref=e21]: Elder
+          - button "D Signed in do.ugfindlay@gmail.com" [ref=e23] [cursor=pointer]:
+            - generic [ref=e24] [cursor=pointer]: D
+            - generic [ref=e25] [cursor=pointer]:
+              - generic [ref=e26] [cursor=pointer]: Signed in
+              - generic [ref=e27] [cursor=pointer]: do.ugfindlay@gmail.com
+          - button "More options" [ref=e29] [cursor=pointer]: ⋯ More options
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - text: War Prep workspace (opens new page) Generate daily summary with automated insights
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]:
+              - generic [ref=e37]:
+                - heading "Quick Actions" [level=3] [ref=e38]
+                - generic [ref=e39]: Fresh
+              - generic [ref=e42]: Snapshot 11/18/2025 • Generated 11/18/2025, 3:14:24 PM
+            - generic [ref=e43]: Applies to the active clan snapshot
+          - generic [ref=e44]:
+            - button "Refresh snapshot data and smart insights" [ref=e45] [cursor=pointer]:
+              - img [ref=e46] [cursor=pointer]
+              - generic [ref=e48] [cursor=pointer]: Refresh Data & Insights
+              - text: Refresh snapshot data and smart insights
+            - link "War Prep workspace (opens new page)" [ref=e49] [cursor=pointer]:
+              - /url: /war/prep
+              - img [ref=e50] [cursor=pointer]
+              - generic [ref=e52] [cursor=pointer]: War Prep
+              - generic [ref=e53] [cursor=pointer]: →
+              - text: War Prep workspace (opens new page)
+            - button "Copy snapshot summary (war status, capital raids, etc.)" [ref=e54] [cursor=pointer]:
+              - img [ref=e55] [cursor=pointer]
+              - generic [ref=e57] [cursor=pointer]: Copy Summary
+              - text: Copy snapshot summary (war status, capital raids, etc.)
+            - button "Generate daily summary with automated insights of changes since last snapshot" [ref=e58] [cursor=pointer]:
+              - img [ref=e59] [cursor=pointer]
+              - generic [ref=e61] [cursor=pointer]: Insights Summary
+              - text: Generate daily summary with automated insights of changes since last snapshot
+            - button "Export snapshot data in various formats" [ref=e63] [cursor=pointer]:
+              - img [ref=e64] [cursor=pointer]
+              - generic [ref=e66] [cursor=pointer]: Export
+              - img [ref=e67] [cursor=pointer]
+              - text: Export snapshot data in various formats
+      - navigation "Main navigation tabs" [ref=e70]:
+        - generic [ref=e71]:
+          - button "Daily overview and roster" [ref=e72] [cursor=pointer]:
+            - generic [ref=e73] [cursor=pointer]:
+              - generic [ref=e74] [cursor=pointer]: 🛡️
+              - generic [ref=e75] [cursor=pointer]: Dashboard
+            - text: Daily overview and roster
+          - button "Select lineups and analyze upcoming wars" [ref=e77] [cursor=pointer]:
+            - generic [ref=e78] [cursor=pointer]:
+              - generic [ref=e79] [cursor=pointer]: ⚔️
+              - generic [ref=e80] [cursor=pointer]: War Planning
+            - text: Select lineups and analyze upcoming wars
+          - button "Comprehensive war performance intelligence and metrics" [ref=e81] [cursor=pointer]:
+            - generic [ref=e82] [cursor=pointer]:
+              - generic [ref=e83] [cursor=pointer]: 📊
+              - generic [ref=e84] [cursor=pointer]: War Analytics
+            - text: Comprehensive war performance intelligence and metrics
+          - button "Capital raid performance analytics and metrics" [ref=e85] [cursor=pointer]:
+            - generic [ref=e86] [cursor=pointer]:
+              - generic [ref=e87] [cursor=pointer]: 🏛️
+              - generic [ref=e88] [cursor=pointer]: Capital Analytics
+            - text: Capital raid performance analytics and metrics
+          - button "Player notes, warnings, and tenure records" [ref=e89] [cursor=pointer]:
+            - generic [ref=e90] [cursor=pointer]:
+              - generic [ref=e91] [cursor=pointer]: 🗄️
+              - generic [ref=e92] [cursor=pointer]: Player Database
+            - text: Player notes, warnings, and tenure records
+          - button "Leadership dashboards and initiatives" [ref=e93] [cursor=pointer]:
+            - generic [ref=e94] [cursor=pointer]:
+              - generic [ref=e95] [cursor=pointer]: 👑
+              - generic [ref=e96] [cursor=pointer]: Leadership
+            - text: Leadership dashboards and initiatives
+    - main [ref=e97]:
+      - generic [ref=e99]:
+        - navigation "Breadcrumb" [ref=e100]:
+          - list [ref=e101]:
+            - listitem [ref=e102]:
+              - link "Dashboard" [ref=e103] [cursor=pointer]:
+                - /url: /app
+                - generic [ref=e104] [cursor=pointer]: Dashboard
+            - listitem [ref=e105]:
+              - generic [ref=e106]: /
+              - generic [ref=e107]: War Planning
+        - generic [ref=e108]:
+          - generic [ref=e110]:
+            - heading "⚔️ War Center" [level=1] [ref=e111]
+            - paragraph [ref=e112]: Prep your opponent and build the war plan from a single workspace.
+          - generic [ref=e113]:
+            - generic [ref=e114]:
+              - 'checkbox "AI Analysis ⓘ Current: AI (gpt-4o-mini)" [checked] [ref=e115]'
+              - generic [ref=e116]:
+                - generic [ref=e118]:
+                  - text: AI Analysis
+                  - generic [ref=e119]: ⓘ
+                - generic [ref=e120]: "Current: AI (gpt-4o-mini)"
+            - generic [ref=e121]:
+              - generic [ref=e123]:
+                - text: Enrich
+                - generic [ref=e124]: ⓘ
+              - slider [ref=e125]: "12"
+              - generic [ref=e126]: Top 12
+            - button "Sync Opponent" [ref=e127] [cursor=pointer]
+        - generic [ref=e129]:
+          - generic [ref=e131]:
+            - generic [ref=e132]: "1"
+            - generic [ref=e133]:
+              - paragraph [ref=e134]: Load Rosters
+              - paragraph [ref=e135]: Pull our clan & opponent data.
+          - generic [ref=e137]:
+            - generic [ref=e138]: "2"
+            - generic [ref=e139]:
+              - paragraph [ref=e140]: Select Players
+              - paragraph [ref=e141]: Choose attackers and targets.
+          - generic [ref=e143]:
+            - generic [ref=e144]: "3"
+            - generic [ref=e145]:
+              - paragraph [ref=e146]: Analyze
+              - paragraph [ref=e147]: Run AI/heuristic matchup analysis.
+          - generic [ref=e149]:
+            - generic [ref=e150]: "4"
+            - generic [ref=e151]:
+              - paragraph [ref=e152]: Review & Share
+              - paragraph [ref=e153]: Save plans and copy briefs.
+        - generic [ref=e154]:
+          - generic [ref=e155]:
+            - button "1 Step 1 · Load Rosters ▼" [expanded] [ref=e156] [cursor=pointer]:
+              - generic [ref=e157] [cursor=pointer]:
+                - generic [ref=e159] [cursor=pointer]: "1"
+                - generic [ref=e160] [cursor=pointer]: Step 1 · Load Rosters
+              - generic [ref=e161] [cursor=pointer]: ▼
+            - generic [ref=e164]:
+              - generic [ref=e165]:
+                - generic [ref=e166]:
+                  - heading "Opponent Profile" [level=2] [ref=e167]
+                  - generic [ref=e168]:
+                    - button "Analyze Opponent" [ref=e169] [cursor=pointer]
+                    - button "Pin Opponent" [disabled]
+                - generic [ref=e170]:
+                  - generic [ref=e171]:
+                    - generic [ref=e172]: Opponent Tag
+                    - textbox "#OPPONENT" [ref=e173]: "#2GRJG9U98"
+                    - generic [ref=e174]:
+                      - checkbox "Auto-detect opponent (uses last synced war)" [checked] [ref=e175]
+                      - text: Auto-detect opponent (uses last synced war)
+                  - generic [ref=e176]:
+                    - generic [ref=e177]: Detected Opponent
+                    - generic [ref=e179]: No opponent fetched yet.
+                  - generic [ref=e180]:
+                    - generic [ref=e181]: Town Hall Spread
+                    - generic [ref=e183]: No distribution yet
+              - generic [ref=e184]:
+                - generic [ref=e185]:
+                  - generic [ref=e186]:
+                    - heading "Our Roster" [level=2] [ref=e187]
+                    - button "Refresh" [ref=e189] [cursor=pointer]
+                  - generic [ref=e190]:
+                    - generic [ref=e191]:
+                      - text: Our Clan Tag
+                      - textbox "Our Clan Tag" [ref=e192]: "#2PR8R8V8P"
+                    - generic [ref=e193]:
+                      - generic [ref=e194]:
+                        - generic [ref=e195]:
+                          - generic [ref=e198]: RÀDIÀNT~T£MP£ST
+                          - 'checkbox "War opt-in: This player has opted in to clan wars RÀDIÀNT~T£MP£ST Tag: #JL2RPU09 TH: 18 Heroes: BK: 100, AQ: 100, GW: 75, RC: 53, MP: 90 War Stars: 3495 Activity: 32" [checked] [disabled] [ref=e199]'
+                        - generic [ref=e200]:
+                          - generic [ref=e201]: "Tag: #JL2RPU09"
+                          - generic [ref=e202]: "TH: 18"
+                          - generic [ref=e203]: "Heroes: BK: 100, AQ: 100, GW: 75, RC: 53, MP: 90"
+                          - generic [ref=e204]: "War Stars: 3495"
+                          - generic [ref=e205]: "Activity: 32"
+                      - generic [ref=e206]:
+                        - generic [ref=e207]:
+                          - generic [ref=e210]: HOLY~T£MP£ST
+                          - 'checkbox "War opt-in: This player has opted in to clan wars HOLY~T£MP£ST Tag: #8YUCCCLUJ TH: 17 Heroes: BK: 100, AQ: 100, GW: 75, RC: 50, MP: 90 War Stars: 2990 Activity: 5" [checked] [disabled] [ref=e211]'
+                        - generic [ref=e212]:
+                          - generic [ref=e213]: "Tag: #8YUCCCLUJ"
+                          - generic [ref=e214]: "TH: 17"
+                          - generic [ref=e215]: "Heroes: BK: 100, AQ: 100, GW: 75, RC: 50, MP: 90"
+                          - generic [ref=e216]: "War Stars: 2990"
+                          - generic [ref=e217]: "Activity: 5"
+                      - generic [ref=e218]:
+                        - generic [ref=e219]:
+                          - generic [ref=e222]: CHI£F~T£MP£ST
+                          - 'checkbox "War opt-in: This player has opted in to clan wars CHI£F~T£MP£ST Tag: #2QQRR9QU TH: 17 Heroes: BK: 95, AQ: 95, GW: 70, RC: 47, MP: 80 War Stars: 2247 Activity: 5" [checked] [disabled] [ref=e223]'
+                        - generic [ref=e224]:
+                          - generic [ref=e225]: "Tag: #2QQRR9QU"
+                          - generic [ref=e226]: "TH: 17"
+                          - generic [ref=e227]: "Heroes: BK: 95, AQ: 95, GW: 70, RC: 47, MP: 80"
+                          - generic [ref=e228]: "War Stars: 2247"
+                          - generic [ref=e229]: "Activity: 5"
+                      - generic [ref=e230]:
+                        - generic [ref=e231]:
+                          - generic [ref=e234]: BLÁZ£~T£MP£ST
+                          - 'checkbox "War opt-in: This player has opted in to clan wars BLÁZ£~T£MP£ST Tag: #228QJVJYL TH: 17 Heroes: BK: 100, AQ: 100, GW: 75, RC: 50, MP: 79 War Stars: 2756 Activity: 5" [checked] [disabled] [ref=e235]'
+                        - generic [ref=e236]:
+                          - generic [ref=e237]: "Tag: #228QJVJYL"
+                          - generic [ref=e238]: "TH: 17"
+                          - generic [ref=e239]: "Heroes: BK: 100, AQ: 100, GW: 75, RC: 50, MP: 79"
+                          - generic [ref=e240]: "War Stars: 2756"
+                          - generic [ref=e241]: "Activity: 5"
+                      - generic [ref=e242]:
+                        - generic [ref=e243]:
+                          - generic [ref=e246]: ╬Naga Klaus╬
+                          - 'checkbox "War opt-in: This player has opted in to clan wars ╬Naga Klaus╬ Tag: #2RPQUGQUR TH: 17 Heroes: BK: 95, AQ: 96, GW: 73, RC: 50, MP: 80 War Stars: 2549 Activity: 5" [disabled] [ref=e247]'
+                        - generic [ref=e248]:
+                          - generic [ref=e249]: "Tag: #2RPQUGQUR"
+                          - generic [ref=e250]: "TH: 17"
+                          - generic [ref=e251]: "Heroes: BK: 95, AQ: 96, GW: 73, RC: 50, MP: 80"
+                          - generic [ref=e252]: "War Stars: 2549"
+                          - generic [ref=e253]: "Activity: 5"
+                      - generic [ref=e254]:
+                        - generic [ref=e255]:
+                          - generic [ref=e258]: God Of LOYINS
+                          - 'checkbox "War opt-in: This player has opted in to clan wars God Of LOYINS Tag: #9VCJVUGV TH: 15 Heroes: BK: 71, AQ: 71, GW: 55, RC: 30, MP: 52 War Stars: 613 Activity: 20" [disabled] [ref=e259]'
+                        - generic [ref=e260]:
+                          - generic [ref=e261]: "Tag: #9VCJVUGV"
+                          - generic [ref=e262]: "TH: 15"
+                          - generic [ref=e263]: "Heroes: BK: 71, AQ: 71, GW: 55, RC: 30, MP: 52"
+                          - generic [ref=e264]: "War Stars: 613"
+                          - generic [ref=e265]: "Activity: 20"
+                      - generic [ref=e266]:
+                        - generic [ref=e267]:
+                          - generic [ref=e270]: DoubleD
+                          - 'checkbox "War opt-in: This player has opted in to clan wars DoubleD Tag: #VGQVRLRL TH: 15 Heroes: BK: 77, AQ: 84, GW: 60, RC: 30, MP: 60 War Stars: 338 Activity: 17" [checked] [disabled] [ref=e271]'
+                        - generic [ref=e272]:
+                          - generic [ref=e273]: "Tag: #VGQVRLRL"
+                          - generic [ref=e274]: "TH: 15"
+                          - generic [ref=e275]: "Heroes: BK: 77, AQ: 84, GW: 60, RC: 30, MP: 60"
+                          - generic [ref=e276]: "War Stars: 338"
+                          - generic [ref=e277]: "Activity: 17"
+                      - generic [ref=e278]:
+                        - generic [ref=e279]:
+                          - generic [ref=e282]: War.Frog
+                          - 'checkbox "War opt-in: This player has opted in to clan wars War.Frog Tag: #UL0LRJ02 TH: 14 Heroes: BK: 75, AQ: 76, GW: 53, RC: 25, MP: 51 War Stars: 469 Activity: 17" [checked] [disabled] [ref=e283]'
+                        - generic [ref=e284]:
+                          - generic [ref=e285]: "Tag: #UL0LRJ02"
+                          - generic [ref=e286]: "TH: 14"
+                          - generic [ref=e287]: "Heroes: BK: 75, AQ: 76, GW: 53, RC: 25, MP: 51"
+                          - generic [ref=e288]: "War Stars: 469"
+                          - generic [ref=e289]: "Activity: 17"
+                      - generic [ref=e290]:
+                        - generic [ref=e291]:
+                          - generic [ref=e294]: warfroggy
+                          - 'checkbox "War opt-in: This player has opted in to clan wars warfroggy Tag: #G9QVRYC2Y TH: 14 Heroes: BK: 76, AQ: 76, GW: 51, RC: 26, MP: 51 War Stars: 315 Activity: 20" [checked] [disabled] [ref=e295]'
+                        - generic [ref=e296]:
+                          - generic [ref=e297]: "Tag: #G9QVRYC2Y"
+                          - generic [ref=e298]: "TH: 14"
+                          - generic [ref=e299]: "Heroes: BK: 76, AQ: 76, GW: 51, RC: 26, MP: 51"
+                          - generic [ref=e300]: "War Stars: 315"
+                          - generic [ref=e301]: "Activity: 20"
+                      - generic [ref=e302]:
+                        - generic [ref=e303]:
+                          - generic [ref=e306]: MD.Soudho$$
+                          - 'checkbox "War opt-in: This player has opted in to clan wars MD.Soudho$$ Tag: #GY0CCL9UC TH: 14 Heroes: BK: 61, AQ: 61, GW: 28, RC: 10, MP: 39 War Stars: 404 Activity: 20" [checked] [disabled] [ref=e307]'
+                        - generic [ref=e308]:
+                          - generic [ref=e309]: "Tag: #GY0CCL9UC"
+                          - generic [ref=e310]: "TH: 14"
+                          - generic [ref=e311]: "Heroes: BK: 61, AQ: 61, GW: 28, RC: 10, MP: 39"
+                          - generic [ref=e312]: "War Stars: 404"
+                          - generic [ref=e313]: "Activity: 20"
+                      - generic [ref=e314]:
+                        - generic [ref=e315]:
+                          - generic [ref=e318]: Headhuntress
+                          - 'checkbox "War opt-in: This player has opted in to clan wars Headhuntress Tag: #GPYCPQV8J TH: 13 Heroes: BK: 75, AQ: 75, GW: 50, RC: 21, MP: 48 War Stars: 269 Activity: 17" [checked] [disabled] [ref=e319]'
+                        - generic [ref=e320]:
+                          - generic [ref=e321]: "Tag: #GPYCPQV8J"
+                          - generic [ref=e322]: "TH: 13"
+                          - generic [ref=e323]: "Heroes: BK: 75, AQ: 75, GW: 50, RC: 21, MP: 48"
+                          - generic [ref=e324]: "War Stars: 269"
+                          - generic [ref=e325]: "Activity: 17"
+                      - generic [ref=e326]:
+                        - generic [ref=e327]:
+                          - generic [ref=e330]: CosmicThomas
+                          - 'checkbox "War opt-in: This player has opted in to clan wars CosmicThomas Tag: #YYVUCPQ90 TH: 13 Heroes: BK: 72, AQ: 73, GW: 50, RC: 25, MP: 50 War Stars: 70 Activity: 20" [checked] [disabled] [ref=e331]'
+                        - generic [ref=e332]:
+                          - generic [ref=e333]: "Tag: #YYVUCPQ90"
+                          - generic [ref=e334]: "TH: 13"
+                          - generic [ref=e335]: "Heroes: BK: 72, AQ: 73, GW: 50, RC: 25, MP: 50"
+                          - generic [ref=e336]: "War Stars: 70"
+                          - generic [ref=e337]: "Activity: 20"
+                      - generic [ref=e338]:
+                        - generic [ref=e339]:
+                          - generic [ref=e342]: Tigress
+                          - 'checkbox "War opt-in: This player has opted in to clan wars Tigress Tag: #G09GGYC2Y TH: 13 Heroes: BK: 68, AQ: 73, GW: 47, RC: 22, MP: 50 War Stars: 143 Activity: 34" [disabled] [ref=e343]'
+                        - generic [ref=e344]:
+                          - generic [ref=e345]: "Tag: #G09GGYC2Y"
+                          - generic [ref=e346]: "TH: 13"
+                          - generic [ref=e347]: "Heroes: BK: 68, AQ: 73, GW: 47, RC: 22, MP: 50"
+                          - generic [ref=e348]: "War Stars: 143"
+                          - generic [ref=e349]: "Activity: 34"
+                      - generic [ref=e350]:
+                        - generic [ref=e351]:
+                          - generic [ref=e354]: flame
+                          - 'checkbox "War opt-in: This player has opted in to clan wars flame Tag: #299PGYLG TH: 13 Heroes: BK: 66, AQ: 69, GW: 46, RC: 15, MP: 42 War Stars: 805 Activity: 20" [disabled] [ref=e355]'
+                        - generic [ref=e356]:
+                          - generic [ref=e357]: "Tag: #299PGYLG"
+                          - generic [ref=e358]: "TH: 13"
+                          - generic [ref=e359]: "Heroes: BK: 66, AQ: 69, GW: 46, RC: 15, MP: 42"
+                          - generic [ref=e360]: "War Stars: 805"
+                          - generic [ref=e361]: "Activity: 20"
+                      - generic [ref=e362]:
+                        - generic [ref=e363]:
+                          - generic [ref=e365]: se
+                          - 'checkbox "se Tag: #YUGUL9JJ0 TH: 13 Heroes: BK: 47, AQ: 53, GW: 23, RC: 1, MP: 27 War Stars: 70 Activity: 20" [disabled] [ref=e366]'
+                        - generic [ref=e367]:
+                          - generic [ref=e368]: "Tag: #YUGUL9JJ0"
+                          - generic [ref=e369]: "TH: 13"
+                          - generic [ref=e370]: "Heroes: BK: 47, AQ: 53, GW: 23, RC: 1, MP: 27"
+                          - generic [ref=e371]: "War Stars: 70"
+                          - generic [ref=e372]: "Activity: 20"
+                      - generic [ref=e373]:
+                        - generic [ref=e374]:
+                          - generic [ref=e377]: Zouboul
+                          - 'checkbox "War opt-in: This player has opted in to clan wars Zouboul Tag: #G8GCC8GGC TH: 12 Heroes: BK: 65, AQ: 65, GW: 40, MP: 40 War Stars: 14 Activity: 5" [disabled] [ref=e378]'
+                        - generic [ref=e379]:
+                          - generic [ref=e380]: "Tag: #G8GCC8GGC"
+                          - generic [ref=e381]: "TH: 12"
+                          - generic [ref=e382]: "Heroes: BK: 65, AQ: 65, GW: 40, MP: 40"
+                          - generic [ref=e383]: "War Stars: 14"
+                          - generic [ref=e384]: "Activity: 5"
+                      - generic [ref=e385]:
+                        - generic [ref=e386]:
+                          - generic [ref=e388]: Isi
+                          - 'checkbox "Isi Tag: #GCQPGVUYP TH: 10 Heroes: BK: 39, AQ: 38, MP: 20 War Stars: 10 Activity: 20" [disabled] [ref=e389]'
+                        - generic [ref=e390]:
+                          - generic [ref=e391]: "Tag: #GCQPGVUYP"
+                          - generic [ref=e392]: "TH: 10"
+                          - generic [ref=e393]: "Heroes: BK: 39, AQ: 38, MP: 20"
+                          - generic [ref=e394]: "War Stars: 10"
+                          - generic [ref=e395]: "Activity: 20"
+                - generic [ref=e396]:
+                  - generic [ref=e397]:
+                    - heading "Opponent Roster" [level=2] [ref=e398]
+                    - button "Fetch Opponent" [ref=e399] [cursor=pointer]
+                  - generic [ref=e400]:
+                    - generic [ref=e401]:
+                      - text: Opponent Clan Tag
+                      - textbox "Opponent Clan Tag" [ref=e402]: "#2GRJG9U98"
+                    - paragraph [ref=e403]: Fetch the opponent roster to choose targets for enrichment.
+          - generic [ref=e404]:
+            - button "2 Step 2 · Select Players & Prep Plan ▼" [ref=e405] [cursor=pointer]:
+              - generic [ref=e406] [cursor=pointer]:
+                - generic [ref=e408] [cursor=pointer]: "2"
+                - generic [ref=e409] [cursor=pointer]: Step 2 · Select Players & Prep Plan
+              - generic [ref=e410] [cursor=pointer]: ▼
+            - generic [ref=e412]:
+              - generic [ref=e413]:
+                - generic [ref=e414]:
+                  - heading "Selection Summary" [level=2] [ref=e415]
+                  - button "Clear selections" [disabled]
+                - generic [ref=e416]:
+                  - generic [ref=e417]:
+                    - paragraph [ref=e418]: Our selections
+                    - paragraph [ref=e419]: "10"
+                    - paragraph [ref=e420]: Pick the attackers we’ll assign.
+                  - generic [ref=e421]:
+                    - paragraph [ref=e422]: Opponent picks
+                    - paragraph [ref=e423]: "10"
+                    - paragraph [ref=e424]: Target bases to enrich + analyze.
+                - paragraph [ref=e425]: Select at least one player on each side and set the opponent tag to unlock the analysis step.
+              - generic [ref=e426]:
+                - heading "Plan Actions" [level=2] [ref=e428]
+                - generic [ref=e429]:
+                  - button "Save Plan" [disabled]
+                  - button "Load Saved Plan" [ref=e430] [cursor=pointer]
+                - paragraph [ref=e431]: Saving stores your selections, analysis, and opponent info so you can resume prep instantly.
+                - generic [ref=e432]: "Restored plan vs #2GRJG9U98 — analysis: ready"
+          - generic [ref=e433]:
+            - button "3 Step 3 · Run Matchup Analysis ▼" [ref=e434] [cursor=pointer]:
+              - generic [ref=e435] [cursor=pointer]:
+                - generic [ref=e437] [cursor=pointer]: "3"
+                - generic [ref=e438] [cursor=pointer]: Step 3 · Run Matchup Analysis
+              - generic [ref=e439] [cursor=pointer]: ▼
+            - generic [ref=e441]:
+              - generic [ref=e442]:
+                - heading "Matchup Analysis" [level=2] [ref=e443]
+                - button "Run Analysis" [disabled]
+              - paragraph [ref=e444]: AI toggle and enrich controls live in the header. Increase enrich to deepen the scouting pool.
+              - paragraph [ref=e445]: Leadership permission is required to run matchup analysis.
+          - generic [ref=e446]:
+            - button "4 Step 4 · Review & Share ▼" [ref=e447] [cursor=pointer]:
+              - generic [ref=e448] [cursor=pointer]:
+                - generic [ref=e450] [cursor=pointer]: "4"
+                - generic [ref=e451] [cursor=pointer]: Step 4 · Review & Share
+              - generic [ref=e452] [cursor=pointer]: ▼
+            - generic [ref=e454]:
+              - generic [ref=e455]:
+                - generic [ref=e456]:
+                  - 'heading "Saved Plan — vs #2GRJG9U98" [level=2] [ref=e457]'
+                  - generic [ref=e458]:
+                    - button "Reload Plan" [ref=e459] [cursor=pointer]
+                    - button "Re-run Analysis" [disabled]
+                    - button "Copy Payload" [ref=e460] [cursor=pointer]
+                    - button "Copy Discord Brief" [ref=e461] [cursor=pointer]
+                - paragraph [ref=e462]:
+                  - generic [ref=e463]: Updated 11/15/2025, 10:05:02 PM
+                  - generic [ref=e464]: "• Analysis: ready"
+                  - generic [ref=e465]: • v2025.02.26
+                  - generic [ref=e466]: • Job 3629…f778
+                  - generic [ref=e467]: • Started 11/15/2025, 10:04:51 PM
+                  - generic [ref=e468]: • Completed 11/15/2025, 10:05:02 PM
+                  - generic [ref=e469]: "• Briefing: OpenAI (gpt-4o-mini)"
+              - generic [ref=e470]:
+                - generic [ref=e471]:
+                  - generic [ref=e475]:
+                    - generic [ref=e477]: Confidence
+                    - generic [ref=e478]: 95.0%
+                  - generic [ref=e481]:
+                    - generic [ref=e483]: Outlook
+                    - generic [ref=e484]: Favorable
+                - generic [ref=e485]:
+                  - generic [ref=e486]: Advantage
+                  - 'heading "Favorable War Matchup: Leverage Early Attacks for Victory" [level=3] [ref=e487]'
+                  - list [ref=e488]:
+                    - listitem [ref=e489]: Maximize early triples to maintain pressure on opponents.
+                    - listitem [ref=e490]: Target slot 10 aggressively; strong advantage with TH edge.
+                    - listitem [ref=e491]: Prepare backup for slot 8, where we face a hero disadvantage.
+                    - listitem [ref=e492]: Focus on exploiting our hero depth across key matchups.
+                  - paragraph [ref=e493]: "Generated 11/15/2025, 10:05:02 PM • Source: OpenAI (gpt-4o-mini)"
+                - generic [ref=e494]:
+                  - generic [ref=e495]:
+                    - heading "Our Team Metrics" [level=3] [ref=e496]
+                    - list [ref=e497]:
+                      - listitem [ref=e498]: "Players Selected: 10"
+                      - listitem [ref=e499]: "Average TH: 15.10"
+                      - listitem [ref=e500]: "Max TH: 17"
+                      - listitem [ref=e501]: "Average War Stars: 1331.6"
+                      - listitem [ref=e502]: "Average Ranked Trophies: 218"
+                      - listitem [ref=e503]: "Average Hero Level: 64.2"
+                  - generic [ref=e504]:
+                    - heading "Opponent Metrics" [level=3] [ref=e505]
+                    - list [ref=e506]:
+                      - listitem [ref=e507]: "Players Selected: 10"
+                      - listitem [ref=e508]: "Average TH: 15.00"
+                      - listitem [ref=e509]: "Max TH: 17"
+                      - listitem [ref=e510]: "Average War Stars: 692.7"
+                      - listitem [ref=e511]: "Average Ranked Trophies: 348"
+                      - listitem [ref=e512]: "Average Hero Level: 58.4"
+                - generic [ref=e513]:
+                  - generic [ref=e514]:
+                    - heading "Town Hall Edge" [level=3] [ref=e515]
+                    - list [ref=e516]:
+                      - listitem [ref=e517]:
+                        - generic [ref=e519]: "Max TH diff: 0"
+                      - listitem [ref=e520]:
+                        - generic [ref=e522]: "High-tier edge: -1"
+                      - listitem [ref=e523]:
+                        - generic [ref=e524]: "Our spread: TH17: 4 • TH15: 1 • TH14: 3 • TH13: 2"
+                      - listitem [ref=e525]:
+                        - generic [ref=e526]: "Opponent spread: TH17: 4 • TH16: 1 • TH14: 2 • TH13: 2"
+                  - generic [ref=e527]:
+                    - heading "Hero Firepower" [level=3] [ref=e528]
+                    - list [ref=e529]:
+                      - listitem [ref=e530]:
+                        - generic [ref=e532]: "Average heroes: +5.8"
+                      - listitem [ref=e533]:
+                        - generic [ref=e535]: "Top 5 hero delta: +4.7"
+                      - listitem [ref=e536]:
+                        - generic [ref=e538]: "Hero depth delta: +5.4"
+                  - generic [ref=e539]:
+                    - heading "War Experience" [level=3] [ref=e540]
+                    - list [ref=e541]:
+                      - listitem [ref=e542]:
+                        - generic [ref=e544]: "Median war stars: -75"
+                      - listitem [ref=e545]:
+                        - generic [ref=e547]: "Veteran edge (≥150 stars): 0"
+                  - generic [ref=e548]:
+                    - heading "Roster Readiness" [level=3] [ref=e549]
+                    - list [ref=e550]:
+                      - listitem [ref=e551]:
+                        - generic [ref=e552]: "Roster size: 0"
+                      - listitem [ref=e553]:
+                        - generic [ref=e554]: "Hero-ready attackers (≥55): +1"
+                      - listitem [ref=e555]:
+                        - generic [ref=e556]: "Advantage slots: 5"
+                      - listitem [ref=e557]:
+                        - generic [ref=e558]: "Pressure slots: 2"
+                - generic [ref=e559]:
+                  - heading "Recommendations" [level=3] [ref=e560]
+                  - list [ref=e561]:
+                    - listitem [ref=e562]: Schedule early attacks on high-value targets to secure triples.
+                    - listitem [ref=e563]: Assign a dedicated hitter for slot 10 to capitalize on our advantages.
+                    - listitem [ref=e564]: Coordinate a backup plan for slot 8 to mitigate risks.
+                - generic [ref=e565]:
+                  - heading "Slot Matchups" [level=3] [ref=e566]
+                  - table [ref=e568]:
+                    - rowgroup [ref=e569]:
+                      - row "Slot Our Player Opponent TH Δ Hero Δ Ranked Δ War Stars Δ Summary" [ref=e570]:
+                        - cell "Slot" [ref=e571]
+                        - cell "Our Player" [ref=e572]
+                        - cell "Opponent" [ref=e573]
+                        - cell "TH Δ" [ref=e574]
+                        - cell "Hero Δ" [ref=e575]
+                        - cell "Ranked Δ" [ref=e576]
+                        - cell "War Stars Δ" [ref=e577]
+                        - cell "Summary" [ref=e578]
+                    - rowgroup [ref=e579]:
+                      - 'row "1 RÀDIÀNT~T£MP£ST #JL2RPU09 • TH 17 big D #L229RRQ9 • TH 17 +0 +5.0 +471 +2555 Ranked +471 | War-star veteran +2555" [ref=e580]':
+                        - cell "1" [ref=e581]
+                        - 'cell "RÀDIÀNT~T£MP£ST #JL2RPU09 • TH 17" [ref=e582]':
+                          - generic [ref=e583]: RÀDIÀNT~T£MP£ST
+                          - generic [ref=e584]: "#JL2RPU09 • TH 17"
+                        - 'cell "big D #L229RRQ9 • TH 17" [ref=e585]':
+                          - generic [ref=e586]: big D
+                          - generic [ref=e587]: "#L229RRQ9 • TH 17"
+                        - cell "+0" [ref=e588]
+                        - cell "+5.0" [ref=e589]
+                        - cell "+471" [ref=e590]
+                        - cell "+2555" [ref=e591]
+                        - cell "Ranked +471 | War-star veteran +2555" [ref=e592]
+                      - 'row "2 HOLY~T£MP£ST #8YUCCCLUJ • TH 17 Ryan #G0YQYY8RC • TH 17 +0 +0.0 -892 +1866 Ranked -892 | War-star veteran +1866" [ref=e593]':
+                        - cell "2" [ref=e594]
+                        - 'cell "HOLY~T£MP£ST #8YUCCCLUJ • TH 17" [ref=e595]':
+                          - generic [ref=e596]: HOLY~T£MP£ST
+                          - generic [ref=e597]: "#8YUCCCLUJ • TH 17"
+                        - 'cell "Ryan #G0YQYY8RC • TH 17" [ref=e598]':
+                          - generic [ref=e599]: Ryan
+                          - generic [ref=e600]: "#G0YQYY8RC • TH 17"
+                        - cell "+0" [ref=e601]
+                        - cell "+0.0" [ref=e602]
+                        - cell "-892" [ref=e603]
+                        - cell "+1866" [ref=e604]
+                        - cell "Ranked -892 | War-star veteran +1866" [ref=e605]
+                      - 'row "3 BLÁZ£~T£MP£ST #228QJVJYL • TH 17 Btrt2 #YUVJVYL9 • TH 17 +0 +0.4 -580 +770 Ranked -580 | War-star veteran +770" [ref=e606]':
+                        - cell "3" [ref=e607]
+                        - 'cell "BLÁZ£~T£MP£ST #228QJVJYL • TH 17" [ref=e608]':
+                          - generic [ref=e609]: BLÁZ£~T£MP£ST
+                          - generic [ref=e610]: "#228QJVJYL • TH 17"
+                        - 'cell "Btrt2 #YUVJVYL9 • TH 17" [ref=e611]':
+                          - generic [ref=e612]: Btrt2
+                          - generic [ref=e613]: "#YUVJVYL9 • TH 17"
+                        - cell "+0" [ref=e614]
+                        - cell "+0.4" [ref=e615]
+                        - cell "-580" [ref=e616]
+                        - cell "+770" [ref=e617]
+                        - cell "Ranked -580 | War-star veteran +770" [ref=e618]
+                      - 'row "4 CHI£F~T£MP£ST #2QQRR9QU • TH 17 Jameth #QCYGCYJL9 • TH 17 +0 +17.6 -687 +1388 Heroes up 17.6 | Ranked -687 | War-star veteran +1388" [ref=e619]':
+                        - cell "4" [ref=e620]
+                        - 'cell "CHI£F~T£MP£ST #2QQRR9QU • TH 17" [ref=e621]':
+                          - generic [ref=e622]: CHI£F~T£MP£ST
+                          - generic [ref=e623]: "#2QQRR9QU • TH 17"
+                        - 'cell "Jameth #QCYGCYJL9 • TH 17" [ref=e624]':
+                          - generic [ref=e625]: Jameth
+                          - generic [ref=e626]: "#QCYGCYJL9 • TH 17"
+                        - cell "+0" [ref=e627]
+                        - cell "+17.6" [ref=e628]
+                        - cell "-687" [ref=e629]
+                        - cell "+1388" [ref=e630]
+                        - cell "Heroes up 17.6 | Ranked -687 | War-star veteran +1388" [ref=e631]
+                      - 'row "5 DoubleD #VGQVRLRL • TH 15 tamiH valavan #QC88GQQU8 • TH 16 -1 +22.2 -301 -46 TH disadvantage 1 | Heroes up 22.2 | Ranked -301" [ref=e632]':
+                        - cell "5" [ref=e633]
+                        - 'cell "DoubleD #VGQVRLRL • TH 15" [ref=e634]':
+                          - generic [ref=e635]: DoubleD
+                          - generic [ref=e636]: "#VGQVRLRL • TH 15"
+                        - 'cell "tamiH valavan #QC88GQQU8 • TH 16" [ref=e637]':
+                          - generic [ref=e638]: tamiH valavan
+                          - generic [ref=e639]: "#QC88GQQU8 • TH 16"
+                        - cell "-1" [ref=e640]
+                        - cell "+22.2" [ref=e641]
+                        - cell "-301" [ref=e642]
+                        - cell "-46" [ref=e643]
+                        - cell "TH disadvantage 1 | Heroes up 22.2 | Ranked -301" [ref=e644]
+                      - 'row "6 War.Frog #UL0LRJ02 • TH 14 jEd #YLP880VLR • TH 14 +0 -4.8 +305 -55 Ranked +305 | Behind in war stars -55" [ref=e645]':
+                        - cell "6" [ref=e646]
+                        - 'cell "War.Frog #UL0LRJ02 • TH 14" [ref=e647]':
+                          - generic [ref=e648]: War.Frog
+                          - generic [ref=e649]: "#UL0LRJ02 • TH 14"
+                        - 'cell "jEd #YLP880VLR • TH 14" [ref=e650]':
+                          - generic [ref=e651]: jEd
+                          - generic [ref=e652]: "#YLP880VLR • TH 14"
+                        - cell "+0" [ref=e653]
+                        - cell "-4.8" [ref=e654]
+                        - cell "+305" [ref=e655]
+                        - cell "-55" [ref=e656]
+                        - cell "Ranked +305 | Behind in war stars -55" [ref=e657]
+                      - 'row "7 warfroggy #G9QVRYC2Y • TH 14 rob #2CUULCR8Y • TH 14 +0 +1.2 +376 -188 Ranked +376 | Behind in war stars -188" [ref=e658]':
+                        - cell "7" [ref=e659]
+                        - 'cell "warfroggy #G9QVRYC2Y • TH 14" [ref=e660]':
+                          - generic [ref=e661]: warfroggy
+                          - generic [ref=e662]: "#G9QVRYC2Y • TH 14"
+                        - 'cell "rob #2CUULCR8Y • TH 14" [ref=e663]':
+                          - generic [ref=e664]: rob
+                          - generic [ref=e665]: "#2CUULCR8Y • TH 14"
+                        - cell "+0" [ref=e666]
+                        - cell "+1.2" [ref=e667]
+                        - cell "+376" [ref=e668]
+                        - cell "-188" [ref=e669]
+                        - cell "Ranked +376 | Behind in war stars -188" [ref=e670]
+                      - 'row "8 MD.Soudho$$ #GY0CCL9UC • TH 14 Ricky3104 #P88QL0JRV • TH 13 +1 -16.0 -132 +70 TH advantage 1 | Heroes down 16.0 | Ranked -132 | War-star veteran +70" [ref=e671]':
+                        - cell "8" [ref=e672]
+                        - 'cell "MD.Soudho$$ #GY0CCL9UC • TH 14" [ref=e673]':
+                          - generic [ref=e674]: MD.Soudho$$
+                          - generic [ref=e675]: "#GY0CCL9UC • TH 14"
+                        - 'cell "Ricky3104 #P88QL0JRV • TH 13" [ref=e676]':
+                          - generic [ref=e677]: Ricky3104
+                          - generic [ref=e678]: "#P88QL0JRV • TH 13"
+                        - cell "+1" [ref=e679]
+                        - cell "-16.0" [ref=e680]
+                        - cell "-132" [ref=e681]
+                        - cell "+70" [ref=e682]
+                        - cell "TH advantage 1 | Heroes down 16.0 | Ranked -132 | War-star veteran +70" [ref=e683]
+                      - 'row "9 Headhuntress #GPYCPQV8J • TH 13 xzxldx #G8UC90P92 • TH 13 +0 +8.0 +137 +111 Heroes up 8.0 | Ranked +137 | War-star veteran +111" [ref=e684]':
+                        - cell "9" [ref=e685]
+                        - 'cell "Headhuntress #GPYCPQV8J • TH 13" [ref=e686]':
+                          - generic [ref=e687]: Headhuntress
+                          - generic [ref=e688]: "#GPYCPQV8J • TH 13"
+                        - 'cell "xzxldx #G8UC90P92 • TH 13" [ref=e689]':
+                          - generic [ref=e690]: xzxldx
+                          - generic [ref=e691]: "#G8UC90P92 • TH 13"
+                        - cell "+0" [ref=e692]
+                        - cell "+8.0" [ref=e693]
+                        - cell "+137" [ref=e694]
+                        - cell "+111" [ref=e695]
+                        - cell "Heroes up 8.0 | Ranked +137 | War-star veteran +111" [ref=e696]
+                      - 'row "10 CosmicThomas #YYVUCPQ90 • TH 13 HangiPants #GJYG80J0Q • TH 12 +1 +16.8 +0 -82 TH advantage 1 | Heroes up 16.8 | Behind in war stars -82" [ref=e697]':
+                        - cell "10" [ref=e698]
+                        - 'cell "CosmicThomas #YYVUCPQ90 • TH 13" [ref=e699]':
+                          - generic [ref=e700]: CosmicThomas
+                          - generic [ref=e701]: "#YYVUCPQ90 • TH 13"
+                        - 'cell "HangiPants #GJYG80J0Q • TH 12" [ref=e702]':
+                          - generic [ref=e703]: HangiPants
+                          - generic [ref=e704]: "#GJYG80J0Q • TH 12"
+                        - cell "+1" [ref=e705]
+                        - cell "+16.8" [ref=e706]
+                        - cell "+0" [ref=e707]
+                        - cell "-82" [ref=e708]
+                        - cell "TH advantage 1 | Heroes up 16.8 | Behind in war stars -82" [ref=e709]
+    - contentinfo [ref=e710]:
+      - generic [ref=e713]:
+        - generic [ref=e716]: Clash Intelligence Dashboard
+        - generic [ref=e717]: •
+        - generic [ref=e718]: v1.51.0
+        - generic [ref=e719]: •
+        - generic [ref=e720]: a warfroggy project
+  - alert [ref=e721]
+```
