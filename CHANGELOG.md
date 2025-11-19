@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.52.0] - 2025-11-19
+
+### Added
+- **Comprehensive Site Documentation Test** (`tests/e2e/comprehensive-site-documentation.spec.ts`)
+  - Automated test that captures full-page screenshots of all pages and states
+  - Documents all interactive elements (inputs, buttons, tabs, links) with metadata
+  - Generates markdown and JSON documentation reports
+  - Captures navigation paths and page states for UI/UX review
+- **UI/UX Overhaul Plan** (`UI_UX_OVERHAUL_PLAN.md`)
+  - World-class UI/UX recommendations based on comprehensive site audit
+  - 5-phase implementation roadmap covering navigation, components, workflows, and accessibility
+  - Specific, actionable recommendations for improving user experience
+
+### Changed
+- Updated `.gitignore` to exclude screenshot files from test reports (keeps documentation, excludes images)
+- Test report screenshots are now stored locally but not committed to repository
+
+### Technical Details
+- Comprehensive documentation test captures 15+ page states across all major sections
+- Documentation includes element inventory, navigation flows, and interactive element metadata
+- Screenshots are excluded from git to reduce repository size while maintaining documentation accessibility
+
 ## [0.32.0] - 2025-10-12
 
 ### Added - Data Enrichment Initiative 🎊

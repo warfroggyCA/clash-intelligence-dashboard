@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { MessageSquare, Send, Settings, AlertTriangle, Users, Trophy, TrendingUp, Swords, Copy, Check } from "lucide-react";
 import { formatWarResultForDiscord, type WarResultPayload } from "@/lib/export-utils";
 import { normalizeTag } from "@/lib/tags";
+import { api } from "@/lib/api/client";
 
 interface Member {
   name: string;
@@ -117,6 +118,7 @@ interface DerivedAttack {
   defenderName?: string | null;
   defenderTag?: string | null;
   defenderTownHall?: number;
+  attackerTownHall?: number;
   memberPosition?: number;
 }
 
@@ -124,7 +126,9 @@ interface AutoWarPerformer {
   name: string;
   tag?: string | null;
   stars?: number;
+  totalStars?: number;
   summary?: string;
+  braveryAttack?: DerivedAttack | null;
 }
 
 interface AutoWarNotes {
@@ -132,6 +136,14 @@ interface AutoWarNotes {
   topPerformers: AutoWarPerformer[];
   bravest?: AutoWarPerformer;
   learnings?: string[];
+}
+
+interface AiWarPerformerPayload {
+  name: string;
+  tag?: string;
+  stars?: number;
+  summary?: string;
+  townHallDelta?: number;
 }
 
 const parseNumber = (value: unknown): number | null => {
@@ -143,6 +155,20 @@ const parseNumber = (value: unknown): number | null => {
   return null;
 };
 
+const describeTownHallMatchup = (attack: DerivedAttack): string | null => {
+  if (
+    attack.attackerTownHall == null ||
+    Number.isNaN(attack.attackerTownHall) ||
+    attack.defenderTownHall == null ||
+    Number.isNaN(attack.defenderTownHall)
+  ) {
+    return null;
+  }
+  const delta = attack.defenderTownHall - attack.attackerTownHall;
+  const direction = delta > 0 ? `↑${delta}` : delta < 0 ? `↓${Math.abs(delta)}` : 'even';
+  return `TH${attack.attackerTownHall}→TH${attack.defenderTownHall} (${direction})`;
+};
+
 const formatAttackSummary = (attack: DerivedAttack): string => {
   const parts: string[] = [];
   if (!Number.isNaN(attack.stars)) {
@@ -151,20 +177,31 @@ const formatAttackSummary = (attack: DerivedAttack): string => {
   if (Number.isFinite(attack.destruction)) {
     parts.push(`${attack.destruction.toFixed(1)}%`);
   }
-  if (attack.defenderTownHall != null) {
-    parts.push(`TH${attack.defenderTownHall}`);
+  const matchup = describeTownHallMatchup(attack);
+  if (matchup) {
+    parts.push(matchup);
   }
   if (attack.defenderName) {
     parts.push(`vs ${attack.defenderName}`);
   } else if (attack.defenderTag) {
-    parts.push(attack.defenderTag);
+    parts.push(`vs ${attack.defenderTag}`);
   } else if (attack.order != null) {
-    parts.push(`Slot ${attack.order}`);
+    parts.push(`vs slot ${attack.order}`);
   }
   return parts.join(' • ');
 };
 
-const buildAttackRecord = (member: any, attack: any, index: number): DerivedAttack | null => {
+const normalizePlayerTag = (value?: string | null): string | null => {
+  if (!value || typeof value !== 'string') return null;
+  return normalizeTag(value);
+};
+
+const buildAttackRecord = (
+  member: any,
+  attack: any,
+  index: number,
+  opponentLookup: Map<string, { name?: string | null; tag?: string | null; townHallLevel?: number | null }>
+): DerivedAttack | null => {
   const memberName = member?.name || member?.tag || 'Unknown player';
   const memberTag = member?.tag ?? null;
   const stars = parseNumber(attack?.stars ?? attack?.attackerStars ?? attack?.starCount) ?? 0;
@@ -182,17 +219,28 @@ const buildAttackRecord = (member: any, attack: any, index: number): DerivedAtta
     attack?.defender?.playerName ??
     attack?.defenderPlayerName ??
     null;
-  const defenderTag =
-    attack?.defenderTag ?? attack?.defender?.tag ?? attack?.defenderPlayerTag ?? null;
+  const defenderTagNormalized = normalizePlayerTag(
+    attack?.defenderTag ?? attack?.defender?.tag ?? attack?.defenderPlayerTag ?? null
+  );
+  const defenderLookup = defenderTagNormalized ? opponentLookup.get(defenderTagNormalized) : null;
+  const defenderTag = defenderTagNormalized ?? defenderLookup?.tag ?? null;
   const defenderTownHall =
     parseNumber(
       attack?.defenderTownHallLevel ??
         attack?.defenderTownhallLevel ??
         attack?.defenderTownhall ??
-        attack?.defender?.townHallLevel
+        attack?.defender?.townHallLevel ??
+        defenderLookup?.townHallLevel
     ) ?? undefined;
   const memberPosition =
     parseNumber(member?.mapPosition ?? member?.clanRank ?? member?.position ?? null) ?? undefined;
+  const attackerTownHall =
+    parseNumber(
+      member?.townhallLevel ??
+        member?.townHallLevel ??
+        member?.town_hall_level ??
+        member?.mapTownHallLevel
+    ) ?? undefined;
 
   return {
     memberName,
@@ -200,11 +248,188 @@ const buildAttackRecord = (member: any, attack: any, index: number): DerivedAtta
     stars,
     destruction,
     order: order ?? undefined,
-    defenderName,
+    defenderName: defenderLookup?.name ?? defenderName,
     defenderTag,
     defenderTownHall,
+    attackerTownHall,
     memberPosition,
   };
+};
+
+const computeTownHallDelta = (attack: DerivedAttack | null | undefined): number => {
+  if (!attack || attack.attackerTownHall == null || attack.defenderTownHall == null) return 0;
+  return attack.defenderTownHall - attack.attackerTownHall;
+};
+
+const chooseBravestAttack = (
+  attacks: DerivedAttack[],
+  teamSize: number,
+  fallback?: DerivedAttack | null
+): DerivedAttack | null => {
+  if (!attacks.length) return fallback ?? null;
+  const entries = attacks.map((attack) => ({
+    attack,
+    delta: computeTownHallDelta(attack),
+  }));
+  const positive = entries.filter((entry) => entry.delta > 0);
+  const list = positive.length ? positive : entries;
+  return list
+    .slice()
+    .sort((a, b) => {
+      if (b.delta !== a.delta) return b.delta - a.delta;
+      const starDiff = b.attack.stars - a.attack.stars;
+      if (starDiff !== 0) return starDiff;
+      const destructionDiff = b.attack.destruction - a.attack.destruction;
+      if (destructionDiff !== 0) return destructionDiff;
+      const slotBonusA =
+        teamSize && a.attack.memberPosition
+          ? Math.max(0, a.attack.memberPosition - Math.max(0, teamSize - 5))
+          : 0;
+      const slotBonusB =
+        teamSize && b.attack.memberPosition
+          ? Math.max(0, b.attack.memberPosition - Math.max(0, teamSize - 5))
+          : 0;
+      return slotBonusB - slotBonusA;
+    })[0]?.attack;
+};
+
+const buildOpponentLookup = (
+  warEntry: any
+): Map<string, { name?: string | null; tag?: string | null; townHallLevel?: number | null }> => {
+  const lookup = new Map<string, { name?: string | null; tag?: string | null; townHallLevel?: number | null }>();
+  const members = Array.isArray(warEntry?.opponent?.members) ? warEntry.opponent.members : [];
+  members.forEach((member: any) => {
+    const tag = normalizePlayerTag(member?.tag);
+    if (!tag) return;
+    lookup.set(tag, {
+      name: member?.name ?? member?.tag ?? null,
+      tag: member?.tag ?? tag,
+      townHallLevel:
+        parseNumber(
+          member?.townhallLevel ??
+            member?.townHallLevel ??
+            member?.town_hall_level ??
+            member?.mapTownHallLevel
+        ) ?? null,
+    });
+  });
+  return lookup;
+};
+
+interface RosterContextSummary {
+  memberCount?: number;
+  averageTownHall?: number;
+  recentWinRate?: number;
+  newMemberCount?: number;
+}
+
+const buildRosterContext = (clanData: Roster | null): RosterContextSummary | null => {
+  if (!clanData?.members?.length) return null;
+  const members = clanData.members;
+  const memberCount = members.length;
+  const averageTownHallRaw =
+    memberCount > 0
+      ? members.reduce((sum, member) => sum + (member.townHallLevel ?? member.th ?? 0), 0) /
+        memberCount
+      : null;
+  const newMemberCount = members.filter((member) => {
+    const tenure = member.tenure_days ?? (member as any)?.tenure ?? null;
+    return tenure != null && Number.isFinite(tenure) && tenure <= 14;
+  }).length;
+  const warLog = Array.isArray(clanData.snapshotDetails?.warLog)
+    ? clanData.snapshotDetails?.warLog ?? []
+    : [];
+  const wins = warLog.filter(
+    (entry: any) => typeof entry?.result === 'string' && entry.result.toLowerCase().includes('win')
+  ).length;
+  const recentWinRate = warLog.length ? (wins / warLog.length) * 100 : null;
+
+  return {
+    memberCount,
+    averageTownHall:
+      averageTownHallRaw != null && Number.isFinite(averageTownHallRaw)
+        ? Number(averageTownHallRaw.toFixed(2))
+        : undefined,
+    newMemberCount: newMemberCount || undefined,
+    recentWinRate:
+      recentWinRate != null && Number.isFinite(recentWinRate)
+        ? Number(recentWinRate.toFixed(1))
+        : undefined,
+  };
+};
+
+const cleanAiLines = (lines: string[]): string[] =>
+  lines
+    .map((line) =>
+      line
+        .replace(/^[\s\-*•]+/, '')
+        .replace(/^\d+\.\s*/, '')
+        .replace(/^Learning\s*\d+:?\s*/i, '')
+        .trim()
+    )
+    .filter(Boolean);
+
+const deriveWarLearnings = (params: {
+  warResultBase: WarResultPayload | null;
+  topPerformers: AutoWarPerformer[];
+  bravest?: AutoWarPerformer;
+}): string[] => {
+  const { warResultBase, topPerformers, bravest } = params;
+  const learnings: string[] = [];
+  if (!warResultBase) return learnings;
+  const starDiff = warResultBase.ourStars - warResultBase.opponentStars;
+  const percentDiff =
+    warResultBase.ourPercent != null && warResultBase.opponentPercent != null
+      ? warResultBase.ourPercent - warResultBase.opponentPercent
+      : null;
+  const opponentLabel = warResultBase.opponentName || warResultBase.opponentTag;
+
+  if (starDiff >= 2) {
+    learnings.push(
+      `Controlled win vs ${opponentLabel} — ${warResultBase.ourStars}-${warResultBase.opponentStars}${
+        percentDiff != null ? ` (${percentDiff.toFixed(1)}% destruction edge)` : ''
+      } with steady triples in the high slots.`
+    );
+  } else if (starDiff <= -1) {
+    learnings.push(
+      `Tough loss vs ${opponentLabel} — down ${Math.abs(starDiff)}⭐${
+        percentDiff != null ? ` and ${Math.abs(percentDiff).toFixed(1)}% destruction` : ''
+      }. Prioritize cleanup rehearsals and hero uptime before queuing again.`
+    );
+  } else {
+    learnings.push(
+      `Photo finish — ${warResultBase.ourStars}-${warResultBase.opponentStars}${
+        percentDiff != null ? ` (${percentDiff.toFixed(1)}% destruction swing)` : ''
+      }. Every cleanup mattered down the stretch.`
+    );
+  }
+
+  if (topPerformers.length) {
+    const highlight = topPerformers
+      .slice(0, 2)
+      .map((perf) => `${perf.name}${perf.summary ? ` (${perf.summary})` : ''}`)
+      .join(' & ');
+    learnings.push(`Top performers: ${highlight}. Use their plans as templates for the next lineup.`);
+  }
+
+  if (bravest?.braveryAttack) {
+    const delta = computeTownHallDelta(bravest.braveryAttack);
+    if (delta > 0) {
+      learnings.push(
+        `${bravest.name} climbed ${delta} TH tier${delta === 1 ? '' : 's'} to crack ${
+          bravest.braveryAttack.defenderName || 'the top base'
+        } — keep rewarding fearless targets like that.`
+      );
+    } else {
+      learnings.push(
+        `${bravest.name} delivered the cleanest execution (${bravest.braveryAttack.summary}); replicate that precision on future cleanups.`
+      );
+    }
+  } else {
+    learnings.push('No upward TH hits landed this war — schedule dip drills before the next matchmaking cycle.');
+  }
+
+  return learnings;
 };
 
 const deriveWarResultNotes = (warEntry: any, warResultBase: WarResultPayload | null): AutoWarNotes | null => {
@@ -215,157 +440,113 @@ const deriveWarResultNotes = (warEntry: any, warResultBase: WarResultPayload | n
   // If we have member attack data, use the full auto-fill logic
   if (clanMembers.length > 0) {
 
-  const teamSize = parseNumber(warEntry?.teamSize ?? warEntry?.clan?.teamSize ?? null) ?? 0;
+    const teamSize = parseNumber(warEntry?.teamSize ?? warEntry?.clan?.teamSize ?? null) ?? 0;
+    const opponentLookup = buildOpponentLookup(warEntry);
 
-  const allAttacks: DerivedAttack[] = [];
-  type PerformerStat = {
-    name: string;
-    tag: string | null;
-    stars: number;
-    destruction: number;
-    bestAttack: DerivedAttack | null;
-  };
-  const performerStats: PerformerStat[] = clanMembers
-    .map((member: any) => {
-      const attacks = Array.isArray(member.attacks) ? member.attacks : [];
-      const attackRecords = attacks
-        .map((attack: any, idx: number) => buildAttackRecord(member, attack, idx))
-        .filter(Boolean) as DerivedAttack[];
-      allAttacks.push(...attackRecords);
-      const bestAttack = attackRecords.reduce<DerivedAttack | null>((prev, current) => {
-        if (!prev) return current;
-        if (current.stars > prev.stars) return current;
-        if (current.stars === prev.stars && current.destruction > prev.destruction) return current;
-        return prev;
-      }, null);
-      const stars = parseNumber(member?.stars ?? member?.warStars ?? null) ?? 0;
-      const destruction =
-        parseNumber(member?.destructionPercentage ?? member?.destruction ?? null) ?? 0;
-      return {
-        name: member?.name || member?.tag || 'Unknown player',
-        tag: member?.tag ?? null,
-        stars,
-        destruction,
-        bestAttack,
-      };
-    })
-    .filter((stat: PerformerStat) => stat.name && (stat.stars > 0 || stat.destruction > 0 || stat.bestAttack));
+    const allAttacks: DerivedAttack[] = [];
+    const performerStats = clanMembers
+      .map((member: any) => {
+        const attacks = Array.isArray(member.attacks) ? member.attacks : [];
+        const attackRecords = attacks
+          .map((attack: any, idx: number) => buildAttackRecord(member, attack, idx, opponentLookup))
+          .filter(Boolean) as DerivedAttack[];
+        allAttacks.push(...attackRecords);
+        const bestAttack = attackRecords.reduce<DerivedAttack | null>((prev, current) => {
+          if (!prev) return current;
+          if (current.stars > prev.stars) return current;
+          if (current.stars === prev.stars && current.destruction > prev.destruction) return current;
+          return prev;
+        }, null);
+        const braveryAttack = chooseBravestAttack(attackRecords, teamSize, bestAttack);
+        const totalStars = attackRecords.reduce((sum, attack) => sum + (attack.stars || 0), 0);
+        const destruction =
+          parseNumber(member?.destructionPercentage ?? member?.destruction ?? null) ?? 0;
+        return {
+          name: member?.name || member?.tag || 'Unknown player',
+          tag: member?.tag ?? null,
+          totalStars,
+          destruction,
+          bestAttack,
+          braveryAttack,
+        };
+      })
+      .filter(
+        (stat) =>
+          stat.name &&
+          (stat.totalStars > 0 || stat.destruction > 0 || stat.bestAttack || stat.braveryAttack)
+      );
 
-  if (!performerStats.length) return null;
+    if (!performerStats.length) return null;
 
-  const sortedPerformers = performerStats.sort((a: PerformerStat, b: PerformerStat) => {
-    const starDiff = b.stars - a.stars;
-    if (starDiff !== 0) return starDiff;
-    const destructionDiff = b.destruction - a.destruction;
-    if (destructionDiff !== 0) return destructionDiff;
-    return (a.name || '').localeCompare(b.name || '');
-  });
-
-  const formatSummary = (stat: PerformerStat): string => {
-    if (stat.bestAttack) {
-      const summary = formatAttackSummary(stat.bestAttack);
-      if (summary) return summary;
-    }
-    const parts: string[] = [];
-    if (stat.stars > 0) {
-      parts.push(`${stat.stars}★`);
-    }
-    if (Number.isFinite(stat.destruction)) {
-      parts.push(`${stat.destruction.toFixed(1)}%`);
-    }
-    return parts.join(' • ') || 'Strong attack';
-  };
-
-  const topPerformers = sortedPerformers.slice(0, 3).map((stat) => ({
-    name: stat.name,
-    tag: stat.tag ?? undefined,
-    stars: Number.isFinite(stat.stars) ? stat.stars : undefined,
-    summary: formatSummary(stat),
-  }));
-
-  const braveryScore = (attack: DerivedAttack): number => {
-    const slotBonus =
-      teamSize && attack.memberPosition
-        ? Math.max(0, attack.memberPosition - Math.max(0, teamSize - 5)) * 0.3
-        : 0;
-    return attack.destruction + (attack.stars || 0) * 2 + slotBonus;
-  };
-
-  const sortedByBravery = allAttacks
-    .slice()
-    .sort((a, b) => {
-      const scoreDiff = braveryScore(b) - braveryScore(a);
-      if (scoreDiff !== 0) return scoreDiff;
-      if ((b.memberPosition ?? 0) !== (a.memberPosition ?? 0)) {
-        return (b.memberPosition ?? 0) - (a.memberPosition ?? 0);
-      }
-      return b.stars - a.stars;
+    const sortedPerformers = performerStats.sort((a, b) => {
+      const starDiff = (b.totalStars ?? 0) - (a.totalStars ?? 0);
+      if (starDiff !== 0) return starDiff;
+      const bestAttackStarDiff = (b.bestAttack?.stars ?? 0) - (a.bestAttack?.stars ?? 0);
+      if (bestAttackStarDiff !== 0) return bestAttackStarDiff;
+      const destructionDiff = b.destruction - a.destruction;
+      if (destructionDiff !== 0) return destructionDiff;
+      const braveryDiff = computeTownHallDelta(b.braveryAttack) - computeTownHallDelta(a.braveryAttack);
+      if (braveryDiff !== 0) return braveryDiff;
+      return (a.name || '').localeCompare(b.name || '');
     });
 
-  const bravestAttack = sortedByBravery[0];
+    const formatSummary = (stat: typeof performerStats[number]): string => {
+      const source = stat.bestAttack || stat.braveryAttack;
+      if (source) {
+        const summary = formatAttackSummary(source);
+        if (summary) return summary;
+      }
+      const parts: string[] = [];
+      if (stat.totalStars > 0) {
+        parts.push(`${stat.totalStars}★`);
+      }
+      if (Number.isFinite(stat.destruction)) {
+        parts.push(`${stat.destruction.toFixed(1)}%`);
+      }
+      return parts.join(' • ') || 'Key attack';
+    };
 
-  const mapResultLabel = (result?: string | null): string => {
-    if (!result) return 'War result';
-    const normalized = result.toLowerCase();
-    if (normalized.includes('win')) return 'Victory';
-    if (normalized.includes('loss') || normalized.includes('lose')) return 'Defeat';
-    if (normalized.includes('draw') || normalized.includes('tie')) return 'Draw';
-    return result.charAt(0).toUpperCase() + result.slice(1);
-  };
+    const topPerformers = sortedPerformers.slice(0, 3).map((stat) => ({
+      name: stat.name,
+      tag: stat.tag ?? undefined,
+      stars: Number.isFinite(stat.totalStars) ? stat.totalStars : undefined,
+      totalStars: stat.totalStars,
+      summary: formatSummary(stat),
+      braveryAttack: stat.braveryAttack ?? stat.bestAttack ?? null,
+    }));
 
-  const learnings: string[] = [];
-  const opponentName =
-    warResultBase?.opponentName || warEntry?.opponent?.name || warEntry?.opponentName || 'Opponent';
-  const scoreline = `${warResultBase?.ourStars ?? parseNumber(warEntry?.clan?.stars) ?? 0}-${
-    warResultBase?.opponentStars ?? parseNumber(warEntry?.opponent?.stars) ?? 0
-  }`;
-  const percentLine =
-    warResultBase?.ourPercent != null && warResultBase?.opponentPercent != null
-      ? ` (${warResultBase.ourPercent.toFixed(1)}% vs ${warResultBase.opponentPercent.toFixed(1)}%)`
-      : '';
-  learnings.push(
-    `${mapResultLabel(warResultBase?.result ?? warEntry?.result)} vs ${opponentName} (${scoreline}${percentLine})`
-  );
+    const bravestAttack = chooseBravestAttack(allAttacks, teamSize, null);
+    const learnings = deriveWarLearnings({
+      warResultBase,
+      topPerformers,
+      bravest:
+        bravestAttack && topPerformers.length
+          ? {
+              name: bravestAttack.memberName,
+              tag: bravestAttack.memberTag ?? undefined,
+              stars: Number.isFinite(bravestAttack.stars) ? bravestAttack.stars : undefined,
+              totalStars: bravestAttack.stars,
+              summary: formatAttackSummary(bravestAttack),
+              braveryAttack: bravestAttack,
+            }
+          : undefined,
+    });
 
-  if (topPerformers.length > 0) {
-    const highlights = topPerformers
-      .slice(0, 2)
-      .map((perf: { name: string; summary?: string }) => `${perf.name}${perf.summary ? ` (${perf.summary})` : ''}`);
-    if (highlights.length) {
-      learnings.push(`Top performers: ${highlights.join(' & ')}.`);
-    }
-  }
-
-  if (bravestAttack) {
-    const braveSummary = formatAttackSummary(bravestAttack);
-    learnings.push(
-      `Bravest attack: ${bravestAttack.memberName}${
-        braveSummary ? ` — ${braveSummary}` : ''
-      }${bravestAttack.memberTag ? ` ${bravestAttack.memberTag}` : ''}.`
-    );
-  }
-
-  if (warResultBase?.result === 'loss') {
-    learnings.push('Hero upgrades and attack planning need reinforcement before the next war.');
-  } else if (warResultBase?.result === 'win') {
-    learnings.push('Duplicate the successful attack plans and keep heroes ready for the next push.');
-  } else {
-    learnings.push('Keep sharpening cleanup plans to tip the balance next war.');
-  }
-
-  return {
-    mvp: topPerformers[0],
-    topPerformers,
-    bravest: bravestAttack
-      ? {
-          name: bravestAttack.memberName,
-          tag: bravestAttack.memberTag ?? undefined,
-          stars: Number.isFinite(bravestAttack.stars) ? bravestAttack.stars : undefined,
-          summary: formatAttackSummary(bravestAttack),
-        }
-      : undefined,
-    learnings,
-  };
+    return {
+      mvp: topPerformers[0],
+      topPerformers,
+      bravest: bravestAttack
+        ? {
+            name: bravestAttack.memberName,
+            tag: bravestAttack.memberTag ?? undefined,
+            stars: Number.isFinite(bravestAttack.stars) ? bravestAttack.stars : undefined,
+            totalStars: bravestAttack.stars,
+            summary: formatAttackSummary(bravestAttack),
+            braveryAttack: bravestAttack,
+          }
+        : undefined,
+      learnings,
+    };
   }
   
   // Fallback: If we only have war log summary (no member attack data), return basic learnings
@@ -429,6 +610,20 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
     bravestSummary: "",
     learningsText: "",
   });
+  const [hasUserOverriddenLearnings, setHasUserOverriddenLearnings] = useState(false);
+  const hasUserOverriddenLearningsRef = useRef(false);
+  useEffect(() => {
+    hasUserOverriddenLearningsRef.current = hasUserOverriddenLearnings;
+  }, [hasUserOverriddenLearnings]);
+  const lastAutoLearningsRef = useRef<string>("");
+  const [aiLearningsState, setAiLearningsState] = useState<{
+    status: 'idle' | 'loading' | 'success' | 'error';
+    signature: string | null;
+    error: string | null;
+  }>({ status: 'idle', signature: null, error: null });
+  const [aiRequestNonce, setAiRequestNonce] = useState(0);
+  const pendingAiTokenRef = useRef<string | null>(null);
+  const lastCompletedAiTokenRef = useRef<string | null>(null);
   const updateWarResultField = (field: keyof Omit<WarResultNotes, 'topPerformers'>, value: string) => {
     setWarResultNotes((prev) => ({ ...prev, [field]: value }));
   };
@@ -439,6 +634,26 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
       );
       return { ...prev, topPerformers: next };
     });
+  };
+  const handleLearningsChange = (value: string) => {
+    setHasUserOverriddenLearnings(true);
+    setWarResultNotes((prev) => ({ ...prev, learningsText: value }));
+  };
+  const rosterContext = useMemo(() => buildRosterContext(clanData), [clanData]);
+  const requestAiLearnings = () => {
+    setAiLearningsState({ status: 'idle', signature: null, error: null });
+    setAiRequestNonce((token) => token + 1);
+  };
+  const restoreAiLearnings = () => {
+    if (lastAutoLearningsRef.current) {
+      setHasUserOverriddenLearnings(false);
+      hasUserOverriddenLearningsRef.current = false;
+      setWarResultNotes((prev) => ({ ...prev, learningsText: lastAutoLearningsRef.current }));
+    } else {
+      setHasUserOverriddenLearnings(false);
+      hasUserOverriddenLearningsRef.current = false;
+      requestAiLearnings();
+    }
   };
 
   // Load webhook URL from localStorage
@@ -924,6 +1139,17 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
     };
   }, [warEntry, clanData, clanTag]);
 
+  useEffect(() => {
+    if (!warResultBase) return;
+    setHasUserOverriddenLearnings(false);
+    hasUserOverriddenLearningsRef.current = false;
+    lastAutoLearningsRef.current = "";
+    setAiLearningsState({ status: 'idle', signature: null, error: null });
+    pendingAiTokenRef.current = null;
+    lastCompletedAiTokenRef.current = null;
+    setAiRequestNonce((token) => token + 1);
+  }, [warResultBase?.warId]);
+
   const autoWarNotes = useMemo(() => {
     const notes = deriveWarResultNotes(enrichedWarEntry, warResultBase);
     console.log('[DiscordPublisher] Auto war notes derived', {
@@ -943,6 +1169,107 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
     });
     return notes;
   }, [enrichedWarEntry, warResultBase]);
+  const aiWarPayload = useMemo(() => {
+    if (!warResultBase || !autoWarNotes) return null;
+    const normalizePerformer = (perf?: AutoWarPerformer | null): AiWarPerformerPayload | null => {
+      if (!perf) return null;
+      return {
+        name: perf.name,
+        tag: perf.tag ?? undefined,
+        stars: perf.totalStars ?? perf.stars ?? undefined,
+        summary: perf.summary,
+        townHallDelta: computeTownHallDelta(perf.braveryAttack ?? null) || undefined,
+      };
+    };
+    return {
+      clanTag: warResultBase.clanTag,
+      clanName: warResultBase.clanName,
+      war: {
+        opponentName: warResultBase.opponentName,
+        opponentTag: warResultBase.opponentTag,
+        result: warResultBase.result,
+        ourStars: warResultBase.ourStars,
+        opponentStars: warResultBase.opponentStars,
+        ourPercent: warResultBase.ourPercent,
+        opponentPercent: warResultBase.opponentPercent,
+        warType: warResultBase.warType,
+        warId: warResultBase.warId,
+      },
+      topPerformers: ((autoWarNotes.topPerformers || []).map(normalizePerformer).filter(Boolean) ||
+        []) as AiWarPerformerPayload[],
+      bravest: normalizePerformer(autoWarNotes.bravest || undefined) || undefined,
+      rosterContext: rosterContext || undefined,
+    };
+  }, [warResultBase, autoWarNotes, rosterContext]);
+  const aiWarPayloadSignature = useMemo(
+    () => (aiWarPayload ? JSON.stringify(aiWarPayload) : null),
+    [aiWarPayload]
+  );
+  const aiEffectKey = aiWarPayloadSignature ? `${aiWarPayloadSignature}:${aiRequestNonce}` : null;
+
+  const lastScheduledAiTokenRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!aiEffectKey || !aiWarPayload || !aiWarPayloadSignature) return;
+    if (hasUserOverriddenLearnings) return;
+
+    const token = aiEffectKey;
+    if (lastCompletedAiTokenRef.current === token || pendingAiTokenRef.current === token) {
+      return;
+    }
+
+    lastScheduledAiTokenRef.current = token;
+    const timeoutId = setTimeout(() => {
+      if (lastScheduledAiTokenRef.current !== token) return;
+      pendingAiTokenRef.current = token;
+      let cancelled = false;
+
+      const fetchAiSummary = async () => {
+        try {
+          setAiLearningsState({ status: 'loading', signature: aiWarPayloadSignature, error: null });
+          const response = await api.generateWarSummary(aiWarPayload);
+          if (cancelled) return;
+          const aiLines =
+            response?.success && Array.isArray(response?.data?.learnings)
+              ? response.data.learnings
+              : [];
+          const cleanedLines = cleanAiLines(aiLines);
+          if (cleanedLines.length && !hasUserOverriddenLearningsRef.current) {
+            const aiText = cleanedLines.join('\n');
+            lastAutoLearningsRef.current = aiText;
+            setWarResultNotes((prev) => ({ ...prev, learningsText: aiText }));
+            setHasUserOverriddenLearnings(false);
+            hasUserOverriddenLearningsRef.current = false;
+          }
+          setAiLearningsState({ status: 'success', signature: aiWarPayloadSignature, error: null });
+          lastCompletedAiTokenRef.current = token;
+        } catch (error: any) {
+          if (cancelled) return;
+          setAiLearningsState({
+            status: 'error',
+            signature: aiWarPayloadSignature,
+            error: error?.message ?? 'Failed to generate AI learnings',
+          });
+        } finally {
+          pendingAiTokenRef.current = null;
+          if (lastScheduledAiTokenRef.current === token) {
+            lastScheduledAiTokenRef.current = null;
+          }
+        }
+      };
+
+      fetchAiSummary();
+      return () => {
+        cancelled = true;
+      };
+    }, 600);
+
+    return () => {
+      if (lastScheduledAiTokenRef.current === token) {
+        clearTimeout(timeoutId);
+        lastScheduledAiTokenRef.current = null;
+      }
+    };
+  }, [aiEffectKey, aiWarPayload, aiWarPayloadSignature, hasUserOverriddenLearnings]);
 
   useEffect(() => {
     console.log('[DiscordPublisher] Auto-fill effect triggered', {
@@ -960,6 +1287,8 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
       console.log('[DiscordPublisher] No auto war notes, skipping auto-fill');
       return;
     }
+
+    let appliedLearnings = false;
 
     setWarResultNotes((prev) => {
       console.log('[DiscordPublisher] Auto-filling war result notes', {
@@ -1022,9 +1351,13 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
       setNumberIfEmpty('bravestStars', autoWarNotes.bravest?.stars);
       setIfEmpty('bravestSummary', autoWarNotes.bravest?.summary ?? null);
 
-      if (!prev.learningsText.trim() && autoWarNotes.learnings?.length) {
-        next.learningsText = autoWarNotes.learnings.join('\n');
-        changed = true;
+      if (autoWarNotes.learnings?.length && !hasUserOverriddenLearnings) {
+        const heuristicsText = autoWarNotes.learnings.join('\n');
+        if (next.learningsText !== heuristicsText) {
+          next.learningsText = heuristicsText;
+          appliedLearnings = true;
+          changed = true;
+        }
       }
 
       if (changed) {
@@ -1050,7 +1383,12 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
       }
       return changed ? next : prev;
     });
-  }, [autoWarNotes, isEnriching]);
+    if (appliedLearnings) {
+      lastAutoLearningsRef.current = autoWarNotes.learnings!.join('\n');
+      setHasUserOverriddenLearnings(false);
+      hasUserOverriddenLearningsRef.current = false;
+    }
+  }, [autoWarNotes, isEnriching, hasUserOverriddenLearnings]);
 
   const buildWarResultPayload = (): WarResultPayload | null => {
     if (!warResultBase) return null;
@@ -1507,15 +1845,42 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
                 </div>
 
                 <div>
-                  <h4 className="font-semibold text-gray-800 mb-2">Learnings & Takeaways</h4>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <h4 className="font-semibold text-gray-800">Learnings & Takeaways</h4>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                      {aiLearningsState.status === 'loading' && (
+                        <span className="text-purple-600">AI summarizing…</span>
+                      )}
+                      {aiLearningsState.status === 'error' && (
+                        <button
+                          type="button"
+                          onClick={requestAiLearnings}
+                          className="text-red-600 hover:underline"
+                        >
+                          Retry AI summary
+                        </button>
+                      )}
+                      {hasUserOverriddenLearnings && (
+                        <button
+                          type="button"
+                          onClick={restoreAiLearnings}
+                          className="text-blue-600 hover:underline"
+                        >
+                          Use AI summary
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <textarea
                     value={warResultNotes.learningsText}
-                    onChange={(e) => updateWarResultField('learningsText', e.target.value)}
+                    onChange={(e) => handleLearningsChange(e.target.value)}
                     className="w-full rounded-lg border border-gray-300 px-3 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     rows={4}
                     placeholder={"Example:\nEarly aggression - Secure triples in slots 2-4\nTown Hall 17 prep - Practice QCL combos"}
                   />
-                  <p className="mt-1 text-xs text-gray-500">Enter one learning per line. Lines with “Title - detail” will be formatted together.</p>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Enter one learning per line. Lines with “Title - detail” will be formatted together.
+                  </p>
                 </div>
               </div>
             </>

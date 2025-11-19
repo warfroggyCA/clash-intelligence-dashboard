@@ -1,0 +1,4034 @@
+[
+  {
+    "id": "dashboard-base-1763562890929",
+    "url": "http://heckyeah.localhost:5050/app",
+    "path": [
+      "Dashboard"
+    ],
+    "timestamp": "2025-11-19T14:34:50.926Z",
+    "screenshotPath": "screenshots/dashboard-base-1763562890929.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🛡️Dashboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "⚔️War Planning",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "📊War Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🏛️Capital Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🗄️Player Database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "👑Leadership",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".flex",
+        "label": "Table",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".flex",
+        "label": "Cards",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".flex",
+        "label": "Leaderboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-1.5",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-1.5",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "Summary Statistics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "18MemberRÀDIÀNT~T£MP£ST#JL2RPU0930TrophiesTrophies Current255Running763Rush5.0%Donated488Received0Hero ProgressBarbarian King100/105Archer Queen100/105Grand Warden75/80Royal Champion53/55Minion Prince90/95🎯ActiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "17MemberHOLY~T£MP£ST#8YUCCCLUJ26TrophiesTrophies Current0Running0Rush12.0%Donated0Received58Hero ProgressBarbarian King100/100Archer Queen100/100Grand Warden75/90Royal Champion50/75Minion Prince90/100🎯LowView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "17MemberCHI£F~T£MP£ST#2QQRR9QU26TrophiesTrophies Current0Running0Rush18.0%Donated0Received88Hero ProgressBarbarian King95/100Archer Queen95/100Grand Warden70/90Royal Champion47/75Minion Prince80/100💤InactiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "17MemberBLÁZ£~T£MP£ST#228QJVJYL25TrophiesTrophies Current0Running0Rush14.0%Donated0Received56Hero ProgressBarbarian King100/100Archer Queen100/100Grand Warden75/90Royal Champion50/75Minion Prince79/100🎯LowView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "17Member╬Naga Klaus╬#2RPQUGQUR25TrophiesTrophies Current0Running0Rush16.0%Donated0Received58Hero ProgressBarbarian King95/100Archer Queen96/100Grand Warden73/90Royal Champion50/75Minion Prince80/100💤InactiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "14⭐ElderWar.Frog#UL0LRJ0217TrophiesTrophies Current214Running2565Rush17.0%Donated387Received78Hero ProgressBarbarian King75/85Archer Queen76/85Grand Warden53/60Royal Champion25/30Minion Prince51/80⚡Very ActiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "15MemberGod Of LOYINS#9VCJVUGV17TrophiesTrophies Current12Running12Rush20.0%Donated0Received83Hero ProgressBarbarian King71/85Archer Queen71/85Grand Warden55/60Royal Champion30/35Minion Prince52/90🎯LowView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "14👑Leaderwarfroggy#G9QVRYC2Y16TrophiesTrophies Current0Running2520Rush17.0%Donated113Received801Hero ProgressBarbarian King76/85Archer Queen76/85Grand Warden51/60Royal Champion26/30Minion Prince51/80🎯ActiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "13⭐ElderHeadhuntress#GPYCPQV8J15TrophiesTrophies Current0Running2137Rush10.0%Donated234Received0Hero ProgressBarbarian King75/75Archer Queen75/75Grand Warden50/50Royal Champion21/25Minion Prince48/75🎯ActiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "14MemberMD.Soudho$$#GY0CCL9UC14TrophiesTrophies Current14Running1762Rush46.0%Donated0Received0Hero ProgressBarbarian King61/85Archer Queen61/85Grand Warden28/60Royal Champion10/30Minion Prince39/80🎯ModerateView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "13💎Co-LeaderTigress#G09GGYC2Y14TrophiesTrophies Current102Running1950Rush13.0%Donated53Received0Hero ProgressBarbarian King68/75Archer Queen73/75Grand Warden47/50Royal Champion22/25Minion Prince50/75🎯ActiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "13⭐ElderCosmicThomas#YYVUCPQ9014TrophiesTrophies Current314Running1788Rush8.0%Donated0Received0Hero ProgressBarbarian King72/75Archer Queen73/75Grand Warden50/50Royal Champion25/25Minion Prince50/75🎯ActiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "13⭐Elderse#YUGUL9JJ011TrophiesTrophies Current200Running1683Rush56.0%Donated0Received0Hero ProgressBarbarian King47/75Archer Queen53/75Grand Warden23/50Royal Champion1/25Minion Prince27/75🎯ModerateView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "13Memberflame#299PGYLG11TrophiesTrophies Current296Running296Rush22.0%Donated0Received72Hero ProgressBarbarian King66/75Archer Queen69/75Grand Warden46/50Royal Champion15/25Minion Prince42/75🎯LowView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "12⭐ElderZouboul#G8GCC8GGC8TrophiesTrophies Current0Running375Rush10.0%Donated0Received0Hero ProgressBarbarian King65/65Archer Queen65/65Grand Warden40/40Royal Champion—Minion Prince40/65💤InactiveView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "10MemberIsi#GCQPGVUYP6TrophiesTrophies Current26Running26Rush3.0%Donated0Received101Hero ProgressBarbarian King39/40Archer Queen38/40Grand Warden—Royal Champion—Minion Prince20/10🎯LowView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".glass-card",
+        "label": "15💎Co-LeaderDoubleD#VGQVRLRLTrophiesTrophies Current0Running1540Rush12.0%Donated120Received0Hero ProgressBarbarian King77/85Archer Queen84/85Grand Warden60/60Royal Champion30/35Minion Prince60/90🎯ModerateView Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "View Detail",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Dashboard",
+      "context": "initial-load"
+    }
+  },
+  {
+    "id": "war-planning-base-1763562897763",
+    "url": "http://heckyeah.localhost:5050/war",
+    "path": [
+      "War Planning"
+    ],
+    "timestamp": "2025-11-19T14:34:57.763Z",
+    "screenshotPath": "screenshots/war-planning-base-1763562897763.png",
+    "elements": [
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".h-1.5",
+        "label": "unnamed",
+        "value": "12",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "#OPPONENT",
+        "value": "#2GRJG9U98",
+        "placeholder": "#OPPONENT",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "#OURCLAN",
+        "value": "#2PR8R8V8P",
+        "placeholder": "#OURCLAN",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".h-4",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "#OPPONENT",
+        "value": "#2GRJG9U98",
+        "placeholder": "#OPPONENT",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🛡️Dashboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "⚔️War Planning",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "📊War Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🏛️Capital Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🗄️Player Database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "👑Leadership",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Sync Opponent",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "1Step 1 · Load Rosters▼",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Analyze Opponent",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Pin Opponent",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Fetch Opponent",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "2Step 2 · Select Players & Prep Plan▼",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Clear selections",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Save Plan",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Load Saved Plan",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "3Step 3 · Run Matchup Analysis▼",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Run Analysis",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "4Step 4 · Review & Share▼",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Reload Plan",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Re-run Analysis",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Payload",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Discord Brief",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "War Planning",
+      "context": "initial-load"
+    }
+  },
+  {
+    "id": "war-analytics-base-1763562906356",
+    "url": "http://heckyeah.localhost:5050/war-analytics",
+    "path": [
+      "War Analytics"
+    ],
+    "timestamp": "2025-11-19T14:35:06.355Z",
+    "screenshotPath": "screenshots/war-analytics-base-1763562906356.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🛡️Dashboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "⚔️War Planning",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "📊War Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🏛️Capital Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🗄️Player Database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "👑Leadership",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "War Analytics",
+      "context": "initial-load"
+    }
+  },
+  {
+    "id": "capital-analytics-base-1763562914426",
+    "url": "http://heckyeah.localhost:5050/capital-analytics",
+    "path": [
+      "Capital Analytics"
+    ],
+    "timestamp": "2025-11-19T14:35:14.425Z",
+    "screenshotPath": "screenshots/capital-analytics-base-1763562914426.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🛡️Dashboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "⚔️War Planning",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "📊War Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🏛️Capital Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🗄️Player Database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "👑Leadership",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Capital Analytics",
+      "context": "initial-load"
+    }
+  },
+  {
+    "id": "player-database-base-1763562919436",
+    "url": "http://heckyeah.localhost:5050/player-database",
+    "path": [
+      "Player Database"
+    ],
+    "timestamp": "2025-11-19T14:35:19.436Z",
+    "screenshotPath": "screenshots/player-database-base-1763562919436.png",
+    "elements": [
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "Search players, tags, or notes...",
+        "placeholder": "Search players, tags, or notes...",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "select",
+        "selector": ".bg-white/10",
+        "label": "unnamed",
+        "value": "all",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "select",
+        "selector": ".bg-white/10",
+        "label": "unnamed",
+        "value": "lastUpdated",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🛡️Dashboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "⚔️War Planning",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "📊War Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🏛️Capital Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🗄️Player Database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "👑Leadership",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".text-red-400",
+        "label": "Dismiss",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Show Archived",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Player Database",
+      "context": "initial-load"
+    }
+  },
+  {
+    "id": "discord-publisher-base-1763562927284",
+    "url": "http://heckyeah.localhost:5050/discord",
+    "path": [
+      "Discord Publisher"
+    ],
+    "timestamp": "2025-11-19T14:35:27.284Z",
+    "screenshotPath": "screenshots/discord-publisher-base-1763562927284.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🛡️Dashboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "⚔️War Planning",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "📊War Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🏛️Capital Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🗄️Player Database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "👑Leadership",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-2",
+        "label": "Configure Discord webhook",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "Rush AnalysisIdentify rushed players",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "Donation ReportTop & low donators",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "Activity ReportMember activity status",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "War ReportCurrent war & recent results",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "War ResultScoreline, MVP, learnings",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".flex",
+        "label": "Copy",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".flex",
+        "label": "Publish to Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Discord Publisher",
+      "context": "initial-load"
+    }
+  },
+  {
+    "id": "discord-publisher-exhibit-rushed-1763562930081",
+    "url": "http://heckyeah.localhost:5050/discord",
+    "path": [
+      "Discord Publisher",
+      "exhibit-rushed"
+    ],
+    "timestamp": "2025-11-19T14:35:30.081Z",
+    "screenshotPath": "screenshots/discord-publisher-exhibit-rushed-1763562930081.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🛡️Dashboard",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "⚔️War Planning",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "📊War Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🏛️Capital Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "🗄️Player Database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".relative",
+        "label": "👑Leadership",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-2",
+        "label": "Configure Discord webhook",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "Rush AnalysisIdentify rushed players",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "Donation ReportTop & low donators",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "Activity ReportMember activity status",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "War ReportCurrent war & recent results",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".p-4",
+        "label": "War ResultScoreline, MVP, learnings",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".flex",
+        "label": "Copy",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".flex",
+        "label": "Publish to Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Discord Publisher",
+      "context": "exhibit-rushed"
+    }
+  },
+  {
+    "id": "leadership-base-1763562938084",
+    "url": "http://heckyeah.localhost:5050/leadership",
+    "path": [
+      "Leadership"
+    ],
+    "timestamp": "2025-11-19T14:35:38.084Z",
+    "screenshotPath": "screenshots/leadership-base-1763562938084.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-overview",
+        "label": "Overview",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-analytics",
+        "label": "Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-management",
+        "label": "Management",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-discord",
+        "label": "Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Open",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Generate Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Done",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Done",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Overview",
+        "value": "active",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Analytics",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Management",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Discord",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Open Discord Hub",
+        "value": "/discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Leadership",
+      "context": "initial-load"
+    }
+  },
+  {
+    "id": "leadership-tab-Overview-1763562942087",
+    "url": "http://heckyeah.localhost:5050/leadership?tab=overview",
+    "path": [
+      "Leadership",
+      "tab-Overview"
+    ],
+    "timestamp": "2025-11-19T14:35:42.087Z",
+    "screenshotPath": "screenshots/leadership-tab-Overview-1763562942087.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-overview",
+        "label": "Overview",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-analytics",
+        "label": "Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-management",
+        "label": "Management",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-discord",
+        "label": "Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Open",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Generate Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Done",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Done",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Overview",
+        "value": "active",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Analytics",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Management",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Discord",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Open Discord Hub",
+        "value": "/discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Leadership",
+      "context": "tab-Overview"
+    }
+  },
+  {
+    "id": "leadership-tab-Analytics-1763562946007",
+    "url": "http://heckyeah.localhost:5050/leadership?tab=analytics",
+    "path": [
+      "Leadership",
+      "tab-Analytics"
+    ],
+    "timestamp": "2025-11-19T14:35:46.007Z",
+    "screenshotPath": "screenshots/leadership-tab-Analytics-1763562946007.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-overview",
+        "label": "Overview",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-analytics",
+        "label": "Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-management",
+        "label": "Management",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-discord",
+        "label": "Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Overview",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Analytics",
+        "value": "active",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Management",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Discord",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Leadership",
+      "context": "tab-Analytics"
+    }
+  },
+  {
+    "id": "leadership-tab-Management-1763562949880",
+    "url": "http://heckyeah.localhost:5050/leadership?tab=management",
+    "path": [
+      "Leadership",
+      "tab-Management"
+    ],
+    "timestamp": "2025-11-19T14:35:49.880Z",
+    "screenshotPath": "screenshots/leadership-tab-Management-1763562949880.png",
+    "elements": [
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "#XXXXXXXX",
+        "placeholder": "#XXXXXXXX",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "10",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "#XXXXXXXX",
+        "placeholder": "#XXXXXXXX",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "10",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-overview",
+        "label": "Overview",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-analytics",
+        "label": "Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-management",
+        "label": "Management",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-discord",
+        "label": "Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "Evaluate Player",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "Build Shortlist",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "Scan & Shortlist",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Reviewed",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Overview",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Analytics",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Management",
+        "value": "active",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Discord",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Launch Player Database",
+        "value": "/player-database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Leadership",
+      "context": "tab-Management"
+    }
+  },
+  {
+    "id": "leadership-tab-Overview-1763562953722",
+    "url": "http://heckyeah.localhost:5050/leadership?tab=overview",
+    "path": [
+      "Leadership",
+      "tab-Overview"
+    ],
+    "timestamp": "2025-11-19T14:35:53.722Z",
+    "screenshotPath": "screenshots/leadership-tab-Overview-1763562953722.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-overview",
+        "label": "Overview",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-analytics",
+        "label": "Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-management",
+        "label": "Management",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-discord",
+        "label": "Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh Data & Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Copy Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Insights Summary",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Export",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Open",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Generate Insights",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Done",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Done",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Overview",
+        "value": "active",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Analytics",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Management",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Discord",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "War Prep→",
+        "value": "/war/prep",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Open Discord Hub",
+        "value": "/discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Leadership",
+      "context": "tab-Overview"
+    }
+  },
+  {
+    "id": "leadership-tab-Analytics-1763562957203",
+    "url": "http://heckyeah.localhost:5050/leadership?tab=analytics",
+    "path": [
+      "Leadership",
+      "tab-Analytics"
+    ],
+    "timestamp": "2025-11-19T14:35:57.202Z",
+    "screenshotPath": "screenshots/leadership-tab-Analytics-1763562957203.png",
+    "elements": [
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-overview",
+        "label": "Overview",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-analytics",
+        "label": "Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-management",
+        "label": "Management",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-discord",
+        "label": "Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Overview",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Analytics",
+        "value": "active",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Management",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Discord",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Leadership",
+      "context": "tab-Analytics"
+    }
+  },
+  {
+    "id": "leadership-tab-Management-1763562960537",
+    "url": "http://heckyeah.localhost:5050/leadership?tab=management",
+    "path": [
+      "Leadership",
+      "tab-Management"
+    ],
+    "timestamp": "2025-11-19T14:36:00.536Z",
+    "screenshotPath": "screenshots/leadership-tab-Management-1763562960537.png",
+    "elements": [
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "#XXXXXXXX",
+        "placeholder": "#XXXXXXXX",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "10",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "#XXXXXXXX",
+        "placeholder": "#XXXXXXXX",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "10",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".w-full",
+        "label": "unnamed",
+        "value": "0",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".rounded",
+        "label": "unnamed",
+        "value": "on",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-overview",
+        "label": "Overview",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-analytics",
+        "label": "Analytics",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-management",
+        "label": "Management",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": "#tab-discord",
+        "label": "Discord",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "Evaluate Player",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "Build Shortlist",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".w-full",
+        "label": "Scan & Shortlist",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Mark Reviewed",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Overview",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Analytics",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Management",
+        "value": "active",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "tab",
+        "selector": "button",
+        "label": "Discord",
+        "value": "inactive",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "checked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "checkbox",
+        "selector": "input",
+        "label": "unnamed",
+        "value": "unchecked",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Dashboard",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Launch Player Database",
+        "value": "/player-database",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Leadership",
+      "context": "tab-Management"
+    }
+  },
+  {
+    "id": "settings-base-1763562969468",
+    "url": "http://heckyeah.localhost:5050/settings",
+    "path": [
+      "Settings"
+    ],
+    "timestamp": "2025-11-19T14:36:09.468Z",
+    "screenshotPath": "screenshots/settings-base-1763562969468.png",
+    "elements": [
+      {
+        "type": "input",
+        "selector": ".mt-2",
+        "label": "#2PR8R8V8P",
+        "value": "#2PR8R8V8P",
+        "placeholder": "#2PR8R8V8P",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".flex-1",
+        "label": "#2PR8R8V8P",
+        "value": "#2PR8R8V8P",
+        "placeholder": "#2PR8R8V8P",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "input",
+        "selector": ".flex-1",
+        "label": "#2PR8R8V8P",
+        "placeholder": "#2PR8R8V8P",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "DSigned indo.ugfindlay@gmail.com",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".h-8",
+        "label": "⋯",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Save home clan",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Load home clan",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Load clan",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Add Clan",
+        "interacted": false,
+        "visible": true,
+        "enabled": false
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Force full refresh",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "button",
+        "selector": ".inline-flex",
+        "label": "Ingest Capital Raid Data",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "Go to Roster",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      },
+      {
+        "type": "link",
+        "selector": "a",
+        "label": "...HeCk YeAh...",
+        "value": "/app",
+        "interacted": false,
+        "visible": true,
+        "enabled": true
+      }
+    ],
+    "metadata": {
+      "title": "Clash Intelligence Dashboard",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "pageType": "Settings",
+      "context": "initial-load"
+    }
+  }
+]
