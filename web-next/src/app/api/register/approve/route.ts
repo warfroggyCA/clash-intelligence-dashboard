@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
       return json({ success: false, error: 'Registration already processed' }, { status: 409 });
     }
 
-    return json<ApiResponse<{ registration: PendingRegistration }>>({
+    return json<{ registration: PendingRegistration }>({
       success: true,
       data: { registration: mapRegistration(updated) },
       message: 'Registration approved',

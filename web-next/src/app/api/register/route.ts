@@ -63,7 +63,7 @@ export async function GET(req: NextRequest) {
       return json({ success: false, error: 'Registration not found' }, { status: 404 });
     }
 
-    return json<ApiResponse<PendingRegistration>>({ success: true, data: mapRegistration(data) });
+    return json<PendingRegistration>({ success: true, data: mapRegistration(data) });
   } catch (error: any) {
     logger.error('Unexpected GET /api/register error', error);
     return json({ success: false, error: 'Internal Server Error' }, { status: 500 });
@@ -190,7 +190,7 @@ export async function POST(req: NextRequest) {
       verificationCode,
     });
 
-    return json<ApiResponse<{ registration: PendingRegistration }>>({
+    return json<{ registration: PendingRegistration }>({
       success: true,
       data: { registration: mapRegistration(inserted) },
       message: 'Share this code in clan chat for leader approval',
