@@ -514,7 +514,7 @@ const deriveWarResultNotes = (warEntry: any, warResultBase: WarResultPayload | n
       return parts.join(' • ') || 'Key attack';
     };
 
-    const topPerformers = sortedPerformers.slice(0, 3).map((stat) => ({
+    const topPerformers = sortedPerformers.slice(0, 3).map((stat: PerformerStat) => ({
       name: stat.name,
       tag: stat.tag ?? undefined,
       stars: Number.isFinite(stat.totalStars) ? stat.totalStars : undefined,
