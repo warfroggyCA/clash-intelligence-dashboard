@@ -444,8 +444,16 @@ const deriveWarResultNotes = (warEntry: any, warResultBase: WarResultPayload | n
     const opponentLookup = buildOpponentLookup(warEntry);
 
     const allAttacks: DerivedAttack[] = [];
+    interface PerformerStat {
+      name: string;
+      tag: string | null;
+      totalStars: number;
+      destruction: number;
+      bestAttack: DerivedAttack | null;
+      braveryAttack: DerivedAttack | null;
+    }
     const performerStats = clanMembers
-      .map((member: any) => {
+      .map((member: any): PerformerStat => {
         const attacks = Array.isArray(member.attacks) ? member.attacks : [];
         const attackRecords = attacks
           .map((attack: any, idx: number) => buildAttackRecord(member, attack, idx, opponentLookup))
@@ -471,7 +479,7 @@ const deriveWarResultNotes = (warEntry: any, warResultBase: WarResultPayload | n
         };
       })
       .filter(
-        (stat) =>
+        (stat: PerformerStat) =>
           stat.name &&
           (stat.totalStars > 0 || stat.destruction > 0 || stat.bestAttack || stat.braveryAttack)
       );
