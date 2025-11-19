@@ -114,7 +114,7 @@ export async function GET(req: NextRequest) {
       }),
     );
 
-    return json<ApiResponse<{ registrations: Array<PendingRegistration & { playerName: string | null; snapshotDate: string | null }> }>>({
+    return json<{ registrations: Array<PendingRegistration & { playerName: string | null; snapshotDate: string | null }> }>({
       success: true,
       data: { registrations: enriched },
     });
