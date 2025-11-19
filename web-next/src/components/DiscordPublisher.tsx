@@ -422,7 +422,7 @@ const deriveWarLearnings = (params: {
       );
     } else {
       learnings.push(
-        `${bravest.name} delivered the cleanest execution (${bravest.braveryAttack.summary}); replicate that precision on future cleanups.`
+        `${bravest.name} delivered the cleanest execution (${formatAttackSummary(bravest.braveryAttack)}); replicate that precision on future cleanups.`
       );
     }
   } else {
