@@ -1,84 +1,72 @@
-# UI/UX Overhaul Plan
+# UI/UX Overhaul Blueprint
 
-Based on a comprehensive site documentation audit (Nov 19, 2025), this plan outlines specific, actionable recommendations to elevate the user experience to a world-class standard.
+Based on a comprehensive site documentation audit (Nov 19, 2025), this blueprint provides a sequenced implementation plan to elevate the user experience to a world-class standard.
 
-## 1. Global Navigation & Layout
+## Fix the Frame First
 
-**Current Issue:**
-- Navigation is split between a sidebar (implied by repeated navigation buttons) and disjointed top-level links (`Go to Roster`, `...HeCk YeAh...`).
-- The user profile button has an awkward label ("DSigned indo...").
-- Breadcrumbs are inconsistent or missing on some pages.
+Ship a global shell with:
 
-**Recommendations:**
-- **Unified App Shell:** Implement a persistent, collapsible **Sidebar Navigation** for primary modules (Dashboard, War, Analytics, Leadership).
-- **Consistent Header:**
+- **Collapsible Sidebar** listing Dashboard, War, Analytics, Leadership plus a clear clan switcher block ("Active Clan: …HeCk YeAh…").
+- **Sticky Header:**
   - **Left:** Breadcrumbs (e.g., `Home > War > Prep`).
-  - **Right:** Global Actions (User Profile, Clan Switcher, Theme Toggle).
-- **User Profile:** Rename "DSigned in..." to a clean Avatar + Name component. Dropdown should handle "Sign Out", "Settings", "Profile".
-- **Clan Context:** The clan switcher (`...HeCk YeAh...`) should be a distinct UI element in the sidebar or header, clearly indicating the *active* clan context.
+  - **Right:** Global Actions (profile avatar dropdown, theme toggle, notification bell). No more "DSigned in…" badge.
+- **Consistent Page Title + Toolbar Row** beneath the header to host page-level actions (refresh/export/copy) so we don't scatter buttons across cards.
 
-## 2. Dashboard & Data Visualization
+## Standardize Cards + Visuals in Component Library Phase
 
-**Current Issue:**
-- **Visual Noise:** "View Detail" button repeated 17+ times creates clutter.
-- **Card Density:** Roster cards are packed with dense text (Trophies, Rush %, Hero Progress) without clear hierarchy.
-- **Action Redundancy:** Multiple "Refresh" buttons (`Refresh Data & Insights` vs `Refresh`) confuse the primary action.
+- **Build an InfoCard Primitive** with explicit primary/secondary/tertiary slots so roster cards can:
+  - Highlight Name+TH (primary).
+  - Show role/status badges (secondary).
+  - Render metric bars (hero levels, rush%) (tertiary).
+- **Replace "View Detail" Micro Buttons** by making each card clickable and giving it hover/active states. Provide a single "Open in new tab" affordance via icon.
+- **Convert Hero Stats into Progress Bars** (e.g., BK 80/85) with color coding; keep raw numbers in tooltips.
 
-**Recommendations:**
-- **Interactive Cards:** Make the *entire* player card clickable to view details. Remove the explicit "View Detail" button.
-- **Visual Hierarchy in Cards:**
-  - **Primary:** Player Name & TH Level (Bold, Large).
-  - **Secondary:** Role & Status (Badge/Icon).
-  - **Tertiary:** Key Metrics (Hero Levels as visual bars, not just text `100/105`).
-- **Action Bar:** Consolidate "Refresh", "Export", and "Copy" into a single **Page Action Toolbar** at the top right of the content area. Use icons with tooltips for secondary actions to save space.
+## Dashboard Refactor (Once New Cards Exist)
 
-## 3. War Planning & Workflows
+- **Use a Masonry or Responsive Grid** so cards align cleanly.
+- **Put the Action Toolbar** (Refresh data, Export CSV, Copy summary) in the top-right of the content area; secondary actions are icon-only with tooltips.
+- **Surface Global "Data Fresh As Of …" Metadata** under the page title instead of repeating "Refresh" in multiple cards.
 
-**Current Issue:**
-- **Input Overload:** "War Planning" presents a wall of inputs (23+) and checkboxes without clear grouping.
-- **Accordion Fatigue:** The "Step 1", "Step 2" flow is implemented as collapsible sections, which can lead to scrolling fatigue.
+## War Planning Rewrite as a True Guided Flow
 
-**Recommendations:**
-- **Stepper UI:** Convert the "War Planning" workflow into a true **Stepper Component**.
-  - Show progress (Step 1 of 4).
-  - Only display the active step's content.
-  - Provide "Next" and "Back" navigation buttons.
-- **Smart Defaults:** Pre-fill inputs where possible (e.g., "Our Clan" tag).
-- **Drag-and-Drop:** For "Select Players & Prep Plan", explore a drag-and-drop interface for assigning members to targets instead of a grid of checkboxes.
+- **Implement a Stepper Component** (Step 1 of 4) with:
+  - Side rail summary.
+  - Persistent "Next/Back" buttons.
+  - Autosave per step.
+- **Group Inputs Logically:**
+  - War Context.
+  - Opponent Intel.
+  - Assignments.
+  - Final Review.
+- **Collapse Non-Active Steps Entirely** to reduce scrolling.
+- **Pre-fill Obvious Values** (our clan tag, roster) and provide inline AI suggestions (e.g., recommended lineup) as chips.
+- **For Assignments:** Offer drag-and-drop between "Available Members" and "Targets," with TH indicators and slot statuses.
 
-## 4. Leadership & Management Tools
+## Leadership/Management Grid Rebuild
 
-**Current Issue:**
-- **Grid Confusion:** The "Management" tab contains a grid of unnamed inputs (`10`, `0`, `#XXXXXXXX`). This looks like a spreadsheet but lacks headers or context.
-- **Tab Inconsistency:** Leadership uses tabs, but other multi-view pages do not.
+- **Replace Raw Inputs** with a TanStack-based data grid:
+  - Sticky headers.
+  - Sortable/filterable columns.
+  - Inline validation.
+- **Selected Rows Trigger a Floating Action Bar** (Evaluate, Shortlist, Export) so actions are contextual.
+- **Apply Input Masks and Validation States** (e.g., player tags auto-capitalized, error badge if malformed).
+- **Include Row Expansion or Side Drawer** for detail editing.
 
-**Recommendations:**
-- **Data Grid Component:** Replace raw input grids with a proper **Data Grid** (e.g., TanStack Table).
-  - sticky headers.
-  - inline validation.
-  - sortable columns.
-- **Bulk Actions:** Move bulk actions (Evaluate, Shortlist) to a floating or sticky toolbar that appears when rows are selected.
-- **Input Masking:** Use input masks for Player Tags (starts with `#`, uppercase) to prevent errors.
+## Accessibility + Polish Baked In
 
-## 5. Accessibility & Usability Polish
+- **Every Form Element** uses the new labeled components; no input ships without visible label + aria-describedby.
+- **Replace Spinner-Only Loading** with skeleton placeholders tailored to each layout (cards, tables, steppers).
+- **Empty States Always Include a Call-to-Action** (e.g., "No war plan yet — Start war plan").
+- **Ensure Keyboard Navigation:**
+  - Stepper: ←/→ for steps, Enter for Next.
+  - Data grid: arrow navigation, space to select rows.
 
-**Current Issue:**
-- **Missing Labels:** 60+ `unnamed` inputs and 35+ `unnamed` checkboxes. This is a major accessibility blocker.
-- **Cryptic Placeholders:** Placeholders like `#XXXXXXXX` are intimidating.
+## Implementation Roadmap (In Order)
 
-**Recommendations:**
-- **Semantic Labeling:** Ensure every input has a visible label or `aria-label`.
-- **Human-Readable Placeholders:** Change `#OPPONENT` to "Opponent Clan Tag" and `#XXXXXXXX` to "Player Tag".
-- **Feedback States:**
-  - **Loading:** Use skeletons instead of spinners for smoother perceived performance.
-  - **Empty:** "No War Found" states should provide a "Start War" or "Sync" button, not just text.
-- **Keyboard Navigation:** Ensure the new Stepper and Data Grid support full keyboard navigation (Tab, Arrow keys).
+1. **App Shell & Navigation:** Sidebar, header, breadcrumbs, action toolbar scaffolding.
+2. **Component Library:** InfoCards, metric bars, labeled inputs, stepper, data grid, empty/skeleton states.
+3. **Dashboard:** Migrate roster cards to new components, add the consolidated toolbar, remove redundant buttons.
+4. **War Planning Stepper:** Rebuild the wizard with autosave, drag/drop assignments, smart defaults.
+5. **Leadership Grid:** Drop the spreadsheet-style inputs in favor of the new data grid and bulk-action patterns.
 
-## Implementation Roadmap
-
-1.  **Phase 1: App Shell & Navigation** - Fix the frame (Sidebar, Header, Breadcrumbs).
-2.  **Phase 2: Component Library** - Standardize Buttons, Inputs, Cards, and the Data Grid.
-3.  **Phase 3: Dashboard Refactor** - Implement clickable cards and consolidate actions.
-4.  **Phase 4: War Planning Stepper** - Rebuild the wizard flow.
-5.  **Phase 5: Management Grid** - Upgrade the Leadership input tables.
-
+This keeps the work sequenced (frame → components → pages) while addressing all the issues from the audit: navigation consistency, data density, workflow fatigue, management clarity, and accessibility.
