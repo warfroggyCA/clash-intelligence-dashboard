@@ -486,7 +486,7 @@ const deriveWarResultNotes = (warEntry: any, warResultBase: WarResultPayload | n
 
     if (!performerStats.length) return null;
 
-    const sortedPerformers = performerStats.sort((a, b) => {
+    const sortedPerformers = performerStats.sort((a: PerformerStat, b: PerformerStat) => {
       const starDiff = (b.totalStars ?? 0) - (a.totalStars ?? 0);
       if (starDiff !== 0) return starDiff;
       const bestAttackStarDiff = (b.bestAttack?.stars ?? 0) - (a.bestAttack?.stars ?? 0);
