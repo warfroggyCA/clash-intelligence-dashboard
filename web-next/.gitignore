@@ -8,3 +8,9 @@
 .env.*
 .vercel
 .env*.local
+
+# Test reports - exclude screenshots but keep documentation
+test_reports/**/screenshots/
+test_reports/**/*.png
+test_reports/**/*.jpg
+test_reports/**/*.jpeg

@@ -297,6 +297,10 @@ class ApiEndpoints {
     });
   }
 
+  async generateWarSummary(payload: any) {
+    return this.client.post('/api/ai-war-summary/generate', payload);
+  }
+
   async getInsightsBundle(clanTag: string) {
     return this.client.get('/api/ai/batch-results', { clanTag });
   }
