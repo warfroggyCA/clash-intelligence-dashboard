@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { Trophy, Award, Medal, TrendingUp, Target, Heart, Zap } from 'lucide-react';
 import { TownHallBadge, LeagueBadge } from '@/components/ui';
 import { normalizeTag } from '@/lib/tags';
-import type { RosterMember } from '@/app/simple-roster/roster-transform';
+import type { RosterMember } from '@/app/(dashboard)/simple-roster/roster-transform';
 import {
   getRankedMembers,
   getPlayerRank,
@@ -108,10 +108,9 @@ export default function LeaderboardView({
               onClick={() => setSelectedCriteria(criteria)}
               className={`
                 flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-all
-                ${
-                  isSelected
-                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
-                    : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'
+                ${isSelected
+                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/25'
+                  : 'bg-slate-800/50 text-slate-300 hover:bg-slate-700/50 hover:text-slate-100'
                 }
               `}
               title={getCriteriaDescription(criteria)}
@@ -203,7 +202,7 @@ export default function LeaderboardView({
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <Link 
+                        <Link
                           href={`/player/${member.tag.replace('#', '')}`}
                           className="text-white hover:text-slate-200 hover:underline transition-colors"
                           style={{ fontFamily: "'Clash Display', sans-serif" }}
@@ -226,10 +225,10 @@ export default function LeaderboardView({
                         <div className="flex items-center justify-center">
                           {(member.rankedLeagueName || member.leagueName) ? (
                             <div className="cursor-help">
-                              <LeagueBadge 
+                              <LeagueBadge
                                 league={member.rankedLeagueName || member.leagueName || undefined}
                                 trophies={member.trophies}
-                                size="sm" 
+                                size="sm"
                                 showText={false}
                               />
                             </div>

@@ -15,7 +15,7 @@ import { evaluateRoster, buildReportLine } from '@/lib/elder/evaluator';
 import type { ElderMetricInputs, ElderRecommendation } from '@/lib/elder/types';
 import { rosterFetcher } from '@/lib/api/swr-fetcher';
 import useSWR from 'swr';
-import type { RosterData } from '@/app/simple-roster/roster-transform';
+import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
 import { showToast } from '@/lib/toast';
 
 const BAND_LABELS: Record<ElderRecommendation['band'], string> = {
@@ -79,7 +79,7 @@ export function ElderAssessmentCard() {
       revalidateOnReconnect: false,
     }
   );
-  
+
   const [results, setResults] = useState<ElderRecommendation[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -87,7 +87,7 @@ export function ElderAssessmentCard() {
   const [lastGenerated, setLastGenerated] = useState<number | null>(null);
   const [showCriteriaSettings, setShowCriteriaSettings] = useState(true);
   const [hasAutoEvaluated, setHasAutoEvaluated] = useState(false);
-  
+
   // Load criteria from localStorage or use defaults
   const [criteria, setCriteria] = useState<CriteriaSettings>(() => {
     if (typeof window === 'undefined') return DEFAULT_CRITERIA;
@@ -102,7 +102,7 @@ export function ElderAssessmentCard() {
     }
     return DEFAULT_CRITERIA;
   });
-  
+
   // Save criteria to localStorage whenever it changes
   const updateCriteria = useCallback((updates: Partial<CriteriaSettings>) => {
     setCriteria((prev) => {
@@ -117,10 +117,10 @@ export function ElderAssessmentCard() {
       return updated;
     });
   }, []);
-  
+
   // Store the last evaluation inputs so we can re-evaluate when criteria changes
   const lastEvaluationInputsRef = useRef<ElderMetricInputs[] | null>(null);
-  
+
   // Re-evaluate results when criteria changes (if we have results)
   useEffect(() => {
     if (!lastEvaluationInputsRef.current || lastEvaluationInputsRef.current.length === 0) {
@@ -141,7 +141,7 @@ export function ElderAssessmentCard() {
           performance: criteria.weightPerformance / 100,
         },
       }).sort((a, b) => b.score - a.score);
-      
+
       setResults(newResults);
       setReport(newResults.map((rec) => buildReportLine(rec)).join('\n\n'));
     } catch (err) {
@@ -182,7 +182,7 @@ export function ElderAssessmentCard() {
     try {
       // Store inputs for re-evaluation when criteria changes
       lastEvaluationInputsRef.current = inputs;
-      
+
       const recs = evaluateRoster(inputs, {
         promotionThreshold: criteria.promotionThreshold,
         monitorThreshold: criteria.monitorThreshold,
@@ -269,7 +269,7 @@ export function ElderAssessmentCard() {
     if (hasAutoEvaluated || isLoadingRoster || !roster?.members?.length) {
       return; // Already evaluated, still loading, or no roster
     }
-    
+
     // Auto-evaluate from roster
     setHasAutoEvaluated(true);
     handleFromRoster();
@@ -285,54 +285,54 @@ export function ElderAssessmentCard() {
     const promotionThreshold = criteria.promotionThreshold;
     const monitorThreshold = criteria.monitorThreshold;
     const tenureMinimum = criteria.tenureMinimum;
-    
+
     // Calculate what they need
     const scoreGap = promotionThreshold - rec.score;
     const daysNeeded = Math.max(0, tenureMinimum - rec.tenureDays);
-    
+
     // Identify areas that need improvement
     const needsImprovement: string[] = [];
     if (rec.consistency < 60) needsImprovement.push('consistency');
     if (rec.generosity < 60 && weightGenerosityPct >= 5) needsImprovement.push('generosity');
     if (rec.performance < 60) needsImprovement.push('performance');
-    
+
     // Generate message based on band
     if (rec.band === 'ineligible') {
       return `${rec.name} needs ${daysNeeded} more day${daysNeeded !== 1 ? 's' : ''} in clan to be eligible for Elder promotion.`;
     }
-    
+
     if (rec.band === 'promote') {
       return `${rec.name} is ready for Elder promotion! Score: ${rec.score.toFixed(1)}/100. Great work! 🎉`;
     }
-    
+
     if (rec.band === 'monitor') {
       if (rec.score >= promotionThreshold - 5) {
         // Very close (within 5 points)
-        const areas = needsImprovement.length > 0 
+        const areas = needsImprovement.length > 0
           ? ` Focus on: ${needsImprovement.join(', ')}.`
           : '';
         return `${rec.name} is close to Elder promotion! Score: ${rec.score.toFixed(1)}/100 (needs ${scoreGap.toFixed(1)} more).${areas}`;
       } else {
         // In monitor range but not super close
-        const areas = needsImprovement.length > 0 
+        const areas = needsImprovement.length > 0
           ? ` Focus on: ${needsImprovement.join(', ')}.`
           : '';
         return `${rec.name} is making progress toward Elder promotion. Score: ${rec.score.toFixed(1)}/100.${areas}`;
       }
     }
-    
+
     if (rec.band === 'risk') {
       if (rec.failingDimensions.length > 0) {
         const failing = rec.failingDimensions.map(f => f.replace(/ < \d+/, '')).join(', ');
         return `${rec.name} needs improvement in ${failing.toLowerCase()} to be considered for Elder. Current score: ${rec.score.toFixed(1)}/100.`;
       } else {
-        const areas = needsImprovement.length > 0 
+        const areas = needsImprovement.length > 0
           ? ` Focus on: ${needsImprovement.join(', ')}.`
           : '';
         return `${rec.name} needs improvement to be considered for Elder. Score: ${rec.score.toFixed(1)}/100.${areas}`;
       }
     }
-    
+
     return `${rec.name} - Elder Readiness Score: ${rec.score.toFixed(1)}/100. ${rec.recommendation}`;
   }, [criteria, weightGenerosityPct]);
 
@@ -367,7 +367,7 @@ export function ElderAssessmentCard() {
         '=== Assessment Results ===',
         '',
       ].join('\n');
-      
+
       const fullReport = criteriaSummary + report;
       await navigator.clipboard?.writeText?.(fullReport);
       setError(null);
@@ -480,7 +480,7 @@ export function ElderAssessmentCard() {
                 </button>
               </div>
             </div>
-            
+
             {showCriteriaSettings && (
               <div className="space-y-4 pt-2 border-t border-brand-border/40">
                 {/* Thresholds */}
@@ -494,7 +494,7 @@ export function ElderAssessmentCard() {
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <label className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
@@ -605,7 +605,7 @@ export function ElderAssessmentCard() {
                     </div>
                   </div>
                   <p className="text-[10px] text-slate-400 mb-2">Adjust how much each metric contributes to the final score</p>
-                  
+
                   <div className="space-y-2">
                     <label className="flex items-center justify-between text-xs">
                       <div className="flex items-center gap-1.5">
@@ -687,84 +687,84 @@ export function ElderAssessmentCard() {
 
           {/* Results Table - Right side on large screens */}
           <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="text-xs uppercase tracking-[0.28em] text-slate-400">
-              Generated {lastGenerated ? new Date(lastGenerated).toLocaleString() : 'just now'}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="text-xs uppercase tracking-[0.28em] text-slate-400">
+                Generated {lastGenerated ? new Date(lastGenerated).toLocaleString() : 'just now'}
+              </div>
+              <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-300">
+                <span className="rounded-full border border-emerald-400/50 px-2 py-1 text-emerald-100">
+                  Promote: {summary.promote}
+                </span>
+                <span className="rounded-full border border-amber-400/50 px-2 py-1 text-amber-100">
+                  Monitor: {summary.monitor}
+                </span>
+                <span className="rounded-full border border-rose-400/50 px-2 py-1 text-rose-100">
+                  Risk: {summary.risk}
+                </span>
+                <span className="rounded-full border border-slate-500/50 px-2 py-1 text-slate-200">
+                  Ineligible: {summary.ineligible}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-wrap gap-2 text-xs font-semibold text-slate-300">
-              <span className="rounded-full border border-emerald-400/50 px-2 py-1 text-emerald-100">
-                Promote: {summary.promote}
-              </span>
-              <span className="rounded-full border border-amber-400/50 px-2 py-1 text-amber-100">
-                Monitor: {summary.monitor}
-              </span>
-              <span className="rounded-full border border-rose-400/50 px-2 py-1 text-rose-100">
-                Risk: {summary.risk}
-              </span>
-              <span className="rounded-full border border-slate-500/50 px-2 py-1 text-slate-200">
-                Ineligible: {summary.ineligible}
-              </span>
-            </div>
-          </div>
 
-          <div className="relative overflow-hidden rounded-2xl border border-brand-border/60 bg-brand-surfaceRaised/40">
-            <div className="max-h-[70vh] overflow-y-auto">
-              <table className="min-w-full divide-y divide-slate-700/60 text-sm">
-                <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-400">
-                  <tr>
-                    <th className="px-4 py-3 text-left">Member</th>
-                    <th className="px-4 py-3 text-left">Tenure</th>
-                    <th className="px-4 py-3 text-left">Consistency</th>
-                    <th className="px-4 py-3 text-left">Generosity</th>
-                    <th className="px-4 py-3 text-left">Performance</th>
-                    <th className="px-4 py-3 text-left">Score</th>
-                    <th className="px-4 py-3 text-left">Band</th>
-                    <th className="px-4 py-3 text-left">Recommendation</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/50">
-                  {results.map((rec) => (
-                    <tr key={rec.playerTag} className="hover:bg-slate-900/40">
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="flex-1">
-                            <div className="font-semibold text-slate-100">{rec.name}</div>
-                            <div className="text-[11px] font-mono uppercase text-slate-500">{rec.playerTag}</div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleCopyPlayerStatus(rec)}
-                            className="shrink-0 rounded p-1.5 text-slate-400 transition hover:bg-slate-800/60 hover:text-slate-200"
-                            title="Copy status message for this player"
-                          >
-                            <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
-                          </button>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-slate-200">{rec.tenureDays} days</td>
-                      <td className="px-4 py-3 text-slate-200">{rec.consistency}</td>
-                      <td className="px-4 py-3 text-slate-200">{rec.generosity}</td>
-                      <td className="px-4 py-3 text-slate-200">{rec.performance}</td>
-                      <td className="px-4 py-3 text-slate-100">{formatScore(rec.score)}</td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${BAND_CLASSNAME[rec.band]}`}>
-                          {BAND_LABELS[rec.band]}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-slate-300">
-                        <div>{rec.recommendation}</div>
-                        {rec.failingDimensions.length > 0 && (
-                          <div className="mt-1 text-[11px] text-rose-200">
-                            {rec.failingDimensions.join(', ')}
-                          </div>
-                        )}
-                      </td>
+            <div className="relative overflow-hidden rounded-2xl border border-brand-border/60 bg-brand-surfaceRaised/40">
+              <div className="max-h-[70vh] overflow-y-auto">
+                <table className="min-w-full divide-y divide-slate-700/60 text-sm">
+                  <thead className="bg-slate-900/60 text-xs uppercase tracking-wide text-slate-400">
+                    <tr>
+                      <th className="px-4 py-3 text-left">Member</th>
+                      <th className="px-4 py-3 text-left">Tenure</th>
+                      <th className="px-4 py-3 text-left">Consistency</th>
+                      <th className="px-4 py-3 text-left">Generosity</th>
+                      <th className="px-4 py-3 text-left">Performance</th>
+                      <th className="px-4 py-3 text-left">Score</th>
+                      <th className="px-4 py-3 text-left">Band</th>
+                      <th className="px-4 py-3 text-left">Recommendation</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-800/50">
+                    {results.map((rec) => (
+                      <tr key={rec.playerTag} className="hover:bg-slate-900/40">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1">
+                              <div className="font-semibold text-slate-100">{rec.name}</div>
+                              <div className="text-[11px] font-mono uppercase text-slate-500">{rec.playerTag}</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPlayerStatus(rec)}
+                              className="shrink-0 rounded p-1.5 text-slate-400 transition hover:bg-slate-800/60 hover:text-slate-200"
+                              title="Copy status message for this player"
+                            >
+                              <ClipboardCopy className="h-3.5 w-3.5" aria-hidden />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-slate-200">{rec.tenureDays} days</td>
+                        <td className="px-4 py-3 text-slate-200">{rec.consistency}</td>
+                        <td className="px-4 py-3 text-slate-200">{rec.generosity}</td>
+                        <td className="px-4 py-3 text-slate-200">{rec.performance}</td>
+                        <td className="px-4 py-3 text-slate-100">{formatScore(rec.score)}</td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-semibold ${BAND_CLASSNAME[rec.band]}`}>
+                            {BAND_LABELS[rec.band]}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs text-slate-300">
+                          <div>{rec.recommendation}</div>
+                          {rec.failingDimensions.length > 0 && (
+                            <div className="mt-1 text-[11px] text-rose-200">
+                              {rec.failingDimensions.join(', ')}
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
 
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -802,7 +802,7 @@ export function ElderAssessmentCard() {
               </button>
             </div>
           </div>
-          
+
           {showCriteriaSettings && (
             <div className="space-y-4 pt-2 border-t border-brand-border/40">
               {/* Thresholds */}
@@ -812,11 +812,11 @@ export function ElderAssessmentCard() {
                   <div className="group relative">
                     <Info className="h-3.5 w-3.5 text-slate-500 cursor-help" />
                     <div className="absolute left-0 bottom-full mb-2 w-64 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Score thresholds determine which band (Promote, Monitor, Risk, Ineligible) each candidate falls into based on their Elder Readiness Score.
+                      Score thresholds determine which band (Promote, Monitor, Risk, Ineligible) each candidate falls into based on their Elder Readiness Score.
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <label className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
@@ -824,7 +824,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Minimum Elder Readiness Score required to recommend promotion to Elder status. Scores at or above this threshold are marked as &ldquo;Promote&rdquo;.
+                          Minimum Elder Readiness Score required to recommend promotion to Elder status. Scores at or above this threshold are marked as &ldquo;Promote&rdquo;.
                         </div>
                       </div>
                     </div>
@@ -848,7 +848,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Score threshold for the &ldquo;Monitor&rdquo; band. Candidates between Monitor and Promotion thresholds are close but need more observation before promotion.
+                          Score threshold for the &ldquo;Monitor&rdquo; band. Candidates between Monitor and Promotion thresholds are close but need more observation before promotion.
                         </div>
                       </div>
                     </div>
@@ -862,7 +862,7 @@ export function ElderAssessmentCard() {
                     onChange={(e) => updateCriteria({ monitorThreshold: Number(e.target.value) })}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-amber-500"
                   />
-                    <p className="text-[10px] text-slate-400">Score for &ldquo;Monitor&rdquo; band (default: 55)</p>
+                  <p className="text-[10px] text-slate-400">Score for &ldquo;Monitor&rdquo; band (default: 55)</p>
                 </div>
 
                 <div className="space-y-2">
@@ -872,7 +872,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Minimum number of days a member must have been in the clan to be eligible for Elder promotion. Members below this threshold are marked as &ldquo;Ineligible&rdquo;.
+                          Minimum number of days a member must have been in the clan to be eligible for Elder promotion. Members below this threshold are marked as &ldquo;Ineligible&rdquo;.
                         </div>
                       </div>
                     </div>
@@ -897,7 +897,7 @@ export function ElderAssessmentCard() {
                       <div className="group relative">
                         <Info className="h-3 w-3 text-slate-500 cursor-help" />
                         <div className="absolute left-0 bottom-full mb-2 w-56 p-2 bg-slate-900 border border-slate-700 rounded-md text-xs text-slate-200 shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-10">
-                            Minimum score required for each individual dimension (Consistency, Generosity, Performance). If any dimension falls below this threshold, it&rsquo;s flagged as a &ldquo;failing dimension&rdquo; in recommendations. Dimensions with zero weight are not checked.
+                          Minimum score required for each individual dimension (Consistency, Generosity, Performance). If any dimension falls below this threshold, it&rsquo;s flagged as a &ldquo;failing dimension&rdquo; in recommendations. Dimensions with zero weight are not checked.
                         </div>
                       </div>
                     </div>
@@ -911,7 +911,7 @@ export function ElderAssessmentCard() {
                     onChange={(e) => updateCriteria({ failingDimensionThreshold: Number(e.target.value) })}
                     className="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-rose-500"
                   />
-                    <p className="text-[10px] text-slate-400">Minimum score per dimension to avoid &ldquo;fail&rdquo; (default: 40)</p>
+                  <p className="text-[10px] text-slate-400">Minimum score per dimension to avoid &ldquo;fail&rdquo; (default: 40)</p>
                 </div>
               </div>
 
@@ -927,7 +927,7 @@ export function ElderAssessmentCard() {
                   </div>
                 </div>
                 <p className="text-[10px] text-slate-400 mb-2">Adjust how much each metric contributes to the final score</p>
-                
+
                 <div className="space-y-2">
                   <label className="flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">

@@ -34,9 +34,18 @@ export function ClanSwitcher() {
       .filter((tag): tag is string => Boolean(tag));
   }, [userRoles]);
   const leadershipClanTagSet = useMemo(() => new Set(leadershipClanTags), [leadershipClanTags]);
-  const canUseSwitcher = leadershipClanTags.length > 0;
+  const isDevMode = process.env.NEXT_PUBLIC_DISABLE_AUTH_GATE === 'true';
+  const canUseSwitcher = leadershipClanTags.length > 0 || isDevMode;
 
   const fetchTrackedClans = useCallback(async () => {
+    if (isDevMode) {
+      setTrackedClans([
+        { clanTag: '#2PR8R8V8P', clanName: 'HeCk YeAh', hasData: true, isStale: false, memberCount: 45 },
+        { clanTag: '#ABC12345', clanName: 'Dev Clan', hasData: true, isStale: false, memberCount: 10 },
+      ]);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const response = await fetch('/api/tracked-clans/status', {
@@ -96,7 +105,7 @@ export function ClanSwitcher() {
       // Update store state first - this will automatically persist to localStorage via subscription
       setClanTag(normalizedSelected);
       console.log('[ClanSwitcher] Set clanTag in store:', normalizedSelected);
-      
+
       // Also explicitly save to localStorage to ensure it's persisted (store subscription handles this, but being explicit)
       localStorage.setItem('currentClanTag', normalizedSelected);
       // Set cookie for server-side reading
@@ -107,7 +116,7 @@ export function ClanSwitcher() {
       console.log('[ClanSwitcher] Loading roster for:', normalizedSelected);
       await loadRoster(normalizedSelected, { force: true });
       console.log('[ClanSwitcher] Roster loaded successfully');
-      
+
       // Verify the store has the correct clan tag
       const storeState = useDashboardStore.getState();
       console.log('[ClanSwitcher] Store state after load:', {
@@ -116,19 +125,19 @@ export function ClanSwitcher() {
         rosterClanName: storeState.roster?.clanName,
         memberCount: storeState.roster?.members?.length,
       });
-      
+
       // Check if roster actually loaded for the correct clan
       const loadedClanTag = normalizeTag(storeState.roster?.clanTag || '');
       if (loadedClanTag !== normalizedSelected) {
         console.warn('[ClanSwitcher] Mismatch! Expected:', normalizedSelected, 'Got:', loadedClanTag);
         showToast(`Warning: Roster may not have loaded correctly. Expected ${normalizedSelected}, got ${loadedClanTag}`, 'error');
       }
-      
+
       setIsOpen(false);
       const selectedClan = trackedClans.find(c => normalizeTag(c.clanTag) === normalizedSelected);
       const displayName = selectedClan?.clanName || selectedTag;
       showToast(`Switched to ${displayName}`, 'success');
-      
+
       // Force a full page reload to ensure all components update with new clan
       window.location.href = '/app';
     } catch (error: any) {
@@ -141,10 +150,10 @@ export function ClanSwitcher() {
   const statusColor = currentClan?.isStale
     ? 'text-red-400'
     : currentClan?.lastJobStatus === 'running'
-    ? 'text-blue-400'
-    : currentClan?.lastJobStatus === 'failed'
-    ? 'text-red-400'
-    : 'text-green-400';
+      ? 'text-blue-400'
+      : currentClan?.lastJobStatus === 'failed'
+        ? 'text-red-400'
+        : 'text-green-400';
 
   if (!canUseSwitcher) {
     return null;
@@ -181,20 +190,19 @@ export function ClanSwitcher() {
               const clanStatusColor = clan.isStale
                 ? 'text-red-400'
                 : clan.lastJobStatus === 'running'
-                ? 'text-blue-400'
-                : clan.lastJobStatus === 'failed'
-                ? 'text-red-400'
-                : 'text-green-400';
+                  ? 'text-blue-400'
+                  : clan.lastJobStatus === 'failed'
+                    ? 'text-red-400'
+                    : 'text-green-400';
 
               return (
                 <button
                   key={clan.clanTag}
                   onClick={() => void handleSelectClan(clan.clanTag)}
-                  className={`flex w-full items-start justify-between rounded-xl px-3 py-2 text-left transition-colors ${
-                    isSelected
+                  className={`flex w-full items-start justify-between rounded-xl px-3 py-2 text-left transition-colors ${isSelected
                       ? 'bg-brand-surfaceSubtle text-white'
                       : 'text-slate-300 hover:bg-brand-surfaceSubtle/70 hover:text-white'
-                  }`}
+                    }`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">

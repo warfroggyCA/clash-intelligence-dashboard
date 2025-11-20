@@ -12,7 +12,6 @@ import { TabNavigation } from './TabNavigation';
 import { QuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
-import DevStatusBadge from './DevStatusBadge';
 import NewSnapshotIndicator from './NewSnapshotIndicator';
 import { ClanSwitcher } from './ClanSwitcher';
 import { getAccessLevelDisplayName, type AccessLevel } from '@/lib/access-management';
@@ -23,6 +22,7 @@ import { AuthGate } from './AuthGuard';
 import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import { supabase } from '@/lib/supabase';
+import { AppShell } from './AppShell';
 
 const VIEW_ROLE_STORAGE_KEY = 'ci:view-role:v1';
 
@@ -44,9 +44,10 @@ export interface DashboardLayoutProps extends ComponentWithChildren {
 interface DashboardHeaderProps {
   fallbackClanName?: string;
   explicitClanName?: string;
+  showClanSwitcher?: boolean;
 }
 
-const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, explicitClanName }) => {
+const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, explicitClanName, showClanSwitcher = true }) => {
   const {
     clanTag,
     homeClan,
@@ -121,7 +122,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
     document.documentElement.style.setProperty('--toolbar-offset', `calc(${roundedHeight}px - 1px)`);
     document.documentElement.style.setProperty('--command-rail-top', `calc(${roundedHeight}px + 320px)`);
   }, []);
-  
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handleScroll = () => {
@@ -189,7 +190,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
       setMessage('No home clan set. Use "Set Home" to save a clan.');
       return;
     }
-    
+
     try {
       setClanTag(homeClan);
       await loadRoster(homeClan);
@@ -380,15 +381,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
               </span>
             )}
 
-            <div className={`inline-flex items-center gap-2 rounded-full border border-brand-border/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ${
-              actualRoleName === 'leader'
-                ? 'text-amber-200'
-                : actualRoleName === 'coleader'
-                  ? 'text-indigo-200'
-                  : actualRoleName === 'elder'
-                    ? 'text-emerald-200'
-                    : 'text-slate-200'
-            }`}>
+            <div className={`inline-flex items-center gap-2 rounded-full border border-brand-border/70 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wide ${actualRoleName === 'leader'
+              ? 'text-amber-200'
+              : actualRoleName === 'coleader'
+                ? 'text-indigo-200'
+                : actualRoleName === 'elder'
+                  ? 'text-emerald-200'
+                  : 'text-slate-200'
+              }`}>
               <span className="h-2 w-2 rounded-full bg-current" />
               <span>{actualRoleLabel}</span>
             </div>
@@ -420,11 +420,10 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                           setImpersonatedRole(option.value as ClanRoleName | null);
                           setRoleMenuOpen(false);
                         }}
-                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors ${
-                          viewingRoleName === (option.value ?? actualRoleName)
-                            ? 'bg-brand-surfaceSubtle text-white'
-                            : 'text-slate-300 hover:bg-brand-surfaceSubtle/70 hover:text-white'
-                        }`}
+                        className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-colors ${viewingRoleName === (option.value ?? actualRoleName)
+                          ? 'bg-brand-surfaceSubtle text-white'
+                          : 'text-slate-300 hover:bg-brand-surfaceSubtle/70 hover:text-white'
+                          }`}
                       >
                         <span>{option.label}</span>
                         {viewingRoleName === (option.value ?? actualRoleName) && <span>✓</span>}
@@ -436,7 +435,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
             )}
 
             {/* Clan Switcher */}
-            <ClanSwitcher />
+            {showClanSwitcher && <ClanSwitcher />}
 
             {/* New snapshot indicator (manual refresh) */}
             <NewSnapshotIndicator />
@@ -473,13 +472,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
             )}
 
             <div className="relative group">
-              <button 
+              <button
                 className="h-8 w-8 flex items-center justify-center rounded-md border border-brand-border/70 bg-brand-surfaceRaised/80 text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
                 title="More options"
               >
                 ⋯
               </button>
-              <div 
+              <div
                 className="actions-menu-panel absolute right-0 top-full mt-1 w-52 rounded-2xl border border-brand-border/70 p-2 text-sm shadow-[0_18px_32px_-24px_rgba(8,15,31,0.65)] opacity-0 invisible transition-all duration-200 group-hover:visible group-hover:opacity-100"
               >
                 <div className="space-y-1">
@@ -491,7 +490,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                       👥 Manage Access
                     </button>
                   </LeadershipGuard>
-                  <button 
+                  <button
                     onClick={() => router.push('/settings')}
                     className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
                   >
@@ -511,13 +510,13 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
                       🗄️ Player Database
                     </button>
                   </LeadershipGuard>
-                  <Link 
-                    href="/faq" 
+                  <Link
+                    href="/faq"
                     className="block rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
                   >
                     ❓ FAQ
                   </Link>
-                  <button 
+                  <button
                     onClick={handleRefresh}
                     className="w-full rounded-xl px-3 py-2 text-left text-sm text-slate-200 transition-colors hover:bg-brand-surfaceSubtle"
                   >
@@ -580,72 +579,138 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
 }) => {
   const fallbackClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag || '');
   const fallbackClanName = propClanName && propClanName.trim().length > 0 ? propClanName.trim() : '';
+  const roster = useDashboardStore((state) => state.roster);
 
   const disableTabNavigation = process.env.NEXT_PUBLIC_DISABLE_TAB_NAV === 'true';
+  const enableAppShell = process.env.NEXT_PUBLIC_ENABLE_APP_SHELL === 'true';
+
+  const toolbarContent = hideNavigation
+    ? null
+    : (
+      <div className="flex flex-col gap-1.5 sm:gap-2">
+        <QuickActions className="w-full" />
+        <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
+          {disableTabNavigation ? (
+            <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
+          ) : (
+            <TabNavigation className="px-1.5 sm:px-2" />
+          )}
+        </div>
+      </div>
+    );
+
+  const footerContent = (
+    <footer className="w-full bg-gray-800 border-t border-gray-600 mt-12">
+      <div className="w-full px-6 py-4">
+        <div className="flex items-center justify-between text-sm text-gray-200">
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
+              <span className="font-semibold !text-white" style={{ color: '#ffffff' }}>Clash Intelligence Dashboard</span>
+            </div>
+            <span className="text-gray-400">•</span>
+            <span className="font-mono bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-xs font-semibold border border-gray-600">
+              v{process.env.NEXT_PUBLIC_APP_VERSION || '0.21.0'}
+            </span>
+            <span className="text-gray-400">•</span>
+            <span className="text-gray-400">a warfroggy project</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+
+  const mainContent = (
+    <div className="space-y-6">
+      {children}
+    </div>
+  );
+  const sidebarClanSnapshot = roster?.snapshotMetadata;
+  const sidebarClanName = roster?.clanName || fallbackClanName || 'Your Clan';
+  const sidebarClanTag = roster?.clanTag || fallbackClanTag || '';
+  const sidebarMemberCount =
+    roster?.members?.length ??
+    roster?.meta?.memberCount ??
+    sidebarClanSnapshot?.memberCount ??
+    undefined;
+  const sidebarHeaderContent = (
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-3 text-sm text-slate-100 space-y-3">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-clash-gold to-clash-orange text-slate-950 font-semibold flex items-center justify-center">
+          {sidebarClanName
+            .split(/\s+/)
+            .map((word) => word.charAt(0))
+            .join('')
+            .slice(0, 2)
+            .toUpperCase()}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-bold text-white">{sidebarClanName}</span>
+          <span className="text-xs font-mono text-slate-300">{sidebarClanTag}</span>
+        </div>
+      </div>
+      {typeof sidebarMemberCount === 'number' && sidebarMemberCount > 0 && (
+        <div className="flex items-center justify-between text-xs text-slate-300">
+          <span>Members</span>
+          <span className="font-mono text-white">{sidebarMemberCount}</span>
+        </div>
+      )}
+      <ClanSwitcher />
+    </div>
+  );
+
+  if (enableAppShell) {
+    return (
+      <AuthGate>
+        <AppShell
+          headerContent={<DashboardHeader fallbackClanName={fallbackClanName} explicitClanName={propClanName} showClanSwitcher={false} />}
+          toolbarContent={toolbarContent}
+          sidebarHeader={sidebarHeaderContent}
+        >
+          <>
+            {mainContent}
+            {footerContent}
+          </>
+        </AppShell>
+        <ModalsContainer />
+        <ToastHub />
+      </AuthGate>
+    );
+  }
 
   return (
     <AuthGate>
       <div className={`min-h-screen w-full ${className}`} style={{ overflowX: 'hidden' }}>
         {/* Skip to main content link */}
         {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
-        <a 
+        <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[9999] focus:px-6 focus:py-3 focus:bg-blue-600 focus:text-white focus:rounded-lg focus:shadow-xl focus:font-semibold"
         >
           Skip to main content
         </a>
-        
+
         {/* Header */}
         <DashboardHeader fallbackClanName={fallbackClanName} explicitClanName={propClanName} />
-        
+
         {/* Quick Actions & Tabs Toolbar */}
-        {!hideNavigation && (
+        {toolbarContent && (
           <div className="sticky top-[var(--toolbar-offset,var(--header-height,96px))] z-40 w-full bg-slate-950/98 backdrop-blur px-2 pb-1.5 pt-1.5 sm:px-4 sm:pb-2 sm:pt-2">
-            <div className="flex flex-col gap-1.5 sm:gap-2">
-              {/* Quick Actions - Now above tabs */}
-              <QuickActions className="w-full" />
-              
-              {/* Tabs - Now below Quick Actions */}
-              <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
-                {disableTabNavigation ? (
-                  <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
-                ) : (
-                  <TabNavigation className="px-1.5 sm:px-2" />
-                )}
-              </div>
-            </div>
+            {toolbarContent}
           </div>
         )}
-        
+
         {/* Main Content */}
         <main id="main-content" role="main" tabIndex={-1} className="dashboard-main w-full rounded-b-3xl border border-t-0 border-clash-gold/20 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 px-3 pb-6 pt-6 text-high-contrast sm:px-4 flex flex-col shadow-[0_24px_55px_-30px_rgba(0,0,0,0.3)]">
-          <div className="space-y-6">
-            {children}
-          </div>
+          {mainContent}
         </main>
-        
+
         {/* Footer */}
-        <footer className="w-full bg-gray-800 border-t border-gray-600 mt-12">
-          <div className="w-full px-6 py-4">
-            <div className="flex items-center justify-between text-sm text-gray-200">
-              <div className="flex items-center space-x-4">
-                <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 bg-gradient-to-r from-clash-gold to-clash-orange rounded-full"></div>
-                  <span className="font-semibold !text-white" style={{ color: '#ffffff' }}>Clash Intelligence Dashboard</span>
-                </div>
-                <span className="text-gray-400">•</span>
-                <span className="font-mono bg-gray-700 text-gray-200 px-3 py-1 rounded-full text-xs font-semibold border border-gray-600">
-                  v{process.env.NEXT_PUBLIC_APP_VERSION || '0.21.0'}
-                </span>
-                <span className="text-gray-400">•</span>
-                <span className="text-gray-400">a warfroggy project</span>
-              </div>
-            </div>
-          </div>
-        </footer>
-        
+        {footerContent}
+
         {/* Modals Container */}
         <ModalsContainer />
+        <ToastHub />
       </div>
     </AuthGate>
   );

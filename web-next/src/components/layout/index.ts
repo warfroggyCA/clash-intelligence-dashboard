@@ -8,6 +8,7 @@
  */
 
 export { DashboardLayout } from './DashboardLayout';
+export { AppShell } from './AppShell';
 export { TabNavigation } from './TabNavigation';
 export { QuickActions } from './QuickActions';
 export { QuickActionsMenu } from './QuickActionsMenu';

@@ -16,7 +16,8 @@ import LeadershipGuard from '@/components/LeadershipGuard';
 import type { Roster } from '@/types';
 
 // Lazy load components to avoid module-time side effects
-const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+// DashboardLayout is now provided by the parent layout
+// const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
 const PLAYER_DB_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache TTL
 
@@ -1106,19 +1107,19 @@ export default function PlayerDatabasePage() {
 
   if (loading) {
     return (
-      <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
+      <> 0 ? clanName : undefined}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex items-center space-x-3">
             <RefreshCw className="w-5 h-5 animate-spin text-brand-primary" />
             <span className="text-brand-text-secondary">Loading player database...</span>
           </div>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
+    <> 0 ? clanName : undefined}>
       <div className="space-y-6">
         <Breadcrumbs className="mb-2" />
         {/* Header */}
@@ -2268,6 +2269,6 @@ export default function PlayerDatabasePage() {
           )}
         </Modal>
       </div>
-    </DashboardLayout>
+    </>
   );
 }

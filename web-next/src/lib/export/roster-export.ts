@@ -3,7 +3,7 @@
  * Functions to export roster data in various formats (CSV, Discord, Summary)
  */
 
-import type { RosterData } from '@/app/simple-roster/roster-transform';
+import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
 import { toCSV, downloadCSV, copyToClipboard, discord } from '../export-utils';
 import { normalizeTag } from '../tags';
 import { calculateRushPercentage, getMemberActivity } from '../business/calculations';
@@ -38,7 +38,7 @@ export function exportRosterToCSV(roster: RosterData): string {
   const rows = roster.members.map((member) => {
     const activity = getMemberActivity(member as Member);
     const rushPercent = calculateRushPercentage(member as Member);
-    
+
     return [
       member.name || '',
       member.tag || '',
@@ -47,8 +47,8 @@ export function exportRosterToCSV(roster: RosterData): string {
       member.rankedLeagueName || 'N/A',
       String(member.trophies || 0),
       member.vip ? String(member.vip.score.toFixed(1)) : '',
-      member.lastWeekTrophies !== null && member.lastWeekTrophies !== undefined 
-        ? String(member.lastWeekTrophies) 
+      member.lastWeekTrophies !== null && member.lastWeekTrophies !== undefined
+        ? String(member.lastWeekTrophies)
         : '',
       member.seasonTotalTrophies !== null && member.seasonTotalTrophies !== undefined
         ? String(member.seasonTotalTrophies)
@@ -77,7 +77,7 @@ export function exportRosterToCSV(roster: RosterData): string {
 export function formatRosterForDiscord(roster: RosterData): string {
   const clanTag = roster.clanTag || '#UNKNOWN';
   const memberCount = roster.members.length;
-  const snapshotDate = roster.snapshotMetadata?.snapshotDate 
+  const snapshotDate = roster.snapshotMetadata?.snapshotDate
     ? roster.snapshotMetadata.snapshotDate.split('T')[0]
     : 'Unknown';
 
@@ -99,9 +99,9 @@ export function formatRosterForDiscord(roster: RosterData): string {
   if (topVip.length > 0) {
     topVip.forEach((member, index) => {
       const vipScore = member.vip?.score.toFixed(1) || 'N/A';
-      const trend = member.vip?.trend === 'up' ? discord.emoji.arrow_up 
-                   : member.vip?.trend === 'down' ? discord.emoji.arrow_down 
-                   : '→';
+      const trend = member.vip?.trend === 'up' ? discord.emoji.arrow_up
+        : member.vip?.trend === 'down' ? discord.emoji.arrow_down
+          : '→';
       message += `${discord.bullet(`${index + 1}. ${discord.bold(member.name)} ${discord.code(member.tag)} - VIP: ${vipScore} ${trend}`)}\n`;
     });
   } else {
@@ -114,7 +114,7 @@ export function formatRosterForDiscord(roster: RosterData): string {
   const topDonors = [...roster.members]
     .sort((a, b) => (b.donations || 0) - (a.donations || 0))
     .slice(0, 5);
-  
+
   message += `${discord.emoji.gift} ${discord.bold('Top Donators:')}\n`;
   topDonors.forEach((member, index) => {
     message += `${discord.bullet(`${index + 1}. ${member.name} - ${(member.donations || 0).toLocaleString()} donations`)}\n`;
@@ -161,7 +161,7 @@ export function formatRosterForDiscord(roster: RosterData): string {
 export function formatRosterSummary(roster: RosterData): string {
   const clanTag = roster.clanTag || '#UNKNOWN';
   const memberCount = roster.members.length;
-  const snapshotDate = roster.snapshotMetadata?.snapshotDate 
+  const snapshotDate = roster.snapshotMetadata?.snapshotDate
     ? roster.snapshotMetadata.snapshotDate.split('T')[0]
     : 'Unknown';
 
@@ -196,7 +196,7 @@ export function formatRosterSummary(roster: RosterData): string {
   roster.members.forEach((member) => {
     const activity = getMemberActivity(member as Member);
     const rushPercent = calculateRushPercentage(member as Member);
-    
+
     const row = [
       member.name || '',
       member.tag || '',
@@ -205,8 +205,8 @@ export function formatRosterSummary(roster: RosterData): string {
       member.rankedLeagueName || 'N/A',
       String(member.trophies || 0),
       member.vip ? String(member.vip.score.toFixed(1)) : 'N/A',
-      member.lastWeekTrophies !== null && member.lastWeekTrophies !== undefined 
-        ? String(member.lastWeekTrophies) 
+      member.lastWeekTrophies !== null && member.lastWeekTrophies !== undefined
+        ? String(member.lastWeekTrophies)
         : '',
       member.seasonTotalTrophies !== null && member.seasonTotalTrophies !== undefined
         ? String(member.seasonTotalTrophies)
@@ -240,7 +240,7 @@ export async function handleExportCSV(roster: RosterData): Promise<boolean> {
     const clanTag = normalizeTag(roster.clanTag || 'UNKNOWN').replace('#', '');
     const date = new Date().toISOString().split('T')[0];
     const filename = `roster-${clanTag}-${date}.csv`;
-    
+
     downloadCSV(filename, csv);
     return true;
   } catch (error) {

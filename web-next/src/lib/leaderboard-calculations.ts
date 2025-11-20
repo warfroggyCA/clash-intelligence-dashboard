@@ -9,11 +9,11 @@
  * - Activity Score
  */
 
-import type { RosterMember } from '@/app/simple-roster/roster-transform';
+import type { RosterMember } from '@/app/(dashboard)/simple-roster/roster-transform';
 import type { Member } from '@/types';
 import { getMemberActivity } from '@/lib/business/calculations';
 
-export type LeaderboardCriteria = 
+export type LeaderboardCriteria =
   | 'vip'
   | 'donation-ratio'
   | 'war-performance'
@@ -36,17 +36,17 @@ function calculateDonationRatio(member: RosterMember): number {
   // Handle null/undefined by converting to 0
   const given = typeof member.donations === 'number' ? member.donations : (member.donations ?? 0);
   const received = typeof member.donationsReceived === 'number' ? member.donationsReceived : (member.donationsReceived ?? 0);
-  
+
   // If no donations given, ratio is 0
   if (given === 0) {
     return 0;
   }
-  
+
   // If they've given but received nothing, ratio is their donations / 10
   if (received === 0) {
     return given / 10;
   }
-  
+
   // Normal case: given / received
   return given / received;
 }
@@ -98,7 +98,7 @@ export function rankByVIP(members: RosterMember[]): RankedMember[] {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
     const badge = getRankBadge(percentile, rank);
-    
+
     return {
       ...member,
       rank,
@@ -117,7 +117,7 @@ export function rankByDonationRatio(members: RosterMember[]): RankedMember[] {
       // Ensure we have numeric values (handle null/undefined, preserve 0)
       const given = typeof m.donations === 'number' ? m.donations : (m.donations ?? 0);
       const received = typeof m.donationsReceived === 'number' ? m.donationsReceived : (m.donationsReceived ?? 0);
-      
+
       return {
         ...m,
         donations: given,
@@ -130,12 +130,12 @@ export function rankByDonationRatio(members: RosterMember[]): RankedMember[] {
       return m.donations > 0;
     })
     .sort((a, b) => b.value - a.value); // Descending (highest ratio first)
-  
+
   return ranked.map((member, index) => {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
     const badge = getRankBadge(percentile, rank);
-    
+
     return {
       ...member,
       rank,
@@ -161,7 +161,7 @@ export function rankByWarPerformance(members: RosterMember[]): RankedMember[] {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
     const badge = getRankBadge(percentile, rank);
-    
+
     return {
       ...member,
       rank,
@@ -187,7 +187,7 @@ export function rankByCapital(members: RosterMember[]): RankedMember[] {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
     const badge = getRankBadge(percentile, rank);
-    
+
     return {
       ...member,
       rank,
@@ -216,7 +216,7 @@ export function rankByActivity(members: RosterMember[]): RankedMember[] {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
     const badge = getRankBadge(percentile, rank);
-    
+
     return {
       ...member,
       rank,
@@ -242,12 +242,12 @@ export function rankByDonationsGiven(members: RosterMember[]): RankedMember[] {
     })
     .filter(m => m.value > 0) // Only include members who have given donations
     .sort((a, b) => b.value - a.value); // Descending (highest first)
-  
+
   return ranked.map((member, index) => {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
     const badge = getRankBadge(percentile, rank);
-    
+
     return {
       ...member,
       rank,
@@ -273,7 +273,7 @@ export function rankByWarStars(members: RosterMember[]): RankedMember[] {
     const rank = index + 1;
     const percentile = calculatePercentile(index, ranked.length);
     const badge = getRankBadge(percentile, rank);
-    
+
     return {
       ...member,
       rank,
@@ -320,13 +320,13 @@ export function getPlayerRank(
 ): { rank: number; value: number; percentile: number; badge: RankedMember['badge'] } | null {
   const normalizedTag = playerTag.replace('#', '').toUpperCase();
   const ranked = getRankedMembers(members, criteria);
-  
-  const playerIndex = ranked.findIndex(m => 
+
+  const playerIndex = ranked.findIndex(m =>
     m.tag.replace('#', '').toUpperCase() === normalizedTag
   );
-  
+
   if (playerIndex === -1) return null;
-  
+
   const player = ranked[playerIndex];
   return {
     rank: player.rank,

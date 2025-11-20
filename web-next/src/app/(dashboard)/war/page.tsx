@@ -11,8 +11,10 @@ import { normalizeTag } from '@/lib/tags';
 import type { WarPlanAIPayload } from '@/lib/war-planning/analysis';
 import { useLeadership } from '@/hooks/useLeadership';
 import { TOOLTIP_CONTENT } from '@/lib/tooltips/tooltip-content';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
 
-const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+// DashboardLayout is now provided by the parent layout
+// const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
 const ORACLE_DIRECTIVE = `"You are designated as **'Clan War Oracle,'** a **World-Class Clash of Clans War Strategist**. Your expertise is absolute, based on a deep understanding of competitive war metrics and the cutting-edge META strategies of 2025.
 
@@ -306,6 +308,10 @@ const WarCenterPage: React.FC = () => {
             setClanTag(tag);
             setClanName(name);
             setOurClanTagInput(tag); // Pre-fill form
+
+            // Sync to store
+            useDashboardStore.getState().setClanTag(tag);
+            useDashboardStore.getState().setHomeClan(tag);
           }
         }
       } catch (error) {
@@ -1121,7 +1127,7 @@ const WarCenterPage: React.FC = () => {
         return;
       }
       pollCount++;
-      
+
       try {
         const params = new URLSearchParams();
         params.set('ourClanTag', savedPlan.ourClanTag);
@@ -1555,45 +1561,47 @@ const WarCenterPage: React.FC = () => {
 
   if (permissionsLoading) {
     return (
-      <DashboardLayout>
+      <>
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
           <GlassCard className="p-6 text-center text-sm text-muted-foreground">
             Checking war-planning permissions…
           </GlassCard>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   if (permissionsError) {
     return (
-      <DashboardLayout>
+      <>
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
           <GlassCard className="p-6 text-center text-sm text-destructive">
             {permissionsError || 'Unable to load permissions for War Center.'}
           </GlassCard>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   if (!canViewWarPrep) {
     return (
-      <DashboardLayout>
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-4 p-6">
-          <GlassCard className="p-6 text-center">
-            <p className="text-lg font-semibold">War Center is restricted</p>
-            <p className="text-sm text-muted-foreground">
-              Your access level does not include War Prep visibility. Ask a leader to grant permission.
-            </p>
-          </GlassCard>
+      <>
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4 text-center px-4">
+          <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
+            <h2 className="text-xl font-bold text-red-400 mb-2">Access Denied</h2>
+            <p className="text-slate-300">You do not have permission to view the War Room.</p>
+            <p className="text-sm text-slate-500 mt-2">Required: Elder, Co-Leader, or Leader</p>
+          </div>
+          <Button variant="outline" onClick={() => router.push('/app')}>
+            Return to Dashboard
+          </Button>
         </div>
-      </DashboardLayout>
+      </>
     );
   }
 
   return (
-    <DashboardLayout clanName={clanName || undefined}>
+    <>
       <div className="mx-auto flex w-full max-w-[1920px] flex-col gap-6 p-4 md:p-6">
         <Breadcrumbs className="mb-2" />
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1728,9 +1736,8 @@ const WarCenterPage: React.FC = () => {
                           </div>
                           <div className="text-xs text-muted-foreground">
                             {opponentProfile.clan.warRecord
-                              ? `${opponentProfile.clan.warRecord.wins ?? 0}W-${opponentProfile.clan.warRecord.losses ?? 0}L ${
-                                  opponentProfile.clan.warRecord.winStreak ? `• Streak ${opponentProfile.clan.warRecord.winStreak}` : ''
-                                }`
+                              ? `${opponentProfile.clan.warRecord.wins ?? 0}W-${opponentProfile.clan.warRecord.losses ?? 0}L ${opponentProfile.clan.warRecord.winStreak ? `• Streak ${opponentProfile.clan.warRecord.winStreak}` : ''
+                              }`
                               : 'No war log'}
                           </div>
                         </div>
@@ -1974,7 +1981,7 @@ const WarCenterPage: React.FC = () => {
           </CollapsibleSection>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 };
 
@@ -2008,15 +2015,14 @@ const RosterList: React.FC<{
         return (
           <label
             key={player.tag}
-            className={`flex flex-col gap-1 rounded border px-3 py-2 transition ${
-              isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-primary'
-            } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
+            className={`flex flex-col gap-1 rounded border px-3 py-2 transition ${isSelected ? 'border-primary bg-primary/10' : 'border-border hover:border-primary'
+              } ${disabled ? 'cursor-not-allowed opacity-70' : 'cursor-pointer'}`}
           >
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 min-w-0 flex-1">
                 {isOptedIn && (
-                  <span 
-                    className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0" 
+                  <span
+                    className="h-2 w-2 rounded-full bg-emerald-500 flex-shrink-0"
                     title="War opt-in: This player has opted in to clan wars"
                   />
                 )}

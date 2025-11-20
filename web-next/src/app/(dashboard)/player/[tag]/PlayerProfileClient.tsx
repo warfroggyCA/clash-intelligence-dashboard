@@ -65,7 +65,8 @@ import { ErrorDisplay, categorizeError } from "@/components/ui/ErrorDisplay";
 import { playerProfileFetcher } from "@/lib/api/swr-fetcher";
 import { playerProfileSWRConfig } from "@/lib/api/swr-config";
 
-const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayout"), {
+// DashboardLayout is now provided by the parent layout
+// const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayout"), {
   ssr: false,
 });
 
@@ -2406,9 +2407,9 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   const aliasList = history?.aliases ?? [];
 
   const renderLoading = () => (
-    <DashboardLayout>
+    <>
       <PlayerProfileSkeleton />
-    </DashboardLayout>
+    </>
   );
 
   const renderError = () => {
@@ -2428,7 +2429,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   };
 
   return (
-    <DashboardLayout clanName={clanName && clanName.trim().length > 0 ? clanName : undefined}>
+    <> 0 ? clanName : undefined}>
       <div className="min-h-screen bg-slate-950/95 pb-20">
         <div className="w-full px-3 sm:px-4 pb-16 pt-6 sm:pt-10">
           <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3 text-sm text-slate-400">
@@ -4556,6 +4557,6 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
         )}
       </Modal>
 
-    </DashboardLayout>
+    </>
   );
 }

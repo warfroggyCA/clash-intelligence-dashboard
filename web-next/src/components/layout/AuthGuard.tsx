@@ -14,12 +14,17 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
   const needsOnboarding = useDashboardStore((state) => state.needsOnboarding);
   const pathname = usePathname();
   const router = useRouter();
+  const disableAuthGate = process.env.NEXT_PUBLIC_DISABLE_AUTH_GATE === 'true';
 
   // Ensure login links stay on the current host (for localhost development)
   const handleLoginClick = (e: React.MouseEvent) => {
     e.preventDefault();
     router.push('/login');
   };
+
+  if (disableAuthGate) {
+    return <>{children}</>;
+  }
 
   useEffect(() => {
     if (sessionStatus === 'idle') {

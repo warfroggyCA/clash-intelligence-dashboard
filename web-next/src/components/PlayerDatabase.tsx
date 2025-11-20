@@ -1,1 +1,1 @@
-export { default } from '@/app/player-database/PlayerDatabasePage';
+export { default } from '@/app/(dashboard)/player-database/PlayerDatabasePage';
