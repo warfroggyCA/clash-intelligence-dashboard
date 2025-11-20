@@ -67,8 +67,8 @@ import { playerProfileSWRConfig } from "@/lib/api/swr-config";
 
 // DashboardLayout is now provided by the parent layout
 // const DashboardLayout = dynamic(() => import("@/components/layout/DashboardLayout"), {
-  ssr: false,
-});
+//   ssr: false,
+// });
 
 type TabKey = "overview" | "history" | "evaluations" | "metrics" | "analysis" | "comparison";
 
