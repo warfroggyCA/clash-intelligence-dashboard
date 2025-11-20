@@ -2429,7 +2429,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
   };
 
   return (
-    <> 0 ? clanName : undefined}>
+    <>
       <div className="min-h-screen bg-slate-950/95 pb-20">
         <div className="w-full px-3 sm:px-4 pb-16 pt-6 sm:pt-10">
           <div className="mb-4 sm:mb-6 flex items-center gap-2 sm:gap-3 text-sm text-slate-400">
