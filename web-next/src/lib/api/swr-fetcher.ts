@@ -66,8 +66,8 @@ export async function rosterFetcher(url: string) {
   }
 
   // Import transform function
-  const { transformRosterApiResponse } = await import('@/app/simple-roster/roster-transform');
-  
+  const { transformRosterApiResponse } = await import('@/app/(dashboard)/simple-roster/roster-transform');
+
   // Transform the API response (apiData is the full response, transform expects RosterApiResponse)
   return transformRosterApiResponse(apiData as any);
 }
@@ -84,14 +84,14 @@ export async function playerProfileFetcher(url: string) {
   }
 
   const tag = decodeURIComponent(match[1]);
-  
+
   // Extract clanTag from URL query params if present
   const urlObj = new URL(url, window.location.origin);
   const clanTag = urlObj.searchParams.get('clanTag');
-  
+
   // Use existing fetch function (it already has retry logic)
   const { fetchPlayerProfileSupabase } = await import('@/lib/player-profile-supabase');
-  
+
   return fetchPlayerProfileSupabase(tag, clanTag);
 }
 
@@ -107,7 +107,7 @@ export async function insightsFetcher(url: string) {
     urlObj.searchParams.set('nocache', '1');
   }
   const finalUrl = urlObj.pathname + urlObj.search;
-  
+
   const response = await fetchWithRetry(
     finalUrl,
     {

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useShallow } from 'zustand/react/shallow';
 import useSWR from 'swr';
 import { ClipboardCheck, Copy, Check, Sparkles, Newspaper, Trophy, MessageSquare } from 'lucide-react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
 import LeadershipGuard, { LeadershipOnly } from '@/components/LeadershipGuard';
 import { QuickActions } from '@/components/layout/QuickActions';
 import IngestionMonitor from '@/components/layout/IngestionMonitor';
@@ -490,8 +489,7 @@ export default function LeadershipDashboard() {
 
   return (
     <LeadershipOnly className="min-h-screen w-full">
-      <DashboardLayout clanName={clanDisplayName && clanDisplayName.trim().length > 0 ? clanDisplayName : undefined} hideNavigation>
-        <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-8 space-y-8">
+      <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-8 space-y-8">
           <Breadcrumbs className="mb-4" />
           <div className="bg-gradient-to-r from-blue-900/30 to-purple-900/30 backdrop-blur-sm rounded-2xl p-8 border border-blue-500/20 shadow-2xl">
             <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-8">
@@ -911,7 +909,6 @@ export default function LeadershipDashboard() {
             urlParamName="tab"
           />
         </div>
-      </DashboardLayout>
     </LeadershipOnly>
   );
 }

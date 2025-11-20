@@ -8,7 +8,8 @@ import { TownHallBadge, LeagueBadge, HeroLevel } from '@/components/ui';
 import { calculateRushPercentage, getHeroCaps } from '@/lib/business/calculations';
 import type { Member, PlayerActivityTimelineEvent, MemberEnriched, ActivityEvidence } from '@/types';
 
-const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
+// DashboardLayout is now provided by the parent layout
+// const DashboardLayout = dynamic(() => import('@/components/layout/DashboardLayout'), { ssr: false });
 
 interface PlayerData {
   name: string;
@@ -258,7 +259,7 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
       : 'bg-red-200 text-red-900 border-red-300';
 
   return (
-    <DashboardLayout clanName={player.clan?.name || undefined}>
+    <>
       <div className="w-full px-4 sm:px-6 lg:px-10 xl:px-12 py-8 space-y-8">
         <button
           onClick={() => router.back()}
@@ -443,7 +444,7 @@ export default function SimplePlayerView({ tag }: SimplePlayerViewProps) {
           </div>
         </div>
       </div>
-    </DashboardLayout>
+    </>
   );
 }
 

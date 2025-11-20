@@ -4,6 +4,33 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.53.0] - 2025-01-15
+
+### Added
+- **App Shell Architecture** - New unified shell scaffolding system
+  - New `AppShell` component (`src/components/layout/AppShell.tsx`) for consistent page structure
+  - New dashboard route group (`src/app/(dashboard)/`) for organized routing
+  - Feature flag `NEXT_PUBLIC_ENABLE_APP_SHELL` to enable/disable app shell (default: false)
+  - `APP_SHELL_GUIDE.md` documentation for app shell implementation
+
+### Changed
+- **Architecture Refactoring** - Migrated to app shell pattern
+  - Consolidated page routes into dashboard route group
+  - Updated layout components to support app shell architecture
+  - Enhanced `DashboardLayout` with app shell integration
+  - Updated `AuthGuard`, `ClanSwitcher`, and `QuickActions` for shell compatibility
+
+### Fixed
+- **TypeScript Build Errors** - Resolved multiple type safety issues
+  - Fixed implicit `any` types in `DiscordPublisher.tsx` (PerformerStat, sort callbacks, map functions)
+  - Fixed `ApiResponse` type usage in AI war summary API
+  - Added explicit type annotations throughout Discord publisher component
+
+### Technical Details
+- App shell provides consistent navigation, header, and layout structure
+- Feature flag allows gradual rollout and testing of new architecture
+- All existing functionality preserved during migration
+
 ## [1.52.0] - 2025-11-19
 
 ### Added
