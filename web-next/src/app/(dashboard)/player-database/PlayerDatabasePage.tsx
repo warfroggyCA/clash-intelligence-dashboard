@@ -1119,7 +1119,7 @@ export default function PlayerDatabasePage() {
   }
 
   return (
-    <> 0 ? clanName : undefined}>
+    <>
       <div className="space-y-6">
         <Breadcrumbs className="mb-2" />
         {/* Header */}
