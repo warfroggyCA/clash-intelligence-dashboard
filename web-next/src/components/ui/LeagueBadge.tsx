@@ -80,8 +80,8 @@ const OCT2025_CANON: Record<string, string> = {
 };
 
 const toOct2025ImagePath = (name: string): string => {
-  // Map "Barbarian League" -> "/assets/Oct2025%20Leagues/Barbarian_League.png"
-  const file = `${name.replace(/\s+/g, '_')}.png`;
+  // Map "Barbarian League" -> "/assets/Oct2025%20Leagues/Barbarian_League_New.png"
+  const file = `${name.replace(/\s+/g, '_')}_New.png`;
   // Keep directory with space; browsers will request "%20" automatically
   return `/assets/Oct2025 Leagues/${file}`;
 };

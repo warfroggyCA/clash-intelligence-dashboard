@@ -4,6 +4,19 @@ All notable changes to this project will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [1.54.0] - 2025-01-15
+
+### Changed
+- **League Icons Update** - Updated all Oct 2025 ranked league icons to use new designs
+  - Replaced all 12 ranked league icons (Archer, Barbarian, Dragon, Electro, Golem, Legend, PEKKA, Skeleton, Titan, Valkyrie, Witch, Wizard) with new "_New" versions
+  - Updated `LeagueBadge` component to reference new icon files
+  - All league badges throughout the app now display updated designs
+
+### Technical Details
+- League icon paths now use `_New` suffix (e.g., `Barbarian_League_New.png`)
+- Legacy leagues (Bronze, Silver, Gold, etc.) remain unchanged
+- Icons located in `/assets/Oct2025 Leagues/` directory
+
 ## [1.53.0] - 2025-01-15
 
 ### Added
