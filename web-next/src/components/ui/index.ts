@@ -106,9 +106,37 @@ export {
 } from './MetricCard';
 
 export {
+  InfoCard,
+  type InfoCardProps,
+  type InfoCardBadge,
+  type InfoCardStat,
+  type InfoCardBadgeTone,
+} from './InfoCard';
+
+export {
+  MetricBar,
+  type MetricBarProps,
+  type MetricBarTone,
+} from './MetricBar';
+
+export {
+  Badge,
+  type BadgeProps,
+  type BadgeTier,
+} from './Badge';
+
+export {
+  BadgeToken,
+  type BadgeTokenProps,
+  type BadgeTokenTier,
+} from './BadgeToken';
+
+export {
   EmptyState,
   type EmptyStateProps,
 } from './EmptyState';
+
+export { SectionCard } from './SectionCard';
 
 export {
   SectionHeader,

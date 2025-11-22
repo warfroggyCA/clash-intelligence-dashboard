@@ -110,6 +110,12 @@ export interface WarPlanAnalysis {
   aiInput: WarPlanAIPayload | null;
   metrics: WarPlanMetrics;
   briefing: WarPlanBriefing;
+  aiSuggestedOrder?: AttackOrderSuggestion[] | null;
+}
+
+export interface AttackOrderSuggestion {
+  slot: number;
+  reason?: string | null;
 }
 
 export function generateWarPlanAnalysis(params: {
@@ -162,6 +168,7 @@ export function generateWarPlanAnalysis(params: {
     aiInput: null,
     metrics,
     briefing,
+    aiSuggestedOrder: null,
   };
 }
 

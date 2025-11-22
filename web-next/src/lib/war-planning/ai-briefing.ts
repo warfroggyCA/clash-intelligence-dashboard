@@ -4,6 +4,7 @@ import type {
   WarPlanBriefing,
   WarPlanProfile,
   WarPlanAIPayload,
+  AttackOrderSuggestion,
 } from './analysis';
 
 const MODEL_NAME = process.env.WAR_PLANNING_AI_MODEL || 'gpt-4o-mini';
@@ -63,7 +64,9 @@ export async function enhanceWarPlanAnalysis(
         },
         {
           role: 'user',
-          content: `${JSON.stringify(payload)}\n\nReturn a JSON object with keys: headline (string <= 100 chars), bullets (array of 3-6 punchy strategy insights), narrative (single paragraph), recommendations (array of 2-5 focused action items), optional confidenceBand (edge|balanced|underdog). Do not include additional keys.`,
+          content: `${JSON.stringify(
+            payload,
+          )}\n\nReturn a JSON object with keys: headline (string <= 100 chars), bullets (array of 3-6 punchy strategy insights), narrative (single paragraph), recommendations (array of 2-5 focused action items), optional confidenceBand (edge|balanced|underdog), and optional attackOrder (array up to 10 items, each { "slot": number, "reason": string <= 140 describing why that attacker should go at that point }). Do not include additional keys.`,
         },
       ],
       max_tokens: 700,
@@ -80,12 +83,18 @@ export async function enhanceWarPlanAnalysis(
       narrative?: string;
       recommendations?: string[];
       confidenceBand?: string;
+      attackOrder?: Array<{ slot?: number; reason?: string }>;
     };
+
+    const attackOrder = Array.isArray(parsed.attackOrder)
+      ? sanitizeAttackOrder(parsed.attackOrder)
+      : null;
 
     const updated: WarPlanAnalysis = {
       ...analysis,
       aiInput: payload,
       briefing: buildBriefingFromAI(parsed, analysis.briefing),
+      aiSuggestedOrder: attackOrder,
     };
 
     if (Array.isArray(parsed.recommendations) && parsed.recommendations.length) {
@@ -127,4 +136,19 @@ function buildBriefingFromAI(parsed: any, fallback: WarPlanBriefing): WarPlanBri
     source: 'openai',
     model: MODEL_NAME,
   };
+}
+
+function sanitizeAttackOrder(
+  entries: Array<{ slot?: number; reason?: string }>,
+): AttackOrderSuggestion[] {
+  return entries
+    .map((entry) => {
+      if (typeof entry?.slot !== 'number' || !Number.isFinite(entry.slot)) return null;
+      return {
+        slot: Math.max(1, Math.round(entry.slot)),
+        reason: typeof entry.reason === 'string' ? entry.reason.trim().slice(0, 200) : undefined,
+      };
+    })
+    .filter((entry): entry is AttackOrderSuggestion => Boolean(entry))
+    .slice(0, 10);
 }

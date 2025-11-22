@@ -146,7 +146,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
   // Members data for alerts
   const members: Member[] = useMemo(() => {
     return (roster?.members as Member[]) || [];
-  }, [roster?.members?.length]);
+  }, [roster?.members]);
 
   const memberNameLookup = useMemo(() => {
     const lookup = new Map<string, string>();
@@ -168,7 +168,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
     }
   }, [members]);
 
-  const priorityWeight: Record<Priority, number> = { high: 3, medium: 2, low: 1 };
+  const priorityWeight: Record<Priority, number> = useMemo(() => ({ high: 3, medium: 2, low: 1 }), []);
 
   const alertEvents: ActionEvent[] = useMemo(() => {
     return alerts.map((alert) => {
@@ -243,7 +243,7 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
         return bWeight - aWeight;
       })
       .slice(0, 8);
-  }, [alertEvents, changeEvents]);
+  }, [alertEvents, changeEvents, priorityWeight]);
 
   const highlightCards: HighlightCard[] = useMemo(() => {
     const highlights = smartInsights?.briefing?.highlights ?? [];

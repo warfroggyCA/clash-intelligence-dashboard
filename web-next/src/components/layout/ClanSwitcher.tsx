@@ -67,7 +67,7 @@ export function ClanSwitcher() {
     } finally {
       setLoading(false);
     }
-  }, [leadershipClanTagSet]);
+  }, [leadershipClanTagSet, isDevMode]);
 
   useEffect(() => {
     if (!canUseSwitcher) {

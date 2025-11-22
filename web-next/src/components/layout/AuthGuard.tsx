@@ -22,10 +22,6 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     router.push('/login');
   };
 
-  if (disableAuthGate) {
-    return <>{children}</>;
-  }
-
   useEffect(() => {
     if (sessionStatus === 'idle') {
       hydrateSession();
@@ -38,20 +34,19 @@ export const AuthGate: React.FC<{ children: React.ReactNode }> = ({ children }) 
     }
   }, [sessionStatus, needsOnboarding, pathname, router]);
 
+  if (disableAuthGate) {
+    return <>{children}</>;
+  }
+
   if (sessionStatus === 'idle' || sessionStatus === 'loading') {
     return (
-      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-5 px-6 text-center">
+      <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-6 text-center text-slate-300">
+        <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-clash-gold" />
         <div className="space-y-2">
-          <h2 className="text-2xl font-semibold">Checking access…</h2>
-          <p className="text-sm text-muted-foreground max-w-sm">
-            Hang tight while we verify your leadership credentials. If this message doesn’t clear, head back to the sign-in page and try again.
+          <h2 className="text-xl font-semibold text-white">Verifying session…</h2>
+          <p className="text-sm text-slate-400 max-w-sm">
+            Loading your clan credentials. This happens automatically—no action needed unless it fails to continue.
           </p>
-        </div>
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-12 w-12 animate-spin rounded-full border-2 border-slate-200 border-t-clash-gold" />
-          <Button variant="outline" onClick={handleLoginClick}>
-            Return to Sign In
-          </Button>
         </div>
       </div>
     );
