@@ -199,6 +199,7 @@ type MatchupAnalysis = {
   metrics?: WarPlanMetrics;
   briefing?: WarPlanBriefing;
   aiInput?: WarPlanAIPayload | null;
+  aiSuggestedOrder?: Array<{ slot: number; reason?: string | null }> | null;
 };
 
 type MatchupResponse = {
