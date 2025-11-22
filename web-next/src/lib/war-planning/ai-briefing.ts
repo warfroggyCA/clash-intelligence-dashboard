@@ -141,14 +141,14 @@ function buildBriefingFromAI(parsed: any, fallback: WarPlanBriefing): WarPlanBri
 function sanitizeAttackOrder(
   entries: Array<{ slot?: number; reason?: string }>,
 ): AttackOrderSuggestion[] {
-  return entries
-    .map((entry) => {
-      if (typeof entry?.slot !== 'number' || !Number.isFinite(entry.slot)) return null;
-      return {
-        slot: Math.max(1, Math.round(entry.slot)),
-        reason: typeof entry.reason === 'string' ? entry.reason.trim().slice(0, 200) : undefined,
-      };
-    })
-    .filter((entry): entry is AttackOrderSuggestion => Boolean(entry))
-    .slice(0, 10);
+  const results: AttackOrderSuggestion[] = [];
+  for (const entry of entries) {
+    if (typeof entry?.slot !== 'number' || !Number.isFinite(entry.slot)) continue;
+    results.push({
+      slot: Math.max(1, Math.round(entry.slot)),
+      reason: typeof entry.reason === 'string' ? entry.reason.trim().slice(0, 200) : undefined,
+    });
+    if (results.length >= 10) break;
+  }
+  return results;
 }
