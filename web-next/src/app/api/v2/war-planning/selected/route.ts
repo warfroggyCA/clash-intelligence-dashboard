@@ -59,6 +59,10 @@ export async function POST(req: NextRequest) {
         const war = member.war ?? {};
         const builderBase = member.builderBase ?? {};
 
+        const heroes = member.heroLevels ?? payload.heroLevels ?? {};
+        const heroValue = (value: unknown) =>
+          typeof value === 'number' && Number.isFinite(value) ? value : null;
+
         const baseSummary = {
           tag,
           name: member.name ?? tag,
@@ -69,6 +73,15 @@ export async function POST(req: NextRequest) {
           defenseWins: war.defenseWins ?? null,
           builderHallLevel: builderBase.hallLevel ?? null,
           lastUpdated: row.snapshot_date ?? null,
+          heroLevels: {
+            bk: heroValue(heroes?.bk),
+            aq: heroValue(heroes?.aq),
+            gw: heroValue(heroes?.gw),
+            rc: heroValue(heroes?.rc),
+            mp: heroValue(heroes?.mp),
+          },
+          rankedTrophies: ranked.trophies ?? null,
+          role: member.role ?? null,
         };
 
         return {

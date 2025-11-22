@@ -9,7 +9,7 @@ import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
 import { TabNavigation } from './TabNavigation';
-import { QuickActions } from './QuickActions';
+import { SidebarQuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
 import NewSnapshotIndicator from './NewSnapshotIndicator';
@@ -346,25 +346,25 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
     >
       <div className={`relative z-10 w-full px-4 lg:px-6 ${isScrolled ? 'py-3' : 'py-6'}`}>
         <div className="grid gap-4 sm:grid-cols-[auto,1fr,auto] sm:items-center">
-          <div className="flex flex-col gap-1 text-left">
+          <div className="flex flex-col gap-1 text-left hidden sm:flex">
             <p className="text-[11px] uppercase tracking-[0.28em] text-slate-400">Clash Intelligence</p>
             <span className="text-sm font-semibold text-slate-200">Dashboard</span>
           </div>
-          <div className="flex flex-col items-center gap-2 text-center">
-            <div className="flex items-center justify-center gap-3">
-              <Link href="/app" className="relative flex h-12 w-12 items-center justify-center sm:h-14 sm:w-14 hover:opacity-80 transition-opacity cursor-pointer" title="Go to Roster">
+          <div className="flex flex-col items-start sm:items-center gap-2 text-left sm:text-center flex-1 sm:flex-none">
+            <div className="flex items-center justify-start sm:justify-center gap-3">
+              <Link href="/app" className="relative flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center hover:opacity-80 transition-opacity cursor-pointer" title="Go to Roster">
                 <Image
                   src={logoSrc}
                   alt="Clan Logo"
                   fill
-                  sizes="(max-width: 640px) 3rem, 3rem"
-                  className="rounded-3xl object-cover"
+                  sizes="(max-width: 640px) 2.5rem, 3.5rem"
+                  className="rounded-full sm:rounded-3xl object-cover"
                   priority
                 />
               </Link>
               <Link
                 href="/app"
-                className={`font-semibold leading-tight text-slate-100 transition-all duration-200 hover:text-white hover:scale-105 cursor-pointer ${isScrolled ? 'text-2xl sm:text-3xl' : 'text-3xl sm:text-4xl'}`}
+                className={`font-semibold leading-tight text-slate-100 transition-all duration-200 hover:text-white hover:scale-105 cursor-pointer ${isScrolled ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-4xl'}`}
                 style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
                 title="Go to Roster"
               >
@@ -584,11 +584,10 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const disableTabNavigation = process.env.NEXT_PUBLIC_DISABLE_TAB_NAV === 'true';
   const enableAppShell = process.env.NEXT_PUBLIC_ENABLE_APP_SHELL === 'true';
 
-  const toolbarContent = hideNavigation
+  const appShellToolbar = hideNavigation
     ? null
     : (
       <div className="flex flex-col gap-1.5 sm:gap-2">
-        <QuickActions className="w-full" />
         <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
           {disableTabNavigation ? (
             <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
@@ -598,6 +597,8 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
         </div>
       </div>
     );
+
+  const toolbarContent = appShellToolbar;
 
   const footerContent = (
     <footer className="w-full bg-gray-800 border-t border-gray-600 mt-12">
@@ -664,8 +665,9 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <AuthGate>
         <AppShell
           headerContent={<DashboardHeader fallbackClanName={fallbackClanName} explicitClanName={propClanName} showClanSwitcher={false} />}
-          toolbarContent={toolbarContent}
+          toolbarContent={appShellToolbar}
           sidebarHeader={sidebarHeaderContent}
+          sidebarFooter={<SidebarQuickActions />}
         >
           <>
             {mainContent}

@@ -51,6 +51,7 @@ if (process.env.NEXT_PUBLIC_ENABLE_APP_SHELL === 'true') {
 - **Sidebar Links:** Placeholders (Dashboard, War Room, Analytics, Leadership).
 - **Brand Mark:** "CI" text (placeholder for Clan Logo/Switcher).
 - **Integration:** Only `DashboardLayout` is currently wired up.
+- **Quick Actions:** The `SidebarQuickActions` component is injected via `sidebarFooter`, so the Refresh / Export / War Prep controls now live at the bottom of the drawer (no longer in the main content area).
 
 ## Next Steps
 1. Enable flag locally to verify visual layout.
