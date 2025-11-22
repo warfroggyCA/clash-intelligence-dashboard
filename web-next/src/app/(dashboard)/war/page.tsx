@@ -2155,8 +2155,8 @@ const RosterList: React.FC<{
         const heroLevels = details?.heroLevels ?? player.heroLevels ?? {};
         const warStars = details?.warStars ?? player.warStars ?? '—';
         const trophies = details?.trophies ?? player.trophies ?? null;
-        const attackWins = details?.attackWins ?? player.attackWins ?? null;
-        const defenseWins = details?.defenseWins ?? player.defenseWins ?? null;
+        const attackWins = details?.attackWins ?? null;
+        const defenseWins = details?.defenseWins ?? null;
         const role = details?.role ?? player.role ?? null;
         return (
           <label
