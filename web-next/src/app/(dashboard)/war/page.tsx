@@ -8,7 +8,7 @@ import { CollapsibleSection } from '@/components/ui/CollapsibleSection';
 import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 import { WorkflowSteps } from '@/components/war/WorkflowSteps';
 import { normalizeTag } from '@/lib/tags';
-import type { WarPlanAIPayload } from '@/lib/war-planning/analysis';
+import type { AttackOrderSuggestion, WarPlanAIPayload } from '@/lib/war-planning/analysis';
 import { useLeadership } from '@/hooks/useLeadership';
 import { TOOLTIP_CONTENT } from '@/lib/tooltips/tooltip-content';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
@@ -226,6 +226,21 @@ type SavedPlan = {
   opponentClanName?: string | null;
 };
 
+type ParticipantDetail = {
+  tag: string;
+  name?: string;
+  thLevel?: number | null;
+  trophies?: number | null;
+  rankedTrophies?: number | null;
+  warStars?: number | null;
+  attackWins?: number | null;
+  defenseWins?: number | null;
+  builderHallLevel?: number | null;
+  lastUpdated?: string | null;
+  heroLevels?: HeroLevels | null;
+  role?: string | null;
+};
+
 const EMPTY_HERO_LEVELS: HeroLevels = { bk: null, aq: null, gw: null, rc: null, mp: null };
 
 function buildRosterFromProfile(profile?: OpponentProfile | null): RosterMember[] {
@@ -348,6 +363,10 @@ const WarCenterPage: React.FC = () => {
 
   const [ourSelection, setOurSelection] = useState<Set<string>>(new Set());
   const [opponentSelection, setOpponentSelection] = useState<Set<string>>(new Set());
+  const [showOurSelectedOnly, setShowOurSelectedOnly] = useState(false);
+  const [showOpponentSelectedOnly, setShowOpponentSelectedOnly] = useState(false);
+  const [ourParticipantDetails, setOurParticipantDetails] = useState<Record<string, ParticipantDetail>>({});
+  const [opponentParticipantDetails, setOpponentParticipantDetails] = useState<Record<string, ParticipantDetail>>({});
 
   const [loadingOurRoster, setLoadingOurRoster] = useState(false);
   const [loadingOpponents, setLoadingOpponents] = useState(false);
@@ -583,9 +602,53 @@ const WarCenterPage: React.FC = () => {
     return { ourSelectedRoster, opponentSelectedRoster };
   }, [ourRoster, opponentRoster, normalizedOurSelection, normalizedOpponentSelection]);
 
-  const fetchOurRoster = useCallback(async (options?: { preserveSelection?: boolean }) => {
+  const fetchParticipantDetails = useCallback(
+    async (
+      tags: Set<string>,
+      setter: React.Dispatch<React.SetStateAction<Record<string, ParticipantDetail>>>,
+      clanTag?: string | null,
+    ) => {
+      const normalizedTags = Array.from(tags)
+        .map((tag) => normalizeTag(tag))
+        .filter((tag): tag is string => Boolean(tag));
+      if (!normalizedTags.length) {
+        setter({});
+        return;
+      }
+      try {
+        const res = await fetch('/api/v2/war-planning/selected', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            selectedTags: normalizedTags,
+            clanTag: clanTag || undefined,
+          }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body?.success) {
+          console.warn('[WarPlanning] Failed to fetch participant details', body?.error);
+          return;
+        }
+        const next: Record<string, ParticipantDetail> = {};
+        (body.data?.opponents ?? []).forEach((entry: ParticipantDetail) => {
+          const key = normalizeTag(entry.tag) ?? entry.tag;
+          if (key) {
+            next[key] = entry;
+          }
+        });
+        setter(next);
+      } catch (error) {
+        console.warn('[WarPlanning] Participant enrichment failed', error);
+      }
+    },
+    [],
+  );
+
+  const fetchOurRoster = useCallback(async (options?: { preserveSelection?: boolean; preserveAnalysis?: boolean }) => {
     setOurRosterError(null);
-    setMatchup(null);
+    if (!options?.preserveAnalysis) {
+      setMatchup(null);
+    }
     setLoadingOurRoster(true);
     try {
       const params = new URLSearchParams();
@@ -613,7 +676,7 @@ const WarCenterPage: React.FC = () => {
     }
   }, [normalizedOurClanTag]);
 
-  const fetchOpponents = useCallback(async (options?: { preserveSelection?: boolean }) => {
+  const fetchOpponents = useCallback(async (options?: { preserveSelection?: boolean; preserveAnalysis?: boolean }) => {
     if (!normalizedOpponentTag || normalizedOpponentTag.length < 5) {
       setOpponentError('Enter the full opponent clan tag (at least 5 characters).');
       setOpponentRoster([]);
@@ -622,7 +685,9 @@ const WarCenterPage: React.FC = () => {
       return;
     }
     setOpponentError(null);
-    setMatchup(null);
+    if (!options?.preserveAnalysis) {
+      setMatchup(null);
+    }
     setLoadingOpponents(true);
     try {
       const params = new URLSearchParams();
@@ -747,7 +812,7 @@ const WarCenterPage: React.FC = () => {
           }
 
           if (detectedTag) {
-            void fetchOpponents({ preserveSelection: true });
+            void fetchOpponents({ preserveSelection: true, preserveAnalysis: Boolean(savedPlan?.analysis) });
           }
         } finally {
           clearTimeout(timeout);
@@ -769,6 +834,7 @@ const WarCenterPage: React.FC = () => {
       opponentProfile,
       router,
       fetchOpponents,
+      savedPlan,
     ],
   );
 
@@ -980,6 +1046,8 @@ const WarCenterPage: React.FC = () => {
     setSavedPlan(null);
     setUseAI(true);
     setOpponentClanName('');
+    setOurParticipantDetails({});
+    setOpponentParticipantDetails({});
   }, [normalizedOurClanTag]);
 
   useEffect(() => {
@@ -989,6 +1057,21 @@ const WarCenterPage: React.FC = () => {
     setSavedPlan(nextPlan);
     savePlanToLocal(nextPlan);
   }, [opponentClanName, savedPlan, savePlanToLocal]);
+  useEffect(() => {
+    if (!ourSelection.size) {
+      setOurParticipantDetails({});
+      return;
+    }
+    void fetchParticipantDetails(ourSelection, setOurParticipantDetails, normalizedOurClanTag);
+  }, [ourSelection, normalizedOurClanTag, fetchParticipantDetails]);
+
+  useEffect(() => {
+    if (!opponentSelection.size) {
+      setOpponentParticipantDetails({});
+      return;
+    }
+    void fetchParticipantDetails(opponentSelection, setOpponentParticipantDetails, normalizedOurClanTag);
+  }, [opponentSelection, normalizedOurClanTag, fetchParticipantDetails]);
 
   const applyPlan = useCallback(
     (plan: SavedPlan, options?: { message?: string }) => {
@@ -1104,6 +1187,18 @@ const WarCenterPage: React.FC = () => {
     setOpponentSelection(new Set(pending.opponentSelection ?? []));
     pendingPlanRef.current = null;
   }, [opponentRoster, normalizedOpponentTag]);
+
+  useEffect(() => {
+    const pending = pendingPlanRef.current;
+    if (!pending) return;
+    const pendingTag = normalizeTag(pending.opponentClanTag ?? '');
+    if (!pendingTag || pendingTag !== normalizedOpponentTag) return;
+    if (opponentRoster.length) return;
+    void fetchOpponents({
+      preserveSelection: true,
+      preserveAnalysis: Boolean(pending.analysis),
+    });
+  }, [normalizedOpponentTag, opponentRoster.length, fetchOpponents]);
 
   // Only poll for analysis status when actively queued/running, and stop after completion or timeout
   useEffect(() => {
@@ -1549,6 +1644,7 @@ const WarCenterPage: React.FC = () => {
     normalizedOpponentTag,
     clanName,
     opponentClanName,
+    opponentProfile?.clan?.name,
   ]);
 
   const handleLoadPlanClick = useCallback(() => {
@@ -1767,6 +1863,15 @@ const WarCenterPage: React.FC = () => {
                 <GlassCard className="p-4">
                   <SectionTitle title="Our Roster">
                     <div className="flex gap-2">
+                      {ourRosterLoaded && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowOurSelectedOnly((prev) => !prev)}
+                        >
+                          {showOurSelectedOnly ? 'Show All' : 'Show Selected'}
+                        </Button>
+                      )}
                       <Button variant="secondary" onClick={() => fetchOurRoster()} disabled={loadingOurRoster}>
                         {loadingOurRoster ? 'Loading…' : 'Refresh'}
                       </Button>
@@ -1790,6 +1895,8 @@ const WarCenterPage: React.FC = () => {
                         onToggle={(tag) => toggleSelection(tag, 'our')}
                         emptyMessage="No members found for this clan."
                         disabled={!canManageWarPlans}
+                        showSelectedOnly={showOurSelectedOnly}
+                        detailsMap={ourParticipantDetails}
                       />
                     ) : (
                       <p className="text-sm text-muted-foreground">Load your roster to start selecting participants.</p>
@@ -1799,9 +1906,20 @@ const WarCenterPage: React.FC = () => {
 
                 <GlassCard className="p-4">
                   <SectionTitle title="Opponent Roster">
-                    <Button variant="secondary" onClick={() => fetchOpponents()} disabled={loadingOpponents}>
-                      {loadingOpponents ? 'Loading…' : 'Fetch Opponent'}
-                    </Button>
+                    <div className="flex gap-2">
+                      {opponentRosterLoaded && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowOpponentSelectedOnly((prev) => !prev)}
+                        >
+                          {showOpponentSelectedOnly ? 'Show All' : 'Show Selected'}
+                        </Button>
+                      )}
+                      <Button variant="secondary" onClick={() => fetchOpponents()} disabled={loadingOpponents}>
+                        {loadingOpponents ? 'Loading…' : 'Fetch Opponent'}
+                      </Button>
+                    </div>
                   </SectionTitle>
                   <div className="flex flex-col gap-3">
                     <label className="flex flex-col gap-1 text-sm">
@@ -1832,6 +1950,8 @@ const WarCenterPage: React.FC = () => {
                         onToggle={(tag) => toggleSelection(tag, 'opponent')}
                         emptyMessage="No opponent members returned."
                         disabled={!canManageWarPlans}
+                        showSelectedOnly={showOpponentSelectedOnly}
+                        detailsMap={opponentParticipantDetails}
                       />
                     ) : (
                       <p className="text-sm text-muted-foreground">Fetch the opponent roster to choose targets for enrichment.</p>
@@ -2002,16 +2122,42 @@ const RosterList: React.FC<{
   onToggle: (tag: string) => void;
   emptyMessage: string;
   disabled?: boolean;
-}> = ({ roster, selection, onToggle, emptyMessage, disabled = false }) => {
-  if (!roster.length) {
+  showSelectedOnly?: boolean;
+  detailsMap?: Record<string, ParticipantDetail>;
+}> = ({
+  roster,
+  selection,
+  onToggle,
+  emptyMessage,
+  disabled = false,
+  showSelectedOnly = false,
+  detailsMap,
+}) => {
+  const displayRoster = showSelectedOnly
+    ? roster.filter((member) => (member.tag ? selection.has(member.tag) : false))
+    : roster;
+
+  if (!displayRoster.length) {
+    if (showSelectedOnly) {
+      return <p className="text-sm text-muted-foreground">No participants selected yet.</p>;
+    }
     return <p className="text-sm text-muted-foreground">{emptyMessage}</p>;
   }
 
   return (
-    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {roster.map((player) => {
+    <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      {displayRoster.map((player) => {
+        const normalizedTag = normalizeTag(player.tag ?? '') ?? player.tag;
+        const details = normalizedTag ? detailsMap?.[normalizedTag] : undefined;
         const isSelected = selection.has(player.tag);
         const isOptedIn = player.warPreference === 'in';
+        const thLevel = details?.thLevel ?? player.thLevel ?? '—';
+        const heroLevels = details?.heroLevels ?? player.heroLevels ?? {};
+        const warStars = details?.warStars ?? player.warStars ?? '—';
+        const trophies = details?.trophies ?? player.trophies ?? null;
+        const attackWins = details?.attackWins ?? player.attackWins ?? null;
+        const defenseWins = details?.defenseWins ?? player.defenseWins ?? null;
+        const role = details?.role ?? player.role ?? null;
         return (
           <label
             key={player.tag}
@@ -2042,9 +2188,13 @@ const RosterList: React.FC<{
             </div>
             <div className="text-xs text-muted-foreground space-y-1">
               <div>Tag: {player.tag}</div>
-              <div>TH: {player.thLevel ?? '—'}</div>
-              <div>Heroes: {formatHeroSummary(player.heroLevels)}</div>
-              <div>War Stars: {player.warStars ?? '—'}</div>
+              <div>TH: {thLevel}</div>
+              <div>Heroes: {formatHeroSummary(heroLevels)}</div>
+              <div>War Stars: {warStars ?? '—'}</div>
+              {role && <div>Role: {role}</div>}
+              {trophies != null && <div>Trophies: {trophies}</div>}
+              {attackWins != null && <div>Attack Wins: {attackWins}</div>}
+              {defenseWins != null && <div>Defense Wins: {defenseWins}</div>}
               <div>Activity: {player.activityScore ?? '—'}</div>
             </div>
           </label>
@@ -2061,7 +2211,12 @@ const MatchupResult: React.FC<{
 }> = ({ matchup }) => {
   const { analysis } = matchup;
   const recommendations = analysis.recommendations ?? [];
-  const slotBreakdown = analysis.slotBreakdown ?? [];
+  const slotBreakdown = useMemo(() => analysis.slotBreakdown ?? [], [analysis.slotBreakdown]);
+  const suggestedOrder = useMemo(() => buildSuggestedAttackOrder(slotBreakdown, 6), [slotBreakdown]);
+  const aiSuggestedOrder = useMemo(
+    () => resolveAttackOrderDisplay(analysis.aiSuggestedOrder ?? [], slotBreakdown, 6),
+    [analysis.aiSuggestedOrder, slotBreakdown],
+  );
   const metrics = analysis.metrics;
   const briefing = analysis.briefing;
 
@@ -2138,6 +2293,53 @@ const MatchupResult: React.FC<{
             ]}
           />
         </div>
+      )}
+
+      {aiSuggestedOrder.length > 0 && (
+        <GlassCard className="p-4 space-y-3 border border-primary/30 bg-primary/5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">AI Suggested Attack Order</h3>
+            <span className="text-xs text-muted-foreground uppercase tracking-[0.3em]">
+              AI
+            </span>
+          </div>
+          <ol className="space-y-2 text-sm">
+            {aiSuggestedOrder.map((entry, idx) => (
+              <li key={`ai-${entry.slot}-${idx}`} className="flex flex-col">
+                <span className="font-semibold">
+                  {idx + 1}. Slot {entry.slot}: {entry.ourName ?? `Attacker ${entry.slot}`} →{' '}
+                  {entry.opponentName ?? 'Target'}
+                </span>
+                {entry.reason && <span className="text-xs text-muted-foreground">{entry.reason}</span>}
+              </li>
+            ))}
+          </ol>
+          <p className="text-[11px] text-muted-foreground">
+            Generated by the AI briefing. Use as a guide and adjust based on clan context.
+          </p>
+        </GlassCard>
+      )}
+
+      {suggestedOrder.length > 0 && (
+        <GlassCard className="p-4 space-y-3 border border-amber-400/30 bg-amber-500/5">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Suggested Attack Order</h3>
+            <span className="text-xs text-muted-foreground uppercase tracking-[0.3em]">Heuristic</span>
+          </div>
+          <ol className="space-y-2 text-sm">
+            {suggestedOrder.map((entry, idx) => (
+              <li key={entry.slot} className="flex flex-col">
+                <span className="font-semibold">
+                  {idx + 1}. Slot {entry.slot}: {entry.ourName ?? `Attacker ${entry.slot}`} → {entry.opponentName ?? 'Target'}
+                </span>
+                <span className="text-xs text-muted-foreground">{entry.reason}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="text-[11px] text-muted-foreground">
+            Suggestions prioritize strong matchups to open the war. Leadership can reorder as needed.
+          </p>
+        </GlassCard>
       )}
 
       <GlassCard className="p-4">
@@ -2408,6 +2610,28 @@ function buildDiscordWarBrief(
       const opp = slot.opponentName || slot.opponentTag || 'Target';
       lines.push(`${slot.slot}) ${ours} → ${opp} — ${slot.summary}`);
     });
+
+    const aiOrder = resolveAttackOrderDisplay(analysis.aiSuggestedOrder ?? [], slots, 5);
+    if (aiOrder.length) {
+      lines.push('');
+      lines.push('__Suggested Attack Order (AI)__');
+      aiOrder.forEach((entry, idx) => {
+        const ours = entry.ourName || entry.ourTag || `Slot ${entry.slot}`;
+        const opp = entry.opponentName || entry.opponentTag || 'Target';
+        lines.push(`${idx + 1}. ${ours} → ${opp}${entry.reason ? ` — ${entry.reason}` : ''}`);
+      });
+    }
+
+    const suggested = buildSuggestedAttackOrder(slots, 5);
+    if (suggested.length) {
+      lines.push('');
+      lines.push('__Suggested Attack Order (heuristic)__');
+      suggested.forEach((entry, idx) => {
+        const ours = entry.ourName || entry.ourTag || `Slot ${entry.slot}`;
+        const opp = entry.opponentName || entry.opponentTag || 'Target';
+        lines.push(`${idx + 1}. ${ours} → ${opp} (${entry.reason})`);
+      });
+    }
   }
 
   lines.push('');
@@ -2415,6 +2639,105 @@ function buildDiscordWarBrief(
     `Generated ${formatTimestamp(analysis.briefing?.generatedAt ?? new Date().toISOString())} • Source: ${formatBriefingSource(analysis.briefing)}`,
   );
   return lines.join('\n');
+}
+
+interface SuggestedAttackEntry {
+  slot: number;
+  ourName: string | null;
+  ourTag: string | null;
+  opponentName: string | null;
+  opponentTag: string | null;
+  reason: string;
+  score: number;
+}
+
+function buildSuggestedAttackOrder(slotBreakdown: SlotBreakdown[], limit = 5): SuggestedAttackEntry[] {
+  if (!slotBreakdown.length) return [];
+  const scored = slotBreakdown.map<SuggestedAttackEntry>((slot) => {
+    const thScore = (slot.thDiff ?? 0) * 12;
+    const heroScore = slot.heroDiff ?? 0;
+    const rankedScore = Math.max(Math.min((slot.rankedDiff ?? 0) / 50, 4), -4);
+    const warStarScore = Math.max(Math.min((slot.warStarDiff ?? 0) / 100, 3), -3);
+    const score = thScore + heroScore + rankedScore + warStarScore;
+    return {
+      slot: slot.slot,
+      ourName: slot.ourName,
+      ourTag: slot.ourTag,
+      opponentName: slot.opponentName,
+      opponentTag: slot.opponentTag,
+      reason: summarizeSlotReason(slot),
+      score,
+    };
+  });
+
+  return scored
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map((entry) => ({
+      ...entry,
+      reason: entry.score >= 0 ? entry.reason : `${entry.reason} • needs support`,
+    }));
+}
+
+function summarizeSlotReason(slot: SlotBreakdown): string {
+  const parts: string[] = [];
+  if (slot.thDiff) {
+    parts.push(`TH ${slot.thDiff > 0 ? '+' : ''}${slot.thDiff}`);
+  }
+  if (Math.abs(slot.heroDiff) >= 1) {
+    parts.push(`Heroes ${slot.heroDiff > 0 ? '+' : ''}${slot.heroDiff.toFixed(1)}`);
+  }
+  if (Math.abs(slot.rankedDiff) >= 100) {
+    parts.push(`Rank ${slot.rankedDiff > 0 ? '+' : ''}${slot.rankedDiff}`);
+  }
+  if (Math.abs(slot.warStarDiff) >= 100) {
+    parts.push(`War stars ${slot.warStarDiff > 0 ? '+' : ''}${slot.warStarDiff}`);
+  }
+  if (!parts.length) {
+    return slot.summary;
+  }
+  return parts.join(', ');
+}
+
+interface DisplayAttackEntry {
+  slot: number;
+  ourName: string | null;
+  ourTag: string | null;
+  opponentName: string | null;
+  opponentTag: string | null;
+  reason?: string;
+}
+
+function resolveAttackOrderDisplay(
+  entries: Array<{ slot: number; reason?: string | null }> | null | undefined,
+  slotBreakdown: SlotBreakdown[],
+  limit = 5,
+): DisplayAttackEntry[] {
+  if (!entries || !entries.length) return [];
+  const slotMap = new Map(slotBreakdown.map((slot) => [slot.slot, slot]));
+  return entries
+    .map((entry) => {
+      const slot = slotMap.get(entry.slot);
+      if (!slot) {
+        return {
+          slot: entry.slot,
+          ourName: null,
+          ourTag: null,
+          opponentName: null,
+          opponentTag: null,
+          reason: entry.reason ?? undefined,
+        };
+      }
+      return {
+        slot: entry.slot,
+        ourName: slot.ourName ?? null,
+        ourTag: slot.ourTag ?? null,
+        opponentName: slot.opponentName ?? null,
+        opponentTag: slot.opponentTag ?? null,
+        reason: entry.reason && entry.reason.length ? entry.reason : summarizeSlotReason(slot),
+      };
+    })
+    .slice(0, limit);
 }
 
 export default WarCenterPage;
