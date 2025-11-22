@@ -17,13 +17,14 @@
  * Last Updated: January 2025
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useId } from 'react';
 import { useDashboardStore, selectors, useShallow } from '@/lib/stores/dashboard-store';
 import { Button } from '@/components/ui';
 import { api } from '@/lib/api/client';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import { formatRosterSummary } from '@/lib/export/roster-export';
 import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
+import { ChevronDown } from 'lucide-react';
 
 // =============================================================================
 // TYPES
@@ -408,6 +409,7 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
   const insightsEnabled = process.env.NEXT_PUBLIC_ENABLE_INSIGHTS === 'true';
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [exportAnchor, setExportAnchor] = useState<'desktop' | 'mobile'>('desktop');
+  const [isCollapsed, setIsCollapsed] = useState(true);
   const exportMenuRef = useRef<HTMLDivElement>(null);
   const snapshotMetadata = useDashboardStore(selectors.snapshotMetadata);
 
@@ -525,79 +527,104 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
   return (
     <div className={`${className || ''} space-y-3`} ref={exportMenuRef}>
       {/* Compact mobile quick actions */}
-      <section className="rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/80 px-3 py-3 text-slate-100 shadow-[0_8px_20px_-16px_rgba(8,15,31,0.65)] sm:hidden">
-        <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.28em] text-slate-400">
-          <span>Quick Actions</span>
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 font-semibold ${statusTone}`}>
-            <span className="h-1.5 w-1.5 rounded-full bg-current" />
-            {statusLabel}
-          </span>
-        </div>
-        <p className="mt-1 text-[11px] text-slate-400 line-clamp-2">{snapshotSummary}</p>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          <Button
-            onClick={handleRefreshAll}
-            disabled={!hasData || isRefreshingAll}
-            loading={isRefreshingAll}
-            variant="primary"
-            size="sm"
-            className="w-full text-xs py-2"
-          >
-            Refresh
-          </Button>
-          <a
-            href="/war/prep"
-            className="w-full inline-flex items-center justify-center rounded-xl border border-blue-500/40 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-lg"
-            title="War Prep workspace (opens new page)"
-          >
-            War Prep
-          </a>
-          <Button
-            onClick={handleCopySnapshotSummary}
-            disabled={!hasData || isCopyingSnapshot}
-            loading={isCopyingSnapshot}
-            variant="primary"
-            size="sm"
-            className="w-full text-xs py-2"
-          >
-            Copy Summary
-          </Button>
-          <Button
-            onClick={handleGenerateInsightsSummary}
-            disabled={!hasData || isGeneratingSummary || !insightsEnabled}
-            loading={isGeneratingSummary}
-            variant="outline"
-            size="sm"
-            className="w-full text-xs py-2"
-            title={insightsEnabled ? 'Generate daily summary with automated insights' : 'Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)'}
-          >
-            Insights
-          </Button>
-        </div>
-        <div className="mt-2 grid grid-cols-2 gap-2">
-          <div className="relative">
-            <Button
-              onClick={() => {
-                setExportAnchor('mobile');
-                setShowExportMenu((prev) => !prev);
-              }}
-              disabled={!hasData || isExporting}
-              variant="primary"
-              size="sm"
-              className="w-full text-xs py-2"
-            >
-              Export
-            </Button>
-            {showExportMenu && exportAnchor === 'mobile' && renderExportMenu('mobile')}
+      <section className="rounded-2xl border border-brand-border/50 bg-brand-surfaceRaised/80 px-3 py-3 text-slate-100 shadow-[0_8px_20px_-16px_rgba(8,15,31,0.65)] sm:hidden transition-all duration-300">
+        <div
+          className="flex items-center justify-between cursor-pointer"
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-[11px] uppercase tracking-[0.28em] text-slate-400 font-semibold">Quick Actions</span>
+            <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${statusTone}`}>
+              <span className="h-1.5 w-1.5 rounded-full bg-current" />
+              {statusLabel}
+            </span>
           </div>
-          <Button
-            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            variant="ghost"
-            size="sm"
-            className="w-full text-xs py-2 text-slate-300"
+          <button
+            className="p-1 text-slate-400 hover:text-white transition-colors"
+            aria-label={isCollapsed ? "Expand quick actions" : "Collapse quick actions"}
           >
-            Top ↑
-          </Button>
+            <svg
+              className={`w-5 h-5 transition-transform duration-300 ${isCollapsed ? '' : 'rotate-180'}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
+
+        <div className={`grid transition-all duration-300 ease-in-out overflow-hidden ${isCollapsed ? 'grid-rows-[0fr] opacity-0 mt-0' : 'grid-rows-[1fr] opacity-100 mt-3'}`}>
+          <div className="min-h-0">
+            <p className="text-[11px] text-slate-400 line-clamp-2 mb-3">{snapshotSummary}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={(e) => { e.stopPropagation(); handleRefreshAll(); }}
+                disabled={!hasData || isRefreshingAll}
+                loading={isRefreshingAll}
+                variant="primary"
+                size="sm"
+                className="w-full text-xs py-2"
+              >
+                Refresh
+              </Button>
+              <a
+                href="/war/prep"
+                className="w-full inline-flex items-center justify-center rounded-xl border border-blue-500/40 bg-gradient-to-r from-blue-500 via-blue-600 to-indigo-600 px-3 py-2 text-xs font-semibold text-white shadow-lg"
+                title="War Prep workspace (opens new page)"
+                onClick={(e) => e.stopPropagation()}
+              >
+                War Prep
+              </a>
+              <Button
+                onClick={(e) => { e.stopPropagation(); handleCopySnapshotSummary(); }}
+                disabled={!hasData || isCopyingSnapshot}
+                loading={isCopyingSnapshot}
+                variant="primary"
+                size="sm"
+                className="w-full text-xs py-2"
+              >
+                Copy Summary
+              </Button>
+              <Button
+                onClick={(e) => { e.stopPropagation(); handleGenerateInsightsSummary(); }}
+                disabled={!hasData || isGeneratingSummary || !insightsEnabled}
+                loading={isGeneratingSummary}
+                variant="outline"
+                size="sm"
+                className="w-full text-xs py-2"
+                title={insightsEnabled ? 'Generate daily summary with automated insights' : 'Insights disabled in dev (set NEXT_PUBLIC_ENABLE_INSIGHTS=true)'}
+              >
+                Insights
+              </Button>
+            </div>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <div className="relative">
+                <Button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setExportAnchor('mobile');
+                    setShowExportMenu((prev) => !prev);
+                  }}
+                  disabled={!hasData || isExporting}
+                  variant="primary"
+                  size="sm"
+                  className="w-full text-xs py-2"
+                >
+                  Export
+                </Button>
+                {showExportMenu && exportAnchor === 'mobile' && renderExportMenu('mobile')}
+              </div>
+              <Button
+                onClick={(e) => { e.stopPropagation(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                variant="ghost"
+                size="sm"
+                className="w-full text-xs py-2 text-slate-300"
+              >
+                Top ↑
+              </Button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -763,6 +790,167 @@ export const QuickActions: React.FC<QuickActionsProps> = ({ className = '' }) =>
           )}
         </div>
       </section>
+    </div>
+  );
+};
+
+export const SidebarQuickActions: React.FC<{ className?: string }> = ({ className = '' }) => {
+  const insightsEnabled = process.env.NEXT_PUBLIC_ENABLE_INSIGHTS === 'true';
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const exportMenuRef = useRef<HTMLDivElement>(null);
+  const actionsPanelId = useId();
+
+  const {
+    handleGenerateInsightsSummary,
+    handleRefreshAll,
+    handleCopySnapshotSummary,
+    handleCopyRosterJson,
+    handleExportSnapshot,
+    isGeneratingSummary,
+    isCopyingSnapshot,
+    isExporting,
+    isRefreshingAll,
+    smartInsightsStatus,
+    hasData,
+  } = useQuickActions();
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportMenuRef.current && !exportMenuRef.current.contains(event.target as Node)) {
+        setShowExportMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isCollapsed && showExportMenu) {
+      setShowExportMenu(false);
+    }
+  }, [isCollapsed, showExportMenu]);
+
+  const statusTone = smartInsightsStatus === 'loading'
+    ? 'bg-brand-surfaceRaised/60 text-slate-200'
+    : smartInsightsStatus === 'error'
+      ? 'bg-rose-500/20 text-rose-200'
+      : 'bg-emerald-400/20 text-emerald-200';
+
+  return (
+    <div className={`space-y-2 ${className}`} ref={exportMenuRef}>
+      <div className="px-2 pb-2">
+        <div className="h-px w-full bg-white/10" />
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setIsCollapsed((prev) => !prev)}
+        aria-expanded={!isCollapsed}
+        aria-controls={actionsPanelId}
+        className="flex w-full items-center justify-between px-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 transition-colors hover:text-slate-200"
+      >
+        <span className="flex items-center gap-2">
+          Quick Actions
+          <div className={`h-1.5 w-1.5 rounded-full ${smartInsightsStatus === 'loading' ? 'bg-slate-400 animate-pulse' : smartInsightsStatus === 'error' ? 'bg-rose-500' : 'bg-emerald-400'}`} />
+        </span>
+        <ChevronDown
+          className={`h-3 w-3 transition-transform duration-200 ${isCollapsed ? '' : 'rotate-180'}`}
+          aria-hidden
+        />
+      </button>
+
+      <div
+        id={actionsPanelId}
+        className={`grid transition-all duration-300 ease-in-out ${isCollapsed ? 'grid-rows-[0fr] opacity-0 pointer-events-none' : 'grid-rows-[1fr] opacity-100'}`}
+      >
+        <div className="min-h-0 space-y-1 pt-1">
+        <button
+          onClick={handleRefreshAll}
+          disabled={!hasData || isRefreshingAll}
+          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+        >
+          <svg className={`h-4 w-4 ${isRefreshingAll ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582a9 9 0 0117.245 2H23a11 11 0 00-21.338 3H4zm16 11v-5h-.582a9 9 0 00-17.245-2H1a11 11 0 0021.338-3H20z" />
+          </svg>
+          Refresh
+        </button>
+
+        <a
+          href="/war/prep"
+          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c1.657 0 3-1.343 3-3S13.657 2 12 2 9 3.343 9 5s1.343 3 3 3zm0 2c-3.866 0-7 2.239-7 5v3h14v-3c0-2.761-3.134-5-7-5z" />
+          </svg>
+          War Prep
+        </a>
+
+        <button
+          onClick={handleCopySnapshotSummary}
+          disabled={!hasData || isCopyingSnapshot}
+          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+          </svg>
+          {isCopyingSnapshot ? 'Copying...' : 'Copy Summary'}
+        </button>
+
+        {insightsEnabled && (
+          <button
+            onClick={handleGenerateInsightsSummary}
+            disabled={!hasData || isGeneratingSummary}
+            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            {isGeneratingSummary ? 'Generating...' : 'Insights'}
+          </button>
+        )}
+
+        <div className="relative">
+          <button
+            onClick={() => setShowExportMenu(!showExportMenu)}
+            disabled={!hasData || isExporting}
+            className="group flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export
+            <svg className={`ml-auto h-3 w-3 transition-transform ${showExportMenu ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {showExportMenu && (
+            <div className="absolute bottom-full left-0 mb-2 w-full rounded-xl border border-white/10 bg-slate-900 p-1 shadow-xl">
+              <button
+                onClick={() => { handleExportSnapshot('json'); setShowExportMenu(false); }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5 hover:text-white"
+              >
+                JSON
+              </button>
+              <button
+                onClick={() => { handleExportSnapshot('csv'); setShowExportMenu(false); }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5 hover:text-white"
+              >
+                CSV (War Log)
+              </button>
+              <button
+                onClick={() => { handleCopyRosterJson(); setShowExportMenu(false); }}
+                className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5 hover:text-white"
+              >
+                Copy Roster
+              </button>
+            </div>
+          )}
+        </div>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1156,7 +1156,7 @@ export default function DiscordPublisher({ clanData, clanTag, warPlanSummary }: 
     pendingAiTokenRef.current = null;
     lastCompletedAiTokenRef.current = null;
     setAiRequestNonce((token) => token + 1);
-  }, [warResultBase?.warId]);
+  }, [warResultBase]);
 
   const autoWarNotes = useMemo(() => {
     const notes = deriveWarResultNotes(enrichedWarEntry, warResultBase);
