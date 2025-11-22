@@ -78,7 +78,11 @@ export default function UILabPage() {
               <BadgeToken label="Capital Raider" tier="rare" icon={<Star className="h-3.5 w-3.5" />} description="75k capital gold donated" />
             </div>
             <div className="grid grid-cols-2 gap-3">
+<<<<<<< HEAD
               <MetricBar label="Offense Readiness" value={92} tone="accent" helperText="+4.2 vs clan avg" />
+=======
+              <MetricBar label="Offense Readiness" value={92} tone="brand" helperText="+4.2 vs clan avg" />
+>>>>>>> origin/fix/discord-markdown-formatting
               <MetricBar label="Defense Readiness" value={81} tone="info" helperText="Base rank: A" />
             </div>
           </InfoCard>
