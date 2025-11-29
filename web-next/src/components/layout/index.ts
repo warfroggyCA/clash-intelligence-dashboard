@@ -15,6 +15,5 @@ export { ModalsContainer } from './ModalsContainer';
 export { PlayerProfileModal } from './PlayerProfileModal';
 export { QuickDepartureModal } from './QuickDepartureModal';
 export { default as SettingsModal } from './SettingsModal';
-export { PagePlaceholder } from './PagePlaceholder';
 export { SidebarNavigation } from './SidebarNavigation';
 export { Breadcrumbs as LayoutBreadcrumbs } from './Breadcrumbs';
