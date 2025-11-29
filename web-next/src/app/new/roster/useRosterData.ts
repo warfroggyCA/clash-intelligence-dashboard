@@ -33,6 +33,7 @@ export const useRosterData = (initialRoster?: RosterData | null) => {
     const snapshot: Roster = {
       source: 'snapshot',
       ...swr.data,
+      date: swr.data.date ?? undefined,
       members: swr.data.members as Member[],
     };
     setRoster(snapshot);
