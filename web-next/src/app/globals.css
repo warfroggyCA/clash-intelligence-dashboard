@@ -20,13 +20,50 @@
 @tailwind components;
 @tailwind utilities;
 
-:root { 
+:root {
   color-scheme: dark; 
   --font-size-multiplier: 1;
   /* Header height for sticky positioning */
   --header-height: 80px;
   /* Shared gradient for header + tabs lip */
   --header-gradient: linear-gradient(130deg, #151C2C 0%, #1E293E 55%, #283654 100%);
+
+  /* Tokenized palette */
+  --bg: #070b17;
+  --panel: #0f1629;
+  --surface: #141f36;
+  --card: #1e2945;
+  --input: #0f1629;
+  --border: rgba(255,255,255,0.12);
+  --border-subtle: rgba(148,163,184,0.18);
+  --text: #e5e7eb;
+  --muted: #9ca3af;
+  --accent: #fbbf24;
+  --accent-alt: #00eaff;
+  --success: #34d399;
+  --warning: #f59e0b;
+  --danger: #f87171;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  --shadow-sm: 0 6px 20px -12px rgba(0,0,0,0.4);
+  --shadow-md: 0 12px 32px -16px rgba(0,0,0,0.55);
+  --shadow-lg: 0 22px 48px -18px rgba(0,0,0,0.6);
+  --shadow-neon: 0 0 15px -3px rgba(249, 191, 36, 0.3);
+  --shadow-glass: 0 4px 30px rgba(0,0,0,0.1);
+
+  --font-body: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-display: "Clash Display", "Plus Jakarta Sans", system-ui, sans-serif;
   
   /* Enhanced Clash of Clans Color Palette */
   --clash-gold: #FFD700;

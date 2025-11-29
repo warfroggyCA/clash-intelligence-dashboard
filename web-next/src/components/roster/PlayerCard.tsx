@@ -71,12 +71,19 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect, clanHe
       role="button"
       onClick={handleClick}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2 text-sm text-medium-contrast">
-            <TownHallBadge level={th} size="md" />
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h3
+            className="text-2xl font-bold text-high-contrast drop-shadow-sm leading-tight"
+            style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
+          >
+            {member.name}
+          </h3>
+          <div className="flex items-center gap-2 text-xs text-medium-contrast">
+            <span className="uppercase tracking-wide text-muted-contrast">{member.tag}</span>
             {showRoleBadge ? (
-              <span className={`role-badge role-badge--${roleVariant.tone} inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold`}
+              <span
+                className={`role-badge role-badge--${roleVariant.tone} inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-semibold`}
               >
                 {roleVariant.icon && <span aria-hidden className="text-xs">{roleVariant.icon}</span>}
                 <span className="role-badge__label">{roleVariant.label}</span>
@@ -85,12 +92,19 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ member, onSelect, clanHe
               <span className="text-[11px] uppercase tracking-wide text-muted-contrast">Member</span>
             )}
           </div>
-          <h3 className="text-xl font-semibold text-high-contrast drop-shadow-sm" style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}>
-            {member.name}
-          </h3>
-          <div className="text-xs text-muted-contrast">{member.tag}</div>
+          <div className="flex items-center gap-2 text-xs text-medium-contrast">
+            <TownHallBadge level={th} size="md" />
+            <span className="text-[11px] uppercase tracking-wide text-muted-contrast">TH {th}</span>
+          </div>
         </div>
-        <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="lg" showText={false} />
+        <LeagueBadge
+          league={leagueInfo.name || 'Unranked'}
+          trophies={leagueInfo.trophies ?? member.trophies ?? undefined}
+          tier={leagueInfo.tier}
+          size="lg"
+          showText={false}
+          className="shrink-0 rounded-xl border border-white/10 bg-white/5 p-1"
+        />
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

@@ -3,31 +3,10 @@
 
 import { useState, ReactNode } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import {
-  LayoutDashboard,
-  BarChart2,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  Swords,
-  Shield,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, LayoutDashboard } from 'lucide-react';
 import { cn } from '@/lib/utils';
-
-interface ShellNavItem {
-  label: string;
-  href: string;
-  icon: LucideIcon;
-}
-
-const defaultNavItems: ShellNavItem[] = [
-  { label: 'Dashboard', href: '/app', icon: LayoutDashboard },
-  { label: 'War Room', href: '/war', icon: Swords },
-  { label: 'Capital Analytics', href: '/capital-analytics', icon: BarChart2 },
-  { label: 'Leadership', href: '/leadership', icon: Shield },
-];
+import { SidebarNavigation } from './SidebarNavigation';
+import { navConfig, type NavItem } from '@/lib/nav-config';
 
 interface AppShellProps {
   children: ReactNode;
@@ -35,7 +14,7 @@ interface AppShellProps {
   toolbarContent?: ReactNode;
   sidebarHeader?: ReactNode;
   sidebarFooter?: ReactNode;
-  navItems?: ShellNavItem[];
+  navItems?: NavItem[];
   skipLinkLabel?: string;
   mainId?: string;
 }
@@ -46,11 +25,10 @@ export function AppShell({
   toolbarContent,
   sidebarHeader,
   sidebarFooter,
-  navItems = defaultNavItems,
+  navItems = navConfig,
   skipLinkLabel = 'Skip to main content',
   mainId = 'main-content',
 }: AppShellProps) {
-  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -95,30 +73,9 @@ export function AppShell({
         </div>
       )}
 
-      <nav className="mt-4 flex-1 space-y-1 px-2">
-        {navItems.map((item) => {
-          const isActive = pathname?.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              onClick={isMobile ? handleMobileLinkClick : undefined}
-              className={cn(
-                'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-                isActive
-                  ? 'bg-clash-gold/20 text-white shadow-[0_0_25px_rgba(255,204,112,0.2)]'
-                  : 'text-slate-300 hover:text-white hover:bg-white/5',
-                !isMobile && collapsed && 'justify-center px-2'
-              )}
-              title={!isMobile && collapsed ? item.label : undefined}
-            >
-              <Icon className="h-4 w-4 flex-shrink-0" aria-hidden />
-              <span className={cn('truncate', !isMobile && collapsed && 'hidden')}>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
+      <div className="mt-4 flex-1 px-2">
+        <SidebarNavigation items={navItems} onNavigate={isMobile ? handleMobileLinkClick : undefined} collapsed={!isMobile && collapsed} />
+      </div>
 
       {sidebarFooter && (
         <div className={cn('px-3 py-4', !isMobile && collapsed && 'hidden')} aria-label="Sidebar footer">

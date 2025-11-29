@@ -8,7 +8,6 @@ import { ComponentWithChildren } from '@/types';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import FontSizeControl from '@/components/FontSizeControl';
-import { TabNavigation } from './TabNavigation';
 import { SidebarQuickActions } from './QuickActions';
 import { ModalsContainer } from './ModalsContainer';
 import ToastHub from './ToastHub';
@@ -23,6 +22,8 @@ import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import { supabase } from '@/lib/supabase';
 import { AppShell } from './AppShell';
+import { Breadcrumbs } from './Breadcrumbs';
+import { GlobalSearch } from '../GlobalSearch';
 
 const VIEW_ROLE_STORAGE_KEY = 'ci:view-role:v1';
 
@@ -580,20 +581,19 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
   const fallbackClanTag = useDashboardStore((state) => state.clanTag || state.homeClan || cfg.homeClanTag || '');
   const fallbackClanName = propClanName && propClanName.trim().length > 0 ? propClanName.trim() : '';
   const roster = useDashboardStore((state) => state.roster);
-
-  const disableTabNavigation = process.env.NEXT_PUBLIC_DISABLE_TAB_NAV === 'true';
-  const enableAppShell = process.env.NEXT_PUBLIC_ENABLE_APP_SHELL === 'true';
+  const enableAppShell = process.env.NEXT_PUBLIC_ENABLE_APP_SHELL !== 'false';
 
   const appShellToolbar = hideNavigation
     ? null
     : (
-      <div className="flex flex-col gap-1.5 sm:gap-2">
-        <div className="rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90">
-          {disableTabNavigation ? (
-            <div className="px-2 text-xs text-slate-400">Tabs disabled</div>
-          ) : (
-            <TabNavigation className="px-1.5 sm:px-2" />
-          )}
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90 px-3 py-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <Breadcrumbs className="text-sm" />
+            <div className="flex justify-end">
+              <GlobalSearch />
+            </div>
+          </div>
         </div>
       </div>
     );

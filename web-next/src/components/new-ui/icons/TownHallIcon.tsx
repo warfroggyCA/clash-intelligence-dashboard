@@ -28,6 +28,7 @@ export const TownHallIcon: React.FC<TownHallIconProps> = ({ level, size = 'md', 
         width={dim}
         height={dim}
         className="object-contain"
+        style={{ width: dim, height: dim }}
         priority
       />
       {showBadge && typeof level === 'number' ? (

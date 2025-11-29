@@ -281,6 +281,12 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
   }, [overviewSummary]);
   const dataDate = smartInsights?.metadata?.snapshotDate ?? snapshotMetadata?.snapshotDate ?? null;
   const generatedAt = smartInsights?.metadata?.generatedAt ?? null;
+  const dataDateLabel = useMemo(() => {
+    if (!dataDate) return null;
+    const parsed = Date.parse(dataDate);
+    if (Number.isNaN(parsed)) return null;
+    return new Date(parsed).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: '2-digit' });
+  }, [dataDate]);
 
   const isHistoryLoading = historyEntry?.status === 'loading';
   const historyError = historyEntry?.status === 'error' ? historyEntry.error : null;
@@ -513,7 +519,10 @@ const NewsFeed = forwardRef<NewsFeedRef, NewsFeedProps>(({ clanTag: propClanTag 
               <div key={card.id} className="rounded-lg border border-slate-800/60 bg-slate-900/40 p-4">
                 <div className="flex items-center justify-between text-xs uppercase tracking-wide text-slate-400">
                   <span>{card.badge || card.category || 'VIP Highlight'}</span>
-                  <Sparkles className="h-3 w-3 text-slate-500" />
+                  <div className="flex items-center gap-2">
+                    {dataDateLabel && <span className="text-[11px] text-slate-500">{dataDateLabel}</span>}
+                    <Sparkles className="h-3 w-3 text-slate-500" />
+                  </div>
                 </div>
                 <div className="mt-2 text-sm font-semibold text-slate-100">{card.title}</div>
                 {card.detail && (

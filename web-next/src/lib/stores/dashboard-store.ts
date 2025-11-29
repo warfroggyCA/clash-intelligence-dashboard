@@ -514,7 +514,7 @@ interface DashboardState {
 
 const DEFAULT_ACCESS_LEVEL: AccessLevel = 'leader';
 const DEFAULT_CLAN_TAG = cfg.homeClanTag;
-const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change history
+const HISTORY_CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours cache for change history (overridden if a newer snapshot exists)
 const SMART_INSIGHTS_CACHE_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours cache for smart insights
 // auto-refresh removed
 
@@ -1087,24 +1087,29 @@ export const useDashboardStore = create<DashboardState>()(
         const cleanTag = normalizeTag(clanTag);
         if (!cleanTag) return;
 
-        const { smartInsightsClanTag, smartInsightsFetchedAt, smartInsightsStatus, smartInsights } = get();
+        const { smartInsightsClanTag, smartInsightsFetchedAt, smartInsightsStatus, smartInsights, roster } = get();
         const now = Date.now();
         const ttlMs = options.ttlMs ?? SMART_INSIGHTS_CACHE_TTL_MS;
         const isRecent = smartInsightsFetchedAt ? (now - smartInsightsFetchedAt) < ttlMs : false;
         const generatedAtMs = smartInsights?.metadata?.generatedAt ? new Date(smartInsights.metadata.generatedAt).getTime() : null;
         const isGeneratedFresh = generatedAtMs ? (now - generatedAtMs) < ttlMs : false;
         const force = options.force ?? false;
+        const rosterSnapshotDate = roster?.snapshotMetadata?.asOf || roster?.date || null;
+        const rosterSnapshotMs = rosterSnapshotDate ? Date.parse(rosterSnapshotDate) : null;
+        const insightsSnapshotDate = smartInsights?.metadata?.snapshotDate || null;
+        const insightsSnapshotMs = insightsSnapshotDate ? Date.parse(insightsSnapshotDate) : null;
+        const snapshotIsNewer = rosterSnapshotMs != null && (insightsSnapshotMs == null || rosterSnapshotMs > insightsSnapshotMs);
 
         if (!force && smartInsightsClanTag === cleanTag) {
           if (smartInsightsStatus === 'loading') {
             return;
           }
-          if (smartInsights && (isRecent || isGeneratedFresh)) {
+          if (smartInsights && (isRecent || isGeneratedFresh) && !snapshotIsNewer) {
             return;
           }
         }
 
-        if (force) {
+        if (force || snapshotIsNewer) {
           clearSmartInsightsPayload(cleanTag);
           set({
             smartInsights: null,
@@ -1179,9 +1184,20 @@ export const useDashboardStore = create<DashboardState>()(
         const force = options.force ?? false;
         const ttlMs = options.ttlMs ?? HISTORY_CACHE_TTL_MS;
         const now = Date.now();
+        const rosterSnapshotMs = (() => {
+          const roster = get().roster;
+          const snapshotDate = roster?.snapshotMetadata?.asOf || roster?.date;
+          if (!snapshotDate) return null;
+          const parsed = Date.parse(snapshotDate);
+          return Number.isNaN(parsed) ? null : parsed;
+        })();
 
         const currentEntry = get().historyByClan[normalizedTag];
-        if (!force && currentEntry?.lastFetched && now - currentEntry.lastFetched < ttlMs) {
+        const hasFetched = Boolean(currentEntry?.lastFetched);
+        const cacheFresh = hasFetched && currentEntry!.lastFetched && (now - currentEntry!.lastFetched < ttlMs);
+        const snapshotIsNewer = rosterSnapshotMs != null && (!currentEntry?.lastFetched || rosterSnapshotMs > currentEntry.lastFetched);
+
+        if (!force && cacheFresh && !snapshotIsNewer) {
           if (currentEntry.status === 'idle') {
             set((state) => ({
               historyByClan: {

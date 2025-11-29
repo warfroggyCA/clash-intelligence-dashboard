@@ -21,7 +21,14 @@ export const LeagueIcon: React.FC<LeagueIconProps> = ({ league, ranked = false, 
   const dim = sizeMap[size] || sizeMap.md;
   return (
     <div className={`relative inline-flex ${className}`}>
-      <Image src={src} alt={clean || 'League'} width={dim} height={dim} className="object-contain" />
+      <Image
+        src={src}
+        alt={clean || 'League'}
+        width={dim}
+        height={dim}
+        className="object-contain"
+        style={{ width: dim, height: dim }}
+      />
       {showBadge && badgeText ? (
         <span
           className="absolute -bottom-1 -right-1 px-1.5 text-[11px] font-bold text-white"

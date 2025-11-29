@@ -31,6 +31,9 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const clanTagParam = searchParams.get('clanTag') || cfg.homeClanTag;
   const includeArchived = searchParams.get('includeArchived') === 'true';
+  const isPreviewBypass =
+    process.env.NEXT_PUBLIC_LEADERSHIP_PREVIEW === 'true' ||
+    process.env.NODE_ENV === 'development';
   
   if (!clanTagParam) {
     return NextResponse.json({ success: false, error: 'clanTag is required' }, { status: 400 });
@@ -43,7 +46,10 @@ export async function GET(request: NextRequest) {
 
   try {
     // Require leadership role to view player database (contains notes/warnings)
-    await requireLeadership(request, { clanTag });
+    // Allow explicit preview bypass for localhost/dev when enabled
+    if (!isPreviewBypass) {
+      await requireLeadership(request, { clanTag });
+    }
     
     const supabaseAdmin = getSupabaseAdminClient();
     const supabaseServer = getSupabaseServerClient();
