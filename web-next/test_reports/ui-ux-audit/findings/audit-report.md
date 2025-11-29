@@ -1,24 +1,24 @@
 # UI/UX Audit Report
 
-**Generated:** 11/18/2025, 7:06:04 PM
-**Total Pages Audited:** 5
+**Generated:** 11/23/2025, 3:06:56 PM
+**Total Pages Audited:** 6
 
 ## Executive Summary
 
-- Pages with header tabs: 5/5
-- Pages with breadcrumbs: 0/5
-- Pages with tooltips: 5/5
-- Pages requiring scroll: 3/5
-- Pages with consistent navigation: 0/5
+- Pages with header tabs: 6/6
+- Pages with breadcrumbs: 0/6
+- Pages with tooltips: 6/6
+- Pages requiring scroll: 6/6
+- Pages with consistent navigation: 0/6
 
 ## Cross-Page Issues
 
-- ⚠️ Inconsistent tab counts across pages. Some pages have 3 tabs, others have 3 tabs.
-- ⚠️ 5 page(s) missing consistent header navigation: War Planning, War Analytics, Capital Analytics, Player Database, Leadership
+- ⚠️ Inconsistent tab counts across pages. Some pages have 4 tabs, others have 4 tabs.
+- ⚠️ 6 page(s) missing consistent header navigation: War Planning, War Planning - Prep, War Analytics, Capital Analytics, Player Database, Leadership
 
 ## Recommendations
 
-- 💡 Consider breaking these long pages into tabs or collapsible sections: War Planning, Leadership
+- 💡 Consider breaking these long pages into tabs or collapsible sections: War Planning, War Planning - Prep, Leadership
 
 ## Page-by-Page Analysis
 
@@ -30,9 +30,28 @@
 **Structure:**
 - Header tabs: Yes (0 tabs: )
 - Breadcrumbs: No
-- Tooltips: Yes (35 elements)
+- Tooltips: Yes (29 elements)
 - Content sections: 18
-- Scroll required: Yes (2x viewport)
+- Scroll required: Yes (4x viewport)
+- Consistent navigation: No
+
+**Issues:**
+- ⚠️ Missing consistent header navigation tabs
+- ⚠️ Page is very long - consider breaking into tabs or sections
+
+---
+
+### War Planning - Prep
+
+**URL:** http://heckyeah.localhost:5050/war/planning
+**Screenshot:** `test_reports/ui-ux-audit/screenshots/war-planning-prep.png`
+
+**Structure:**
+- Header tabs: Yes (0 tabs: )
+- Breadcrumbs: No
+- Tooltips: Yes (29 elements)
+- Content sections: 18
+- Scroll required: Yes (4x viewport)
 - Consistent navigation: No
 
 **Issues:**
@@ -49,13 +68,14 @@
 **Structure:**
 - Header tabs: Yes (0 tabs: )
 - Breadcrumbs: No
-- Tooltips: Yes (20 elements)
-- Content sections: 2
-- Scroll required: No
+- Tooltips: Yes (29 elements)
+- Content sections: 0
+- Scroll required: Yes (1x viewport)
 - Consistent navigation: No
 
 **Issues:**
 - ⚠️ Missing consistent header navigation tabs
+- ⚠️ No clear content sections detected - may lack visual hierarchy
 
 ---
 
@@ -67,13 +87,14 @@
 **Structure:**
 - Header tabs: Yes (0 tabs: )
 - Breadcrumbs: No
-- Tooltips: Yes (20 elements)
-- Content sections: 2
-- Scroll required: No
+- Tooltips: Yes (29 elements)
+- Content sections: 0
+- Scroll required: Yes (1x viewport)
 - Consistent navigation: No
 
 **Issues:**
 - ⚠️ Missing consistent header navigation tabs
+- ⚠️ No clear content sections detected - may lack visual hierarchy
 
 ---
 
@@ -85,8 +106,8 @@
 **Structure:**
 - Header tabs: Yes (0 tabs: )
 - Breadcrumbs: No
-- Tooltips: Yes (21 elements)
-- Content sections: 10
+- Tooltips: Yes (30 elements)
+- Content sections: 8
 - Scroll required: Yes (1x viewport)
 - Consistent navigation: No
 
@@ -101,11 +122,11 @@
 **Screenshot:** `test_reports/ui-ux-audit/screenshots/leadership.png`
 
 **Structure:**
-- Header tabs: Yes (3 tabs: Overview, Analytics, Management)
+- Header tabs: Yes (4 tabs: Overview, Analytics, Management, Discord)
 - Breadcrumbs: No
-- Tooltips: Yes (14 elements)
+- Tooltips: Yes (39 elements)
 - Content sections: 5
-- Scroll required: Yes (2x viewport)
+- Scroll required: Yes (3x viewport)
 - Consistent navigation: No
 
 **Issues:**

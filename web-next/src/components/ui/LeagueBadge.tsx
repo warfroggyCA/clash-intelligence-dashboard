@@ -181,6 +181,7 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
   const imagePath = isOct2025
     ? toOct2025ImagePath(canonBase!)
     : `/assets/clash/Leagues/${legacyImageMap[baseLeague] || 'Bronze.png'}`;
+  const fallbackPath = '/assets/clash/Leagues/No_League.png';
   
   if (!showText) {
     // Just return the image without the background box
@@ -198,12 +199,10 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
           priority={size === 'xxl'}
           onError={(e) => {
             const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const parent = target.parentElement;
-            if (parent) {
-              parent.innerHTML = `🏆`;
-              parent.className += ' flex items-center justify-center text-clash-gold';
-            }
+            if (target.dataset.fallbackApplied === 'true') return;
+            target.dataset.fallbackApplied = 'true';
+            target.src = fallbackPath;
+            target.style.display = 'block';
           }}
         />
         {(tier ?? parsedTier) ? (

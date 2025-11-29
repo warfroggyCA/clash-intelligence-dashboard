@@ -9,10 +9,13 @@
 
 export { DashboardLayout } from './DashboardLayout';
 export { AppShell } from './AppShell';
-export { TabNavigation } from './TabNavigation';
 export { QuickActions } from './QuickActions';
 export { QuickActionsMenu } from './QuickActionsMenu';
 export { ModalsContainer } from './ModalsContainer';
 export { PlayerProfileModal } from './PlayerProfileModal';
 export { QuickDepartureModal } from './QuickDepartureModal';
 export { default as SettingsModal } from './SettingsModal';
+export { PagePlaceholder } from './PagePlaceholder';
+export { SidebarNavigation } from './SidebarNavigation';
+export { Breadcrumbs } from './Breadcrumbs';
+export { AppShell } from './AppShell';

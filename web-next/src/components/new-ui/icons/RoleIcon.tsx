@@ -20,6 +20,7 @@ export const RoleIcon: React.FC<RoleIconProps> = ({ role, size = 48, className =
         alt={title}
         width={size}
         height={size}
+        style={{ width: size, height: size }}
         className={`object-contain ${className}`}
         priority
       />

@@ -1,11 +1,11 @@
 {
-  "generatedAt": "2025-11-19T00:06:04.850Z",
-  "totalPagesAudited": 5,
+  "generatedAt": "2025-11-23T20:06:56.043Z",
+  "totalPagesAudited": 6,
   "summary": {
-    "pagesWithTabs": 5,
+    "pagesWithTabs": 6,
     "pagesWithBreadcrumbs": 0,
-    "pagesWithTooltips": 5,
-    "pagesRequiringScroll": 3,
+    "pagesWithTooltips": 6,
+    "pagesRequiringScroll": 6,
     "pagesWithConsistentNav": 0
   },
   "pages": [
@@ -17,9 +17,9 @@
       "headerTabLabels": [],
       "hasBreadcrumbs": false,
       "hasTooltips": true,
-      "tooltipCount": 35,
+      "tooltipCount": 29,
       "mainContentSections": 18,
-      "scrollHeight": 2460,
+      "scrollHeight": 3978,
       "viewportHeight": 1080,
       "requiresScroll": true,
       "hasConsistentNavigation": false,
@@ -31,6 +31,27 @@
       "screenshotPath": "/Users/dougfindlay/New Clash Intelligence/web-next/test_reports/ui-ux-audit/screenshots/war-planning.png"
     },
     {
+      "url": "http://heckyeah.localhost:5050/war/planning",
+      "title": "War Planning - Prep",
+      "hasHeaderTabs": true,
+      "headerTabCount": 0,
+      "headerTabLabels": [],
+      "hasBreadcrumbs": false,
+      "hasTooltips": true,
+      "tooltipCount": 29,
+      "mainContentSections": 18,
+      "scrollHeight": 3978,
+      "viewportHeight": 1080,
+      "requiresScroll": true,
+      "hasConsistentNavigation": false,
+      "issues": [
+        "Missing consistent header navigation tabs",
+        "Page is very long - consider breaking into tabs or sections"
+      ],
+      "recommendations": [],
+      "screenshotPath": "/Users/dougfindlay/New Clash Intelligence/web-next/test_reports/ui-ux-audit/screenshots/war-planning-prep.png"
+    },
+    {
       "url": "http://heckyeah.localhost:5050/war-analytics",
       "title": "War Analytics",
       "hasHeaderTabs": true,
@@ -38,14 +59,15 @@
       "headerTabLabels": [],
       "hasBreadcrumbs": false,
       "hasTooltips": true,
-      "tooltipCount": 20,
-      "mainContentSections": 2,
-      "scrollHeight": 1080,
+      "tooltipCount": 29,
+      "mainContentSections": 0,
+      "scrollHeight": 1415,
       "viewportHeight": 1080,
-      "requiresScroll": false,
+      "requiresScroll": true,
       "hasConsistentNavigation": false,
       "issues": [
-        "Missing consistent header navigation tabs"
+        "Missing consistent header navigation tabs",
+        "No clear content sections detected - may lack visual hierarchy"
       ],
       "recommendations": [],
       "screenshotPath": "/Users/dougfindlay/New Clash Intelligence/web-next/test_reports/ui-ux-audit/screenshots/war-analytics.png"
@@ -58,14 +80,15 @@
       "headerTabLabels": [],
       "hasBreadcrumbs": false,
       "hasTooltips": true,
-      "tooltipCount": 20,
-      "mainContentSections": 2,
-      "scrollHeight": 1080,
+      "tooltipCount": 29,
+      "mainContentSections": 0,
+      "scrollHeight": 1415,
       "viewportHeight": 1080,
-      "requiresScroll": false,
+      "requiresScroll": true,
       "hasConsistentNavigation": false,
       "issues": [
-        "Missing consistent header navigation tabs"
+        "Missing consistent header navigation tabs",
+        "No clear content sections detected - may lack visual hierarchy"
       ],
       "recommendations": [],
       "screenshotPath": "/Users/dougfindlay/New Clash Intelligence/web-next/test_reports/ui-ux-audit/screenshots/capital-analytics.png"
@@ -78,9 +101,9 @@
       "headerTabLabels": [],
       "hasBreadcrumbs": false,
       "hasTooltips": true,
-      "tooltipCount": 21,
-      "mainContentSections": 10,
-      "scrollHeight": 1299,
+      "tooltipCount": 30,
+      "mainContentSections": 8,
+      "scrollHeight": 1415,
       "viewportHeight": 1080,
       "requiresScroll": true,
       "hasConsistentNavigation": false,
@@ -94,17 +117,18 @@
       "url": "http://heckyeah.localhost:5050/leadership",
       "title": "Leadership",
       "hasHeaderTabs": true,
-      "headerTabCount": 3,
+      "headerTabCount": 4,
       "headerTabLabels": [
         "Overview",
         "Analytics",
-        "Management"
+        "Management",
+        "Discord"
       ],
       "hasBreadcrumbs": false,
       "hasTooltips": true,
-      "tooltipCount": 14,
+      "tooltipCount": 39,
       "mainContentSections": 5,
-      "scrollHeight": 2251,
+      "scrollHeight": 3131,
       "viewportHeight": 1080,
       "requiresScroll": true,
       "hasConsistentNavigation": false,
@@ -117,10 +141,10 @@
     }
   ],
   "crossPageIssues": [
-    "Inconsistent tab counts across pages. Some pages have 3 tabs, others have 3 tabs.",
-    "5 page(s) missing consistent header navigation: War Planning, War Analytics, Capital Analytics, Player Database, Leadership"
+    "Inconsistent tab counts across pages. Some pages have 4 tabs, others have 4 tabs.",
+    "6 page(s) missing consistent header navigation: War Planning, War Planning - Prep, War Analytics, Capital Analytics, Player Database, Leadership"
   ],
   "recommendations": [
-    "Consider breaking these long pages into tabs or collapsible sections: War Planning, Leadership"
+    "Consider breaking these long pages into tabs or collapsible sections: War Planning, War Planning - Prep, Leadership"
   ]
 }

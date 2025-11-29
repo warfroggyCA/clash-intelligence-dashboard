@@ -10,7 +10,7 @@ import { useDashboardStore } from '@/lib/stores/dashboard-store';
 import { normalizeTag } from '@/lib/tags';
 import type { Member, Roster } from '@/types';
 
-export const useRosterData = () => {
+export const useRosterData = (initialRoster?: RosterData | null) => {
   const selectedClanTag = useDashboardStore((state) => state.clanTag);
   const setRoster = useDashboardStore((state) => state.setRoster);
 
@@ -23,7 +23,10 @@ export const useRosterData = () => {
     ? `/api/v2/roster?clanTag=${encodeURIComponent(normalizedTag)}`
     : '/api/v2/roster';
 
-  const swr = useSWR<RosterData>(swrKey, rosterFetcher, rosterSWRConfig);
+  const swr = useSWR<RosterData>(swrKey, rosterFetcher, {
+    ...rosterSWRConfig,
+    fallbackData: initialRoster || undefined,
+  });
 
   useEffect(() => {
     if (!swr.data || !setRoster) return;
