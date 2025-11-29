@@ -1094,7 +1094,7 @@ export const useDashboardStore = create<DashboardState>()(
         const generatedAtMs = smartInsights?.metadata?.generatedAt ? new Date(smartInsights.metadata.generatedAt).getTime() : null;
         const isGeneratedFresh = generatedAtMs ? (now - generatedAtMs) < ttlMs : false;
         const force = options.force ?? false;
-        const rosterSnapshotDate = roster?.snapshotMetadata?.asOf || roster?.date || null;
+        const rosterSnapshotDate = roster?.snapshotMetadata?.snapshotDate || roster?.date || null;
         const rosterSnapshotMs = rosterSnapshotDate ? Date.parse(rosterSnapshotDate) : null;
         const insightsSnapshotDate = smartInsights?.metadata?.snapshotDate || null;
         const insightsSnapshotMs = insightsSnapshotDate ? Date.parse(insightsSnapshotDate) : null;
@@ -1186,7 +1186,7 @@ export const useDashboardStore = create<DashboardState>()(
         const now = Date.now();
         const rosterSnapshotMs = (() => {
           const roster = get().roster;
-          const snapshotDate = roster?.snapshotMetadata?.asOf || roster?.date;
+          const snapshotDate = roster?.snapshotMetadata?.snapshotDate || roster?.date;
           if (!snapshotDate) return null;
           const parsed = Date.parse(snapshotDate);
           return Number.isNaN(parsed) ? null : parsed;
