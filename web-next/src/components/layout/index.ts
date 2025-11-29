@@ -17,5 +17,4 @@ export { QuickDepartureModal } from './QuickDepartureModal';
 export { default as SettingsModal } from './SettingsModal';
 export { PagePlaceholder } from './PagePlaceholder';
 export { SidebarNavigation } from './SidebarNavigation';
-export { Breadcrumbs } from './Breadcrumbs';
-export { AppShell } from './AppShell';
+export { Breadcrumbs as LayoutBreadcrumbs } from './Breadcrumbs';

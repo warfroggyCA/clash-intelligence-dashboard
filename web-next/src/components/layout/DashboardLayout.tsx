@@ -22,7 +22,7 @@ import { clanRoleFromName, getRoleDisplayName } from '@/lib/leadership';
 import type { ClanRoleName } from '@/lib/auth/roles';
 import { supabase } from '@/lib/supabase';
 import { AppShell } from './AppShell';
-import { Breadcrumbs } from './Breadcrumbs';
+import { Breadcrumbs as LayoutBreadcrumbs } from './Breadcrumbs';
 import { GlobalSearch } from '../GlobalSearch';
 
 const VIEW_ROLE_STORAGE_KEY = 'ci:view-role:v1';
@@ -589,7 +589,7 @@ export const DashboardLayout: React.FC<DashboardLayoutProps> = ({
       <div className="flex flex-col gap-2">
         <div className="flex flex-col gap-2 rounded-xl sm:rounded-2xl border border-slate-800/70 bg-slate-900/90 px-3 py-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <Breadcrumbs className="text-sm" />
+            <LayoutBreadcrumbs className="text-sm" />
             <div className="flex justify-end">
               <GlobalSearch />
             </div>
