@@ -41,6 +41,15 @@ export const useRosterData = (initialRoster?: RosterData | null) => {
             clanName: swr.data.meta.clanName ?? undefined,
           }
         : undefined,
+      snapshotMetadata: swr.data.snapshotMetadata &&
+        swr.data.snapshotMetadata.snapshotDate &&
+        swr.data.snapshotMetadata.fetchedAt
+        ? {
+            ...swr.data.snapshotMetadata,
+            snapshotDate: swr.data.snapshotMetadata.snapshotDate,
+            fetchedAt: swr.data.snapshotMetadata.fetchedAt,
+          }
+        : undefined,
     };
     setRoster(snapshot);
   }, [swr.data, setRoster]);
