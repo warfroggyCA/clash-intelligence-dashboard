@@ -50,6 +50,7 @@ export interface RosterMember extends Omit<Member, 'tenure_as_of'> {
   tenureDays?: number | null;
   tenureAsOf?: string | null;
   tenure_as_of?: string | null | undefined; // Override to allow null
+  rushPercent?: number | null;
   lastWeekTrophies?: number | null;
   seasonTotalTrophies?: number | null;
   cumulativeDonationsGiven?: number | null;
@@ -133,6 +134,9 @@ function toRosterMember(raw: Record<string, any>): RosterMember {
       raw.rankedLeagueId ?? rankedLeague?.id ?? raw.leagueId ?? null,
     rankedLeagueName:
       raw.rankedLeagueName ?? rankedLeague?.name ?? raw.leagueName ?? null,
+    rushPercent: typeof raw.rushPercent === 'number'
+      ? raw.rushPercent
+      : (typeof raw.rush_percent === 'number' ? raw.rush_percent : null),
     rankedTrophies: raw.rankedTrophies ?? raw.battleModeTrophies ?? null,
     lastWeekTrophies: raw.lastWeekTrophies ?? null,
     seasonTotalTrophies: raw.seasonTotalTrophies ?? null,
@@ -232,4 +236,3 @@ export function transformRosterApiResponse(response: RosterApiResponse): RosterD
     clanHeroAverages: response.data.clanHeroAverages ?? {},
   } satisfies RosterData;
 }
-
