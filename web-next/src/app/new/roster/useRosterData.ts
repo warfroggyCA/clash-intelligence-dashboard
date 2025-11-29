@@ -35,6 +35,12 @@ export const useRosterData = (initialRoster?: RosterData | null) => {
       ...swr.data,
       date: swr.data.date ?? undefined,
       members: swr.data.members as Member[],
+      meta: swr.data.meta
+        ? {
+            ...swr.data.meta,
+            clanName: swr.data.meta.clanName ?? undefined,
+          }
+        : undefined,
     };
     setRoster(snapshot);
   }, [swr.data, setRoster]);
