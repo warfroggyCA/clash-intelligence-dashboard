@@ -397,6 +397,7 @@ export const heroNames: string[] = heroEquipmentData.map((h) => h.hero);
 
 export interface HeroPet {
   name: string;
+  associatedHero: string;
   maxLevel: number;
   description: string;
   wikiUrl: string;
@@ -407,76 +408,87 @@ export const PET_MAX_LEVEL = 10;
 export const heroPetsData: HeroPet[] = [
   {
     name: 'L.A.S.S.I.',
+    associatedHero: 'Barbarian King or Royal Champion (Early TH14)',
     maxLevel: 10,
     description:
-      'A ground-based pet that attacks nearby targets and can jump over Walls (High Jumper) to maintain proximity to its hero. At Level 10, L.A.S.S.I. has 3,600 Hit Points (HP) and 240 Damage Per Second (DPS). It acts as an effective sacrificial tank.',
+      'A ground-based pet that attacks nearby targets and can jump over Walls (High Jumper) to maintain proximity to its hero. It is often used as an effective sacrificial tank, achieving 3,600 Hit Points (HP) and 240 Damage Per Second (DPS) at Level 10.',
     wikiUrl: 'https://clashofclans.fandom.com/wiki/L.A.S.S.I',
   },
   {
     name: 'Electro Owl',
+    associatedHero: 'Grand Warden or Minion Prince',
     maxLevel: 10,
     description:
-      'An air and ground-targeting pet that shoots a ranged chain lightning attack (High Voltage). The attack bounces once to a nearby target, dealing 80% damage to the secondary unit. It is characterized by low HP and moderate DPS.',
+      'An air and ground-targeting pet (High Voltage) that shoots a ranged chain lightning attack, bouncing once to a nearby target, dealing 80% damage to the secondary unit. Its range scales dramatically when paired with the Grand Warden.',
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Electro_Owl',
   },
   {
     name: 'Mighty Yak',
+    associatedHero: 'Barbarian King',
     maxLevel: 10,
     description:
-      'A ground pet with the highest HP among the initial pets and the lowest DPS. Its unique ability (Wall Buster) is a critical 20x damage multiplier against walls, making it effective for breaking pathing for ground heroes like the Barbarian King.',
+      'A ground pet characterized by the highest HP among the initial pets and possessing a critical utility function (Wall Buster): a 20x damage multiplier against walls. This makes it the premier ground tank for ensuring consistent pathing for heroes like the Barbarian King.',
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Mighty_Yak',
   },
   {
     name: 'Unicorn',
+    associatedHero: 'Archer Queen',
     maxLevel: 10,
     description:
-      "An air healing unit that targets only the Hero it is paired with (Personal Healer). It provides High Heal Per Second (HPS) and is considered the 'non-negotiable' priority pet at TH14 for sustained hero endurance (e.g., Queen Walk strategies).",
+      "An air healing unit (Personal Healer) that targets only the Hero it is paired with. It provides High Heal Per Second (HPS) and is considered the 'non-negotiable' priority pet at TH14 for hero endurance, essential for strategies like the Queen Walk.",
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Unicorn',
   },
   {
     name: 'Frosty',
+    associatedHero: 'Archer Queen or Grand Warden',
     maxLevel: 10,
     description:
-      'A utility pet whose ability involves periodically summoning mini Ice Spirits (Frostmites) that automatically bounce forward to defenses, applying a slow or freeze/slowing effect (crucial slowing ability). Used for crowd control.',
+      'A utility pet whose ability (crucial slowing ability) involves periodically summoning mini Ice Spirits (Frostmites) that bounce forward to defenses, applying a slow or freeze/slowing effect. This is used for crowd control, often protecting the Archer Queen from concentrated point defense fire.',
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Frosty',
   },
   {
     name: 'Diggy',
+    associatedHero: 'Royal Champion or Barbarian King',
     maxLevel: 10,
     description:
-      'Travels underground and emerges to apply a stun effect to the first building it targets. This pet offers great stun utility, ideal for disabling high-threat defenses like Infernos or Scattershots.',
+      "Travels underground and emerges to apply a stun effect to the first building it targets. This pet offers 'great stun utility,' ideal for disabling high-threat defenses like Infernos or Scattershots. It pairs well with the Royal Champion due to her defense-targeting nature.",
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Diggy',
   },
   {
     name: 'Poison Lizard',
+    associatedHero: 'Royal Champion or Barbarian King',
     maxLevel: 10,
     description:
-      "Applies a persistent poison damage-over-time effect to its target, which also slows the target's movement and attack speed. It targets defending heroes and Clan Castle troops, acting as a portable Headhunter.",
+      "Applies a persistent poison damage-over-time effect to its target, which also slows the target's movement and attack speed. It serves as a portable Headhunter, targeting defending heroes and Clan Castle troops.",
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Poison_Lizard',
   },
   {
     name: 'Phoenix',
+    associatedHero: 'Minion Prince or Royal Champion',
     maxLevel: 10,
     description:
-      "Provides a one-time 'clutch revive' capability. Upon the hero's initial defeat, the Phoenix hatches, bringing the hero back to life for an additional duration. At max level, this revive lasts approximately 10 seconds.",
+      "Provides a one-time 'clutch revive' capability (God-Tier pet). Upon the hero's initial defeat, the Phoenix hatches, bringing the hero back to life for an additional duration of 10 seconds at max level.",
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Phoenix',
   },
   {
     name: 'Spirit Fox',
+    associatedHero: 'Royal Champion',
     maxLevel: 10,
     description:
-      'A meta-defining pet unlocked at TH16. Its ability, Spirit Walk, automatically turns itself and its paired hero invisible periodically. At Level 10, it provides a maximum Invisibility Duration of 4 seconds (4s visible, 4s invisible cycle).',
+      'A meta-defining pet whose ability, Spirit Walk, automatically turns itself and its paired hero invisible periodically. At Level 10, it provides a maximum Invisibility Duration of 4 seconds. It is considered irreplaceable for the Royal Champion, enabling the RC Charge meta.',
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Spirit_Fox',
   },
   {
     name: 'Angry Jelly',
+    associatedHero: 'Minion Prince or Archer Queen',
     maxLevel: 10,
     description:
-      'A pet designed for defensive manipulation. It is a potential secondary option for the Archer Queen or Minion Prince.',
+      'A pet designed for defensive manipulation. It is listed as a potential secondary option for the Archer Queen or Minion Prince.',
     wikiUrl: 'https://clashofclans.fandom.com/wiki/Angry_Jelly',
   },
   {
     name: 'Sneezy',
+    associatedHero: 'Grand Warden',
     maxLevel: 10,
     description:
       'Introduced at Town Hall 17. Its primary function is to act as a sacrificial tank specifically designed to intercept and absorb Seeking Air Mines, safeguarding valuable air troops like Healers.',
