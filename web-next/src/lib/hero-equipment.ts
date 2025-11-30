@@ -381,3 +381,131 @@ export const allEquipmentNames: string[] = allEquipment.map((eq) => eq.name);
  */
 export const heroNames: string[] = heroEquipmentData.map((h) => h.hero);
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// HERO PETS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Clash of Clans Hero Pets Reference
+ *
+ * Hero Pets are companion units that follow and assist Heroes in battle.
+ * Pets are unlocked at Town Hall 14+ and upgraded in the Pet House using Dark Elixir.
+ *
+ * All pets have a maximum level of 10.
+ * Pets do not have an assigned rarity system like equipment.
+ */
+
+export interface HeroPet {
+  name: string;
+  maxLevel: number;
+  description: string;
+  wikiUrl: string;
+}
+
+export const PET_MAX_LEVEL = 10;
+
+export const heroPetsData: HeroPet[] = [
+  {
+    name: 'L.A.S.S.I.',
+    maxLevel: 10,
+    description:
+      'A ground-based pet that attacks nearby targets and can jump over Walls (High Jumper) to maintain proximity to its hero. At Level 10, L.A.S.S.I. has 3,600 Hit Points (HP) and 240 Damage Per Second (DPS). It acts as an effective sacrificial tank.',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/L.A.S.S.I',
+  },
+  {
+    name: 'Electro Owl',
+    maxLevel: 10,
+    description:
+      'An air and ground-targeting pet that shoots a ranged chain lightning attack (High Voltage). The attack bounces once to a nearby target, dealing 80% damage to the secondary unit. It is characterized by low HP and moderate DPS.',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Electro_Owl',
+  },
+  {
+    name: 'Mighty Yak',
+    maxLevel: 10,
+    description:
+      'A ground pet with the highest HP among the initial pets and the lowest DPS. Its unique ability (Wall Buster) is a critical 20x damage multiplier against walls, making it effective for breaking pathing for ground heroes like the Barbarian King.',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Mighty_Yak',
+  },
+  {
+    name: 'Unicorn',
+    maxLevel: 10,
+    description:
+      "An air healing unit that targets only the Hero it is paired with (Personal Healer). It provides High Heal Per Second (HPS) and is considered the 'non-negotiable' priority pet at TH14 for sustained hero endurance (e.g., Queen Walk strategies).",
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Unicorn',
+  },
+  {
+    name: 'Frosty',
+    maxLevel: 10,
+    description:
+      'A utility pet whose ability involves periodically summoning mini Ice Spirits (Frostmites) that automatically bounce forward to defenses, applying a slow or freeze/slowing effect (crucial slowing ability). Used for crowd control.',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Frosty',
+  },
+  {
+    name: 'Diggy',
+    maxLevel: 10,
+    description:
+      'Travels underground and emerges to apply a stun effect to the first building it targets. This pet offers great stun utility, ideal for disabling high-threat defenses like Infernos or Scattershots.',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Diggy',
+  },
+  {
+    name: 'Poison Lizard',
+    maxLevel: 10,
+    description:
+      "Applies a persistent poison damage-over-time effect to its target, which also slows the target's movement and attack speed. It targets defending heroes and Clan Castle troops, acting as a portable Headhunter.",
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Poison_Lizard',
+  },
+  {
+    name: 'Phoenix',
+    maxLevel: 10,
+    description:
+      "Provides a one-time 'clutch revive' capability. Upon the hero's initial defeat, the Phoenix hatches, bringing the hero back to life for an additional duration. At max level, this revive lasts approximately 10 seconds.",
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Phoenix',
+  },
+  {
+    name: 'Spirit Fox',
+    maxLevel: 10,
+    description:
+      'A meta-defining pet unlocked at TH16. Its ability, Spirit Walk, automatically turns itself and its paired hero invisible periodically. At Level 10, it provides a maximum Invisibility Duration of 4 seconds (4s visible, 4s invisible cycle).',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Spirit_Fox',
+  },
+  {
+    name: 'Angry Jelly',
+    maxLevel: 10,
+    description:
+      'A pet designed for defensive manipulation. It is a potential secondary option for the Archer Queen or Minion Prince.',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Angry_Jelly',
+  },
+  {
+    name: 'Sneezy',
+    maxLevel: 10,
+    description:
+      'Introduced at Town Hall 17. Its primary function is to act as a sacrificial tank specifically designed to intercept and absorb Seeking Air Mines, safeguarding valuable air troops like Healers.',
+    wikiUrl: 'https://clashofclans.fandom.com/wiki/Sneezy',
+  },
+];
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper functions for pet lookups
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Map of pet name (lowercase) → pet data for fast lookups */
+const petByNameMap = new Map<string, HeroPet>(
+  heroPetsData.map((pet) => [pet.name.toLowerCase(), pet])
+);
+
+/**
+ * Get a pet by name (case-insensitive)
+ */
+export function getPetByName(name: string): HeroPet | undefined {
+  return petByNameMap.get(name.toLowerCase());
+}
+
+/**
+ * List of all pet names (for autocomplete, validation, etc.)
+ */
+export const allPetNames: string[] = heroPetsData.map((pet) => pet.name);
+
+/**
+ * Total count of available pets
+ */
+export const petCount: number = heroPetsData.length;
