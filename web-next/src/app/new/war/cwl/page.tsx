@@ -296,7 +296,7 @@ export default function CwlOverviewPage() {
               </span>
             </div>
             <Link href="/new/war/cwl/roster">
-              <Button variant="outline" size="sm" className="w-full justify-center">Open roster</Button>
+              <Button tone="ghost" className="w-full justify-center text-sm">Open roster</Button>
             </Link>
           </div>
         </Card>
@@ -307,9 +307,9 @@ export default function CwlOverviewPage() {
               <Button className="w-full justify-center">Open Day 1 planner</Button>
             </Link>
             <Link href="/new/war/cwl/roster">
-              <Button variant="outline" className="w-full justify-center">Set season roster</Button>
+              <Button tone="ghost" className="w-full justify-center">Set season roster</Button>
             </Link>
-            <Button variant="outline" className="w-full justify-center" onClick={copyFullWeek} disabled={copyAllLoading || !rows.every((r) => isValidTag(r.clanTag))}>
+            <Button tone="ghost" className="w-full justify-center" onClick={copyFullWeek} disabled={copyAllLoading || !rows.every((r) => isValidTag(r.clanTag))}>
               {copyAllLoading ? 'Building full-week export…' : 'Copy full-week AI export'}
             </Button>
           </div>
@@ -367,7 +367,7 @@ export default function CwlOverviewPage() {
                       <span className="text-slate-500 text-xs">Save to enable</span>
                     ) : (
                       <Link href={`/new/war/cwl/day/${opp.dayIndex}`}>
-                        <Button variant="outline" size="sm" disabled={!opp.clanTag}>Open planner</Button>
+                        <Button tone="ghost" disabled={!opp.clanTag} className="text-sm">Open planner</Button>
                       </Link>
                     )}
                   </td>
@@ -383,11 +383,11 @@ export default function CwlOverviewPage() {
               <Button onClick={saveEdit} disabled={!allValid || saving}>
                 {saving ? 'Saving…' : 'Save opponents'}
               </Button>
-              <Button variant="outline" onClick={cancelEdit}>Cancel</Button>
+              <Button tone="ghost" onClick={cancelEdit}>Cancel</Button>
               {!allValid ? <span className="text-xs text-amber-300">Enter valid tags for all 7 days to save (we normalize # automatically).</span> : null}
             </>
           ) : (
-            <Button variant="outline" onClick={startEdit}>Edit opponents</Button>
+            <Button tone="ghost" onClick={startEdit}>Edit opponents</Button>
           )}
         </div>
         <p className="mt-2 text-xs text-slate-400">Enter all 7 opponent tags once per season. Names will refresh from the API after the tag is saved.</p>
