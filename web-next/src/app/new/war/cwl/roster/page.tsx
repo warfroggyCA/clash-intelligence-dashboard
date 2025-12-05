@@ -99,7 +99,7 @@ export default function CwlRosterPage() {
   }, [partiallySelected]);
 
   useEffect(() => {
-    if (!initialized.current && !remoteHydrated.current && selected.size === 0 && sortedRoster.length) {
+    if (!initialized.current && !hydrated.current && selected.size === 0 && sortedRoster.length) {
       const initial = sortedRoster.slice(0, warSize).map((m) => m.tag);
       setSelected(new Set(initial));
       initialized.current = true;
