@@ -12,13 +12,14 @@ export const normalizeRole = (role?: string | null): RoleKey => {
   return 'member';
 };
 
-export const resolveTownHall = (member: RosterMember): number | null =>
-  member.townHallLevel ?? (member as any).th ?? null;
+export const resolveTownHall = (member?: RosterMember | null): number | null =>
+  member ? (member.townHallLevel ?? (member as any).th ?? null) : null;
 
-export const resolveTrophies = (member: RosterMember): number =>
-  member.rankedTrophies ?? member.trophies ?? 0;
+export const resolveTrophies = (member?: RosterMember | null): number =>
+  member ? (member.rankedTrophies ?? member.trophies ?? 0) : 0;
 
-export const resolveLeague = (member: RosterMember): { league: string; tier?: string | number } => {
+export const resolveLeague = (member?: RosterMember | null): { league: string; tier?: string | number } => {
+  if (!member) return { league: 'No League' };
   const raw =
     member.rankedLeagueName ??
     (typeof (member as any).rankedLeague === 'object' ? (member as any).rankedLeague?.name : null) ??
@@ -33,7 +34,8 @@ export const resolveLeague = (member: RosterMember): { league: string; tier?: st
   return { league: base, tier: tier ?? undefined };
 };
 
-export const resolveRushPercent = (member: RosterMember): number | null => {
+export const resolveRushPercent = (member: RosterMember | null | undefined): number | null => {
+  if (!member) return null;
   if (typeof member.rushPercent === 'number') {
     return member.rushPercent;
   }

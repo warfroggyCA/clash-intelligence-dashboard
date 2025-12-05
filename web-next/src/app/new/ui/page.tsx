@@ -21,6 +21,8 @@ const Stat = ({ label, value, tone }: { label: string; value: string; tone?: 'po
 };
 
 export default function UIShowcasePage() {
+  const epicGradient = 'linear-gradient(180deg, #a74ce5 0%, #933fcb 50%, #b04fac 100%)';
+
   return (
     <div className="space-y-8">
       <div className="space-y-2">
@@ -116,6 +118,33 @@ export default function UIShowcasePage() {
               <div className="flex items-center justify-between text-xs text-slate-400">
                 <span>Leaderboard</span>
                 <span>Hover for details →</span>
+              </div>
+            </div>
+          </Card>
+          <Card title="Equipment Tiles">
+            <div className="flex flex-wrap gap-3 text-xs text-slate-300">
+              <div className="flex flex-col items-center gap-1 rounded-xl border p-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
+                <div className="h-14 w-14 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'var(--panel)' }}>
+                  <div className="h-full w-full bg-white/5 flex items-center justify-center text-[11px] px-1 text-slate-100">Common</div>
+                </div>
+                <span className="text-white font-semibold leading-tight">Royal Gem</span>
+                <span className="text-[11px] text-slate-400">Common · Max 18</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 rounded-xl border p-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
+                <div className="h-14 w-14 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: epicGradient }}>
+                  <div className="h-full w-full bg-white/5 flex items-center justify-center text-[11px] px-1 text-slate-100">Epic</div>
+                </div>
+                <span className="text-white font-semibold leading-tight">Meteor Staff</span>
+                <span className="text-[11px] text-slate-400">Epic · Max 27</span>
+              </div>
+              <div className="flex flex-col items-center gap-1 rounded-xl border p-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
+                <div className="h-14 w-14 rounded-lg flex items-center justify-center overflow-hidden" style={{ background: 'linear-gradient(180deg, rgba(167,76,229,0.25) 0%, rgba(147,63,203,0.2) 50%, rgba(176,79,172,0.2) 100%)' }}>
+                  <div className="h-full w-full flex items-center justify-center text-[11px] px-1 text-slate-100" style={{ filter: 'grayscale(100%) brightness(0.6)', opacity: 0.7 }}>
+                    Epic
+                  </div>
+                </div>
+                <span className="text-white font-semibold leading-tight">Henchmen Puppet</span>
+                <span className="text-[11px] text-slate-400">Not owned</span>
               </div>
             </div>
           </Card>
