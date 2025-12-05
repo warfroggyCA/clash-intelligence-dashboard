@@ -405,12 +405,12 @@ const groupedEquipment = useMemo(() => {
   return heroBuckets;
 }, [equipmentLevels]);
 
-  const trophies = profile?.rankedTrophies ?? profile?.trophies ?? rosterFallback?.rankedTrophies ?? rosterFallback?.trophies ?? 0;
-  const donated = profile?.donations ?? rosterFallback?.donations ?? 0;
-  const received = profile?.donationsReceived ?? rosterFallback?.donationsReceived ?? 0;
-  const warStarsValue = (profile as any)?.warStars ?? (rosterFallback as any)?.warStars ?? 0;
-  const attackWins = (profile as any)?.attackWins ?? (rosterFallback as any)?.attackWins ?? 0;
-  const defenseWins = (profile as any)?.defenseWins ?? (rosterFallback as any)?.defenseWins ?? 0;
+  const trophies = summary?.rankedTrophies ?? summary?.trophies ?? rosterFallback?.rankedTrophies ?? rosterFallback?.trophies ?? 0;
+  const donated = summary?.donations?.given ?? rosterFallback?.donations ?? 0;
+  const received = summary?.donations?.received ?? rosterFallback?.donationsReceived ?? 0;
+  const warStarsValue = summary?.war?.stars ?? (rosterFallback as any)?.warStars ?? 0;
+  const attackWins = summary?.war?.attackWins ?? (rosterFallback as any)?.attackWins ?? 0;
+  const defenseWins = summary?.war?.defenseWins ?? (rosterFallback as any)?.defenseWins ?? 0;
   const sortedHeroEquipmentList = useMemo(() => {
     const order: Record<string, number> = { bk: 0, aq: 1, gw: 2, rc: 3, mp: 4 };
     return [...heroEquipmentData].sort((a, b) => {
