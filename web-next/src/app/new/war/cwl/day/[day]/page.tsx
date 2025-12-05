@@ -256,7 +256,7 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
         </div>
         <div className="flex gap-2">
           <Link href="/new/war/cwl">
-            <Button variant="outline">Back to overview</Button>
+            <Button tone="ghost">Back to overview</Button>
           </Link>
         </div>
       </div>
@@ -273,9 +273,9 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                 </div>
                 <div className="text-slate-400 text-sm">{sampleOpponentStrengthNote}</div>
               </div>
-              <Button variant="outline" size="sm" title="Fetch updated opponent roster" onClick={() => {
+              <Button tone="ghost" title="Fetch updated opponent roster" onClick={() => {
                 setOpponents((prev) => [...prev]); // trigger effect
-              }}>
+              }} className="text-sm">
                 {oppLoading ? 'Refreshing…' : 'Refresh roster'}
               </Button>
             </div>
@@ -298,7 +298,7 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                 <span className="font-semibold text-white">{playing.size} / {warSize}</span>
               </div>
               <div className="flex gap-2">
-                <Button size="sm" onClick={saveLineup} disabled={status !== 'ready'}>
+                <Button onClick={saveLineup} disabled={status !== 'ready'} className="text-sm">
                   Save lineup
                 </Button>
                 {lastSaved ? <span className="text-xs text-slate-400">Saved at {lastSaved}</span> : null}
@@ -352,8 +352,8 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
             <div className="space-y-3 text-sm text-slate-200">
               <p>Copy roster + opponent context for an LLM. No auto-calls are made.</p>
               <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => handleCopy(false)}>{copied ? 'Copied' : 'Copy for AI'}</Button>
-                <Button variant="outline" size="sm" onClick={() => handleCopy(true)}>
+                <Button tone="ghost" onClick={() => handleCopy(false)} className="text-sm">{copied ? 'Copied' : 'Copy for AI'}</Button>
+                <Button tone="ghost" onClick={() => handleCopy(true)} className="text-sm">
                   {copied ? 'Copied' : 'Copy matchup prompt'}
                 </Button>
               </div>
@@ -411,8 +411,7 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
               <span className="text-slate-400">Marked playing:</span>
               <span className="font-semibold text-white">{opponentPlaying.size} / {warSize}</span>
               <Button
-                variant="outline"
-                size="sm"
+                tone="ghost"
                 onClick={() => {
                   const top = opponentRoster
                     .slice()
@@ -421,10 +420,11 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                     .map((m) => m.tag);
                   setOpponentPlaying(new Set(top));
                 }}
+                className="text-sm"
               >
                 Suggest top {warSize}
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => setOpponentPlaying(new Set())}>Clear</Button>
+              <Button tone="ghost" onClick={() => setOpponentPlaying(new Set())} className="text-sm">Clear</Button>
             </div>
             <div className="mt-1 text-xs text-slate-400">Saved locally per day; included in AI export.</div>
           </Card>
