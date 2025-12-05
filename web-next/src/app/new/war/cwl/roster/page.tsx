@@ -167,7 +167,7 @@ export default function CwlRosterPage() {
           <p className="text-slate-300 text-sm">Pick all accounts eligible for the CWL week (you can select more than {warSize}; daily planners enforce {warSize} per war).</p>
         </div>
         <Link href="/new/war/cwl">
-          <Button variant="outline">Back to overview</Button>
+          <Button tone="ghost">Back to overview</Button>
         </Link>
       </div>
 
@@ -187,7 +187,7 @@ export default function CwlRosterPage() {
               <Button className="flex-1" onClick={saveRoster}>
                 Save season roster
               </Button>
-              <Button variant="outline" onClick={() => setLocked((v) => !v)}>{locked ? 'Unlock' : 'Lock'}</Button>
+              <Button tone="ghost" onClick={() => setLocked((v) => !v)}>{locked ? 'Unlock' : 'Lock'}</Button>
             </div>
             {lastSaved ? <div className="text-xs text-slate-400">Saved at {lastSaved}</div> : null}
           </div>
