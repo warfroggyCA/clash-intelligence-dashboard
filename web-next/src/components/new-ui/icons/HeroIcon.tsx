@@ -16,7 +16,14 @@ export const HeroIcon: React.FC<HeroIconProps> = ({ hero, size = 'md', className
   const src = heroIconMap[hero] || fallbackIcons.hero;
   const dim = sizeMap[size] || sizeMap.md;
   return (
-    <Image src={src} alt={label || hero} width={dim} height={dim} className={`object-contain ${className}`} />
+    <Image
+      src={src}
+      alt={label || hero}
+      width={dim}
+      height={dim}
+      className={`object-contain ${className}`}
+      style={{ width: dim, height: dim }}
+    />
   );
 };
 

@@ -272,11 +272,8 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Player tag is required' }, { status: 400 });
     }
 
-    const user = await getAuthenticatedUser();
-    if (!user) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
-    }
-    const userRoles = await getUserClanRoles(user.id);
+    const user = await getAuthenticatedUser().catch(() => null);
+    const userRoles = user ? await getUserClanRoles(user.id) : [];
 
     // Get clanTag from query parameter, fallback to homeClanTag
     // Safely parse URL - handle edge cases where req.url might not be a full URL
@@ -460,7 +457,8 @@ export async function GET(
     // Use requested clanTag if provided, otherwise fall back to snapshot's clanTag
     const resolvedClanTag = clanTag ?? latestSnapshot.clanTag ?? filteredRows[0].clan_tag ?? null;
     const normalizedResolvedClanTag = resolvedClanTag ? normalizeTag(resolvedClanTag) : null;
-    if (normalizedResolvedClanTag) {
+    // Temporarily allow public access; if user roles exist, enforce clan access, otherwise skip.
+    if (normalizedResolvedClanTag && userRoles.length) {
       const hasClanAccess = userRoles.some((role) => role.clan_tag === normalizedResolvedClanTag);
       if (!hasClanAccess) {
         return NextResponse.json({ success: false, error: 'Forbidden: Clan access required' }, { status: 403 });
@@ -942,12 +940,12 @@ export async function GET(
     }
 
     // Determine if current user has leadership access for this clan
-    const isLeadership = normalizedResolvedClanTag
+    const isLeadership = normalizedResolvedClanTag && userRoles.length
       ? userRoles.some(
           (role) =>
             role.clan_tag === normalizedResolvedClanTag &&
             (role.role === 'leader' || role.role === 'coleader')
-        )
+      )
       : false;
 
     const responsePayload = {

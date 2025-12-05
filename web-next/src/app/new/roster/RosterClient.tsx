@@ -26,6 +26,7 @@ import {
 } from './roster-utils';
 import Link from 'next/link';
 import { RosterCardsSkeleton } from './RosterCardsSkeleton';
+import { normalizeTag } from '@/lib/tags';
 
 const heroMeta: Record<string, { name: string; gradient: string }> = {
   bk: { name: 'Barbarian King', gradient: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)' },
@@ -82,11 +83,14 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
               <RoleIcon role={role} size={28} className="shrink-0" />
               <div className="flex flex-col">
                 <div className="flex items-center gap-2">
-                  <CopyableName
-                    name={member.name || member.tag}
-                    tag={member.tag}
-                    className="text-white text-lg font-bold tracking-[0.03em]"
-                  />
+                  <Link
+                    href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
+                    className="text-white text-lg font-bold tracking-[0.03em] hover:text-[var(--accent-alt)] transition-colors"
+                    style={{ fontFamily: 'var(--font-body)' }}
+                    title="View full player profile"
+                  >
+                    {member.name || member.tag}
+                  </Link>
                   <span
                     className="inline-flex h-2.5 w-2.5 rounded-full"
                     style={{ background: activity.tone, transform: 'translateY(-1px)' }}
@@ -108,9 +112,14 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
             <div className="flex flex-col gap-3">
               <div>
                 <div className="uppercase tracking-[0.2em] text-[10px] text-slate-400 font-medium">Trophies</div>
-                <div className="text-lg font-bold text-white">{trophies.toLocaleString()}</div>
+                <div
+                  className="text-lg font-bold text-white"
+                  title="Ranked trophies: current season ladder points."
+                >
+                  {trophies.toLocaleString()}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2" title={league ? `League: ${league}${tier ? ` ${tier}` : ''}` : 'League unknown'}>
                 <LeagueIcon league={league} ranked size="sm" badgeText={tier} showBadge />
               </div>
             </div>
@@ -118,24 +127,41 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
             <div className="flex flex-col gap-3">
               <div>
                 <div className="uppercase tracking-[0.2em] text-[10px] text-slate-400 font-medium">Donated</div>
-                <div className="text-lg font-bold text-white">{(member.donations ?? 0).toLocaleString()}</div>
+                <div
+                  className="text-lg font-bold text-white"
+                  title="Season donations given: higher is better."
+                >
+                  {(member.donations ?? 0).toLocaleString()}
+                </div>
               </div>
               <div>
                 <div className="uppercase tracking-[0.2em] text-[10px] text-slate-400 font-medium">Received</div>
-                <div className="text-lg font-bold text-white">{(member.donationsReceived ?? 0).toLocaleString()}</div>
+                <div
+                  className="text-lg font-bold text-white"
+                  title="Season donations received."
+                >
+                  {(member.donationsReceived ?? 0).toLocaleString()}
+                </div>
               </div>
             </div>
 
             <div className="flex flex-col gap-3">
               <div>
                 <div className="uppercase tracking-[0.2em] text-[10px] text-slate-400 font-medium">SRS</div>
-                <div className="text-lg font-bold text-white leading-tight">
+                <div
+                  className="text-lg font-bold text-white leading-tight"
+                  title="SRS: temporary roster score (activity/skill placeholder; real calc forthcoming)."
+                >
                   {Math.round(activity.score)}
                 </div>
               </div>
               <div>
                 <div className="uppercase tracking-[0.2em] text-[10px] text-slate-400 font-medium">Rush</div>
-                <div className="text-lg font-bold" style={{ color: rushColor }}>
+                <div
+                  className="text-lg font-bold"
+                  style={{ color: rushColor }}
+                  title="Rush %: lower is better (green <10%, yellow 10-20%, red >20%)."
+                >
                   {formatRush(rushValue)}
                 </div>
               </div>
@@ -225,7 +251,7 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
       <div className="rounded-2xl border" style={{ background: 'var(--card)', borderColor: 'var(--border-subtle)' }}>
         <div className="border-b border-white/5 px-4 py-2 flex flex-wrap items-center gap-3">
           <Input
-            placeholder="Search players, tags"
+            placeholder="Search players"
             className="max-w-xs"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
