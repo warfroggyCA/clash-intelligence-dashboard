@@ -462,10 +462,10 @@ const groupedEquipment = useMemo(() => {
           </div>
         </div>
         <Button
-          variant="outline"
-          size="sm"
+          tone="ghost"
           onClick={() => setActionsOpen((v) => !v)}
           title="Leadership actions"
+          className="text-sm"
         >
           Leadership
         </Button>
@@ -782,18 +782,18 @@ const groupedEquipment = useMemo(() => {
           >
             <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="text-white font-semibold">Leadership Actions</div>
-              <Button variant="outline" size="sm" onClick={() => setActionsOpen(false)}>
+              <Button tone="ghost" onClick={() => setActionsOpen(false)} className="text-sm">
                 Close
               </Button>
             </div>
             <div className="p-4 space-y-3 text-sm">
-              <Button variant="primary" size="sm" className="w-full justify-between" disabled title="Add note (coming soon)">
+              <Button tone="primary" className="w-full justify-between text-sm" disabled title="Add note (coming soon)">
                 Add Note
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-between" disabled title="Flag account (coming soon)">
+              <Button tone="ghost" className="w-full justify-between text-sm" disabled title="Flag account (coming soon)">
                 Flag Account
               </Button>
-              <Button variant="outline" size="sm" className="w-full justify-between" disabled title="Report concern (coming soon)">
+              <Button tone="ghost" className="w-full justify-between text-sm" disabled title="Report concern (coming soon)">
                 Report concern
               </Button>
               <p className="text-xs text-slate-400">Leadership tools will wire to the new services soon.</p>
