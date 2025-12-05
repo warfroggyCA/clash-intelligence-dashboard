@@ -57,7 +57,6 @@ const equipmentIconMap: Record<string, string> = {
   vampstache: '/assets/equipment/Hero_Equipment_BK_Vampstache.png',
   giantgauntlet: '/assets/equipment/Hero_Equipment_BQ_Giant_Gauntlet.png',
   spikyball: '/assets/equipment/Hero_Equipment_BK_Spiky_Ball.png',
-  spikyball: '/assets/equipment/Hero_Equipment_BQ_Giant_Gauntlet.png',
   // Grand Warden
   eternaltome: '/assets/equipment/Hero_Equipment_GW_Eternal_Tome.png',
   fireball: '/assets/equipment/Hero_Equipment_GW_Fireball.png',
