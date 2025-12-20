@@ -21,7 +21,7 @@ export const townHallIconMap: Record<number, string> = {
 
 export const leagueIconMap: Record<string, string> = {
   // kept for fallback/compat if needed
-  'No League': '/assets/clash/Leagues/No_League.png',
+  'No League': '/assets/clash/Leagues/No_League_New.png',
 };
 
 export const rankedLeagueIconMap: Record<string, string> = {
@@ -55,8 +55,8 @@ export const roleIconMap: Record<string, string> = {
 };
 
 export const fallbackIcons = {
-  townHall: '/assets/clash/Leagues/No_League.png',
-  league: '/assets/clash/Leagues/No_League.png',
+  townHall: '/assets/clash/Leagues/No_League_New.png',
+  league: '/assets/clash/Leagues/No_League_New.png',
   hero: '/assets/heroes/Barbarian_King.png',
   role: '/assets/icons/Member.png',
 };

@@ -9,12 +9,13 @@ import { createApiContext } from '@/lib/api/route-helpers';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { warId: string } }
+  { params }: { params: Promise<{ warId: string }> }
 ) {
+  const { warId: warIdParam } = await params;
   const { json } = createApiContext(request, '/api/war/[warId]/details');
   
   try {
-    const warId = decodeURIComponent(params.warId);
+    const warId = decodeURIComponent(warIdParam);
     const { searchParams } = new URL(request.url);
     const clanTag = searchParams.get('clanTag');
     const supabase = getSupabaseAdminClient();

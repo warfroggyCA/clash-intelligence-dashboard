@@ -9,8 +9,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  * SECURITY: Previously cached a singleton which captured the first request's
  * cookies, causing cross-tenant data leaks. Now creates fresh client each time.
  */
-function getSupabaseAuthClient(): SupabaseClient {
-  const cookieStore = cookies();
+async function getSupabaseAuthClient(): Promise<SupabaseClient> {
+  const cookieStore = await cookies();
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
@@ -35,7 +35,7 @@ function getSupabaseAuthClient(): SupabaseClient {
 }
 
 export async function getAuthenticatedUser() {
-  const supabase = getSupabaseAuthClient();
+  const supabase = await getSupabaseAuthClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();

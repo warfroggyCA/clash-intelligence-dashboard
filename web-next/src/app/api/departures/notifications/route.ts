@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Rate limit (burst protection)
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const key = `departures:notifications:${clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 30 });
     if (!limit.ok) {

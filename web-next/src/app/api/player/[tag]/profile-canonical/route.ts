@@ -6,10 +6,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { tag: string } }
+  { params }: { params: Promise<{ tag: string }> }
 ) {
   try {
-    const paramTag = params.tag;
+    const { tag: paramTag } = await params;
     const normalizedWithHash = normalizeTag(paramTag);
     const supabase = getSupabaseServerClient();
 

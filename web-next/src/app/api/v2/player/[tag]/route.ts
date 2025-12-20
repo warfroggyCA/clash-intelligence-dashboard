@@ -408,11 +408,11 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
 
 export async function GET(
   _req: NextRequest,
-  { params }: { params: { tag: string } }
+  { params }: { params: Promise<{ tag: string }> }
 ) {
   try {
+    const { tag: tagParam } = await params;
     const supabase = getSupabaseServerClient();
-    const tagParam = params.tag ?? '';
     const tagWithHash = tagParam.startsWith('#') ? tagParam : `#${tagParam}`;
     const normalizedTag = normalizeTag(tagWithHash);
 

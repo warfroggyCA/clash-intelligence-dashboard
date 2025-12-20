@@ -4,8 +4,8 @@ import { AuthGate } from '@/components/layout/AuthGuard';
 
 export const dynamic = 'force-dynamic';
 
-export default function OnboardingPage() {
-  const clanConfig = getActiveClanConfig();
+export default async function OnboardingPage() {
+  const clanConfig = await getActiveClanConfig();
   return (
     <AuthGate>
       <OnboardingClient clanConfig={clanConfig} />

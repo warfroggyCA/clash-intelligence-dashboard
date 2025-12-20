@@ -36,7 +36,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Inbound rate limit per IP
-    const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
     const key = `full-snapshots:${clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 30 });
     if (!limit.ok) {

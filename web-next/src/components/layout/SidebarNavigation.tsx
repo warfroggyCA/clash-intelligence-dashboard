@@ -48,9 +48,9 @@ const NavNode: React.FC<{
 
       {hasChildren && !collapsed && (
         <div className="space-y-1 border-l border-white/5 pl-3">
-          {item.children?.map((child) => (
+          {item.children?.map((child, index) => (
             <NavNode
-              key={child.href}
+              key={`${child.href}-${child.title}-${index}`}
               item={child}
               depth={depth + 1}
               pathname={pathname}
@@ -71,8 +71,15 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ items = na
     <nav className="space-y-2" data-testid="sidebar-navigation">
       {items
         .filter((item) => !item.href.includes('['))
-        .map((item) => (
-          <NavNode key={item.href} item={item} depth={0} pathname={pathname} onNavigate={onNavigate} collapsed={collapsed} />
+        .map((item, index) => (
+          <NavNode
+            key={`${item.href}-${item.title}-${index}`}
+            item={item}
+            depth={0}
+            pathname={pathname}
+            onNavigate={onNavigate}
+            collapsed={collapsed}
+          />
         ))}
     </nav>
   );

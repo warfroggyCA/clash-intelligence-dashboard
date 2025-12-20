@@ -7,14 +7,17 @@ interface CardProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
+  surface?: 'card' | 'panel' | 'bg';
 }
 
-export const Card: React.FC<CardProps> = ({ title, children, footer, className }) => {
+export const Card: React.FC<CardProps> = ({ title, children, footer, className, surface = 'card' }) => {
+  const background =
+    surface === 'bg' ? 'var(--bg)' : surface === 'panel' ? 'var(--panel)' : 'var(--card)';
   return (
     <div
       className={`group relative overflow-visible rounded-2xl border transition-all duration-150 hover:-translate-y-0.5 ${className ?? ''}`}
       style={{
-        background: 'var(--card)',
+        background,
         borderColor: 'var(--border-subtle)',
         boxShadow: '0 14px 32px -18px rgba(0,0,0,0.7)',
         zIndex: 1,

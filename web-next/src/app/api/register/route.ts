@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       return json({ success: false, error: 'Enter a valid player tag (e.g., #2PR8R8V8P)' }, { status: 400 });
     }
 
-    const clanConfig = getActiveClanConfig();
+    const clanConfig = await getActiveClanConfig();
     const normalizedClan = normalizeTag(clanConfig?.clanTag || '');
     if (!normalizedClan) {
       return json({ success: false, error: 'Clan context missing. Try again later.' }, { status: 400 });

@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
     const includeRoles = (parsed.data.includeRoles || ['member','elder','coleader']).map(s=>s.toLowerCase());
     if (!tags.length) return json({ success: false, error: 'No valid tags to evaluate' }, { status: 400 });
 
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const limit = await rateLimitAllow(`applicants:shortlist:${ip}`, { windowMs: 60_000, max: 10 });
     if (!limit.ok) {
       return json({ success: false, error: 'Too many requests' }, {

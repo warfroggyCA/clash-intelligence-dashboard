@@ -24,10 +24,75 @@ import RosterClient from '../RosterClient';
 import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
 import { RosterSkeleton } from '@/components/ui/RosterSkeleton';
 import { normalizeTag } from '@/lib/tags';
+import { normalizeSearch } from '@/lib/search';
 import Link from 'next/link';
+import { formatDistanceToNow } from 'date-fns';
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// WORLD-CLASS COMPONENTS
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Animated counter
+const AnimatedCounter = ({ value, duration = 800 }: { value: number; duration?: number }) => {
+  const [displayValue, setDisplayValue] = useState(0);
+  
+  useEffect(() => {
+    if (typeof value !== 'number' || isNaN(value)) return;
+    const startTime = Date.now();
+    const startValue = displayValue;
+    const diff = value - startValue;
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      setDisplayValue(Math.round(startValue + diff * easeOut));
+      if (progress < 1) requestAnimationFrame(animate);
+    };
+    requestAnimationFrame(animate);
+  }, [value, duration]);
+  
+  return <>{displayValue.toLocaleString()}</>;
+};
+
+// TH distribution bar
+const THDistributionBar = ({ distribution }: { distribution: Record<number, number> }) => {
+  const thColors: Record<number, string> = {
+    17: '#f43f5e', 16: '#f97316', 15: '#eab308', 14: '#22c55e', 
+    13: '#3b82f6', 12: '#8b5cf6', 11: '#ec4899', 10: '#6366f1',
+    9: '#06b6d4', 8: '#84cc16', 7: '#f59e0b', 6: '#78716c'
+  };
+  
+  const entries = Object.entries(distribution)
+    .map(([th, count]) => ({ th: parseInt(th), count }))
+    .filter(e => e.count > 0)
+    .sort((a, b) => b.th - a.th);
+  
+  const total = entries.reduce((sum, e) => sum + e.count, 0);
+  if (total === 0) return null;
+  
+  return (
+    <div className="flex items-center gap-1 w-full max-w-md">
+      {entries.map(({ th, count }) => (
+        <div
+          key={th}
+          className="h-5 rounded-sm flex items-center justify-center text-[9px] font-bold text-white/90"
+          style={{ 
+            width: `${(count / total) * 100}%`,
+            minWidth: count > 0 ? '20px' : 0,
+            background: thColors[th] || '#64748b',
+          }}
+          title={`TH${th}: ${count}`}
+        >
+          {th}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 export default function TableClient({ initialRoster }: { initialRoster?: RosterData | null }) {
-  const { members, isLoading, error, isValidating, mutate } = useRosterData(initialRoster || undefined);
+  const { data, members, isLoading, error, isValidating, mutate } = useRosterData(initialRoster || undefined);
   const [search, setSearch] = useState('');
   const [isNarrow, setIsNarrow] = useState(false);
 
@@ -39,14 +104,44 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
   }, []);
 
   const filteredMembers = useMemo(() => {
-    const query = search.trim().toLowerCase();
+    const query = normalizeSearch(search.trim());
     if (!query) return members;
     return members.filter((member) => {
-      const name = member.name?.toLowerCase() || '';
-      const tag = (member.tag || '').toLowerCase();
+      const name = normalizeSearch(member.name || '');
+      const tag = normalizeSearch(member.tag || '');
       return name.includes(query) || tag.includes(query);
     });
   }, [members, search]);
+
+  // Calculate clan-wide stats for the header
+  const clanStats = useMemo(() => {
+    if (!members.length) return null;
+    
+    const thDistribution: Record<number, number> = {};
+    let totalHeroPower = 0;
+    let totalDonations = 0;
+    let totalTrophies = 0;
+    
+    members.forEach((m) => {
+      const th = resolveTownHall(m);
+      if (th) thDistribution[th] = (thDistribution[th] || 0) + 1;
+      totalHeroPower += (m.bk ?? 0) + (m.aq ?? 0) + (m.gw ?? 0) + (m.rc ?? 0) + (m.mp ?? 0);
+      totalDonations += m.donations ?? 0;
+      totalTrophies += resolveTrophies(m);
+    });
+    
+    return {
+      memberCount: members.length,
+      thDistribution,
+      avgHeroPower: Math.round(totalHeroPower / members.length),
+      totalDonations,
+      avgTrophies: Math.round(totalTrophies / members.length),
+    };
+  }, [members]);
+
+  const lastUpdated = data?.snapshotMetadata?.fetchedAt ?? data?.snapshotMetadata?.snapshotDate ?? data?.lastUpdated ?? null;
+  const parsedLastUpdated = lastUpdated ? new Date(lastUpdated) : null;
+  const safeLastUpdated = parsedLastUpdated && !Number.isNaN(parsedLastUpdated.getTime()) ? parsedLastUpdated : null;
 
   if (isNarrow) {
     // On narrow viewports, just reuse the card layout to avoid cramped columns and duplicate headers.
@@ -55,22 +150,93 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-display)' }}>Roster Table</h1>
-          <p className="text-slate-300 text-sm">Same tokens and icons, compact in rows.</p>
-        </div>
-        <div className="flex flex-wrap gap-2 text-sm">
-          <Button tone="primary" onClick={() => mutate()} disabled={isValidating}>
-            {isValidating ? 'Refreshing…' : 'Refresh'}
-          </Button>
-          <Link
-            href="/new/roster"
-            className="inline-flex items-center justify-center rounded-xl border px-4 py-2 font-semibold text-sm"
-            style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)', color: 'var(--text)' }}
-          >
-            Card view
-          </Link>
+      {/* ═══════════════════════════════════════════════════════════════════════
+          WORLD-CLASS HEADER BANNER
+      ═══════════════════════════════════════════════════════════════════════ */}
+      <div 
+        className="relative rounded-2xl overflow-hidden"
+        style={{ 
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
+          boxShadow: '0 20px 40px -12px rgba(0,0,0,0.4)'
+        }}
+      >
+        {/* Gradient overlay */}
+        <div 
+          className="absolute inset-0 opacity-50"
+          style={{
+            background: `
+              radial-gradient(ellipse 60% 40% at 30% 50%, rgba(59,130,246,0.1) 0%, transparent 50%),
+              radial-gradient(ellipse 50% 30% at 70% 50%, rgba(234,179,8,0.08) 0%, transparent 50%)
+            `,
+          }}
+        />
+        
+        <div className="relative p-5">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Left: Clan name + stats */}
+            <div className="flex items-center gap-6">
+              <div>
+                <div className="flex items-center gap-3 mb-1">
+                  <h1 
+                    className="text-3xl font-black text-white tracking-tight"
+                    style={{ fontFamily: 'var(--font-display)' }}
+                  >
+                    {data?.clanName || 'Roster Table'}
+                  </h1>
+                  {clanStats && (
+                    <span 
+                      className="px-2.5 py-0.5 rounded-full text-xs font-bold"
+                      style={{ background: 'rgba(234,179,8,0.2)', color: '#fbbf24' }}
+                    >
+                      {clanStats.memberCount} Members
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-400">
+                  {data?.clanTag && <code className="bg-black/30 px-1.5 py-0.5 rounded font-mono">{data.clanTag}</code>}
+                  {safeLastUpdated && (
+                    <span>Updated {formatDistanceToNow(safeLastUpdated, { addSuffix: true })}</span>
+                  )}
+                </div>
+              </div>
+              
+              {/* TH Distribution */}
+              {clanStats && (
+                <div className="hidden lg:block">
+                  <THDistributionBar distribution={clanStats.thDistribution} />
+                </div>
+              )}
+            </div>
+            
+            {/* Right: Quick stats + Actions */}
+            <div className="flex items-center gap-4">
+              {clanStats && (
+                <div className="hidden md:flex items-center gap-3 text-xs">
+                  <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                    <div className="text-slate-500 uppercase tracking-widest text-[9px]">Avg Power</div>
+                    <div className="text-purple-400 font-bold text-lg">{clanStats.avgHeroPower}</div>
+                  </div>
+                  <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                    <div className="text-slate-500 uppercase tracking-widest text-[9px]">Total Donated</div>
+                    <div className="text-emerald-400 font-bold text-lg">{clanStats.totalDonations.toLocaleString()}</div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex gap-2">
+                <Button tone="primary" onClick={() => mutate()} disabled={isValidating}>
+                  {isValidating ? 'Refreshing…' : 'Refresh'}
+                </Button>
+                <Link
+                  href="/new/roster"
+                  className="inline-flex items-center justify-center rounded-xl border px-4 py-2 font-semibold text-sm"
+                  style={{ borderColor: 'var(--border-subtle)', background: 'rgba(30,41,59,0.5)', color: 'var(--text)' }}
+                >
+                  Card view
+                </Link>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -145,23 +311,26 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                       const heroCaps = HERO_MAX_LEVELS[townHall ?? 0] || {};
 
                       return (
-                        <tr key={member.tag} className="border-b border-white/5 hover:bg-white/[0.03]">
-                          <td className="px-2 py-3">
+                        <tr 
+                          key={member.tag} 
+                          className="border-b border-white/5 transition-all duration-200 hover:bg-gradient-to-r hover:from-white/[0.04] hover:to-transparent group"
+                        >
+                          <td className="px-3 py-3">
                             <div className="flex items-center gap-3">
                               <RoleIcon role={role} size={22} className="shrink-0" />
                               <div className="flex flex-col">
                                 <div className="flex items-center gap-2">
                                   <Link
                                     href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
-                                    className="text-white font-semibold tracking-[0.02em] hover:text-[var(--accent-alt)] transition-colors"
+                                    className="text-white font-semibold tracking-[0.02em] hover:text-[var(--accent-alt)] transition-colors group-hover:text-amber-300"
                                     style={{ fontFamily: 'var(--font-body)' }}
                                     title="View full player profile"
                                   >
                                     {member.name || member.tag}
                                   </Link>
                                   <span
-                                    className="h-2.5 w-2.5 rounded-full"
-                                    style={{ background: activity.tone }}
+                                    className="h-2 w-2 rounded-full"
+                                    style={{ background: activity.tone, boxShadow: `0 0 6px ${activity.tone}` }}
                                     title={activity.evidence?.level || activity.band}
                                   />
                                 </div>
@@ -175,33 +344,35 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                             <LeagueIcon league={league} ranked size="sm" badgeText={tier} showBadge />
                           </td>
                         <td
-                          className="px-2 py-3 font-semibold text-white text-right tabular-nums"
+                          className="px-2 py-3 font-bold text-right tabular-nums"
+                          style={{ color: '#fbbf24' }}
                           title="Ranked trophies: current season ladder points."
                         >
                           {trophies.toLocaleString()}
                         </td>
                         <td
-                          className="px-2 py-3 text-right tabular-nums font-semibold"
+                          className="px-2 py-3 text-right tabular-nums font-bold"
                           style={{ color: '#34d399' }}
                           title="Season donations given: higher is better."
                         >
                           {(member.donations ?? 0).toLocaleString()}
                         </td>
                         <td
-                          className="px-2 py-3 text-right tabular-nums"
+                          className="px-2 py-3 text-right tabular-nums text-slate-400"
                           title="Season donations received."
                         >
                           {(member.donationsReceived ?? 0).toLocaleString()}
                         </td>
                         <td
-                          className="px-2 py-3 font-semibold text-right tabular-nums"
+                          className="px-2 py-3 font-bold text-right tabular-nums"
                           style={{ color: rushTone(rushValue) }}
                           title="Rush %: lower is better (green <10%, yellow 10-20%, red >20%)."
                         >
                           {formatRush(rushValue)}
                         </td>
                         <td
-                          className="px-2 py-3 font-semibold text-white text-right tabular-nums"
+                          className="px-2 py-3 font-bold text-right tabular-nums"
+                          style={{ color: '#a78bfa' }}
                           title="SRS: temporary roster score (activity/skill placeholder; real calc forthcoming)."
                         >
                           {Math.round(activity.score)}

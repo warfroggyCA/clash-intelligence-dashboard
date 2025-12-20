@@ -4,7 +4,7 @@ import { getInitialPlayerProfile } from './get-initial-profile';
 import type { SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
 
 interface PlayerPageProps {
-  params: { tag: string };
+  params: Promise<{ tag: string }>;
 }
 
 // Force dynamic rendering to prevent stale data caching
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function PlayerPage({ params }: PlayerPageProps) {
-  const tag = params?.tag ?? '';
+  const { tag } = await params;
   let initialProfile: SupabasePlayerProfilePayload | null = null;
 
   try {

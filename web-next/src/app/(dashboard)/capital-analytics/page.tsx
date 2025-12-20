@@ -9,10 +9,9 @@ import dynamicImport from 'next/dynamic';
 import LeadershipGuard from '@/components/LeadershipGuard';
 import BreadcrumbsClient from '@/components/ui/BreadcrumbsClient';
 
-// Lazy load the dashboard component to avoid SSR issues
+// Lazy load the dashboard component
 const CapitalAnalyticsDashboard = dynamicImport(
-  () => import('@/components/capital/CapitalAnalyticsDashboard'),
-  { ssr: false }
+  () => import('@/components/capital/CapitalAnalyticsDashboard')
 );
 
 export const dynamic = 'force-dynamic';

@@ -112,7 +112,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    // Step 2: Collect all unique player tags
+    // Step 2: Collect all unique player tags from notes/warnings/actions
     const allTags = new Set<string>();
     notesResult.forEach((note: any) => {
       if (note.player_tag) allTags.add(normalizeTag(note.player_tag) || note.player_tag);
@@ -126,6 +126,61 @@ export async function GET(request: NextRequest) {
     departureResult.forEach((action: any) => {
       if (action.player_tag) allTags.add(normalizeTag(action.player_tag) || action.player_tag);
     });
+
+    // Step 2.5: Also fetch current roster members to include players without notes/warnings
+    // Initialize playerNamesMap early so we can populate it here
+    const playerNamesMap = new Map<string, string>();
+    const currentRosterTags = new Set<string>();
+    
+    const { data: clanRow } = await supabaseServer
+      .from('clans')
+      .select('id')
+      .eq('tag', clanTag)
+      .maybeSingle();
+    
+    if (clanRow?.id) {
+      // Get latest roster snapshot
+      const { data: latestSnapshot } = await supabaseServer
+        .from('roster_snapshots')
+        .select('id')
+        .eq('clan_id', clanRow.id)
+        .order('fetched_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (latestSnapshot) {
+        // Get all members from latest snapshot
+        const { data: statsRows } = await supabaseServer
+          .from('member_snapshot_stats')
+          .select('member_id')
+          .eq('snapshot_id', latestSnapshot.id);
+        
+        if (statsRows && statsRows.length > 0) {
+          const memberIds = statsRows.map(row => row.member_id).filter(Boolean);
+          const { data: members } = await supabaseServer
+            .from('members')
+            .select('tag, name')
+            .in('id', memberIds);
+          
+          if (members) {
+            members.forEach((member: any) => {
+              if (member.tag) {
+                const normalizedTag = normalizeTag(member.tag);
+                if (normalizedTag) {
+                  currentRosterTags.add(normalizedTag);
+                  // Also add to allTags for name resolution
+                  allTags.add(normalizedTag);
+                  // Store name if available
+                  if (member.name && member.name !== 'Unknown Player') {
+                    playerNamesMap.set(normalizedTag, member.name);
+                  }
+                }
+              }
+            });
+          }
+        }
+      }
+    }
 
     const uniqueTags = Array.from(allTags).filter(tag => {
       const upperTag = tag.toUpperCase();
@@ -233,7 +288,7 @@ export async function GET(request: NextRequest) {
 
     // Step 3: Fetch player names efficiently using a single query with DISTINCT ON
     // This is much faster than fetching all snapshots and grouping client-side
-    const playerNamesMap = new Map<string, string>();
+    // (playerNamesMap already initialized in Step 2.5)
     
     // Combine uniqueTags with linked tags for name resolution
     const allTagsForNameResolution = [...uniqueTags, ...linkedTagsArray];
@@ -374,6 +429,13 @@ export async function GET(request: NextRequest) {
     warningsResult.forEach((warning: any) => {
       const tag = normalizeTag(warning.player_tag) || warning.player_tag;
       if (!tag) return;
+
+      // Check if warning has a stored player_name
+      const warningPlayerName = warning.player_name?.trim();
+      if (warningPlayerName && warningPlayerName !== 'Unknown Player') {
+        storedNamesMap.set(tag, warningPlayerName);
+        playerNamesMap.set(tag, warningPlayerName);
+      }
 
       if (!playerDataMap.has(tag)) {
         // Prioritize stored names from database over snapshot names
@@ -516,11 +578,12 @@ export async function GET(request: NextRequest) {
       }
     });
 
-    // Step 5: Get current roster members from latest canonical snapshot (more reliable than members table)
-    // This matches how /api/v2/roster determines current members
+    // Step 5: Fetch ALL players who have ever been in the clan (from canonical snapshots)
+    // This ensures we show all members, not just those with notes/warnings
+    const allHistoricalMemberTags = new Set<string>();
     const currentMemberTags = new Set<string>();
     
-    // Get the latest snapshot date
+    // Get the latest snapshot date to determine current vs former members
     const { data: latestDateRow } = await supabaseServer
       .from('canonical_member_snapshots')
       .select('snapshot_date')
@@ -530,45 +593,96 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (latestDateRow?.snapshot_date) {
-      // Fetch members from the latest snapshot only
-      const { data: latestSnapshots } = await supabaseServer
+      // Fetch ALL unique players from ALL snapshots for this clan
+      const { data: allSnapshots } = await supabaseServer
         .from('canonical_member_snapshots')
-        .select('player_tag, payload')
-        .eq('clan_tag', clanTag)
-        .eq('snapshot_date', latestDateRow.snapshot_date);
+        .select('player_tag, payload, snapshot_date')
+        .eq('clan_tag', clanTag);
       
-      if (latestSnapshots) {
-        latestSnapshots.forEach((snapshot: any) => {
+      if (allSnapshots) {
+        // Build a map of all unique players with their most recent name and snapshot date
+        const playerInfoMap = new Map<string, { name: string; lastSeen: string }>();
+        
+        allSnapshots.forEach((snapshot: any) => {
           const tag = snapshot.player_tag;
           if (tag) {
             const normalizedTag = normalizeTag(tag);
             if (normalizedTag) {
-              currentMemberTags.add(normalizedTag);
+              allHistoricalMemberTags.add(normalizedTag);
               
-              // Add current members who don't have any data yet
-              if (!playerDataMap.has(normalizedTag)) {
-                const memberName = snapshot.payload?.member?.name || playerNamesMap.get(normalizedTag) || 'Unknown Player';
-                playerDataMap.set(normalizedTag, {
-                  tag: normalizedTag,
-                  name: memberName,
-                  notes: [],
-                  warnings: [],
-                  tenureActions: [],
-                  departureActions: [],
-                  lastUpdated: latestDateRow.snapshot_date || new Date().toISOString(),
+              // Track if they're in the latest snapshot (current member)
+              if (snapshot.snapshot_date === latestDateRow.snapshot_date) {
+                currentMemberTags.add(normalizedTag);
+              }
+              
+              // Store the most recent name and last seen date
+              const snapshotName = snapshot.payload?.member?.name;
+              const snapshotDate = snapshot.snapshot_date || '';
+              
+              if (!playerInfoMap.has(normalizedTag)) {
+                playerInfoMap.set(normalizedTag, {
+                  name: snapshotName || 'Unknown Player',
+                  lastSeen: snapshotDate,
                 });
               } else {
-                // Update name from latest snapshot if it's better
-                const playerData = playerDataMap.get(normalizedTag)!;
-                const snapshotName = snapshot.payload?.member?.name;
-                if (snapshotName && (playerData.name === 'Unknown Player' || !playerData.name)) {
-                  playerData.name = snapshotName;
+                const existing = playerInfoMap.get(normalizedTag)!;
+                // Update if this snapshot is more recent
+                if (snapshotDate > existing.lastSeen) {
+                  playerInfoMap.set(normalizedTag, {
+                    name: snapshotName || existing.name,
+                    lastSeen: snapshotDate,
+                  });
                 }
+              }
+              
+              // Also update playerNamesMap if we have a name
+              if (snapshotName && snapshotName !== 'Unknown Player') {
+                playerNamesMap.set(normalizedTag, snapshotName);
               }
             }
           }
         });
+        
+        // Add all historical members to playerDataMap if they don't already exist
+        allHistoricalMemberTags.forEach((tag) => {
+          if (!playerDataMap.has(tag)) {
+            const info = playerInfoMap.get(tag);
+            const memberName = info?.name || playerNamesMap.get(tag) || 'Unknown Player';
+            playerDataMap.set(tag, {
+              tag,
+              name: memberName,
+              notes: [],
+              warnings: [],
+              tenureActions: [],
+              departureActions: [],
+              lastUpdated: info?.lastSeen || new Date().toISOString(),
+            });
+          } else {
+            // Update name from snapshot if it's better
+            const playerData = playerDataMap.get(tag)!;
+            const info = playerInfoMap.get(tag);
+            if (info?.name && (playerData.name === 'Unknown Player' || !playerData.name)) {
+              playerData.name = info.name;
+            }
+          }
+        });
       }
+    } else {
+      // Fallback: Use current roster members if no snapshots available
+      currentRosterTags.forEach((tag) => {
+        if (!playerDataMap.has(tag)) {
+          const memberName = playerNamesMap.get(tag) || 'Unknown Player';
+          playerDataMap.set(tag, {
+            tag,
+            name: memberName,
+            notes: [],
+            warnings: [],
+            tenureActions: [],
+            departureActions: [],
+            lastUpdated: new Date().toISOString(),
+          });
+        }
+      });
     }
 
     // Step 6: Resolve names for all linked accounts
@@ -746,6 +860,40 @@ export async function GET(request: NextRequest) {
           linkedAccountMembershipStatus.set(tag, 'never');
         });
       }
+    }
+
+    // Step 7.5: Final fallback - fetch names from CoC API for any players still showing as "Unknown Player"
+    // This handles cases where players have warnings/notes but never appeared in snapshots
+    const unknownPlayers = Array.from(playerDataMap.entries())
+      .filter(([tag, data]) => data.name === 'Unknown Player' || !data.name);
+    
+    if (unknownPlayers.length > 0) {
+      debugLog(`[player-database] Attempting to resolve ${unknownPlayers.length} unknown player names via CoC API`);
+      
+      // Fetch names in parallel (but with rate limiting)
+      const namePromises = unknownPlayers.map(async ([tag, data]) => {
+        try {
+          const { getPlayer } = await import('@/lib/coc');
+          const cleanTag = tag.replace('#', '');
+          const cocPlayer = await getPlayer(cleanTag);
+          
+          if (cocPlayer?.name) {
+            debugLog(`[player-database] ✅ Resolved name via CoC API: ${tag} → ${cocPlayer.name}`);
+            // Update both playerDataMap and playerNamesMap
+            data.name = cocPlayer.name;
+            playerNamesMap.set(tag, cocPlayer.name);
+            return true;
+          }
+        } catch (error: any) {
+          debugWarn(`[player-database] ❌ Failed to resolve ${tag} via CoC API:`, error.message);
+        }
+        return false;
+      });
+      
+      // Wait for all API calls to complete (with a reasonable timeout)
+      const results = await Promise.allSettled(namePromises);
+      const resolvedCount = results.filter(r => r.status === 'fulfilled' && r.value === true).length;
+      debugLog(`[player-database] Resolved ${resolvedCount} of ${unknownPlayers.length} unknown player names`);
     }
 
     // Step 8: Add linked accounts info to each player

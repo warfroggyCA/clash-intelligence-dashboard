@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     const { clanTag, date, nocache } = parsed.data;
     const bypassCache = Boolean(nocache || parsed.data._refresh); // Bypass cache if nocache or _refresh param present
 
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const rateKey = `insights:${clanTag}:${date ?? 'latest'}:${ip}`;
     const limit = await rateLimitAllow(rateKey, { windowMs: 60_000, max: 60 });
     if (!limit.ok) {

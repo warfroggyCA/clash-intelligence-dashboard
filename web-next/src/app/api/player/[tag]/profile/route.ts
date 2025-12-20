@@ -10,6 +10,7 @@ import type { PlayerTimelinePoint, PlayerSummarySupabase, SupabasePlayerProfileP
 import type { Member, MemberEnriched, PlayerActivityTimelineEvent } from '@/types';
 import { getAuthenticatedUser } from '@/lib/auth/server';
 import { getUserClanRoles } from '@/lib/auth/roles';
+import { getLinkedTagsWithNames } from '@/lib/player-aliases';
 import {
   buildTimelineFromPlayerDay,
   mapTimelinePointsToActivityEvents,
@@ -32,6 +33,7 @@ interface CanonicalSnapshotRow {
   clan_tag: string;
   snapshot_date: string | null;
   payload: CanonicalMemberSnapshotV1;
+  created_at?: string | null;
 }
 
 function toNumber(value: unknown): number | null {
@@ -55,7 +57,8 @@ function buildTimeline(rows: CanonicalSnapshotRow[]): TimelineComputation {
 
   const RANKED_START_DATE = '2025-10-06'; // Ranked League started Oct 6, 2025
 
-  const chronological = [...rows]
+  // First filter and sort
+  const filtered = [...rows]
     .filter((row) => {
       // Filter out dates before Ranked League start (Oct 6, 2025)
       if (!row.snapshot_date) return false;
@@ -66,8 +69,24 @@ function buildTimeline(rows: CanonicalSnapshotRow[]): TimelineComputation {
     .sort((a, b) => {
       const aDate = a.snapshot_date ? new Date(`${a.snapshot_date}T00:00:00Z`).getTime() : 0;
       const bDate = b.snapshot_date ? new Date(`${b.snapshot_date}T00:00:00Z`).getTime() : 0;
-      return aDate - bDate;
+      // Sort by date, then by created_at to get latest snapshot per day
+      if (aDate !== bDate) return aDate - bDate;
+      const aCreated = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const bCreated = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return aCreated - bCreated;
     });
+
+  // Deduplicate by date - keep the LAST (most recent) snapshot per day
+  // Since we sorted by date ascending, then by created_at ascending,
+  // the latest snapshot per day will overwrite earlier ones
+  const byDate = new Map<string, CanonicalSnapshotRow>();
+  for (const row of filtered) {
+    const dateKey = row.snapshot_date?.toString().substring(0, 10) ?? '';
+    if (dateKey) {
+      byDate.set(dateKey, row); // Later entries overwrite earlier ones
+    }
+  }
+  const chronological = Array.from(byDate.values());
 
   const now = new Date();
   const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
@@ -154,6 +173,9 @@ function buildSummary(
   tenureAsOf: string | null,
 ): PlayerSummarySupabase {
   const member = latest.member;
+  const latestTimelinePoint = timelineStats.timeline?.length
+    ? timelineStats.timeline[timelineStats.timeline.length - 1]
+    : null;
   const league = member.league ?? { id: null, name: null, trophies: null, iconSmall: null, iconMedium: null };
   const ranked = member.ranked ?? { leagueId: null, leagueName: null, trophies: null, iconSmall: null, iconMedium: null };
   const donationsGiven = member.donations.given ?? null;
@@ -195,9 +217,9 @@ function buildSummary(
       balance: donationBalance,
     },
     war: {
-      stars: member.war.stars ?? null,
-      attackWins: member.war.attackWins ?? null,
-      defenseWins: member.war.defenseWins ?? null,
+      stars: member.war.stars ?? latestTimelinePoint?.warStars ?? null,
+      attackWins: member.war.attackWins ?? latestTimelinePoint?.attackWins ?? null,
+      defenseWins: member.war.defenseWins ?? latestTimelinePoint?.defenseWins ?? null,
       preference: member.war.preference ?? null,
     },
     builderBase: {
@@ -236,7 +258,7 @@ async function fetchCanonicalSnapshots(
   
   const baseSelect = supabase
     .from('canonical_member_snapshots')
-    .select('clan_tag, snapshot_date, payload')
+    .select('clan_tag, snapshot_date, payload, created_at')
     .eq('player_tag', playerTag)
     .gte('snapshot_date', RANKED_START_DATE) // Only fetch Oct 6, 2025 onwards
     .order('snapshot_date', { ascending: false })
@@ -262,11 +284,11 @@ async function fetchCanonicalSnapshots(
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { tag: string } }
+  { params }: { params: Promise<{ tag: string }> }
 ) {
   try {
+    const { tag: requestedTag } = await params;
     const supabase = getSupabaseServerClient();
-    const requestedTag = params?.tag ?? '';
     const normalizedTag = normalizeTag(requestedTag);
     if (!normalizedTag) {
       return NextResponse.json({ success: false, error: 'Player tag is required' }, { status: 400 });
@@ -491,10 +513,10 @@ export async function GET(
         .select('date, clan_tag, player_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability')
         .eq('player_tag', normalizedTag)
         .order('date', { ascending: true }),
-      // Get member ID for historical trophy calculations
+      // Get member ID and current name for historical trophy calculations and name override
       supabase
         .from('members')
-        .select('id')
+        .select('id, name')
         .eq('tag', normalizedTag)
         .maybeSingle(),
     ]);
@@ -510,9 +532,13 @@ export async function GET(
 
     let timelineStats: TimelineComputation;
 
-    if (playerDayRows && playerDayRows.length) {
+    // Use player_day data if it has sufficient recent entries (at least 5 days)
+    // Otherwise fall back to canonical_member_snapshots which is always current
+    const hasRecentPlayerDayData = playerDayRows && playerDayRows.length >= 5;
+    if (hasRecentPlayerDayData) {
       timelineStats = buildTimelineFromPlayerDay(playerDayRows as PlayerDayTimelineRow[], SEASON_START_ISO);
     } else {
+      // Fall back to canonical snapshots - these are always kept current
       timelineStats = buildTimeline(filteredRows);
     }
 
@@ -542,6 +568,14 @@ export async function GET(
       tenureInfo?.days ?? latestSnapshot.member.tenure.days ?? null,
       tenureInfo?.as_of ?? latestSnapshot.member.tenure.asOf ?? null,
     );
+
+    // Override name with current name from members table if available (handles name changes)
+    if (memberRow?.name) {
+      summary = {
+        ...summary,
+        name: memberRow.name,
+      };
+    }
 
     const memberForActivity: Member = {
       name: summary.name ?? summary.tag,
@@ -767,6 +801,7 @@ export async function GET(
       { data: departureRows, error: departureError },
       { data: evaluationRows, error: evaluationError },
       { data: joinerRows, error: joinerError },
+      linkedAccounts,
     ] = await Promise.all([
       // Player history
       resolvedClanTag
@@ -831,6 +866,7 @@ export async function GET(
             .eq('player_tag', normalizedTag)
             .order('detected_at', { ascending: false })
         : Promise.resolve({ data: [], error: null }),
+      resolvedClanTag ? getLinkedTagsWithNames(resolvedClanTag, normalizedTag) : Promise.resolve([]),
     ]);
 
     if (historyError) {
@@ -954,6 +990,7 @@ export async function GET(
       history: historyRow ?? null,
       clanHeroAverages,
       clanStatsAverages,
+      linkedAccounts,
       leadership: isLeadership ? {
         notes: ensureArray(notesRows),
         warnings: ensureArray(warningsRows),

@@ -14,8 +14,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const clanTag = searchParams.get('clanTag');
-    await requireLeadership(request, { clanTag });
     const playerTag = searchParams.get('playerTag');
+    if (!playerTag) {
+      await requireLeadership(request, { clanTag });
+    }
     const daysBack = searchParams.get('daysBack') ? Number(searchParams.get('daysBack')) : undefined;
     const minWars = searchParams.get('minWars') ? Number(searchParams.get('minWars')) : undefined;
 
@@ -50,4 +52,3 @@ export async function GET(request: NextRequest) {
     }, { status: error?.status || 500 });
   }
 }
-
