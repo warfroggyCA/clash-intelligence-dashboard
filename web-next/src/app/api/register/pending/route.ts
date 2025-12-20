@@ -76,7 +76,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const requestedStatus = StatusFilterSchema.parse(searchParams.get('status'));
-    const clanTagParam = searchParams.get('clanTag') || getActiveClanConfig().clanTag;
+    const clanTagParam = searchParams.get('clanTag') || (await getActiveClanConfig()).clanTag;
     const normalizedClan = normalizeTag(clanTagParam || '');
 
     if (!normalizedClan) {

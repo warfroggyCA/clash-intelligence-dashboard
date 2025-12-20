@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       return json({ success: false, error: 'Provide a valid clanTag like #2PR8R8V8P' }, { status: 400 });
     }
 
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const key = `departures:list:${clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 60 });
     if (!limit.ok) {

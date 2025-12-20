@@ -5,8 +5,8 @@ import { LoginFormClient } from './LoginFormClient';
 
 export const dynamic = 'force-dynamic';
 
-export default function LoginPage() {
-  const clanConfig = getActiveClanConfig();
+export default async function LoginPage() {
+  const clanConfig = await getActiveClanConfig();
   if (clanConfig.marketingOnly) {
     const clanHosts = listClanConfigs().filter((config) => !config.marketingOnly);
     return (

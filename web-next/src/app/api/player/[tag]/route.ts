@@ -13,11 +13,12 @@ export const revalidate = 0; // Never cache - always fetch fresh player data
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tag: string } }
+  { params }: { params: Promise<{ tag: string }> }
 ) {
+  const { tag } = await params;
   const { logger, json } = createApiContext(request, '/api/player/[tag]');
   const Schema = z.object({ tag: z.string() });
-  const parsed = Schema.safeParse(params);
+  const parsed = Schema.safeParse({ tag });
   if (!parsed.success || !parsed.data.tag) {
     return json({ success: false, error: "Player tag is required" }, { status: 400 });
   }
@@ -28,7 +29,7 @@ export async function GET(
   const cleanTag = normalized.slice(1);
   
   try {
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const key = `player:get:${normalized}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 60 });
     if (!limit.ok) {

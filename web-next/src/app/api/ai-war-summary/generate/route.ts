@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     }
 
     const payload = parsed.data;
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.ip ?? 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ?? request.headers.get('x-real-ip') ?? 'unknown';
     const key = `ai:war-summary:${payload.clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 5 });
     if (!limit.ok) {

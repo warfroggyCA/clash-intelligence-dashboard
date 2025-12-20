@@ -25,8 +25,8 @@ const features = [
   },
 ];
 
-export default function LandingPage() {
-  const clanConfig = getActiveClanConfig();
+export default async function LandingPage() {
+  const clanConfig = await getActiveClanConfig();
   const isClanHost = !clanConfig.marketingOnly;
   const marketingHero = "The war room for modern clans in Clash of Clans.";
   const heroHeading = clanConfig.marketingOnly ? marketingHero : clanConfig.theme?.hero || null;

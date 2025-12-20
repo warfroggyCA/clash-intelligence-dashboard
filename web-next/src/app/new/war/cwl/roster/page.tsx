@@ -11,7 +11,6 @@ import { normalizeTag } from '@/lib/tags';
 export default function CwlRosterPage() {
   const warSize = sampleSeasonSummary.warSize;
   const { members: rosterMembers, isLoading } = useRosterData();
-  const STORAGE_KEY = 'cwl_roster_selection_v1';
 
   const computedRoster = useMemo(() => {
     if (rosterMembers && rosterMembers.length) {
@@ -32,8 +31,10 @@ export default function CwlRosterPage() {
 
   const sortedRoster = useMemo(() => {
     return [...computedRoster].sort((a, b) => {
-      if (b.townHall !== a.townHall) return b.townHall - a.townHall;
-      return b.heroPower - a.heroPower;
+      const nameA = (a.name || '').toLowerCase();
+      const nameB = (b.name || '').toLowerCase();
+      if (nameA !== nameB) return nameA.localeCompare(nameB);
+      return a.tag.localeCompare(b.tag);
     });
   }, [computedRoster]);
 
@@ -63,21 +64,6 @@ export default function CwlRosterPage() {
       } catch {
         // ignore
       }
-      if (typeof window === 'undefined') return;
-      try {
-        const stored = window.localStorage.getItem(STORAGE_KEY);
-        if (stored) {
-          const parsed = JSON.parse(stored) as { selected?: string[]; locked?: boolean };
-          if (parsed.selected?.length) {
-            setSelected(new Set(parsed.selected.map((t) => normalizeTag(t))));
-          }
-          if (typeof parsed.locked === 'boolean') {
-            setLocked(parsed.locked);
-          }
-        }
-      } catch (err) {
-        // ignore
-      }
       hydrated.current = true;
     };
     hydrate();
@@ -99,7 +85,7 @@ export default function CwlRosterPage() {
   }, [partiallySelected]);
 
   useEffect(() => {
-    if (!initialized.current && !hydrated.current && selected.size === 0 && sortedRoster.length) {
+    if (!initialized.current && hydrated.current && selected.size === 0 && sortedRoster.length) {
       const initial = sortedRoster.slice(0, warSize).map((m) => m.tag);
       setSelected(new Set(initial));
       initialized.current = true;
@@ -146,18 +132,7 @@ export default function CwlRosterPage() {
     }
   };
 
-  useEffect(() => {
-    if (!hydrated.current) return;
-    if (typeof window === 'undefined') return;
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ selected: Array.from(selected), locked }),
-      );
-    } catch (err) {
-      // ignore storage failure
-    }
-  }, [selected, locked]);
+  // no localStorage persistence; Supabase is source of truth
 
   return (
     <div className="space-y-6">

@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     const { clanData, type } = parsed.data;
 
     // Inbound rate limit (AI)
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
     const key = `ai:summary:${clanData.clanTag || 'unknown'}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 5 });
     if (!limit.ok) {

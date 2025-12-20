@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
     const maxRush = parsed.data.maxRush ? Number(parsed.data.maxRush) : undefined;
     if (!isValidTag(sourceClanTag)) return json({ success: false, error: 'Provide a valid sourceClanTag like #2PR8R8V8P' }, { status: 400 });
 
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const key = `applicants:scan:${sourceClanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 6 });
     if (!limit.ok) {

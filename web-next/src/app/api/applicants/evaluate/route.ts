@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
       return json({ success: false, error: 'Provide a valid player tag like #XXXXXXX' }, { status: 400 });
     }
 
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const key = `applicants:evaluate:${playerTag}:${clanTag || 'none'}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 30 });
     if (!limit.ok) {

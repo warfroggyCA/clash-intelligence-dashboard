@@ -13,12 +13,12 @@ export const revalidate = 0;
 export const dynamic = 'force-dynamic';
 
 interface PlayerHistoryPageProps {
-  params: {
+  params: Promise<{
     tag: string;
-  };
-  searchParams?: {
+  }>;
+  searchParams?: Promise<{
     days?: string;
-  };
+  }>;
 }
 
 async function fetchPlayerHistory(tag: string, days: number = 30) {
@@ -38,7 +38,8 @@ async function fetchPlayerHistory(tag: string, days: number = 30) {
 }
 
 export async function generateMetadata({ params }: PlayerHistoryPageProps): Promise<Metadata> {
-  const normalizedTag = normalizeTag(params.tag);
+  const { tag } = await params;
+  const normalizedTag = normalizeTag(tag);
 
   return {
     title: `${normalizedTag} • Player History`,
@@ -47,8 +48,10 @@ export async function generateMetadata({ params }: PlayerHistoryPageProps): Prom
 }
 
 export default async function PlayerHistoryPage({ params, searchParams }: PlayerHistoryPageProps) {
-  const normalizedTag = normalizeTag(params.tag);
-  const days = parseInt(searchParams?.days || '30');
+  const { tag } = await params;
+  const normalizedTag = normalizeTag(tag);
+  const resolvedSearchParams = await searchParams;
+  const days = parseInt(resolvedSearchParams?.days || '30');
   
   const result = await fetchPlayerHistory(normalizedTag, days);
 

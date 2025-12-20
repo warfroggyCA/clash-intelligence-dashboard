@@ -115,12 +115,13 @@ function calculateMetrics(playerValue: number, values: number[]): ComparisonMetr
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { tag: string } }
+  { params }: { params: Promise<{ tag: string }> }
 ) {
-  const context = createApiContext(request, `/api/player/${params.tag}/comparison`);
+  const { tag } = await params;
+  const context = createApiContext(request, `/api/player/${tag}/comparison`);
   
   try {
-    const playerTag = normalizeTag(params.tag);
+    const playerTag = normalizeTag(tag);
     if (!isValidTag(playerTag)) {
       return NextResponse.json(
         { success: false, error: "Invalid player tag format" },

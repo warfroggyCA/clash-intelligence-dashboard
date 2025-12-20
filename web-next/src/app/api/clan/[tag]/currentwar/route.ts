@@ -5,9 +5,9 @@ import { getClanCurrentWar } from '@/lib/coc';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET(_request: NextRequest, { params }: { params: { tag: string } }) {
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ tag: string }> }) {
   try {
-    const rawTag = params?.tag;
+    const { tag: rawTag } = await params;
     if (!rawTag) {
       return NextResponse.json({ success: false, error: 'Clan tag is required' }, { status: 400 });
     }

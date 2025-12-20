@@ -738,18 +738,36 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
       .filter((id): id is string => Boolean(id));
 
     let previousDonationsMap = new Map<string, { given: number; received: number }>();
+    let previousRosterTags = new Set<string>();
+    let previousMemberLookup = new Map<string, MemberData>();
     
     if (existingMemberIds.length > 0) {
       // Get the most recent snapshot before this one
       const { data: previousSnapshot } = await supabase
         .from('roster_snapshots')
-        .select('id, fetched_at')
+        .select('id, fetched_at, payload')
         .eq('clan_id', clanRow.id)
         .order('fetched_at', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       if (previousSnapshot) {
+        const previousPayload = previousSnapshot.payload as FullClanSnapshot | null;
+        const previousMembers = previousPayload?.memberSummaries ?? [];
+        previousRosterTags = new Set(
+          previousMembers
+            .map((m) => normalizeTag(m.tag))
+            .filter((tag): tag is string => Boolean(tag))
+        );
+        previousMemberLookup = new Map(
+          previousMembers
+            .map((m) => {
+              const normalized = normalizeTag(m.tag);
+              return normalized ? ([normalized, m as unknown as MemberData] as const) : null;
+            })
+            .filter((entry): entry is readonly [string, MemberData] => entry !== null)
+        );
+
         // Fetch previous snapshot's donations
         const { data: previousStats } = await supabase
           .from('member_snapshot_stats')
@@ -873,6 +891,19 @@ async function runUpsertMembersPhase(jobId: string, transformedData: Transformed
         joinDate: snapshotDate || new Date().toISOString().slice(0, 10),
         memberLookup: memberMapByTag,
       });
+    }
+
+    if (previousRosterTags.size > 0) {
+      const departedTags = Array.from(previousRosterTags).filter((tag) => !memberMapByTag.has(tag));
+      if (departedTags.length > 0) {
+        await recordDepartures({
+          supabase,
+          clanTag: transformedData.clanData.tag,
+          departedTags,
+          memberLookup: previousMemberLookup,
+          detectedAt: snapshotDate || new Date().toISOString(),
+        });
+      }
     }
 
     const duration_ms = Date.now() - startTime;
@@ -1161,6 +1192,85 @@ async function recordJoinerEvents(params: {
 
   if (joinerError) {
     throw new Error(`Failed to record joiner events: ${joinerError.message}`);
+  }
+}
+
+async function recordDepartures(params: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  clanTag: string;
+  departedTags: string[];
+  memberLookup: Map<string, MemberData>;
+  detectedAt: string;
+}) {
+  const { supabase, clanTag, departedTags, memberLookup, detectedAt } = params;
+  if (!departedTags.length) return;
+
+  const { data: existingHistoryRows, error: historyError } = await supabase
+    .from('player_history')
+    .select('*')
+    .eq('clan_tag', clanTag)
+    .in('player_tag', departedTags);
+
+  if (historyError) {
+    throw new Error(`Failed to load player history for departures: ${historyError.message}`);
+  }
+
+  const historyMap = new Map<string, any>();
+  (existingHistoryRows || []).forEach((row) => {
+    const normalized = normalizeTag(row.player_tag);
+    if (normalized) historyMap.set(normalized, row);
+  });
+
+  const departureMovement = {
+    type: 'departed',
+    date: detectedAt,
+    notes: 'Detected by nightly roster ingestion',
+  };
+
+  const upserts = departedTags.map((tag) => {
+    const existing = historyMap.get(tag);
+    const member = memberLookup.get(tag);
+    const movements = Array.isArray(existing?.movements) ? [...existing.movements] : [];
+    const alreadyLogged = movements.some(
+      (movement: any) => movement?.type === 'departed' && movement?.date === detectedAt
+    );
+    if (!alreadyLogged) {
+      movements.push(departureMovement);
+    }
+
+    const currentStint = existing?.current_stint ?? null;
+    const startDate = currentStint?.isActive ? currentStint?.startDate : null;
+    const tenureAtDeparture =
+      startDate && !Number.isNaN(Date.parse(startDate))
+        ? Math.max(
+            0,
+            Math.floor((Date.parse(detectedAt) - Date.parse(startDate)) / (1000 * 60 * 60 * 24))
+          )
+        : 0;
+    const totalTenure = (existing?.total_tenure ?? 0) + tenureAtDeparture;
+    const primaryName = existing?.primary_name || member?.name || tag;
+    const aliases = Array.isArray(existing?.aliases) ? existing.aliases : [];
+    const notes = Array.isArray(existing?.notes) ? existing.notes : [];
+
+    return {
+      clan_tag: clanTag,
+      player_tag: tag,
+      primary_name: primaryName,
+      status: 'departed' as const,
+      total_tenure: totalTenure,
+      current_stint: null,
+      movements,
+      aliases,
+      notes,
+    };
+  });
+
+  const { error: upsertHistoryError } = await supabase
+    .from('player_history')
+    .upsert(upserts, { onConflict: 'clan_tag,player_tag' });
+
+  if (upsertHistoryError) {
+    throw new Error(`Failed to upsert player history for departures: ${upsertHistoryError.message}`);
   }
 }
 

@@ -45,7 +45,7 @@ export const navConfig: NavItem[] = [
     children: [
       { title: 'Roster', href: '/new/roster', icon: Users, description: 'Current clan members with filters.' },
       { title: 'Assess', href: '#', icon: ListChecks, description: 'Evaluate new applicants.' },
-      { title: 'Database', href: '#', icon: ActivitySquare, description: 'History, notes, warnings.' },
+      { title: 'Database', href: '/new/player-database', icon: ActivitySquare, description: 'History, notes, warnings.' },
       { title: 'Search', href: '#', icon: Search, description: 'Global player search across tags.' },
     ],
   },
@@ -72,7 +72,7 @@ export const navConfig: NavItem[] = [
     children: [
       { title: 'War Performance', href: '#', icon: BarChart2, description: 'Clan-wide war trends.' },
       { title: 'Capital Raids', href: '#', icon: BarChart2, description: 'Capital contributions and raids.' },
-      { title: 'Member Performance', href: '#', icon: ActivitySquare, description: 'Individual performance comparisons.' },
+      { title: 'Member Performance', href: '/new/member-performance', icon: ActivitySquare, description: 'Individual performance comparisons.' },
     ],
   },
   {

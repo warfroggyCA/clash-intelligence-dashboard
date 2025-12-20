@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Card from '@/components/new-ui/Card';
 import { Button } from '@/components/new-ui/Button';
@@ -27,48 +27,72 @@ const statusLabel: Record<string, string> = {
 
 export default function CwlOverviewPage() {
   const season = sampleSeasonSummary;
-  const [rows, setRows] = useState<CwlDayOpponent[]>(sampleOpponents);
-  const [draft, setDraft] = useState<CwlDayOpponent[]>(sampleOpponents);
+  const [rows, setRows] = useState<CwlDayOpponent[]>([]);
+  const [draft, setDraft] = useState<CwlDayOpponent[]>([]);
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [loadOpponentsLoading, setLoadOpponentsLoading] = useState(false);
+  const [opponentError, setOpponentError] = useState<string | null>(null);
   const [copyAllLoading, setCopyAllLoading] = useState(false);
   const { members: rosterMembers } = useRosterData();
   const [lineupMap, setLineupMap] = useState<Record<number, boolean>>({});
-  const STORAGE_KEY = 'cwl_opponents_v1';
+  const [eligibleSet, setEligibleSet] = useState<Set<string> | null>(null);
+  const selectedCount = eligibleSet ? eligibleSet.size : season.rosterSelected;
+  const OPP_CACHE_KEY = `cwl_opponents_cache_${season.seasonId}_${season.warSize}`;
+
+  const mapOpponent = (row: any): CwlDayOpponent => ({
+    dayIndex: row.day_index ?? row.dayIndex ?? 0,
+    clanTag: row.opponent_tag ?? row.clanTag ?? '',
+    clanName: row.opponent_name ?? row.clanName ?? '',
+    status: (row.status as any) ?? 'not_loaded',
+    note: row.note ?? '',
+  });
+
+  const fetchOpponents = useCallback(async (showError = false) => {
+    setLoadOpponentsLoading(true);
+    setOpponentError(null);
+    try {
+      const res = await fetch(`/api/cwl/opponents?seasonId=${season.seasonId}&warSize=${season.warSize}`);
+      if (!res.ok) throw new Error('Failed to load opponents');
+      const body = await res.json();
+      const data = body?.data as CwlDayOpponent[] | undefined;
+      if (data && data.length) {
+        const mapped = data.map(mapOpponent);
+        setRows(mapped);
+        setDraft(mapped);
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(OPP_CACHE_KEY, JSON.stringify({ rows: mapped, updatedAt: Date.now() }));
+        }
+        return mapped;
+      } else if (showError) {
+        setOpponentError('No opponents found from server.');
+      }
+      return null;
+    } catch (err: any) {
+      if (showError) setOpponentError(err?.message || 'Failed to load opponents');
+      return null;
+    } finally {
+      setLoadOpponentsLoading(false);
+    }
+  }, [season.seasonId, season.warSize, OPP_CACHE_KEY]);
 
   useEffect(() => {
-    const fetchOpponents = async () => {
+    if (typeof window !== 'undefined') {
       try {
-        const res = await fetch(`/api/cwl/opponents?seasonId=${season.seasonId}&warSize=${season.warSize}`);
-        if (res.ok) {
-          const body = await res.json();
-          if (body?.data?.length) {
-            setRows(body.data);
-            setDraft(body.data);
-            return;
+        const cached = window.localStorage.getItem(OPP_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed?.rows?.length) {
+            setRows(parsed.rows);
+            setDraft(parsed.rows);
           }
         }
       } catch {
         // ignore
       }
-      // fallback to local if server empty
-      if (typeof window !== 'undefined') {
-        try {
-          const stored = window.localStorage.getItem(STORAGE_KEY);
-          if (stored) {
-            const parsed = JSON.parse(stored) as CwlDayOpponent[];
-            if (Array.isArray(parsed) && parsed.length) {
-              setRows(parsed);
-              setDraft(parsed);
-            }
-          }
-        } catch {
-          // ignore
-        }
-      }
-    };
-    fetchOpponents();
-  }, [season.seasonId, season.warSize]);
+    }
+    fetchOpponents(false);
+  }, [fetchOpponents, OPP_CACHE_KEY]);
 
   useEffect(() => {
     const fetchLineups = async () => {
@@ -93,10 +117,35 @@ export default function CwlOverviewPage() {
     fetchLineups();
   }, [season.seasonId, season.warSize, rows]);
 
+  useEffect(() => {
+    const fetchEligible = async () => {
+      try {
+        const res = await fetch(`/api/cwl/eligible?seasonId=${season.seasonId}&warSize=${season.warSize}`);
+        if (res.ok) {
+          const body = await res.json();
+          const rows = body?.data as any[] | undefined;
+          if (rows?.length) {
+            setEligibleSet(new Set(rows.map((r) => normalizeTag(r.player_tag))));
+          }
+        }
+      } catch {
+        // ignore
+      }
+    };
+    fetchEligible();
+  }, [season.seasonId, season.warSize]);
+
   const allValid = useMemo(() => draft.every((row) => isValidTag(row.clanTag)), [draft]);
 
-  const startEdit = () => {
-    setDraft(rows);
+  const startEdit = async () => {
+    if (!rows.length) {
+      const data = await fetchOpponents(true);
+      if (data?.length) {
+        setDraft(data);
+      }
+    } else {
+      setDraft(rows);
+    }
     setEditing(true);
   };
 
@@ -119,6 +168,7 @@ export default function CwlOverviewPage() {
   const saveEdit = async () => {
     if (!allValid) return;
     setSaving(true);
+    setOpponentError(null);
     const normalized = draft.map((row) => ({
       ...row,
       clanTag: normalizeTag(row.clanTag),
@@ -132,7 +182,7 @@ export default function CwlOverviewPage() {
     );
 
     try {
-      await fetch('/api/cwl/opponents', {
+      const res = await fetch('/api/cwl/opponents', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -148,20 +198,14 @@ export default function CwlOverviewPage() {
           })),
         }),
       });
-    } catch {
-      // ignore
+      if (!res.ok) throw new Error('Failed to save opponents');
+      await fetchOpponents(true);
+      setEditing(false);
+    } catch (err: any) {
+      setOpponentError(err?.message || 'Failed to save opponents');
+    } finally {
+      setSaving(false);
     }
-
-    setRows(withNames);
-    if (typeof window !== 'undefined') {
-      try {
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(withNames));
-      } catch (err) {
-        // ignore storage errors
-      }
-    }
-    setEditing(false);
-    setSaving(false);
   };
 
   const updateTag = (dayIndex: number, value: string) => {
@@ -201,21 +245,6 @@ export default function CwlOverviewPage() {
         }),
       );
 
-      const eligiblePool = (() => {
-        if (typeof window === 'undefined') return null;
-        try {
-          const stored = window.localStorage.getItem('cwl_roster_selection_v1');
-          if (!stored) return null;
-          const parsed = JSON.parse(stored);
-          if (Array.isArray(parsed.selected)) {
-            return new Set(parsed.selected.map((t: string) => normalizeTag(t)));
-          }
-        } catch {
-          return null;
-        }
-        return null;
-      })();
-
       const ourRoster = (rosterMembers && rosterMembers.length ? rosterMembers : [])
         .map((m) => ({
           name: m.name || m.tag,
@@ -230,7 +259,7 @@ export default function CwlOverviewPage() {
           },
           heroPower: (m.bk ?? 0) + (m.aq ?? 0) + (m.gw ?? 0) + (m.rc ?? 0) + (m.mp ?? 0),
         }))
-        .filter((m) => !eligiblePool || eligiblePool.has(m.tag));
+        .filter((m) => !eligibleSet || eligibleSet.has(m.tag));
 
       const payload = [
         `CWL week export • war size ${season.warSize}v${season.warSize}`,
@@ -287,7 +316,7 @@ export default function CwlOverviewPage() {
           <div className="space-y-3 text-sm text-slate-200">
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Selected</span>
-              <span className="font-semibold text-white">{season.rosterSelected} / {season.warSize}</span>
+              <span className="font-semibold text-white">{selectedCount} / {season.warSize}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-slate-400">Lock</span>
@@ -303,11 +332,8 @@ export default function CwlOverviewPage() {
 
         <Card title="Quick actions">
           <div className="space-y-2 text-sm text-slate-200">
-            <Link href="/new/war/cwl/day/1">
-              <Button className="w-full justify-center">Open Day 1 planner</Button>
-            </Link>
             <Link href="/new/war/cwl/roster">
-              <Button tone="ghost" className="w-full justify-center">Set season roster</Button>
+              <Button className="w-full justify-center">Set season roster</Button>
             </Link>
             <Button tone="ghost" className="w-full justify-center" onClick={copyFullWeek} disabled={copyAllLoading || !rows.every((r) => isValidTag(r.clanTag))}>
               {copyAllLoading ? 'Building full-week export…' : 'Copy full-week AI export'}
@@ -329,6 +355,9 @@ export default function CwlOverviewPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
+              {loadOpponentsLoading && rows.length === 0 ? (
+                <tr><td className="py-3 text-slate-400" colSpan={5}>Loading opponents…</td></tr>
+              ) : null}
               {rows.map((opp) => {
                 const draftRow = draft.find((d) => d.dayIndex === opp.dayIndex) ?? opp;
                 const tagDisplay = editing ? draftRow.clanTag : opp.clanTag;
@@ -391,6 +420,7 @@ export default function CwlOverviewPage() {
           )}
         </div>
         <p className="mt-2 text-xs text-slate-400">Enter all 7 opponent tags once per season. Names will refresh from the API after the tag is saved.</p>
+        {opponentError ? <div className="mt-2 text-xs text-amber-300">{opponentError}</div> : null}
       </Card>
     </div>
   );

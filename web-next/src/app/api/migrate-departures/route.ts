@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return json({ success: false, error: 'No home clan configured' }, { status: 400 });
     }
 
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const limit = await rateLimitAllow(`migrate-departures:${ip}`, { windowMs: 60_000, max: 3 });
     if (!limit.ok) {
       return json({ success: false, error: 'Too many requests' }, {

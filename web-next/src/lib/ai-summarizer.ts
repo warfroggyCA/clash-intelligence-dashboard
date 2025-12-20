@@ -220,20 +220,20 @@ function generateDetailedFallbackSummary(changes: MemberChange[]): string {
 }
 
 // Max hero levels for each Town Hall (updated 2024)
+// Note: Minion Prince (mp) unlocks at TH15
 const HERO_MAX_LEVELS: Record<number, Record<"bk"|"aq"|"gw"|"rc"|"mp", number>> = {
-  7: { bk: 10, aq: 0, gw: 0, rc: 0, mp: 0 },
-  8: { bk: 20, aq: 0, gw: 0, rc: 0, mp: 0 },
-  9: { bk: 30, aq: 30, gw: 0, rc: 0, mp: 30 },
-  10: { bk: 40, aq: 40, gw: 0, rc: 0, mp: 40 },
-  11: { bk: 50, aq: 50, gw: 20, rc: 0, mp: 50 },
-  12: { bk: 65, aq: 65, gw: 40, rc: 0, mp: 65 },
-  13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 75 },
-  14: { bk: 80, aq: 80, gw: 65, rc: 40, mp: 80 },
-  15: { bk: 90, aq: 90, gw: 75, rc: 50, mp: 90 },
-  16: { bk: 95, aq: 95, gw: 80, rc: 65, mp: 95 },
-  17: { bk: 100, aq: 100, gw: 90, rc: 75, mp: 100 },
-  // TH18 max levels (November 2025)
-  18: { bk: 105, aq: 105, gw: 80, rc: 55, mp: 95 }
+  7: { bk: 5, aq: 0, gw: 0, rc: 0, mp: 0 },
+  8: { bk: 10, aq: 0, gw: 0, rc: 0, mp: 0 },
+  9: { bk: 30, aq: 30, gw: 0, rc: 0, mp: 0 },
+  10: { bk: 40, aq: 40, gw: 0, rc: 0, mp: 0 },
+  11: { bk: 50, aq: 50, gw: 20, rc: 0, mp: 0 },
+  12: { bk: 65, aq: 65, gw: 40, rc: 0, mp: 0 },
+  13: { bk: 75, aq: 75, gw: 50, rc: 25, mp: 0 },
+  14: { bk: 85, aq: 85, gw: 60, rc: 30, mp: 0 },
+  15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 40 },
+  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 45 },
+  17: { bk: 95, aq: 95, gw: 70, rc: 45, mp: 50 },
+  18: { bk: 100, aq: 100, gw: 75, rc: 50, mp: 55 },
 };
 
 // Helper function to get hero key from description

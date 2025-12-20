@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Rate limit
-    const ip = request.ip || request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
     const key = `joiners:notifications:${clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 30 });
     if (!limit.ok) {

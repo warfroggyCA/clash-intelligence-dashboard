@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Inbound rate limit (expensive path)
-    const ip = req.ip || req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || 'unknown';
     const key = `snapshots:create:${clanTag}:${ip}`;
     const limit = await rateLimitAllow(key, { windowMs: 60_000, max: 6 });
     if (!limit.ok) {

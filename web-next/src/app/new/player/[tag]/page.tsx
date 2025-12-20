@@ -6,8 +6,8 @@ import { normalizeTag } from '@/lib/tags';
 
 export const revalidate = 300;
 
-export default async function NewPlayerPage({ params }: { params: { tag: string } }) {
-  const rawParam = params?.tag ?? '';
+export default async function NewPlayerPage({ params }: { params: Promise<{ tag: string }> }) {
+  const { tag: rawParam } = await params;
   const decodedParam = decodeURIComponent(rawParam);
   const tag = normalizeTag(decodedParam || '') || decodedParam || '';
   let initialProfile: SupabasePlayerProfilePayload | null = null;

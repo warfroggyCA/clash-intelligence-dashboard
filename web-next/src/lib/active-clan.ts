@@ -1,8 +1,8 @@
 import { headers } from 'next/headers';
 import { getClanConfigByHost, getClanConfigBySlug, DEFAULT_CLAN_CONFIG, type ClanHostConfig } from '@/lib/clan-config';
 
-export function getActiveClanConfig(): ClanHostConfig {
-  const incomingHeaders = headers();
+export async function getActiveClanConfig(): Promise<ClanHostConfig> {
+  const incomingHeaders = await headers();
   const slugHeader = incomingHeaders.get('x-clan-slug');
   if (slugHeader) {
     const viaSlug = getClanConfigBySlug(slugHeader);

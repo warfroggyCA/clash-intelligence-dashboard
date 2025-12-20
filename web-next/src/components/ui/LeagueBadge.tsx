@@ -169,8 +169,8 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
     'Legend League II': 'Legend.png',
     'Legend League III': 'Legend.png',
     'Legend League IV': 'Legend.png',
-    'No League': 'No_League.png',
-    'Unranked': 'No_League.png',
+    'No League': 'No_League_New.png',
+    'Unranked': 'No_League_New.png',
   };
 
   // Choose asset set: prefer new Oct 2025 images if the league name matches known set
@@ -181,7 +181,7 @@ export const LeagueBadge: React.FC<LeagueBadgeProps> = ({
   const imagePath = isOct2025
     ? toOct2025ImagePath(canonBase!)
     : `/assets/clash/Leagues/${legacyImageMap[baseLeague] || 'Bronze.png'}`;
-  const fallbackPath = '/assets/clash/Leagues/No_League.png';
+  const fallbackPath = '/assets/clash/Leagues/No_League_New.png';
   
   if (!showText) {
     // Just return the image without the background box
