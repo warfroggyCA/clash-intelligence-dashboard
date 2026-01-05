@@ -2969,7 +2969,7 @@ const groupedEquipment = useMemo(() => {
                         </div>
                       </div>
                       <div className="text-right">
-                        <div className="text-white font-semibold">{activeRanking?.format(entry.value)}</div>
+                        <div className="text-white font-semibold">{entry.value != null && activeRanking ? activeRanking.format(entry.value) : '—'}</div>
                       </div>
                     </div>
                   );
