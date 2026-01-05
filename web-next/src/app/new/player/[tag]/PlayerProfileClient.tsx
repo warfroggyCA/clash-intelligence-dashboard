@@ -1615,8 +1615,10 @@ const groupedEquipment = useMemo(() => {
       }
     }
     const sorted = [...baseEntries].sort((a, b) => {
-      if (config.higherBetter) return b.value - a.value;
-      return a.value - b.value;
+      const aValue = a.value ?? 0;
+      const bValue = b.value ?? 0;
+      if (config.higherBetter) return bValue - aValue;
+      return aValue - bValue;
     });
     const total = sorted.length;
     const meIndex = sorted.findIndex((entry) => entry.tag === currentTag);
