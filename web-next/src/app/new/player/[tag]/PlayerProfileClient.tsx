@@ -1420,7 +1420,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
           ].join('\n')
         : [
             'date,league',
-            ...leagueHistoryChanges.map((row) => `${row.date ?? ''},${row.league}`),
+            ...leagueHistoryChanges.map((row) => `${row.date ?? ''},${row.to}`),
           ].join('\n');
     try {
       await navigator.clipboard.writeText(payload);
