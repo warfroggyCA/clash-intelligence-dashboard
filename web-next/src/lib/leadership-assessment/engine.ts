@@ -95,6 +95,8 @@ export interface LeadershipAssessmentMember {
       activityLastActiveAt?: string | null;
       rushPercent: number | null;
       rankedTrophies: number | null;
+      rankedLeagueId: number | null;
+      rankedLeagueName: string | null;
       trophies: number | null;
       warOverall: number | null;
       warParticipation: number | null;
