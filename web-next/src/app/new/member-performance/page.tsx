@@ -1096,19 +1096,14 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
     const leaders = radarAxes.map((axis) => {
       let best: MemberRow | null = null;
       let bestValue = -Infinity;
-      profileRows.forEach((row) => {
+      profileRows.forEach((row: MemberRow) => {
         const value = Number(row[axis.key] || 0);
         if (value > bestValue) {
           bestValue = value;
           best = row;
         }
       });
-      let name: string;
-      if (bestValue > 0 && best) {
-        name = (best as MemberRow).name ?? '—';
-      } else {
-        name = 'No data';
-      }
+      const name = bestValue > 0 && best ? (best.name ?? '—') : 'No data';
       return { name, value: Math.max(0, bestValue) };
     });
     return {
