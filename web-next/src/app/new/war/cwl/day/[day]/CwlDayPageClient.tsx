@@ -508,11 +508,9 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
       .sort((a, b) => (b.townHall ?? 0) - (a.townHall ?? 0) || (heroPower(b.heroes) ?? 0) - (heroPower(a.heroes) ?? 0))
       .slice(0, warSize);
     if (!top.length) return null;
-    const heroValues = top.map((m) => heroPower(m.heroes));
-    if (heroValues.some((value) => typeof value !== 'number')) return null;
-    const topLength = top.length;
-    if (!topLength) return null;
-    return Math.round(heroValues.reduce((sum, value) => sum + (value ?? 0), 0) / topLength);
+    const heroValues = top.map((m) => heroPower(m.heroes)).filter((value): value is number => value !== null);
+    if (heroValues.length !== top.length) return null; // Some values were null
+    return Math.round(heroValues.reduce((sum, value) => sum + value, 0) / heroValues.length);
   }, [opponentRoster, warSize]);
 
   return (
