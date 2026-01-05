@@ -3,6 +3,7 @@ import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveRosterMembers } from '@/lib/roster-resolver';
 import type { RosterData, RosterMember } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { Member } from '@/types';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 import { mapActivityToBand, resolveHeroPower, resolveLeagueDisplay, resolveTrophies } from '@/lib/roster-derivations';
 
@@ -227,10 +228,10 @@ export async function getCurrentRosterData(requestedClanTag?: string): Promise<R
           } : null,
         } as RosterMember;
 
-        const activityEvidence = resolveMemberActivity(baseMember);
-        const resolvedTrophies = resolveTrophies(baseMember);
-        const resolvedLeague = resolveLeagueDisplay(baseMember, { allowProfileFallback: false });
-        const heroPower = resolveHeroPower(baseMember);
+        const activityEvidence = resolveMemberActivity(baseMember as unknown as Member);
+        const resolvedTrophies = resolveTrophies(baseMember as unknown as Member);
+        const resolvedLeague = resolveLeagueDisplay(baseMember as unknown as Member, { allowProfileFallback: false });
+        const heroPower = resolveHeroPower(baseMember as unknown as Member);
         const activityBand = mapActivityToBand(activityEvidence);
         return {
           ...baseMember,
