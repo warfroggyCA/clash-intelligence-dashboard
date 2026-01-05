@@ -1193,7 +1193,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
           lastSeen: alias?.lastSeen ?? null,
         };
       })
-      .filter((entry) => entry.name && entry.name !== 'Unknown');
+      .filter((entry: { name: string; firstSeen: string | null; lastSeen: string | null }) => entry.name && entry.name !== 'Unknown');
 
     const toTime = (value: string | null) => {
       if (!value) return 0;
