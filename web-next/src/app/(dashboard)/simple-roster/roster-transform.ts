@@ -118,16 +118,18 @@ function toRosterMember(raw: Record<string, any>): RosterMember {
     tag,
     townHallLevel: raw.townHallLevel ?? raw.th ?? null,
     role: raw.role ?? null,
-    trophies: raw.trophies ?? raw.leagueTrophies ?? null,
-    // API returns: donations: member.donations || 0, donationsReceived: member.donations_received || 0
-    // So these are always numbers (never null/undefined)
-    donations: typeof raw.donations === 'number' ? raw.donations : (raw.donations ?? 0),
-    donationsReceived: typeof raw.donationsReceived === 'number' 
-      ? raw.donationsReceived 
-      : (typeof raw.donations_received === 'number' ? raw.donations_received : (raw.donationsReceived ?? raw.donations_received ?? 0)),
+    trophies: raw.trophies ?? null,
+    donations: typeof raw.donations === 'number' ? raw.donations : (raw.donations ?? null),
+    donationsReceived: typeof raw.donationsReceived === 'number'
+      ? raw.donationsReceived
+      : (typeof raw.donations_received === 'number' ? raw.donations_received : (raw.donationsReceived ?? raw.donations_received ?? null)),
     // Cumulative donations (accumulate over tenure, reset on leave/rejoin)
-    cumulativeDonationsGiven: typeof raw.cumulative_donations_given === 'number' ? raw.cumulative_donations_given : (raw.cumulativeDonationsGiven ?? 0),
-    cumulativeDonationsReceived: typeof raw.cumulative_donations_received === 'number' ? raw.cumulative_donations_received : (raw.cumulativeDonationsReceived ?? 0),
+    cumulativeDonationsGiven: typeof raw.cumulative_donations_given === 'number'
+      ? raw.cumulative_donations_given
+      : (raw.cumulativeDonationsGiven ?? null),
+    cumulativeDonationsReceived: typeof raw.cumulative_donations_received === 'number'
+      ? raw.cumulative_donations_received
+      : (raw.cumulativeDonationsReceived ?? null),
     warStars: raw.warStars ?? raw.war_stars ?? raw.enriched?.warStars ?? null,
     clanCapitalContributions: raw.clanCapitalContributions ?? raw.capitalContributions ?? raw.capital_contributions ?? raw.enriched?.capitalContributions ?? null,
     rankedLeagueId:
@@ -137,7 +139,7 @@ function toRosterMember(raw: Record<string, any>): RosterMember {
     rushPercent: typeof raw.rushPercent === 'number'
       ? raw.rushPercent
       : (typeof raw.rush_percent === 'number' ? raw.rush_percent : null),
-    rankedTrophies: raw.rankedTrophies ?? raw.battleModeTrophies ?? null,
+    rankedTrophies: raw.rankedTrophies ?? raw.ranked_trophies ?? null,
     lastWeekTrophies: raw.lastWeekTrophies ?? null,
     seasonTotalTrophies: raw.seasonTotalTrophies ?? null,
     bk: raw.bk ?? heroLevels.bk ?? null,
@@ -147,6 +149,11 @@ function toRosterMember(raw: Record<string, any>): RosterMember {
     mp: raw.mp ?? heroLevels.mp ?? null,
     activity: raw.activity ?? null,
     activityScore: raw.activityScore ?? raw.activity?.score ?? null,
+    activityBand: raw.activityBand ?? null,
+    activityTone: raw.activityTone ?? null,
+    resolvedTrophies: raw.resolvedTrophies ?? null,
+    resolvedLeague: raw.resolvedLeague ?? null,
+    heroPower: raw.heroPower ?? null,
     tenure_days: tenureDays ?? undefined,
     tenureDays: tenureDays,
     tenure_as_of: tenureAsOf ?? undefined,

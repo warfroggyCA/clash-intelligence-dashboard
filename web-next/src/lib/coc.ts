@@ -72,6 +72,46 @@ type CoCCurrentWar = {
   opponent?: Record<string, any>;
 };
 
+type CoCWarLeagueGroup = {
+  state?: string;
+  season?: string;
+  rounds?: Array<{ warTags?: string[] }>;
+};
+
+type CoCCwlWarAttack = {
+  attackerTag: string;
+  defenderTag: string;
+  stars: number;
+  destructionPercentage?: number;
+  order?: number;
+};
+
+type CoCCwlWarMember = {
+  tag: string;
+  name: string;
+  townHallLevel?: number;
+  townhallLevel?: number;
+  mapPosition?: number;
+  attacks?: CoCCwlWarAttack[];
+  bestOpponentAttack?: CoCCwlWarAttack;
+};
+
+type CoCCwlWarClan = {
+  tag?: string;
+  name?: string;
+  members?: CoCCwlWarMember[];
+  stars?: number;
+  attacks?: number;
+  destructionPercentage?: number;
+};
+
+type CoCCwlWar = {
+  state?: string;
+  teamSize?: number;
+  clan?: CoCCwlWarClan;
+  opponent?: CoCCwlWarClan;
+};
+
 type CoCCapitalRaidSeason = {
   id?: string;
   startTime?: string;
@@ -245,7 +285,11 @@ function encTag(tag: string) {
   return `%23${t.slice(1)}`;
 }
 
-async function api<T>(path: string): Promise<T> {
+type ApiOptions = {
+  bypassCache?: boolean;
+};
+
+async function api<T>(path: string, options?: ApiOptions): Promise<T> {
   // Validate Fixie config when API is actually called (not at module load)
   validateFixieConfig();
   
@@ -271,10 +315,12 @@ async function api<T>(path: string): Promise<T> {
   }
 
   // Check cache first
-  const cached = getCached<T>(path);
-  if (cached) {
-    debugLog(`[Cache Hit] Using cached data for ${path}`);
-    return cached;
+  if (!options?.bypassCache) {
+    const cached = getCached<T>(path);
+    if (cached) {
+      debugLog(`[Cache Hit] Using cached data for ${path}`);
+      return cached;
+    }
   }
 
   // Support both COC_API_TOKEN and COC_API_KEY for compatibility
@@ -573,9 +619,9 @@ function deriveStatusFromMessage(message?: string): number | null {
   return null;
 }
 
-export async function getClanMembers(clanTag: string) {
+export async function getClanMembers(clanTag: string, options?: ApiOptions) {
   const t = encTag(clanTag);
-  const r = await api<CoCClanMembersResp>(`/clans/${t}/members?limit=50`);
+  const r = await api<CoCClanMembersResp>(`/clans/${t}/members?limit=50`, options);
   return r.items.map((m) => ({
     tag: normalizeTag(m.tag),
     name: m.name,
@@ -586,30 +632,45 @@ export async function getClanMembers(clanTag: string) {
   }));
 }
 
-export async function getClanInfo(clanTag: string) {
-  return api<any>(`/clans/${encTag(clanTag)}`);
+export async function getClanInfo(clanTag: string, options?: ApiOptions) {
+  return api<any>(`/clans/${encTag(clanTag)}`, options);
 }
 
-export async function getPlayer(tag: string) {
-  return api<CoCPlayer>(`/players/${encTag(tag)}`);
+export async function getPlayer(tag: string, options?: ApiOptions) {
+  return api<CoCPlayer>(`/players/${encTag(tag)}`, options);
 }
 
-export async function getClanWarLog(clanTag: string, limit = 10) {
+export async function getClanWarLog(clanTag: string, limit = 10, options?: ApiOptions) {
   const t = encTag(clanTag);
   const safeLimit = Math.min(Math.max(limit, 1), 50);
-  const res = await api<{ items: CoCWarLogEntry[] }>(`/clans/${t}/warlog?limit=${safeLimit}`);
+  const res = await api<{ items: CoCWarLogEntry[] }>(`/clans/${t}/warlog?limit=${safeLimit}`, options);
   return Array.isArray(res?.items) ? res.items : [];
 }
 
-export async function getClanCurrentWar(clanTag: string) {
+export async function getClanCurrentWar(clanTag: string, options?: ApiOptions) {
   const t = encTag(clanTag);
   try {
-    return await api<CoCCurrentWar>(`/clans/${t}/currentwar`);
+    return await api<CoCCurrentWar>(`/clans/${t}/currentwar`, options);
   } catch (error: any) {
     // API returns 404/403 when war log hidden or no war
     debugWarn('[CoC] Failed to load current war', error?.message || error);
     return null;
   }
+}
+
+export async function getClanWarLeagueGroup(clanTag: string, options?: ApiOptions) {
+  const t = encTag(clanTag);
+  try {
+    return await api<CoCWarLeagueGroup>(`/clans/${t}/currentwar/leaguegroup`, options);
+  } catch (error: any) {
+    debugWarn('[CoC] Failed to load CWL league group', error?.message || error);
+    return null;
+  }
+}
+
+export async function getCwlWar(warTag: string, options?: ApiOptions) {
+  const t = encTag(warTag);
+  return api<CoCCwlWar>(`/clanwarleagues/wars/${t}`, options);
 }
 
 export async function getClanCapitalRaidSeasons(clanTag: string, limit = 5) {

@@ -5,6 +5,7 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { normalizeTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
 import { getLinkedTags, getLinkedTagsWithNames } from '@/lib/player-aliases';
+import { resolveRosterMembers } from '@/lib/roster-resolver';
 
 export const dynamic = 'force-dynamic';
 
@@ -131,6 +132,9 @@ export async function GET(request: NextRequest) {
     // Initialize playerNamesMap early so we can populate it here
     const playerNamesMap = new Map<string, string>();
     const currentRosterTags = new Set<string>();
+    const rosterTenureByTag = new Map<string, number | null>();
+    const rosterTenureAsOfByTag = new Map<string, string | null>();
+    let latestRosterSnapshotDate: string | null = null;
     
     const { data: clanRow } = await supabaseServer
       .from('clans')
@@ -142,43 +146,33 @@ export async function GET(request: NextRequest) {
       // Get latest roster snapshot
       const { data: latestSnapshot } = await supabaseServer
         .from('roster_snapshots')
-        .select('id')
+        .select('id, fetched_at')
         .eq('clan_id', clanRow.id)
         .order('fetched_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       
       if (latestSnapshot) {
-        // Get all members from latest snapshot
-        const { data: statsRows } = await supabaseServer
-          .from('member_snapshot_stats')
-          .select('member_id')
-          .eq('snapshot_id', latestSnapshot.id);
-        
-        if (statsRows && statsRows.length > 0) {
-          const memberIds = statsRows.map(row => row.member_id).filter(Boolean);
-          const { data: members } = await supabaseServer
-            .from('members')
-            .select('tag, name')
-            .in('id', memberIds);
-          
-          if (members) {
-            members.forEach((member: any) => {
-              if (member.tag) {
-                const normalizedTag = normalizeTag(member.tag);
-                if (normalizedTag) {
-                  currentRosterTags.add(normalizedTag);
-                  // Also add to allTags for name resolution
-                  allTags.add(normalizedTag);
-                  // Store name if available
-                  if (member.name && member.name !== 'Unknown Player') {
-                    playerNamesMap.set(normalizedTag, member.name);
-                  }
-                }
-              }
-            });
+        latestRosterSnapshotDate = latestSnapshot.fetched_at ?? null;
+        const snapshotDate = latestSnapshot.fetched_at ? latestSnapshot.fetched_at.slice(0, 10) : null;
+        const { members: rosterMembers } = await resolveRosterMembers({
+          supabase: supabaseServer,
+          clanTag,
+          snapshotId: latestSnapshot.id,
+          snapshotDate,
+        });
+
+        rosterMembers.forEach((member) => {
+          const normalizedTag = normalizeTag(member.tag);
+          if (!normalizedTag) return;
+          currentRosterTags.add(normalizedTag);
+          allTags.add(normalizedTag);
+          if (member.name && member.name !== 'Unknown Player') {
+            playerNamesMap.set(normalizedTag, member.name);
           }
-        }
+          rosterTenureByTag.set(normalizedTag, member.tenure_days ?? null);
+          rosterTenureAsOfByTag.set(normalizedTag, member.tenure_as_of ?? null);
+        });
       }
     }
 
@@ -374,6 +368,8 @@ export async function GET(request: NextRequest) {
       tenureActions: any[];
       departureActions: any[];
       lastUpdated: string;
+      tenureDays?: number | null;
+      tenureAsOf?: string | null;
     }>();
 
     // Process notes
@@ -581,7 +577,8 @@ export async function GET(request: NextRequest) {
     // Step 5: Fetch ALL players who have ever been in the clan (from canonical snapshots)
     // This ensures we show all members, not just those with notes/warnings
     const allHistoricalMemberTags = new Set<string>();
-    const currentMemberTags = new Set<string>();
+    const currentMemberTags = new Set<string>(currentRosterTags);
+    const useCanonicalCurrent = currentMemberTags.size === 0;
     
     // Get the latest snapshot date to determine current vs former members
     const { data: latestDateRow } = await supabaseServer
@@ -591,6 +588,10 @@ export async function GET(request: NextRequest) {
       .order('snapshot_date', { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle();
+
+    const latestCanonicalSnapshotDate = latestDateRow?.snapshot_date ?? null;
+    const fallbackLastUpdated =
+      latestCanonicalSnapshotDate ?? latestRosterSnapshotDate ?? new Date().toISOString();
 
     if (latestDateRow?.snapshot_date) {
       // Fetch ALL unique players from ALL snapshots for this clan
@@ -610,8 +611,8 @@ export async function GET(request: NextRequest) {
             if (normalizedTag) {
               allHistoricalMemberTags.add(normalizedTag);
               
-              // Track if they're in the latest snapshot (current member)
-              if (snapshot.snapshot_date === latestDateRow.snapshot_date) {
+              // Track if they're in the latest snapshot (current member) only if roster snapshot is unavailable
+              if (useCanonicalCurrent && snapshot.snapshot_date === latestDateRow.snapshot_date) {
                 currentMemberTags.add(normalizedTag);
               }
               
@@ -655,7 +656,7 @@ export async function GET(request: NextRequest) {
               warnings: [],
               tenureActions: [],
               departureActions: [],
-              lastUpdated: info?.lastSeen || new Date().toISOString(),
+              lastUpdated: info?.lastSeen || fallbackLastUpdated,
             });
           } else {
             // Update name from snapshot if it's better
@@ -679,8 +680,41 @@ export async function GET(request: NextRequest) {
             warnings: [],
             tenureActions: [],
             departureActions: [],
-            lastUpdated: new Date().toISOString(),
+            lastUpdated: fallbackLastUpdated,
           });
+        }
+      });
+    }
+
+    // Ensure every current roster member exists in the player map.
+    // Roster snapshot is the ground truth for current members when available.
+    if (currentRosterTags.size > 0) {
+      currentRosterTags.forEach((tag) => {
+        if (!playerDataMap.has(tag)) {
+          const memberName = playerNamesMap.get(tag) || 'Unknown Player';
+          playerDataMap.set(tag, {
+            tag,
+            name: memberName,
+            notes: [],
+            warnings: [],
+            tenureActions: [],
+            departureActions: [],
+            lastUpdated: fallbackLastUpdated,
+          });
+        }
+        currentMemberTags.add(tag);
+      });
+    }
+
+    if (currentRosterTags.size > 0) {
+      currentRosterTags.forEach((tag) => {
+        const playerData = playerDataMap.get(tag);
+        if (!playerData) return;
+        if (rosterTenureByTag.has(tag)) {
+          playerData.tenureDays = rosterTenureByTag.get(tag) ?? null;
+        }
+        if (rosterTenureAsOfByTag.has(tag)) {
+          playerData.tenureAsOf = rosterTenureAsOfByTag.get(tag) ?? null;
         }
       });
     }
@@ -896,6 +930,14 @@ export async function GET(request: NextRequest) {
       debugLog(`[player-database] Resolved ${resolvedCount} of ${unknownPlayers.length} unknown player names`);
     }
 
+    // Step 7.5: Normalize to latest snapshot name when available
+    for (const [tag, data] of playerDataMap.entries()) {
+      const latestName = playerNamesMap.get(tag);
+      if (latestName && latestName !== 'Unknown Player' && latestName !== data.name) {
+        data.name = latestName;
+      }
+    }
+
     // Step 8: Add linked accounts info to each player
     const players = Array.from(playerDataMap.values()).map(data => {
       const linkedTags = tagToLinkedTagsMap.get(data.tag) || [];
@@ -907,6 +949,8 @@ export async function GET(request: NextRequest) {
         tenureActions: data.tenureActions,
         departureActions: data.departureActions,
         lastUpdated: data.lastUpdated,
+        tenureDays: data.tenureDays ?? null,
+        tenureAsOf: data.tenureAsOf ?? null,
         isCurrentMember: currentMemberTags.has(data.tag),
         linkedAccounts: linkedTags.map(tag => {
           // Normalize the tag to ensure consistent lookup

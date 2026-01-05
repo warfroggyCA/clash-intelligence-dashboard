@@ -1,0 +1,389 @@
+### Page state
+- Page URL: http://localhost:5051/new/leadership
+- Page Title: Clash Intelligence (New)
+- Page Snapshot:
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - link "Skip to main content" [ref=e4] [cursor=pointer]:
+      - /url: "#main-content"
+    - complementary [ref=e5]:
+      - link "Clash Intelligence home" [ref=e7] [cursor=pointer]:
+        - /url: /app
+        - text: CI
+      - navigation [ref=e9]:
+        - link "At-a-glance roster status and key actions." [ref=e11] [cursor=pointer]:
+          - /url: /new
+          - img [ref=e13]
+          - generic [ref=e18]: Dashboard
+          - text: At-a-glance roster status and key actions.
+        - generic [ref=e19]:
+          - link "Roster, assessments, database, and global search." [ref=e20] [cursor=pointer]:
+            - /url: /new/roster
+            - img [ref=e22]
+            - generic [ref=e27]: Players
+            - text: Roster, assessments, database, and global search.
+          - generic [ref=e28]:
+            - link "Current clan members with filters." [ref=e30] [cursor=pointer]:
+              - /url: /new/roster
+              - img [ref=e32]
+              - generic [ref=e37]: Roster
+              - text: Current clan members with filters.
+            - link "Evaluate new applicants." [ref=e39] [cursor=pointer]:
+              - /url: /new/assess
+              - img [ref=e41]
+              - generic [ref=e44]: Assess
+              - text: Evaluate new applicants.
+            - link "History, notes, warnings." [ref=e46] [cursor=pointer]:
+              - /url: /new/player-database
+              - img [ref=e48]
+              - generic [ref=e51]: Database
+              - text: History, notes, warnings.
+            - link "Search site features and shortcuts." [ref=e53] [cursor=pointer]:
+              - /url: /new/search
+              - img [ref=e55]
+              - generic [ref=e58]: Search
+              - text: Search site features and shortcuts.
+        - generic [ref=e59]:
+          - link "Planning, active war monitoring, analytics, results." [ref=e60] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e62]
+            - generic [ref=e71]: War
+            - text: Planning, active war monitoring, analytics, results.
+          - generic [ref=e72]:
+            - generic [ref=e73]:
+              - link "Season setup, roster, and daily planners." [ref=e74] [cursor=pointer]:
+                - /url: /new/war/cwl/setup
+                - img [ref=e76]
+                - generic [ref=e85]: CWL
+                - text: Season setup, roster, and daily planners.
+              - generic [ref=e86]:
+                - link "Set war size and opponents." [ref=e88] [cursor=pointer]:
+                  - /url: /new/war/cwl/setup
+                  - img [ref=e90]
+                  - generic [ref=e93]: Setup
+                  - text: Set war size and opponents.
+                - link "Pick weekly eligible players." [ref=e95] [cursor=pointer]:
+                  - /url: /new/war/cwl/roster
+                  - img [ref=e97]
+                  - generic [ref=e102]: Season Roster
+                  - text: Pick weekly eligible players.
+                - link "Plan daily lineups and matchups." [ref=e104] [cursor=pointer]:
+                  - /url: /new/war/cwl/day/1
+                  - img [ref=e106]
+                  - generic [ref=e115]: Day Planner
+                  - text: Plan daily lineups and matchups.
+            - link "Create and manage war plans." [ref=e117] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e119]
+              - generic [ref=e122]: Planning
+              - text: Create and manage war plans.
+            - link "Live war status and calls." [ref=e124] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e126]
+              - generic [ref=e128]: Active War
+              - text: Live war status and calls.
+            - link "Post-war review and publishing." [ref=e130] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e132]
+              - generic [ref=e134]: Results
+              - text: Post-war review and publishing.
+        - generic [ref=e135]:
+          - link "Unified dashboards for war, capital, and members." [ref=e136] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e138]
+            - generic [ref=e139]: Analytics
+            - text: Unified dashboards for war, capital, and members.
+          - generic [ref=e140]:
+            - link "Clan-wide war trends." [ref=e142] [cursor=pointer]:
+              - /url: "#"
+              - img [ref=e144]
+              - generic [ref=e145]: War Performance
+              - text: Clan-wide war trends.
+            - link "Capital contributions and raids." [ref=e147] [cursor=pointer]:
+              - /url: /new/capital-raids
+              - img [ref=e149]
+              - generic [ref=e150]: Capital Raids
+              - text: Capital contributions and raids.
+            - link "Individual performance comparisons." [ref=e152] [cursor=pointer]:
+              - /url: /new/member-performance
+              - img [ref=e154]
+              - generic [ref=e157]: Member Performance
+              - text: Individual performance comparisons.
+        - generic [ref=e158]:
+          - link "Permission-gated administrative tools." [ref=e159] [cursor=pointer]:
+            - /url: /new/leadership
+            - img [ref=e161]
+            - generic [ref=e163]: Leadership
+            - text: Permission-gated administrative tools.
+          - generic [ref=e164]:
+            - link "Leadership tool map." [ref=e166] [cursor=pointer]:
+              - /url: /new/leadership
+              - img [ref=e168]
+              - generic [ref=e170]: Overview
+              - text: Leadership tool map.
+            - link "Promotion and risk scoring." [ref=e172] [cursor=pointer]:
+              - /url: /new/leadership/assessment
+              - img [ref=e174]
+              - generic [ref=e177]: Assessment
+              - text: Promotion and risk scoring.
+        - link "Clan configuration, preferences, and access control." [ref=e179] [cursor=pointer]:
+          - /url: "#"
+          - img [ref=e181]
+          - generic [ref=e184]: Settings
+          - text: Clan configuration, preferences, and access control.
+      - button "Collapse navigation" [ref=e185] [cursor=pointer]:
+        - img [ref=e186]
+    - generic [ref=e188]:
+      - banner [ref=e189]:
+        - navigation "Breadcrumb" [ref=e193]:
+          - list [ref=e194]:
+            - listitem [ref=e195]:
+              - generic [ref=e196]: Overview
+      - main [ref=e197]:
+        - generic [ref=e199]:
+          - generic [ref=e200]:
+            - generic [ref=e201]:
+              - img [ref=e202]
+              - text: Leadership
+            - heading "Leadership tool map" [level=1] [ref=e204]
+            - paragraph [ref=e205]: Section headings below outline what still needs to be built or wired for leadership workflows.
+          - generic [ref=e206]:
+            - generic [ref=e208]:
+              - generic [ref=e210]:
+                - generic [ref=e211]:
+                  - img [ref=e212]
+                  - text: Weekly highlights
+                - generic [ref=e214]: Dec 22 – Dec 29
+              - generic [ref=e216]:
+                - generic [ref=e445]:
+                  - generic [ref=e446]:
+                    - img [ref=e447]
+                    - text: Promotions
+                  - generic [ref=e450]:
+                    - generic [ref=e451]:
+                      - generic [ref=e452]:
+                        - generic [ref=e453]: War.Frog
+                        - generic [ref=e454]: Witch League 17 → Golem League 19
+                      - generic [ref=e455]: Dec 28
+                    - generic [ref=e456]:
+                      - generic [ref=e457]:
+                        - generic [ref=e458]: warfroggy
+                        - generic [ref=e459]: Witch League 18 → Golem League 19
+                      - generic [ref=e460]: Dec 28
+                    - generic [ref=e461]:
+                      - generic [ref=e462]:
+                        - generic [ref=e463]: Headhuntress
+                        - generic [ref=e464]: Valkyrie League 15 → Witch League 17
+                      - generic [ref=e465]: Dec 28
+                    - generic [ref=e466]:
+                      - generic [ref=e467]:
+                        - generic [ref=e468]: CosmicThomas
+                        - generic [ref=e469]: Valkyrie League 14 → Witch League 16
+                      - generic [ref=e470]: Dec 28
+                    - generic [ref=e471]:
+                      - generic [ref=e472]:
+                        - generic [ref=e473]: se
+                        - generic [ref=e474]: Wizard League 11 → Valkyrie League 14
+                      - generic [ref=e475]: Dec 28
+                - generic [ref=e476]:
+                  - generic [ref=e477]:
+                    - img [ref=e478]
+                    - text: Hero upgrades
+                  - generic [ref=e480]:
+                    - generic [ref=e481]:
+                      - generic [ref=e482]:
+                        - generic [ref=e483]: se
+                        - generic [ref=e484]: +20 hero levels
+                      - generic [ref=e485]: RC +11 • AQ +4 • BK +4 • MP +1
+                    - generic [ref=e486]:
+                      - generic [ref=e487]:
+                        - generic [ref=e488]: War.Frog
+                        - generic [ref=e489]: +16 hero levels
+                      - generic [ref=e490]: BK +6 • AQ +5 • GW +3 • MP +1 • RC +1
+                    - generic [ref=e491]:
+                      - generic [ref=e492]:
+                        - generic [ref=e493]: DoubleD
+                        - generic [ref=e494]: +13 hero levels
+                      - generic [ref=e495]: RC +5 • BK +3 • AQ +2 • MP +2 • GW +1
+                    - generic [ref=e496]:
+                      - generic [ref=e497]:
+                        - generic [ref=e498]: Headhuntress
+                        - generic [ref=e499]: +10 hero levels
+                      - generic [ref=e500]: RC +3 • AQ +2 • GW +2 • MP +2 • BK +1
+                    - generic [ref=e501]:
+                      - generic [ref=e502]:
+                        - generic [ref=e503]: CosmicThomas
+                        - generic [ref=e504]: +6 hero levels
+                      - generic [ref=e505]: BK +4 • AQ +2
+                - generic [ref=e506]:
+                  - generic [ref=e507]:
+                    - img [ref=e508]
+                    - text: New joiners
+                  - generic [ref=e512]:
+                    - generic [ref=e513]:
+                      - generic [ref=e514]: Ozymandias
+                      - generic [ref=e515]: Joined
+                    - generic [ref=e516]: Dec 24
+                - generic [ref=e517]:
+                  - generic [ref=e518]:
+                    - img [ref=e519]
+                    - text: Demotions to watch
+                  - generic [ref=e522]:
+                    - generic [ref=e523]:
+                      - generic [ref=e524]:
+                        - generic [ref=e525]: God Of LOYINS
+                        - generic [ref=e526]: Golem League 20 → P.E.K.K.A League 22
+                      - generic [ref=e527]: Dec 28
+                    - generic [ref=e528]:
+                      - generic [ref=e529]:
+                        - generic [ref=e530]: Isi
+                        - generic [ref=e531]: Archer League 7 → Barbarian League 6
+                      - generic [ref=e532]: Dec 28
+            - generic [ref=e218]:
+              - generic [ref=e221]:
+                - img [ref=e222]
+                - text: Snapshot status
+              - generic [ref=e226]:
+                - generic [ref=e227]:
+                  - generic [ref=e228]: Last snapshot (UTC)
+                  - generic [ref=e229]: Dec 29, 10:32 PM UTC
+                - generic [ref=e230]:
+                  - generic [ref=e231]: Members
+                  - generic [ref=e232]: "18"
+                - generic [ref=e233]:
+                  - generic [ref=e234]: Clan tag
+                  - generic [ref=e235]: "#2PR8R8V8P"
+          - generic [ref=e236]:
+            - generic [ref=e238]:
+              - generic [ref=e240]:
+                - img [ref=e241]
+                - generic [ref=e243]: Leadership Assessment
+              - generic [ref=e244]:
+                - list [ref=e245]:
+                  - listitem [ref=e246]:
+                    - generic [ref=e248]: Composite Leadership Value (CLV)
+                  - listitem [ref=e249]:
+                    - generic [ref=e251]: Promotion recommendations
+                  - listitem [ref=e252]:
+                    - generic [ref=e254]: Demotion risk watchlist
+                - link "Open" [ref=e256] [cursor=pointer]:
+                  - /url: /new/leadership/assessment
+                  - text: Open
+                  - img [ref=e257]
+            - generic [ref=e261]:
+              - generic [ref=e263]:
+                - img [ref=e264]
+                - generic [ref=e267]: Review Queue
+              - generic [ref=e268]:
+                - list [ref=e269]:
+                  - listitem [ref=e270]:
+                    - generic [ref=e272]: New joiners review (Assess)
+                  - listitem [ref=e273]:
+                    - generic [ref=e275]: Recent leaves (former members)
+                  - listitem [ref=e276]:
+                    - generic [ref=e278]: Pending actions (awaiting cron)
+                  - listitem [ref=e279]:
+                    - generic [ref=e281]: Active warnings & severity
+                - link "Open" [ref=e283] [cursor=pointer]:
+                  - /url: /new/assess
+                  - text: Open
+                  - img [ref=e284]
+            - generic [ref=e288]:
+              - generic [ref=e290]:
+                - img [ref=e291]
+                - generic [ref=e296]: Access & Onboarding
+              - generic [ref=e297]:
+                - list [ref=e298]:
+                  - listitem [ref=e299]:
+                    - generic [ref=e301]: Pending registrations approvals
+                  - listitem [ref=e302]:
+                    - generic [ref=e304]: Role assignment & access matrix
+                  - listitem [ref=e305]:
+                    - generic [ref=e307]: Tracked clans management
+                - generic [ref=e309]: Coming soon
+            - generic [ref=e311]:
+              - generic [ref=e313]:
+                - img [ref=e314]
+                - generic [ref=e317]: Player Database Tools
+              - generic [ref=e318]:
+                - list [ref=e319]:
+                  - listitem [ref=e320]:
+                    - generic [ref=e322]: Notes + warnings workflow
+                  - listitem [ref=e323]:
+                    - generic [ref=e325]: Alias linking / linked accounts
+                  - listitem [ref=e326]:
+                    - generic [ref=e328]: Leadership-only player history
+                - link "Open" [ref=e330] [cursor=pointer]:
+                  - /url: /new/player-database
+                  - text: Open
+                  - img [ref=e331]
+            - generic [ref=e335]:
+              - generic [ref=e337]:
+                - img [ref=e338]
+                - generic [ref=e347]: War Planning Suite
+              - generic [ref=e348]:
+                - list [ref=e349]:
+                  - listitem [ref=e350]:
+                    - generic [ref=e352]: Roster selection & lineup
+                  - listitem [ref=e353]:
+                    - generic [ref=e355]: Opponent fetch + matchup
+                  - listitem [ref=e356]:
+                    - generic [ref=e358]: Plan editor + assignments
+                - generic [ref=e360]: Coming soon
+            - generic [ref=e362]:
+              - generic [ref=e364]:
+                - img [ref=e365]
+                - generic [ref=e367]: Discord Publisher
+              - generic [ref=e368]:
+                - list [ref=e369]:
+                  - listitem [ref=e370]:
+                    - generic [ref=e372]: War result builder
+                  - listitem [ref=e373]:
+                    - generic [ref=e375]: Donation + activity summaries
+                  - listitem [ref=e376]:
+                    - generic [ref=e378]: Shareable clan updates
+                - generic [ref=e380]: Coming soon
+            - generic [ref=e382]:
+              - generic [ref=e384]:
+                - img [ref=e385]
+                - generic [ref=e388]: Settings & Thresholds
+              - generic [ref=e389]:
+                - list [ref=e390]:
+                  - listitem [ref=e391]:
+                    - generic [ref=e393]: Inactivity definitions
+                  - listitem [ref=e394]:
+                    - generic [ref=e396]: Donation expectations
+                  - listitem [ref=e397]:
+                    - generic [ref=e399]: Ingestion health / cron status
+                - generic [ref=e401]: Coming soon
+            - generic [ref=e403]:
+              - generic [ref=e405]:
+                - img [ref=e406]
+                - generic [ref=e409]: Command Center & Alerts
+              - generic [ref=e410]:
+                - list [ref=e411]:
+                  - listitem [ref=e412]:
+                    - generic [ref=e414]: Daily briefing / changes feed
+                  - listitem [ref=e415]:
+                    - generic [ref=e417]: Action items for leaders
+                  - listitem [ref=e418]:
+                    - generic [ref=e420]: Automated alert surfacing
+                - generic [ref=e422]: Coming soon
+            - generic [ref=e424]:
+              - generic [ref=e426]:
+                - img [ref=e427]
+                - generic [ref=e430]: Recruiting (Future)
+              - generic [ref=e431]:
+                - list [ref=e432]:
+                  - listitem [ref=e433]:
+                    - generic [ref=e435]: One-off candidate assessments
+                  - listitem [ref=e436]:
+                    - generic [ref=e438]: Applicant scoring signals
+                  - listitem [ref=e439]:
+                    - generic [ref=e441]: Recruitment decision support
+                - generic [ref=e443]: Coming soon
+  - button "Open Next.js Dev Tools" [ref=e538] [cursor=pointer]:
+    - img [ref=e539]
+  - alert [ref=e444]
+```

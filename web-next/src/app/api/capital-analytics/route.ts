@@ -14,7 +14,10 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const clanTag = searchParams.get('clanTag');
-    await requireLeadership(request, { clanTag });
+    const isPublic = searchParams.get('public') === 'true';
+    if (!isPublic) {
+      await requireLeadership(request, { clanTag });
+    }
     const playerTag = searchParams.get('playerTag');
     const weeksBack = searchParams.get('weeksBack') ? Number(searchParams.get('weeksBack')) : undefined;
     const minWeekends = searchParams.get('minWeekends') ? Number(searchParams.get('minWeekends')) : undefined;
@@ -50,4 +53,3 @@ export async function GET(request: NextRequest) {
     }, { status: error?.status || 500 });
   }
 }
-

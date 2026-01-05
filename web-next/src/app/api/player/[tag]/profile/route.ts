@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { calculateActivityScore } from '@/lib/business/calculations';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 import { cfg } from '@/lib/config';
 import { readTenureDetails } from '@/lib/tenure';
 import { CANONICAL_MEMBER_SNAPSHOT_VERSION } from '@/types/canonical-member-snapshot';
@@ -19,7 +19,11 @@ import {
   type TimelineComputation,
 } from '@/lib/activity/timeline';
 import { calculateHistoricalTrophiesForPlayer } from '@/lib/business/historical-trophies';
-import { getPlayer } from '@/lib/coc';
+import { getPlayer, extractHeroLevels } from '@/lib/coc';
+import { extractEquipmentLevels, extractPetLevels, countCompletedAchievements, calculateAchievementScore, getActiveSuperTroops } from '@/lib/ingestion/field-extractors';
+import { buildCanonicalMemberSnapshot } from '@/lib/canonical-member';
+import { getLatestRosterSnapshot, resolveRosterMembers, type ResolvedRosterMember } from '@/lib/roster-resolver';
+import { resolveHeroPower, resolveTrophies } from '@/lib/roster-derivations';
 
 export const dynamic = 'force-dynamic';
 // Cache player profile aggressively - data only updates once per day (nightly ingestion)
@@ -48,6 +52,184 @@ function toNumber(value: unknown): number | null {
 function ensureArray<T>(value: T | T[] | null | undefined): T[] {
   if (!value) return [];
   return Array.isArray(value) ? value : [value];
+}
+
+function extractPetLevelsFromCoc(playerDetail: any): Record<string, number> | null {
+  return extractPetLevels(playerDetail);
+}
+
+async function fetchCurrentRosterMembers(
+  supabase: ReturnType<typeof getSupabaseServerClient>,
+  clanTag: string | null,
+): Promise<{ members: ResolvedRosterMember[]; snapshotDate: string | null } | null> {
+  if (!clanTag) return null;
+  const latestSnapshot = await getLatestRosterSnapshot({ clanTag, supabase });
+  if (!latestSnapshot) return null;
+  const { members } = await resolveRosterMembers({
+    supabase,
+    clanTag: latestSnapshot.clanTag,
+    snapshotId: latestSnapshot.snapshotId,
+    snapshotDate: latestSnapshot.snapshotDate,
+  });
+  return { members, snapshotDate: latestSnapshot.snapshotDate };
+}
+
+function computeClanHeroAverages(members: ResolvedRosterMember[]): Record<string, number> {
+  const totals: Record<string, { sum: number; count: number }> = {
+    bk: { sum: 0, count: 0 },
+    aq: { sum: 0, count: 0 },
+    gw: { sum: 0, count: 0 },
+    rc: { sum: 0, count: 0 },
+    mp: { sum: 0, count: 0 },
+  };
+
+  members.forEach((member) => {
+    const heroLevels = member.hero_levels ?? {};
+    ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
+      const value = heroLevels[heroKey as keyof typeof heroLevels];
+      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+        totals[heroKey].sum += value;
+        totals[heroKey].count += 1;
+      }
+    });
+  });
+
+  const averages: Record<string, number> = {};
+  Object.entries(totals).forEach(([hero, data]) => {
+    if (data.count > 0) {
+      averages[hero] = data.sum / data.count;
+    }
+  });
+  return averages;
+}
+
+function computeClanStatsAverages(members: ResolvedRosterMember[]) {
+  const totals = {
+    trophies: { sum: 0, count: 0 },
+    donations: { sum: 0, count: 0 },
+    warStars: { sum: 0, count: 0 },
+    capitalContributions: { sum: 0, count: 0 },
+    townHallLevel: { sum: 0, count: 0 },
+  };
+
+  members.forEach((member) => {
+    const trophies = resolveTrophies(member);
+    if (typeof trophies === 'number' && trophies > 0) {
+      totals.trophies.sum += trophies;
+      totals.trophies.count += 1;
+    }
+
+    const donations = member.donations ?? null;
+    if (typeof donations === 'number' && donations > 0) {
+      totals.donations.sum += donations;
+      totals.donations.count += 1;
+    }
+
+    const warStars = member.war_stars ?? null;
+    if (typeof warStars === 'number' && warStars > 0) {
+      totals.warStars.sum += warStars;
+      totals.warStars.count += 1;
+    }
+
+    const capitalContrib = member.capital_contributions ?? null;
+    if (typeof capitalContrib === 'number' && capitalContrib > 0) {
+      totals.capitalContributions.sum += capitalContrib;
+      totals.capitalContributions.count += 1;
+    }
+
+    const thLevel = member.th_level ?? null;
+    if (typeof thLevel === 'number' && thLevel > 0) {
+      totals.townHallLevel.sum += thLevel;
+      totals.townHallLevel.count += 1;
+    }
+  });
+
+  return {
+    trophies: totals.trophies.count > 0 ? totals.trophies.sum / totals.trophies.count : 0,
+    donations: totals.donations.count > 0 ? totals.donations.sum / totals.donations.count : 0,
+    warStars: totals.warStars.count > 0 ? totals.warStars.sum / totals.warStars.count : 0,
+    capitalContributions:
+      totals.capitalContributions.count > 0
+        ? totals.capitalContributions.sum / totals.capitalContributions.count
+        : 0,
+    townHallLevel: totals.townHallLevel.count > 0 ? totals.townHallLevel.sum / totals.townHallLevel.count : 0,
+    vipScore: 0,
+  };
+}
+
+function mergeSummaryWithRosterMember(
+  summary: PlayerSummarySupabase,
+  rosterMember: ResolvedRosterMember | null,
+): PlayerSummarySupabase {
+  if (!rosterMember) return summary;
+
+  const resolvedTrophies = resolveTrophies(rosterMember) ?? summary.trophies;
+  const resolvedHeroPower = resolveHeroPower(rosterMember) ?? summary.heroPower ?? null;
+  const resolvedRanked =
+    typeof rosterMember.ranked_trophies === 'number' && rosterMember.ranked_trophies > 0
+      ? rosterMember.ranked_trophies
+      : summary.rankedTrophies;
+  const donationsGiven = rosterMember.donations ?? summary.donations.given;
+  const donationsReceived = rosterMember.donations_received ?? summary.donations.received;
+  const donationBalance =
+    donationsGiven != null && donationsReceived != null
+      ? donationsGiven - donationsReceived
+      : summary.donations.balance;
+
+  return {
+    ...summary,
+    name: rosterMember.name ?? summary.name,
+    role: rosterMember.role ?? summary.role,
+    townHallLevel: rosterMember.th_level ?? summary.townHallLevel,
+    trophies: resolvedTrophies ?? summary.trophies,
+    rankedTrophies: resolvedRanked ?? summary.rankedTrophies,
+    rushPercent: rosterMember.rush_percent ?? summary.rushPercent,
+    league: {
+      ...summary.league,
+      id: rosterMember.league_id ?? summary.league.id,
+      name: rosterMember.league_name ?? summary.league.name,
+      trophies: rosterMember.league_trophies ?? summary.league.trophies,
+    },
+    rankedLeague: {
+      ...summary.rankedLeague,
+      id: rosterMember.ranked_league_id ?? summary.rankedLeague.id,
+      name: rosterMember.ranked_league_name ?? summary.rankedLeague.name,
+    },
+    battleModeTrophies: rosterMember.battle_mode_trophies ?? summary.battleModeTrophies,
+    donations: {
+      given: donationsGiven ?? null,
+      received: donationsReceived ?? null,
+      balance: donationBalance ?? null,
+    },
+    war: {
+      ...summary.war,
+      stars: rosterMember.war_stars ?? summary.war.stars,
+      attackWins: rosterMember.attack_wins ?? summary.war.attackWins,
+      defenseWins: rosterMember.defense_wins ?? summary.war.defenseWins,
+    },
+    builderBase: {
+      ...summary.builderBase,
+      hallLevel: rosterMember.builder_hall_level ?? summary.builderBase.hallLevel,
+      trophies: rosterMember.versus_trophies ?? summary.builderBase.trophies,
+      battleWins: rosterMember.versus_battle_wins ?? summary.builderBase.battleWins,
+      leagueId: rosterMember.builder_league_id ?? summary.builderBase.leagueId,
+    },
+    capitalContributions: rosterMember.capital_contributions ?? summary.capitalContributions,
+    activityScore: rosterMember.activity_score ?? summary.activityScore,
+    heroLevels: rosterMember.hero_levels ?? summary.heroLevels,
+    heroPower: resolvedHeroPower,
+    bestTrophies: rosterMember.best_trophies ?? summary.bestTrophies,
+    bestVersusTrophies: rosterMember.best_versus_trophies ?? summary.bestVersusTrophies,
+    pets: rosterMember.pet_levels ?? summary.pets,
+    superTroopsActive: rosterMember.super_troops_active ?? summary.superTroopsActive,
+    equipmentLevels: rosterMember.equipment_flags ?? summary.equipmentLevels,
+    achievements: {
+      ...summary.achievements,
+      count: rosterMember.achievement_count ?? summary.achievements.count,
+      score: rosterMember.achievement_score ?? summary.achievements.score,
+    },
+    expLevel: rosterMember.exp_level ?? summary.expLevel,
+  };
 }
 
 function buildTimeline(rows: CanonicalSnapshotRow[]): TimelineComputation {
@@ -183,6 +365,7 @@ function buildSummary(
   const donationBalance = donationsGiven != null && donationsReceived != null
     ? donationsGiven - donationsReceived
     : null;
+  const heroPower = resolveHeroPower(member);
 
   return {
     name: member.name ?? null,
@@ -235,6 +418,7 @@ function buildSummary(
     tenureDays: tenureDays,
     tenureAsOf: tenureAsOf,
     heroLevels: member.heroLevels ?? null,
+    heroPower,
     bestTrophies: member.bestTrophies ?? null,
     bestVersusTrophies: member.bestVersusTrophies ?? null,
     pets: member.pets ?? null,
@@ -245,6 +429,17 @@ function buildSummary(
       score: member.achievements.score ?? null,
     },
     expLevel: member.expLevel ?? null,
+  };
+}
+
+function mapLeagueInfo(leagueTier?: any) {
+  if (!leagueTier) return { id: null, name: null, trophies: null, iconSmall: null, iconMedium: null };
+  return {
+    id: leagueTier.id ?? null,
+    name: leagueTier.name ?? null,
+    trophies: null,
+    iconSmall: leagueTier.iconUrls?.small ?? null,
+    iconMedium: leagueTier.iconUrls?.large ?? null,
   };
 }
 
@@ -337,41 +532,9 @@ export async function GET(
           let clanHeroAverages: Record<string, number> = {};
           if (clanTag) {
             try {
-              const { data: rosterRows } = await supabase
-                .from('canonical_member_snapshots')
-                .select('payload')
-                .eq('clan_tag', clanTag)
-                .order('snapshot_date', { ascending: false })
-                .limit(50);
-              
-              if (rosterRows && rosterRows.length > 0) {
-                const totals: Record<string, { sum: number; count: number }> = {
-                  bk: { sum: 0, count: 0 },
-                  aq: { sum: 0, count: 0 },
-                  gw: { sum: 0, count: 0 },
-                  rc: { sum: 0, count: 0 },
-                  mp: { sum: 0, count: 0 },
-                };
-                
-                rosterRows.forEach((row) => {
-                  const payload = row.payload as CanonicalMemberSnapshotV1;
-                  if (payload?.member?.heroLevels) {
-                    const heroLevels = payload.member.heroLevels;
-                    ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
-                      const value = heroLevels[heroKey as keyof typeof heroLevels];
-                      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-                        totals[heroKey].sum += value;
-                        totals[heroKey].count += 1;
-                      }
-                    });
-                  }
-                });
-                
-                Object.entries(totals).forEach(([hero, data]) => {
-                  if (data.count > 0) {
-                    clanHeroAverages[hero] = data.sum / data.count;
-                  }
-                });
+              const rosterPayload = await fetchCurrentRosterMembers(supabase, clanTag);
+              if (rosterPayload?.members?.length) {
+                clanHeroAverages = computeClanHeroAverages(rosterPayload.members);
               }
             } catch (error) {
               console.warn('Failed to calculate clan hero averages for CoC fallback:', error);
@@ -474,8 +637,8 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Player not found in canonical snapshots' }, { status: 404 });
     }
 
-    const latestSnapshot = filteredRows[0].payload;
-    const latestSnapshotDate = filteredRows[0].snapshot_date;
+    let latestSnapshot = filteredRows[0].payload;
+    let latestSnapshotDate = filteredRows[0].snapshot_date;
     // Use requested clanTag if provided, otherwise fall back to snapshot's clanTag
     const resolvedClanTag = clanTag ?? latestSnapshot.clanTag ?? filteredRows[0].clan_tag ?? null;
     const normalizedResolvedClanTag = resolvedClanTag ? normalizeTag(resolvedClanTag) : null;
@@ -496,6 +659,8 @@ export async function GET(
       tenureDetails,
       { data: playerDayRows, error: playerDayError },
       { data: memberRow },
+      { data: historyRow, error: historyError },
+      rosterPayload,
     ] = await Promise.all([
       // Get clan info
       resolvedClanTag
@@ -519,6 +684,15 @@ export async function GET(
         .select('id, name')
         .eq('tag', normalizedTag)
         .maybeSingle(),
+      resolvedClanTag
+        ? supabase
+            .from('player_history')
+            .select('*')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
+      resolvedClanTag ? fetchCurrentRosterMembers(supabase, resolvedClanTag) : Promise.resolve(null),
     ]);
 
     if (clanError && clanError.code !== 'PGRST116') {
@@ -527,8 +701,36 @@ export async function GET(
     if (playerDayError && playerDayError.code !== 'PGRST116') {
       throw playerDayError;
     }
+    if (historyError) {
+      throw historyError;
+    }
+
+    const rosterMembers = rosterPayload?.members ?? [];
+    const rosterMember = rosterMembers.find((member) => member.tag === normalizedTag) ?? null;
 
     const tenureInfo = tenureDetails[latestSnapshot.playerTag] ?? null;
+    const historyCurrentStint = historyRow?.current_stint ?? historyRow?.currentStint ?? null;
+    const historyBase = typeof historyRow?.total_tenure === 'number' ? historyRow.total_tenure : 0;
+    let historyCurrentDays = 0;
+    if (historyCurrentStint?.isActive && historyCurrentStint.startDate) {
+      const start = new Date(historyCurrentStint.startDate);
+      if (!Number.isNaN(start.getTime())) {
+        historyCurrentDays = Math.floor((Date.now() - start.getTime()) / (1000 * 60 * 60 * 24));
+      }
+    }
+    const historyTenureDays = historyRow ? Math.max(0, Math.round(historyBase + Math.max(0, historyCurrentDays))) : null;
+    const historyTenureAsOf = historyCurrentStint?.startDate ?? null;
+    const tenureCandidates = [
+      { days: historyTenureDays, asOf: historyTenureAsOf },
+      { days: tenureInfo?.days ?? null, asOf: tenureInfo?.as_of ?? null },
+      { days: latestSnapshot.member.tenure.days ?? null, asOf: latestSnapshot.member.tenure.asOf ?? null },
+    ].filter((candidate): candidate is { days: number; asOf: string | null } => 
+      typeof candidate.days === 'number' && Number.isFinite(candidate.days)
+    );
+    const resolvedTenure = tenureCandidates.reduce(
+      (best, candidate) => (best == null || candidate.days > best.days ? candidate : best),
+      null as { days: number; asOf: string | null } | null,
+    );
 
     let timelineStats: TimelineComputation;
 
@@ -557,7 +759,140 @@ export async function GET(
     const resolvedLastWeekTrophies = historicalTrophyData?.lastWeekTrophies ?? timelineStats.lastWeekTrophies;
     const resolvedSeasonTotalTrophies = historicalTrophyData?.seasonTotalTrophies ?? timelineStats.seasonTotalTrophies;
 
-    let summary = buildSummary(
+    let summary: PlayerSummarySupabase;
+
+    let latestClanSnapshotDate: string | null = null;
+    let latestClanSnapshotRow: { snapshot_date: string | null; snapshot_id: string | null; payload: CanonicalMemberSnapshotV1 | null } | null = null;
+    if (resolvedClanTag) {
+      try {
+        const { data: latestClanRow } = await supabase
+          .from('canonical_member_snapshots')
+          .select('snapshot_date, snapshot_id, payload')
+          .eq('clan_tag', resolvedClanTag)
+          .order('snapshot_date', { ascending: false })
+          .limit(1);
+        latestClanSnapshotRow = (latestClanRow?.[0] as any) ?? null;
+        latestClanSnapshotDate = latestClanSnapshotRow?.snapshot_date ?? null;
+      } catch (error) {
+        console.warn('[player-profile] Failed to resolve latest clan snapshot date:', error);
+      }
+    }
+
+    if (latestClanSnapshotDate) {
+      try {
+        if (latestSnapshotDate !== latestClanSnapshotDate && resolvedClanTag) {
+          const { data: matchingRow } = await supabase
+            .from('canonical_member_snapshots')
+            .select('snapshot_date, snapshot_id, payload')
+            .eq('clan_tag', resolvedClanTag)
+            .eq('player_tag', normalizedTag)
+            .eq('snapshot_date', latestClanSnapshotDate)
+            .maybeSingle();
+
+          if (matchingRow?.payload) {
+            latestSnapshot = matchingRow.payload as CanonicalMemberSnapshotV1;
+            latestSnapshotDate = matchingRow.snapshot_date;
+          } else {
+            const cleanTag = normalizedTag.replace('#', '');
+            const cocPlayer = await getPlayer(cleanTag);
+            const latestRosterPayload = latestClanSnapshotRow?.payload ?? latestSnapshot;
+            const snapshotId = latestClanSnapshotRow?.snapshot_id ?? latestRosterPayload?.snapshotId ?? `autoheal-${normalizedTag}-${latestClanSnapshotDate}`;
+            const fetchedAt = latestRosterPayload?.fetchedAt ?? `${latestClanSnapshotDate}T00:00:00.000Z`;
+
+            const leagueInfo = mapLeagueInfo((cocPlayer as any).leagueTier);
+            const rankedInfo = {
+              trophies: cocPlayer.trophies ?? null,
+              leagueId: leagueInfo.id,
+              leagueName: leagueInfo.name,
+              iconSmall: leagueInfo.iconSmall,
+              iconMedium: leagueInfo.iconMedium,
+            };
+
+            const canonicalSnapshot = buildCanonicalMemberSnapshot({
+              clanTag: resolvedClanTag,
+              clanName: latestRosterPayload?.clanName ?? null,
+              snapshotId,
+              fetchedAt,
+              computedAt: null,
+              memberCount: latestRosterPayload?.roster?.memberCount ?? null,
+              totalTrophies: latestRosterPayload?.roster?.totalTrophies ?? null,
+              totalDonations: latestRosterPayload?.roster?.totalDonations ?? null,
+              member: {
+                tag: normalizedTag,
+                name: cocPlayer.name ?? latestSnapshot.member.name ?? null,
+                role: latestSnapshot.member.role ?? null,
+                townHallLevel: cocPlayer.townHallLevel ?? null,
+                townHallWeaponLevel: (cocPlayer as any).townHallWeaponLevel ?? null,
+                trophies: cocPlayer.trophies ?? null,
+                battleModeTrophies: (cocPlayer as any).builderBaseTrophies ?? (cocPlayer as any).versusTrophies ?? null,
+                league: leagueInfo,
+                ranked: rankedInfo,
+                donations: {
+                  given: cocPlayer.donations ?? null,
+                  received: cocPlayer.donationsReceived ?? null,
+                },
+                activityScore: null,
+                heroLevels: extractHeroLevels(cocPlayer),
+                rushPercent: latestSnapshot.member.rushPercent ?? null,
+                war: {
+                  stars: (cocPlayer as any).warStars ?? null,
+                  attackWins: cocPlayer.attackWins ?? null,
+                  defenseWins: (cocPlayer as any).defenseWins ?? null,
+                  preference: (cocPlayer as any).warPreference ?? null,
+                },
+                builderBase: {
+                  hallLevel: (cocPlayer as any).builderHallLevel ?? null,
+                  trophies: (cocPlayer as any).builderBaseTrophies ?? (cocPlayer as any).versusTrophies ?? null,
+                  battleWins: (cocPlayer as any).versusBattleWins ?? null,
+                  leagueId: (cocPlayer as any).builderBaseLeague?.id ?? null,
+                  leagueName: (cocPlayer as any).builderBaseLeague?.name ?? null,
+                },
+                capitalContributions: cocPlayer.clanCapitalContributions ?? null,
+                pets: extractPetLevels(cocPlayer),
+                equipmentLevels: extractEquipmentLevels(cocPlayer),
+                achievements: {
+                  count: countCompletedAchievements(cocPlayer),
+                  score: calculateAchievementScore(cocPlayer),
+                },
+                expLevel: (cocPlayer as any).expLevel ?? null,
+                bestTrophies: (cocPlayer as any).bestTrophies ?? null,
+                bestVersusTrophies: (cocPlayer as any).bestBuilderBaseTrophies ?? null,
+                superTroopsActive: getActiveSuperTroops(cocPlayer),
+                tenure: latestSnapshot.member.tenure ?? { days: null, asOf: null },
+                clanRank: latestSnapshot.member.clanRank ?? null,
+                previousClanRank: latestSnapshot.member.previousClanRank ?? null,
+                labels: (cocPlayer as any).labels ?? null,
+                legendStatistics: latestSnapshot.member.legendStatistics ?? null,
+                metrics: latestSnapshot.member.metrics ?? undefined,
+                extras: latestSnapshot.member.extras ?? null,
+              },
+            });
+
+            await supabase
+              .from('canonical_member_snapshots')
+              .upsert(
+                [{
+                  clan_tag: resolvedClanTag,
+                  player_tag: normalizedTag,
+                  snapshot_id: snapshotId,
+                  snapshot_date: canonicalSnapshot.snapshotDate,
+                  schema_version: canonicalSnapshot.schemaVersion,
+                  payload: canonicalSnapshot,
+                }],
+                { onConflict: 'snapshot_id,player_tag' }
+              );
+
+            latestSnapshot = canonicalSnapshot;
+            latestSnapshotDate = canonicalSnapshot.snapshotDate;
+          }
+        }
+      } catch (error) {
+        console.warn('[player-profile] Auto-heal for latest snapshot failed:', error);
+      }
+      // summary will be rebuilt after potential auto-heal
+    }
+
+    summary = buildSummary(
       latestSnapshot,
       {
         ...timelineStats,
@@ -565,9 +900,31 @@ export async function GET(
         seasonTotalTrophies: resolvedSeasonTotalTrophies,
       },
       clanRow?.name ?? null,
-      tenureInfo?.days ?? latestSnapshot.member.tenure.days ?? null,
-      tenureInfo?.as_of ?? latestSnapshot.member.tenure.asOf ?? null,
+      resolvedTenure?.days ?? null,
+      resolvedTenure?.asOf ?? null,
     );
+
+    if (latestClanSnapshotDate) {
+      summary = {
+        ...summary,
+        lastSeen: latestClanSnapshotDate,
+      };
+    }
+
+    summary = mergeSummaryWithRosterMember(summary, rosterMember);
+
+    if (!summary.pets || Object.keys(summary.pets).length === 0) {
+      try {
+        const cleanTag = normalizedTag.replace('#', '');
+        const cocPlayer = await getPlayer(cleanTag);
+        summary = {
+          ...summary,
+          pets: extractPetLevelsFromCoc(cocPlayer) ?? summary.pets,
+        };
+      } catch (error) {
+        console.warn('[player-profile] Failed to fetch pets from CoC API', error);
+      }
+    }
 
     // Override name with current name from members table if available (handles name changes)
     if (memberRow?.name) {
@@ -586,6 +943,8 @@ export async function GET(
       rankedTrophies: summary.rankedTrophies ?? undefined,
       rankedLeagueId: summary.rankedLeague.id ?? undefined,
       rankedLeagueName: summary.rankedLeague.name ?? undefined,
+      leagueId: summary.league.id ?? undefined,
+      leagueName: summary.league.name ?? undefined,
       donations: summary.donations.given ?? undefined,
       donationsReceived: summary.donations.received ?? undefined,
       seasonTotalTrophies: summary.seasonTotalTrophies ?? undefined,
@@ -613,10 +972,10 @@ export async function GET(
     } as Member;
 
     const activityTimeline = mapTimelinePointsToActivityEvents(timelineStats.timeline);
-    const activityEvidence = calculateActivityScore(memberForActivity, {
-      timeline: activityTimeline,
-      lookbackDays: 7,
-    });
+    const activityEvidence = resolveMemberActivity({
+      ...memberForActivity,
+      activityTimeline,
+    } as Member & { activityTimeline?: PlayerActivityTimelineEvent[] });
     summary = {
       ...summary,
       activityScore: summary.activityScore ?? activityEvidence.score ?? null,
@@ -625,18 +984,17 @@ export async function GET(
 
     // Calculate clan hero averages for comparison
     let clanHeroAverages: Record<string, number> = {};
-    if (resolvedClanTag) {
+    if (rosterMembers.length > 0) {
+      clanHeroAverages = computeClanHeroAverages(rosterMembers);
+    } else if (resolvedClanTag) {
       try {
-        // PERFORMANCE: Reduced from 50 to 20 snapshots - sufficient for accurate averages
-        // Fetch current roster data for clan averages
         const { data: rosterRows, error: rosterError } = await supabase
           .from('canonical_member_snapshots')
           .select('payload')
           .eq('clan_tag', resolvedClanTag)
           .order('snapshot_date', { ascending: false })
-          .limit(20); // Reduced from 50 - 20 snapshots is sufficient for accurate averages
+          .limit(20);
 
-        console.log('Clan averages calculation - rosterRows:', rosterRows?.length || 0);
         if (!rosterError && rosterRows && rosterRows.length > 0) {
           const totals: Record<string, { sum: number; count: number }> = {
             bk: { sum: 0, count: 0 },
@@ -665,7 +1023,6 @@ export async function GET(
               clanHeroAverages[hero] = data.sum / data.count;
             }
           });
-          console.log('Calculated clan hero averages:', clanHeroAverages);
         }
       } catch (error) {
         console.warn('Failed to calculate clan hero averages:', error);
@@ -681,9 +1038,32 @@ export async function GET(
       townHallLevel: 0,
       vipScore: 0,
     };
-    if (resolvedClanTag) {
+    if (rosterMembers.length > 0) {
+      clanStatsAverages = computeClanStatsAverages(rosterMembers);
+      const memberIds = rosterMembers.map((member) => member.id).filter(Boolean);
+      if (memberIds.length > 0) {
+        const weekStartISO = new Date().toISOString().split('T')[0];
+        const monday = new Date(weekStartISO);
+        monday.setUTCDate(monday.getUTCDate() - monday.getUTCDay() + 1);
+        const weekStart = monday.toISOString().split('T')[0];
+
+        try {
+          const { data: vipRows } = await supabase
+            .from('vip_scores')
+            .select('vip_score, member_id')
+            .eq('week_start', weekStart)
+            .in('member_id', memberIds);
+
+          if (vipRows && vipRows.length > 0) {
+            const vipSum = vipRows.reduce((sum, row) => sum + Number(row.vip_score || 0), 0);
+            clanStatsAverages.vipScore = vipSum / vipRows.length;
+          }
+        } catch (vipError) {
+          console.warn('Failed to fetch clan VIP averages:', vipError);
+        }
+      }
+    } else if (resolvedClanTag) {
       try {
-        // Fetch most recent snapshot for each clan member
         const { data: latestSnapshotRows } = await supabase
           .from('canonical_member_snapshots')
           .select('payload, snapshot_date, player_tag')
@@ -691,7 +1071,6 @@ export async function GET(
           .order('snapshot_date', { ascending: false });
 
         if (latestSnapshotRows && latestSnapshotRows.length > 0) {
-          // Get unique players (most recent snapshot per player)
           const playerLatestMap = new Map<string, CanonicalMemberSnapshotV1>();
           latestSnapshotRows.forEach((row) => {
             const tag = row.player_tag;
@@ -707,42 +1086,36 @@ export async function GET(
             warStars: { sum: 0, count: 0 },
             capitalContributions: { sum: 0, count: 0 },
             townHallLevel: { sum: 0, count: 0 },
-            vipScore: { sum: 0, count: 0 },
           };
 
           members.forEach((payload) => {
             const member = payload?.member;
             if (!member) return;
 
-            // Trophies
             const trophies = member.ranked?.trophies ?? member.trophies ?? 0;
             if (trophies > 0) {
               totals.trophies.sum += trophies;
               totals.trophies.count += 1;
             }
 
-            // Donations
             const donations = member.donations?.given ?? 0;
             if (donations > 0) {
               totals.donations.sum += donations;
               totals.donations.count += 1;
             }
 
-            // War stars (from war.stars)
             const warStars = member.war?.stars ?? 0;
             if (warStars > 0) {
               totals.warStars.sum += warStars;
               totals.warStars.count += 1;
             }
 
-            // Capital contributions
             const capitalContrib = member.capitalContributions ?? 0;
             if (capitalContrib > 0) {
               totals.capitalContributions.sum += capitalContrib;
               totals.capitalContributions.count += 1;
             }
 
-            // Town Hall level
             const thLevel = member.townHallLevel ?? 0;
             if (thLevel > 0) {
               totals.townHallLevel.sum += thLevel;
@@ -750,7 +1123,6 @@ export async function GET(
             }
           });
 
-          // Calculate averages
           if (totals.trophies.count > 0) {
             clanStatsAverages.trophies = totals.trophies.sum / totals.trophies.count;
           }
@@ -766,26 +1138,6 @@ export async function GET(
           if (totals.townHallLevel.count > 0) {
             clanStatsAverages.townHallLevel = totals.townHallLevel.sum / totals.townHallLevel.count;
           }
-
-          // VIP score average (use current week VIP scores)
-          const weekStartISO = new Date().toISOString().split('T')[0];
-          const monday = new Date(weekStartISO);
-          monday.setUTCDate(monday.getUTCDate() - monday.getUTCDay() + 1);
-          const weekStart = monday.toISOString().split('T')[0];
-
-          try {
-            const { data: vipRows } = await supabase
-              .from('vip_scores')
-              .select('vip_score, member_id')
-              .eq('week_start', weekStart);
-
-            if (vipRows && vipRows.length > 0) {
-              const vipSum = vipRows.reduce((sum, row) => sum + Number(row.vip_score || 0), 0);
-              clanStatsAverages.vipScore = vipSum / vipRows.length;
-            }
-          } catch (vipError) {
-            console.warn('Failed to fetch clan VIP averages:', vipError);
-          }
         }
       } catch (error) {
         console.warn('Failed to calculate clan stats averages:', error);
@@ -794,7 +1146,6 @@ export async function GET(
 
     // PERFORMANCE: Parallelize all leadership data queries - they don't depend on each other
     const [
-      { data: historyRow, error: historyError },
       { data: notesRows, error: notesError },
       { data: warningsRows, error: warningsError },
       { data: tenureRows, error: tenureError },
@@ -803,15 +1154,6 @@ export async function GET(
       { data: joinerRows, error: joinerError },
       linkedAccounts,
     ] = await Promise.all([
-      // Player history
-      resolvedClanTag
-        ? supabase
-            .from('player_history')
-            .select('*')
-            .eq('clan_tag', resolvedClanTag)
-            .eq('player_tag', normalizedTag)
-            .maybeSingle()
-        : Promise.resolve({ data: null, error: null }),
       // Player notes
       resolvedClanTag
         ? supabase
@@ -868,10 +1210,6 @@ export async function GET(
         : Promise.resolve({ data: [], error: null }),
       resolvedClanTag ? getLinkedTagsWithNames(resolvedClanTag, normalizedTag) : Promise.resolve([]),
     ]);
-
-    if (historyError) {
-      throw historyError;
-    }
     if (notesError) {
       throw notesError;
     }

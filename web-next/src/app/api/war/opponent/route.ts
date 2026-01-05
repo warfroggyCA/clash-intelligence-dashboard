@@ -7,12 +7,17 @@ import { z } from 'zod';
 import { createApiContext } from '@/lib/api/route-helpers';
 import { rateLimitAllow, formatRateLimitHeaders } from '@/lib/inbound-rate-limit';
 import { cached } from '@/lib/cache';
-import { normalizeTag } from '@/lib/tags';
+import { cfg } from '@/lib/config';
+import { getDefaultCwlSeasonId } from '@/lib/cwl-season';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
+import { isValidTag, normalizeTag } from '@/lib/tags';
 import {
   getClanInfo,
   getClanMembers,
   getClanWarLog,
   getClanCurrentWar,
+  getClanWarLeagueGroup,
+  getCwlWar,
   getPlayer,
   extractHeroLevels,
 } from '@/lib/coc';
@@ -32,6 +37,31 @@ const QuerySchema = z.object({
       const n = v ? Number(v) : NaN;
       return Number.isFinite(n) ? n : undefined;
     }),
+  rosterSource: z.enum(['clan', 'cwl', 'auto']).optional(),
+  dayIndex: z
+    .string()
+    .optional()
+    .transform((v) => {
+      const n = v ? Number(v) : NaN;
+      return Number.isFinite(n) ? n : undefined;
+    }),
+  warTag: z.string().optional(),
+  seasonId: z.string().optional(),
+  warSize: z
+    .string()
+    .optional()
+    .transform((v) => {
+      const n = v ? Number(v) : NaN;
+      return Number.isFinite(n) ? n : undefined;
+    }),
+  refresh: z
+    .union([z.literal('true'), z.literal('false')])
+    .optional()
+    .transform((v) => v === 'true'),
+  persist: z
+    .union([z.literal('true'), z.literal('false')])
+    .optional()
+    .transform((v) => v === 'true'),
 });
 
 type OpponentMember = {
@@ -46,6 +76,7 @@ type OpponentMember = {
   readinessScore?: number | null; // 0-100
   isMax?: boolean;
   isRushed?: boolean;
+  isGhost?: boolean; // Player left the clan but still in CWL roster
 };
 
 type OpponentProfile = {
@@ -69,10 +100,27 @@ type OpponentProfile = {
     teamSizes?: Record<string, number>;
   };
   briefing: { bullets: string[]; copy: string };
-  limitations: { privateWarLog?: boolean; couldNotDetectOpponent?: boolean; partialPlayerDetails?: boolean };
+  limitations: {
+    privateWarLog?: boolean;
+    couldNotDetectOpponent?: boolean;
+    partialPlayerDetails?: boolean;
+    cwlRosterUnavailable?: boolean;
+  };
   detectedOpponentTag?: string | null;
   warState?: string | null;
 };
+
+type CwlRosterResult = {
+  roster: OpponentMember[];
+  thDistribution: Record<string, number>;
+  partialPlayerDetails: boolean;
+  ghostCount: number;
+  ghosts: Array<{ tag: string; name: string }>;
+  ghostDetectionStatus: 'available' | 'unavailable' | 'error';
+};
+
+const toOptionalNumber = (value: unknown): number | null =>
+  typeof value === 'number' && Number.isFinite(value) ? value : null;
 
 function readinessFromHeroes(th: number | null | undefined, heroes: OpponentMember['heroes']): { score: number | null; isMax: boolean; isRushed: boolean } {
   if (!th || !heroes) return { score: null, isMax: false, isRushed: false };
@@ -115,6 +163,242 @@ function buildBriefing(profile: OpponentProfile): OpponentProfile['briefing'] {
   return { bullets, copy: bullets.join('\n') };
 }
 
+async function getOrCreateSeasonId(
+  supabase: ReturnType<typeof getSupabaseAdminClient>,
+  clanTag: string,
+  seasonId: string,
+  warSize: number,
+): Promise<string> {
+  const { data: existing, error: selectError } = await supabase
+    .from('cwl_seasons')
+    .select('id')
+    .eq('clan_tag', clanTag)
+    .eq('season_id', seasonId)
+    .maybeSingle();
+  if (selectError) throw selectError;
+  if (existing?.id) return existing.id as string;
+  const { data: inserted, error: insertError } = await supabase
+    .from('cwl_seasons')
+    .insert({ clan_tag: clanTag, season_id: seasonId, war_size: warSize })
+    .select('id')
+    .maybeSingle();
+  if (insertError) throw insertError;
+  return inserted?.id as string;
+}
+
+async function buildCwlRoster(params: {
+  opponentTag: string;
+  ourClanTag: string | null;
+  dayIndex?: number;
+  warTag?: string;
+  enrich?: number;
+  cocOptions?: { bypassCache?: boolean };
+}): Promise<CwlRosterResult | null> {
+  const { opponentTag, ourClanTag, dayIndex, warTag, enrich, cocOptions } = params;
+  const normalizedOpponentTag = normalizeTag(opponentTag);
+  const normalizedOurTag = ourClanTag ? normalizeTag(ourClanTag) : null;
+  const lookupTag = normalizedOurTag || normalizedOpponentTag;
+  if (!lookupTag) return null;
+
+  const leagueGroup = await getClanWarLeagueGroup(lookupTag, cocOptions);
+  if (!leagueGroup?.rounds?.length) return null;
+
+  const rounds = leagueGroup.rounds;
+  const roundIndex =
+    typeof dayIndex === 'number' && Number.isFinite(dayIndex)
+      ? Math.max(1, Math.min(Math.round(dayIndex), rounds.length)) - 1
+      : null;
+  const candidateWarTags = warTag
+    ? [normalizeTag(warTag)]
+    : roundIndex != null
+      ? (rounds[roundIndex]?.warTags ?? [])
+      : rounds.flatMap((round) => round.warTags ?? []);
+
+  const filteredWarTags = candidateWarTags.filter((tag) => typeof tag === 'string' && isValidTag(tag));
+  if (!filteredWarTags.length) return null;
+
+  let war: Awaited<ReturnType<typeof getCwlWar>> | null = null;
+  for (const tag of filteredWarTags) {
+    const candidate = await getCwlWar(tag, cocOptions).catch(() => null);
+    if (!candidate?.clan?.tag || !candidate?.opponent?.tag) continue;
+    const warClanTag = normalizeTag(candidate.clan.tag);
+    const warOppTag = normalizeTag(candidate.opponent.tag);
+    const matchesOur = normalizedOurTag ? warClanTag === normalizedOurTag || warOppTag === normalizedOurTag : true;
+    const matchesOpponent = normalizedOpponentTag
+      ? warClanTag === normalizedOpponentTag || warOppTag === normalizedOpponentTag
+      : true;
+    if (!matchesOur || !matchesOpponent) continue;
+    war = candidate;
+    break;
+  }
+
+  if (!war) return null;
+
+  const warClanTag = normalizeTag(war.clan?.tag ?? '');
+  const warOppTag = normalizeTag(war.opponent?.tag ?? '');
+  const opponentSide = normalizedOpponentTag
+    ? warClanTag === normalizedOpponentTag
+      ? war.clan
+      : warOppTag === normalizedOpponentTag
+        ? war.opponent
+        : null
+    : normalizedOurTag
+      ? warClanTag === normalizedOurTag
+        ? war.opponent
+        : warOppTag === normalizedOurTag
+          ? war.clan
+          : null
+      : war.opponent;
+
+  const warMembers = Array.isArray(opponentSide?.members) ? opponentSide?.members ?? [] : [];
+  if (!warMembers.length) return null;
+
+  const ENRICH_DEFAULT = 12;
+  const toEnrich = Math.max(1, Math.min(enrich ?? ENRICH_DEFAULT, 50));
+  const sortedByMap = [...warMembers].sort(
+    (a, b) => (a.mapPosition ?? 999) - (b.mapPosition ?? 999),
+  );
+  const enrichTargets = sortedByMap.slice(0, Math.min(sortedByMap.length, toEnrich));
+
+  const memberLookup = new Map<string, (typeof warMembers)[number]>();
+  warMembers.forEach((member) => {
+    if (member?.tag) memberLookup.set(normalizeTag(member.tag), member);
+  });
+
+  const enrichedMap = new Map<string, {
+    th: number | null;
+    heroes: OpponentMember['heroes'];
+    readinessScore: number | null;
+    isMax: boolean;
+    isRushed: boolean;
+    trophies?: number;
+    donations?: number;
+    donationsReceived?: number;
+  }>();
+
+  for (const m of enrichTargets) {
+    try {
+      const p = await getPlayer(m.tag, cocOptions);
+      const heroLevels = extractHeroLevels(p as any);
+      const warMember = memberLookup.get(normalizeTag(m.tag));
+      const warTh = toOptionalNumber(warMember?.townHallLevel ?? warMember?.townhallLevel);
+      const playerTh = toOptionalNumber((p as any)?.townHallLevel);
+      const th = warTh ?? playerTh ?? null;
+      const readiness = readinessFromHeroes(th, heroLevels);
+      enrichedMap.set(normalizeTag(m.tag), {
+        th,
+        heroes: heroLevels,
+        readinessScore: readiness.score,
+        isMax: readiness.isMax,
+        isRushed: readiness.isRushed,
+        trophies: (p as any)?.trophies ?? null,
+        donations: (p as any)?.donations ?? null,
+        donationsReceived: (p as any)?.donationsReceived ?? null,
+      });
+    } catch {
+      // ignore individual failures
+    }
+  }
+
+  // Ghost detection: compare CWL war roster against opponent's current clan members
+  const opponentClanTag = normalizeTag(opponentSide?.tag ?? '');
+  let currentMemberTags = new Set<string>();
+  let ghostDetectionStatus: 'available' | 'unavailable' | 'error' = 'unavailable';
+  
+  console.log('[opponent/route] Ghost detection - opponent clan tag:', opponentClanTag);
+  
+  if (opponentClanTag) {
+    try {
+      const currentMembers = await getClanMembers(opponentClanTag, cocOptions);
+      // getClanMembers returns an array directly, not { items: [...] }
+      console.log('[opponent/route] Current members fetched:', currentMembers?.length || 0);
+      if (currentMembers?.length) {
+        for (const m of currentMembers) {
+          if (m.tag) currentMemberTags.add(normalizeTag(m.tag));
+        }
+        ghostDetectionStatus = 'available';
+        console.log('[opponent/route] Current member tags count:', currentMemberTags.size);
+      }
+    } catch (err: any) {
+      console.warn('[opponent/route] Could not fetch current members for ghost detection:', err?.message || err);
+      ghostDetectionStatus = 'error';
+    }
+  } else {
+    console.warn('[opponent/route] No opponent clan tag available for ghost detection');
+  }
+
+  const ghosts: Array<{ tag: string; name: string }> = [];
+  
+  const roster: OpponentMember[] = warMembers.map((m) => {
+    const normalizedTag = normalizeTag(m.tag);
+    const enriched = enrichedMap.get(normalizedTag);
+    const warTh = toOptionalNumber(m.townHallLevel ?? m.townhallLevel);
+    const th = warTh ?? enriched?.th ?? null;
+    
+    // Check if this player is a ghost (in CWL but not in current clan)
+    const isGhost = currentMemberTags.size > 0 && !currentMemberTags.has(normalizedTag);
+    if (isGhost) {
+      ghosts.push({ tag: normalizedTag, name: m.name });
+      console.log('[opponent/route] GHOST DETECTED:', m.name, normalizedTag);
+    }
+    
+    return {
+      tag: normalizedTag,
+      name: m.name,
+      trophies: enriched?.trophies ?? undefined,
+      donations: enriched?.donations ?? undefined,
+      donationsReceived: enriched?.donationsReceived ?? undefined,
+      th,
+      heroes: enriched?.heroes,
+      readinessScore: enriched?.readinessScore ?? null,
+      isMax: enriched?.isMax ?? false,
+      isRushed: enriched?.isRushed ?? false,
+      isGhost,
+    };
+  });
+  
+  console.log('[opponent/route] Ghost detection complete. Ghosts found:', ghosts.length, ghosts.map(g => g.name).join(', ') || 'none');
+
+  const thDistribution: Record<string, number> = {};
+  for (const member of roster) {
+    if (member.th) thDistribution[String(member.th)] = (thDistribution[String(member.th)] || 0) + 1;
+  }
+
+  return {
+    roster,
+    thDistribution,
+    partialPlayerDetails: roster.length > enrichTargets.length,
+    ghostCount: ghosts.length,
+    ghosts,
+    ghostDetectionStatus, // 'available', 'unavailable', or 'error'
+  };
+}
+
+async function persistOpponentSnapshot(params: {
+  clanTag: string;
+  seasonId: string;
+  warSize: number;
+  dayIndex: number;
+  opponentTag: string;
+  opponentName?: string | null;
+  roster: OpponentMember[];
+  thDistribution: Record<string, number>;
+}) {
+  const supabase = getSupabaseAdminClient();
+  const seasonPk = await getOrCreateSeasonId(supabase, params.clanTag, params.seasonId, params.warSize);
+  await supabase
+    .from('cwl_opponents')
+    .upsert({
+      cwl_season_id: seasonPk,
+      day_index: params.dayIndex,
+      opponent_tag: normalizeTag(params.opponentTag),
+      opponent_name: params.opponentName ?? null,
+      th_distribution: params.thDistribution,
+      roster_snapshot: params.roster,
+      fetched_at: new Date().toISOString(),
+    }, { onConflict: 'cwl_season_id,day_index' });
+}
+
 export async function GET(request: Request) {
   const { json } = createApiContext(request, '/api/war/opponent');
 
@@ -138,15 +422,36 @@ export async function GET(request: Request) {
       });
     }
 
-    const { opponentTag: rawOpponentTag, ourClanTag: rawOurClanTag, autoDetect, enrich } = parsed.data;
-    const ourClanTag = rawOurClanTag ? normalizeTag(rawOurClanTag) : undefined;
+    const {
+      opponentTag: rawOpponentTag,
+      ourClanTag: rawOurClanTag,
+      autoDetect,
+      enrich,
+      refresh,
+      rosterSource,
+      dayIndex,
+      warTag,
+      seasonId,
+      warSize,
+      persist,
+    } = parsed.data;
+    const resolvedHomeTag = normalizeTag(cfg.homeClanTag || '');
+    const ourClanTag = rawOurClanTag ? normalizeTag(rawOurClanTag) : (resolvedHomeTag || undefined);
     let opponentTag = rawOpponentTag ? normalizeTag(rawOpponentTag) : undefined;
     let detectedOpponentTag: string | null = null;
     let warState: string | null = null;
     const limitations: OpponentProfile['limitations'] = {};
+    const useCache = !refresh;
+    const cocOptions = refresh ? { bypassCache: true } : undefined;
+    const fetchMaybeCached = async <T>(key: string[], fn: () => Promise<T>, ttlSeconds: number) =>
+      useCache ? cached(key, fn, ttlSeconds) : fn();
 
     if (autoDetect && ourClanTag) {
-      const cw = await cached(['coc','currentwar', ourClanTag], () => getClanCurrentWar(ourClanTag!), 10);
+      const cw = await fetchMaybeCached(
+        ['coc','currentwar', ourClanTag],
+        () => getClanCurrentWar(ourClanTag!, cocOptions),
+        10,
+      );
       const state = cw?.state?.toLowerCase?.() || null;
       const maybe = cw?.opponent?.tag ? normalizeTag(cw.opponent.tag) : undefined;
       if (maybe && (state === 'preparation' || state === 'inwar' || state === 'warended')) {
@@ -162,14 +467,52 @@ export async function GET(request: Request) {
       return json({ success: false, error: 'opponentTag required (auto-detect unavailable)' }, { status: 400 });
     }
 
+    let roster: OpponentMember[] = [];
+    let thDistribution: Record<string, number> = {};
+    const rosterPreference = rosterSource ?? 'clan';
+
+    if (rosterPreference !== 'clan') {
+      const cwlRoster = await buildCwlRoster({
+        opponentTag,
+        ourClanTag: ourClanTag ?? null,
+        dayIndex,
+        warTag,
+        enrich,
+        cocOptions,
+      });
+      if (cwlRoster?.roster?.length) {
+        roster = cwlRoster.roster;
+        thDistribution = cwlRoster.thDistribution;
+        if (cwlRoster.partialPlayerDetails) {
+          limitations.partialPlayerDetails = true;
+        }
+      } else if (rosterPreference === 'cwl') {
+        limitations.cwlRosterUnavailable = true;
+      }
+    }
+
     // Fetch clan info + roster basics
-    const clanInfo = await cached(['coc','clan', opponentTag], () => getClanInfo(opponentTag!), 30);
-    const members = await cached(['coc','members', opponentTag], () => getClanMembers(opponentTag!), 30);
+    const clanInfo = await fetchMaybeCached(
+      ['coc','clan', opponentTag],
+      () => getClanInfo(opponentTag!, cocOptions),
+      30,
+    );
+    const members = roster.length
+      ? []
+      : await fetchMaybeCached(
+          ['coc','members', opponentTag],
+          () => getClanMembers(opponentTag!, cocOptions),
+          30,
+        );
 
     // War log (may be private)
     let warlog: any[] = [];
     try {
-      warlog = await cached(['coc','warlog', opponentTag], () => getClanWarLog(opponentTag!, 10), 60);
+      warlog = await fetchMaybeCached(
+        ['coc','warlog', opponentTag],
+        () => getClanWarLog(opponentTag!, 10, cocOptions),
+        60,
+      );
     } catch {
       // If the helper throws, treat as private
       limitations.privateWarLog = true;
@@ -179,49 +522,51 @@ export async function GET(request: Request) {
       limitations.privateWarLog = true;
     }
 
-    // Enrich top-N players with hero/TH: choose by trophies desc or role priority
-    const ENRICH_DEFAULT = 12;
-    const toEnrich = Math.max(1, Math.min(enrich ?? ENRICH_DEFAULT, 50));
-    const sorted = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
-    const enrichTargets = sorted.slice(0, Math.min(sorted.length, toEnrich));
+    if (!roster.length) {
+      // Enrich top-N players with hero/TH: choose by trophies desc or role priority
+      const ENRICH_DEFAULT = 12;
+      const toEnrich = Math.max(1, Math.min(enrich ?? ENRICH_DEFAULT, 50));
+      const sorted = [...members].sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
+      const enrichTargets = sorted.slice(0, Math.min(sorted.length, toEnrich));
 
-    const enrichedMap = new Map<string, { th: number | null; heroes: OpponentMember['heroes']; readinessScore: number | null; isMax: boolean; isRushed: boolean }>();
-    for (const m of enrichTargets) {
-      try {
-        const p = await getPlayer(m.tag);
-        const th = (p as any)?.townHallLevel ?? null;
-        const heroes = extractHeroLevels(p as any);
-        const readiness = readinessFromHeroes(th, heroes);
-        enrichedMap.set(m.tag, { th, heroes, readinessScore: readiness.score, isMax: readiness.isMax, isRushed: readiness.isRushed });
-      } catch {
-        // ignore individual failures
+      const enrichedMap = new Map<string, { th: number | null; heroes: OpponentMember['heroes']; readinessScore: number | null; isMax: boolean; isRushed: boolean }>();
+      for (const m of enrichTargets) {
+        try {
+          const p = await getPlayer(m.tag, cocOptions);
+          const th = (p as any)?.townHallLevel ?? null;
+          const heroes = extractHeroLevels(p as any);
+          const readiness = readinessFromHeroes(th, heroes);
+          enrichedMap.set(m.tag, { th, heroes, readinessScore: readiness.score, isMax: readiness.isMax, isRushed: readiness.isRushed });
+        } catch {
+          // ignore individual failures
+        }
       }
-    }
-    if (members.length > enrichTargets.length) {
-      limitations.partialPlayerDetails = true;
-    }
+      if (members.length > enrichTargets.length) {
+        limitations.partialPlayerDetails = true;
+      }
 
-    const roster: OpponentMember[] = members.map((m) => {
-      const e = enrichedMap.get(m.tag);
-      return {
-        tag: m.tag,
-        name: m.name,
-        role: m.role,
-        trophies: m.trophies,
-        donations: m.donations,
-        donationsReceived: m.donationsReceived,
-        th: e?.th ?? null,
-        heroes: e?.heroes,
-        readinessScore: e?.readinessScore ?? null,
-        isMax: e?.isMax ?? false,
-        isRushed: e?.isRushed ?? false,
-      } as OpponentMember;
-    });
+      roster = members.map((m) => {
+        const e = enrichedMap.get(m.tag);
+        return {
+          tag: m.tag,
+          name: m.name,
+          role: m.role,
+          trophies: m.trophies,
+          donations: m.donations,
+          donationsReceived: m.donationsReceived,
+          th: e?.th ?? null,
+          heroes: e?.heroes,
+          readinessScore: e?.readinessScore ?? null,
+          isMax: e?.isMax ?? false,
+          isRushed: e?.isRushed ?? false,
+        } as OpponentMember;
+      });
 
-    // TH distribution (from enriched only)
-    const thDistribution: Record<string, number> = {};
-    for (const e of enrichedMap.values()) {
-      if (e.th) thDistribution[String(e.th)] = (thDistribution[String(e.th)] || 0) + 1;
+      // TH distribution (from enriched only)
+      thDistribution = {};
+      for (const e of enrichedMap.values()) {
+        if (e.th) thDistribution[String(e.th)] = (thDistribution[String(e.th)] || 0) + 1;
+      }
     }
 
     // Recent form from warlog
@@ -263,6 +608,31 @@ export async function GET(request: Request) {
     };
 
     profile.briefing = buildBriefing(profile);
+
+    if (
+      persist === true &&
+      typeof dayIndex === 'number' &&
+      Number.isFinite(dayIndex) &&
+      ourClanTag &&
+      profile.roster.length
+    ) {
+      const resolvedSeasonId = seasonId || getDefaultCwlSeasonId();
+      const resolvedWarSize = typeof warSize === 'number' && (warSize === 15 || warSize === 30) ? warSize : 15;
+      try {
+        await persistOpponentSnapshot({
+          clanTag: ourClanTag,
+          seasonId: resolvedSeasonId,
+          warSize: resolvedWarSize,
+          dayIndex,
+          opponentTag: opponentTag || profile.clan.tag,
+          opponentName: profile.clan.name,
+          roster: profile.roster,
+          thDistribution: profile.thDistribution,
+        });
+      } catch (err) {
+        console.warn('[API] Failed to persist CWL opponent snapshot:', err);
+      }
+    }
 
     return json({ success: true, data: profile });
   } catch (error: any) {

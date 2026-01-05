@@ -30,7 +30,7 @@ export interface Member {
   aq?: number | null; // Archer Queen
   gw?: number | null; // Grand Warden
   rc?: number | null; // Royal Champion
-  mp?: number | null; // Master Builder (Pet House)
+  mp?: number | null; // Minion Prince
   
   // Stats
   trophies?: number;
@@ -97,6 +97,12 @@ export interface Member {
   lastSeen?: string | number;
   lastWeekTrophies?: number | null;
   activityScore?: number | null;
+  // Canonical resolved/derived values (SSOT)
+  resolvedTrophies?: number | null;
+  resolvedLeague?: { name: string; tier?: string | number; hasLeague?: boolean } | null;
+  heroPower?: number | null;
+  activityBand?: 'High' | 'Medium' | 'Low';
+  activityTone?: string;
   
   // Clan Info
   role?: string;
@@ -878,27 +884,26 @@ export const HERO_MIN_TH = {
   aq: 9,  // Archer Queen unlocks at TH9
   gw: 11, // Grand Warden unlocks at TH11
   rc: 13, // Royal Champion unlocks at TH13
-  mp: 15, // Minion Prince unlocks at TH15
+  mp: 9,  // Minion Prince unlocks at TH9
 } as const;
 
 /**
  * Maximum hero levels for each Town Hall (updated 2024)
- * Note: Minion Prince (mp) unlocks at TH15
+ * Note: Minion Prince (mp) unlocks at TH9
  */
 export const HERO_MAX_LEVELS: Record<number, HeroCaps> = {
   7: { bk: 5 },
   8: { bk: 10 },
-  9: { bk: 30, aq: 30 },
-  10: { bk: 40, aq: 40 },
-  11: { bk: 50, aq: 50, gw: 20 },
-  12: { bk: 65, aq: 65, gw: 40 },
-  13: { bk: 75, aq: 75, gw: 50, rc: 25 },
-  14: { bk: 85, aq: 85, gw: 60, rc: 30 },
-  // Minion Prince (mp) unlocks at TH15
-  15: { bk: 85, aq: 85, gw: 60, rc: 35, mp: 40 },
-  16: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 45 },
-  17: { bk: 95, aq: 95, gw: 70, rc: 45, mp: 50 },
-  18: { bk: 100, aq: 100, gw: 75, rc: 50, mp: 55 },
+  9: { bk: 30, aq: 30, mp: 30 },
+  10: { bk: 40, aq: 40, mp: 40 },
+  11: { bk: 50, aq: 50, gw: 20, mp: 50 },
+  12: { bk: 65, aq: 65, gw: 40, mp: 65 },
+  13: { bk: 75, aq: 75, gw: 50, rc: 20, mp: 75 },
+  14: { bk: 80, aq: 80, gw: 55, rc: 30, mp: 80 },
+  15: { bk: 90, aq: 90, gw: 65, rc: 40, mp: 70 },
+  16: { bk: 95, aq: 95, gw: 70, rc: 45, mp: 80 },
+  17: { bk: 95, aq: 95, gw: 70, rc: 45, mp: 90 },
+  18: { bk: 100, aq: 100, gw: 75, rc: 50, mp: 90 },
 };
 
 /**

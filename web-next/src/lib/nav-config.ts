@@ -44,9 +44,9 @@ export const navConfig: NavItem[] = [
     category: 'primary',
     children: [
       { title: 'Roster', href: '/new/roster', icon: Users, description: 'Current clan members with filters.' },
-      { title: 'Assess', href: '#', icon: ListChecks, description: 'Evaluate new applicants.' },
+      { title: 'Assess', href: '/new/assess', icon: ListChecks, description: 'Evaluate new applicants.' },
       { title: 'Database', href: '/new/player-database', icon: ActivitySquare, description: 'History, notes, warnings.' },
-      { title: 'Search', href: '#', icon: Search, description: 'Global player search across tags.' },
+      { title: 'Search', href: '/new/search', icon: Search, description: 'Search site features and shortcuts.' },
     ],
   },
   {
@@ -56,10 +56,19 @@ export const navConfig: NavItem[] = [
     description: 'Planning, active war monitoring, analytics, results.',
     category: 'primary',
     children: [
-      { title: 'CWL', href: '/new/war/cwl', icon: Swords, description: 'Season overview, roster, and daily planners.' },
+      {
+        title: 'CWL',
+        href: '/new/war/cwl/setup',
+        icon: Swords,
+        description: 'Season setup, roster, and daily planners.',
+        children: [
+          { title: 'Setup', href: '/new/war/cwl/setup', icon: ListChecks, description: 'Set war size and opponents.' },
+          { title: 'Season Roster', href: '/new/war/cwl/roster', icon: Users, description: 'Pick weekly eligible players.' },
+          { title: 'Day Planner', href: '/new/war/cwl/day/1', icon: Swords, description: 'Plan daily lineups and matchups.' },
+        ],
+      },
       { title: 'Planning', href: '#', icon: ListChecks, description: 'Create and manage war plans.' },
       { title: 'Active War', href: '#', icon: Shield, description: 'Live war status and calls.' },
-      { title: 'Analytics', href: '#', icon: BarChart2, description: 'War performance insights.' },
       { title: 'Results', href: '#', icon: Shield, description: 'Post-war review and publishing.' },
     ],
   },
@@ -71,17 +80,21 @@ export const navConfig: NavItem[] = [
     category: 'primary',
     children: [
       { title: 'War Performance', href: '#', icon: BarChart2, description: 'Clan-wide war trends.' },
-      { title: 'Capital Raids', href: '#', icon: BarChart2, description: 'Capital contributions and raids.' },
+      { title: 'Capital Raids', href: '/new/capital-raids', icon: BarChart2, description: 'Capital contributions and raids.' },
       { title: 'Member Performance', href: '/new/member-performance', icon: ActivitySquare, description: 'Individual performance comparisons.' },
     ],
   },
   {
     title: 'Leadership',
-    href: '#',
+    href: '/new/leadership',
     icon: Shield,
     description: 'Permission-gated administrative tools.',
     category: 'admin',
     permission: 'leader',
+    children: [
+      { title: 'Overview', href: '/new/leadership', icon: Shield, description: 'Leadership tool map.' },
+      { title: 'Assessment', href: '/new/leadership/assessment', icon: ActivitySquare, description: 'Promotion and risk scoring.' },
+    ],
   },
   {
     title: 'Settings',

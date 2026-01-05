@@ -15,7 +15,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const clanTag = searchParams.get('clanTag');
     const playerTag = searchParams.get('playerTag');
-    if (!playerTag) {
+    const isPublic = searchParams.get('public') === 'true';
+    if (!playerTag && !isPublic) {
       await requireLeadership(request, { clanTag });
     }
     const daysBack = searchParams.get('daysBack') ? Number(searchParams.get('daysBack')) : undefined;

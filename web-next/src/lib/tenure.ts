@@ -7,6 +7,42 @@ import { isValidTag, normalizeTag } from './tags';
 import { daysSince, daysSinceToDate } from './date';
 
 export type TenureRow = { tag?: string; base?: number; tenure_days?: number; as_of?: string; ts?: string };
+export type HistoryTenureRow = {
+  player_tag?: string;
+  total_tenure?: number;
+  current_stint?: { startDate?: string; isActive?: boolean } | null;
+};
+
+export function resolveTenureFromHistory(row: HistoryTenureRow): { days: number | null; asOf: string | null } {
+  if (!row) return { days: null, asOf: null };
+  const base = typeof row.total_tenure === 'number' && Number.isFinite(row.total_tenure) ? row.total_tenure : 0;
+  const currentStint = row.current_stint ?? null;
+  let currentDays = 0;
+  if (currentStint?.isActive && currentStint.startDate) {
+    const start = new Date(currentStint.startDate);
+    if (!Number.isNaN(start.getTime())) {
+      currentDays = Math.floor((Date.now() - start.getTime()) / 86400000);
+    }
+  }
+  const total = Math.max(0, Math.round(base + Math.max(0, currentDays)));
+  return {
+    days: Number.isFinite(total) ? total : null,
+    asOf: currentStint?.startDate ?? null,
+  };
+}
+
+export function buildHistoryTenureMap(rows: HistoryTenureRow[]): Record<string, { days: number; asOf: string | null }> {
+  const out: Record<string, { days: number; asOf: string | null }> = {};
+  for (const row of rows || []) {
+    const tag = normalizeTag(row?.player_tag || '');
+    if (!isValidTag(tag)) continue;
+    const resolved = resolveTenureFromHistory(row);
+    if (typeof resolved.days === 'number' && Number.isFinite(resolved.days)) {
+      out[tag] = { days: resolved.days, asOf: resolved.asOf ?? null };
+    }
+  }
+  return out;
+}
 
 // Pure parser usable in tests
 export function parseTenureLedger(lines: string[], targetDate?: string): Record<string, number> {

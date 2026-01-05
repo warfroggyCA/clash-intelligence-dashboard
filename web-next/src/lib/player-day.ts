@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { compareRankedLeagues } from '@/lib/league-tiers';
 
 type HeroKeys = 'bk' | 'aq' | 'gw' | 'rc' | 'mp';
 
@@ -73,6 +74,8 @@ const EVENT_CATEGORY: Record<string, string> = {
   pet_level_up: 'companions',
   equipment_upgrade: 'companions',
   league_change: 'league',
+  league_promotion: 'league',
+  league_demotion: 'league',
   legend_reentry: 'league',
   trophies_big_delta: 'trophies',
   war_perf_day: 'war',
@@ -182,6 +185,14 @@ export function generatePlayerDayRow(
 
   if (prev?.league && curr.league && prev.league !== curr.league) {
     events.push('league_change');
+    const leagueDelta = compareRankedLeagues(curr.league, prev.league);
+    if (leagueDelta > 0) {
+      events.push('league_promotion');
+      deltas.league_rank = leagueDelta;
+    } else if (leagueDelta < 0) {
+      events.push('league_demotion');
+      deltas.league_rank = leagueDelta;
+    }
   }
 
   if (curr.league === LEGEND_REENTRY && prev?.league !== LEGEND_REENTRY) {

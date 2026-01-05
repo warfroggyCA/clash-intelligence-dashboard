@@ -31,6 +31,12 @@ interface PlayerProfileApiResponse {
   error?: string;
 }
 
+interface PlayerProfileV2Response {
+  success: boolean;
+  data?: Record<string, any>;
+  error?: string;
+}
+
 function mapHistory(record: any): PlayerHistoryRecordSupabase | null {
   if (!record) return null;
 
@@ -144,6 +150,84 @@ function mapLeadership(bundle: any): PlayerLeadershipBundle {
   };
 }
 
+export function mapV2Summary(
+  data: Record<string, any>,
+  fallbackTag: string,
+  clanTag?: string | null
+): PlayerSummarySupabase {
+  const league = data.league && typeof data.league === 'object' ? data.league : {};
+  const rankedLeague = data.rankedLeague && typeof data.rankedLeague === 'object' ? data.rankedLeague : {};
+  const donationsGiven = typeof data.donations === 'number' ? data.donations : data.donations ?? null;
+  const donationsReceived =
+    typeof data.donationsReceived === 'number'
+      ? data.donationsReceived
+      : data.donationsReceived ?? null;
+  const donationBalance =
+    donationsGiven != null && donationsReceived != null ? donationsGiven - donationsReceived : null;
+
+  return {
+    name: data.name ?? null,
+    tag: data.tag ?? fallbackTag,
+    clanName: data.clan?.name ?? null,
+    clanTag: clanTag ?? null,
+    role: data.role ?? null,
+    townHallLevel: data.townHallLevel ?? null,
+    trophies: data.resolvedTrophies ?? data.rankedTrophies ?? data.trophies ?? null,
+    rankedTrophies: data.rankedTrophies ?? null,
+    seasonTotalTrophies: data.seasonTotalTrophies ?? null,
+    lastWeekTrophies: data.lastWeekTrophies ?? null,
+    rushPercent: data.rushPercent ?? null,
+    league: {
+      id: league.id ?? data.leagueId ?? null,
+      name: league.name ?? data.leagueName ?? null,
+      trophies: league.trophies ?? data.leagueTrophies ?? null,
+      iconSmall: league.iconSmall ?? league.icon_small ?? null,
+      iconMedium: league.iconMedium ?? league.icon_medium ?? null,
+    },
+    rankedLeague: {
+      id: rankedLeague.id ?? data.rankedLeagueId ?? null,
+      name: rankedLeague.name ?? data.rankedLeagueName ?? null,
+    },
+    battleModeTrophies: data.battleModeTrophies ?? null,
+    donations: {
+      given: donationsGiven,
+      received: donationsReceived,
+      balance: donationBalance,
+    },
+    war: {
+      stars: data.enriched?.warStars ?? null,
+      attackWins: data.enriched?.attackWins ?? null,
+      defenseWins: data.enriched?.defenseWins ?? null,
+      preference: null,
+    },
+    builderBase: {
+      hallLevel: data.enriched?.builderHallLevel ?? null,
+      trophies: data.enriched?.versusTrophies ?? null,
+      battleWins: data.enriched?.versusBattleWins ?? null,
+      leagueId: data.enriched?.builderLeagueId ?? null,
+      leagueName: null,
+    },
+    capitalContributions: data.enriched?.capitalContributions ?? null,
+    activityScore: data.activityScore ?? data.activity?.score ?? null,
+    activity: data.activity ?? null,
+    lastSeen: null,
+    tenureDays: data.tenureDays ?? null,
+    tenureAsOf: data.tenureAsOf ?? null,
+    heroLevels: data.heroLevels ?? null,
+    heroPower: data.heroPower ?? null,
+    bestTrophies: data.enriched?.bestTrophies ?? null,
+    bestVersusTrophies: data.enriched?.bestVersusTrophies ?? null,
+    pets: data.enriched?.petLevels ?? null,
+    superTroopsActive: data.enriched?.superTroopsActive ?? null,
+    equipmentLevels: data.enriched?.equipmentLevels ?? null,
+    achievements: {
+      count: data.enriched?.achievementCount ?? null,
+      score: data.enriched?.achievementScore ?? null,
+    },
+    expLevel: data.enriched?.expLevel ?? null,
+  };
+}
+
 export async function fetchPlayerProfileSupabase(
   tag: string,
   clanTag?: string | null,
@@ -161,40 +245,70 @@ export async function fetchPlayerProfileSupabase(
     urlParams.set('clanTag', init.headers['x-clan-tag'] as string);
   }
   const queryString = urlParams.toString();
-  const url = `/api/player/${encodeURIComponent(tag)}/profile${queryString ? `?${queryString}` : ''}`;
+  const legacyUrl = `/api/player/${encodeURIComponent(tag)}/profile${queryString ? `?${queryString}` : ''}`;
+  const v2Url = `/api/v2/player/${encodeURIComponent(tag)}${queryString ? `?${queryString}` : ''}`;
 
-  const response = await fetchWithRetry(
-    url,
-    {
-      ...init,
-      cache: 'no-store',
-      credentials: 'same-origin',
-      headers: init?.headers,
-    },
-    {
-      maxRetries: 3,
-      initialDelay: 1000,
-      maxDelay: 5000
-    }
-  );
+  const [legacyResponse, v2Response] = await Promise.all([
+    fetchWithRetry(
+      legacyUrl,
+      {
+        ...init,
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: init?.headers,
+      },
+      {
+        maxRetries: 3,
+        initialDelay: 1000,
+        maxDelay: 5000
+      }
+    ),
+    fetchWithRetry(
+      v2Url,
+      {
+        ...init,
+        cache: 'no-store',
+        credentials: 'same-origin',
+        headers: init?.headers,
+      },
+      {
+        maxRetries: 2,
+        initialDelay: 500,
+        maxDelay: 3000
+      }
+    ).catch(() => null),
+  ]);
 
   let payload: PlayerProfileApiResponse;
   try {
-    payload = (await response.json()) as PlayerProfileApiResponse;
+    payload = (await legacyResponse.json()) as PlayerProfileApiResponse;
   } catch (error) {
     throw new Error(`Failed to parse player profile response: ${(error as Error).message}`);
   }
 
-  if (!response.ok || !payload?.success || !payload.data) {
-    const error: any = new Error(payload?.error || `Failed to fetch player profile (${response.status})`);
-    error.status = response.status;
+  if (!legacyResponse.ok || !payload?.success || !payload.data) {
+    const error: any = new Error(payload?.error || `Failed to fetch player profile (${legacyResponse.status})`);
+    error.status = legacyResponse.status;
     throw error;
   }
 
-  const { summary, timeline, history, leadership, evaluations, joinerEvents, clanHeroAverages, vip } = payload.data as any;
+  let v2Payload: PlayerProfileV2Response | null = null;
+  if (v2Response) {
+    try {
+      v2Payload = (await v2Response.json()) as PlayerProfileV2Response;
+    } catch {
+      v2Payload = null;
+    }
+  }
+
+  const { timeline, history, leadership, evaluations, joinerEvents, clanHeroAverages, vip } = payload.data as any;
+  const v2Summary =
+    v2Payload?.success && v2Payload.data
+      ? mapV2Summary(v2Payload.data, tag, clanTag ?? null)
+      : null;
 
   return {
-    summary,
+    summary: v2Summary ?? (payload.data as any).summary,
     timeline: Array.isArray(timeline) ? timeline : [],
     history: mapHistory(history),
     leadership: mapLeadership(leadership),

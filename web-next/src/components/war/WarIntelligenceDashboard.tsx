@@ -240,7 +240,7 @@ export default function WarIntelligenceDashboard({
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className="font-semibold text-slate-200">
-                        {Math.round(metric.defensiveHoldRate * 100)}%
+                        {metric.defensiveHoldRate != null ? `${Math.round(metric.defensiveHoldRate * 100)}%` : '—'}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-center">

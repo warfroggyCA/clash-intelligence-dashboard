@@ -1,6 +1,7 @@
 "use client";
 
 import Image from 'next/image';
+import { parseRankedLeagueName } from '@/lib/league-tiers';
 import { leagueIconMap, rankedLeagueIconMap, fallbackIcons } from './maps';
 
 interface LeagueIconProps {
@@ -17,7 +18,30 @@ const sizeMap = { sm: 48, md: 56, lg: 64 };
 export const LeagueIcon: React.FC<LeagueIconProps> = ({ league, ranked = false, size = 'md', className = '', badgeText, showBadge }) => {
   const clean = (league || '').trim();
   const map = ranked ? rankedLeagueIconMap : leagueIconMap;
-  const src = clean && map[clean] ? map[clean] : fallbackIcons.league;
+  const normalizeKey = (value: string) =>
+    value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const resolveKey = () => {
+    if (!clean) return '';
+    let normalized = clean;
+    if (ranked) {
+      const cleaned = clean.replace(/\./g, '');
+      const parsed = parseRankedLeagueName(cleaned);
+      if (parsed?.baseName) {
+        normalized = parsed.baseName;
+      }
+    }
+    if (map[normalized]) return normalized;
+    const lower = normalized.toLowerCase();
+    const match = Object.keys(map).find((key) => key.toLowerCase() === lower);
+    if (match) return match;
+    const normalizedKey = normalizeKey(normalized);
+    const matchNormalized = Object.keys(map).find(
+      (key) => normalizeKey(key) === normalizedKey,
+    );
+    return matchNormalized ?? normalized;
+  };
+  const key = resolveKey();
+  const src = key && map[key] ? map[key] : fallbackIcons.league;
   const dim = sizeMap[size] || sizeMap.md;
   return (
     <div className={`relative inline-flex ${className}`}>

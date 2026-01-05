@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
+import { getDefaultCwlSeasonId } from '@/lib/cwl-season';
 
 const BodySchema = z.object({
   seasonId: z.string().optional(),
@@ -37,7 +38,7 @@ export async function GET(request: Request) {
   const supabase = getSupabaseAdminClient();
   const { searchParams } = new URL(request.url);
   const clanTag = normalizeTag(searchParams.get('clanTag') || cfg.homeClanTag || '');
-  const seasonId = searchParams.get('seasonId') || '2025-07';
+  const seasonId = searchParams.get('seasonId') || getDefaultCwlSeasonId();
   const dayIndex = searchParams.get('dayIndex') ? Number(searchParams.get('dayIndex')) : null;
   const warSize = Number(searchParams.get('warSize') || 15);
 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
   if (!clanTag || !isValidTag(clanTag)) {
     return NextResponse.json({ success: false, error: 'Invalid home clan tag' }, { status: 400 });
   }
-  const seasonId = body.seasonId || '2025-07';
+  const seasonId = body.seasonId || getDefaultCwlSeasonId();
   const warSize = body.warSize || 15;
 
   try {

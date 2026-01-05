@@ -6,13 +6,11 @@ import Card from '@/components/new-ui/Card';
 import { Button } from '@/components/new-ui/Button';
 import { DragDropContext, Draggable, Droppable, DropResult } from '@hello-pangea/dnd';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
+import CwlStepBar from '@/components/war/CwlStepBar';
 import type { CwlDayOpponent } from '../../cwl-data';
 import {
-  buildAiClipboardPayload,
   sampleOpponentStrengthNote,
   sampleOpponentThSpread,
-  sampleOpponents,
-  sampleRoster,
   sampleSeasonSummary,
 } from '../../cwl-data';
 import { useRosterData } from '@/app/new/roster/useRosterData';
@@ -29,25 +27,127 @@ const dragStyle = (isDragging: boolean, draggableStyle: any) => {
   return next;
 };
 
+const buildThDistribution = (members: Array<{ townHall?: number | null }>) => {
+  const distribution: Record<number, number> = {};
+  members.forEach((m) => {
+    const th = m.townHall ?? null;
+    if (!th) return;
+    distribution[th] = (distribution[th] || 0) + 1;
+  });
+  return distribution;
+};
+
+const ThDistributionBar = ({ distribution }: { distribution: Record<number, number> }) => {
+  const entries = Object.entries(distribution)
+    .map(([th, count]) => ({ th: Number(th), count }))
+    .filter((entry) => entry.count > 0)
+    .sort((a, b) => b.th - a.th);
+
+  if (!entries.length) {
+    return <div className="text-xs text-slate-500">No TH data yet.</div>;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {entries.map(({ th, count }) => (
+        <div
+          key={th}
+          className="rounded-full border px-2.5 py-1 text-[11px] uppercase tracking-wide text-slate-200"
+          style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+        >
+          TH{th} · {count}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+const sortByPowerDesc = <T extends { townHall?: number | null; heroPower?: number | null; name?: string | null; tag?: string }>(a: T, b: T) => {
+  const thDiff = (b.townHall ?? 0) - (a.townHall ?? 0);
+  if (thDiff !== 0) return thDiff;
+  const powerDiff = (b.heroPower ?? 0) - (a.heroPower ?? 0);
+  if (powerDiff !== 0) return powerDiff;
+  const nameA = (a.name || '').toLowerCase();
+  const nameB = (b.name || '').toLowerCase();
+  if (nameA !== nameB) return nameA.localeCompare(nameB);
+  return (a.tag || '').localeCompare(b.tag || '');
+};
+
 interface CwlDayPageProps {
   day: string;
 }
 
 export default function CwlDayPageClient({ day }: CwlDayPageProps) {
   const dayIndex = Number(day) || 1;
-  const warSize = sampleSeasonSummary.warSize;
-  const { members: rosterMembers, isLoading: rosterLoading } = useRosterData();
-  const LINEUP_CACHE_KEY = `cwl_lineup_cache_${sampleSeasonSummary.seasonId}_${sampleSeasonSummary.warSize}_${dayIndex}`;
+  const seasonId = sampleSeasonSummary.seasonId;
+  const [warSize, setWarSize] = useState<15 | 30>(sampleSeasonSummary.warSize);
+  const steps = ['Setup', 'Lineup', 'Targets', 'Review'];
+  const { members: rosterMembers, isLoading: rosterLoading, clanTag: homeClanTag } = useRosterData();
+  const LINEUP_CACHE_KEY = useMemo(
+    () => `cwl_lineup_cache_${seasonId}_${warSize}_${dayIndex}`,
+    [seasonId, warSize, dayIndex],
+  );
+  const STEP_CACHE_KEY = useMemo(
+    () => `cwl_day_step_${seasonId}_${warSize}_${dayIndex}`,
+    [seasonId, warSize, dayIndex],
+  );
   const [opponents, setOpponents] = useState<CwlDayOpponent[]>([]);
-  const opponent = opponents.find((o) => o.dayIndex === dayIndex) ?? sampleOpponents[0];
+  const opponent = useMemo(() => {
+    return (
+      opponents.find((o) => o.dayIndex === dayIndex) ?? {
+        dayIndex,
+        clanTag: '',
+        clanName: '',
+        status: 'not_loaded',
+        note: '',
+      }
+    );
+  }, [opponents, dayIndex]);
+  const [step, setStep] = useState<'setup' | 'plan'>('setup');
   const [opponentRoster, setOpponentRoster] = useState<
-    Array<{ name: string; tag: string; townHall: number; heroes?: Record<string, number | null>; readiness?: number | null }>
+    Array<{ name: string; tag: string; townHall: number | null; heroes?: Record<string, number | null>; readiness?: number | null }>
   >([]);
   const [opponentOrder, setOpponentOrder] = useState<string[]>([]);
   const [opponentThSpread, setOpponentThSpread] = useState<Record<string, number>>(sampleOpponentThSpread);
   const [opponentClanName, setOpponentClanName] = useState<string | null>(opponent.clanName || null);
+  const [opponentFetchedAt, setOpponentFetchedAt] = useState<string | null>(null);
   const [oppLoading, setOppLoading] = useState(false);
   const [oppError, setOppError] = useState<string | null>(null);
+  const dayLinks = useMemo(
+    () =>
+      Array.from({ length: 7 }, (_, idx) => {
+        const dayNumber = idx + 1;
+        const opponentForDay = opponents.find((item) => item.dayIndex === dayNumber);
+        return {
+          dayNumber,
+          label: opponentForDay?.clanName || opponentForDay?.clanTag || '',
+        };
+      }),
+    [opponents],
+  );
+
+  useEffect(() => {
+    if (opponent?.clanName && opponent.clanName !== opponentClanName) {
+      setOpponentClanName(opponent.clanName);
+    }
+  }, [opponent?.clanName, opponentClanName]);
+
+  useEffect(() => {
+    const hydrateSeason = async () => {
+      try {
+        const res = await fetch(`/api/cwl/season?seasonId=${seasonId}&warSize=${warSize}`);
+        if (!res.ok) return;
+        const body = await res.json();
+        const size = Number(body?.data?.war_size);
+        if ((size === 15 || size === 30) && size !== warSize) {
+          setWarSize(size);
+        }
+      } catch {
+        // ignore
+      }
+    };
+    hydrateSeason();
+  }, [seasonId, warSize]);
 
   useEffect(() => {
     const hydrate = async () => {
@@ -64,7 +164,7 @@ export default function CwlDayPageClient({ day }: CwlDayPageProps) {
         }
       }
       try {
-        const res = await fetch(`/api/cwl/opponents?seasonId=${sampleSeasonSummary.seasonId}&warSize=${sampleSeasonSummary.warSize}`);
+        const res = await fetch(`/api/cwl/opponents?seasonId=${seasonId}&warSize=${warSize}`);
         if (res.ok) {
           const body = await res.json();
           if (body?.data?.length) {
@@ -83,8 +183,8 @@ export default function CwlDayPageClient({ day }: CwlDayPageProps) {
       }
       try {
         const [eligibleRes, lineupRes] = await Promise.all([
-          fetch(`/api/cwl/eligible?seasonId=${sampleSeasonSummary.seasonId}&warSize=${sampleSeasonSummary.warSize}`),
-          fetch(`/api/cwl/lineup?seasonId=${sampleSeasonSummary.seasonId}&warSize=${sampleSeasonSummary.warSize}&dayIndex=${dayIndex}`),
+          fetch(`/api/cwl/eligible?seasonId=${seasonId}&warSize=${warSize}`),
+          fetch(`/api/cwl/lineup?seasonId=${seasonId}&warSize=${warSize}&dayIndex=${dayIndex}`),
         ]);
 
       if (eligibleRes.ok) {
@@ -119,12 +219,12 @@ export default function CwlDayPageClient({ day }: CwlDayPageProps) {
     }
   };
   hydrate();
-}, [dayIndex, LINEUP_CACHE_KEY]);
+}, [dayIndex, LINEUP_CACHE_KEY, seasonId, warSize]);
 
 const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
 
   const computedRoster = useMemo(() => {
-    // If still loading, return empty array to avoid showing incomplete sampleRoster
+    // If still loading, return empty array to avoid showing incomplete roster data
     // This ensures we wait for the real roster data before displaying
     if (rosterLoading && (!rosterMembers || rosterMembers.length === 0)) {
       return [];
@@ -134,8 +234,8 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
       ? rosterMembers.map((m) => ({
           name: m.name || m.tag,
           tag: normalizeTag(m.tag || ''),
-          townHall: m.townHallLevel ?? (m as any).th ?? 0,
-          heroPower: (m.bk ?? 0) + (m.aq ?? 0) + (m.gw ?? 0) + (m.rc ?? 0) + (m.mp ?? 0),
+          townHall: m.townHallLevel ?? (m as any).th ?? null,
+          heroPower: m.heroPower ?? null,
           heroes: {
             bk: m.bk ?? null,
             aq: m.aq ?? null,
@@ -143,29 +243,45 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
             rc: m.rc ?? null,
             mp: m.mp ?? null,
           },
-          daysPlayed: (m as any).daysPlayed ?? 0,
+          daysPlayed: typeof (m as any).daysPlayed === 'number' ? (m as any).daysPlayed : undefined,
         }))
-      : sampleRoster;
+      : [];
     const filtered = eligiblePool ? base.filter((m) => eligiblePool.has(m.tag)) : base;
-    return filtered.sort((a, b) => {
-      const nameA = (a.name || '').toLowerCase();
-      const nameB = (b.name || '').toLowerCase();
-      if (nameA !== nameB) return nameA.localeCompare(nameB);
-      return a.tag.localeCompare(b.tag);
-    });
+    return filtered.sort(sortByPowerDesc);
   }, [rosterMembers, eligiblePool, rosterLoading]);
 
   const suggested = useMemo(() => computedRoster.slice(0, warSize).map((m) => m.tag), [computedRoster, warSize]);
   const [lineupOrder, setLineupOrder] = useState<string[]>([]);
-  const [copied, setCopied] = useState(false);
+  const [copyState, setCopyState] = useState<'idle' | 'copying' | 'copied' | 'error'>('idle');
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [saveError, setSaveError] = useState<string | null>(null);
   const lineupLookup = useMemo(() => {
-    const map: Record<string, { townHall: number; heroPower: number }> = {};
+    const map: Record<string, { townHall: number | null; heroPower: number | null }> = {};
     computedRoster.forEach((m) => {
       map[m.tag] = { townHall: m.townHall, heroPower: m.heroPower };
     });
     return map;
   }, [computedRoster]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const cached = window.sessionStorage.getItem(STEP_CACHE_KEY);
+    if (cached === 'plan') {
+      setStep('plan');
+    }
+  }, [STEP_CACHE_KEY]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem(STEP_CACHE_KEY, step);
+  }, [step, STEP_CACHE_KEY]);
+
+  useEffect(() => {
+    setStep('setup');
+    setLineupOrder((prev) => (prev.length > warSize ? prev.slice(0, warSize) : prev));
+    setOpponentOrder((prev) => (prev.length > warSize ? prev.slice(0, warSize) : prev));
+  }, [warSize]);
 
   const toggle = (tag: string) => {
     setLineupOrder((prev) => {
@@ -178,7 +294,13 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
   // Drop any lineup entries that no longer exist in roster
   useEffect(() => {
     const allowed = new Set(computedRoster.map((m) => m.tag));
-    setLineupOrder((prev) => prev.filter((t) => allowed.has(t)));
+    setLineupOrder((prev) => {
+      const next = prev.filter((t) => allowed.has(t));
+      if (next.length === prev.length && next.every((tag, idx) => tag === prev[idx])) {
+        return prev;
+      }
+      return next;
+    });
   }, [computedRoster]);
 
   const sortLineupByStrength = () => {
@@ -221,26 +343,38 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
   };
 
   const saveLineup = async () => {
-    setLastSaved(new Date().toLocaleTimeString());
     try {
-      await fetch('/api/cwl/lineup', {
+      setSaveState('saving');
+      setSaveError(null);
+      const res = await fetch('/api/cwl/lineup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          seasonId: sampleSeasonSummary.seasonId,
-          warSize: sampleSeasonSummary.warSize,
+          seasonId,
+          warSize,
           dayIndex,
           ourLineup: lineupOrder,
           opponentLineup: opponentOrder,
         }),
       });
+      const body = await res.json().catch(() => null);
+      if (!res.ok || !body?.success) {
+        throw new Error(body?.error || 'Failed to save lineup');
+      }
+      const updatedAt = body?.data?.updated_at || body?.data?.updatedAt || null;
+      setLastSaved(updatedAt ? new Date(updatedAt).toLocaleTimeString() : new Date().toLocaleTimeString());
+      setSaveState('saved');
+      setTimeout(() => setSaveState('idle'), 2000);
     } catch {
-      // ignore
+      setSaveState('error');
+      setSaveError('Save failed. Try again.');
+      setTimeout(() => setSaveState('idle'), 2500);
     }
   };
 
   const handleCopy = async (includeLineups = false) => {
     try {
+      setCopyState('copying');
       const payload = [
         `CWL Day ${dayIndex} • WarSize ${warSize}v${warSize}`,
         '',
@@ -274,10 +408,11 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
           : 'Suggest best lineup and matchups. Balance strength and fairness; assume opponent can pick any 15/30 from their roster.',
       ].join('\n');
       await navigator.clipboard.writeText(payload);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
+      setCopyState('copied');
+      setTimeout(() => setCopyState('idle'), 1500);
     } catch (err) {
-      setCopied(false);
+      setCopyState('error');
+      setTimeout(() => setCopyState('idle'), 2000);
     }
   };
 
@@ -294,37 +429,87 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
     return Array.from({ length: warSize }, (_, i) => rosterTags[i] ?? null);
   }, [opponentOrder, opponentRoster, warSize]);
 
-  const fetchOpponentRoster = useCallback(async () => {
-    const tag = opponent?.clanTag && isValidTag(opponent.clanTag) ? normalizeTag(opponent.clanTag) : null;
-    if (!tag) return;
+  const fetchOpponentRoster = useCallback(async (overrideTag?: string, options?: { force?: boolean }) => {
+    const candidate = overrideTag || opponent?.clanTag || '';
+    const tag = candidate && isValidTag(candidate) ? normalizeTag(candidate) : null;
+    if (!tag) {
+      setOppError('Set a valid opponent tag in CWL Setup before loading roster data.');
+      return;
+    }
     setOppLoading(true);
     setOppError(null);
     try {
-      const res = await fetch(`/api/war/opponent?opponentTag=${encodeURIComponent(tag)}&enrich=50`);
+      const params = new URLSearchParams({ opponentTag: tag, enrich: '50', rosterSource: 'cwl' });
+      if (homeClanTag) params.set('ourClanTag', homeClanTag);
+      params.set('dayIndex', String(dayIndex));
+      if (options?.force) params.set('refresh', 'true');
+      const res = await fetch(`/api/war/opponent?${params.toString()}`);
       if (!res.ok) throw new Error('Failed to load opponent');
       const body = await res.json();
       const data = body?.data || {};
-      const roster: Array<{ name: string; tag: string; townHall: number; heroes?: Record<string, number | null>; readiness?: number | null }> =
+      const roster: Array<{ name: string; tag: string; townHall: number | null; heroes?: Record<string, number | null>; readiness?: number | null }> =
         data.roster?.map((m: any) => ({
           name: m.name || m.tag,
           tag: normalizeTag(m.tag || ''),
-          townHall: m.th ?? m.townHall ?? m.townHallLevel ?? 0,
+          townHall: m.th ?? m.townHall ?? m.townHallLevel ?? null,
           heroes: m.heroes,
           readiness: m.readinessScore ?? null,
         })) || [];
       setOpponentRoster(roster);
       setOpponentThSpread(data.thDistribution || sampleOpponentThSpread);
       setOpponentClanName(data.clan?.name || opponent.clanName || null);
+      setOpponentFetchedAt(new Date().toISOString());
     } catch (err: any) {
       setOppError(err?.message || 'Failed to load opponent');
     } finally {
       setOppLoading(false);
     }
-  }, [opponent]);
+  }, [dayIndex, homeClanTag, opponent]);
 
   useEffect(() => {
-    fetchOpponentRoster();
-  }, [fetchOpponentRoster]);
+    if (opponent?.clanTag && isValidTag(opponent.clanTag)) {
+      fetchOpponentRoster(opponent.clanTag);
+    }
+  }, [fetchOpponentRoster, opponent?.clanTag]);
+
+  const rosterSourceLabel = eligiblePool ? 'Season roster' : 'Current roster';
+  const rosterReady = computedRoster.length >= warSize;
+  const opponentTagValid = opponent?.clanTag ? isValidTag(opponent.clanTag) : false;
+  const opponentReady = opponentTagValid && opponentRoster.length > 0;
+  const canStartPlanning = rosterReady && opponentReady;
+  const activeStepIndex = step === 'setup' ? 0 : 1;
+  const rosterThDistribution = useMemo(() => buildThDistribution(computedRoster), [computedRoster]);
+  const opponentThDistribution = useMemo(() => buildThDistribution(opponentRoster), [opponentRoster]);
+  const rosterTopAvg = useMemo(() => {
+    if (!computedRoster.length) return null;
+    const top = computedRoster
+      .slice()
+      .sort((a, b) => (b.townHall ?? 0) - (a.townHall ?? 0) || (b.heroPower ?? 0) - (a.heroPower ?? 0))
+      .slice(0, warSize);
+    if (!top.length) return null;
+    if (top.some((m) => typeof m.heroPower !== 'number')) return null;
+    return Math.round(top.reduce((sum, m) => sum + (m.heroPower ?? 0), 0) / top.length);
+  }, [computedRoster, warSize]);
+  const opponentTopAvg = useMemo(() => {
+    if (!opponentRoster.length) return null;
+    const heroPower = (heroes?: Record<string, number | null>) => {
+      if (!heroes) return null;
+      const values = [heroes.bk, heroes.aq, heroes.gw, heroes.rc, heroes.mp].filter(
+        (value): value is number => typeof value === 'number' && Number.isFinite(value),
+      );
+      if (!values.length) return null;
+      return values.reduce((sum, value) => sum + value, 0);
+    };
+    const top = opponentRoster
+      .slice()
+      .filter((m) => m.townHall)
+      .sort((a, b) => (b.townHall ?? 0) - (a.townHall ?? 0) || (heroPower(b.heroes) ?? 0) - (heroPower(a.heroes) ?? 0))
+      .slice(0, warSize);
+    if (!top.length) return null;
+    const heroValues = top.map((m) => heroPower(m.heroes));
+    if (heroValues.some((value) => typeof value !== 'number')) return null;
+    return Math.round(heroValues.reduce((sum, value) => sum + (value ?? 0), 0) / top.length);
+  }, [opponentRoster, warSize]);
 
   return (
     <div className="space-y-6">
@@ -334,16 +519,157 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
             CWL Day {dayIndex} – {opponentClanName || opponent.clanName || 'Opponent'}
           </h1>
           <p className="text-slate-300 text-sm">
-            Select the {warSize} who will play today; compare against opponent spread and copy data for AI help.
+            {warSize}v{warSize} • Step {activeStepIndex + 1} of {steps.length}: {steps[activeStepIndex]}
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/new/war/cwl">
-            <Button tone="ghost">Back to overview</Button>
+          <Link href="/new/war/cwl/setup">
+            <Button tone="ghost">Back to CWL Setup</Button>
           </Link>
+          {step === 'plan' ? (
+            <Button tone="ghost" onClick={() => setStep('setup')}>Edit setup</Button>
+          ) : null}
         </div>
       </div>
 
+      <CwlStepBar current="day" dayIndex={dayIndex} />
+
+      <div
+        className="rounded-2xl border px-4 py-3"
+        style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+      >
+        <div className="text-[11px] uppercase tracking-[0.2em] text-slate-500">Jump to day</div>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {dayLinks.map((link) => {
+            const isActive = link.dayNumber === dayIndex;
+            return (
+            <Link key={link.dayNumber} href={`/new/war/cwl/day/${link.dayNumber}`}>
+              <Button
+                tone={isActive ? 'primary' : 'ghost'}
+                className={cn('px-3 py-1', isActive ? 'text-slate-900' : 'text-slate-200')}
+                style={{ fontSize: '12px', padding: '6px 10px' }}
+              >
+                <span className="flex flex-col leading-tight">
+                  <span>Day {link.dayNumber}</span>
+                  {link.label ? (
+                    <span className={cn('text-[10px]', isActive ? 'text-slate-700' : 'text-slate-500')}>
+                      {link.label}
+                    </span>
+                  ) : null}
+                </span>
+              </Button>
+            </Link>
+          )})}
+        </div>
+      </div>
+
+      {step === 'setup' ? (
+        <Card title="Day setup">
+          <div className="mb-4 rounded-xl border px-4 py-3 text-sm text-slate-200" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-xs uppercase tracking-[0.2em] text-slate-500">War size</div>
+              <div className="font-semibold text-white">{warSize}v{warSize}</div>
+            </div>
+            <div className="mt-1 text-xs text-slate-500">Set in CWL Setup.</div>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-2">
+            <div className="space-y-4">
+              <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Our roster</div>
+                    <div className="text-lg font-semibold text-white">{rosterSourceLabel}</div>
+                  </div>
+                  <Link href="/new/war/cwl/roster">
+                    <Button tone="ghost" className="text-xs">Set season roster</Button>
+                  </Link>
+                </div>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="text-xs text-slate-500 uppercase">Eligible</div>
+                    <div className="text-2xl font-bold text-white">{computedRoster.length}</div>
+                    {!rosterReady ? (
+                      <div className="text-xs text-amber-300">Need at least {warSize} players.</div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 uppercase">Top {warSize} hero power avg</div>
+                    <div className="text-2xl font-bold text-emerald-300">{rosterTopAvg ?? '—'}</div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="text-xs text-slate-500 uppercase mb-2">TH distribution</div>
+                  <ThDistributionBar distribution={rosterThDistribution} />
+                </div>
+                <div className="mt-3 text-xs text-slate-500">
+                  Season roster = weekly eligible pool. Day lineup is picked in the next step.
+                </div>
+                {rosterLoading ? <div className="mt-3 text-xs text-slate-500">Loading roster…</div> : null}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div className="rounded-xl border p-4" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Opponent</div>
+                    <div className="text-lg font-semibold text-white">{opponentClanName || '—'}</div>
+                    <div className="text-xs text-slate-500">{opponent?.clanTag || 'No tag set'}</div>
+                  </div>
+                  <Link href="/new/war/cwl/setup">
+                    <Button tone="ghost" className="text-xs">Edit opponents</Button>
+                  </Link>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <Button tone="ghost" className="text-sm" onClick={() => fetchOpponentRoster(opponent?.clanTag)} disabled={oppLoading || !opponentTagValid}>
+                    {oppLoading ? 'Loading…' : 'Load opponent roster'}
+                  </Button>
+                  <Button
+                    tone="ghost"
+                    className="text-sm"
+                    title="Bypass cache and fetch the latest roster"
+                    onClick={() => fetchOpponentRoster(opponent?.clanTag, { force: true })}
+                    disabled={oppLoading || !opponentTagValid}
+                  >
+                    Force refresh
+                  </Button>
+                  {!opponentTagValid ? (
+                    <span className="text-xs text-amber-300">Set the opponent tag first.</span>
+                  ) : null}
+                </div>
+                {oppError ? <div className="mt-2 text-xs text-amber-300">{oppError}</div> : null}
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div>
+                    <div className="text-xs text-slate-500 uppercase">Roster loaded</div>
+                    <div className="text-lg font-semibold text-white">{opponentRoster.length || '—'}</div>
+                    {opponentFetchedAt ? (
+                      <div className="text-xs text-slate-500">Fetched {new Date(opponentFetchedAt).toLocaleTimeString()}</div>
+                    ) : null}
+                  </div>
+                  <div>
+                    <div className="text-xs text-slate-500 uppercase">Top {warSize} hero power avg</div>
+                    <div className="text-lg font-semibold text-amber-300">{opponentTopAvg ?? '—'}</div>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="text-xs text-slate-500 uppercase mb-2">TH distribution (known)</div>
+                  <ThDistributionBar distribution={opponentThDistribution} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-slate-500">
+              {canStartPlanning ? 'Setup complete. Move on to lineup planning.' : 'Complete roster + opponent intake to continue.'}
+            </div>
+            <Button onClick={() => setStep('plan')} disabled={!canStartPlanning}>
+              Start planning
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {step === 'plan' ? (
       <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
           <Card title="Opponent summary">
@@ -354,16 +680,16 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                   <span className="font-semibold text-white">{opponentClanName || '—'}</span>
                   <span className="text-slate-500">{opponent.clanTag}</span>
                 </div>
-                <div className="text-slate-400 text-sm">{sampleOpponentStrengthNote}</div>
+                <div className="text-slate-400 text-sm">{sampleOpponentStrengthNote || 'No opponent note yet.'}</div>
               </div>
-              <Button
-                tone="ghost"
-                title="Fetch updated opponent roster"
-                onClick={() => fetchOpponentRoster()}
-                className="text-sm"
-                disabled={oppLoading}
-              >
-                {oppLoading ? 'Refreshing…' : 'Refresh roster'}
+                <Button
+                  tone="ghost"
+                  title="Bypass cache and fetch the latest opponent roster"
+                  onClick={() => fetchOpponentRoster(opponent?.clanTag, { force: true })}
+                  className="text-sm"
+                  disabled={oppLoading}
+                >
+                {oppLoading ? 'Refreshing…' : 'Force refresh'}
               </Button>
             </div>
             <div className="mt-3 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 text-sm">
@@ -389,6 +715,9 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                   Sort selected by TH/Power
                 </Button>
               </div>
+              <div className="mb-2 text-[11px] text-slate-400">
+                Suggested = top {warSize} by TH + hero power.
+              </div>
               <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <div className="grid gap-2 sm:grid-cols-2">
                   {computedRoster.map((m) => {
@@ -398,11 +727,11 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                       <label
                         key={m.tag}
                         className={cn(
-                          'flex items-center justify-between rounded-md border px-3 py-2 text-sm',
+                          'flex items-start justify-between gap-3 rounded-md border px-3 py-2 text-sm',
                           checked ? 'border-[var(--accent-alt)] bg-[var(--accent-alt)]/10' : 'border-[var(--border-subtle)] bg-[var(--panel)]',
                         )}
                       >
-                        <div className="flex items-center gap-2 min-w-0">
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
                           <input
                             type="checkbox"
                             className="h-4 w-4 accent-[var(--accent-alt)]"
@@ -410,15 +739,24 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                             onChange={() => toggle(m.tag)}
                             aria-label={`Select ${m.name}`}
                           />
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white truncate">{m.name}</span>
-                              <span className="text-xs text-slate-500">TH{m.townHall}</span>
+                              <span className="font-semibold text-white break-words">{m.name}</span>
+                              <span className="text-xs text-slate-500 shrink-0">
+                                {m.townHall != null ? `TH${m.townHall}` : 'TH—'}
+                              </span>
                             </div>
                             <div className="text-[11px] text-slate-500 truncate">{m.tag}</div>
                           </div>
                         </div>
-                        {isSuggested ? <span className="rounded-full bg-emerald-500/20 px-2 py-1 text-[11px] text-emerald-200">Suggested</span> : null}
+                        {isSuggested ? (
+                          <span
+                            className="shrink-0 rounded-full bg-emerald-500/20 px-2 py-1 text-[11px] text-emerald-200"
+                            title={`Top ${warSize} by TH + hero power`}
+                          >
+                            Suggested
+                          </span>
+                        ) : null}
                       </label>
                     );
                   })}
@@ -432,20 +770,23 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
               <div className="text-xs text-slate-400 mb-2">Mark their likely lineup when known.</div>
               <div className="max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {[...opponentRoster].sort((a, b) => {
-                    const nameA = (a.name || '').toLowerCase();
-                    const nameB = (b.name || '').toLowerCase();
-                    if (nameA !== nameB) return nameA.localeCompare(nameB);
-                    return a.tag.localeCompare(b.tag);
-                  }).map((m) => (
+                  {[...opponentRoster]
+                    .map((m) => ({
+                      ...m,
+                      heroPower: m.heroes
+                        ? Object.values(m.heroes).reduce((sum, level) => sum + (Number(level) || 0), 0)
+                        : 0,
+                    }))
+                    .sort(sortByPowerDesc)
+                    .map((m) => (
                     <label
                       key={m.tag}
                       className={cn(
-                        'flex items-center justify-between rounded-md border px-3 py-2 text-sm',
+                        'flex items-start justify-between gap-3 rounded-md border px-3 py-2 text-sm',
                         opponentOrder.includes(m.tag) ? 'border-[var(--accent-alt)] bg-[var(--accent-alt)]/10' : 'border-[var(--border-subtle)] bg-[var(--panel)]',
                       )}
                     >
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
                         <input
                           type="checkbox"
                           className="h-4 w-4 accent-[var(--accent-alt)]"
@@ -458,10 +799,12 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                           }}
                           aria-label={`Mark ${m.name} playing`}
                         />
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="font-semibold text-white truncate">{m.name}</span>
-                            <span className="text-xs text-slate-500">TH{m.townHall}</span>
+                            <span className="font-semibold text-white break-words">{m.name}</span>
+                            <span className="text-xs text-slate-500 shrink-0">
+                              {m.townHall != null ? `TH${m.townHall}` : 'TH—'}
+                            </span>
                           </div>
                           <div className="text-[11px] text-slate-500 truncate">{m.tag}</div>
                         </div>
@@ -503,10 +846,14 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                   <span className="font-semibold text-white">{lineupOrder.length} / {warSize}</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button onClick={saveLineup} className="text-sm">
-                    Save lineup
+                  <Button onClick={saveLineup} className="text-sm" disabled={saveState === 'saving'}>
+                    {saveState === 'saving' ? 'Saving...' : saveState === 'saved' ? 'Saved' : 'Save lineup'}
                   </Button>
                   {lastSaved ? <span className="text-xs text-slate-400">Saved at {lastSaved}</span> : null}
+                  {saveState === 'saved' ? <span className="text-xs text-green-400">Saved ✓</span> : null}
+                  {saveState === 'error' ? (
+                    <span className="text-xs text-red-400">{saveError || 'Save failed'}</span>
+                  ) : null}
                 </div>
               </div>
 
@@ -679,9 +1026,33 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
             <div className="space-y-3 text-sm text-slate-200">
               <p>Copy roster + opponent context for an LLM. No auto-calls are made.</p>
               <div className="flex flex-wrap gap-2">
-                <Button tone="ghost" onClick={() => handleCopy(false)} className="text-sm">{copied ? 'Copied' : 'Copy for AI'}</Button>
-                <Button tone="ghost" onClick={() => handleCopy(true)} className="text-sm">
-                  {copied ? 'Copied' : 'Copy matchup prompt'}
+                <Button
+                  tone="ghost"
+                  onClick={() => handleCopy(false)}
+                  className="text-sm"
+                  disabled={copyState === 'copying'}
+                >
+                  {copyState === 'copying'
+                    ? 'Copying...'
+                    : copyState === 'copied'
+                      ? 'Copied'
+                      : copyState === 'error'
+                        ? 'Copy failed'
+                        : 'Copy for AI'}
+                </Button>
+                <Button
+                  tone="ghost"
+                  onClick={() => handleCopy(true)}
+                  className="text-sm"
+                  disabled={copyState === 'copying'}
+                >
+                  {copyState === 'copying'
+                    ? 'Copying...'
+                    : copyState === 'copied'
+                      ? 'Copied'
+                      : copyState === 'error'
+                        ? 'Copy failed'
+                        : 'Copy matchup prompt'}
                 </Button>
               </div>
               <div className="text-xs text-slate-400">Matchup copy includes any selected lineups (ours + opp) for 1:1 pairing suggestions.</div>
@@ -711,6 +1082,7 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
           </Card>
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

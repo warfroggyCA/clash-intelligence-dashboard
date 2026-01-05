@@ -5,18 +5,22 @@ import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
+import { getDefaultCwlSeasonId } from '@/lib/cwl-season';
 
 const BodySchema = z.object({
   seasonId: z.string().optional(),
   warSize: z.number().optional(),
+  seasonLabel: z.string().optional(),
+  lock: z.boolean().optional(),
 });
 
 export async function GET(request: Request) {
   const supabase = getSupabaseAdminClient();
   const { searchParams } = new URL(request.url);
   const clanTag = normalizeTag(searchParams.get('clanTag') || cfg.homeClanTag || '');
-  const seasonId = searchParams.get('seasonId') || '2025-07';
+  const seasonId = searchParams.get('seasonId') || getDefaultCwlSeasonId();
   const warSize = Number(searchParams.get('warSize') || 15);
+  const fallbackLabel = `CWL ${seasonId}`;
 
   if (!clanTag || !isValidTag(clanTag)) {
     return NextResponse.json({ success: false, error: 'Invalid clan tag' }, { status: 400 });
@@ -31,11 +35,15 @@ export async function GET(request: Request) {
       .maybeSingle();
     if (selectError) throw selectError;
     if (existing) {
-      return NextResponse.json({ success: true, data: existing });
+      const data = {
+        ...existing,
+        season_label: existing.season_label ?? fallbackLabel,
+      };
+      return NextResponse.json({ success: true, data });
     }
     const { data: inserted, error: insertError } = await supabase
       .from('cwl_seasons')
-      .insert({ clan_tag: clanTag, season_id: seasonId, war_size: warSize })
+      .insert({ clan_tag: clanTag, season_id: seasonId, war_size: warSize, season_label: fallbackLabel })
       .select('*')
       .maybeSingle();
     if (insertError) throw insertError;
@@ -57,13 +65,27 @@ export async function POST(request: Request) {
   if (!clanTag || !isValidTag(clanTag)) {
     return NextResponse.json({ success: false, error: 'Invalid home clan tag' }, { status: 400 });
   }
-  const seasonId = body.seasonId || '2025-07';
+  const seasonId = body.seasonId || getDefaultCwlSeasonId();
   const warSize = body.warSize || 15;
+  const seasonLabel = (body.seasonLabel || `CWL ${seasonId}`).trim();
+  const lock = body.lock;
 
   try {
+    const payload: Record<string, unknown> = {
+      clan_tag: clanTag,
+      season_id: seasonId,
+      war_size: warSize,
+      season_label: seasonLabel,
+    };
+    if (typeof lock === 'boolean') {
+      payload.locked_at = lock ? new Date().toISOString() : null;
+    }
     const { data, error } = await supabase
       .from('cwl_seasons')
-      .upsert({ clan_tag: clanTag, season_id: seasonId, war_size: warSize }, { onConflict: 'clan_tag,season_id' })
+      .upsert(
+        payload,
+        { onConflict: 'clan_tag,season_id' },
+      )
       .select('*')
       .maybeSingle();
     if (error) throw error;

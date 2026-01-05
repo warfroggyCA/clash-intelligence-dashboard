@@ -50,6 +50,10 @@ export async function generateChangeSummary(
   }
 }
 
+export function generateHeuristicSummary(changes: MemberChange[]): string {
+  return generateFallbackSummary(changes);
+}
+
 function buildPrompt(changes: MemberChange[], clanTag: string, date: string): string {
   const changeDescriptions = changes.map(change => `- ${change.description}`).join('\n');
   

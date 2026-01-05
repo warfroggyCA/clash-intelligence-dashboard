@@ -150,7 +150,10 @@ export async function fetchFullClanSnapshot(
       const tag = normalizeTag(member.tag);
 
       const cachedDetail = await loadPlayerDetailFromCache(tag);
-      if (cachedDetail) {
+      const memberTh = member?.townHallLevel ?? member?.townHallLevel ?? null;
+      const cachedPets = Array.isArray(cachedDetail?.pets) ? cachedDetail.pets : [];
+      const needsFreshPets = memberTh && memberTh >= 14 && cachedPets.length === 0;
+      if (cachedDetail && !needsFreshPets) {
         playerDetails[tag] = cachedDetail;
         cacheHits += 1;
         return;

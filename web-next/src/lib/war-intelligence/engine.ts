@@ -21,8 +21,8 @@ export interface WarIntelligenceMetrics {
   consecutiveWarsWithAttacks: number;
   
   // Defensive Hold Rate
-  defensiveHoldRate: number; // Defenses survived / attacks received
-  averageDestructionAllowed: number;
+  defensiveHoldRate: number | null; // Defenses survived / attacks received
+  averageDestructionAllowed: number | null;
   baseStrengthScore: number; // TH level + hero levels
   
   // Strategy Failure Detection
@@ -41,6 +41,13 @@ export interface WarIntelligenceMetrics {
   totalDestruction: number;
   totalDefenses: number;
   totalDefenseDestruction: number;
+  weeklySeries?: Array<{
+    weekStart: string;
+    aei: number;
+    overall: number;
+    attacks: number;
+    wars: number;
+  }>;
 }
 
 export interface WarIntelligenceResult {
@@ -108,7 +115,7 @@ export async function calculateWarIntelligence(
     .from('clan_wars')
     .select('id, battle_start, battle_end, team_size, result, clan_stars, opponent_stars')
     .eq('clan_tag', normalizedClanTag)
-    .eq('war_type', 'regular')
+    .in('war_type', ['regular', 'cwl', 'league'])
     .gte('battle_start', periodStart.toISOString())
     .lte('battle_start', periodEnd.toISOString())
     .order('battle_start', { ascending: false });
@@ -140,13 +147,34 @@ export async function calculateWarIntelligence(
   }
 
   const warIds = wars.map(w => w.id);
+  const weekKeyForDate = (date: Date) => {
+    const utcDay = date.getUTCDay();
+    const diff = utcDay === 0 ? -6 : 1 - utcDay;
+    const weekStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + diff));
+    return weekStart.toISOString().slice(0, 10);
+  };
+  const warWeekMap = new Map<string, string>();
+  wars.forEach((war) => {
+    if (!war.battle_start) return;
+    const start = new Date(war.battle_start);
+    if (Number.isNaN(start.getTime())) return;
+    warWeekMap.set(war.id, weekKeyForDate(start));
+  });
+  const warWindows = wars.map((war) => ({
+    id: war.id,
+    start: war.battle_start ? new Date(war.battle_start) : null,
+    end: war.battle_end ? new Date(war.battle_end) : null,
+  }));
 
   // Fetch all war members for these wars
   const memberQuery = supabase
     .from('clan_war_members')
-    .select('war_id, player_tag, player_name, attacks, stars, destruction, defense_count, defense_destruction, town_hall_level')
-    .in('war_id', warIds)
-    .eq('is_home', true);
+    .select('war_id, player_tag, player_name, attacks, stars, destruction, defense_count, defense_destruction, town_hall_level, raw')
+    .in('war_id', warIds);
+
+  if (!playerTag) {
+    memberQuery.eq('clan_tag', normalizedClanTag);
+  }
 
   if (playerTag) {
     memberQuery.eq('player_tag', normalizeTag(playerTag));
@@ -159,15 +187,62 @@ export async function calculateWarIntelligence(
   }
 
   // Fetch all attacks for these wars
-  const { data: attacks, error: attacksError } = await supabase
+  const attacksQuery = supabase
     .from('clan_war_attacks')
     .select('war_id, attacker_tag, attacker_name, defender_tag, stars, destruction, attack_time, order_index')
     .in('war_id', warIds)
     .eq('attacker_clan_tag', normalizedClanTag)
     .order('attack_time', { ascending: true });
 
+  if (playerTag) {
+    attacksQuery.eq('attacker_tag', normalizeTag(playerTag));
+  }
+
+  const { data: attacks, error: attacksError } = await attacksQuery;
+
   if (attacksError) {
     throw new Error(`Failed to fetch attacks: ${attacksError.message}`);
+  }
+
+  // Fallback: if player-specific query returns no attacks, try activity events
+  let activityAttacks: Array<{
+    warId: string | null;
+    attackerTag: string;
+    attackerName: string | null;
+    stars: number;
+    destruction: number;
+    attackTime: Date | null;
+    orderIndex: number;
+  }> = [];
+
+  if (playerTag && (!attacks || attacks.length === 0)) {
+    const { data: activityEvents } = await supabase
+      .from('player_activity_events')
+      .select('player_tag, value, occurred_at, metadata')
+      .eq('clan_tag', normalizedClanTag)
+      .eq('player_tag', normalizeTag(playerTag))
+      .eq('event_type', 'war_attack')
+      .gte('occurred_at', periodStart.toISOString())
+      .lte('occurred_at', periodEnd.toISOString());
+
+    activityAttacks = (activityEvents || []).map((event: any) => {
+      const occurredAt = event.occurred_at ? new Date(event.occurred_at) : null;
+      const orderIndex = Number(event?.metadata?.order_index ?? 0) || 0;
+      const stars = Number(event?.value ?? 0) || 0;
+      const destruction = Number(event?.metadata?.destruction ?? 0) || 0;
+      const warMatch = occurredAt
+        ? warWindows.find((war) => war.start && war.end && occurredAt >= war.start && occurredAt <= war.end)
+        : null;
+      return {
+        warId: warMatch?.id ?? null,
+        attackerTag: normalizeTag(event.player_tag) || event.player_tag,
+        attackerName: null,
+        stars,
+        destruction,
+        attackTime: occurredAt,
+        orderIndex,
+      };
+    });
   }
 
   // Fetch defender TH levels for matchup analysis
@@ -177,7 +252,7 @@ export async function calculateWarIntelligence(
     .select('war_id, player_tag, town_hall_level')
     .in('war_id', warIds)
     .in('player_tag', Array.from(defenderTags))
-    .eq('is_home', false);
+    .or('is_home.eq.false,is_home.is.null');
 
   if (defendersError) {
     console.warn(`Failed to fetch defender data: ${defendersError.message}`);
@@ -214,10 +289,53 @@ export async function calculateWarIntelligence(
     maxConsecutive: number;
   }>();
 
+  const weeklyAggByPlayer = new Map<string, Map<string, {
+    wars: Set<string>;
+    totalAttacks: number;
+    totalStars: number;
+    totalDestruction: number;
+    totalDefenses: number;
+    totalDefenseDestruction: number;
+    attacks: Array<{
+      warId: string;
+      stars: number;
+      destruction: number;
+      attackTime: Date | null;
+      orderIndex: number;
+      defenderTH?: number;
+      attackerTH?: number;
+    }>;
+  }>>();
+
+  const getWeeklyAgg = (tag: string, weekKey: string) => {
+    if (!weeklyAggByPlayer.has(tag)) {
+      weeklyAggByPlayer.set(tag, new Map());
+    }
+    const bucket = weeklyAggByPlayer.get(tag)!;
+    if (!bucket.has(weekKey)) {
+      bucket.set(weekKey, {
+        wars: new Set(),
+        totalAttacks: 0,
+        totalStars: 0,
+        totalDestruction: 0,
+        totalDefenses: 0,
+        totalDefenseDestruction: 0,
+        attacks: [],
+      });
+    }
+    return bucket.get(weekKey)!;
+  };
+
   // Process war members
   warMembers?.forEach(member => {
     const tag = member.player_tag;
     if (!tag) return;
+    const rawAttacks = Array.isArray((member as any)?.raw?.attacks) ? (member as any).raw.attacks.length : 0;
+    const attacksValue = Number(member.attacks);
+    let attacksCount = Number.isFinite(attacksValue) && attacksValue > 0 ? attacksValue : rawAttacks;
+    if (!attacksCount && (member.stars ?? 0) > 0) {
+      attacksCount = 1;
+    }
 
     if (!playerData.has(tag)) {
       playerData.set(tag, {
@@ -236,11 +354,22 @@ export async function calculateWarIntelligence(
 
     const data = playerData.get(tag)!;
     data.wars.add(member.war_id);
-    data.totalAttacks += member.attacks || 0;
+    data.totalAttacks += attacksCount || 0;
     data.totalStars += member.stars || 0;
     data.totalDestruction += member.destruction || 0;
     data.totalDefenses += member.defense_count || 0;
     data.totalDefenseDestruction += member.defense_destruction || 0;
+
+    const weekKey = warWeekMap.get(member.war_id);
+    if (weekKey) {
+      const weekly = getWeeklyAgg(tag, weekKey);
+      weekly.wars.add(member.war_id);
+      weekly.totalAttacks += attacksCount || 0;
+      weekly.totalStars += member.stars || 0;
+      weekly.totalDestruction += member.destruction || 0;
+      weekly.totalDefenses += member.defense_count || 0;
+      weekly.totalDefenseDestruction += member.defense_destruction || 0;
+    }
   });
 
   // Process attacks
@@ -266,13 +395,136 @@ export async function calculateWarIntelligence(
       defenderTH,
       attackerTH,
     });
+
+    const fallbackTime = attack.attack_time ? new Date(attack.attack_time) : null;
+    const weekKey = warWeekMap.get(warId) || (fallbackTime ? weekKeyForDate(fallbackTime) : null);
+    if (weekKey) {
+      const weekly = getWeeklyAgg(tag, weekKey);
+      weekly.attacks.push({
+        warId,
+        stars: attack.stars || 0,
+        destruction: attack.destruction || 0,
+        attackTime: attack.attack_time ? new Date(attack.attack_time) : null,
+        orderIndex: attack.order_index || 0,
+        defenderTH,
+        attackerTH,
+      });
+    }
   });
+
+  // Process fallback activity attacks for player-specific queries
+  activityAttacks.forEach((attack) => {
+    const tag = attack.attackerTag;
+    if (!tag || !playerData.has(tag)) return;
+
+    const data = playerData.get(tag)!;
+    if (attack.warId) {
+      data.wars.add(attack.warId);
+    }
+    data.totalAttacks += attack.stars ? 1 : 1;
+    data.totalStars += attack.stars || 0;
+    data.totalDestruction += attack.destruction || 0;
+    data.attacks.push({
+      warId: attack.warId || 'activity',
+      stars: attack.stars || 0,
+      destruction: attack.destruction || 0,
+      attackTime: attack.attackTime,
+      orderIndex: attack.orderIndex || 0,
+    });
+
+    const fallbackTime = attack.attackTime;
+    const weekKey = attack.warId ? warWeekMap.get(attack.warId) : (fallbackTime ? weekKeyForDate(fallbackTime) : null);
+    if (weekKey) {
+      const weekly = getWeeklyAgg(tag, weekKey);
+      weekly.attacks.push({
+        warId: attack.warId || 'activity',
+        stars: attack.stars || 0,
+        destruction: attack.destruction || 0,
+        attackTime: attack.attackTime,
+        orderIndex: attack.orderIndex || 0,
+      });
+    }
+  });
+
+  const computeWarScores = (data: {
+    wars: Set<string>;
+    totalAttacks: number;
+    totalStars: number;
+    totalDestruction: number;
+    totalDefenses: number;
+    totalDefenseDestruction: number;
+    attacks: Array<{
+      warId: string;
+      stars: number;
+      destruction: number;
+      attackTime: Date | null;
+      orderIndex: number;
+      defenderTH?: number;
+      attackerTH?: number;
+    }>;
+  }) => {
+    const totalWars = data.wars.size;
+    const totalAttacks = data.totalAttacks || data.attacks.length;
+    const totalStars = data.totalStars || data.attacks.reduce((sum, attack) => sum + (attack.stars || 0), 0);
+    const totalDestruction = data.totalDestruction || data.attacks.reduce((sum, attack) => sum + (attack.destruction || 0), 0);
+    if (!totalAttacks) return null;
+
+    const averageStarsPerAttack = totalStars / totalAttacks;
+    const averageDestructionPerAttack = totalDestruction / totalAttacks;
+    const cleanupAttacks = data.attacks.filter(a =>
+      a.attackerTH && a.defenderTH && a.attackerTH > a.defenderTH
+    ).length;
+    const cleanupEfficiency = totalAttacks > 0 ? cleanupAttacks / totalAttacks : 0;
+    const sortedAttacks = [...data.attacks].sort((a, b) => (a.orderIndex || 0) - (b.orderIndex || 0));
+    const totalAttackCount = sortedAttacks.length;
+    const lastQuarterStart = Math.floor(totalAttackCount * 0.75);
+    const clutchAttacks = sortedAttacks.slice(lastQuarterStart).filter(a => a.stars >= 2).length;
+    const attackEfficiencyIndex = Math.min(100, Math.round(
+      (averageStarsPerAttack / 3) * 60 +
+      (averageDestructionPerAttack / 100) * 30 +
+      cleanupEfficiency * 10
+    ));
+    const expectedAttacks = totalWars * 2;
+    const participationRate = expectedAttacks > 0 ? totalAttacks / expectedAttacks : 0;
+    const consistencyScore = Math.min(100, Math.round(participationRate * 100));
+    const defenseAvailable = data.totalDefenses > 0;
+    const defensiveHoldRate = defenseAvailable
+      ? 1 - (data.totalDefenseDestruction / (data.totalDefenses * 100))
+      : null;
+    const timingScores = sortedAttacks.map(a => {
+      if (!a.orderIndex || totalAttackCount === 0) return 50;
+      const percentile = (a.orderIndex / totalAttackCount) * 100;
+      if (percentile >= 25 && percentile <= 75) return 100;
+      return 75;
+    });
+    const attackTimingScore = timingScores.length > 0
+      ? timingScores.reduce((sum, s) => sum + s, 0) / timingScores.length
+      : 50;
+    const baseWeight = 0.40 + 0.30 + 0.10 + (defenseAvailable ? 0.20 : 0);
+    const overallScore = Math.round(
+      attackEfficiencyIndex * (0.40 / baseWeight) +
+      consistencyScore * (0.30 / baseWeight) +
+      (defensiveHoldRate != null ? (defensiveHoldRate * 100) : 0) * (defenseAvailable ? (0.20 / baseWeight) : 0) +
+      attackTimingScore * (0.10 / baseWeight)
+    );
+
+    return { attackEfficiencyIndex, overallScore, totalAttacks, totalWars };
+  };
 
   // Calculate metrics for each player
   const metrics: WarIntelligenceMetrics[] = [];
 
   for (const [tag, data] of playerData.entries()) {
     if (data.wars.size < minWars) continue;
+
+    if (data.attacks.length && (!data.totalAttacks || !data.totalStars || !data.totalDestruction)) {
+      const attacksCount = data.attacks.length;
+      const starsFromAttacks = data.attacks.reduce((sum, attack) => sum + (attack.stars || 0), 0);
+      const destructionFromAttacks = data.attacks.reduce((sum, attack) => sum + (attack.destruction || 0), 0);
+      if (!data.totalAttacks) data.totalAttacks = attacksCount;
+      if (!data.totalStars) data.totalStars = starsFromAttacks;
+      if (!data.totalDestruction) data.totalDestruction = destructionFromAttacks;
+    }
 
     const totalWars = data.wars.size;
     const totalAttacks = data.totalAttacks;
@@ -333,13 +585,14 @@ export async function calculateWarIntelligence(
     ));
 
     // Defensive Hold Rate
-    const defensiveHoldRate = data.totalDefenses > 0 
+    const defenseAvailable = data.totalDefenses > 0;
+    const defensiveHoldRate = defenseAvailable
       ? 1 - (data.totalDefenseDestruction / (data.totalDefenses * 100))
-      : 0.5; // Default if no defenses
+      : null;
     
-    const averageDestructionAllowed = data.totalDefenses > 0
+    const averageDestructionAllowed = defenseAvailable
       ? data.totalDefenseDestruction / data.totalDefenses
-      : 50; // Default
+      : null;
 
     // Base strength (simplified - would need hero data for full calculation)
     const baseStrengthScore = 50; // Placeholder - would calculate from TH + heroes
@@ -372,11 +625,12 @@ export async function calculateWarIntelligence(
       : 50;
 
     // Overall Score (weighted composite)
+    const baseWeight = 0.40 + 0.30 + 0.10 + (defenseAvailable ? 0.20 : 0);
     const overallScore = Math.round(
-      attackEfficiencyIndex * 0.40 +
-      consistencyScore * 0.30 +
-      (defensiveHoldRate * 100) * 0.20 +
-      attackTimingScore * 0.10
+      attackEfficiencyIndex * (0.40 / baseWeight) +
+      consistencyScore * (0.30 / baseWeight) +
+      (defensiveHoldRate != null ? (defensiveHoldRate * 100) : 0) * (defenseAvailable ? (0.20 / baseWeight) : 0) +
+      attackTimingScore * (0.10 / baseWeight)
     );
 
     // Performance tier
@@ -386,6 +640,24 @@ export async function calculateWarIntelligence(
     else if (overallScore >= 50) performanceTier = 'average';
     else if (overallScore >= 35) performanceTier = 'poor';
     else performanceTier = 'needs_coaching';
+
+    const weeklySeries = weeklyAggByPlayer.get(tag);
+    const weeklyData = weeklySeries
+      ? Array.from(weeklySeries.entries())
+          .map(([weekStart, weekAgg]) => {
+            const scores = computeWarScores(weekAgg);
+            if (!scores) return null;
+            return {
+              weekStart,
+              aei: scores.attackEfficiencyIndex,
+              overall: scores.overallScore,
+              attacks: scores.totalAttacks,
+              wars: scores.totalWars,
+            };
+          })
+          .filter(Boolean)
+          .sort((a, b) => (a!.weekStart < b!.weekStart ? -1 : 1))
+      : [];
 
     metrics.push({
       playerTag: tag,
@@ -398,8 +670,8 @@ export async function calculateWarIntelligence(
       participationRate: Math.round(participationRate * 100) / 100,
       consistencyScore,
       consecutiveWarsWithAttacks: consecutiveWars,
-      defensiveHoldRate: Math.round(defensiveHoldRate * 100) / 100,
-      averageDestructionAllowed: Math.round(averageDestructionAllowed * 100) / 100,
+      defensiveHoldRate: defensiveHoldRate != null ? Math.round(defensiveHoldRate * 100) / 100 : null,
+      averageDestructionAllowed: averageDestructionAllowed != null ? Math.round(averageDestructionAllowed * 100) / 100 : null,
       baseStrengthScore,
       failedAttacks,
       attackTimingScore: Math.round(attackTimingScore),
@@ -412,6 +684,7 @@ export async function calculateWarIntelligence(
       totalDestruction,
       totalDefenses: data.totalDefenses,
       totalDefenseDestruction: Math.round(data.totalDefenseDestruction * 100) / 100,
+      weeklySeries: weeklyData.length ? (weeklyData as Array<{ weekStart: string; aei: number; overall: number; attacks: number; wars: number }>) : undefined,
     });
   }
 
@@ -422,8 +695,9 @@ export async function calculateWarIntelligence(
   const averageConsistency = metrics.length > 0
     ? metrics.reduce((sum, m) => sum + m.consistencyScore, 0) / metrics.length
     : 0;
-  const averageHoldRate = metrics.length > 0
-    ? metrics.reduce((sum, m) => sum + m.defensiveHoldRate, 0) / metrics.length
+  const holdRates = metrics.map((m) => m.defensiveHoldRate).filter((value): value is number => typeof value === 'number');
+  const averageHoldRate = holdRates.length > 0
+    ? holdRates.reduce((sum, value) => sum + value, 0) / holdRates.length
     : 0;
   const averageOverallScore = metrics.length > 0
     ? metrics.reduce((sum, m) => sum + m.overallScore, 0) / metrics.length

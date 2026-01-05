@@ -55,6 +55,7 @@ export interface PlayerSummarySupabase {
   tenureDays: number | null;
   tenureAsOf: string | null;
   heroLevels: Record<string, unknown> | null;
+  heroPower?: number | null;
   bestTrophies: number | null;
   bestVersusTrophies: number | null;
   pets: Record<string, number> | null;

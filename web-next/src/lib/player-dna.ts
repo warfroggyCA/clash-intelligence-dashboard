@@ -49,6 +49,14 @@ export type Member = {
   rushPercent?: number;
   recentClans?: string[];
   manualActivityOverride?: string;
+  
+  // CWL participation stats (from cwl-stats service)
+  cwlAttacksUsed?: number;
+  cwlAttacksAvailable?: number;
+  cwlParticipationRate?: number;
+  cwlAvgStars?: number;
+  cwlThreeStarRate?: number;
+  cwlReliabilityScore?: number;
 };
 
 /**
@@ -146,20 +154,44 @@ export function calculatePlayerDNA(member: Member, clanContext?: {
   // 6. CONSISTENCY (0-100)
   let consistency = 0;
   
-  // Tenure consistency
-  if (tenure > 365) consistency += 40;
-  else if (tenure > 180) consistency += 30;
-  else if (tenure > 90) consistency += 20;
-  else if (tenure > 30) consistency += 10;
+  // Tenure consistency (max 30 points)
+  if (tenure > 365) consistency += 30;
+  else if (tenure > 180) consistency += 22;
+  else if (tenure > 90) consistency += 15;
+  else if (tenure > 30) consistency += 8;
   
-  // Activity consistency (based on multiple engagement types)
+  // Activity consistency (based on multiple engagement types) - max 40 points
   let activityTypes = 0;
   if (donations > 0) activityTypes++;
   if (warStars > 0) activityTypes++;
   if (capitalContributions > 0) activityTypes++;
   if (trophies > 1000) activityTypes++;
   
-  consistency += activityTypes * 15; // 15 points per activity type
+  consistency += activityTypes * 10; // 10 points per activity type (max 40)
+  
+  // CWL participation bonus (max 30 points) - key reliability indicator
+  const cwlParticipation = member.cwlParticipationRate ?? null;
+  const cwlReliability = member.cwlReliabilityScore ?? null;
+  
+  if (cwlParticipation !== null && cwlParticipation >= 0) {
+    // Perfect attendance: 30 points
+    // 80%+ attendance: 20 points
+    // 50%+ attendance: 10 points
+    // Below 50%: 0 points (or negative if very low)
+    if (cwlParticipation >= 1.0) {
+      consistency += 30;
+    } else if (cwlParticipation >= 0.8) {
+      consistency += 20;
+    } else if (cwlParticipation >= 0.5) {
+      consistency += 10;
+    } else if (cwlParticipation < 0.3 && member.cwlAttacksAvailable && member.cwlAttacksAvailable > 2) {
+      // Penalize very low participation (but only if they had real opportunity)
+      consistency -= 10;
+    }
+  } else if (cwlReliability !== null) {
+    // Fallback to reliability score if participation rate not available
+    consistency += Math.round(cwlReliability * 0.3); // Scale 0-100 to 0-30
+  }
 
   return {
     leadership: Math.min(Math.round(leadership), 100),

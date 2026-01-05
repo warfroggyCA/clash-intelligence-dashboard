@@ -475,21 +475,30 @@ export const TableRow: React.FC<TableRowProps> = ({
     >
       {/* Name Column */}
       <TableCell className="border-r border-gray-300" isActiveSort={isActiveColumn('name')}>
-        <div className="flex items-center space-x-3">
-          <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="lg" showText={false} />
-          <div className="flex flex-col">
+        <div className="flex items-center gap-3">
+          <LeagueBadge league={leagueInfo.name} trophies={leagueInfo.trophies} tier={leagueInfo.tier} size="md" showText={false} />
+          <span className="font-semibold">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 handleOpenProfile();
               }}
-              className="player-name-link font-heading font-semibold text-left transition-colors focus-ring-inset tooltip-trigger"
-              style={{ color: 'var(--player-name-color, #ffffff)' }}
+              className="player-name-link transition-colors focus-ring-inset tooltip-trigger"
+              style={{ 
+                color: 'var(--player-name-color, #ffffff)',
+                border: 'none',
+                background: 'none',
+                padding: 0,
+                margin: 0,
+                font: 'inherit',
+                cursor: 'pointer',
+                lineHeight: 'inherit'
+              }}
               data-tooltip="View player profile"
             >
               {member.name}
             </button>
-          </div>
+          </span>
         </div>
       </TableCell>
 
