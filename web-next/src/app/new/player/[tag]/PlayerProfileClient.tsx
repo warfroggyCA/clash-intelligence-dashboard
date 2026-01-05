@@ -1266,7 +1266,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
       (rosterFallback as any)?.tenure_days,
     ]
       .map((value) => (typeof value === 'number' && Number.isFinite(value) ? value : null))
-      .filter((value): value is number => value !== null);
+      .filter((value: number | null): value is number => value !== null);
     if (!candidates.length) return null;
     return Math.max(...candidates);
   }, [tenureFromHistory, summary, rosterFallback]);
@@ -1333,7 +1333,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
             : '',
         };
       })
-      .filter((entry): entry is { value: number; label: string } => Boolean(entry));
+      .filter((entry: any): entry is { value: number; label: string } => Boolean(entry));
   }, [sortedHistoryTimeline]);
   const trophyTrendWeeklyData = useMemo(() => {
     if (!sortedHistoryTimeline.length) return [];
@@ -2014,7 +2014,7 @@ const groupedEquipment = useMemo(() => {
                       label: new Date(e.snapshotDate).toLocaleDateString('en', { weekday: 'short' }),
                     };
                   })
-                  .filter((entry): entry is { value: number; label: string } => Boolean(entry))}
+                  .filter((entry: any): entry is { value: number; label: string } => Boolean(entry))}
                 label="trophies"
                 color="#f59e0b"
                 height={100}
@@ -2059,7 +2059,7 @@ const groupedEquipment = useMemo(() => {
                       label: new Date(e.snapshotDate).toLocaleDateString('en', { weekday: 'short' }),
                     };
                   })
-                  .filter((entry): entry is { value: number; label: string } => Boolean(entry))}
+                  .filter((entry: any): entry is { value: number; label: string } => Boolean(entry))}
                 label="donations"
                 color="#10b981"
                 height={100}
@@ -2574,7 +2574,7 @@ const groupedEquipment = useMemo(() => {
                             : '',
                         };
                       })
-                      .filter((entry): entry is { value: number; label: string } => Boolean(entry))}
+                      .filter((entry: any): entry is { value: number; label: string } => Boolean(entry))}
                   label="donations"
                   color="#10b981"
                   height={120}
