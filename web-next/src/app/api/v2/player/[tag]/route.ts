@@ -564,7 +564,6 @@ export async function GET(
     const stats = primaryStats as any;
     const heroLevels = coerceHeroLevels(stats?.hero_levels ?? null);
 
-    const stats = primaryStats as any;
     const rawTrophies = toNumber(stats?.trophies);
     const rawRankedTrophies =
       toNumber(stats?.ranked_trophies) ?? toNumber(memberRow.ranked_trophies);
@@ -617,7 +616,6 @@ export async function GET(
       seasonTotalTrophies += resolvedTrophies;
     }
 
-    const stats = primaryStats as any;
     const enrichedForMember: MemberEnriched = {
       petLevels: stats?.pet_levels ?? null,
       builderHallLevel: stats?.builder_hall_level ?? null,
