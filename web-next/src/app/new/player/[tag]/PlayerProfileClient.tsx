@@ -1306,10 +1306,10 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
     if (historyRange === 'all') return timeline;
     const days = historyRangeDays ?? 7;
     const cutoff = (lastSnapshotTime || Date.now()) - days * 24 * 60 * 60 * 1000;
-    return timeline.filter((entry) => toSnapshotTime(entry) >= cutoff);
+    return timeline.filter((entry: any) => toSnapshotTime(entry) >= cutoff);
   }, [timeline, historyRange, historyRangeDays, lastSnapshotTime]);
   const sortedHistoryTimeline = useMemo(() => {
-    return historyTimeline.slice().sort((a, b) => toSnapshotTime(a) - toSnapshotTime(b));
+    return historyTimeline.slice().sort((a: any, b: any) => toSnapshotTime(a) - toSnapshotTime(b));
   }, [historyTimeline]);
   const historyDeltaTrophies = useMemo(() => {
     if (sortedHistoryTimeline.length < 2) return null;
