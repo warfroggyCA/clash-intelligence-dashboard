@@ -1201,7 +1201,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
       return Number.isNaN(parsed) ? 0 : parsed;
     };
 
-    const sorted = normalized.slice().sort((a, b) => toTime(a.firstSeen ?? a.lastSeen) - toTime(b.firstSeen ?? b.lastSeen));
+    const sorted = normalized.slice().sort((a: { name: string; firstSeen: string | null; lastSeen: string | null }, b: { name: string; firstSeen: string | null; lastSeen: string | null }) => toTime(a.firstSeen ?? a.lastSeen) - toTime(b.firstSeen ?? b.lastSeen));
     const changes: Array<{ from: string; to: string; date: string | null }> = [];
 
     for (let i = 1; i < sorted.length; i += 1) {
