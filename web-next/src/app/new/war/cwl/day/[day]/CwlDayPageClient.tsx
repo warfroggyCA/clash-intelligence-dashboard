@@ -776,7 +776,7 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
                     .map((m) => ({
                       ...m,
                       heroPower: m.heroes
-                        ? Object.values(m.heroes).reduce((sum, level) => sum + (Number(level) || 0), 0)
+                        ? Object.values(m.heroes).reduce<number>((sum, level) => sum + (Number(level) || 0), 0)
                         : 0,
                     }))
                     .sort(sortByPowerDesc)
