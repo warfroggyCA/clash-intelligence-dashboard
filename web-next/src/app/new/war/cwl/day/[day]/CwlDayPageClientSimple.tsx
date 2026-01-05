@@ -904,7 +904,7 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
       }
       
       // Add war results if available
-      if (isWarEnded(dayResult?.warState)) {
+      if (dayResult && isWarEnded(dayResult.warState)) {
         preambleLines.push(`## 📊 WAR RESULTS (Completed)`);
         preambleLines.push(`- **Result:** ${dayResult.result === 'W' ? '🏆 WIN' : dayResult.result === 'L' ? '💀 LOSS' : '🤝 TIE'}`);
         preambleLines.push(`- **Stars:** ${dayResult.ourStars} vs ${dayResult.opponentStars}`);
@@ -932,8 +932,8 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
           warSize,
           ourGhostCount: ourGhosts.length,
           opponentGhostCount: theirGhosts.length,
-          warCompleted: isWarEnded(dayResult?.warState),
-          warResult: isWarEnded(dayResult?.warState) ? {
+          warCompleted: dayResult && isWarEnded(dayResult.warState),
+          warResult: dayResult && isWarEnded(dayResult.warState) ? {
             result: dayResult.result,
             ourStars: dayResult.ourStars,
             opponentStars: dayResult.opponentStars,
@@ -1211,7 +1211,7 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
       </div>
 
       {/* War Results Banner (shown if war is complete) */}
-      {isWarEnded(dayResult?.warState) && (
+      {dayResult && isWarEnded(dayResult.warState) && (
         <div className={cn(
           "rounded-2xl border-2 p-4",
           dayResult.result === 'W' 
@@ -1288,7 +1288,7 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
       )}
 
       {/* Attack Breakdown (shown when war is complete and has attacks) */}
-      {isWarEnded(dayResult?.warState) && attacks.length > 0 && (
+      {dayResult && isWarEnded(dayResult.warState) && attacks.length > 0 && (
         <Card title={
           <div className="flex items-center justify-between w-full">
             <span className="flex items-center gap-2">
