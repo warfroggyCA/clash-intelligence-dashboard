@@ -209,7 +209,7 @@ export async function getCurrentRosterData(requestedClanTag?: string): Promise<R
           tenureDays: member.tenure_days ?? null,
           tenureAsOf: member.tenure_as_of ?? null,
           tenure_days: member.tenure_days ?? undefined,
-          tenure_as_of: member.tenure_as_of ?? undefined,
+          tenure_as_of: member.tenure_as_of !== null ? member.tenure_as_of : undefined,
           leagueId: member.league_id ?? null,
           leagueName: member.league_name ?? null,
           leagueTrophies: member.league_trophies ?? null,
