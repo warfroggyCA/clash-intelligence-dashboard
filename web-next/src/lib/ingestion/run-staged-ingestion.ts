@@ -31,7 +31,7 @@ export interface RunStagedIngestionJobOptions extends StagedIngestionOptions {
  * This replaces the old runIngestionJob with a more robust, phase-based approach.
  */
 export async function runStagedIngestionJob(options: RunStagedIngestionJobOptions = {}): Promise<StagedIngestionJobResult> {
-  const { runPostProcessing = true, forceFetch = false, ...stagedOptions } = options;
+  const { runPostProcessing = true, forceInsights = false, forceFetch = false, ...stagedOptions } = options;
   let clanTag = stagedOptions.clanTag || cfg.homeClanTag;
   
   // CRITICAL SAFEGUARD: Prevent accidental use of wrong clan tag
