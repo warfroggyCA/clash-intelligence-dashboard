@@ -5,7 +5,7 @@ import type { ElderEvaluatorOptions, ElderMetricInputs, ElderRecommendation } fr
 const DEFAULT_PROMOTION_THRESHOLD = 70;
 const DEFAULT_MONITOR_THRESHOLD = 55;
 const DEFAULT_CONSECUTIVE_THRESHOLD = 55;
-const DEFAULT_TENURE_MINIMUM = 90;
+const DEFAULT_TENURE_MINIMUM = 30;
 const DEFAULT_FAILING_DIMENSION_THRESHOLD = 40;
 
 const formatRecommendation = (base: string, failing: string[]): string => {

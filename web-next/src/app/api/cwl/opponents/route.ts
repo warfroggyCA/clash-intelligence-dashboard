@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { cfg } from '@/lib/config';
+import { getDefaultCwlSeasonId } from '@/lib/cwl-season';
 
 const BodySchema = z.object({
   seasonId: z.string().optional(),
@@ -46,7 +47,7 @@ export async function GET(request: Request) {
   const supabase = getSupabaseAdminClient();
   const { searchParams } = new URL(request.url);
   const clanTag = normalizeTag(searchParams.get('clanTag') || cfg.homeClanTag || '');
-  const seasonId = searchParams.get('seasonId') || '2025-07';
+  const seasonId = searchParams.get('seasonId') || getDefaultCwlSeasonId();
   const warSize = Number(searchParams.get('warSize') || 15);
 
   if (!clanTag || !isValidTag(clanTag)) {
@@ -79,20 +80,27 @@ export async function POST(request: Request) {
   if (!clanTag || !isValidTag(clanTag)) {
     return NextResponse.json({ success: false, error: 'Invalid home clan tag' }, { status: 400 });
   }
-  const seasonId = body.seasonId || '2025-07';
+  const seasonId = body.seasonId || getDefaultCwlSeasonId();
   const warSize = body.warSize || 15;
 
   try {
     const seasonPk = await getOrCreateSeason(supabase, clanTag, seasonId, warSize);
-    const payload = body.opponents.map((o) => ({
-      cwl_season_id: seasonPk,
-      day_index: o.dayIndex,
-      opponent_tag: normalizeTag(o.opponentTag),
-      opponent_name: o.opponentName ?? null,
-      th_distribution: o.thDistribution ?? null,
-      roster_snapshot: o.rosterSnapshot ?? null,
-      fetched_at: o.fetchedAt ?? null,
-    }));
+    const payload = body.opponents.map((o) => {
+      const row: Record<string, unknown> = {
+        cwl_season_id: seasonPk,
+        day_index: o.dayIndex,
+        opponent_tag: normalizeTag(o.opponentTag),
+        opponent_name: o.opponentName ?? null,
+        th_distribution: o.thDistribution ?? null,
+      };
+      if (o.rosterSnapshot !== undefined && o.rosterSnapshot !== null) {
+        row.roster_snapshot = o.rosterSnapshot;
+      }
+      if (o.fetchedAt !== undefined && o.fetchedAt !== null) {
+        row.fetched_at = o.fetchedAt;
+      }
+      return row;
+    });
     const { error } = await supabase
       .from('cwl_opponents')
       .upsert(payload, { onConflict: 'cwl_season_id,day_index' });

@@ -1,8 +1,11 @@
-export default function NewHome() {
-  return (
-    <div className="space-y-4">
-      <h1 className="text-3xl font-bold text-white">New Experience</h1>
-      <p className="text-slate-300">Scaffold for the rebuilt app. Replace with real pages.</p>
-    </div>
-  );
+import { getDashboardData } from './get-dashboard-data';
+import DashboardClient from './DashboardClient';
+
+export const revalidate = 300; // Revalidate every 5 minutes
+
+export default async function NewDashboardPage() {
+  // Fetch directly from Supabase - no HTTP dependency on port configuration
+  const initialRoster = await getDashboardData();
+
+  return <DashboardClient initialRoster={initialRoster} />;
 }

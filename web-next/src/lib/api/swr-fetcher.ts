@@ -77,8 +77,10 @@ export async function rosterFetcher(url: string) {
  * Uses the existing fetchPlayerProfileSupabase function
  */
 export async function playerProfileFetcher(url: string) {
-  // Extract tag from URL like '/api/player/#ABC123/profile' or '/api/player/#ABC123/profile?clanTag=...'
-  const match = url.match(/\/api\/player\/([^/]+)\/profile/);
+  // Extract tag from URL like '/api/player/#ABC123/profile' or '/api/v2/player/#ABC123'
+  const match =
+    url.match(/\/api\/v2\/player\/([^/?#]+)/) ||
+    url.match(/\/api\/player\/([^/]+)\/profile/);
   if (!match) {
     throw new Error('Invalid player profile URL');
   }
@@ -137,4 +139,3 @@ export async function insightsFetcher(url: string) {
   // API returns: { success: true, data: { smartInsightsPayload: ..., payload: ... } }
   return apiData.data?.smartInsightsPayload ?? apiData.data?.payload ?? null;
 }
-

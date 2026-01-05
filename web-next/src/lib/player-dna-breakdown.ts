@@ -199,33 +199,35 @@ export function generateDNABreakdown(dna: PlayerDNA, member: Member, clanAverage
   // Consistency breakdown
   const consistencyParts: string[] = [];
   let consistencyScore = 0;
+  
+  // Tenure points (max 30)
   if (tenure > 365) {
-    consistencyScore += 40;
-    let tenureDesc = `Tenure tier 4 (${Math.round(tenure)} days): +40`;
+    consistencyScore += 30;
+    let tenureDesc = `Tenure tier 4 (${Math.round(tenure)} days): +30`;
     if (clanAverageTenure) {
       const diff = ((tenure - clanAverageTenure) / clanAverageTenure * 100);
       tenureDesc += ` [${diff > 0 ? '+' : ''}${diff.toFixed(0)}% vs clan avg]`;
     }
     consistencyParts.push(tenureDesc);
   } else if (tenure > 180) {
-    consistencyScore += 30;
-    let tenureDesc = `Tenure tier 3 (${Math.round(tenure)} days): +30`;
+    consistencyScore += 22;
+    let tenureDesc = `Tenure tier 3 (${Math.round(tenure)} days): +22`;
     if (clanAverageTenure) {
       const diff = ((tenure - clanAverageTenure) / clanAverageTenure * 100);
       tenureDesc += ` [${diff > 0 ? '+' : ''}${diff.toFixed(0)}% vs clan avg]`;
     }
     consistencyParts.push(tenureDesc);
   } else if (tenure > 90) {
-    consistencyScore += 20;
-    let tenureDesc = `Tenure tier 2 (${Math.round(tenure)} days): +20`;
+    consistencyScore += 15;
+    let tenureDesc = `Tenure tier 2 (${Math.round(tenure)} days): +15`;
     if (clanAverageTenure) {
       const diff = ((tenure - clanAverageTenure) / clanAverageTenure * 100);
       tenureDesc += ` [${diff > 0 ? '+' : ''}${diff.toFixed(0)}% vs clan avg]`;
     }
     consistencyParts.push(tenureDesc);
   } else if (tenure > 30) {
-    consistencyScore += 10;
-    let tenureDesc = `Tenure tier 1 (${Math.round(tenure)} days): +10`;
+    consistencyScore += 8;
+    let tenureDesc = `Tenure tier 1 (${Math.round(tenure)} days): +8`;
     if (clanAverageTenure) {
       const diff = ((tenure - clanAverageTenure) / clanAverageTenure * 100);
       tenureDesc += ` [${diff > 0 ? '+' : ''}${diff.toFixed(0)}% vs clan avg]`;
@@ -233,18 +235,48 @@ export function generateDNABreakdown(dna: PlayerDNA, member: Member, clanAverage
     consistencyParts.push(tenureDesc);
   }
   
+  // Activity diversity (max 40)
   let activityTypes = 0;
   if (donations > 0) activityTypes++;
   if (warStars > 0) activityTypes++;
   if (capitalContributions > 0) activityTypes++;
   if (trophies > 1000) activityTypes++;
   
-  const activityBonus = activityTypes * 15;
+  const activityBonus = activityTypes * 10;
   consistencyScore += activityBonus;
   if (activityTypes > 0) {
     consistencyParts.push(`Activity diversity (${activityTypes} types): +${activityBonus}`);
   } else {
     consistencyParts.push('Limited activity: +0');
+  }
+  
+  // CWL participation (max 30)
+  const cwlParticipation = member.cwlParticipationRate ?? null;
+  const cwlAttacksUsed = member.cwlAttacksUsed ?? 0;
+  const cwlAttacksAvailable = member.cwlAttacksAvailable ?? 0;
+  
+  if (cwlParticipation !== null && cwlAttacksAvailable > 0) {
+    const pctStr = Math.round(cwlParticipation * 100);
+    if (cwlParticipation >= 1.0) {
+      consistencyScore += 30;
+      consistencyParts.push(`⭐ CWL: Perfect attendance (${cwlAttacksUsed}/${cwlAttacksAvailable}): +30`);
+    } else if (cwlParticipation >= 0.8) {
+      consistencyScore += 20;
+      consistencyParts.push(`✅ CWL: ${pctStr}% attendance (${cwlAttacksUsed}/${cwlAttacksAvailable}): +20`);
+    } else if (cwlParticipation >= 0.5) {
+      consistencyScore += 10;
+      consistencyParts.push(`⚠️ CWL: ${pctStr}% attendance (${cwlAttacksUsed}/${cwlAttacksAvailable}): +10`);
+    } else {
+      const missed = cwlAttacksAvailable - cwlAttacksUsed;
+      consistencyScore -= 10;
+      consistencyParts.push(`❌ CWL: ${pctStr}% attendance (${missed} attacks missed): -10`);
+    }
+  } else if (member.cwlReliabilityScore !== null && member.cwlReliabilityScore !== undefined) {
+    const cwlBonus = Math.round(member.cwlReliabilityScore * 0.3);
+    consistencyScore += cwlBonus;
+    consistencyParts.push(`CWL reliability score: +${cwlBonus}`);
+  } else {
+    consistencyParts.push('CWL: No data available');
   }
   
   if (consistencyParts.length === 0) {

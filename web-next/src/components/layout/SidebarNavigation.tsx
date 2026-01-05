@@ -1,9 +1,15 @@
 "use client";
 
+import { useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { navConfig, type NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
+import useSWR from 'swr';
+import { apiFetcher } from '@/lib/api/swr-fetcher';
+import { cfg } from '@/lib/config';
+import { normalizeTag } from '@/lib/tags';
+import { showToast } from '@/lib/toast';
 
 function matchesPath(pathname: string, href: string) {
   const normalized = href.replace(/\[.*?\]/g, '');
@@ -22,10 +28,13 @@ const NavNode: React.FC<{
   pathname: string;
   onNavigate?: () => void;
   collapsed?: boolean;
-}> = ({ item, depth, pathname, onNavigate, collapsed = false }) => {
+  badgeCount?: number;
+}> = ({ item, depth, pathname, onNavigate, collapsed = false, badgeCount = 0 }) => {
   const Icon = item.icon;
   const isActive = matchesPath(pathname, item.href);
   const hasChildren = Boolean(item.children?.length);
+  const showBadge = item.href === '/new/assess' && badgeCount > 0;
+  const badgeValue = badgeCount > 99 ? '99+' : String(badgeCount);
 
   return (
     <div className="space-y-1">
@@ -42,8 +51,20 @@ const NavNode: React.FC<{
         )}
         title={item.description || item.title}
       >
-        {Icon && <Icon className="h-4 w-4 flex-shrink-0" aria-hidden />}
+        {Icon && (
+          <span className="relative flex h-4 w-4 flex-shrink-0 items-center justify-center">
+            <Icon className="h-4 w-4" aria-hidden />
+            {showBadge && collapsed && (
+              <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)]" />
+            )}
+          </span>
+        )}
         <span className={cn('truncate', collapsed && 'hidden')}>{item.title}</span>
+        {showBadge && !collapsed && (
+          <span className="ml-auto inline-flex items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-100">
+            {badgeValue}
+          </span>
+        )}
       </Link>
 
       {hasChildren && !collapsed && (
@@ -56,6 +77,7 @@ const NavNode: React.FC<{
               pathname={pathname}
               onNavigate={onNavigate}
               collapsed={collapsed}
+              badgeCount={badgeCount}
             />
           ))}
         </div>
@@ -66,6 +88,32 @@ const NavNode: React.FC<{
 
 export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ items = navConfig, onNavigate, collapsed = false }) => {
   const pathname = usePathname();
+  const clanTag = useMemo(() => normalizeTag(cfg.homeClanTag || '') || cfg.homeClanTag || '', []);
+  const joinerKey = clanTag
+    ? `/api/joiners?clanTag=${encodeURIComponent(clanTag)}&status=pending`
+    : null;
+
+  const { data: pendingJoiners } = useSWR<any[]>(joinerKey, apiFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+    refreshInterval: 60000,
+  });
+
+  const pendingAssessCount = Array.isArray(pendingJoiners) ? pendingJoiners.length : 0;
+
+  useEffect(() => {
+    if (!clanTag) return;
+    const storageKey = `assess:pending:${clanTag}`;
+    const stored = sessionStorage.getItem(storageKey);
+    if (stored !== null) {
+      const previous = Number(stored);
+      if (Number.isFinite(previous) && pendingAssessCount > previous) {
+        const label = pendingAssessCount === 1 ? 'joiner' : 'joiners';
+        showToast(`${pendingAssessCount} new ${label} need review.`, 'info');
+      }
+    }
+    sessionStorage.setItem(storageKey, String(pendingAssessCount));
+  }, [pendingAssessCount, clanTag]);
 
   return (
     <nav className="space-y-2" data-testid="sidebar-navigation">
@@ -79,6 +127,7 @@ export const SidebarNavigation: React.FC<SidebarNavigationProps> = ({ items = na
             pathname={pathname}
             onNavigate={onNavigate}
             collapsed={collapsed}
+            badgeCount={pendingAssessCount}
           />
         ))}
     </nav>

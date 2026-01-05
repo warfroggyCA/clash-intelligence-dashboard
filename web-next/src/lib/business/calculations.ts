@@ -711,14 +711,16 @@ export const calculateRealTimeActivity = (member: Member): {
   
   // 1. RANKED BATTLE PARTICIPATION (0-20 points) - Definitive real-time indicator
   const rankedLeagueId = member.rankedLeagueId ?? (member.rankedLeague as any)?.id ?? member.leagueId;
-  const trophies = member.trophies ?? 0;
+  const rankedLeagueName = member.rankedLeagueName ?? (member.rankedLeague as any)?.name ?? member.leagueName ?? null;
+  const trophies = member.rankedTrophies ?? member.trophies ?? 0;
+  const hasLeague = Boolean(rankedLeagueId && rankedLeagueId !== 105000000) || Boolean(rankedLeagueName);
   
-  if (rankedLeagueId && rankedLeagueId !== 105000000 && trophies > 0) {
+  if (hasLeague && trophies > 0) {
     // Has league assignment AND active trophies = definitely participating
     score += 20;
     indicators.push('Active ranked battles');
     indicatorCount++;
-  } else if (rankedLeagueId && rankedLeagueId !== 105000000) {
+  } else if (hasLeague) {
     // Has league but no trophies = enrolled but not active
     score += 5;
     indicators.push('Ranked enrolled (not battling)');

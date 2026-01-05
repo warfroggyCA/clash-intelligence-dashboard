@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth/server';
 import { normalizeTag, isValidTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
+import { getLatestRosterSnapshot, resolveRosterMembers } from '@/lib/roster-resolver';
 import { cfg } from '@/lib/config';
 import { linkPlayerTags } from '@/lib/player-aliases';
 
@@ -66,17 +67,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Clan not found' }, { status: 404 });
     }
 
-    const { data: snapshotRows, error: snapshotError } = await supabase
-      .from('canonical_member_snapshots')
-      .select('player_tag')
-      .eq('clan_tag', clanTag)
-      .in('player_tag', normalizedTags)
-      .order('snapshot_date', { ascending: false })
-      .limit(normalizedTags.length * 3);
+    const latestSnapshot = await getLatestRosterSnapshot({ clanTag, supabase });
+    if (!latestSnapshot) {
+      return NextResponse.json(
+        { success: false, error: 'Roster snapshot not found. Try again after the next refresh.' },
+        { status: 404 },
+      );
+    }
 
-    if (snapshotError) throw snapshotError;
+    const { members } = await resolveRosterMembers({
+      supabase,
+      clanTag,
+      snapshotId: latestSnapshot.snapshotId,
+      snapshotDate: latestSnapshot.snapshotDate,
+    });
 
-    const foundTags = new Set((snapshotRows || []).map((row) => normalizeTag(row.player_tag)));
+    const foundTags = new Set(members.map((member) => normalizeTag(member.tag)).filter(Boolean));
     const missing = normalizedTags.filter((tag) => !foundTags.has(tag));
     if (missing.length) {
       return NextResponse.json(
@@ -132,4 +138,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

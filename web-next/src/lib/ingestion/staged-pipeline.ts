@@ -1274,6 +1274,118 @@ async function recordDepartures(params: {
   }
 }
 
+async function ensureRosterHistory(params: {
+  supabase: ReturnType<typeof getSupabaseAdminClient>;
+  clanTag: string;
+  snapshotDate: string;
+  members: MemberData[];
+  tenureByTag: Map<string, { days: number | null; asOf: string | null }>;
+}) {
+  const { supabase, clanTag, snapshotDate, members, tenureByTag } = params;
+  if (!members.length) return;
+
+  const tags = members.map((member) => normalizeTag(member.tag)).filter(Boolean);
+  if (!tags.length) return;
+
+  const { data: historyRows, error: historyError } = await supabase
+    .from('player_history')
+    .select('player_tag, primary_name, status, total_tenure, current_stint, movements, aliases, notes')
+    .eq('clan_tag', clanTag)
+    .in('player_tag', tags);
+
+  if (historyError) {
+    throw new Error(`Failed to load player history for roster: ${historyError.message}`);
+  }
+
+  const historyMap = new Map<string, any>();
+  (historyRows || []).forEach((row) => {
+    const normalized = normalizeTag(row.player_tag);
+    if (normalized) {
+      historyMap.set(normalized, row);
+    }
+  });
+
+  const upserts: any[] = [];
+
+  for (const member of members) {
+    const tag = normalizeTag(member.tag);
+    if (!tag) continue;
+
+    const tenure = tenureByTag.get(tag);
+    const tenureDays = typeof tenure?.days === 'number' ? tenure.days : null;
+    const tenureAsOf = tenure?.asOf ?? snapshotDate;
+    const daysSinceStart = tenureAsOf ? daysSinceToDate(tenureAsOf, snapshotDate) : 0;
+    const baseTenure = tenureDays != null ? Math.max(0, Math.round(tenureDays - daysSinceStart)) : 0;
+    const startDate = tenureAsOf ?? snapshotDate;
+
+    const existing = historyMap.get(tag);
+    const primaryName = member.name ?? existing?.primary_name ?? tag;
+    const aliases = Array.isArray(existing?.aliases) ? [...existing.aliases] : [];
+    if (primaryName && !aliases.includes(primaryName)) {
+      aliases.push(primaryName);
+    }
+
+    if (!existing) {
+      upserts.push({
+        clan_tag: clanTag,
+        player_tag: tag,
+        primary_name: primaryName,
+        status: 'active',
+        total_tenure: baseTenure,
+        current_stint: { startDate, isActive: true },
+        movements: [
+          { type: 'joined', date: startDate, notes: 'Backfilled from roster snapshot' },
+        ],
+        aliases,
+        notes: [],
+      });
+      continue;
+    }
+
+    let needsUpdate = false;
+    const nextStatus = existing.status === 'active' ? existing.status : 'active';
+    if (nextStatus !== existing.status) needsUpdate = true;
+
+    const currentStint = existing.current_stint ?? null;
+    let nextCurrentStint = currentStint;
+    if (!currentStint || currentStint?.isActive !== true) {
+      nextCurrentStint = { startDate, isActive: true };
+      needsUpdate = true;
+    }
+
+    const existingTotal = typeof existing.total_tenure === 'number' ? existing.total_tenure : 0;
+    const nextTotal = Math.max(existingTotal, baseTenure);
+    if (nextTotal !== existingTotal) needsUpdate = true;
+
+    if (primaryName && primaryName !== existing.primary_name) needsUpdate = true;
+    if (aliases.length !== (existing.aliases?.length ?? 0)) needsUpdate = true;
+
+    if (needsUpdate) {
+      upserts.push({
+        clan_tag: clanTag,
+        player_tag: tag,
+        primary_name: primaryName,
+        status: nextStatus,
+        total_tenure: nextTotal,
+        current_stint: nextCurrentStint,
+        movements: existing.movements ?? [],
+        aliases,
+        notes: existing.notes ?? [],
+      });
+    }
+  }
+
+  if (!upserts.length) return;
+
+  const { error: upsertError } = await supabase
+    .from('player_history')
+    .upsert(upserts, { onConflict: 'clan_tag,player_tag' });
+
+  if (upsertError) {
+    throw new Error(`Failed to backfill roster history: ${upsertError.message}`);
+  }
+}
+
 async function runWriteSnapshotPhase(jobId: string, snapshot: FullClanSnapshot, transformedData: TransformedData): Promise<PhaseResult> {
   const startTime = Date.now();
   
@@ -1400,10 +1512,10 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
       throw new Error(`Failed to get latest snapshot: ${snapshotError.message}`);
     }
 
-    // Get member IDs
+    // Get member IDs and tenure data
     const { data: members, error: membersError } = await supabase
       .from('members')
-      .select('id, tag')
+      .select('id, tag, tenure_days, tenure_as_of')
       .eq('clan_id', latestSnapshot.clan_id);
 
     if (membersError) {
@@ -1411,8 +1523,15 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
     }
 
     const memberIdByTag = new Map<string, string>();
+    const memberTenureByTag = new Map<string, { tenure_days: number | null; tenure_as_of: string | null }>();
     for (const member of members || []) {
-      memberIdByTag.set(member.tag, member.id);
+      // Normalize tag for consistent lookups
+      const normalizedMemberTag = normalizeTag(member.tag) || member.tag;
+      memberIdByTag.set(normalizedMemberTag, member.id);
+      memberTenureByTag.set(normalizedMemberTag, {
+        tenure_days: typeof member.tenure_days === 'number' ? member.tenure_days : null,
+        tenure_as_of: member.tenure_as_of || null,
+      });
     }
 
     // Remove existing stats for this snapshot to avoid duplicates on reruns
@@ -1422,24 +1541,33 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
     const snapshotDate = snapshot.fetchedAt ? snapshot.fetchedAt.slice(0, 10) : undefined;
     const tenureDetails = await readTenureDetails(snapshotDate);
 
+    const tenureByTag = new Map<string, { days: number | null; asOf: string | null }>();
     const snapshotStats = transformedData.memberData.map((member) => {
-      const memberId = memberIdByTag.get(member.tag);
+      // Normalize tag for consistent lookups
+      const normalizedLookupTag = normalizeTag(member.tag) || member.tag;
+      const memberId = memberIdByTag.get(normalizedLookupTag);
       if (!memberId) return null;
 
-       const tenureEntry = tenureDetails[member.tag];
-       const tenureAsOf = member.tenure_as_of ?? tenureEntry?.as_of ?? snapshotDate ?? null;
-       const tenureFromEntry = typeof tenureEntry?.days === 'number' ? tenureEntry.days : null;
-       let tenureDays = typeof member.tenure_days === 'number' ? member.tenure_days : tenureFromEntry;
+      // Get tenure from members table first, then fall back to ledger
+      const memberTenure = memberTenureByTag.get(normalizedLookupTag);
+      const tenureEntry = tenureDetails[normalizedLookupTag];
+      const tenureAsOf = memberTenure?.tenure_as_of ?? tenureEntry?.as_of ?? snapshotDate ?? null;
+      const tenureFromEntry = typeof tenureEntry?.days === 'number' ? tenureEntry.days : null;
+      let tenureDays = memberTenure?.tenure_days ?? tenureFromEntry;
        if (tenureDays == null && tenureAsOf) {
          const targetDate = snapshotDate ?? new Date().toISOString().slice(0, 10);
          const delta = daysSinceToDate(tenureAsOf, targetDate);
          tenureDays = delta >= 0 ? delta + 1 : null;
        }
        const normalizedTenure = tenureDays != null ? Math.max(1, Math.round(tenureDays)) : null;
+       const normalizedTag = normalizeTag(member.tag);
+       if (normalizedTag) {
+         tenureByTag.set(normalizedTag, { days: normalizedTenure, asOf: tenureAsOf });
+       }
 
       // Extract enriched fields from player detail
-      const normalized = normalizeTag(member.tag);
-      const detail = snapshot.playerDetails?.[normalized];
+      const normalized = normalizedTag;
+      const detail = normalized ? snapshot.playerDetails?.[normalized] : undefined;
       const enriched = extractEnrichedFields(detail);
 
       const tournamentStats = member.tournamentStats ?? null;
@@ -1552,6 +1680,16 @@ async function runWriteStatsPhase(jobId: string, transformedData: TransformedDat
       if (statsError) {
         throw new Error(`Failed to insert snapshot stats: ${statsError.message}`);
       }
+    }
+
+    if (snapshotStats.length) {
+      await ensureRosterHistory({
+        supabase,
+        clanTag: transformedData.clanData.tag,
+        snapshotDate: snapshotDate ?? new Date().toISOString().slice(0, 10),
+        members: transformedData.memberData,
+        tenureByTag,
+      });
     }
 
     const metricsInserted = await writeDerivedMetrics(

@@ -108,6 +108,21 @@ const GlowStatCard = ({
   </div>
 );
 
+const SkeletonCard = ({ className }: { className?: string }) => (
+  <div
+    className={`rounded-xl border border-white/5 bg-white/5 p-4 animate-pulse ${className ?? ''}`}
+  >
+    <div className="flex items-start gap-3">
+      <div className="h-10 w-10 rounded-lg bg-white/10" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-2/3 rounded bg-white/10" />
+        <div className="h-3 w-1/3 rounded bg-white/10" />
+        <div className="h-3 w-1/2 rounded bg-white/10" />
+      </div>
+    </div>
+  </div>
+);
+
 type PlayerNote = {
   note: string;
   timestamp: string;
@@ -134,6 +149,8 @@ type PlayerRecord = {
   isCurrentMember?: boolean;
   linkedAccounts?: LinkedAccount[];
   townHallLevel?: number;
+  tenureDays?: number | null;
+  tenureAsOf?: string | null;
 };
 
 const fetcher = async (url: string) => {
@@ -194,6 +211,25 @@ function PlayerDatabaseContent() {
     });
   }, [players, search, status]);
 
+  const sortedPlayers = useMemo(() => {
+    const list = [...filteredPlayers];
+    list.sort((a, b) => {
+      const aTenure = a.isCurrentMember && typeof a.tenureDays === 'number' ? a.tenureDays : null;
+      const bTenure = b.isCurrentMember && typeof b.tenureDays === 'number' ? b.tenureDays : null;
+
+      if (aTenure !== null && bTenure !== null) {
+        return aTenure - bTenure; // newer first
+      }
+      if (aTenure !== null && bTenure === null) return -1;
+      if (aTenure === null && bTenure !== null) return 1;
+
+      const aUpdated = a.lastUpdated ? new Date(a.lastUpdated).getTime() : 0;
+      const bUpdated = b.lastUpdated ? new Date(b.lastUpdated).getTime() : 0;
+      return bUpdated - aUpdated;
+    });
+    return list;
+  }, [filteredPlayers]);
+
   const activeWarnings = useMemo(
     () => filteredPlayers.filter((p) => p.warning?.isActive),
     [filteredPlayers]
@@ -214,12 +250,16 @@ function PlayerDatabaseContent() {
     [players]
   );
 
-  const recentlyUpdated = useMemo(() => {
-    if (!players.length) return null;
-    const sorted = [...players].sort((a, b) => 
-      new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime()
-    );
-    return sorted[0];
+  const newestJoiner = useMemo(() => {
+    const current = players.filter((p) => p.isCurrentMember);
+    if (!current.length) return null;
+    const withTenure = current.filter((p) => typeof p.tenureDays === 'number');
+    if (!withTenure.length) return current[0];
+    return withTenure.reduce((latest, player) => {
+      if (latest.tenureDays == null) return player;
+      if (player.tenureDays == null) return latest;
+      return player.tenureDays < latest.tenureDays ? player : latest;
+    });
   }, [players]);
 
   return (
@@ -412,15 +452,23 @@ function PlayerDatabaseContent() {
           </div>
           
           <div className="space-y-3">
-            {filteredPlayers.map((player) => (
-              <PlayerCard 
-                key={player.tag} 
-                player={player} 
-                onClick={() => setSelectedPlayer(player)}
-                isSelected={selectedPlayer?.tag === player.tag}
-              />
-            ))}
-            {!isLoading && filteredPlayers.length === 0 && (
+            {isLoading && players.length === 0 ? (
+              <>
+                {Array.from({ length: 6 }).map((_, idx) => (
+                  <SkeletonCard key={`player-skel-${idx}`} />
+                ))}
+              </>
+            ) : (
+              sortedPlayers.map((player) => (
+                <PlayerCard 
+                  key={player.tag} 
+                  player={player} 
+                  onClick={() => setSelectedPlayer(player)}
+                  isSelected={selectedPlayer?.tag === player.tag}
+                />
+              ))
+            )}
+            {!isLoading && sortedPlayers.length === 0 && (
               <div 
                 className="rounded-xl p-8 text-center"
                 style={{
@@ -454,13 +502,21 @@ function PlayerDatabaseContent() {
           </div>
           
           <div className="space-y-3">
-            {activeWarnings.map((player) => (
-              <WarningCard 
-                key={player.tag} 
-                player={player}
-                onClick={() => setSelectedPlayer(player)}
-              />
-            ))}
+            {isLoading && players.length === 0 ? (
+              <>
+                {Array.from({ length: 3 }).map((_, idx) => (
+                  <SkeletonCard key={`warn-skel-${idx}`} />
+                ))}
+              </>
+            ) : (
+              activeWarnings.map((player) => (
+                <WarningCard 
+                  key={player.tag} 
+                  player={player}
+                  onClick={() => setSelectedPlayer(player)}
+                />
+              ))
+            )}
             {!activeWarnings.length && (
               <div 
                 className="rounded-xl p-6 text-center"
@@ -477,11 +533,11 @@ function PlayerDatabaseContent() {
           </div>
 
           {/* Recently Updated */}
-          {recentlyUpdated && (
+          {newestJoiner && (
             <div className="mt-6">
               <h3 className="text-sm font-semibold text-slate-400 mb-3 flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Recently Updated
+                Newest Joiner
               </h3>
               <div 
                 className="rounded-xl p-3 cursor-pointer transition-all hover:scale-[1.02]"
@@ -490,16 +546,20 @@ function PlayerDatabaseContent() {
                   border: '1px solid rgba(255,255,255,0.06)',
                 }}
                 onClick={() => {
-                  router.push(`/new/player/${encodeURIComponent(normalizeTag(recentlyUpdated.tag) || recentlyUpdated.tag)}`);
+                  router.push(`/new/player/${encodeURIComponent(normalizeTag(newestJoiner.tag) || newestJoiner.tag)}`);
                 }}
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <div className="font-semibold text-white">{recentlyUpdated.name}</div>
-                    <div className="text-xs text-slate-500 font-mono">{recentlyUpdated.tag}</div>
+                    <div className="font-semibold text-white">{newestJoiner.name}</div>
+                    <div className="text-xs text-slate-500 font-mono">{newestJoiner.tag}</div>
                   </div>
                   <div className="text-xs text-slate-400">
-                    {formatDistanceToNow(new Date(recentlyUpdated.lastUpdated), { addSuffix: true })}
+                    {typeof newestJoiner.tenureDays === 'number'
+                      ? `Joined ${newestJoiner.tenureDays} ${newestJoiner.tenureDays === 1 ? 'day' : 'days'} ago`
+                      : (newestJoiner.lastUpdated
+                        ? formatDistanceToNow(new Date(newestJoiner.lastUpdated), { addSuffix: true })
+                        : '—')}
                   </div>
                 </div>
               </div>
@@ -591,7 +651,11 @@ function PlayerCard({
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {player.lastUpdated ? formatDistanceToNow(new Date(player.lastUpdated), { addSuffix: true }) : '—'}
+                {player.isCurrentMember && typeof player.tenureDays === 'number'
+                  ? `Joined ${player.tenureDays} ${player.tenureDays === 1 ? 'day' : 'days'} ago`
+                  : (player.lastUpdated
+                    ? `Last seen ${formatDistanceToNow(new Date(player.lastUpdated), { addSuffix: true })}`
+                    : '—')}
               </span>
               {player.linkedAccounts?.length ? (
                 <span className="flex items-center gap-1">

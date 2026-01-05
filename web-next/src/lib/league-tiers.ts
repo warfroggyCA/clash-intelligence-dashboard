@@ -2,25 +2,47 @@
 // Shared helpers for parsing and comparing Clash ranked leagues
 
 const LEAGUE_BASE_RANK: Record<string, number> = {
-  'Legend League': 1200,
-  'Titan League': 1100,
-  'Electro League': 1000,
-  'Dragon League': 900,
-  'PEKKA League': 800,
-  'Golem League': 700,
-  'Witch League': 600,
-  'Valkyrie League': 500,
-  'Wizard League': 400,
-  'Archer League': 300,
-  'Barbarian League': 200,
-  'Skeleton League': 100,
-  'Champion League': 950,
-  'Master League': 850,
-  'Crystal League': 750,
-  'Gold League': 650,
-  'Silver League': 550,
-  'Bronze League': 450,
-  Unranked: 0,
+  'legend league': 1200,
+  'titan league': 1100,
+  'electro league': 1000,
+  'dragon league': 900,
+  'pekka league': 800,
+  'golem league': 700,
+  'witch league': 600,
+  'valkyrie league': 500,
+  'wizard league': 400,
+  'archer league': 300,
+  'barbarian league': 200,
+  'skeleton league': 100,
+  'champion league': 950,
+  'master league': 850,
+  'crystal league': 750,
+  'gold league': 650,
+  'silver league': 550,
+  'bronze league': 450,
+  unranked: 0,
+};
+
+const LEAGUE_CANONICAL_NAME: Record<string, string> = {
+  'legend league': 'Legend League',
+  'titan league': 'Titan League',
+  'electro league': 'Electro League',
+  'dragon league': 'Dragon League',
+  'pekka league': 'PEKKA League',
+  'golem league': 'Golem League',
+  'witch league': 'Witch League',
+  'valkyrie league': 'Valkyrie League',
+  'wizard league': 'Wizard League',
+  'archer league': 'Archer League',
+  'barbarian league': 'Barbarian League',
+  'skeleton league': 'Skeleton League',
+  'champion league': 'Champion League',
+  'master league': 'Master League',
+  'crystal league': 'Crystal League',
+  'gold league': 'Gold League',
+  'silver league': 'Silver League',
+  'bronze league': 'Bronze League',
+  unranked: 'Unranked',
 };
 
 const ROMAN_VALUES: Record<string, number> = {
@@ -99,7 +121,9 @@ export function parseRankedLeagueName(
     }
   }
 
-  const baseRank = LEAGUE_BASE_RANK[baseName] ?? 0;
+  const normalizedBase = baseName.toLowerCase();
+  const baseRank = LEAGUE_BASE_RANK[normalizedBase] ?? 0;
+  const canonicalBaseName = LEAGUE_CANONICAL_NAME[normalizedBase] ?? baseName;
   const adjustedTier =
     tierValue == null
       ? 0
@@ -110,7 +134,7 @@ export function parseRankedLeagueName(
 
   return {
     raw: trimmed,
-    baseName,
+    baseName: canonicalBaseName,
     tierValue,
     direction,
     baseRank,
@@ -134,4 +158,3 @@ export function compareRankedLeagues(
 
   return currentInfo.score > previousInfo.score ? 1 : -1;
 }
-

@@ -199,6 +199,23 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
     memberIdByTag.set(normalizeTag(row.tag), row.id);
   }
 
+  // Query tenure data from members table
+  const memberTags = snapshot.memberSummaries.map((s) => normalizeTag(s.tag));
+  const { data: memberTenureData } = await supabase
+    .from('members')
+    .select('tag, tenure_days, tenure_as_of')
+    .eq('clan_id', clanRow.id)
+    .in('tag', memberTags);
+
+  const memberTenureByTag = new Map<string, { tenure_days: number | null; tenure_as_of: string | null }>();
+  for (const row of memberTenureData ?? []) {
+    const normalizedTag = normalizeTag(row.tag);
+    memberTenureByTag.set(normalizedTag, {
+      tenure_days: typeof row.tenure_days === 'number' ? row.tenure_days : null,
+      tenure_as_of: row.tenure_as_of || null,
+    });
+  }
+
   const totalTrophies = snapshot.memberSummaries.reduce((sum, m) => sum + (m.trophies ?? 0), 0);
   const totalDonations = snapshot.memberSummaries.reduce((sum, m) => sum + (m.donations ?? 0), 0);
 
@@ -434,8 +451,8 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
             }
           : null,
         tenure: {
-          days: null,
-          asOf: null,
+          days: memberTenureByTag.get(tag)?.tenure_days ?? null,
+          asOf: memberTenureByTag.get(tag)?.tenure_as_of ?? null,
         },
         extras,
       },
@@ -547,6 +564,8 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       exp_level: memberEnriched.expLevel ?? detail?.expLevel ?? null,
       best_trophies: memberEnriched.bestTrophies ?? detail?.bestTrophies ?? null,
       best_versus_trophies: memberEnriched.bestVersusTrophies ?? detail?.bestVersusTrophies ?? null,
+      tenure_days: memberTenureByTag.get(tag)?.tenure_days ?? null,
+      tenure_as_of: memberTenureByTag.get(tag)?.tenure_as_of ?? null,
     };
   }).filter(Boolean) as any[];
 
@@ -569,6 +588,16 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       console.warn('[persist-roster] Failed to upsert canonical member snapshots', canonicalError);
     }
   }
+
+  const rosterActivityEvents: Array<{
+    clan_tag: string;
+    player_tag: string;
+    event_type: string;
+    source: string;
+    occurred_at: string;
+    value: number | null;
+    metadata: Record<string, any>;
+  }> = [];
 
   if (playerDayStates.length) {
     for (const state of playerDayStates) {
@@ -618,6 +647,23 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
 
         const dayRow = generatePlayerDayRow(previousState, state);
 
+        const isPromotion = dayRow.events.includes('league_promotion');
+        const isDemotion = dayRow.events.includes('league_demotion');
+        if ((isPromotion || isDemotion) && prevRow?.league && dayRow.league) {
+          rosterActivityEvents.push({
+            clan_tag: dayRow.clanTag,
+            player_tag: dayRow.playerTag,
+            event_type: isPromotion ? 'league_promotion' : 'league_demotion',
+            source: 'roster_ingestion',
+            occurred_at: `${dayRow.date}T00:00:00Z`,
+            value: isPromotion ? 1 : -1,
+            metadata: {
+              from: prevRow.league,
+              to: dayRow.league,
+            },
+          });
+        }
+
         if (prevRow?.date === dayRow.date && prevRow.snapshot_hash === dayRow.snapshotHash) {
           continue;
         }
@@ -660,6 +706,19 @@ export async function persistRosterSnapshotToDataSpine(snapshot: FullClanSnapsho
       } catch (error) {
         console.warn('[persist-roster] Unexpected error writing player_day row', state.playerTag, error);
       }
+    }
+  }
+
+  if (rosterActivityEvents.length) {
+    const { error: activityError } = await supabase
+      .from('player_activity_events')
+      .upsert(rosterActivityEvents, {
+        onConflict: 'clan_tag,player_tag,event_type,source,occurred_at',
+        ignoreDuplicates: false,
+      });
+
+    if (activityError) {
+      console.warn('[persist-roster] Failed to upsert league activity events', activityError.message);
     }
   }
 

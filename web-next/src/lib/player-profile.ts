@@ -10,6 +10,8 @@ import { HERO_MAX_LEVELS } from '@/types';
 import type { HeroCaps, Roster } from '@/types';
 import { parseRole } from './leadership';
 import type { Member as DomainMember } from '@/types';
+import { extractPetLevels } from '@/lib/ingestion/field-extractors';
+import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 
 export type PlayerRoleTone = 'leader' | 'coleader' | 'elder' | 'member';
 
@@ -29,6 +31,7 @@ export interface PlayerProfileSummary {
     name?: string;
   } | null;
   trophies: number;
+  pets?: Record<string, number> | null;
   joinDate?: string;
   activityLevel: 'Very Active' | 'Active' | 'Moderate' | 'Low' | 'Inactive';
   rushScore: number;
@@ -40,6 +43,42 @@ export interface PlayerProfileSummary {
   lastSeen?: string;
   aceScore?: number | null;
   aceAvailability?: number | null;
+}
+
+async function fetchPetsFromCanonical(params: { clanTag: string; playerTag: string }): Promise<Record<string, number> | null> {
+  const { clanTag, playerTag } = params;
+  const normalizedClan = normalizeTag(clanTag);
+  const normalizedPlayer = normalizeTag(playerTag);
+  if (!normalizedClan || !normalizedPlayer) return null;
+
+  const safeClan = safeTagForFilename(normalizedClan);
+  const clanVariants = Array.from(new Set([
+    normalizedClan,
+    normalizedClan.toLowerCase(),
+    safeClan,
+  ]));
+
+  try {
+    const supabase = getSupabaseAdminClient();
+    const { data, error } = await supabase
+      .from('canonical_member_snapshots')
+      .select('payload')
+      .in('clan_tag', clanVariants)
+      .eq('player_tag', normalizedPlayer)
+      .order('snapshot_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !data?.payload) {
+      return null;
+    }
+
+    const pets = (data.payload as any)?.member?.pets;
+    return pets && typeof pets === 'object' ? pets : null;
+  } catch (error) {
+    console.warn('[PlayerProfile] Failed to load pets from canonical snapshots', error);
+    return null;
+  }
 }
 
 export interface PlayerHeroProgressItem {
@@ -261,6 +300,11 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
   });
 
   const trophies = playerDetail.trophies ?? member.trophies ?? 0;
+  const petsFromDetail = extractPetLevels(playerDetail);
+  const petsFromCanonical = petsFromDetail ?? await fetchPetsFromCanonical({
+    clanTag,
+    playerTag: normalizedPlayerTag,
+  });
   const hasLeague = Boolean(playerDetail.league && (playerDetail.league.name || typeof playerDetail.league.id === 'number'));
   
   // Use ranked league data (new competitive mode)
@@ -292,6 +336,7 @@ async function buildProfileFromSnapshots(playerTagWithHash: string): Promise<Pla
           }
         : null,
       trophies,
+      pets: petsFromCanonical ?? null,
       activityLevel: activity.level,
       rushScore: Number(rushScore.toFixed(1)),
       donationBalance: {

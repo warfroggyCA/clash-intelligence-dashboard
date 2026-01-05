@@ -1,14 +1,12 @@
 import { cfg } from '@/lib/config';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { runStagedIngestion, StagedIngestionOptions } from './staged-pipeline';
-import { generateChangeSummary, generateGameChatMessages } from '@/lib/ai-summarizer';
+import { generateHeuristicSummary, generateGameChatMessages } from '@/lib/ai-summarizer';
 import { addDeparture } from '@/lib/departures';
 import { resolveUnknownPlayers } from '@/lib/player-resolver';
-import { insightsEngine } from '@/lib/smart-insights';
-import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from '@/lib/insights-storage';
-import { saveAISummary } from '@/lib/supabase';
 import { sendIngestionFailure, sendIngestionWarning } from './alerting';
-import { detectChanges, saveChangeSummary, getSnapshotBeforeDate, getLatestSnapshot, type MemberChange } from '@/lib/snapshots';
+import { detectChanges, saveChangeSummary, getSnapshotBeforeDate, type MemberChange } from '@/lib/snapshots';
+import { runLeadershipAssessment } from '@/lib/leadership-assessment/engine';
 
 export interface StagedIngestionJobResult {
   clanTag: string;
@@ -33,7 +31,7 @@ export interface RunStagedIngestionJobOptions extends StagedIngestionOptions {
  * This replaces the old runIngestionJob with a more robust, phase-based approach.
  */
 export async function runStagedIngestionJob(options: RunStagedIngestionJobOptions = {}): Promise<StagedIngestionJobResult> {
-  const { runPostProcessing = true, forceInsights = false, forceFetch = false, ...stagedOptions } = options;
+  const { runPostProcessing = true, forceFetch = false, ...stagedOptions } = options;
   let clanTag = stagedOptions.clanTag || cfg.homeClanTag;
   
   // CRITICAL SAFEGUARD: Prevent accidental use of wrong clan tag
@@ -206,8 +204,8 @@ async function runPostProcessingSteps(clanTag: string, jobId?: string): Promise<
     if (changes.length > 0) {
       console.log(`[PostProcessing] Found ${changes.length} changes`);
       
-      // Generate change summary
-      const summary = await generateChangeSummary(changes, clanTag, currentSnapshot?.date || new Date().toISOString().split('T')[0]);
+      // Generate change summary (heuristic only; AI summaries disabled)
+      const summary = generateHeuristicSummary(changes);
       const changeSummary = {
         date: currentSnapshot?.date || new Date().toISOString().split('T')[0],
         clanTag,
@@ -246,32 +244,16 @@ async function runPostProcessingSteps(clanTag: string, jobId?: string): Promise<
     result.playersResolved = resolutionResult.resolved;
     result.resolutionErrors = resolutionResult.errors;
 
-    // Smart insights generation
-    console.log(`[PostProcessing] Generating insights for ${clanTag}`);
+    // AI insights disabled; manual analysis only.
+    result.insightsGenerated = false;
+
     try {
-        // Get clan data for insights generation
-        // Prefer currentSnapshot (from today's ingestion), otherwise get the absolute latest snapshot (including today)
-        // This ensures we use the most recent data available, not just data from before today
-        const clanData = currentSnapshot || await getLatestSnapshot(clanTag);
-        if (!clanData) {
-          throw new Error('No clan data available for insights generation');
-        }
-        
-        // Use the snapshot date from the data we're using, not today's date
-        const snapshotDateForInsights = clanData.date || currentSnapshot?.date || new Date().toISOString().split('T')[0];
-        
-        const insightsBundle = await insightsEngine.processBundle(
-          clanData,
-          changes,
-          clanTag,
-          snapshotDateForInsights
-        );
-        
-        await saveInsightsBundle(insightsBundle);
-        await cachePlayerDNAForClan(clanData, clanTag, snapshotDateForInsights);
-        result.insightsGenerated = true;
-    } catch (insightsError: any) {
-      console.warn(`[PostProcessing] Insights generation failed: ${insightsError.message}`);
+      if (process.env.DISABLE_LEADERSHIP_ASSESSMENT !== 'true') {
+        console.log(`[PostProcessing] Running leadership assessment for ${clanTag}`);
+        await runLeadershipAssessment({ clanTag, runType: 'auto' });
+      }
+    } catch (assessmentError: any) {
+      console.warn(`[PostProcessing] Leadership assessment failed: ${assessmentError.message}`);
     }
 
     console.log(`[PostProcessing] Completed for ${clanTag}`);

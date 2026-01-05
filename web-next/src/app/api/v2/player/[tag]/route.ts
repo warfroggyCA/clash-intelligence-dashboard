@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeTag } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { calculateActivityScore } from '@/lib/business/calculations';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 import type { Member, MemberEnriched } from '@/types';
 import type { PlayerActivityTimelineEvent } from '@/types';
+import { mapActivityToBand, resolveHeroPower, resolveLeagueDisplay, resolveTrophies } from '@/lib/roster-derivations';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -19,12 +20,19 @@ interface RawSnapshotRow {
   snapshot_date: string | null;
   trophies: number | null;
   ranked_trophies: number | null;
+  league_id?: number | null;
+  league_name?: string | null;
+  league_trophies?: number | null;
+  battle_mode_trophies?: number | null;
   donations: number | null;
   donations_received: number | null;
   activity_score: number | null;
   hero_levels: Record<string, unknown> | null;
   role?: string | null;
   th_level?: number | null;
+  rush_percent?: number | null;
+  tenure_days?: number | null;
+  tenure_as_of?: string | null;
   ranked_league_id?: number | null;
   ranked_league_name?: string | null;
   // Enriched fields (October 2025)
@@ -188,9 +196,12 @@ function buildTimelineEvents(rows: RawSnapshotRow[]): PlayerActivityTimelineEven
           }, {})
         : null;
 
-    const rankedPrimary = toNumber(row.ranked_trophies) ?? toNumber(row.trophies);
-    const trophies: number = rankedPrimary ?? previous?.trophies ?? 0;
-    const rankedTrophies = trophies;
+    const resolvedTrophies = resolveTrophies({
+      ranked_trophies: row.ranked_trophies ?? null,
+      trophies: row.trophies ?? null,
+    });
+    const trophies: number = resolvedTrophies ?? previous?.trophies ?? 0;
+    const rankedTrophies = resolvedTrophies ?? null;
 
     const rawDonations = toNumber(row.donations);
     const rawDonationsReceived = toNumber(row.donations_received);
@@ -417,7 +428,9 @@ export async function GET(
     const normalizedTag = normalizeTag(tagWithHash);
 
     const { cfg } = await import('@/lib/config');
-    const clanTag = normalizeTag(cfg.homeClanTag || '');
+    const { searchParams } = new URL(_req.url);
+    const requestedClanTag = searchParams.get('clanTag') || cfg.homeClanTag || '';
+    const clanTag = normalizeTag(requestedClanTag);
 
     const { data: clanRow, error: clanError } = await supabase
       .from('clans')
@@ -548,22 +561,28 @@ export async function GET(
     const timelineEvents = buildTimelineEvents(recentSnapshots ?? []);
 
     const primaryStats = statsRow ?? recentSnapshots?.[0] ?? null;
-    const heroLevels = coerceHeroLevels(primaryStats?.hero_levels ?? null);
+    const stats = primaryStats as any;
+    const heroLevels = coerceHeroLevels(stats?.hero_levels ?? null);
 
-    const rankedPrimary =
-      toNumber(primaryStats?.ranked_trophies) ??
-      toNumber(memberRow.ranked_trophies) ??
-      toNumber(primaryStats?.trophies) ??
-      toNumber(memberRow.league_trophies);
-    const trophies = rankedPrimary ?? 0;
-    const rankedTrophies = rankedPrimary ?? null;
-    const donations = toNumber(primaryStats?.donations);
-    const donationsReceived = toNumber(primaryStats?.donations_received);
+    const stats = primaryStats as any;
+    const rawTrophies = toNumber(stats?.trophies);
+    const rawRankedTrophies =
+      toNumber(stats?.ranked_trophies) ?? toNumber(memberRow.ranked_trophies);
+    const resolvedTrophies = resolveTrophies({
+      ranked_trophies: rawRankedTrophies,
+      trophies: rawTrophies,
+      league_trophies: toNumber(stats?.league_trophies) ?? toNumber(memberRow.league_trophies),
+      battle_mode_trophies: toNumber(stats?.battle_mode_trophies),
+    });
+    const trophies = rawTrophies ?? null;
+    const rankedTrophies = rawRankedTrophies && rawRankedTrophies > 0 ? rawRankedTrophies : null;
+    const donations = toNumber(stats?.donations);
+    const donationsReceived = toNumber(stats?.donations_received);
 
     const rankedLeagueId =
-      primaryStats?.ranked_league_id ?? memberRow.ranked_league_id ?? null;
+      stats?.ranked_league_id ?? memberRow.ranked_league_id ?? null;
     const rankedLeagueName =
-      primaryStats?.ranked_league_name ?? memberRow.ranked_league_name ?? null;
+      stats?.ranked_league_name ?? memberRow.ranked_league_name ?? null;
 
     const seasonStartDate = new Date(SEASON_START_ISO);
     let lastWeekTrophies: number | null = null;
@@ -575,8 +594,10 @@ export async function GET(
         const snapshotDate = new Date(snapshot.snapshot_date);
         if (Number.isNaN(snapshotDate.valueOf())) continue;
         if (snapshotDate.getUTCDay() === 1) {
-          const mondayTrophies =
-            toNumber(snapshot.ranked_trophies) ?? toNumber(snapshot.trophies);
+          const mondayTrophies = resolveTrophies({
+            ranked_trophies: snapshot.ranked_trophies ?? null,
+            trophies: snapshot.trophies ?? null,
+          });
           if (mondayTrophies !== null) {
             if (lastWeekTrophies === null) {
               lastWeekTrophies = mondayTrophies;
@@ -592,38 +613,43 @@ export async function GET(
         }
       }
     }
-    seasonTotalTrophies += trophies;
+    if (resolvedTrophies != null) {
+      seasonTotalTrophies += resolvedTrophies;
+    }
 
+    const stats = primaryStats as any;
     const enrichedForMember: MemberEnriched = {
-      petLevels: primaryStats?.pet_levels ?? null,
-      builderHallLevel: primaryStats?.builder_hall_level ?? null,
-      versusTrophies: primaryStats?.versus_trophies ?? null,
-      versusBattleWins: primaryStats?.versus_battle_wins ?? null,
-      builderLeagueId: primaryStats?.builder_league_id ?? null,
-      warStars: primaryStats?.war_stars ?? null,
-      attackWins: primaryStats?.attack_wins ?? null,
-      defenseWins: primaryStats?.defense_wins ?? null,
-      capitalContributions: primaryStats?.capital_contributions ?? null,
-      maxTroopCount: primaryStats?.max_troop_count ?? null,
-      maxSpellCount: primaryStats?.max_spell_count ?? null,
-      superTroopsActive: primaryStats?.super_troops_active ?? null,
-      achievementCount: primaryStats?.achievement_count ?? null,
-      achievementScore: primaryStats?.achievement_score ?? null,
-      expLevel: primaryStats?.exp_level ?? null,
-      bestTrophies: primaryStats?.best_trophies ?? null,
-      bestVersusTrophies: primaryStats?.best_versus_trophies ?? null,
-      equipmentLevels: primaryStats?.equipment_flags ?? null,
+      petLevels: stats?.pet_levels ?? null,
+      builderHallLevel: stats?.builder_hall_level ?? null,
+      versusTrophies: stats?.versus_trophies ?? null,
+      versusBattleWins: stats?.versus_battle_wins ?? null,
+      builderLeagueId: stats?.builder_league_id ?? null,
+      warStars: stats?.war_stars ?? null,
+      attackWins: stats?.attack_wins ?? null,
+      defenseWins: stats?.defense_wins ?? null,
+      capitalContributions: stats?.capital_contributions ?? null,
+      maxTroopCount: stats?.max_troop_count ?? null,
+      maxSpellCount: stats?.max_spell_count ?? null,
+      superTroopsActive: stats?.super_troops_active ?? null,
+      achievementCount: stats?.achievement_count ?? null,
+      achievementScore: stats?.achievement_score ?? null,
+      expLevel: stats?.exp_level ?? null,
+      bestTrophies: stats?.best_trophies ?? null,
+      bestVersusTrophies: stats?.best_versus_trophies ?? null,
+      equipmentLevels: stats?.equipment_flags ?? null,
     };
 
     const memberForActivity: Member = {
       name: memberRow.name ?? normalizedTag,
       tag: memberRow.tag,
-      role: primaryStats?.role ?? memberRow.role ?? undefined,
-      townHallLevel: primaryStats?.th_level ?? memberRow.th_level ?? undefined,
-      trophies,
-      rankedTrophies: rankedTrophies ?? undefined,
+      role: stats?.role ?? memberRow.role ?? undefined,
+      townHallLevel: stats?.th_level ?? memberRow.th_level ?? undefined,
+      trophies: resolvedTrophies ?? undefined,
+      rankedTrophies: rankedTrophies ?? resolvedTrophies ?? undefined,
       rankedLeagueId: rankedLeagueId ?? undefined,
       rankedLeagueName: rankedLeagueName ?? undefined,
+      leagueId: stats?.league_id ?? memberRow.league_id ?? undefined,
+      leagueName: stats?.league_name ?? memberRow.league_name ?? undefined,
       donations: donations ?? undefined,
       donationsReceived: donationsReceived ?? undefined,
       bk: heroLevels.bk ?? undefined,
@@ -635,18 +661,48 @@ export async function GET(
       enriched: enrichedForMember,
     };
 
-    const activityEvidence = calculateActivityScore(memberForActivity, { timeline: timelineEvents });
+    const activityEvidence = resolveMemberActivity({
+      ...memberForActivity,
+      activityTimeline: timelineEvents,
+    } as Member & { activityTimeline?: PlayerActivityTimelineEvent[] });
+    const activityBand = mapActivityToBand(activityEvidence);
+      const resolvedLeague = resolveLeagueDisplay(
+      {
+        rankedLeagueName,
+        leagueName: memberRow.league_name ?? null,
+        rankedLeague: rankedLeagueName ? { name: rankedLeagueName ?? undefined } : null,
+        rankedModifier: memberRow.ranked_modifier ?? null,
+      },
+      { allowProfileFallback: true }
+    );
+    const heroPower = resolveHeroPower({
+      hero_levels: stats?.hero_levels ?? null,
+      bk: heroLevels.bk ?? null,
+      aq: heroLevels.aq ?? null,
+      gw: heroLevels.gw ?? null,
+      rc: heroLevels.rc ?? null,
+      mp: heroLevels.mp ?? null,
+    });
 
     const responseData = {
       name: memberRow.name ?? normalizedTag,
       tag: memberRow.tag,
-      role: primaryStats?.role ?? memberRow.role ?? null,
-      townHallLevel: primaryStats?.th_level ?? memberRow.th_level ?? null,
+      role: stats?.role ?? memberRow.role ?? null,
+      townHallLevel: stats?.th_level ?? memberRow.th_level ?? null,
       trophies,
       lastWeekTrophies,
       rankedTrophies,
       donations,
       donationsReceived,
+      activityScore: activityEvidence?.score ?? stats?.activity_score ?? null,
+      rushPercent: stats?.rush_percent ?? null,
+      tenureDays: stats?.tenure_days ?? null,
+      tenureAsOf: stats?.tenure_as_of ?? null,
+      heroLevels: stats?.hero_levels ?? null,
+      leagueId: stats?.league_id ?? memberRow.league_id ?? null,
+      leagueName: stats?.league_name ?? memberRow.league_name ?? null,
+      leagueTrophies: stats?.league_trophies ?? memberRow.league_trophies ?? null,
+      battleModeTrophies: stats?.battle_mode_trophies ?? null,
       rankedLeagueId,
       rankedLeagueName,
       rankedLeague:
@@ -666,6 +722,15 @@ export async function GET(
       clan: clanRow ? { name: clanRow.name } : null,
       activityTimeline: timelineEvents,
       activity: activityEvidence,
+      activityBand: activityBand.band,
+      activityTone: activityBand.tone,
+      resolvedTrophies,
+      resolvedLeague: {
+        name: resolvedLeague.league,
+        tier: resolvedLeague.tier ?? undefined,
+        hasLeague: resolvedLeague.hasLeague,
+      },
+      heroPower,
       seasonTotalTrophies,
       // Enriched data (October 2025)
       enriched: enrichedForMember,

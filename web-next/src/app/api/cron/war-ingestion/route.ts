@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ingestWarData } from '@/lib/ingestion/war-ingestion';
 import { ingestCapitalData } from '@/lib/ingestion/capital-ingestion';
+import { backfillWarAttacksFromSnapshots } from '@/lib/ingestion/war-attacks-backfill';
 import { getSupabaseAdminClient } from '@/lib/supabase-admin';
 import { cfg } from '@/lib/config';
 
@@ -41,6 +42,18 @@ export async function GET(request: NextRequest) {
       warLogLimit: 20, // Fetch last 20 wars
       skipCurrentWar: false, // Also fetch current war if active
     });
+
+    let warBackfillResult: Awaited<ReturnType<typeof backfillWarAttacksFromSnapshots>> | null = null;
+    try {
+      warBackfillResult = await backfillWarAttacksFromSnapshots({
+        clanTag,
+        daysBack: 7,
+        pageSize: 50,
+        maxSnapshots: 200,
+      });
+    } catch (error: any) {
+      console.warn(`[WarCron ${executionId}] War attack backfill failed:`, error?.message || error);
+    }
 
     const isCapitalRunDay = new Date().getUTCDay() === 1; // Monday (UTC)
     let capitalResult: Awaited<ReturnType<typeof ingestCapitalData>> | null = null;
@@ -102,6 +115,7 @@ export async function GET(request: NextRequest) {
         errors: warResult.errors,
         capital_ingestion_triggered: isCapitalRunDay,
         capital_ingestion_success: capitalResult?.success ?? (capitalError ? false : null),
+        war_attack_backfill: warBackfillResult,
       },
     });
 
@@ -112,6 +126,7 @@ export async function GET(request: NextRequest) {
       wars_ingested: warResult.warsIngested,
       current_war_ingested: warResult.currentWarIngested,
       timestamp: endTime,
+      war_attack_backfill: warBackfillResult,
       capital_ingestion: isCapitalRunDay
         ? {
             attempted: true,
@@ -160,4 +175,3 @@ export async function GET(request: NextRequest) {
     }, { status: 500 });
   }
 }
-

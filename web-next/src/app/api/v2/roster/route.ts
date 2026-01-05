@@ -3,8 +3,8 @@ import { z } from 'zod';
 import { cfg } from '@/lib/config';
 import { normalizeTag, safeTagForFilename } from '@/lib/tags';
 import { getSupabaseServerClient } from '@/lib/supabase-server';
-import { calculateActivityScore } from '@/lib/business/calculations';
-import type { Member } from '@/types';
+import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
+import type { Member, PlayerActivityTimelineEvent } from '@/types';
 import { sanitizeErrorForApi } from '@/lib/security/error-sanitizer';
 import {
   buildTimelineFromPlayerDay,
@@ -12,8 +12,9 @@ import {
   DEFAULT_SEASON_START_ISO,
   type PlayerDayTimelineRow,
 } from '@/lib/activity/timeline';
-import { readLedgerEffective } from '@/lib/tenure';
+import { resolveRosterMembers } from '@/lib/roster-resolver';
 import { calculateHistoricalTrophiesForPlayers } from '@/lib/business/historical-trophies';
+import { mapActivityToBand, resolveHeroPower, resolveLeagueDisplay, resolveTrophies } from '@/lib/roster-derivations';
 
 export const dynamic = 'force-dynamic';
 // Cache roster data aggressively - data only updates once per day (nightly cron)
@@ -163,65 +164,13 @@ export async function GET(req: NextRequest) {
         }
       : null;
 
-    // PERFORMANCE: Parallelize independent queries to reduce total latency
-    // These queries don't depend on each other, so they can run concurrently
-    const [
-      { data: statsRows, error: statsError },
-      { data: canonicalSnapshots, error: canonicalError },
-      tenureMap,
-    ] = await Promise.all([
-      // Get ALL member stats from member_snapshot_stats (this is the single source of truth)
-      supabase
-        .from('member_snapshot_stats')
-        .select('member_id, th_level, role, trophies, donations, donations_received, hero_levels, activity_score, rush_percent, war_stars, attack_wins, defense_wins, capital_contributions, pet_levels, builder_hall_level, versus_trophies, versus_battle_wins, builder_league_id, max_troop_count, max_spell_count, super_troops_active, achievement_count, achievement_score, exp_level, equipment_flags, best_trophies, best_versus_trophies, ranked_trophies, ranked_league_id, ranked_league_name, league_id, league_name, league_trophies, battle_mode_trophies, tenure_days, tenure_as_of')
-        .eq('snapshot_id', snapshot.id),
-      // Get canonical snapshots for additional data (activity, etc.) - single query
-      // Use fetched_at date for matching canonical snapshots
-      latestSnapshotDate
-        ? supabase
-            .from('canonical_member_snapshots')
-            .select('player_tag, payload')
-            .eq('clan_tag', clanTag)
-            .eq('snapshot_date', latestSnapshotDate)
-        : supabase
-            .from('canonical_member_snapshots')
-            .select('player_tag, payload')
-            .eq('clan_tag', clanTag)
-            .limit(0), // Return empty result if no snapshot date
-      // Get tenure data from the tenure ledger
-      readLedgerEffective(),
-    ]);
-
-    if (statsError) {
-      throw statsError;
-    }
-    if (canonicalError) {
-      throw canonicalError;
-    }
-
-    const stats = statsRows ?? [];
-    const memberIds = stats.map((row) => row.member_id).filter(Boolean) as string[];
-
-    // Get member info (tags, names, cumulative donations) - single query
-    const { data: memberRows, error: memberError } = await supabase
-      .from('members')
-      .select('id, tag, name, cumulative_donations_given, cumulative_donations_received')
-      .in('id', memberIds);
-
-    if (memberError) {
-      throw memberError;
-    }
-
-    const memberLookup = new Map(memberRows?.map(m => [m.id, m]) || []);
-
-    // Map canonical snapshots by tag for quick lookup
-    const canonicalByTag = new Map<string, any>();
-    for (const cs of canonicalSnapshots || []) {
-      const tag = normalizeTag(cs.player_tag || '');
-      if (tag && !canonicalByTag.has(tag)) {
-        canonicalByTag.set(tag, cs);
-      }
-    }
+    const { members, memberTagToId: memberTagToUuidMap, memberIdToTag: memberIdToTagMap } =
+      await resolveRosterMembers({
+        supabase,
+        clanTag,
+        snapshotId: snapshot.id,
+        snapshotDate: latestSnapshotDate,
+      });
 
     // PERFORMANCE: Fetch player_day data in parallel with member processing
     // This query doesn't depend on the members array, so it can run concurrently
@@ -239,86 +188,7 @@ export async function GET(req: NextRequest) {
       .order('player_tag')
       .order('date');
 
-    // Build members from stats (single source of truth) + enrich with canonical payload data
-    const rawMembers = stats.map(stat => {
-      const member = memberLookup.get(stat.member_id);
-      if (!member) return null;
-
-      const canonicalTag = normalizeTag(member.tag || '');
-      if (!canonicalTag) return null;
-
-      const canonical = canonicalByTag.get(canonicalTag);
-      const canonicalMember = canonical?.payload?.member || {};
-      const ranked = canonicalMember.ranked || {};
-      const league = canonicalMember.league || {};
-
-      return {
-        id: member.id,
-        tag: canonicalTag,
-        name: member.name || canonicalMember.name || canonicalTag,
-        th_level: stat.th_level ?? canonicalMember.townHallLevel ?? null,
-        role: stat.role ?? canonicalMember.role ?? null,
-        trophies: stat.trophies ?? canonicalMember.trophies ?? null,
-        ranked_trophies: stat.ranked_trophies ?? canonicalMember.battleModeTrophies ?? ranked.trophies ?? null,
-        // LEAGUE DATA FROM STATS (single source of truth), fallback to canonical payload if missing
-        ranked_league_id: stat.ranked_league_id ?? ranked.leagueId ?? null,
-        ranked_league_name: stat.ranked_league_name ?? ranked.leagueName ?? null,
-        league_id: stat.league_id ?? league.id ?? null,
-        league_name: stat.league_name ?? league.name ?? null,
-        league_trophies: stat.league_trophies ?? league.trophies ?? null,
-        battle_mode_trophies: stat.battle_mode_trophies ?? null,
-        // DONATIONS FROM STATS (single source of truth)
-        donations: stat.donations ?? 0,
-        donations_received: stat.donations_received ?? 0,
-        // CUMULATIVE DONATIONS FROM MEMBERS TABLE (accumulates over tenure)
-        cumulative_donations_given: member.cumulative_donations_given ?? 0,
-        cumulative_donations_received: member.cumulative_donations_received ?? 0,
-        hero_levels: stat.hero_levels ?? canonicalMember.heroLevels ?? null,
-        activity_score: stat.activity_score ?? canonicalMember.activityScore ?? null,
-        rush_percent: stat.rush_percent ?? canonicalMember.rushPercent ?? null,
-        best_trophies: stat.best_trophies ?? canonicalMember.bestTrophies ?? null,
-        best_versus_trophies: stat.best_versus_trophies ?? canonicalMember.bestVersusTrophies ?? null,
-        war_stars: stat.war_stars ?? canonicalMember.war?.stars ?? null,
-        attack_wins: stat.attack_wins ?? canonicalMember.war?.attackWins ?? null,
-        defense_wins: stat.defense_wins ?? canonicalMember.war?.defenseWins ?? null,
-        capital_contributions: stat.capital_contributions ?? canonicalMember.capitalContributions ?? null,
-        pet_levels: stat.pet_levels ?? canonicalMember.pets ?? null,
-        builder_hall_level: stat.builder_hall_level ?? canonicalMember.builderBase?.hallLevel ?? null,
-        versus_trophies: stat.versus_trophies ?? canonicalMember.builderBase?.trophies ?? null,
-        versus_battle_wins: stat.versus_battle_wins ?? canonicalMember.builderBase?.battleWins ?? null,
-        builder_league_id: stat.builder_league_id ?? canonicalMember.builderBase?.league?.id ?? null,
-        max_troop_count: stat.max_troop_count ?? 0,
-        max_spell_count: stat.max_spell_count ?? 0,
-        super_troops_active: stat.super_troops_active ?? canonicalMember.superTroopsActive ?? null,
-        achievement_count: stat.achievement_count ?? 0,
-        achievement_score: stat.achievement_score ?? 0,
-        exp_level: stat.exp_level ?? canonicalMember.expLevel ?? null,
-        equipment_flags: stat.equipment_flags ?? canonicalMember.equipmentLevels ?? null,
-        tenure_days: stat.tenure_days ?? tenureMap[canonicalTag] ?? null,
-        tenure_as_of: stat.tenure_as_of ?? null,
-        snapshot_date: latestSnapshotDate,
-      };
-    }).filter((member): member is NonNullable<typeof member> => member !== null);
-
-    type SnapshotMember = (typeof rawMembers)[number];
-    const members: SnapshotMember[] = rawMembers;
-
-    // Build tag->UUID maps from the members we already have (no extra query needed)
-    const memberTagToUuidMap = new Map<string, string>();
-    const memberIdToTagMap = new Map<string, string>();
-    for (const member of members) {
-      if (member.id && member.tag) {
-        const normalizedTag = normalizeTag(member.tag);
-        if (normalizedTag) {
-          memberTagToUuidMap.set(normalizedTag, member.id);
-          memberIdToTagMap.set(member.id, normalizedTag);
-        }
-      }
-    }
-
-    const canonicalTags = members
-      .map((member) => normalizeTag(member.tag ?? ''))
-      .filter((tag): tag is string => Boolean(tag));
+    type SnapshotMember = (typeof members)[number];
 
     // PERFORMANCE: Process player_day data (already fetched in parallel above)
     const timelineByPlayer = new Map<string, ReturnType<typeof buildTimelineFromPlayerDay>>();
@@ -549,17 +419,29 @@ export async function GET(req: NextRequest) {
       const timelinePoints = timelineStats?.timeline ?? [];
       const activityTimeline = mapTimelinePointsToActivityEvents(timelinePoints);
 
-      const activityEvidence = calculateActivityScore(toMemberForActivity(member), {
-        timeline: activityTimeline,
-        lookbackDays: 7,
-      });
+      const activityEvidence = resolveMemberActivity({
+        ...toMemberForActivity(member),
+        activityTimeline,
+      } as Member & { activityTimeline?: PlayerActivityTimelineEvent[] });
 
-      const activityScore = activityEvidence?.score ?? member.activity_score ?? 0;
+      const activityScore = activityEvidence?.score ?? member.activity_score ?? null;
       
       // Use SSOT historical trophy data
       const historicalData = historicalTrophyDataByMember.get(memberTag);
-      const resolvedLastWeek = historicalData?.lastWeekTrophies ?? timelineStats?.lastWeekTrophies ?? 0;
-      const resolvedSeasonTotal = historicalData?.seasonTotalTrophies ?? timelineStats?.seasonTotalTrophies ?? 0;
+      const resolvedLastWeek = historicalData?.lastWeekTrophies ?? timelineStats?.lastWeekTrophies ?? null;
+      const resolvedSeasonTotal = historicalData?.seasonTotalTrophies ?? timelineStats?.seasonTotalTrophies ?? null;
+
+      const resolvedTrophies = resolveTrophies(member);
+      const resolvedLeague = resolveLeagueDisplay(member, { allowProfileFallback: false });
+      const heroPower = resolveHeroPower({
+        hero_levels: member.hero_levels ?? null,
+        bk: member.hero_levels?.bk ?? null,
+        aq: member.hero_levels?.aq ?? null,
+        gw: member.hero_levels?.gw ?? null,
+        rc: member.hero_levels?.rc ?? null,
+        mp: member.hero_levels?.mp ?? null,
+      });
+      const activityBand = mapActivityToBand(activityEvidence);
 
       return {
         id: member.id,
@@ -567,42 +449,51 @@ export async function GET(req: NextRequest) {
         name: member.name,
         role: member.role,
         townHallLevel: member.th_level,
-        trophies: member.trophies || 0,
-        rankedTrophies: member.ranked_trophies || 0,
+        trophies: member.trophies ?? null,
+        rankedTrophies: member.ranked_trophies ?? null,
         rankedLeagueId: member.ranked_league_id,
         rankedLeagueName: member.ranked_league_name,
         leagueId: member.league_id,
         leagueName: member.league_name,
-        leagueTrophies: member.league_trophies || 0,
-        battleModeTrophies: member.battle_mode_trophies || 0,
-        donations: member.donations || 0,
-        donationsReceived: member.donations_received || 0,
+        leagueTrophies: member.league_trophies ?? null,
+        battleModeTrophies: member.battle_mode_trophies ?? null,
+        donations: member.donations ?? null,
+        donationsReceived: member.donations_received ?? null,
         heroLevels: member.hero_levels,
-        bk: member.hero_levels?.bk || 0,
-        aq: member.hero_levels?.aq || 0,
-        gw: member.hero_levels?.gw || 0,
-        rc: member.hero_levels?.rc || 0,
-        mp: member.hero_levels?.mp || 0,
+        bk: member.hero_levels?.bk ?? null,
+        aq: member.hero_levels?.aq ?? null,
+        gw: member.hero_levels?.gw ?? null,
+        rc: member.hero_levels?.rc ?? null,
+        mp: member.hero_levels?.mp ?? null,
         activityScore,
         activity: activityEvidence,
-        rushPercent: member.rush_percent || 0,
-        bestTrophies: member.best_trophies || 0,
-        bestVersusTrophies: member.best_versus_trophies || 0,
-        warStars: member.war_stars || 0,
-        attackWins: member.attack_wins || 0,
-        defenseWins: member.defense_wins || 0,
-        capitalContributions: member.capital_contributions || 0,
+        activityBand: activityBand.band,
+        activityTone: activityBand.tone,
+        resolvedTrophies,
+        resolvedLeague: {
+          name: resolvedLeague.league,
+          tier: resolvedLeague.tier ?? undefined,
+          hasLeague: resolvedLeague.hasLeague,
+        },
+        heroPower,
+        rushPercent: member.rush_percent ?? null,
+        bestTrophies: member.best_trophies ?? null,
+        bestVersusTrophies: member.best_versus_trophies ?? null,
+        warStars: member.war_stars ?? null,
+        attackWins: member.attack_wins ?? null,
+        defenseWins: member.defense_wins ?? null,
+        capitalContributions: member.capital_contributions ?? null,
         petLevels: member.pet_levels,
-        builderHallLevel: member.builder_hall_level || 0,
-        versusTrophies: member.versus_trophies || 0,
-        versusBattleWins: member.versus_battle_wins || 0,
+        builderHallLevel: member.builder_hall_level ?? null,
+        versusTrophies: member.versus_trophies ?? null,
+        versusBattleWins: member.versus_battle_wins ?? null,
         builderLeagueId: member.builder_league_id,
-        maxTroopCount: member.max_troop_count || 0,
-        maxSpellCount: member.max_spell_count || 0,
+        maxTroopCount: member.max_troop_count ?? null,
+        maxSpellCount: member.max_spell_count ?? null,
         superTroopsActive: member.super_troops_active,
-        achievementCount: member.achievement_count || 0,
-        achievementScore: member.achievement_score || 0,
-        expLevel: member.exp_level || 0,
+        achievementCount: member.achievement_count ?? null,
+        achievementScore: member.achievement_score ?? null,
+        expLevel: member.exp_level ?? null,
         equipmentFlags: member.equipment_flags,
         tenureDays: member.tenure_days ?? null,
         tenure_days: member.tenure_days ?? null,
@@ -634,8 +525,7 @@ export async function GET(req: NextRequest) {
     let clanHeroAverages: Record<string, number | { average: number; count: number }> = {};
     if (clanTag) {
       try {
-        // Use the canonical snapshots we already fetched for clan averages
-        if (canonicalSnapshots && canonicalSnapshots.length > 0) {
+        if (members.length > 0) {
           const totals: Record<string, { sum: number; count: number }> = {
             bk: { sum: 0, count: 0 },
             aq: { sum: 0, count: 0 },
@@ -644,23 +534,19 @@ export async function GET(req: NextRequest) {
             mp: { sum: 0, count: 0 },
           };
 
-          canonicalSnapshots.forEach((row) => {
-            const payload = row.payload as any;
-            if (payload?.member?.heroLevels) {
-              const heroLevels = payload.member.heroLevels;
-              ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
-                const value = heroLevels[heroKey as keyof typeof heroLevels];
-                if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
-                  totals[heroKey].sum += value;
-                  totals[heroKey].count += 1;
-                }
-              });
-            }
+          members.forEach((member) => {
+            const heroLevels = member.hero_levels ?? {};
+            ['bk', 'aq', 'gw', 'rc', 'mp'].forEach((heroKey) => {
+              const value = heroLevels[heroKey as keyof typeof heroLevels];
+              if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+                totals[heroKey].sum += value;
+                totals[heroKey].count += 1;
+              }
+            });
           });
 
           Object.entries(totals).forEach(([hero, data]) => {
             if (data.count > 0) {
-              // Store both average and count for accurate display
               clanHeroAverages[hero] = {
                 average: data.sum / data.count,
                 count: data.count,
@@ -674,13 +560,34 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    // Sort by trophies descending
-    transformedMembers.sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
+    // Sort by resolved trophies descending (fallback to raw trophies when present)
+    const scoreTrophies = (value: number | null | undefined) =>
+      typeof value === 'number' && Number.isFinite(value) ? value : -1;
+    transformedMembers.sort(
+      (a, b) =>
+        scoreTrophies(b.resolvedTrophies ?? b.trophies ?? null) -
+        scoreTrophies(a.resolvedTrophies ?? a.trophies ?? null),
+    );
 
     const snapshotDate = latestSnapshotDate;
     const payloadVersion = snapshot.payload_version ?? `snapshot-${snapshot.id}`;
-    const totalTrophies = snapshot.total_trophies ?? transformedMembers.reduce((sum, m) => sum + (m.trophies || 0), 0);
-    const totalDonations = snapshot.total_donations ?? transformedMembers.reduce((sum, m) => sum + (m.donations || 0), 0);
+    const sumIfComplete = (values: Array<number | null | undefined>): number | null => {
+      let sum = 0;
+      let hasValue = false;
+      for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          sum += value;
+          hasValue = true;
+        } else {
+          return null;
+        }
+      }
+      return hasValue ? sum : null;
+    };
+    const computedTotalTrophies = sumIfComplete(transformedMembers.map((m) => m.resolvedTrophies ?? m.trophies ?? null));
+    const computedTotalDonations = sumIfComplete(transformedMembers.map((m) => m.donations ?? null));
+    const totalTrophies = snapshot.total_trophies ?? computedTotalTrophies;
+    const totalDonations = snapshot.total_donations ?? computedTotalDonations;
 
     // Get current date in UTC for comparison
     const currentDateUTC = new Date().toISOString().split('T')[0];

@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { flattenNav, navConfig } from '@/lib/nav-config';
+import { normalizeSearch } from '@/lib/search';
 
 interface GlobalSearchProps {
   placeholder?: string;
@@ -37,15 +39,19 @@ export function GlobalSearch({ placeholder = 'Search players, wars, analytics…
     return () => window.removeEventListener('keydown', handleKey);
   }, [closePalette, openPalette]);
 
-  const shortcuts = useMemo(
-    () => [
-      { label: 'Assess new member', href: '/players/assess' },
-      { label: 'Open roster', href: '/players/roster' },
-      { label: 'Start war plan', href: '/war/planning' },
-      { label: 'View war analytics', href: '/war/analytics' },
-    ],
-    []
-  );
+  const features = useMemo(() => flattenNav(navConfig), []);
+  const filteredFeatures = useMemo(() => {
+    const term = normalizeSearch(query.trim());
+    if (!term) {
+      return features;
+    }
+    return features.filter((item) => {
+      const haystack = normalizeSearch(
+        `${item.title} ${item.description ?? ''} ${item.href}`
+      );
+      return haystack.includes(term);
+    });
+  }, [features, query]);
 
   return (
     <>
@@ -82,27 +88,45 @@ export function GlobalSearch({ placeholder = 'Search players, wars, analytics…
               </button>
             </div>
 
-            <div className="mt-4 rounded-xl border border-white/5 bg-white/5 p-3 text-sm text-slate-300">
-              <p className="font-semibold text-slate-200">Coming soon</p>
-              <p className="mt-1 text-slate-400">
-                Global search will surface players, wars, analytics, and pages. Hook this shell to the backend search API in Phase 4.
+            <div className="mt-4">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                {query.trim() ? 'Matching features' : 'Site features'}
               </p>
-            </div>
-
-            <div className="mt-4 grid gap-2 sm:grid-cols-2">
-              {shortcuts.map((shortcut) => (
-                <a
-                  key={shortcut.href}
-                  href={shortcut.href}
-                  onClick={closePalette}
-                  className={cn(
-                    'flex items-center justify-between rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-sm text-slate-200 transition hover:border-clash-gold/40 hover:bg-clash-gold/10'
-                  )}
-                >
-                  <span>{shortcut.label}</span>
-                  <span className="text-xs text-slate-400">{shortcut.href}</span>
-                </a>
-              ))}
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {filteredFeatures.length === 0 && (
+                  <div className="rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-sm text-slate-400">
+                    No matching features. Try another term.
+                  </div>
+                )}
+                {filteredFeatures.map((feature) => {
+                  const isAvailable = feature.href && feature.href !== '#';
+                  return (
+                    <a
+                      key={`${feature.title}-${feature.href}`}
+                      href={isAvailable ? feature.href : undefined}
+                      onClick={isAvailable ? closePalette : undefined}
+                      className={cn(
+                        'flex items-start justify-between gap-3 rounded-xl border border-white/5 bg-white/5 px-3 py-2 text-sm text-slate-200 transition',
+                        isAvailable
+                          ? 'hover:border-clash-gold/40 hover:bg-clash-gold/10'
+                          : 'cursor-default opacity-60'
+                      )}
+                    >
+                      <span>
+                        <span className="font-semibold">{feature.title}</span>
+                        {feature.description && (
+                          <span className="mt-1 block text-xs text-slate-400">
+                            {feature.description}
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-[11px] text-slate-400">
+                        {isAvailable ? feature.href : 'Coming soon'}
+                      </span>
+                    </a>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>

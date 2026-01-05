@@ -18,6 +18,7 @@ import {
   resolveRushPercent,
   resolveTownHall,
   resolveTrophies,
+  rosterLeagueSort,
   rushTone,
 } from '../roster-utils';
 import RosterClient from '../RosterClient';
@@ -113,29 +114,47 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
     });
   }, [members, search]);
 
+  const sortedMembers = useMemo(() => rosterLeagueSort(filteredMembers), [filteredMembers]);
+
   // Calculate clan-wide stats for the header
   const clanStats = useMemo(() => {
     if (!members.length) return null;
     
     const thDistribution: Record<number, number> = {};
-    let totalHeroPower = 0;
-    let totalDonations = 0;
-    let totalTrophies = 0;
+    const sumIfComplete = (values: Array<number | null | undefined>) => {
+      let sum = 0;
+      let hasValue = false;
+      for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          sum += value;
+          hasValue = true;
+        } else {
+          return null;
+        }
+      }
+      return hasValue ? sum : null;
+    };
+    const heroPowers: Array<number | null> = [];
+    const donations: Array<number | null> = [];
+    const trophies: Array<number | null> = [];
     
-    members.forEach((m) => {
-      const th = resolveTownHall(m);
-      if (th) thDistribution[th] = (thDistribution[th] || 0) + 1;
-      totalHeroPower += (m.bk ?? 0) + (m.aq ?? 0) + (m.gw ?? 0) + (m.rc ?? 0) + (m.mp ?? 0);
-      totalDonations += m.donations ?? 0;
-      totalTrophies += resolveTrophies(m);
+      members.forEach((m) => {
+        const th = resolveTownHall(m);
+        if (th) thDistribution[th] = (thDistribution[th] || 0) + 1;
+      heroPowers.push(m.heroPower ?? null);
+      donations.push(m.donations ?? null);
+      trophies.push(resolveTrophies(m));
     });
+    const totalHeroPower = sumIfComplete(heroPowers);
+    const totalDonations = sumIfComplete(donations);
+    const totalTrophies = sumIfComplete(trophies);
     
     return {
       memberCount: members.length,
       thDistribution,
-      avgHeroPower: Math.round(totalHeroPower / members.length),
+      avgHeroPower: totalHeroPower != null ? Math.round(totalHeroPower / members.length) : null,
       totalDonations,
-      avgTrophies: Math.round(totalTrophies / members.length),
+      avgTrophies: totalTrophies != null ? Math.round(totalTrophies / members.length) : null,
     };
   }, [members]);
 
@@ -214,11 +233,13 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                 <div className="hidden md:flex items-center gap-3 text-xs">
                   <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
                     <div className="text-slate-500 uppercase tracking-widest text-[9px]">Avg Power</div>
-                    <div className="text-purple-400 font-bold text-lg">{clanStats.avgHeroPower}</div>
+                    <div className="text-purple-400 font-bold text-lg">{clanStats.avgHeroPower ?? '—'}</div>
                   </div>
                   <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
                     <div className="text-slate-500 uppercase tracking-widest text-[9px]">Total Donated</div>
-                    <div className="text-emerald-400 font-bold text-lg">{clanStats.totalDonations.toLocaleString()}</div>
+                    <div className="text-emerald-400 font-bold text-lg">
+                      {clanStats.totalDonations != null ? clanStats.totalDonations.toLocaleString() : '—'}
+                    </div>
                   </div>
                 </div>
               )}
@@ -301,7 +322,7 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredMembers.map((member) => {
+                    {sortedMembers.map((member) => {
                       const role = normalizeRole(member.role);
                       const townHall = resolveTownHall(member);
                       const { league, tier } = resolveLeague(member);
@@ -313,17 +334,17 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                       return (
                         <tr 
                           key={member.tag} 
-                          className="border-b border-white/5 transition-all duration-200 hover:bg-gradient-to-r hover:from-white/[0.04] hover:to-transparent group"
+                          className="h-16 border-b border-white/5 transition-all duration-200 hover:bg-gradient-to-r hover:from-white/[0.04] hover:to-transparent group"
                         >
-                          <td className="px-3 py-3">
-                            <div className="flex items-center gap-3">
+                          <td className="px-3 py-3 align-middle">
+                            <div className="flex h-full items-center gap-3">
                               <RoleIcon role={role} size={22} className="shrink-0" />
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-2">
+                              <div className="flex flex-col justify-center">
+                                <div className="flex items-center gap-2 leading-tight">
                                   <Link
                                     href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
                                     className="text-white font-semibold tracking-[0.02em] hover:text-[var(--accent-alt)] transition-colors group-hover:text-amber-300"
-                                    style={{ fontFamily: 'var(--font-body)' }}
+                                    style={{ fontFamily: 'var(--font-body)', display: 'inline-block', position: 'relative', top: '2px', lineHeight: '1', transform: 'translateY(12px)' }}
                                     title="View full player profile"
                                   >
                                     {member.name || member.tag}
@@ -337,52 +358,52 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                               </div>
                             </div>
                           </td>
-                          <td className="px-2 py-3 text-center">
+                          <td className="px-2 py-3 text-center align-middle">
                             <TownHallIcon level={townHall ?? undefined} size="sm" showBadge />
                           </td>
-                          <td className="px-2 py-3 text-center" title={league ? `League: ${league}${tier ? ` ${tier}` : ''}` : 'League unknown'}>
+                          <td className="px-2 py-3 text-center align-middle" title={league ? `League: ${league}${tier ? ` ${tier}` : ''}` : 'League unknown'}>
                             <LeagueIcon league={league} ranked size="sm" badgeText={tier} showBadge />
                           </td>
                         <td
-                          className="px-2 py-3 font-bold text-right tabular-nums"
+                          className="px-2 py-3 font-bold text-right tabular-nums align-middle"
                           style={{ color: '#fbbf24' }}
                           title="Ranked trophies: current season ladder points."
                         >
-                          {trophies.toLocaleString()}
+                          {trophies != null ? trophies.toLocaleString() : '—'}
                         </td>
                         <td
-                          className="px-2 py-3 text-right tabular-nums font-bold"
+                          className="px-2 py-3 text-right tabular-nums font-bold align-middle"
                           style={{ color: '#34d399' }}
                           title="Season donations given: higher is better."
                         >
-                          {(member.donations ?? 0).toLocaleString()}
+                          {member.donations != null ? member.donations.toLocaleString() : '—'}
                         </td>
                         <td
-                          className="px-2 py-3 text-right tabular-nums text-slate-400"
+                          className="px-2 py-3 text-right tabular-nums text-slate-400 align-middle"
                           title="Season donations received."
                         >
-                          {(member.donationsReceived ?? 0).toLocaleString()}
+                          {member.donationsReceived != null ? member.donationsReceived.toLocaleString() : '—'}
                         </td>
                         <td
-                          className="px-2 py-3 font-bold text-right tabular-nums"
+                          className="px-2 py-3 font-bold text-right tabular-nums align-middle"
                           style={{ color: rushTone(rushValue) }}
                           title="Rush %: lower is better (green <10%, yellow 10-20%, red >20%)."
                         >
                           {formatRush(rushValue)}
                         </td>
                         <td
-                          className="px-2 py-3 font-bold text-right tabular-nums"
+                          className="px-2 py-3 font-bold text-right tabular-nums align-middle"
                           style={{ color: '#a78bfa' }}
                           title="SRS: temporary roster score (activity/skill placeholder; real calc forthcoming)."
                         >
-                          {Math.round(activity.score)}
+                          {typeof activity.score === 'number' ? Math.round(activity.score) : '—'}
                         </td>
                           {(['bk', 'aq', 'gw', 'rc', 'mp'] as const).map((heroKey) => {
                             const level = (member as any)[heroKey] || 0;
                             const max = (heroCaps as any)[heroKey] || 0;
                             if (!level && !max) {
                               return (
-                                <td key={`${member.tag}-${heroKey}`} className="px-2 py-3 text-center text-slate-600 tabular-nums text-[12px]">
+                                <td key={`${member.tag}-${heroKey}`} className="px-2 py-3 text-center text-slate-600 tabular-nums text-[12px] align-middle">
                                   —
                                 </td>
                               );
@@ -391,7 +412,7 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                             return (
                               <td
                                 key={`${member.tag}-${heroKey}`}
-                                className="px-2 py-3 text-center font-semibold text-white tabular-nums text-[12px]"
+                                className="px-2 py-3 text-center font-semibold text-white tabular-nums text-[12px] align-middle"
                                 title={`${heroKey.toUpperCase()} ${level}${max ? ` / ${max} (${pct}%)` : ''}`}
                                 style={{ width: '48px' }}
                               >

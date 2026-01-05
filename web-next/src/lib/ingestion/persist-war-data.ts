@@ -46,6 +46,10 @@ function parseCoCTime(value?: string | null): string | null {
 
 function safeNumber(value: any): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string' && value.trim().length) {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
   return null;
 }
 
@@ -277,16 +281,20 @@ export async function persistWarData(snapshot: FullClanSnapshot): Promise<void> 
 
   for (const war of wars) {
     try {
+      const warRecord: Record<string, any> = {
+        ...war.record,
+      };
+      delete warRecord.updated_at;
       const { data: warRows, error: warError } = await supabase
         .from('clan_wars')
-        .upsert(war.record, {
+        .upsert(warRecord, {
           onConflict: 'clan_tag,war_type,battle_start',
           ignoreDuplicates: false,
         })
         .select('id, clan_tag, war_type, battle_start');
 
       if (warError) {
-        console.warn('[persistWarData] Failed to upsert clan_wars', war.record, warError.message);
+        console.warn('[persistWarData] Failed to upsert clan_wars', warRecord, warError.message);
         continue;
       }
       let warId: string | null = null;

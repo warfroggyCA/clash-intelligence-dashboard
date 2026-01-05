@@ -21,12 +21,10 @@ export default function LeadershipGuard({
 }: LeadershipGuardProps) {
   const { permissions, isLoading, error } = useLeadership();
 
-  // Optional preview bypass for local QA of protected pages.
-  const previewBypassEnabled = process.env.NEXT_PUBLIC_LEADERSHIP_PREVIEW === 'true';
-  const isLocalhost = typeof window === 'undefined'
-    ? process.env.NODE_ENV !== 'production'
-    : ['localhost', '127.0.0.1'].includes(window.location.hostname);
-  if (previewBypassEnabled && isLocalhost) {
+  // Development bypass: disable permission checks while iterating on new UI.
+  const permissionBypassEnabled = process.env.NEXT_PUBLIC_DISABLE_PERMISSIONS === 'true';
+  const isNonProd = process.env.NODE_ENV !== 'production';
+  if (permissionBypassEnabled || isNonProd) {
     return <>{children}</>;
   }
 

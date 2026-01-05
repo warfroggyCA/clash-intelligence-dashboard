@@ -1,9 +1,11 @@
+import { heroPetsData } from '@/lib/hero-equipment';
+
 /**
  * Field Extraction Utilities for Data Enrichment
- * 
+ *
  * These functions extract specific fields from Clash of Clans API playerDetails
  * for historical tracking in member_snapshot_stats.
- * 
+ *
  * @module field-extractors
  */
 
@@ -11,16 +13,39 @@
  * Extract pet levels from player detail
  * @returns Object mapping pet name to level, e.g. {"L.A.S.S.I": 10, "Electro Owl": 8}
  */
+
+const petNameSet = new Set(
+  heroPetsData.map((pet) => pet.name.toLowerCase().replace(/[^a-z0-9]/g, '')),
+);
+
+function normalizePetKey(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
 export function extractPetLevels(playerDetail: any): Record<string, number> | null {
   const pets = playerDetail?.pets || [];
-  if (pets.length === 0) return null;
+  if (Array.isArray(pets) && pets.length > 0) {
+    return pets.reduce((acc: Record<string, number>, pet: any) => {
+      if (pet.name && typeof pet.level === 'number') {
+        acc[pet.name] = pet.level;
+      }
+      return acc;
+    }, {});
+  }
 
-  return pets.reduce((acc: Record<string, number>, pet: any) => {
-    if (pet.name && typeof pet.level === 'number') {
-      acc[pet.name] = pet.level;
-    }
-    return acc;
-  }, {});
+  const troops = playerDetail?.troops || [];
+  if (Array.isArray(troops) && troops.length > 0) {
+    const matches = troops.filter((troop: any) => petNameSet.has(normalizePetKey(troop?.name || '')));
+    if (matches.length === 0) return null;
+    return matches.reduce((acc: Record<string, number>, pet: any) => {
+      if (pet.name && typeof pet.level === 'number') {
+        acc[pet.name] = pet.level;
+      }
+      return acc;
+    }, {});
+  }
+
+  return null;
 }
 
 /**
@@ -228,4 +253,3 @@ export function extractEnrichedFields(playerDetail: any) {
     equipmentLevels: extractEquipmentLevels(playerDetail),
   };
 }
-

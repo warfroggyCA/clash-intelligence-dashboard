@@ -33,7 +33,7 @@ import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 import { useDashboardStore, selectors } from '@/lib/stores/dashboard-store';
-import { insightsFetcher } from '@/lib/api/swr-fetcher';
+import { apiFetcher, insightsFetcher } from '@/lib/api/swr-fetcher';
 import type { ActivityEvidence, Roster } from '@/types';
 import type { SmartInsightsPayload } from '@/lib/smart-insights';
 
@@ -57,14 +57,33 @@ interface HighlightItem {
   badge?: string | null;
 }
 
+interface HighlightEvent {
+  tag: string;
+  name: string;
+  value: string;
+  occurredAt: string | null;
+  detail?: string | null;
+}
+
+interface WeeklyHighlightsPayload {
+  windowStart: string | null;
+  windowEnd: string | null;
+  promotions: HighlightEvent[];
+  demotions: HighlightEvent[];
+  heroUpgrades: HighlightEvent[];
+  newJoiners: HighlightEvent[];
+}
+
 function InsightList({
   title,
   subtitle,
   items,
+  emptyText,
 }: {
   title: string;
   subtitle: string;
   items: HighlightItem[];
+  emptyText?: string;
 }) {
   return (
     <div className="rounded-xl border border-gray-700/60 bg-gray-800/50 p-4">
@@ -93,7 +112,106 @@ function InsightList({
         </ul>
       ) : (
         <div className="mt-3 rounded-lg border border-dashed border-gray-600/60 bg-gray-900/40 px-3 py-4 text-sm text-blue-200/70">
-          Enriched snapshot fields are still populating.
+          {emptyText ?? 'Enriched snapshot fields are still populating.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function WeeklyHighlightsCard({ clanTag }: { clanTag: string | null }) {
+  const { data, error } = useSWR<WeeklyHighlightsPayload | null>(
+    clanTag ? `/api/leadership/highlights?clanTag=${encodeURIComponent(clanTag)}` : null,
+    apiFetcher,
+    {
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      refreshInterval: 0,
+    },
+  );
+
+  if (!clanTag) return null;
+
+  const isLoading = !data && !error;
+  const formatDate = (value: string | null) => {
+    if (!value) return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const windowLabel =
+    data?.windowStart && data?.windowEnd
+      ? `${formatDate(data.windowStart)} – ${formatDate(data.windowEnd)}`
+      : 'Last 7 days';
+
+  const mapEvents = (events: HighlightEvent[], badge?: string): HighlightItem[] =>
+    events.map((event) => ({
+      key: `${event.tag}-${event.occurredAt ?? 'na'}-${event.value}`,
+      label: event.name,
+      value: event.value,
+      detail: event.detail ?? formatDate(event.occurredAt),
+      badge,
+    }));
+
+  const promotions = mapEvents(data?.promotions ?? []);
+  const demotions = mapEvents(data?.demotions ?? [], 'Risk');
+  const heroUpgrades = mapEvents(data?.heroUpgrades ?? []);
+  const newJoiners = mapEvents(data?.newJoiners ?? []);
+  const showDemotions = demotions.length > 0;
+
+  return (
+    <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold text-white">Weekly Highlights</h2>
+          <p className="text-sm text-blue-100/70">
+            League movement, hero upgrades, and new joiners across the roster.
+          </p>
+        </div>
+        <div className="text-xs text-blue-200/70">{windowLabel}</div>
+      </div>
+
+      {error && (
+        <div className="mt-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-2 text-sm text-red-200">
+          {error.message || 'Failed to load weekly highlights.'}
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="mt-4 text-sm text-blue-100/70">Loading weekly highlights…</div>
+      ) : (
+        <div
+          className={`mt-6 grid grid-cols-1 gap-4 ${
+            showDemotions ? 'lg:grid-cols-4' : 'lg:grid-cols-3'
+          }`}
+        >
+          <InsightList
+            title="League Promotions"
+            subtitle="Climbs logged in the last 7 days."
+            items={promotions}
+            emptyText="No league promotions logged this week."
+          />
+          <InsightList
+            title="Hero Upgrades"
+            subtitle="Recent hero level gains from roster snapshots."
+            items={heroUpgrades}
+            emptyText="No hero upgrades detected this week."
+          />
+          <InsightList
+            title="New Joiners"
+            subtitle="Fresh faces who joined the roster."
+            items={newJoiners}
+            emptyText="No new joiners detected this week."
+          />
+          {showDemotions && (
+            <InsightList
+              title="League Demotions"
+              subtitle="Recent drops to monitor."
+              items={demotions}
+              emptyText="No league demotions logged this week."
+            />
+          )}
         </div>
       )}
     </div>
@@ -627,6 +745,8 @@ export default function LeadershipDashboard() {
                         </div>
                       </div>
                     </div>
+
+                    <WeeklyHighlightsCard clanTag={normalizedLeadershipClan} />
 
                     {enrichmentInsights && (
                       <div className="bg-gray-900/60 border border-gray-700/60 rounded-2xl p-6 shadow-inner">

@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState, useEffect } from 'react';
-import Card from '@/components/new-ui/Card';
+import useSWR from 'swr';
 import { Button } from '@/components/new-ui/Button';
 import { Input } from '@/components/new-ui/Input';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
 import LeagueIcon from '@/components/new-ui/icons/LeagueIcon';
 import RoleIcon from '@/components/new-ui/icons/RoleIcon';
-import CopyableName from '@/components/new-ui/CopyableName';
 import { heroIconMap } from '@/components/new-ui/icons/maps';
 import { useRosterData } from './useRosterData';
+import { apiFetcher } from '@/lib/api/swr-fetcher';
 import Image from 'next/image';
 import { HERO_MAX_LEVELS } from '@/types';
 import type { RosterMember, RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
@@ -22,12 +22,14 @@ import {
   resolveRushPercent,
   resolveTownHall,
   resolveTrophies,
+  rosterLeagueSort,
   rushTone,
 } from './roster-utils';
 import Link from 'next/link';
 import { RosterCardsSkeleton } from './RosterCardsSkeleton';
 import { normalizeTag } from '@/lib/tags';
 import { normalizeSearch } from '@/lib/search';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // WORLD-CLASS COMPONENTS
@@ -136,17 +138,75 @@ const heroMeta: Record<string, { name: string; gradient: string }> = {
   mp: { name: 'Minion Prince', gradient: 'linear-gradient(90deg, #f59e0b 0%, #f97316 100%)' },
 };
 
+type FormerMember = {
+  tag: string;
+  name: string;
+  lastRole?: string | null;
+  lastTownHallLevel?: number | null;
+  lastLeagueName?: string | null;
+  lastRankedLeagueName?: string | null;
+  lastRankedTrophies?: number | null;
+  lastLeagueTrophies?: number | null;
+  totalTenureDays?: number | null;
+  departedAt?: string | null;
+  updatedAt?: string | null;
+};
+
+const isNewJoiner = (member: RosterMember): boolean => {
+  const tenure = member.tenureDays ?? member.tenure_days;
+  return typeof tenure === 'number' && tenure <= 7;
+};
+
 export default function RosterClient({ initialRoster }: { initialRoster?: RosterData | null }) {
-  const { data, members, isLoading, error, isValidating, mutate } = useRosterData(initialRoster || undefined);
+  const { data, members, isLoading, error, isValidating, mutate, clanTag } = useRosterData(initialRoster || undefined);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'current' | 'former'>('all');
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const joinerFilter = searchParams?.get('filter') === 'new-joiners';
+  const shouldLoadFormer = status === 'former';
 
-  const filteredMembers = useMemo(() => {
+  const formerKey = shouldLoadFormer && clanTag
+    ? `/api/v2/roster/former?clanTag=${encodeURIComponent(clanTag)}`
+    : null;
+
+  const {
+    data: formerData,
+    error: formerError,
+    isLoading: isFormerLoading,
+  } = useSWR<{ members: FormerMember[] }>(formerKey, apiFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnReconnect: true,
+  });
+
+  const formerMembers = useMemo(() => formerData?.members ?? [], [formerData]);
+
+  const newJoinerCount = useMemo(
+    () => members.filter(isNewJoiner).length,
+    [members]
+  );
+
+  const toggleJoinerFilter = () => {
+    if (status === 'former') {
+      setStatus('current');
+    }
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    if (joinerFilter) {
+      params.delete('filter');
+    } else {
+      params.set('filter', 'new-joiners');
+    }
+    const query = params.toString();
+    router.replace(query ? `/new/roster?${query}` : '/new/roster');
+  };
+
+  const applyJoinerFilter = joinerFilter && status !== 'former';
+
+  const filteredCurrentMembers = useMemo(() => {
     const query = normalizeSearch(search.trim());
     let list = members;
-    if (status === 'former') {
-      // Placeholder: current API only returns active roster; former list will be populated once available
-      list = [];
+    if (applyJoinerFilter) {
+      list = list.filter(isNewJoiner);
     }
     if (!query) return list;
     return list.filter((member) => {
@@ -154,47 +214,86 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
       const tag = normalizeSearch(member.tag || '');
       return name.includes(query) || tag.includes(query);
     });
-  }, [members, search, status]);
+  }, [members, search, applyJoinerFilter]);
+
+  const filteredFormerMembers = useMemo(() => {
+    const query = normalizeSearch(search.trim());
+    if (!query) return formerMembers;
+    return formerMembers.filter((member) => {
+      const name = normalizeSearch(member.name || '');
+      const tag = normalizeSearch(member.tag || '');
+      return name.includes(query) || tag.includes(query);
+    });
+  }, [formerMembers, search]);
+
+  const sortedMembers = useMemo(() => rosterLeagueSort(filteredCurrentMembers), [filteredCurrentMembers]);
+
+  const sortedFormerMembers = useMemo(() => {
+    return [...filteredFormerMembers].sort((a, b) => {
+      const dateA = a.departedAt ?? a.updatedAt ?? '';
+      const dateB = b.departedAt ?? b.updatedAt ?? '';
+      return dateB.localeCompare(dateA);
+    });
+  }, [filteredFormerMembers]);
+
+  const activeMembers = status === 'former' ? sortedFormerMembers : sortedMembers;
+  const activeError = status === 'former' ? formerError : error;
+  const activeLoading = status === 'former' ? isFormerLoading : isLoading;
 
   // Calculate clan-wide stats for the header
   const clanStats = useMemo(() => {
     if (!members.length) return null;
     
     const thDistribution: Record<number, number> = {};
-    let totalHeroPower = 0;
-    let totalDonations = 0;
-    let totalTrophies = 0;
+    const sumIfComplete = (values: Array<number | null | undefined>) => {
+      let sum = 0;
+      let hasValue = false;
+      for (const value of values) {
+        if (typeof value === 'number' && Number.isFinite(value)) {
+          sum += value;
+          hasValue = true;
+        } else {
+          return null;
+        }
+      }
+      return hasValue ? sum : null;
+    };
+    const heroPowers: Array<number | null> = [];
+    const donations: Array<number | null> = [];
+    const trophies: Array<number | null> = [];
     let activeCount = 0;
-    let topDonator = { name: '', value: 0 };
-    let topTrophies = { name: '', value: 0 };
+    let topDonator: { name: string; value: number | null } = { name: '', value: null };
+    let topTrophies: { name: string; value: number | null } = { name: '', value: null };
     
-    members.forEach((m) => {
-      const th = resolveTownHall(m);
-      if (th) thDistribution[th] = (thDistribution[th] || 0) + 1;
-      
-      const heroPower = (m.bk ?? 0) + (m.aq ?? 0) + (m.gw ?? 0) + (m.rc ?? 0) + (m.mp ?? 0);
-      totalHeroPower += heroPower;
-      totalDonations += m.donations ?? 0;
-      totalTrophies += resolveTrophies(m);
+      members.forEach((m) => {
+        const th = resolveTownHall(m);
+        if (th) thDistribution[th] = (thDistribution[th] || 0) + 1;
+
+      heroPowers.push(m.heroPower ?? null);
+      donations.push(m.donations ?? null);
+      trophies.push(resolveTrophies(m));
       
       const activity = resolveActivity(m);
       if (activity.band !== 'Low') activeCount++;
       
-      if ((m.donations ?? 0) > topDonator.value) {
-        topDonator = { name: m.name || m.tag || '', value: m.donations ?? 0 };
+      if (typeof m.donations === 'number' && (topDonator.value == null || m.donations > topDonator.value)) {
+        topDonator = { name: m.name || m.tag || '', value: m.donations };
       }
-      const trophies = resolveTrophies(m);
-      if (trophies > topTrophies.value) {
-        topTrophies = { name: m.name || m.tag || '', value: trophies };
+      const resolvedTrophies = resolveTrophies(m);
+      if (typeof resolvedTrophies === 'number' && (topTrophies.value == null || resolvedTrophies > topTrophies.value)) {
+        topTrophies = { name: m.name || m.tag || '', value: resolvedTrophies };
       }
     });
+    const totalHeroPower = sumIfComplete(heroPowers);
+    const totalDonations = sumIfComplete(donations);
+    const totalTrophies = sumIfComplete(trophies);
     
     return {
       memberCount: members.length,
       thDistribution,
-      avgHeroPower: Math.round(totalHeroPower / members.length),
+      avgHeroPower: totalHeroPower != null ? Math.round(totalHeroPower / members.length) : null,
       totalDonations,
-      avgTrophies: Math.round(totalTrophies / members.length),
+      avgTrophies: totalTrophies != null ? Math.round(totalTrophies / members.length) : null,
       activePercent: Math.round((activeCount / members.length) * 100),
       topDonator,
       topTrophies,
@@ -218,7 +317,20 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     const rushValue = resolveRushPercent(member);
     const rushColor = rushTone(rushValue);
     const activity = resolveActivity(member);
-    const heroPower = (member.bk ?? 0) + (member.aq ?? 0) + (member.gw ?? 0) + (member.rc ?? 0) + (member.mp ?? 0);
+    const activityScoreDisplay =
+      typeof activity.score === 'number' && Number.isFinite(activity.score)
+        ? Math.round(activity.score).toString()
+        : '—';
+    const heroPower = member.heroPower ?? null;
+    const tenureDays =
+      typeof member.tenureDays === 'number'
+        ? member.tenureDays
+        : typeof member.tenure_days === 'number'
+          ? member.tenure_days
+          : typeof (member as any).tenure === 'number'
+            ? (member as any).tenure
+            : null;
+    const tenureText = typeof tenureDays === 'number' ? `${tenureDays.toLocaleString()}d` : '—';
 
     // Filter heroes to only show those that are unlocked for this TH level
     const caps = HERO_MAX_LEVELS[townHall ?? 0] || {};
@@ -241,30 +353,30 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     return (
       <div
         key={member.tag}
-        className="group relative rounded-2xl p-5 transition-all duration-300 hover:scale-[1.015] hover:-translate-y-0.5"
+        className="group relative rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1"
         style={{ 
-          background: 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+          background: 'linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,1) 100%)',
+          border: '1px solid rgba(255,255,255,0.15)',
+          boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)'
         }}
       >
         {/* Hover glow effect */}
         <div 
           className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
           style={{ 
-            background: 'radial-gradient(circle at 50% 0%, rgba(234,179,8,0.1) 0%, transparent 60%)',
-            boxShadow: '0 0 40px rgba(234,179,8,0.1)'
+            background: 'radial-gradient(circle at 50% 0%, rgba(234,179,8,0.15) 0%, transparent 70%)',
+            boxShadow: '0 0 40px rgba(234,179,8,0.2), inset 0 0 0 1px rgba(234,179,8,0.2)'
           }}
         />
         
         <div className="relative z-10 space-y-4">
           {/* ═══ HEADER: Name on top, metadata below ═══ */}
-          <div className="space-y-2">
+          <div className="space-y-2.5">
             {/* Row 1: Player name (full width) */}
             <Link
               href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
-              className="text-white text-xl font-bold tracking-tight hover:text-[var(--accent-alt)] transition-colors block"
-              style={{ fontFamily: 'var(--font-body)' }}
+              className="text-white text-2xl font-bold tracking-tight hover:text-amber-400 transition-colors block leading-tight"
+              style={{ fontFamily: 'var(--font-display)' }}
               title="View full player profile"
             >
               {member.name || member.tag}
@@ -272,21 +384,21 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
             
             {/* Row 2: Role + Activity/SRS on left, TH + League on right */}
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <RoleIcon role={role} size={28} className="shrink-0" />
+              <div className="flex items-center gap-2.5">
+                <RoleIcon role={role} size={30} className="shrink-0" />
                 <span
-                  className="inline-flex h-2 w-2 rounded-full shrink-0"
-                  style={{ background: activity.tone }}
+                  className="inline-flex h-2.5 w-2.5 rounded-full shrink-0 shadow-md"
+                  style={{ background: activity.tone, boxShadow: `0 0 8px ${activity.tone}` }}
                   aria-label={`Activity ${activity.band}`}
                   title={activity.evidence?.level || activity.band}
                 />
-                <span className="text-xs text-slate-400">
-                  SRS {Math.round(activity.score)}
+                <span className="text-xs font-semibold text-slate-400">
+                  SRS {activityScoreDisplay}
                 </span>
               </div>
               
               {/* Right: TH + League (visually grouped, same size) */}
-              <div className="flex items-center gap-2 shrink-0">
+              <div className="flex items-center gap-2.5 shrink-0">
                 {league && (
                   <div className="flex items-center" title={`${league}${tier ? ` ${tier}` : ''}`}>
                     <LeagueIcon league={league} ranked size="md" badgeText={tier} showBadge />
@@ -295,42 +407,47 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
                 <TownHallIcon level={townHall ?? undefined} size="md" />
               </div>
             </div>
+
+            <div className="flex items-center gap-2 text-xs text-slate-400">
+              <span className="text-[10px] uppercase tracking-widest text-slate-500">Tenure</span>
+              <span className="text-slate-200 font-semibold">{tenureText}</span>
+            </div>
           </div>
 
           {/* ═══ KEY STATS: Simplified 2-column layout ═══ */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
             {/* Trophies */}
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Trophies</div>
-              <div className="text-2xl font-black text-amber-400">
-                {trophies.toLocaleString()}
+              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Trophies</div>
+              <div className="text-3xl font-black text-amber-400 leading-none">
+                {trophies != null ? trophies.toLocaleString() : '—'}
               </div>
             </div>
 
             {/* Donations */}
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Donated</div>
-              <div className="text-2xl font-black text-emerald-400">
-                {(member.donations ?? 0).toLocaleString()}
+              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Donated</div>
+              <div className="text-3xl font-black text-emerald-400 leading-none">
+                {member.donations != null ? member.donations.toLocaleString() : '—'}
               </div>
             </div>
 
             {/* Rush Score - More prominent */}
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Base</div>
-              <div className="text-2xl font-black" style={{ color: rushColor }}>
+              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Base</div>
+              <div className="text-3xl font-black leading-none" style={{ color: rushColor }}>
                 {formatRush(rushValue)}
               </div>
             </div>
 
             {/* Hero Progress - Compact summary */}
             <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Heroes</div>
-              <div className="flex items-center gap-2">
-                <div className="text-2xl font-black text-purple-400">
+              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Heroes</div>
+              <div className="flex items-baseline gap-2">
+                <div className="text-3xl font-black text-purple-400 leading-none">
                   {overallHeroPercent}%
                 </div>
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-500 font-medium">
                   {totalLevels}/{totalMaxLevels}
                 </div>
               </div>
@@ -398,12 +515,89 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
             })}
             
             {/* Received donations - always visible but subtle */}
-            {(member.donationsReceived ?? 0) > 0 && (
+            {typeof member.donationsReceived === 'number' && member.donationsReceived > 0 && (
               <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500" title="Received donations this season">
                 <span className="opacity-60">↓</span>
-                <span>{(member.donationsReceived ?? 0).toLocaleString()}</span>
+                <span>{member.donationsReceived.toLocaleString()}</span>
               </div>
             )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFormerCard = (member: FormerMember) => {
+    const roleKey = member.lastRole ? normalizeRole(member.lastRole) : null;
+    const townHall = typeof member.lastTownHallLevel === 'number' ? member.lastTownHallLevel : null;
+    const lastSeenAt = member.departedAt ?? member.updatedAt ?? null;
+    const lastSeenDate = lastSeenAt ? new Date(lastSeenAt) : null;
+    const safeLastSeen = lastSeenDate && !Number.isNaN(lastSeenDate.getTime()) ? lastSeenDate : null;
+    const lastLeague = member.lastRankedLeagueName ?? member.lastLeagueName ?? null;
+    const lastTrophies = member.lastRankedTrophies ?? member.lastLeagueTrophies ?? null;
+    const tenureDays = typeof member.totalTenureDays === 'number' ? member.totalTenureDays : null;
+
+    return (
+      <div
+        key={member.tag}
+        className="group relative rounded-2xl p-5 transition-all duration-300 hover:scale-[1.015] hover:-translate-y-0.5"
+        style={{ 
+          background: 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+        }}
+      >
+        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+          style={{ 
+            background: 'radial-gradient(circle at 50% 0%, rgba(148,163,184,0.12) 0%, transparent 60%)',
+            boxShadow: '0 0 40px rgba(148,163,184,0.08)'
+          }}
+        />
+
+        <div className="relative z-10 space-y-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-lg font-bold text-white">{member.name || member.tag}</div>
+              <div className="text-xs text-slate-500">{member.tag}</div>
+            </div>
+            <span className="rounded-full bg-slate-700/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-slate-300">
+              Former
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 text-xs text-slate-400">
+            {roleKey ? <RoleIcon role={roleKey} size={26} className="shrink-0" /> : null}
+            {member.lastRole ? (
+              <span className="text-slate-300">{member.lastRole}</span>
+            ) : (
+              <span className="text-slate-500">Role unknown</span>
+            )}
+            {townHall ? <TownHallIcon level={townHall} size="sm" /> : null}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 text-xs">
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-slate-500">Last Seen</div>
+              <div className="text-slate-200">
+                {safeLastSeen ? formatDistanceToNow(safeLastSeen, { addSuffix: true }) : 'Unknown'}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-slate-500">Total Tenure</div>
+              <div className="text-slate-200">
+                {typeof tenureDays === 'number' ? `${tenureDays.toLocaleString()} days` : '—'}
+              </div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-slate-500">Last League</div>
+              <div className="text-slate-200">{lastLeague ?? '—'}</div>
+            </div>
+            <div>
+              <div className="text-[10px] uppercase tracking-widest text-slate-500">Last Trophies</div>
+              <div className="text-slate-200">
+                {typeof lastTrophies === 'number' ? lastTrophies.toLocaleString() : '—'}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -525,19 +719,19 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
               />
               <MiniStatCard 
                 label="Avg Hero Power" 
-                value={clanStats.avgHeroPower} 
+                value={clanStats.avgHeroPower ?? '—'} 
                 icon="⚔️"
                 color="#8b5cf6"
               />
               <MiniStatCard 
                 label="Total Donated" 
-                value={clanStats.totalDonations} 
+                value={clanStats.totalDonations ?? '—'} 
                 icon="📤"
                 color="#10b981"
               />
               <MiniStatCard 
                 label="Avg Trophies" 
-                value={clanStats.avgTrophies} 
+                value={clanStats.avgTrophies ?? '—'} 
                 icon="🏆"
                 color="#eab308"
               />
@@ -549,10 +743,10 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
               />
               <MiniStatCard 
                 label="Top Donator" 
-                value={clanStats.topDonator.value} 
+                value={clanStats.topDonator.value ?? '—'} 
                 icon="🥇"
                 color="#f472b6"
-                subtext={clanStats.topDonator.name.slice(0, 12)}
+                subtext={clanStats.topDonator.value != null ? clanStats.topDonator.name.slice(0, 12) : '—'}
               />
             </div>
           )}
@@ -578,28 +772,44 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
                 {key.charAt(0).toUpperCase() + key.slice(1)}
               </Button>
             ))}
+            <Button
+              tone={joinerFilter ? 'accentAlt' : 'ghost'}
+              className="h-10 px-4"
+              onClick={toggleJoinerFilter}
+              disabled={newJoinerCount === 0}
+            >
+              New Joiners
+              {newJoinerCount > 0 && (
+                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-semibold text-purple-200">
+                  {newJoinerCount}
+                </span>
+              )}
+            </Button>
           </div>
         </div>
 
-        {error ? (
+        {activeError ? (
           <div className="p-6 text-sm text-red-300">
-            Failed to load roster. {error.message || 'Please try again.'}
+            {status === 'former' ? 'Failed to load former members.' : 'Failed to load roster.'}{' '}
+            {activeError.message || 'Please try again.'}
           </div>
         ) : null}
 
-        {isLoading && (!data || members.length === 0) ? (
+        {activeLoading && activeMembers.length === 0 ? (
           <RosterCardsSkeleton />
         ) : null}
 
-        {!isLoading && !error ? (
-          filteredMembers.length ? (
+        {!activeLoading && !activeError ? (
+          activeMembers.length ? (
             <div className="grid gap-5 p-4 md:grid-cols-2 xl:grid-cols-3">
-              {filteredMembers.map(renderMemberCard)}
+              {status === 'former'
+                ? sortedFormerMembers.map(renderFormerCard)
+                : sortedMembers.map(renderMemberCard)}
             </div>
           ) : (
             <div className="p-6 text-sm text-slate-300">
               {status === 'former'
-                ? 'Former members will appear here once departure data is wired.'
+                ? 'No former members recorded yet.'
                 : 'No roster members match that filter.'}
             </div>
           )

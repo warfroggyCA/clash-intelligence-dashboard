@@ -51,8 +51,8 @@ export function calculateDefensiveHoldRate(
   defensesSurvived: number,
   totalDefenses: number,
   averageDestructionAllowed: number
-): number {
-  if (totalDefenses === 0) return 0.5; // Default if no defenses
+): number | null {
+  if (totalDefenses === 0) return null;
 
   // Hold rate = 1 - (average destruction allowed / 100)
   const holdRate = 1 - (averageDestructionAllowed / 100);
@@ -128,7 +128,7 @@ export function generateCoachingRecommendations(
     recommendations.push('Build consistency by participating in every war');
   }
 
-  if (metrics.defensiveHoldRate < 0.5) {
+  if (metrics.defensiveHoldRate != null && metrics.defensiveHoldRate < 0.5) {
     recommendations.push('Strengthen base defenses - focus on anti-3 star layouts');
   }
 
@@ -171,7 +171,9 @@ export function compareToClanAverage(
 } {
   const aeiDelta = playerMetrics.attackEfficiencyIndex - clanAverages.averageAEI;
   const consistencyDelta = playerMetrics.consistencyScore - clanAverages.averageConsistency;
-  const holdRateDelta = playerMetrics.defensiveHoldRate - clanAverages.averageHoldRate;
+  const holdRateDelta = playerMetrics.defensiveHoldRate != null
+    ? playerMetrics.defensiveHoldRate - clanAverages.averageHoldRate
+    : 0;
   const overallDelta = playerMetrics.overallScore - clanAverages.averageOverallScore;
 
   let relativePerformance: 'above_average' | 'average' | 'below_average';
@@ -187,4 +189,3 @@ export function compareToClanAverage(
     relativePerformance,
   };
 }
-

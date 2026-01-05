@@ -1,11 +1,8 @@
 import { cfg } from '@/lib/config';
 import { detectChanges, saveChangeSummary, getSnapshotBeforeDate } from '@/lib/snapshots';
-import { generateChangeSummary, generateGameChatMessages } from '@/lib/ai-summarizer';
+import { generateHeuristicSummary, generateGameChatMessages } from '@/lib/ai-summarizer';
 import { addDeparture } from '@/lib/departures';
 import { resolveUnknownPlayers } from '@/lib/player-resolver';
-import { insightsEngine } from '@/lib/smart-insights';
-import { saveInsightsBundle, cachePlayerDNAForClan, generateSnapshotSummary } from '@/lib/insights-storage';
-import { saveAISummary } from '@/lib/supabase';
 import { fetchFullClanSnapshot, persistFullClanSnapshot } from '@/lib/full-snapshot';
 import { persistRosterSnapshotToDataSpine } from './persist-roster';
 import { persistWarData } from './persist-war-data';
@@ -192,7 +189,7 @@ export async function runIngestionJob(options: RunIngestionOptions = {}): Promis
           await log(jobId, 'info', 'Recorded departure', { member: departure.member.tag });
         }
 
-        const summary = await generateChangeSummary(changes, clanTag, currentSnapshot.date);
+        const summary = generateHeuristicSummary(changes);
         const gameChatMessages = generateGameChatMessages(changes);
 
         changeSummary = {
@@ -209,57 +206,9 @@ export async function runIngestionJob(options: RunIngestionOptions = {}): Promis
         await saveChangeSummary(changeSummary);
         await log(jobId, 'info', 'Saved change summary');
 
-        try {
-          await saveAISummary({
-            clan_tag: clanTag,
-            date: currentSnapshot.date,
-            summary,
-            summary_type: 'automation',
-            unread: true,
-            actioned: false,
-          });
-          await log(jobId, 'info', 'Persisted AI summary to Supabase');
-        } catch (summaryError) {
-          await log(jobId, 'warn', 'Failed to persist AI summary', { error: summaryError });
-        }
-
         await markStep(jobId, 'detect-changes', 'completed', { changeCount: changes.length });
-        await markStep(jobId, 'smart-insights', 'running');
-        await log(jobId, 'info', 'Running smart insights pipeline');
-        try {
-          const snapshotSummary = generateSnapshotSummary(
-            fullSnapshot.metadata,
-            {
-              currentWar: fullSnapshot.currentWar,
-              warLog: fullSnapshot.warLog,
-              capitalRaidSeasons: fullSnapshot.capitalRaidSeasons,
-            },
-            0
-          );
-
-          const insightsBundle = await insightsEngine.processBundle(
-            currentSnapshot,
-            changes,
-            clanTag,
-            currentSnapshot.date,
-            {
-              source: 'nightly_cron',
-              snapshotId: currentSnapshot.timestamp,
-            }
-          );
-
-          insightsBundle.snapshotSummary = snapshotSummary;
-
-          await saveInsightsBundle(insightsBundle);
-          await log(jobId, 'info', 'Saved insights bundle');
-
-          await cachePlayerDNAForClan(currentSnapshot, clanTag, currentSnapshot.date);
-          await log(jobId, 'info', 'Cached player DNA profiles');
-        } catch (aiError) {
-          await log(jobId, 'error', 'Smart insights processing failed', { error: aiError });
-        } finally {
-          await markStep(jobId, 'smart-insights', 'completed');
-        }
+        await markStep(jobId, 'smart-insights', 'completed', { skipped: true, reason: 'ai_disabled' });
+        await log(jobId, 'info', 'Smart insights disabled (manual analysis only)');
       } else {
         await markStep(jobId, 'detect-changes', 'completed', { changeCount: 0 });
       }

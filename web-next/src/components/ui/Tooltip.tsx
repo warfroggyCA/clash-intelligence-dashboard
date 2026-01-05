@@ -47,12 +47,22 @@ const getPositionClasses = (position: TooltipPosition): string => {
 
 const getArrowClasses = (position: TooltipPosition): string => {
   const arrows = {
-    top: 'top-full left-1/2 -translate-x-1/2 border-t-brand-surface border-l-transparent border-r-transparent border-b-transparent',
-    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-b-brand-surface border-l-transparent border-r-transparent border-t-transparent',
-    left: 'left-full top-1/2 -translate-y-1/2 border-l-brand-surface border-t-transparent border-b-transparent border-r-transparent',
-    right: 'right-full top-1/2 -translate-y-1/2 border-r-brand-surface border-t-transparent border-b-transparent border-l-transparent',
+    top: 'top-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-b-transparent',
+    bottom: 'bottom-full left-1/2 -translate-x-1/2 border-l-transparent border-r-transparent border-t-transparent',
+    left: 'left-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-r-transparent',
+    right: 'right-full top-1/2 -translate-y-1/2 border-t-transparent border-b-transparent border-l-transparent',
   };
   return arrows[position];
+};
+
+const getArrowColor = (position: TooltipPosition): React.CSSProperties => {
+  const colors = {
+    top: { borderTopColor: 'var(--card)' },
+    bottom: { borderBottomColor: 'var(--card)' },
+    left: { borderLeftColor: 'var(--card)' },
+    right: { borderRightColor: 'var(--card)' },
+  };
+  return colors[position];
 };
 
 // =============================================================================
@@ -68,7 +78,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
   className = '',
   contentClassName = '',
   trigger = 'hover',
-  maxWidth = 'max-w-xs',
+  maxWidth = 'max-w-md',
 }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -169,10 +179,14 @@ export const Tooltip: React.FC<TooltipProps> = ({
         >
           <div
             className={cn(
-              'rounded-lg bg-brand-surface border border-brand-border/60 px-3 py-2 text-sm text-slate-200 shadow-lg',
+              'rounded-lg px-3 py-2 text-sm text-slate-200 shadow-lg min-w-[220px]',
               maxWidth,
               contentClassName,
             )}
+            style={{
+              background: 'var(--card)',
+              border: '1px solid var(--border-subtle)',
+            }}
           >
             {typeof content === 'string' ? (
               <p className="whitespace-normal break-words">{content}</p>
@@ -185,6 +199,7 @@ export const Tooltip: React.FC<TooltipProps> = ({
               'absolute w-0 h-0 border-4',
               getArrowClasses(position),
             )}
+            style={getArrowColor(position)}
           />
         </div>
       )}
@@ -193,4 +208,3 @@ export const Tooltip: React.FC<TooltipProps> = ({
 };
 
 export default Tooltip;
-
