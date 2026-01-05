@@ -1339,10 +1339,10 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
             )}
           </div>
           <div className="flex items-center gap-2">
-            <Button tone="ghost" size="sm" onClick={() => focusByIndex((focusIndex >= 0 ? focusIndex : 0) - 1)} disabled={!focusableRows.length}>
+            <Button tone="ghost" className="text-sm" onClick={() => focusByIndex((focusIndex >= 0 ? focusIndex : 0) - 1)} disabled={!focusableRows.length}>
               ← Prev
             </Button>
-            <Button tone="ghost" size="sm" onClick={() => focusByIndex((focusIndex >= 0 ? focusIndex : 0) + 1)} disabled={!focusableRows.length}>
+            <Button tone="ghost" className="text-sm" onClick={() => focusByIndex((focusIndex >= 0 ? focusIndex : 0) + 1)} disabled={!focusableRows.length}>
               Next →
             </Button>
           </div>
@@ -1384,7 +1384,7 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
               <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-xs uppercase tracking-wide text-white/60">Compare players</div>
-                  <Button tone="ghost" size="sm" onClick={() => setCompareMode(false)}>
+                  <Button tone="ghost" className="text-sm" onClick={() => setCompareMode(false)}>
                     Focus view
                   </Button>
                 </div>
