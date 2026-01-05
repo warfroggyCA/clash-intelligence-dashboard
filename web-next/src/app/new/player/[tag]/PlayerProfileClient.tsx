@@ -2802,7 +2802,7 @@ const groupedEquipment = useMemo(() => {
                       <div className="text-xs text-slate-400">{change.date?.slice(0, 10) ?? '—'}</div>
                     </div>
                   )) : (
-                    aliasTimeline.sorted.map((entry, i) => (
+                    aliasTimeline.sorted.map((entry: { name: string; firstSeen: string | null; lastSeen: string | null }, i) => (
                       <div
                         key={`${entry.name}-${entry.firstSeen ?? entry.lastSeen ?? i}`}
                         className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm"
