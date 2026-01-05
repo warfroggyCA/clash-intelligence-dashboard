@@ -213,8 +213,8 @@ export async function getCurrentRosterData(requestedClanTag?: string): Promise<R
           leagueId: member.league_id ?? null,
           leagueName: member.league_name ?? null,
           leagueTrophies: member.league_trophies ?? null,
-          leagueIconSmall: null,
-          leagueIconMedium: null,
+          leagueIconSmall: undefined,
+          leagueIconMedium: undefined,
           battleModeTrophies: member.battle_mode_trophies ?? null,
           vip: vip ? {
             score: vip.score ?? 0,
