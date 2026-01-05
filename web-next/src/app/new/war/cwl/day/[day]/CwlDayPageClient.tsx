@@ -309,7 +309,9 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
         .map((t) => ({ tag: t, ...lineupLookup[t] }))
         .filter((m) => m.tag && typeof m.townHall === 'number')
         .sort((a, b) => {
-          if (b.townHall !== a.townHall) return b.townHall - a.townHall;
+          const aTh = a.townHall ?? 0;
+          const bTh = b.townHall ?? 0;
+          if (bTh !== aTh) return bTh - aTh;
           return (b.heroPower ?? 0) - (a.heroPower ?? 0);
         })
         .map((m) => m.tag);
