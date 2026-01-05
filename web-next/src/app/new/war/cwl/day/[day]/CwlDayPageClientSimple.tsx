@@ -197,6 +197,7 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
     attackerTag: string;
     attackerName: string | null;
     attackerTh: number | null;
+    attackerMapPosition: number | null;
     defenderTag: string;
     defenderName: string | null;
     defenderTh: number | null;
