@@ -1105,7 +1105,7 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
       });
       let name: string;
       if (bestValue > 0 && best) {
-        name = best.name ?? '—';
+        name = (best as MemberRow).name ?? '—';
       } else {
         name = 'No data';
       }
