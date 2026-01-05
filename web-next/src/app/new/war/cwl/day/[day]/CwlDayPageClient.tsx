@@ -510,7 +510,9 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
     if (!top.length) return null;
     const heroValues = top.map((m) => heroPower(m.heroes));
     if (heroValues.some((value) => typeof value !== 'number')) return null;
-    return Math.round(heroValues.reduce((sum, value) => sum + (value ?? 0), 0) / top.length);
+    const topLength = top.length;
+    if (!topLength) return null;
+    return Math.round(heroValues.reduce((sum, value) => sum + (value ?? 0), 0) / topLength);
   }, [opponentRoster, warSize]);
 
   return (
