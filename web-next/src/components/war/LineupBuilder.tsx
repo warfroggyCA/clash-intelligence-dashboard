@@ -298,7 +298,7 @@ export default function LineupBuilder({
                     {(slot.isGhost || slot.player.isGhost) ? (
                       <Ghost className="h-6 w-6 text-orange-400 flex-shrink-0 animate-pulse" />
                     ) : slot.player.townHall ? (
-                      <TownHallIcon level={slot.player.townHall} size={24} />
+                      <TownHallIcon level={slot.player.townHall} size="sm" />
                     ) : null}
                     <span className={cn(
                       "font-medium truncate",
@@ -463,7 +463,7 @@ export default function LineupBuilder({
                           {isGhostPlayer ? (
                             <Ghost className="h-5 w-5 text-orange-400 flex-shrink-0 animate-pulse" />
                           ) : player.townHall ? (
-                            <TownHallIcon level={player.townHall} size={20} />
+                            <TownHallIcon level={player.townHall} size="sm" />
                           ) : (
                             <div className="w-5" />
                           )}
