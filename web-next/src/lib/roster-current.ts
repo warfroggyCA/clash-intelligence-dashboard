@@ -248,7 +248,7 @@ export async function getCurrentRosterData(requestedClanTag?: string): Promise<R
           activityTone: activityBand.tone,
         };
       })
-      .filter((member): member is RosterMember => Boolean(member));
+      .filter(Boolean) as RosterMember[];
 
     return {
       members,
