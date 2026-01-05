@@ -1052,7 +1052,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
       if (!playerTag) return;
       const normalized = normalizeTag(playerTag) || playerTag;
       const apiKey = `/api/v2/player/${encodeURIComponent(normalized)}`;
-      if (!cache.has(apiKey)) {
+      if (!cache.get(apiKey)) {
         try {
           await mutate(apiKey, playerProfileFetcher(apiKey), { populateCache: true, revalidate: false });
         } catch (err) {
