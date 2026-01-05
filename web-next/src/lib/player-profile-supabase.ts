@@ -187,6 +187,9 @@ export function mapV2Summary(
     rankedLeague: {
       id: rankedLeague.id ?? data.rankedLeagueId ?? null,
       name: rankedLeague.name ?? data.rankedLeagueName ?? null,
+      trophies: rankedLeague.trophies ?? data.rankedTrophies ?? null,
+      iconSmall: rankedLeague.iconSmall ?? rankedLeague.icon_small ?? null,
+      iconMedium: rankedLeague.iconMedium ?? rankedLeague.icon_medium ?? null,
     },
     battleModeTrophies: data.battleModeTrophies ?? null,
     donations: {
