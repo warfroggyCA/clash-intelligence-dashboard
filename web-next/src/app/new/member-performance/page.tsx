@@ -1058,7 +1058,7 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
     }).catch(() => {});
   };
 
-  const focusMember = profileRows.find((m) => normalizeTag(m.tag) === normalizeTag(focusedTag)) ?? defaultFocusRow ?? profileRows[0];
+  const focusMember = focusedTag ? profileRows.find((m) => normalizeTag(m.tag) === normalizeTag(focusedTag)) ?? defaultFocusRow ?? profileRows[0] : defaultFocusRow ?? profileRows[0];
   const compareSource = shouldLimitToRoster ? profileRows : scopedRows;
   const focusableRows = useMemo(() => {
     if (!shouldLimitToRoster) return filtered;
@@ -1070,7 +1070,7 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
       .filter((m) => !term || normalizeSearch(m.name).includes(term) || normalizeSearch(m.tag).includes(term))
       .sort((a, b) => scoreFor(b.composite) - scoreFor(a.composite));
   }, [compareSearch, compareSource]);
-  const focusIndex = focusableRows.findIndex((row) => normalizeTag(row.tag) === normalizeTag(focusedTag));
+  const focusIndex = focusedTag ? focusableRows.findIndex((row) => normalizeTag(row.tag) === normalizeTag(focusedTag)) : -1;
   const focusByIndex = (nextIndex: number) => {
     if (!focusableRows.length) return;
     const safeIndex = ((nextIndex % focusableRows.length) + focusableRows.length) % focusableRows.length;
