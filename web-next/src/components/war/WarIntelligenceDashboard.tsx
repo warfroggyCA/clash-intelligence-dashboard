@@ -105,7 +105,7 @@ export default function WarIntelligenceDashboard({
         <div>
           <h2 className="text-2xl font-bold text-white">War Performance Intelligence</h2>
           <p className="text-sm text-slate-400 mt-1">
-            Analysis of {totalWars} wars from {new Date(periodStart).toLocaleDateString()} to {new Date(periodEnd).toLocaleDateString()}
+            Analysis of {totalWars} wars from {periodStart ? new Date(periodStart).toLocaleDateString() : '—'} to {periodEnd ? new Date(periodEnd).toLocaleDateString() : '—'}
           </p>
         </div>
         <div className="flex gap-2">

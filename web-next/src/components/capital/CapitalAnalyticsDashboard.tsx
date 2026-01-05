@@ -160,7 +160,7 @@ export default function CapitalAnalyticsDashboard({
         <div>
           <h2 className="text-2xl font-bold text-white">Capital Raid Analytics</h2>
           <p className="text-sm text-slate-400 mt-1">
-            Analysis of {totalWeekends} raid weekends from {new Date(periodStart).toLocaleDateString()} to {new Date(periodEnd).toLocaleDateString()}
+            Analysis of {totalWeekends} raid weekends from {periodStart ? new Date(periodStart).toLocaleDateString() : '—'} to {periodEnd ? new Date(periodEnd).toLocaleDateString() : '—'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
