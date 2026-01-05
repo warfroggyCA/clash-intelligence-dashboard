@@ -97,8 +97,15 @@ export default function CapitalAnalyticsDashboard({
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [data, rosterMembers, participantTagSet]);
   
+  const defaultAverages = {
+    averageLootPerAttack: 0,
+    averageCarryScore: 0,
+    averageParticipation: 0,
+    averageROI: 0,
+    averageOverallScore: 0,
+  };
   const displayAverages = useMemo(() => {
-    if (!data || !clanAverages) return clanAverages || {};
+    if (!data || !clanAverages) return clanAverages || defaultAverages;
     if (!shouldFilterRoster || displayMetrics.length === 0) return clanAverages;
     const avg = (value: (m: typeof displayMetrics[number]) => number) =>
       displayMetrics.reduce((sum, metric) => sum + value(metric), 0) / displayMetrics.length;
