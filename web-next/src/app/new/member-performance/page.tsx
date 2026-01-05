@@ -1103,7 +1103,12 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
           best = row;
         }
       });
-      const name = bestValue > 0 && best ? (best.name ?? '—') : 'No data';
+      let name: string;
+      if (bestValue > 0 && best) {
+        name = best.name ?? '—';
+      } else {
+        name = 'No data';
+      }
       return { name, value: Math.max(0, bestValue) };
     });
     return {
