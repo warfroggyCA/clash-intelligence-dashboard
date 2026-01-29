@@ -3,15 +3,18 @@
 // War Intelligence Dashboard Component
 // Displays comprehensive war performance analytics
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import type { WarIntelligenceResult, WarSummary } from '@/lib/war-intelligence/engine';
 import { generateCoachingRecommendations, compareToClanAverage } from '@/lib/war-intelligence/metrics';
-import { Loader2, TrendingUp, TrendingDown, Minus, Target, Shield, Zap, Award } from 'lucide-react';
+import { Loader2, TrendingUp, TrendingDown, Target, Shield, Zap, Award } from 'lucide-react';
 import { Tooltip } from '@/components/ui';
 import { TOOLTIP_CONTENT } from '@/lib/tooltips/tooltip-content';
+import type { RosterData } from '@/types/roster';
+import { rosterFetcher } from '@/lib/api/swr-fetcher';
+import { rosterSWRConfig } from '@/lib/api/swr-config';
 
 interface WarIntelligenceDashboardProps {
   clanTag?: string;
@@ -42,11 +45,15 @@ export default function WarIntelligenceDashboard({
   className = '' 
 }: WarIntelligenceDashboardProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<number>(90);
+  const [activeOnly, setActiveOnly] = useState(true);
   const normalizedClanTag = normalizeTag(clanTag || cfg.homeClanTag || '');
   
   const swrKey = normalizedClanTag 
     ? `/api/war-intelligence?clanTag=${encodeURIComponent(normalizedClanTag)}&daysBack=${selectedPeriod}`
     : null;
+  const rosterKey = normalizedClanTag
+    ? `/api/v2/roster?clanTag=${encodeURIComponent(normalizedClanTag)}`
+    : '/api/v2/roster';
 
   const { data, error, isLoading } = useSWR<WarIntelligenceResult>(
     swrKey,
@@ -57,11 +64,36 @@ export default function WarIntelligenceDashboard({
       refreshInterval: 5 * 60 * 1000, // Refresh every 5 minutes
     }
   );
+  const { data: rosterData } = useSWR<RosterData>(
+    activeOnly ? rosterKey : null,
+    rosterFetcher,
+    rosterSWRConfig
+  );
+
+  const safeMetrics = useMemo(() => data?.metrics ?? [], [data?.metrics]);
+  const hasAnalytics = safeMetrics.length > 0;
+  const rosterLoaded = (rosterData?.members?.length ?? 0) > 0;
+  const activeRosterTags = useMemo(() => {
+    if (!rosterLoaded) return new Set<string>();
+    const members = rosterData?.members ?? [];
+    return new Set(
+      members
+        .map((member) => normalizeTag(member.tag))
+        .filter(Boolean)
+    );
+  }, [rosterData, rosterLoaded]);
+  const displayMetrics = useMemo(() => {
+    if (!activeOnly || !rosterLoaded || activeRosterTags.size === 0) {
+      return safeMetrics;
+    }
+    return safeMetrics.filter((metric) => activeRosterTags.has(normalizeTag(metric.playerTag)));
+  }, [activeOnly, rosterLoaded, activeRosterTags, safeMetrics]);
+  const hasDisplayMetrics = displayMetrics.length > 0;
 
   if (isLoading) {
     return (
       <div className={`flex items-center justify-center p-12 ${className}`}>
-        <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-[var(--accent-alt)]" />
         <span className="ml-3 text-slate-400">Loading war intelligence...</span>
       </div>
     );
@@ -83,8 +115,7 @@ export default function WarIntelligenceDashboard({
     );
   }
 
-  const { metrics, clanAverages, totalWars, periodStart, periodEnd, latestWarSummary } = data;
-  const hasAnalytics = metrics.length > 0;
+  const { clanAverages, totalWars, periodStart, periodEnd, latestWarSummary } = data;
 
   return (
     <div className={`space-y-6 ${className}`}>
@@ -92,7 +123,10 @@ export default function WarIntelligenceDashboard({
       <LatestWarOverview summary={latestWarSummary} />
 
       {!hasAnalytics && (
-        <div className="rounded-xl border border-slate-700/50 bg-slate-800/30 p-4 text-sm text-slate-300">
+        <div
+          className="rounded-2xl border p-4 text-sm text-slate-300"
+          style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+        >
           {data.totalWars === 0
             ? 'No wars recorded in this period yet. Once a war completes, the overview above will populate automatically.'
             : 'Need at least three wars with participation to unlock the trend analytics below. Latest war details remain available above.'}
@@ -108,15 +142,27 @@ export default function WarIntelligenceDashboard({
             Analysis of {totalWars} wars from {periodStart ? new Date(periodStart).toLocaleDateString() : '—'} to {periodEnd ? new Date(periodEnd).toLocaleDateString() : '—'}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-semibold text-slate-200">
+            <input
+              type="checkbox"
+              checked={activeOnly}
+              onChange={() => setActiveOnly((prev) => !prev)}
+              className="h-3.5 w-3.5 accent-[var(--accent-alt)]"
+            />
+            Active roster only
+          </label>
+          {activeOnly && !rosterLoaded && (
+            <span className="text-xs text-slate-400">Syncing roster...</span>
+          )}
           {[30, 60, 90].map((days) => (
             <button
               key={days}
               onClick={() => setSelectedPeriod(days)}
               className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                 selectedPeriod === days
-                  ? 'bg-brand-primary text-white'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                  ? 'bg-[var(--accent-alt)] text-slate-900'
+                  : 'border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10'
               }`}
             >
               {days}d
@@ -162,10 +208,18 @@ export default function WarIntelligenceDashboard({
       </div>
 
       {/* Member Performance Table */}
-      <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg overflow-hidden">
+      <div
+        className="rounded-2xl border shadow-lg overflow-hidden"
+        style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+      >
+        {activeOnly && rosterLoaded && !hasDisplayMetrics && (
+          <div className="border-b border-white/10 px-4 py-3 text-xs text-slate-300">
+            No active roster members found in this period. Toggle off “Active roster only” to include former players.
+          </div>
+        )}
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-brand-surfaceRaised border-b border-brand-border">
+            <thead className="bg-white/5 border-b border-white/10">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-300">
                   Player
@@ -190,16 +244,16 @@ export default function WarIntelligenceDashboard({
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-brand-border">
-              {metrics.map((metric, index) => {
+            <tbody className="divide-y divide-white/10">
+              {displayMetrics.map((metric, index) => {
                 const comparison = compareToClanAverage(metric, clanAverages);
                 const recommendations = generateCoachingRecommendations(metric);
                 
                 return (
                   <tr 
                     key={metric.playerTag} 
-                    className={`hover:bg-brand-surfaceRaised transition-colors ${
-                      index % 2 === 0 ? 'bg-brand-surface' : 'bg-brand-surfaceSubtle'
+                    className={`hover:bg-white/5 transition-colors ${
+                      index % 2 === 0 ? 'bg-white/[0.03]' : 'bg-white/[0.01]'
                     }`}
                   >
                     <td className="px-4 py-3">
@@ -277,13 +331,16 @@ export default function WarIntelligenceDashboard({
 
       {/* Top Performers Section */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="rounded-xl border border-brand-border bg-brand-surface p-4">
+        <div
+          className="rounded-2xl border p-4"
+          style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+        >
           <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
             <Award className="h-5 w-5 text-amber-400" />
             Top Performers
           </h3>
           <div className="space-y-2">
-            {metrics.slice(0, 5).map((metric, index) => (
+            {displayMetrics.slice(0, 5).map((metric, index) => (
               <div key={metric.playerTag} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-slate-400">#{index + 1}</span>
@@ -295,13 +352,16 @@ export default function WarIntelligenceDashboard({
           </div>
         </div>
 
-        <div className="rounded-xl border border-brand-border bg-brand-surface p-4">
+        <div
+          className="rounded-2xl border p-4"
+          style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+        >
           <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
             <Zap className="h-5 w-5 text-blue-400" />
             Needs Coaching
           </h3>
           <div className="space-y-2">
-            {metrics
+            {displayMetrics
               .filter(m => m.performanceTier === 'needs_coaching' || m.performanceTier === 'poor')
               .slice(0, 5)
               .map((metric) => {
@@ -330,7 +390,10 @@ export default function WarIntelligenceDashboard({
 function LatestWarOverview({ summary }: { summary?: WarSummary | null }) {
   if (!summary) {
     return (
-      <div className="rounded-xl border border-slate-700/50 bg-slate-800/40 p-5 text-slate-300">
+      <div
+        className="rounded-2xl border p-5 text-slate-300"
+        style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+      >
         <h3 className="text-lg font-semibold text-white mb-1">Latest War Overview</h3>
         <p className="text-sm text-slate-400">No recent war data available.</p>
       </div>
@@ -346,7 +409,10 @@ function LatestWarOverview({ summary }: { summary?: WarSummary | null }) {
         : 'bg-slate-600/30 text-slate-200';
 
   return (
-    <div className="rounded-xl border border-brand-border bg-brand-surface shadow-lg p-5 space-y-4">
+    <div
+      className="rounded-2xl border shadow-lg p-5 space-y-4"
+      style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h3 className="text-lg font-semibold text-white">Latest War</h3>
@@ -357,25 +423,37 @@ function LatestWarOverview({ summary }: { summary?: WarSummary | null }) {
         </div>
       </div>
       <div className="grid gap-3 md:grid-cols-4 text-white">
-        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+        <div
+          className="rounded-lg border p-3"
+          style={{ borderColor: 'var(--border-subtle)', background: 'rgba(15, 23, 42, 0.35)' }}
+        >
           <div className="text-xs uppercase tracking-wider text-slate-400">
             <TooltipLabel text="Stars" tooltipKey="War Stars" />
           </div>
           <div className="text-2xl font-semibold">{summary.clanStars} - {summary.opponentStars}</div>
         </div>
-        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+        <div
+          className="rounded-lg border p-3"
+          style={{ borderColor: 'var(--border-subtle)', background: 'rgba(15, 23, 42, 0.35)' }}
+        >
           <div className="text-xs uppercase tracking-wider text-slate-400">
             <TooltipLabel text="Attacks Used" tooltipKey="Attacks Used" />
           </div>
           <div className="text-2xl font-semibold">{summary.attacksUsed}/{summary.attacksAvailable}</div>
         </div>
-        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+        <div
+          className="rounded-lg border p-3"
+          style={{ borderColor: 'var(--border-subtle)', background: 'rgba(15, 23, 42, 0.35)' }}
+        >
           <div className="text-xs uppercase tracking-wider text-slate-400">
             <TooltipLabel text="Average Stars" tooltipKey="Average Stars" />
           </div>
           <div className="text-2xl font-semibold">{summary.averageStars.toFixed(2)}</div>
         </div>
-        <div className="rounded-lg bg-slate-900/40 border border-slate-800/60 p-3">
+        <div
+          className="rounded-lg border p-3"
+          style={{ borderColor: 'var(--border-subtle)', background: 'rgba(15, 23, 42, 0.35)' }}
+        >
           <div className="text-xs uppercase tracking-wider text-slate-400">
             <TooltipLabel text="Missed Attacks" tooltipKey="Missed Attacks" />
           </div>
@@ -389,7 +467,8 @@ function LatestWarOverview({ summary }: { summary?: WarSummary | null }) {
             {summary.topAttackers.slice(0, 4).map((attacker) => (
               <div
                 key={attacker.playerTag}
-                className="rounded-lg border border-slate-700/60 bg-slate-900/50 px-3 py-2 text-sm text-slate-200 flex items-center justify-between"
+                className="rounded-lg border px-3 py-2 text-sm text-slate-200 flex items-center justify-between"
+                style={{ borderColor: 'var(--border-subtle)', background: 'rgba(15, 23, 42, 0.4)' }}
               >
                 <div>
                   <div className="font-semibold text-white">{attacker.playerName}</div>

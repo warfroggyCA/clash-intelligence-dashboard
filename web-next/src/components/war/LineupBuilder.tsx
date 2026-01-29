@@ -309,7 +309,7 @@ export default function LineupBuilder({
                     {/* Show warning badge for ghost players */}
                     {(slot.isGhost || slot.player.isGhost) && (
                       <span className="flex-shrink-0 rounded bg-orange-500 px-2 py-0.5 text-[10px] font-bold text-white uppercase tracking-wide shadow-sm">
-                        👻 CAN'T ATTACK
+                        👻 CAN&apos;T ATTACK
                       </span>
                     )}
                     {slot.player.heroPower && !(slot.isGhost || slot.player.isGhost) && (
@@ -438,7 +438,7 @@ export default function LineupBuilder({
                     className="flex w-full items-center gap-2 px-3 py-2 text-sm text-slate-400 hover:bg-white/5 border-b border-white/10"
                   >
                     <Ghost className="h-4 w-4" />
-                    Ghost (placeholder - can't attack)
+                    Ghost (placeholder - can&apos;t attack)
                   </button>
 
                   {/* Available Players */}
