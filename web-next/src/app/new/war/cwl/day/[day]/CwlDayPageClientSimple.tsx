@@ -1004,6 +1004,44 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
     try {
       setPreplanCopyState('copying');
       const { priorAttendance, nextDaySignals, priorSyncAttempted } = await loadAttendanceContext();
+      let opponentRosterForPreplan: LineupPlayer[] = availableOpponents;
+
+      if (opponentRosterForPreplan.length === 0 && opponent?.clanTag && isValidTag(opponent.clanTag)) {
+        try {
+          const opponentTag = normalizeTag(opponent.clanTag);
+          const params = new URLSearchParams({ opponentTag, enrich: '50', rosterSource: 'cwl' });
+          if (homeClanTag) params.set('ourClanTag', homeClanTag);
+          params.set('dayIndex', String(dayIndex));
+          params.set('persist', 'true');
+          params.set('seasonId', seasonId);
+          params.set('warSize', String(warSize));
+          const res = await fetch(`/api/war/opponent?${params.toString()}`);
+          if (res.ok) {
+            const body = await res.json().catch(() => null);
+            const roster = mapOpponentRosterSnapshot(body?.data?.roster || []);
+            opponentRosterForPreplan = roster.map((m) => ({
+              tag: normalizeTag(m.tag || ''),
+              name: m.name || m.tag,
+              townHall: m.townHall,
+              heroPower: resolveHeroPower({ heroLevels: m.heroes }),
+              heroes: m.heroes as any,
+              isGhost: m.isGhost ?? false,
+            })).filter((m) => m.tag);
+          }
+        } catch {
+          // ignore
+        }
+      }
+
+      const worstCaseOpponents = opponentRosterForPreplan
+        .slice()
+        .sort((a, b) => {
+          const thDiff = (b.townHall ?? 0) - (a.townHall ?? 0);
+          if (thDiff !== 0) return thDiff;
+          return (b.heroPower ?? 0) - (a.heroPower ?? 0);
+        })
+        .slice(0, warSize);
+      const opponentThDistributionForPreplan = buildThDistribution(opponentRosterForPreplan);
 
       const lines = [
         `# CWL Day ${dayIndex} Pre-Planning (Lineup Recommendation)`,
@@ -1012,12 +1050,14 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
         `- Recommend a lineup of ${warSize} players for Day ${dayIndex}.`,
         `- Prioritize reliable attackers; avoid no-shows unless necessary.`,
         `- Keep TH balance and coverage across the map.`,
+        `- Use the full eligible roster; ignore the current lineup if it is empty.`,
+        `- Assume opponent fields their strongest possible lineup.`,
         `- Call out any risks or missing data.`,
         ``,
         `## Context`,
         `- War size: ${warSize}v${warSize}`,
         `- Eligible roster count: ${availablePlayers.length}`,
-        `- Opponent: ${opponentClanName || 'Unknown'} (${availableOpponents.length} players)`,
+        `- Opponent: ${opponentClanName || 'Unknown'} (${opponentRosterForPreplan.length} players)`,
         ``,
       ];
 
@@ -1062,6 +1102,21 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
         lines.push(``);
       }
 
+      if (worstCaseOpponents.length) {
+        lines.push(`## Worst-Case Opponent Lineup (Top ${warSize} by TH + Hero Power)`);
+        worstCaseOpponents.forEach((row, idx) => {
+          const displayName = row.name || row.tag;
+          const thLabel = row.townHall != null ? `TH${row.townHall}` : 'TH?';
+          const hpLabel = row.heroPower != null ? `HP ${row.heroPower}` : 'HP ?';
+          lines.push(`${idx + 1}. ${displayName} (${row.tag}) — ${thLabel} • ${hpLabel}`);
+        });
+        lines.push(``);
+      } else {
+        lines.push(`## Worst-Case Opponent Lineup`);
+        lines.push(`- Opponent roster not loaded yet; assume they field their strongest possible ${warSize}.`);
+        lines.push(``);
+      }
+
       const preplanPayload = {
         meta: {
           day: dayIndex,
@@ -1084,9 +1139,16 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
         opponentSummary: {
           name: opponentClanName,
           tag: opponent?.clanTag,
-          rosterCount: availableOpponents.length,
-          thDistribution: opponentThDistribution,
+          rosterCount: opponentRosterForPreplan.length,
+          thDistribution: opponentThDistributionForPreplan,
         },
+        opponentWorstCaseLineup: worstCaseOpponents.map((p, idx) => ({
+          position: idx + 1,
+          name: p.name,
+          tag: p.tag,
+          th: p.townHall,
+          heroPower: p.heroPower ?? null,
+        })),
         priorDayAttendance: priorAttendance,
         forwardLineupSignals: nextDaySignals,
       };
@@ -1278,7 +1340,7 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
               <div className="text-2xl">📋</div>
               <div>
                 <div className="text-slate-300 font-medium">No war results yet</div>
-                <div className="text-sm text-slate-500">War may not have started or data isn't available</div>
+                <div className="text-sm text-slate-500">War may not have started or data isn&apos;t available</div>
               </div>
             </div>
             <Button tone="ghost" onClick={() => fetchDayResults(true)} disabled={resultsLoading}>
@@ -1428,7 +1490,7 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
           )}
           {cwlRosterSource === 'cwl' && ghostCount > 0 && (
             <div className="mt-2 text-xs text-orange-300/80">
-              👻 {ghostCount} player{ghostCount > 1 ? 's' : ''} left the clan but {ghostCount > 1 ? 'are' : 'is'} still in CWL (can't attack)
+              👻 {ghostCount} player{ghostCount > 1 ? 's' : ''} left the clan but {ghostCount > 1 ? 'are' : 'is'} still in CWL (can&apos;t attack)
             </div>
           )}
           {cwlRosterSource === 'clan' && cwlRoster.length === 0 && !cwlRosterLoading && (
@@ -1471,7 +1533,7 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
               <ThDistributionBar distribution={opponentThDistribution} />
               {opponentGhostCount > 0 && (
                 <div className="mt-2 text-xs text-orange-300/80">
-                  👻 {opponentGhostCount} player{opponentGhostCount > 1 ? 's have' : ' has'} left their clan (can't attack)
+                  👻 {opponentGhostCount} player{opponentGhostCount > 1 ? 's have' : ' has'} left their clan (can&apos;t attack)
                 </div>
               )}
             </>
@@ -1600,8 +1662,8 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
 
       {/* Tips */}
       <div className="text-xs text-slate-500 space-y-1">
-        <p>💡 <strong className="text-slate-400">Tip:</strong> Click each slot to select a player from the dropdown. Players you've already selected won't appear in other slots.</p>
-        <p>👻 <strong className="text-slate-400">Ghost players:</strong> Use "Manual entry" for players who left the clan but are still in CWL (they can't attack).</p>
+        <p>💡 <strong className="text-slate-400">Tip:</strong> Click each slot to select a player from the dropdown. Players you&apos;ve already selected won&apos;t appear in other slots.</p>
+        <p>👻 <strong className="text-slate-400">Ghost players:</strong> Use &quot;Manual entry&quot; for players who left the clan but are still in CWL (they can&apos;t attack).</p>
       </div>
     </div>
   );

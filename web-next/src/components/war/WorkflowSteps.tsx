@@ -15,18 +15,21 @@ type WorkflowStepsProps = {
 
 export const WorkflowSteps: React.FC<WorkflowStepsProps> = ({ steps }) => {
   return (
-    <div className="rounded-2xl border border-border/60 bg-background/80 p-4">
+    <div
+      className="rounded-2xl border p-4"
+      style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+    >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {steps.map((step) => {
           const indicatorClasses = {
-            complete: 'bg-primary text-primary-foreground border-primary',
-            current: 'bg-primary/10 text-primary border-primary',
-            upcoming: 'bg-transparent text-muted-foreground border-border',
+            complete: 'bg-emerald-500/15 text-emerald-100 border-emerald-400/50',
+            current: 'bg-[var(--accent-alt)]/15 text-white border-[var(--accent-alt)]',
+            upcoming: 'bg-transparent text-slate-300 border-[var(--border-subtle)]',
           }[step.status];
 
           const labelClasses = {
-            complete: 'text-primary',
-            current: 'text-primary',
+            complete: 'text-emerald-200',
+            current: 'text-[var(--accent-alt)]',
             upcoming: 'text-slate-400',
           }[step.status];
 
@@ -34,9 +37,10 @@ export const WorkflowSteps: React.FC<WorkflowStepsProps> = ({ steps }) => {
             <div
               key={step.number}
               className={cn(
-                'flex flex-col gap-2 rounded-xl border border-border/50 bg-slate-950/30 p-3',
-                step.status === 'current' && 'ring-1 ring-primary/40',
+                'flex flex-col gap-2 rounded-xl border p-3',
+                step.status === 'current' && 'ring-1 ring-[var(--accent-alt)]/40',
               )}
+              style={{ borderColor: 'var(--border-subtle)', background: 'var(--card)' }}
             >
               <div className="flex items-center gap-3">
                 <div
@@ -49,7 +53,7 @@ export const WorkflowSteps: React.FC<WorkflowStepsProps> = ({ steps }) => {
                 </div>
                 <div className="flex-1">
                   <p className={cn('text-sm font-semibold', labelClasses)}>{step.title}</p>
-                  <p className="text-xs text-muted-foreground leading-snug">{step.description}</p>
+                  <p className="text-xs text-slate-400 leading-snug">{step.description}</p>
                 </div>
               </div>
             </div>
