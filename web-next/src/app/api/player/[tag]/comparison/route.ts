@@ -189,31 +189,66 @@ export async function GET(
       );
     }
 
+    const toNumber = (value: any): number => {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+      if (typeof value === 'string' && value.trim() !== '') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+      return 0;
+    };
+
     // Extract metrics for comparison
     // Use seasonTotalTrophies (running total across all weeks) instead of current trophies (which reset weekly)
-    const trophies = members.map((m: any) => m.seasonTotalTrophies || 0);
-    const donations = members.map((m: any) => m.donations || 0);
-    const donationsReceived = members.map((m: any) => m.donationsReceived || 0);
-    const warStars = members.map((m: any) => m.warStars || 0);
-    // Note: roster API returns 'capitalContributions', not 'clanCapitalContributions'
-    const clanCapitalContributions = members.map((m: any) => m.capitalContributions || 0);
+    const trophies = members.map((m: any) => toNumber(m.seasonTotalTrophies));
     
-    // Calculate donation ratios
-    const donationRatios = members.map((m: any) => {
-      const given = m.donations || 0;
-      const received = m.donationsReceived || 1; // Avoid division by zero
-      return given / received;
+    // ACCRUING METRICS FIX: Use activity metrics (running totals) or historical timeline maxima
+    // to prevent "Season Reset" wiping out the dashboard rankings
+    const getTrueSeasonTotal = (member: any, field: string, deltaField: string) => {
+      const live = toNumber(member[field]);
+      const running = toNumber(member.activity?.metrics?.[deltaField]);
+      
+      // DEEP SEARCH: If both are 0, scan the historical activity timeline for the peak value
+      let historicalPeak = 0;
+      if (member.activityTimeline && Array.isArray(member.activityTimeline)) {
+        historicalPeak = Math.max(...member.activityTimeline.map((t: any) => toNumber(t[field])), 0);
+      }
+      
+      return Math.max(live, running, historicalPeak);
+    };
+
+    const donations = members.map((m: any) => getTrueSeasonTotal(m, 'donations', 'donationDelta'));
+    const donationsReceived = members.map((m: any) => getTrueSeasonTotal(m, 'donationsReceived', 'donationReceivedDelta'));
+
+    const warStars = members.map((m: any) => toNumber(m.warStars));
+    // Note: roster API returns 'capitalContributions', not 'clanCapitalContributions'
+    const clanCapitalContributions = members.map((m: any) => toNumber(m.capitalContributions));
+    
+    // Calculate donation ratios (sanitize to avoid NaN/Infinity)
+    const donationRatios = members.map((m: any, idx: number) => {
+      const given = donations[idx];
+      const received = donationsReceived[idx];
+      const denom = Math.max(1, received);
+      const ratio = given / denom;
+      return Number.isFinite(ratio) ? ratio : 0;
     });
+
+    const targetIdx = members.findIndex((m: any) => normalizeTag(m.tag) === playerTag);
+    const targetDonations = donations[targetIdx] || 0;
+    const targetReceived = donationsReceived[targetIdx] || 0;
+    const targetRatio = Number.isFinite(targetDonations / Math.max(1, targetReceived))
+      ? targetDonations / Math.max(1, targetReceived)
+      : 0;
 
     // Build comparison data
     const comparisonData: PlayerComparisonData = {
-      trophies: calculateMetrics(targetPlayer.seasonTotalTrophies || 0, trophies),
-      donations: calculateMetrics(targetPlayer.donations || 0, donations),
-      donationsReceived: calculateMetrics(targetPlayer.donationsReceived || 0, donationsReceived),
-      warStars: calculateMetrics(targetPlayer.warStars || 0, warStars),
+      trophies: calculateMetrics(toNumber(targetPlayer.seasonTotalTrophies), trophies),
+      donations: calculateMetrics(targetDonations, donations),
+      donationsReceived: calculateMetrics(targetReceived, donationsReceived),
+      warStars: calculateMetrics(toNumber(targetPlayer.warStars), warStars),
       // Note: roster API returns 'capitalContributions', not 'clanCapitalContributions'
-      clanCapitalContributions: calculateMetrics(targetPlayer.capitalContributions || 0, clanCapitalContributions),
-      donationRatio: calculateMetrics((targetPlayer.donations || 0) / (targetPlayer.donationsReceived || 1), donationRatios)
+      clanCapitalContributions: calculateMetrics(toNumber(targetPlayer.capitalContributions), clanCapitalContributions),
+      donationRatio: calculateMetrics(targetRatio, donationRatios)
     };
 
     // Town Hall level comparison
@@ -225,9 +260,9 @@ export async function GET(
       
       if (sameTHMembers.length > 1) {
         // Use seasonTotalTrophies (running total) for comparison
-        const thTrophies = sameTHMembers.map((m: any) => m.seasonTotalTrophies || 0);
-        const thDonations = sameTHMembers.map((m: any) => m.donations || 0);
-        const thWarStars = sameTHMembers.map((m: any) => m.warStars || 0);
+        const thTrophies = sameTHMembers.map((m: any) => toNumber(m.seasonTotalTrophies));
+        const thDonations = sameTHMembers.map((m: any) => toNumber(m.donations));
+        const thWarStars = sameTHMembers.map((m: any) => toNumber(m.warStars));
         
         comparisonData.townHallComparison = {
           level: playerTH,
@@ -254,9 +289,9 @@ export async function GET(
         
         if (sameLeagueMembers.length > 1) {
           // Use seasonTotalTrophies (running total) for comparison
-          const leagueTrophies = sameLeagueMembers.map((m: any) => m.seasonTotalTrophies || 0);
-          const leagueDonations = sameLeagueMembers.map((m: any) => m.donations || 0);
-          const leagueWarStars = sameLeagueMembers.map((m: any) => m.warStars || 0);
+          const leagueTrophies = sameLeagueMembers.map((m: any) => toNumber(m.seasonTotalTrophies));
+          const leagueDonations = sameLeagueMembers.map((m: any) => toNumber(m.donations));
+          const leagueWarStars = sameLeagueMembers.map((m: any) => toNumber(m.warStars));
           
           comparisonData.leagueTierComparison = {
             leagueName: playerLeagueName,
@@ -278,9 +313,9 @@ export async function GET(
     
     if (sameRoleMembers.length > 1) {
       // Use seasonTotalTrophies (running total) for comparison
-      const roleTrophies = sameRoleMembers.map((m: any) => m.seasonTotalTrophies || 0);
-      const roleDonations = sameRoleMembers.map((m: any) => m.donations || 0);
-      const roleWarStars = sameRoleMembers.map((m: any) => m.warStars || 0);
+      const roleTrophies = sameRoleMembers.map((m: any) => toNumber(m.seasonTotalTrophies));
+      const roleDonations = sameRoleMembers.map((m: any) => toNumber(m.donations));
+      const roleWarStars = sameRoleMembers.map((m: any) => toNumber(m.warStars));
       
       comparisonData.roleComparison = {
         role: playerRole,

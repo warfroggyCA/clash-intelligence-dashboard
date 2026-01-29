@@ -1,8 +1,9 @@
-import { getInitialPlayerProfile } from '@/app/(dashboard)/player/[tag]/get-initial-profile';
 import type { SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
 import PlayerProfileClient from './PlayerProfileClient';
-import { cookies } from 'next/headers';
 import { normalizeTag } from '@/lib/tags';
+import { cfg } from '@/lib/config';
+import { getCurrentRosterData } from '@/lib/roster-current';
+import { buildInitialPlayerProfileFromRoster } from '@/lib/new/player-initial-profile';
 
 export const revalidate = 300;
 
@@ -13,11 +14,11 @@ export default async function NewPlayerPage({ params }: { params: Promise<{ tag:
   let initialProfile: SupabasePlayerProfilePayload | null = null;
 
   try {
-    const cookieStore = await cookies();
-    const cookieClanTag = cookieStore.get('currentClanTag')?.value;
-    initialProfile = await getInitialPlayerProfile(tag, cookieClanTag);
+    const clanTag = normalizeTag(cfg.homeClanTag || '') || cfg.homeClanTag || undefined;
+    const roster = await getCurrentRosterData(clanTag);
+    initialProfile = buildInitialPlayerProfileFromRoster(roster, tag);
   } catch (err) {
-    console.warn('[new/player] initial profile fetch failed', err);
+    console.warn('[new/player] initial profile build failed', err);
   }
 
   return <PlayerProfileClient tag={tag} initialProfile={initialProfile} />;
