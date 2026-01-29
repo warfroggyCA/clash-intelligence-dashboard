@@ -15,7 +15,7 @@ import Link from 'next/link';
 import { Trophy, Award, Medal, TrendingUp, Target, Heart, Zap } from 'lucide-react';
 import { TownHallBadge, LeagueBadge } from '@/components/ui';
 import { normalizeTag } from '@/lib/tags';
-import type { RosterMember } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterMember } from '@/types/roster';
 import {
   getRankedMembers,
   getPlayerRank,

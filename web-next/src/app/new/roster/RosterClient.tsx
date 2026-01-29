@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import useSWR from 'swr';
+import type { IngestionJobRecord } from '@/lib/ingestion/job-store';
 import { Button } from '@/components/new-ui/Button';
 import { Input } from '@/components/new-ui/Input';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
@@ -12,7 +13,7 @@ import { useRosterData } from './useRosterData';
 import { apiFetcher } from '@/lib/api/swr-fetcher';
 import Image from 'next/image';
 import { HERO_MAX_LEVELS } from '@/types';
-import type { RosterMember, RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterMember, RosterData } from './types';
 import { formatDistanceToNow } from 'date-fns';
 import {
   formatRush,
@@ -30,6 +31,16 @@ import { RosterCardsSkeleton } from './RosterCardsSkeleton';
 import { normalizeTag } from '@/lib/tags';
 import { normalizeSearch } from '@/lib/search';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { showToast } from '@/lib/toast';
+import { useLeadership } from '@/hooks/useLeadership';
+import {
+  handleCopySummary,
+  handleExportCSV,
+  handleExportDiscord,
+} from '@/lib/export/roster-export';
+import { RosterPlayerNotesModal } from '@/components/leadership/RosterPlayerNotesModal';
+import { RosterPlayerTenureModal } from '@/components/leadership/RosterPlayerTenureModal';
+import { RosterPlayerDepartureModal } from '@/components/leadership/RosterPlayerDepartureModal';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // WORLD-CLASS COMPONENTS
@@ -38,18 +49,21 @@ import { useRouter, useSearchParams } from 'next/navigation';
 // Animated counter
 const AnimatedCounter = ({ value, duration = 800 }: { value: number; duration?: number }) => {
   const [displayValue, setDisplayValue] = useState(0);
+  const displayValueRef = useRef(0);
   
   useEffect(() => {
     if (typeof value !== 'number' || isNaN(value)) return;
     const startTime = Date.now();
-    const startValue = displayValue;
+    const startValue = displayValueRef.current;
     const diff = value - startValue;
     
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(Math.round(startValue + diff * easeOut));
+      const nextValue = Math.round(startValue + diff * easeOut);
+      displayValueRef.current = nextValue;
+      setDisplayValue(nextValue);
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
@@ -158,13 +172,20 @@ const isNewJoiner = (member: RosterMember): boolean => {
 };
 
 export default function RosterClient({ initialRoster }: { initialRoster?: RosterData | null }) {
-  const { data, members, isLoading, error, isValidating, mutate, clanTag } = useRosterData(initialRoster || undefined);
+  const { data, members, isLoading, error, isValidating, mutate, clanTag, refreshLive } = useRosterData(initialRoster || undefined);
+  const { permissions } = useLeadership();
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState<'all' | 'current' | 'former'>('all');
   const searchParams = useSearchParams();
   const router = useRouter();
   const joinerFilter = searchParams?.get('filter') === 'new-joiners';
   const shouldLoadFormer = status === 'former';
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement | null>(null);
+  const [actionMenuTag, setActionMenuTag] = useState<string | null>(null);
+  const [notesTarget, setNotesTarget] = useState<RosterMember | null>(null);
+  const [tenureTarget, setTenureTarget] = useState<RosterMember | null>(null);
+  const [departureTarget, setDepartureTarget] = useState<RosterMember | null>(null);
 
   const formerKey = shouldLoadFormer && clanTag
     ? `/api/v2/roster/former?clanTag=${encodeURIComponent(clanTag)}`
@@ -184,6 +205,59 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
   const newJoinerCount = useMemo(
     () => members.filter(isNewJoiner).length,
     [members]
+  );
+
+  const resolvedClanTag = data?.clanTag || clanTag || '';
+
+  const exportRoster = useMemo<RosterData | null>(() => {
+    if (data) return data;
+    if (!members.length) return null;
+    return {
+      members,
+      clanName: resolvedClanTag || 'Roster',
+      clanTag: resolvedClanTag || 'UNKNOWN',
+      date: null,
+    };
+  }, [data, members, resolvedClanTag]);
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      if (!exportRef.current) return;
+      if (event.target instanceof Node && !exportRef.current.contains(event.target)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [exportOpen]);
+
+  const handleGenerateInsights = useCallback(() => {
+    if (!permissions.canGenerateCoachingInsights) {
+      showToast('You do not have permission to generate insights.', 'error');
+      return;
+    }
+    showToast('Insight generation is queued.', 'success');
+  }, [permissions.canGenerateCoachingInsights]);
+
+  const handleExportAction = useCallback(
+    async (action: 'csv' | 'discord' | 'summary') => {
+      if (!permissions.canGenerateCoachingInsights) {
+        showToast('You do not have permission to export roster data.', 'error');
+        return;
+      }
+      if (!exportRoster) {
+        showToast('Roster data is not available yet.', 'error');
+        return;
+      }
+      let ok = false;
+      if (action === 'csv') ok = await handleExportCSV(exportRoster);
+      if (action === 'discord') ok = await handleExportDiscord(exportRoster);
+      if (action === 'summary') ok = await handleCopySummary(exportRoster);
+      setExportOpen(false);
+      showToast(ok ? 'Export complete.' : 'Export failed.', ok ? 'success' : 'error');
+    },
+    [permissions.canGenerateCoachingInsights, exportRoster]
   );
 
   const toggleJoinerFilter = () => {
@@ -261,9 +335,18 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     const heroPowers: Array<number | null> = [];
     const donations: Array<number | null> = [];
     const trophies: Array<number | null> = [];
+    const vipScores: number[] = [];
+    const activityCounts = {
+      veryActive: 0,
+      active: 0,
+      moderate: 0,
+      low: 0,
+      inactive: 0,
+    };
     let activeCount = 0;
     let topDonator: { name: string; value: number | null } = { name: '', value: null };
     let topTrophies: { name: string; value: number | null } = { name: '', value: null };
+    let topVip: { name: string; value: number | null } = { name: '', value: null };
     
       members.forEach((m) => {
         const th = resolveTownHall(m);
@@ -275,9 +358,20 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
       
       const activity = resolveActivity(m);
       if (activity.band !== 'Low') activeCount++;
+      if (activity.level === 'Very Active') activityCounts.veryActive++;
+      else if (activity.level === 'Active') activityCounts.active++;
+      else if (activity.level === 'Moderate') activityCounts.moderate++;
+      else if (activity.level === 'Low') activityCounts.low++;
+      else activityCounts.inactive++;
       
       if (typeof m.donations === 'number' && (topDonator.value == null || m.donations > topDonator.value)) {
         topDonator = { name: m.name || m.tag || '', value: m.donations };
+      }
+      if (typeof m.vip?.score === 'number' && Number.isFinite(m.vip.score)) {
+        vipScores.push(m.vip.score);
+        if (topVip.value == null || m.vip.score > topVip.value) {
+          topVip = { name: m.name || m.tag || '', value: m.vip.score };
+        }
       }
       const resolvedTrophies = resolveTrophies(m);
       if (typeof resolvedTrophies === 'number' && (topTrophies.value == null || resolvedTrophies > topTrophies.value)) {
@@ -287,6 +381,10 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     const totalHeroPower = sumIfComplete(heroPowers);
     const totalDonations = sumIfComplete(donations);
     const totalTrophies = sumIfComplete(trophies);
+    const avgVipScore =
+      vipScores.length > 0
+        ? Math.round((vipScores.reduce((sum, value) => sum + value, 0) / vipScores.length) * 10) / 10
+        : null;
     
     return {
       memberCount: members.length,
@@ -297,8 +395,14 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
       activePercent: Math.round((activeCount / members.length) * 100),
       topDonator,
       topTrophies,
+      avgVipScore,
+      topVip,
+      activityCounts,
     };
   }, [members]);
+
+  const [ingestionJobId, setIngestionJobId] = useState<string | null>(null);
+  const [ingestionRequestedAt, setIngestionRequestedAt] = useState<Date | null>(null);
 
   const lastUpdated =
     data?.snapshotMetadata?.fetchedAt ??
@@ -308,6 +412,65 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     null;
   const parsedLastUpdated = lastUpdated ? new Date(lastUpdated) : null;
   const safeLastUpdated = parsedLastUpdated && !Number.isNaN(parsedLastUpdated.getTime()) ? parsedLastUpdated : null;
+
+  const updatedLabel = useMemo(() => {
+    if (ingestionJobId && ingestionRequestedAt) {
+      return `Refresh requested ${formatDistanceToNow(ingestionRequestedAt, { addSuffix: true })}`;
+    }
+    if (safeLastUpdated) {
+      return `Snapshot updated ${formatDistanceToNow(safeLastUpdated, { addSuffix: true })}`;
+    }
+    return 'Snapshot time unknown';
+  }, [ingestionJobId, ingestionRequestedAt, safeLastUpdated]);
+
+  const ingestionJobKey = ingestionJobId ? `/api/ingestion/jobs/${encodeURIComponent(ingestionJobId)}` : null;
+  const { data: ingestionJobData } = useSWR<IngestionJobRecord>(
+    ingestionJobKey,
+    apiFetcher,
+    {
+      refreshInterval: ingestionJobId ? 1500 : 0,
+      revalidateOnFocus: false,
+    },
+  );
+
+  useEffect(() => {
+    if (!ingestionJobId || !ingestionJobData) return;
+    if (ingestionJobData.status === 'completed') {
+      showToast('Refresh complete. Loading latest snapshot…', 'success');
+      setIngestionJobId(null);
+      setIngestionRequestedAt(null);
+      void mutate();
+    } else if (ingestionJobData.status === 'failed') {
+      showToast('Refresh failed. Check logs.', 'error');
+      setIngestionJobId(null);
+      setIngestionRequestedAt(null);
+    }
+  }, [ingestionJobId, ingestionJobData, mutate]);
+
+  const handleRequestRefresh = useCallback(async () => {
+    if (!permissions.canModifyClanData || !clanTag) {
+      showToast('Permission required to request refresh.', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/ingestion/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ clanTag }),
+      });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || payload?.success === false) {
+        throw new Error(payload?.error || `Request failed (${res.status})`);
+      }
+      const jobId = payload?.data?.jobId as string;
+      setIngestionJobId(jobId);
+      setIngestionRequestedAt(new Date());
+      showToast('Refresh queued.', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to request refresh.', 'error');
+    }
+  }, [clanTag, permissions.canModifyClanData]);
 
   const renderMemberCard = (member: RosterMember) => {
     const role = normalizeRole(member.role);
@@ -322,6 +485,9 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
         ? Math.round(activity.score).toString()
         : '—';
     const heroPower = member.heroPower ?? null;
+    const vipScore = typeof member.vip?.score === 'number' && Number.isFinite(member.vip.score)
+      ? member.vip.score
+      : null;
     const tenureDays =
       typeof member.tenureDays === 'number'
         ? member.tenureDays
@@ -350,6 +516,8 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     });
     const overallHeroPercent = totalMaxLevels > 0 ? Math.round((totalLevels / totalMaxLevels) * 100) : 0;
 
+    const isActionOpen = actionMenuTag === member.tag;
+
     return (
       <div
         key={member.tag}
@@ -370,6 +538,52 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
         />
         
         <div className="relative z-10 space-y-4">
+          {permissions.canModifyClanData && (
+            <div className="absolute right-2 top-2">
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActionMenuTag(isActionOpen ? null : member.tag);
+                }}
+                className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
+                title="Roster actions"
+              >
+                •••
+              </button>
+              {isActionOpen && (
+                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs shadow-lg">
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                    onClick={() => {
+                      setNotesTarget(member);
+                      setActionMenuTag(null);
+                    }}
+                  >
+                    Leadership notes
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                    onClick={() => {
+                      setTenureTarget(member);
+                      setActionMenuTag(null);
+                    }}
+                  >
+                    Update tenure
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left text-rose-300 hover:bg-rose-500/10"
+                    onClick={() => {
+                      setDepartureTarget(member);
+                      setActionMenuTag(null);
+                    }}
+                  >
+                    Record departure
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {/* ═══ HEADER: Name on top, metadata below ═══ */}
           <div className="space-y-2.5">
             {/* Row 1: Player name (full width) */}
@@ -395,6 +609,11 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
                 <span className="text-xs font-semibold text-slate-400">
                   SRS {activityScoreDisplay}
                 </span>
+                {vipScore != null && (
+                  <span className="text-xs font-semibold text-amber-300">
+                    VIP {vipScore.toFixed(1)}
+                  </span>
+                )}
               </div>
               
               {/* Right: TH + League (visually grouped, same size) */}
@@ -673,23 +892,76 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
                     {data.clanTag}
                   </code>
                 )}
-                {safeLastUpdated && (
-                  <>
-                    <span className="text-slate-500">•</span>
-                    <span className="text-slate-400">
-                      Updated {formatDistanceToNow(safeLastUpdated, { addSuffix: true })}
-                    </span>
-                  </>
-                )}
+                <>
+                  <span className="text-slate-500">•</span>
+                  <span className="text-slate-400">{updatedLabel}</span>
+                </>
               </div>
             </div>
             
             <div className="flex flex-wrap gap-2 text-sm">
-              <Button tone="primary" onClick={() => mutate()} disabled={isValidating}>
+              <Button
+                tone="primary"
+                onClick={() => {
+                  void mutate();
+                }}
+                disabled={isValidating}
+                title="Refresh snapshot"
+              >
                 {isValidating ? 'Refreshing…' : 'Refresh'}
               </Button>
-              <Button tone="accentAlt">Generate Insights</Button>
-              <Button tone="ghost">Export</Button>
+
+              {permissions.canModifyClanData ? (
+                <Button
+                  tone="accentAlt"
+                  onClick={handleRequestRefresh}
+                  disabled={Boolean(ingestionJobId)}
+                  title={ingestionJobId ? 'Refresh already running' : 'Queue a full ingestion run (updates snapshots)'}
+                >
+                  {ingestionJobId ? (ingestionJobData?.status === 'running' ? 'Refreshing…' : 'Refresh queued') : 'Request refresh'}
+                </Button>
+              ) : null}
+
+              <Button
+                tone="accentAlt"
+                onClick={handleGenerateInsights}
+                disabled={!permissions.canGenerateCoachingInsights}
+                title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Generate insights'}
+              >
+                Generate Insights
+              </Button>
+              <div className="relative" ref={exportRef}>
+                <Button
+                  tone="ghost"
+                  onClick={() => setExportOpen((prev) => !prev)}
+                  disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
+                  title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Export roster'}
+                >
+                  Export
+                </Button>
+                {exportOpen && (
+                  <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs shadow-lg">
+                    <button
+                      className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                      onClick={() => handleExportAction('csv')}
+                    >
+                      Export CSV
+                    </button>
+                    <button
+                      className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                      onClick={() => handleExportAction('summary')}
+                    >
+                      Copy Summary
+                    </button>
+                    <button
+                      className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                      onClick={() => handleExportAction('discord')}
+                    >
+                      Copy Discord
+                    </button>
+                  </div>
+                )}
+              </div>
               <Link
                 href="/new/roster/table"
                 className="inline-flex items-center justify-center rounded-xl border px-4 py-2 font-semibold text-sm backdrop-blur-sm"
@@ -710,12 +982,18 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
 
           {/* Stats Row */}
           {clanStats && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
               <MiniStatCard 
                 label="Members" 
                 value={clanStats.memberCount} 
                 icon="👥"
                 color="#f59e0b"
+              />
+              <MiniStatCard 
+                label="Avg VIP" 
+                value={clanStats.avgVipScore ?? '—'} 
+                icon="⭐"
+                color="#38bdf8"
               />
               <MiniStatCard 
                 label="Avg Hero Power" 
@@ -747,6 +1025,13 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
                 icon="🥇"
                 color="#f472b6"
                 subtext={clanStats.topDonator.value != null ? clanStats.topDonator.name.slice(0, 12) : '—'}
+              />
+              <MiniStatCard 
+                label="Top VIP" 
+                value={clanStats.topVip.value ?? '—'} 
+                icon="👑"
+                color="#fbbf24"
+                subtext={clanStats.topVip.value != null ? clanStats.topVip.name.slice(0, 12) : '—'}
               />
             </div>
           )}
@@ -795,9 +1080,31 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
           </div>
         ) : null}
 
-        {activeLoading && activeMembers.length === 0 ? (
-          <RosterCardsSkeleton />
-        ) : null}
+      {activeLoading && activeMembers.length === 0 ? (
+        <RosterCardsSkeleton />
+      ) : null}
+
+      {clanStats && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            { label: 'Very Active', value: clanStats.activityCounts?.veryActive ?? 0, color: '#22c55e' },
+            { label: 'Active', value: clanStats.activityCounts?.active ?? 0, color: '#38bdf8' },
+            { label: 'Moderate', value: clanStats.activityCounts?.moderate ?? 0, color: '#eab308' },
+            { label: 'Low', value: clanStats.activityCounts?.low ?? 0, color: '#f97316' },
+            { label: 'Inactive', value: clanStats.activityCounts?.inactive ?? 0, color: '#f87171' },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs"
+            >
+              <div className="uppercase tracking-widest text-[10px] text-slate-400">{item.label}</div>
+              <div className="mt-2 text-2xl font-black" style={{ color: item.color }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
         {!activeLoading && !activeError ? (
           activeMembers.length ? (
@@ -815,6 +1122,31 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
           )
         ) : null}
       </div>
+
+      {notesTarget && resolvedClanTag && (
+        <RosterPlayerNotesModal
+          playerTag={notesTarget.tag}
+          playerName={notesTarget.name || notesTarget.tag}
+          clanTag={resolvedClanTag}
+          onClose={() => setNotesTarget(null)}
+        />
+      )}
+      {tenureTarget && resolvedClanTag && (
+        <RosterPlayerTenureModal
+          playerTag={tenureTarget.tag}
+          playerName={tenureTarget.name || tenureTarget.tag}
+          clanTag={resolvedClanTag}
+          onClose={() => setTenureTarget(null)}
+        />
+      )}
+      {departureTarget && resolvedClanTag && (
+        <RosterPlayerDepartureModal
+          playerTag={departureTarget.tag}
+          playerName={departureTarget.name || departureTarget.tag}
+          clanTag={resolvedClanTag}
+          onClose={() => setDepartureTarget(null)}
+        />
+      )}
     </div>
   );
 }

@@ -2,11 +2,12 @@
 
 import { useEffect, useMemo } from 'react';
 import useSWR from 'swr';
-import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
-import { rosterFetcher } from '@/lib/api/swr-fetcher';
+import type { RosterData } from './types';
+import { apiFetcher, rosterFetcher } from '@/lib/api/swr-fetcher';
 import { rosterSWRConfig } from '@/lib/api/swr-config';
 import { cfg } from '@/lib/config';
 import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { useLeadership } from '@/hooks/useLeadership';
 import { normalizeTag } from '@/lib/tags';
 import type { Member, Roster } from '@/types';
 
@@ -19,14 +20,27 @@ export const useRosterData = (initialRoster?: RosterData | null) => {
     return normalizeTag(tag) || tag;
   }, [selectedClanTag]);
 
-  const swrKey = normalizedTag
-    ? `/api/v2/roster?clanTag=${encodeURIComponent(normalizedTag)}`
-    : '/api/v2/roster';
+  const { permissions } = useLeadership();
 
-  const swr = useSWR<RosterData>(swrKey, rosterFetcher, {
+  // Default: Supabase snapshot (no CoC calls)
+  const swrKey = useMemo(() => {
+    if (!normalizedTag) return '/api/roster/snapshot';
+    return `/api/roster/snapshot?clanTag=${encodeURIComponent(normalizedTag)}`;
+  }, [normalizedTag]);
+
+  const swr = useSWR<RosterData>(swrKey, apiFetcher, {
     ...rosterSWRConfig,
     fallbackData: initialRoster || undefined,
   });
+
+  // Optional: leaders can trigger a live refresh on-demand.
+  const refreshLive = useMemo(() => {
+    if (!permissions.canModifyClanData || !normalizedTag) return null;
+    const liveKey = `/api/v2/roster?clanTag=${encodeURIComponent(normalizedTag)}&mode=live`;
+    return async () => {
+      return swr.mutate(() => rosterFetcher(liveKey), { revalidate: false });
+    };
+  }, [normalizedTag, permissions.canModifyClanData, swr]);
 
   useEffect(() => {
     if (!swr.data || !setRoster) return;
@@ -59,6 +73,7 @@ export const useRosterData = (initialRoster?: RosterData | null) => {
     clanTag: normalizedTag,
     members: swr.data?.members ?? [],
     isEmpty: !swr.isLoading && (swr.data?.members?.length ?? 0) === 0,
+    refreshLive,
   };
 };
 

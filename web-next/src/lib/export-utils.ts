@@ -176,6 +176,13 @@ export function formatAlertsForDiscord(alerts: Alert[]): string {
 /**
  * Format weekly summary for Discord
  */
+type WeeklySummaryMember = {
+  name: string;
+  donations?: number | null;
+  trophies?: number | null;
+  resolvedTrophies?: number | null;
+};
+
 export function formatWeeklySummaryForDiscord(data: {
   totalMembers: number;
   activeMembers: number;
@@ -183,8 +190,8 @@ export function formatWeeklySummaryForDiscord(data: {
   avgTrophies: number;
   warWins?: number;
   warLosses?: number;
-  topDonors: Member[];
-  topTrophyGainers: Member[];
+  topDonors: WeeklySummaryMember[];
+  topTrophyGainers: WeeklySummaryMember[];
 }): string {
   let message = `${discord.emoji.chart} ${discord.bold('Weekly Clan Summary')} ${discord.emoji.chart}\n\n`;
   
@@ -213,7 +220,11 @@ export function formatWeeklySummaryForDiscord(data: {
   if (data.topTrophyGainers.length > 0) {
     message += `${discord.emoji.trophy} ${discord.bold('Top Trophy Pushers:')}\n`;
     data.topTrophyGainers.slice(0, 3).forEach((member, i) => {
-      message += `${discord.bullet} ${i + 1}. ${member.name} - ${member.trophies?.toLocaleString() || 0} trophies\n`;
+      const trophyValue =
+        (typeof member.resolvedTrophies === 'number' && Number.isFinite(member.resolvedTrophies))
+          ? member.resolvedTrophies
+          : (typeof member.trophies === 'number' ? member.trophies : 0);
+      message += `${discord.bullet} ${i + 1}. ${member.name} - ${trophyValue.toLocaleString()} trophies\n`;
     });
     message += '\n';
   }

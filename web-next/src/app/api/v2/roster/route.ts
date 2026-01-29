@@ -15,6 +15,8 @@ import {
 import { resolveRosterMembers } from '@/lib/roster-resolver';
 import { calculateHistoricalTrophiesForPlayers } from '@/lib/business/historical-trophies';
 import { mapActivityToBand, resolveHeroPower, resolveLeagueDisplay, resolveTrophies } from '@/lib/roster-derivations';
+import { getClanSetting } from '@/lib/clan-settings';
+import { getAuthenticatedUser } from '@/lib/auth/server';
 
 export const dynamic = 'force-dynamic';
 // Cache roster data aggressively - data only updates once per day (nightly cron)
@@ -24,9 +26,22 @@ export const revalidate = 43200; // 12 hours
 
 const querySchema = z.object({
   clanTag: z.string().optional(),
+  mode: z.enum(['snapshot', 'live', 'latest']).optional(),
 });
 
-const SEASON_START_ISO = '2025-10-01T00:00:00Z'; // Start from beginning of October when ranked system started
+// Helper to get current season start (1st Monday of the month)
+const getCurrentSeasonStart = () => {
+  const now = new Date();
+  const year = now.getUTCFullYear();
+  const month = now.getUTCMonth();
+  const firstOfMonth = new Date(Date.UTC(year, month, 1));
+  const dayOfWeek = firstOfMonth.getUTCDay(); // 0 (Sun) to 6 (Sat)
+  const firstMonday = new Date(firstOfMonth);
+  firstMonday.setUTCDate(1 + (dayOfWeek === 1 ? 0 : (8 - dayOfWeek) % 7));
+  return firstMonday.toISOString();
+};
+
+const SEASON_START_ISO = getCurrentSeasonStart();
 // First official ranked finals Monday in the new system
 const RANKED_START_MONDAY_ISO = '2025-10-13';
 
@@ -53,6 +68,39 @@ export async function GET(req: NextRequest) {
 
     if (!clanTag) {
       return NextResponse.json({ success: false, error: 'A valid clanTag is required' }, { status: 400 });
+    }
+
+    // PRIVACY ENFORCEMENT
+    const visibility = await getClanSetting(clanTag, 'rosterVisibility', 'public');
+    if (visibility !== 'public') {
+      const { requireRole } = await import('@/lib/auth/guards');
+      try {
+        const allowedRoles = visibility === 'leadership' ? ['leader', 'coleader'] : ['member', 'elder', 'coleader', 'leader'];
+        await requireRole(req, allowedRoles as any, { clanTag });
+      } catch (authError) {
+        return NextResponse.json({ success: false, error: 'Private Roster: Login required.' }, { status: 403 });
+      }
+    }
+
+    // MODE HANDLING:
+    // snapshot: Use roster_snapshots (nightly SSOT)
+    // live: Trigger fresh CoC API fetch then return
+    // latest (default): Try roster_snapshots if reasonably fresh, otherwise trigger live
+    const mode = parsed.data.mode || 'latest';
+
+    if (mode === 'live') {
+      // Leadership-only live refresh to protect CoC API quota.
+      // This triggers ingestion (CoC fetch) and then returns the newest snapshot.
+      try {
+        const { requireRole } = await import('@/lib/auth/guards');
+        await requireRole(req, ['leader', 'coleader'], { clanTag });
+
+        const { runFastIngestion } = await import('@/lib/ingestion/run-ingestion');
+        await runFastIngestion({ clanTag });
+        // After ingestion, the latest snapshot will be the one just created.
+      } catch (ingestError) {
+        console.warn('[roster] Live refresh failed (or unauthorized), falling back to snapshot:', ingestError);
+      }
     }
 
     // Get clan info
@@ -178,12 +226,15 @@ export async function GET(req: NextRequest) {
     sinceDate.setDate(sinceDate.getDate() - 7);
     const sinceIso = sinceDate.toISOString().slice(0, 10);
     
+    const clanTagNoHash = clanTag.replace('#', '');
     const playerDayQueryPromise = supabase
       .from('player_day')
       .select(
         'player_tag, date, clan_tag, th, league, trophies, donations, donations_rcv, war_stars, attack_wins, defense_wins, capital_contrib, legend_attacks, builder_hall_level, builder_battle_wins, builder_trophies, hero_levels, equipment_levels, pets, super_troops_active, achievements, rush_percent, exp_level, deltas, events, notability',
       )
-      .eq('clan_tag', clanTag)
+      // NOTE: Some historical tables store clan_tag in "safe" form (no leading #) and/or lowercase.
+      // Newer ingestion uses normalized tags (leading #, uppercase). Query common variants.
+      .in('clan_tag', [clanTag, safeClanTag, clanTagNoHash, clanTagNoHash.toLowerCase()])
       .gte('date', sinceIso)
       .order('player_tag')
       .order('date');
@@ -459,6 +510,9 @@ export async function GET(req: NextRequest) {
         battleModeTrophies: member.battle_mode_trophies ?? null,
         donations: member.donations ?? null,
         donationsReceived: member.donations_received ?? null,
+        // Convenience aliases for quick access (mirrors activity.metrics)
+        donationDelta: activityEvidence?.metrics?.donationDelta ?? 0,
+        donationReceivedDelta: activityEvidence?.metrics?.donationReceivedDelta ?? 0,
         heroLevels: member.hero_levels,
         bk: member.hero_levels?.bk ?? null,
         aq: member.hero_levels?.aq ?? null,

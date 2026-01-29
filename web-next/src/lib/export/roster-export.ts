@@ -3,7 +3,7 @@
  * Functions to export roster data in various formats (CSV, Discord, Summary)
  */
 
-import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterData } from '@/types/roster';
 import { toCSV, downloadCSV, copyToClipboard, discord } from '../export-utils';
 import { normalizeTag } from '../tags';
 import { calculateRushPercentage, getMemberActivity } from '../business/calculations';
