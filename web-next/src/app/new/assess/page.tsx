@@ -9,6 +9,7 @@ import { Button } from "@/components/new-ui/Button";
 import { Input } from "@/components/new-ui/Input";
 import LeadershipGuard from "@/components/LeadershipGuard";
 import { apiFetcher } from "@/lib/api/swr-fetcher";
+import { useLeadership } from "@/hooks/useLeadership";
 import { cfg } from "@/lib/config";
 import { normalizeTag } from "@/lib/tags";
 import { normalizeSearch } from "@/lib/search";
@@ -101,9 +102,15 @@ const StatCard = ({
 
 export default function AssessPage() {
   const clanTag = normalizeTag(cfg.homeClanTag || "") || cfg.homeClanTag;
+  const { permissions } = useLeadership();
+  const canViewSensitiveData = permissions.canViewSensitiveData;
+
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<"pending" | "reviewed" | "all">("pending");
   const [days, setDays] = useState<"7" | "30" | "all">("all");
+
+  const [assessmentDrafts, setAssessmentDrafts] = useState<Record<string, string>>({});
+  const [assessmentSavingId, setAssessmentSavingId] = useState<string | null>(null);
 
   const queryParams = new URLSearchParams({
     clanTag: clanTag ?? "",
@@ -117,7 +124,26 @@ export default function AssessPage() {
     revalidateOnReconnect: true,
   });
 
-  const joiners = data ?? [];
+  const joiners = useMemo(() => data ?? [], [data]);
+
+  const joinerTagsKey = useMemo(() => {
+    if (!canViewSensitiveData || !clanTag || !joiners.length) return null;
+    const tags = joiners
+      .map((j) => normalizeTag(j.player_tag) || j.player_tag)
+      .filter(Boolean);
+    // Stable key: sort + dedupe, cap to keep URL sane
+    const unique = Array.from(new Set(tags)).sort().slice(0, 100);
+    if (!unique.length) return null;
+    return `/api/player-assessments?clanTag=${encodeURIComponent(clanTag)}&playerTags=${encodeURIComponent(unique.join(','))}`;
+  }, [canViewSensitiveData, clanTag, joiners]);
+
+  const { data: assessmentsByTagResponse } = useSWR<{ success: boolean; data?: { latestByTag?: Record<string, any> }; error?: string }>(
+    joinerTagsKey,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  );
+
+  const assessmentLatestByTag = assessmentsByTagResponse?.data?.latestByTag ?? {};
 
   const filteredJoiners = useMemo(() => {
     const term = normalizeSearch(search.trim());
@@ -150,6 +176,53 @@ export default function AssessPage() {
       mutate();
     } catch (err: any) {
       showToast(err?.message || "Failed to update joiner.", "error");
+    }
+  };
+
+  const handleSaveAssessment = async (joiner: JoinerRecord) => {
+    const draft = (assessmentDrafts[joiner.id] || '').trim();
+    if (!draft) {
+      showToast('Add a quick note before saving.', 'error');
+      return;
+    }
+
+    const tag = normalizeTag(joiner.player_tag) || joiner.player_tag;
+    const name = resolveName(joiner);
+
+    setAssessmentSavingId(joiner.id);
+    try {
+      const res = await fetch('/api/player-assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clan_tag: clanTag,
+          player_tag: tag,
+          player_name: name,
+          notes: draft,
+          context: {
+            source: 'new/assess',
+            joinerId: joiner.id,
+            detectedAt: joiner.detected_at,
+            townHallLevel: joiner.metadata?.townHallLevel ?? null,
+            trophies: joiner.metadata?.trophies ?? null,
+            warningsCount: resolveWarnings(joiner),
+            notesCount: resolveNotes(joiner),
+            linkedAccountTags: joiner.metadata?.linkedAccountTags ?? [],
+          },
+        }),
+      });
+
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || payload?.success === false) {
+        throw new Error(payload?.error || `Request failed (${res.status})`);
+      }
+
+      setAssessmentDrafts((prev) => ({ ...prev, [joiner.id]: '' }));
+      showToast('Assessment saved.', 'success');
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save assessment.', 'error');
+    } finally {
+      setAssessmentSavingId(null);
     }
   };
 
@@ -305,6 +378,11 @@ export default function AssessPage() {
                     </div>
 
                     <div className="mt-4 space-y-2 text-xs text-slate-300">
+                      {canViewSensitiveData && assessmentLatestByTag?.[tag] ? (
+                        <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/30 bg-cyan-500/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-cyan-200">
+                          Assessment on file
+                        </div>
+                      ) : null}
                       {hasPreviousHistory(joiner) ? (
                         <div className="flex items-center gap-2 text-amber-200">
                           <UserX className="h-4 w-4" />
@@ -353,6 +431,27 @@ export default function AssessPage() {
                           Undo Review
                         </Button>
                       )}
+                    </div>
+
+                    <div className="mt-4 space-y-2">
+                      <div className="text-[10px] uppercase tracking-widest text-slate-500">Assessment note</div>
+                      <textarea
+                        className="w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-xs text-slate-100"
+                        rows={3}
+                        placeholder="Freeform notes (saved to Supabase)…"
+                        value={assessmentDrafts[joiner.id] ?? ''}
+                        onChange={(e) => setAssessmentDrafts((prev) => ({ ...prev, [joiner.id]: e.target.value }))}
+                      />
+                      <div className="flex items-center justify-end">
+                        <Button
+                          tone="primary"
+                          className="h-10 px-4 text-xs"
+                          onClick={() => handleSaveAssessment(joiner)}
+                          disabled={assessmentSavingId === joiner.id || !(assessmentDrafts[joiner.id] ?? '').trim()}
+                        >
+                          {assessmentSavingId === joiner.id ? 'Saving…' : 'Save assessment'}
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 );

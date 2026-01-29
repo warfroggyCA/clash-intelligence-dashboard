@@ -23,7 +23,7 @@ import { Button } from '@/components/ui';
 import { api } from '@/lib/api/client';
 import { safeLocaleDateString, safeLocaleString } from '@/lib/date';
 import { formatRosterSummary } from '@/lib/export/roster-export';
-import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterData } from '@/types/roster';
 import { ChevronDown } from 'lucide-react';
 
 // =============================================================================

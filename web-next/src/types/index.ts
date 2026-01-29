@@ -93,7 +93,7 @@ export interface Member {
   // Activity & Tenure
   tenure_days?: number; // Effective tenure for display
   tenure?: number;      // Alias for tenure_days
-  tenure_as_of?: string; // Date tenure base was last set
+  tenure_as_of?: string | null; // Date tenure base was last set (nullable in DB/API)
   lastSeen?: string | number;
   lastWeekTrophies?: number | null;
   activityScore?: number | null;
