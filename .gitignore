@@ -213,3 +213,6 @@ web-next/local.db
 web-next/tsconfig.tsbuildinfo
 .node-version
 supabase/.temp/
+
+# Archived / junk migrations kept locally
+supabase/migrations/_archive/
