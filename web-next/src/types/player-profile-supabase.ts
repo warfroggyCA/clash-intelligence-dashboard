@@ -30,6 +30,11 @@ export interface PlayerSummarySupabase {
   townHallLevel: number | null;
   trophies: number | null;
   rankedTrophies: number | null;
+  /**
+   * Our canonical snapshots treat home-village trophies as the "ranked" value.
+   * Some UI/components still refer to this as "resolvedTrophies" (the in-game number).
+   */
+  resolvedTrophies?: number | null;
   seasonTotalTrophies: number | null;
   lastWeekTrophies: number | null;
   rushPercent: number | null;

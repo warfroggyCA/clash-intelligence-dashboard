@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
-import { AlertTriangle, RefreshCw, ShieldCheck, Users, Search, Clock, Archive, FileText, UserX, UserCheck, ChevronRight } from 'lucide-react';
+import { AlertTriangle, RefreshCw, ShieldCheck, Users, Search, Clock, Archive, FileText, UserX, UserCheck, ChevronRight, MoreHorizontal, UserPlus } from 'lucide-react';
 import Card from '@/components/new-ui/Card';
 import { Button } from '@/components/new-ui/Button';
 import { Input } from '@/components/new-ui/Input';
@@ -15,6 +15,13 @@ import LeadershipGuard from '@/components/LeadershipGuard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatDistanceToNow } from 'date-fns';
+import { Modal } from '@/components/ui/Modal';
+import { showToast } from '@/lib/toast';
+import { RosterPlayerNotesModal } from '@/components/leadership/RosterPlayerNotesModal';
+import { RosterPlayerTenureModal } from '@/components/leadership/RosterPlayerTenureModal';
+import { RosterPlayerDepartureModal } from '@/components/leadership/RosterPlayerDepartureModal';
+import { resolveEffectiveTenureDays } from '@/lib/player-database/tenure';
+import { buildAddPlayerNotePayload } from '@/lib/player-database/add-player';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // WORLD-CLASS COMPONENTS
@@ -23,18 +30,21 @@ import { formatDistanceToNow } from 'date-fns';
 // Animated counter with easing
 const AnimatedCounter = ({ value, duration = 800 }: { value: number; duration?: number }) => {
   const [displayValue, setDisplayValue] = useState(0);
+  const displayValueRef = useRef(0);
   
   useEffect(() => {
     if (typeof value !== 'number' || isNaN(value)) return;
     const startTime = Date.now();
-    const startValue = displayValue;
+    const startValue = displayValueRef.current;
     const diff = value - startValue;
     
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(Math.round(startValue + diff * easeOut));
+      const nextValue = Math.round(startValue + diff * easeOut);
+      displayValueRef.current = nextValue;
+      setDisplayValue(nextValue);
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
@@ -165,9 +175,25 @@ const fetcher = async (url: string) => {
 function PlayerDatabaseContent() {
   const router = useRouter();
   const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<'all' | 'current' | 'former'>('all');
+  const [status, setStatus] = useState<'all' | 'current' | 'former'>('current');
   const [showArchived, setShowArchived] = useState(false);
-  const [selectedPlayer, setSelectedPlayer] = useState<PlayerRecord | null>(null);
+  const [actionTarget, setActionTarget] = useState<PlayerRecord | null>(null);
+  const [showActionModal, setShowActionModal] = useState(false);
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const [warningText, setWarningText] = useState('');
+  const [warningSaving, setWarningSaving] = useState(false);
+  const [showMarkReturnedModal, setShowMarkReturnedModal] = useState(false);
+  const [returnNoteText, setReturnNoteText] = useState('');
+  const [returnTenureAward, setReturnTenureAward] = useState('');
+  const [returnSaving, setReturnSaving] = useState(false);
+  const [showNotesModal, setShowNotesModal] = useState(false);
+  const [showTenureModal, setShowTenureModal] = useState(false);
+  const [showDepartureModal, setShowDepartureModal] = useState(false);
+  const [showAddPlayerModal, setShowAddPlayerModal] = useState(false);
+  const [newPlayerTag, setNewPlayerTag] = useState('');
+  const [newPlayerName, setNewPlayerName] = useState('');
+  const [newPlayerNote, setNewPlayerNote] = useState('');
+  const [addPlayerSaving, setAddPlayerSaving] = useState(false);
 
   const clanTag = normalizeTag(cfg.homeClanTag || '') || cfg.homeClanTag;
 
@@ -184,7 +210,132 @@ function PlayerDatabaseContent() {
     mutate(undefined, { revalidate: true });
   };
 
-  const players: PlayerRecord[] = data?.data ?? [];
+  const openActions = (player: PlayerRecord) => {
+    setActionTarget(player);
+    setShowActionModal(true);
+  };
+
+  const handleSaveWarning = async () => {
+    if (!actionTarget) return;
+    if (!warningText.trim()) {
+      showToast('Add a warning note before saving.', 'error');
+      return;
+    }
+    if (!clanTag) {
+      showToast('Missing clan tag.', 'error');
+      return;
+    }
+    setWarningSaving(true);
+    try {
+      const response = await fetch('/api/player-warnings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clanTag,
+          playerTag: actionTarget.tag,
+          playerName: actionTarget.name,
+          warningNote: warningText.trim(),
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to save warning (${response.status})`);
+      }
+      setWarningText('');
+      setShowWarningModal(false);
+      showToast('Warning saved', 'success');
+      await mutate();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save warning', 'error');
+    } finally {
+      setWarningSaving(false);
+    }
+  };
+
+  const handleMarkReturned = async () => {
+    if (!actionTarget) return;
+    if (!clanTag) {
+      showToast('Missing clan tag.', 'error');
+      return;
+    }
+    setReturnSaving(true);
+    try {
+      const response = await fetch('/api/player-history/mark-returned', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clanTag,
+          playerTag: actionTarget.tag,
+          playerName: actionTarget.name,
+          note: returnNoteText.trim() || undefined,
+          awardPreviousTenure: returnTenureAward ? Number.parseInt(returnTenureAward, 10) : undefined,
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to mark returned (${response.status})`);
+      }
+      setReturnNoteText('');
+      setReturnTenureAward('');
+      setShowMarkReturnedModal(false);
+      showToast('Player marked as returned', 'success');
+      await mutate();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to mark returned', 'error');
+    } finally {
+      setReturnSaving(false);
+    }
+  };
+
+  const handleAddPlayer = async () => {
+    if (!clanTag) {
+      showToast('Missing clan tag.', 'error');
+      return;
+    }
+    const result = buildAddPlayerNotePayload({
+      clanTag,
+      playerTag: newPlayerTag,
+      playerName: newPlayerName,
+      note: newPlayerNote,
+    });
+    if (!result.payload || result.error) {
+      showToast(result.error || 'Failed to prepare player payload.', 'error');
+      return;
+    }
+
+    setAddPlayerSaving(true);
+    try {
+      const response = await fetch('/api/player-notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(result.payload),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to add player (${response.status})`);
+      }
+      showToast('Player added to database', 'success');
+      closeAddPlayerModal();
+      await mutate();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to add player', 'error');
+    } finally {
+      setAddPlayerSaving(false);
+    }
+  };
+
+  const resetAddPlayerForm = () => {
+    setNewPlayerTag('');
+    setNewPlayerName('');
+    setNewPlayerNote('');
+  };
+
+  const closeAddPlayerModal = () => {
+    resetAddPlayerForm();
+    setShowAddPlayerModal(false);
+  };
+
+  const players: PlayerRecord[] = useMemo(() => data?.data ?? [], [data?.data]);
   const meta = data?.meta ?? {};
 
   const filteredPlayers = useMemo(() => {
@@ -214,8 +365,8 @@ function PlayerDatabaseContent() {
   const sortedPlayers = useMemo(() => {
     const list = [...filteredPlayers];
     list.sort((a, b) => {
-      const aTenure = a.isCurrentMember && typeof a.tenureDays === 'number' ? a.tenureDays : null;
-      const bTenure = b.isCurrentMember && typeof b.tenureDays === 'number' ? b.tenureDays : null;
+      const aTenure = a.isCurrentMember ? resolveEffectiveTenureDays(a) : null;
+      const bTenure = b.isCurrentMember ? resolveEffectiveTenureDays(b) : null;
 
       if (aTenure !== null && bTenure !== null) {
         return aTenure - bTenure; // newer first
@@ -253,13 +404,15 @@ function PlayerDatabaseContent() {
   const newestJoiner = useMemo(() => {
     const current = players.filter((p) => p.isCurrentMember);
     if (!current.length) return null;
-    const withTenure = current.filter((p) => typeof p.tenureDays === 'number');
+    const withTenure = current
+      .map((player) => ({ player, tenure: resolveEffectiveTenureDays(player) }))
+      .filter((entry) => typeof entry.tenure === 'number');
     if (!withTenure.length) return current[0];
-    return withTenure.reduce((latest, player) => {
-      if (latest.tenureDays == null) return player;
-      if (player.tenureDays == null) return latest;
-      return player.tenureDays < latest.tenureDays ? player : latest;
-    });
+    return withTenure.reduce((latest, entry) => {
+      if (latest.tenure == null) return entry;
+      if (entry.tenure == null) return latest;
+      return entry.tenure < latest.tenure ? entry : latest;
+    }).player;
   }, [players]);
 
   return (
@@ -313,6 +466,17 @@ function PlayerDatabaseContent() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                tone="primary"
+                onClick={() => {
+                  resetAddPlayerForm();
+                  setShowAddPlayerModal(true);
+                }}
+                className="flex items-center gap-2"
+              >
+                <UserPlus className="h-4 w-4" />
+                Add player
+              </Button>
               <Button 
                 tone="ghost" 
                 onClick={() => setShowArchived((v) => !v)}
@@ -396,7 +560,7 @@ function PlayerDatabaseContent() {
             <FilterChip
               active={status === 'current'}
               onClick={() => setStatus('current')}
-              label="Current"
+              label="Active"
               count={currentMembers.length}
               color="#34d399"
             />
@@ -463,8 +627,7 @@ function PlayerDatabaseContent() {
                 <PlayerCard 
                   key={player.tag} 
                   player={player} 
-                  onClick={() => setSelectedPlayer(player)}
-                  isSelected={selectedPlayer?.tag === player.tag}
+                  onManage={() => openActions(player)}
                 />
               ))
             )}
@@ -513,7 +676,9 @@ function PlayerDatabaseContent() {
                 <WarningCard 
                   key={player.tag} 
                   player={player}
-                  onClick={() => setSelectedPlayer(player)}
+                  onClick={() => {
+                    router.push(`/new/player/${encodeURIComponent(normalizeTag(player.tag) || player.tag)}`);
+                  }}
                 />
               ))
             )}
@@ -555,11 +720,14 @@ function PlayerDatabaseContent() {
                     <div className="text-xs text-slate-500 font-mono">{newestJoiner.tag}</div>
                   </div>
                   <div className="text-xs text-slate-400">
-                    {typeof newestJoiner.tenureDays === 'number'
-                      ? `Joined ${newestJoiner.tenureDays} ${newestJoiner.tenureDays === 1 ? 'day' : 'days'} ago`
-                      : (newestJoiner.lastUpdated
-                        ? formatDistanceToNow(new Date(newestJoiner.lastUpdated), { addSuffix: true })
-                        : '—')}
+                    {(() => {
+                      const tenure = resolveEffectiveTenureDays(newestJoiner);
+                      return typeof tenure === 'number'
+                        ? `Joined ${tenure} ${tenure === 1 ? 'day' : 'days'} ago`
+                        : null;
+                    })() ?? (newestJoiner.lastUpdated
+                      ? formatDistanceToNow(new Date(newestJoiner.lastUpdated), { addSuffix: true })
+                      : '—')}
                   </div>
                 </div>
               </div>
@@ -568,7 +736,195 @@ function PlayerDatabaseContent() {
         </div>
       </div>
 
-      {/* Player Detail Modal/Sidebar would go here */}
+      {showActionModal && actionTarget ? (
+        <Modal
+          isOpen={showActionModal}
+          onClose={() => setShowActionModal(false)}
+          title="Player Actions"
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="text-sm text-slate-300">
+              {actionTarget.name} • {actionTarget.tag}
+            </div>
+            <div className="grid gap-2">
+              <Button tone="accentAlt" onClick={() => { setShowNotesModal(true); setShowActionModal(false); }}>
+                Add Note
+              </Button>
+              <Button tone="ghost" onClick={() => { setShowWarningModal(true); setShowActionModal(false); }}>
+                Add Warning
+              </Button>
+              <Button tone="ghost" onClick={() => { setShowTenureModal(true); setShowActionModal(false); }}>
+                Update Tenure
+              </Button>
+              <Button tone="ghost" onClick={() => { setShowDepartureModal(true); setShowActionModal(false); }}>
+                Record Departure
+              </Button>
+              <Button tone="ghost" onClick={() => { setShowMarkReturnedModal(true); setShowActionModal(false); }}>
+                Mark Returned
+              </Button>
+              <Button tone="ghost" onClick={() => router.push(`/new/player/${encodeURIComponent(normalizeTag(actionTarget.tag) || actionTarget.tag)}`)}>
+                View Profile
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      ) : null}
+
+      {showNotesModal && actionTarget ? (
+        <RosterPlayerNotesModal
+          playerTag={actionTarget.tag}
+          playerName={actionTarget.name}
+          clanTag={clanTag || ''}
+          onClose={() => setShowNotesModal(false)}
+        />
+      ) : null}
+
+      {showTenureModal && actionTarget ? (
+        <RosterPlayerTenureModal
+          playerTag={actionTarget.tag}
+          playerName={actionTarget.name}
+          clanTag={clanTag || ''}
+          onSuccess={() => mutate()}
+          onClose={() => setShowTenureModal(false)}
+        />
+      ) : null}
+
+      {showDepartureModal && actionTarget ? (
+        <RosterPlayerDepartureModal
+          playerTag={actionTarget.tag}
+          playerName={actionTarget.name}
+          clanTag={clanTag || ''}
+          onSuccess={() => mutate()}
+          onClose={() => setShowDepartureModal(false)}
+        />
+      ) : null}
+
+      <Modal
+        isOpen={showWarningModal}
+        onClose={() => setShowWarningModal(false)}
+        title="Add warning"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">
+            Warnings are leadership-only and propagate to linked accounts.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Warning note</label>
+            <textarea
+              value={warningText}
+              onChange={(e) => setWarningText(e.target.value)}
+              rows={4}
+              className="mt-2 w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+              placeholder="Capture the warning context..."
+              disabled={warningSaving}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button tone="ghost" onClick={() => setShowWarningModal(false)} disabled={warningSaving}>
+              Cancel
+            </Button>
+            <Button tone="accentAlt" onClick={handleSaveWarning} disabled={warningSaving || !warningText.trim()}>
+              {warningSaving ? 'Saving...' : 'Save warning'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showMarkReturnedModal}
+        onClose={() => setShowMarkReturnedModal(false)}
+        title="Mark returned"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">
+            Record that this player rejoined. Optionally award prior tenure.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Return note (optional)</label>
+            <textarea
+              value={returnNoteText}
+              onChange={(e) => setReturnNoteText(e.target.value)}
+              rows={3}
+              className="mt-2 w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+              placeholder="Context for leadership..."
+              disabled={returnSaving}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Award previous tenure (days)</label>
+            <input
+              type="number"
+              min={0}
+              value={returnTenureAward}
+              onChange={(e) => setReturnTenureAward(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+              placeholder="0"
+              disabled={returnSaving}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button tone="ghost" onClick={() => setShowMarkReturnedModal(false)} disabled={returnSaving}>
+              Cancel
+            </Button>
+            <Button tone="accentAlt" onClick={handleMarkReturned} disabled={returnSaving}>
+              {returnSaving ? 'Saving...' : 'Mark returned'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={showAddPlayerModal}
+        onClose={closeAddPlayerModal}
+        title="Add player to database"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">
+            Add a player by tag and create an initial note for leadership.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Player tag</label>
+            <Input
+              value={newPlayerTag}
+              onChange={(e) => setNewPlayerTag(e.target.value)}
+              placeholder="#2PR8R8V8P"
+              disabled={addPlayerSaving}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Player name (optional)</label>
+            <Input
+              value={newPlayerName}
+              onChange={(e) => setNewPlayerName(e.target.value)}
+              placeholder="Player name"
+              disabled={addPlayerSaving}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Note (optional)</label>
+            <textarea
+              value={newPlayerNote}
+              onChange={(e) => setNewPlayerNote(e.target.value)}
+              rows={3}
+              className="mt-2 w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+              placeholder="Why are we adding this player?"
+              disabled={addPlayerSaving}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button tone="ghost" onClick={closeAddPlayerModal} disabled={addPlayerSaving}>
+              Cancel
+            </Button>
+            <Button tone="accentAlt" onClick={handleAddPlayer} disabled={addPlayerSaving || !newPlayerTag.trim()}>
+              {addPlayerSaving ? 'Adding...' : 'Add player'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
@@ -579,17 +935,16 @@ function PlayerDatabaseContent() {
 
 function PlayerCard({ 
   player, 
-  onClick,
-  isSelected 
+  onManage,
 }: { 
   player: PlayerRecord; 
-  onClick: () => void;
-  isSelected: boolean;
+  onManage: () => void;
 }) {
   const router = useRouter();
   const hasWarning = player.warning?.isActive;
   const noteCount = player.notes.length;
   const playerUrl = `/new/player/${encodeURIComponent(normalizeTag(player.tag) || player.tag)}`;
+  const effectiveTenureDays = resolveEffectiveTenureDays(player);
   
   const handleCardClick = () => {
     router.push(playerUrl);
@@ -598,9 +953,7 @@ function PlayerCard({
   return (
     <div
       onClick={handleCardClick}
-      className={`group relative rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:-translate-y-0.5 ${
-        isSelected ? 'ring-2 ring-[var(--accent-alt)]' : ''
-      }`}
+      className="group relative rounded-xl p-4 cursor-pointer transition-all duration-300 hover:scale-[1.01] hover:-translate-y-0.5"
       style={{ 
         background: hasWarning 
           ? 'linear-gradient(135deg, rgba(251,191,36,0.08) 0%, rgba(30,41,59,0.9) 30%, rgba(15,23,42,0.95) 100%)'
@@ -651,8 +1004,8 @@ function PlayerCard({
               </span>
               <span className="flex items-center gap-1">
                 <Clock className="h-3 w-3" />
-                {player.isCurrentMember && typeof player.tenureDays === 'number'
-                  ? `Joined ${player.tenureDays} ${player.tenureDays === 1 ? 'day' : 'days'} ago`
+                {player.isCurrentMember && typeof effectiveTenureDays === 'number'
+                  ? `Joined ${effectiveTenureDays} ${effectiveTenureDays === 1 ? 'day' : 'days'} ago`
                   : (player.lastUpdated
                     ? `Last seen ${formatDistanceToNow(new Date(player.lastUpdated), { addSuffix: true })}`
                     : '—')}
@@ -667,7 +1020,22 @@ function PlayerCard({
           </div>
         </div>
         
-        <ChevronRight className="h-5 w-5 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0" />
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onManage();
+            }}
+            className="rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-300 hover:bg-white/10"
+          >
+            <span className="flex items-center gap-1">
+              <MoreHorizontal className="h-3.5 w-3.5" />
+              Actions
+            </span>
+          </button>
+          <ChevronRight className="h-5 w-5 text-slate-600 group-hover:text-slate-400 transition-colors shrink-0" />
+        </div>
       </div>
       
       {/* Preview of most recent note */}

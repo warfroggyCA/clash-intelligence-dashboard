@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import useSWR, { useSWRConfig } from 'swr';
@@ -10,10 +10,11 @@ import LeagueIcon from '@/components/new-ui/icons/LeagueIcon';
 import RoleIcon from '@/components/new-ui/icons/RoleIcon';
 import HeroIcon from '@/components/new-ui/icons/HeroIcon';
 import { heroIconMap } from '@/components/new-ui/icons/maps';
-import { playerProfileFetcher } from '@/lib/api/swr-fetcher';
+import { apiFetcher, playerProfileFetcher } from '@/lib/api/swr-fetcher';
 import { playerProfileSWRConfig } from '@/lib/api/swr-config';
 import type { SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
 import { formatNumber } from '@/lib/format';
+import DataFreshness from '@/components/new-ui/DataFreshness';
 import type { WarIntelligenceMetrics } from '@/lib/war-intelligence/engine';
 import {
   getEquipmentByName,
@@ -25,6 +26,7 @@ import {
   type HeroEquipment,
 } from '@/lib/hero-equipment';
 import { Button } from '@/components/new-ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { useRosterData } from '../../roster/useRosterData';
 import { normalizeTag } from '@/lib/tags';
 import { resolveLeague, resolveTownHall } from '../../roster/roster-utils';
@@ -33,6 +35,15 @@ import { HERO_MAX_LEVELS } from '@/types';
 import { rushTone } from '../../roster/roster-utils';
 import Link from 'next/link';
 import { compareRankedLeagues } from '@/lib/league-tiers';
+import { useLeadership } from '@/hooks/useLeadership';
+import { useDashboardStore } from '@/lib/stores/dashboard-store';
+import { showToast } from '@/lib/toast';
+import PlayerDNARadar from '@/components/PlayerDNARadar';
+import StatsRadarChart from '@/components/player/StatsRadarChart';
+import PlayerComparisonView from '@/components/player/PlayerComparisonView';
+import { calculatePlayerDNA, calculateClanDNA, classifyPlayerArchetype, getArchetypeInfo } from '@/lib/player-dna';
+import { generateDNABreakdown } from '@/lib/player-dna-breakdown';
+import { RosterPlayerNotesModal } from '@/components/leadership/RosterPlayerNotesModal';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // WORLD-CLASS COMPONENTS
@@ -160,25 +171,30 @@ type WarIntelResponse = {
 
 const warIntelFetcher = async (url: string): Promise<WarIntelResponse> => {
   const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) {
-    const payload = await res.json().catch(() => null);
+  const payload = await res.json().catch(() => null);
+  if (!res.ok || payload?.success === false) {
     const message = payload?.error || `Request failed (${res.status})`;
     const err = new Error(message) as Error & { status?: number };
     err.status = res.status;
     throw err;
   }
-  return res.json() as Promise<WarIntelResponse>;
+  return payload as WarIntelResponse;
 };
 
 // Animated counter that counts up to the target value
 const AnimatedCounter = ({ value, duration = 1000 }: { value: number; duration?: number }) => {
   const [displayValue, setDisplayValue] = useState(0);
+  const displayValueRef = useRef(0);
+  const setDisplayValueSafe = useCallback((nextValue: number) => {
+    displayValueRef.current = nextValue;
+    setDisplayValue(nextValue);
+  }, []);
   
   useEffect(() => {
     if (typeof value !== 'number' || isNaN(value)) return;
     
     const startTime = Date.now();
-    const startValue = displayValue;
+    const startValue = displayValueRef.current;
     const diff = value - startValue;
     
     const animate = () => {
@@ -186,7 +202,7 @@ const AnimatedCounter = ({ value, duration = 1000 }: { value: number; duration?:
       const progress = Math.min(elapsed / duration, 1);
       // Easing function for smooth animation
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(Math.round(startValue + diff * easeOut));
+      setDisplayValueSafe(Math.round(startValue + diff * easeOut));
       
       if (progress < 1) {
         requestAnimationFrame(animate);
@@ -194,7 +210,7 @@ const AnimatedCounter = ({ value, duration = 1000 }: { value: number; duration?:
     };
     
     requestAnimationFrame(animate);
-  }, [value, duration]);
+  }, [duration, setDisplayValueSafe, value]);
   
   return <>{formatNumber(displayValue)}</>;
 };
@@ -703,11 +719,14 @@ const heroLabels: Record<typeof heroOrder[number], string> = {
   mp: 'Minion Prince',
 };
 
-type ProfileTab = 'overview' | 'equipment' | 'history';
+type ProfileTab = 'overview' | 'equipment' | 'history' | 'evaluations' | 'analysis' | 'comparison';
 const TAB_LABELS: Record<ProfileTab, string> = {
   overview: 'Overview',
   equipment: 'Equipment & Pets',
   history: 'History',
+  evaluations: 'Evaluations',
+  analysis: 'Analysis',
+  comparison: 'Comparison',
 };
 
 type HistoryRange = '7d' | '30d' | '90d' | 'all';
@@ -719,7 +738,7 @@ const HISTORY_RANGE_OPTIONS: Array<{ value: HistoryRange; label: string }> = [
 ];
 
 const isProfileTab = (value: string | null): value is ProfileTab => {
-  return value === 'overview' || value === 'equipment' || value === 'history';
+  return value === 'overview' || value === 'equipment' || value === 'history' || value === 'evaluations' || value === 'analysis' || value === 'comparison';
 };
 
 const parseAssociatedHeroes = (value?: string): Array<typeof heroOrder[number]> => {
@@ -834,6 +853,12 @@ const getEquipmentIcon = (name: string): string | undefined => {
   const cleanName = cleanEquipmentName(name) || name;
   const key = normalizeEquip(cleanName);
   if (equipmentIconMap[key]) return equipmentIconMap[key];
+  
+  // LOGGING (Task B): Help identify missing icons
+  if (typeof window !== 'undefined' && (window as any).CI_DEBUG_ICONS) {
+    console.warn(`[CI] Missing icon for equipment: "${name}" (normalized: "${key}")`);
+  }
+
   // Heuristic fallbacks
   if (key.includes('henchman') || key.includes('henchmen')) return equipmentIconMap.henchman;
   if (key.includes('hogrider')) return equipmentIconMap.hogriderdoll;
@@ -936,6 +961,10 @@ const toOptionalNumber = (value: any): number | null => {
 };
 const resolveTimelineTrophies = (entry: any): number | null => {
   if (!entry) return null;
+  // Deep extraction for various data formats
+  // Priority: resolved/battleMode usually matches what's in-game for high-level players
+  const val = entry.resolvedTrophies ?? entry.battleModeTrophies ?? entry.trophies ?? entry.rankedTrophies ?? entry.score ?? entry.trophy_count ?? null;
+  if (val != null) return toNumber(val);
   return resolveTrophiesSSOT(entry);
 };
 
@@ -976,13 +1005,35 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
   const searchParams = useSearchParams();
   const normalizedTag = normalizeTag(tag) || tag;
   const { cache, mutate } = useSWRConfig();
-  const swrKey = `/api/v2/player/${encodeURIComponent(tag)}`;
+
+  const { members: rosterMembers, isLoading: rosterLoading } = useRosterData();
+  const { permissions } = useLeadership();
+  const clanTag = useDashboardStore((state) => state.clanTag || state.homeClan || '');
+  const clanTagForFetch = useMemo(() => normalizeTag(clanTag || '') || clanTag || '', [clanTag]);
+
+  const swrKey = clanTagForFetch
+    ? `/api/v2/player/${encodeURIComponent(tag)}?clanTag=${encodeURIComponent(clanTagForFetch)}`
+    : `/api/v2/player/${encodeURIComponent(tag)}`;
+
   const { data, isLoading, error } = useSWR<SupabasePlayerProfilePayload>(swrKey, playerProfileFetcher, {
     ...playerProfileSWRConfig,
+    // Always hydrate timeline/history from the snapshot API.
+    revalidateOnMount: true,
     fallbackData: initialProfile || undefined,
   });
 
-  const { members: rosterMembers, isLoading: rosterLoading } = useRosterData();
+  // "In-game now" stats (Task: match what a player sees in game).
+  // This endpoint is already normalized for current/resolved values.
+  const { data: liveStats } = useSWR<any>(
+    `/api/v2/player/${encodeURIComponent(normalizedTag)}`,
+    apiFetcher,
+    { revalidateOnFocus: false },
+  );
+
+  const canModifyClanData = permissions.canModifyClanData;
+  const canViewSensitiveData = permissions.canViewSensitiveData;
+  const canViewLeadershipFeatures = permissions.canViewLeadershipFeatures;
+  const canRunWarAnalysis = permissions.canRunWarAnalysis;
   
   const [activeTab, setActiveTab] = useState<ProfileTab>(() => {
     const tabParam = searchParams?.get('tab') ?? null;
@@ -1091,10 +1142,52 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
     () => (profile as any)?.summary ?? profile ?? rosterFallback ?? {},
     [profile, rosterFallback],
   );
-  const timeline = useMemo(() => (profile as any)?.timeline ?? [], [profile]);
+  const profileClanTag =
+    (summary as any)?.clanTag ??
+    (summary as any)?.clan_tag ??
+    (profile as any)?.clanTag ??
+    (profile as any)?.clan_tag ??
+    null;
+  const clanTagForActions = normalizeTag(clanTag || profileClanTag || '') || profileClanTag || '';
+
+  const handleLiveRefreshProfile = useCallback(async () => {
+    // Intentionally gated: live refresh can hit CoC API.
+    if (!canViewLeadershipFeatures) {
+      showToast('Live refresh is leadership-only.', 'error');
+      return;
+    }
+
+    const liveUrl = `${swrKey}${swrKey.includes('?') ? '&' : '?'}live=1`;
+
+    try {
+      showToast('Refreshing live profile…', 'success');
+      await mutate(swrKey, () => playerProfileFetcher(liveUrl), { revalidate: false });
+      setLastLiveRefreshAt(new Date());
+    } catch (err: any) {
+      showToast(err?.message || 'Live refresh failed.', 'error');
+    }
+  }, [canViewLeadershipFeatures, mutate, swrKey]);
+
+  const displayName =
+    summary?.name ??
+    (summary as any)?.playerName ??
+    (summary as any)?.player_name ??
+    rosterFallback?.name ??
+    (rosterLoading ? 'Loading name…' : 'Name unavailable');
+  // Timeline data comes in a few shapes depending on API version.
+  // Prefer the rich snapshot timeline, but fall back to the activity timeline (historical daily rows).
+  const timeline = useMemo(
+    () => (profile as any)?.timeline ?? (profile as any)?.activityTimeline ?? (profile as any)?.activity_timeline ?? [],
+    [profile],
+  );
+  const snapshotAsOf = useMemo(() => {
+    if (!Array.isArray(timeline) || timeline.length === 0) return null;
+    const last = timeline[timeline.length - 1] as any;
+    return last?.snapshotDate ?? last?.snapshot_date ?? last?.timestamp ?? last?.date ?? null;
+  }, [timeline]);
   const clanHeroAverages = (profile as any)?.clanHeroAverages ?? {};
   const leadership = (profile as any)?.leadership ?? null;
-  const linkedAccounts = (profile as any)?.linkedAccounts ?? leadership?.linkedAccounts ?? [];
+  const evaluations = useMemo(() => (profile as any)?.evaluations ?? [], [profile]);
   const equipmentLevels = (summary as any)?.equipmentLevels ?? null;
   const pets = (summary as any)?.pets ?? null;
   const isProfileDataLoaded = Boolean((profile as any)?.summary);
@@ -1133,7 +1226,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
       current: Math.max(0, Math.round(current)),
     };
   }, [history]);
-  const aliases = history?.aliases ?? [];
+  const aliases = useMemo(() => history?.aliases ?? [], [history]);
   const vip = (profile as any)?.vip?.current ?? null;
   const vipHistory = useMemo(() => {
     const historyRows = (profile as any)?.vip?.history;
@@ -1246,10 +1339,52 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
   } as any);
   const { league: leagueName, tier: leagueTier } = resolveLeague(leagueSource);
   const role = (summary?.role as any)?.toString().toLowerCase() || (rosterFallback?.role as any)?.toString().toLowerCase() || 'member';
-  const displayName = summary?.name || rosterFallback?.name || (rosterLoading ? 'Loading name…' : 'Name unavailable');
   const clanName = (summary as any)?.clanName ?? (summary as any)?.clan?.name ?? (rosterFallback as any)?.clanName ?? (rosterFallback as any)?.meta?.clanName ?? null;
-  const clanTag = (summary as any)?.clanTag ?? (summary as any)?.clan?.tag ?? (rosterFallback as any)?.clanTag ?? null;
-  const normalizedClanTag = normalizeTag(clanTag || '') || clanTag || '';
+  const summaryClanTag = (summary as any)?.clanTag ?? (summary as any)?.clan?.tag ?? (rosterFallback as any)?.clanTag ?? null;
+  const normalizedClanTag = normalizeTag(summaryClanTag || '') || summaryClanTag || '';
+  const canViewLinkedAccounts = canViewSensitiveData || canModifyClanData || canViewLeadershipFeatures;
+  const linkedAccountsKey = canViewLinkedAccounts && clanTagForActions
+    ? `/api/player-aliases?clanTag=${encodeURIComponent(clanTagForActions)}&playerTag=${encodeURIComponent(resolvedPlayerTag)}&includeNames=true`
+    : null;
+
+  const assessmentsKey = canViewSensitiveData && clanTagForActions
+    ? `/api/player-assessments?clanTag=${encodeURIComponent(clanTagForActions)}&playerTag=${encodeURIComponent(resolvedPlayerTag)}&limit=10`
+    : null;
+
+  const { data: assessmentsResponse } = useSWR<{ success: boolean; data?: { latest?: any; history?: any[] }; error?: string }>(
+    assessmentsKey,
+    async (url: string) => {
+      const res = await fetch(url, { cache: 'no-store' });
+      const payload = await res.json().catch(() => null);
+      if (!res.ok || payload?.success === false) {
+        throw new Error(payload?.error || `Failed to load assessments (${res.status})`);
+      }
+      return payload;
+    },
+    { revalidateOnFocus: false },
+  );
+
+  const assessmentHistory = (assessmentsResponse as any)?.data?.history ?? [];
+  const assessmentLatest = (assessmentsResponse as any)?.data?.latest ?? null;
+  const { data: linkedAccountsResponse } = useSWR<{ success: boolean; data?: Array<{ tag: string; name?: string | null }>; error?: string }>(
+    linkedAccountsKey,
+    async (url: string) => {
+      const res = await fetch(url);
+      if (!res.ok) {
+        const payload = await res.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to load linked accounts (${res.status})`);
+      }
+      return res.json();
+    },
+  );
+  const linkedAccounts = useMemo(
+    () =>
+      (linkedAccountsResponse?.success ? linkedAccountsResponse.data : null) ??
+      (profile as any)?.linkedAccounts ??
+      leadership?.linkedAccounts ??
+      [],
+    [linkedAccountsResponse, profile, leadership],
+  );
   const warIntelKey = normalizedClanTag
     ? `/api/war-intelligence?clanTag=${encodeURIComponent(normalizedClanTag)}&playerTag=${encodeURIComponent(resolvedPlayerTag)}&daysBack=120&minWars=1`
     : null;
@@ -1270,10 +1405,15 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
     if (!candidates.length) return null;
     return Math.max(...candidates);
   }, [tenureFromHistory, summary, rosterFallback]);
-  const snapshotDate = (summary as any)?.lastSeen ?? (timeline?.length ? timeline[timeline.length - 1]?.snapshotDate ?? null : null);
+  const snapshotDate = summary?.lastSeen ?? (timeline?.length ? (timeline[timeline.length - 1] as any)?.snapshotDate ?? null : null);
   const snapshotFreshness = snapshotDate ? new Date(snapshotDate) : null;
-  const snapshotText = snapshotFreshness ? `Snapshot ${snapshotFreshness.toISOString().slice(0, 10)}` : null;
-  const warPreference = (summary as any)?.war?.preference ?? null;
+  const snapshotText = snapshotFreshness ? `Snapshot ${snapshotFreshness.toISOString().slice(0, 10)}` : 'Snapshot date unknown';
+  const warPreference =
+    (summary as any)?.war?.preference ??
+    (summary as any)?.warPreference ??
+    (rosterFallback as any)?.warPreference ??
+    (rosterFallback as any)?.war?.preference ??
+    null;
   const builderBase = (summary as any)?.builderBase ?? {};
   const capitalContrib = (summary as any)?.capitalContributions ?? null;
   const achievements = (summary as any)?.achievements ?? {};
@@ -1288,6 +1428,10 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
     if (historyRange === '90d') return 90;
     return null;
   }, [historyRange]);
+  const historyPageHref = useMemo(() => {
+    const days = historyRange === 'all' ? 365 : historyRangeDays ?? 7;
+    return `/new/player/${encodeURIComponent(resolvedPlayerTag)}/history?days=${days}`;
+  }, [historyRange, historyRangeDays, resolvedPlayerTag]);
   const historyRangeLabel = useMemo(() => {
     if (historyRange === 'all') return 'all time';
     return `last ${historyRangeDays ?? 7}d`;
@@ -1404,8 +1548,47 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
     return Array.from(buckets.values()).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
   }, [sortedHistoryTimeline]);
 
-  const recentTimeline = useMemo(() => (timeline?.length ? timeline.slice(Math.max(0, timeline.length - 7)) : []), [timeline]);
+  const recentTimeline = useMemo(() => {
+    // Priority: history object has the long-term data
+    const historyEntries = (history as any)?.timeline || (profile as any)?.history?.timeline || [];
+    const mainTimeline = timeline || [];
+    
+    // Merge both, use a Map to deduplicate by date string
+    const dedupeMap = new Map();
+    
+    [...historyEntries, ...mainTimeline].forEach(entry => {
+      const date = entry?.snapshotDate ?? entry?.snapshot_date ?? entry?.timestamp ?? entry?.date;
+      if (date) {
+        const key = new Date(date).toISOString().slice(0, 10);
+        // If we have duplicates for a day, prefer the one with trophy data
+        if (!dedupeMap.has(key) || resolveTimelineTrophies(entry)) {
+          dedupeMap.set(key, entry);
+        }
+      }
+    });
+
+    const combined = Array.from(dedupeMap.values());
+    
+    if (!combined.length) return [];
+    
+    // Sort ascending
+    const sorted = combined.sort((a, b) => toSnapshotTime(a) - toSnapshotTime(b));
+    
+    // Return last 90 snapshots
+    return sorted.slice(Math.max(0, sorted.length - 90));
+  }, [timeline, history, profile]);
   const [actionsOpen, setActionsOpen] = useState(false);
+  const [lastLiveRefreshAt, setLastLiveRefreshAt] = useState<Date | null>(null);
+  const [notesModalOpen, setNotesModalOpen] = useState(false);
+  const [warningModalOpen, setWarningModalOpen] = useState(false);
+  const [warningText, setWarningText] = useState('');
+  const [warningSaving, setWarningSaving] = useState(false);
+  const [assessmentText, setAssessmentText] = useState('');
+  const [assessmentSaving, setAssessmentSaving] = useState(false);
+  const [assessmentHistoryOpen, setAssessmentHistoryOpen] = useState(false);
+  const [aliasModalOpen, setAliasModalOpen] = useState(false);
+  const [aliasTagInput, setAliasTagInput] = useState('');
+  const [aliasSaving, setAliasSaving] = useState(false);
   const [showUnownedEquipment, setShowUnownedEquipment] = useState(true);
   const [rankingOpen, setRankingOpen] = useState(false);
   const [rankingStat, setRankingStat] = useState<'trophies' | 'donated' | 'received' | 'warStars' | 'rushPercent' | 'activity' | 'heroPower'>('trophies');
@@ -1430,6 +1613,181 @@ export default function PlayerProfileClient({ tag, initialProfile }: { tag: stri
       console.warn('Failed to copy league history', error);
     }
   }, [leagueHistoryChanges, weeklyLeagueHistory]);
+
+  const handleSaveAssessment = useCallback(async () => {
+    if (!canModifyClanData) {
+      showToast('You do not have permission to save assessments.', 'error');
+      return;
+    }
+    if (!assessmentText.trim()) {
+      showToast('Add an assessment note before saving.', 'error');
+      return;
+    }
+    if (!clanTagForActions) {
+      showToast('Missing clan tag for this player.', 'error');
+      return;
+    }
+
+    setAssessmentSaving(true);
+    try {
+      const response = await fetch('/api/player-assessments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clan_tag: clanTagForActions,
+          player_tag: normalizedTag,
+          player_name: displayName,
+          notes: assessmentText.trim(),
+          context: {
+            source: 'new/player-profile',
+          },
+        }),
+      });
+
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || payload?.success === false) {
+        throw new Error(payload?.error || `Failed to save assessment (${response.status})`);
+      }
+
+      setAssessmentText('');
+      showToast('Assessment saved.', 'success');
+      if (assessmentsKey) {
+        mutate(assessmentsKey);
+      }
+    } catch (error: any) {
+      showToast(error?.message || 'Failed to save assessment.', 'error');
+    } finally {
+      setAssessmentSaving(false);
+    }
+  }, [assessmentText, canModifyClanData, clanTagForActions, displayName, normalizedTag, assessmentsKey, mutate]);
+
+  const handleSaveWarning = useCallback(async () => {
+    if (!canModifyClanData) {
+      showToast('You do not have permission to add warnings.', 'error');
+      return;
+    }
+    if (!warningText.trim()) {
+      showToast('Add a warning note before saving.', 'error');
+      return;
+    }
+    if (!clanTagForActions) {
+      showToast('Missing clan tag for this player.', 'error');
+      return;
+    }
+    setWarningSaving(true);
+    try {
+      const response = await fetch('/api/player-warnings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clanTag: clanTagForActions,
+          playerTag: normalizedTag,
+          playerName: displayName,
+          warningNote: warningText.trim(),
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to save warning (${response.status})`);
+      }
+      setWarningText('');
+      setWarningModalOpen(false);
+      showToast('Warning saved', 'success');
+      await mutate(swrKey);
+      if (linkedAccountsKey) {
+        await mutate(linkedAccountsKey);
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to save warning', 'error');
+    } finally {
+      setWarningSaving(false);
+    }
+  }, [canModifyClanData, warningText, clanTagForActions, normalizedTag, displayName, mutate, swrKey, linkedAccountsKey]);
+
+  const handleLinkAlias = useCallback(async () => {
+    if (!canModifyClanData) {
+      showToast('You do not have permission to link accounts.', 'error');
+      return;
+    }
+    if (!aliasTagInput.trim()) {
+      showToast('Enter a player tag to link.', 'error');
+      return;
+    }
+    if (!clanTagForActions) {
+      showToast('Missing clan tag for this player.', 'error');
+      return;
+    }
+    const aliasTag = normalizeTag(aliasTagInput.trim());
+    if (!aliasTag) {
+      showToast('Invalid player tag.', 'error');
+      return;
+    }
+    if (aliasTag === normalizedTag) {
+      showToast('Cannot link the same tag.', 'error');
+      return;
+    }
+    setAliasSaving(true);
+    try {
+      const response = await fetch('/api/player-aliases', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clanTag: clanTagForActions,
+          playerTag1: normalizedTag,
+          playerTag2: aliasTag,
+        }),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to link account (${response.status})`);
+      }
+      setAliasTagInput('');
+      setAliasModalOpen(false);
+      showToast('Linked account added', 'success');
+      await mutate(swrKey);
+      if (linkedAccountsKey) {
+        await mutate(linkedAccountsKey);
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to link account', 'error');
+    } finally {
+      setAliasSaving(false);
+    }
+  }, [canModifyClanData, aliasTagInput, clanTagForActions, normalizedTag, mutate, swrKey, linkedAccountsKey]);
+
+  const handleUnlinkAlias = useCallback(async (linkedTag: string) => {
+    if (!canModifyClanData) {
+      showToast('You do not have permission to unlink accounts.', 'error');
+      return;
+    }
+    if (!clanTagForActions) {
+      showToast('Missing clan tag for this player.', 'error');
+      return;
+    }
+    const normalizedLinked = normalizeTag(linkedTag) || linkedTag;
+    setAliasSaving(true);
+    try {
+      const params = new URLSearchParams({
+        clanTag: clanTagForActions,
+        playerTag1: normalizedTag,
+        playerTag2: normalizedLinked,
+      });
+      const response = await fetch(`/api/player-aliases?${params.toString()}`, { method: 'DELETE' });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error || `Failed to unlink account (${response.status})`);
+      }
+      showToast('Linked account removed', 'success');
+      await mutate(swrKey);
+      if (linkedAccountsKey) {
+        await mutate(linkedAccountsKey);
+      }
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to unlink account', 'error');
+    } finally {
+      setAliasSaving(false);
+    }
+  }, [canModifyClanData, clanTagForActions, normalizedTag, mutate, swrKey, linkedAccountsKey]);
 
   useEffect(() => {
     if (rankingOpen) {
@@ -1519,12 +1877,24 @@ const groupedEquipment = useMemo(() => {
 }, [equipmentLevels]);
 
   const trophies =
+    // Prefer live "in-game" resolved value when available
+    toOptionalNumber(liveStats?.resolvedTrophies ?? liveStats?.trophies ?? null) ??
+    (summary as any)?.resolvedTrophies ??
+    (summary as any)?.rankedTrophies ??
     summary?.trophies ??
     rosterFallback?.resolvedTrophies ??
     rosterFallback?.trophies ??
     null;
-  const donated = summary?.donations?.given ?? rosterFallback?.donations ?? null;
-  const received = summary?.donations?.received ?? rosterFallback?.donationsReceived ?? null;
+  const donated =
+    toOptionalNumber(liveStats?.donations ?? liveStats?.donations?.given ?? null) ??
+    summary?.donations?.given ??
+    rosterFallback?.donations ??
+    null;
+  const received =
+    toOptionalNumber(liveStats?.donationsReceived ?? liveStats?.donations?.received ?? null) ??
+    summary?.donations?.received ??
+    rosterFallback?.donationsReceived ??
+    null;
   const warStarsValue = summary?.war?.stars ?? (rosterFallback as any)?.warStars ?? null;
   const warIntelMetrics = warIntelData?.data?.metrics?.[0];
   const warIntelReady = !!warIntelMetrics;
@@ -1645,6 +2015,145 @@ const groupedEquipment = useMemo(() => {
     });
   }, []);
 
+  const clanStatsFallback = useMemo(() => {
+    if (!rosterMembers.length) return null;
+    const totals = rosterMembers.reduce(
+      (acc, member: any) => {
+        acc.trophies += toOptionalNumber(member.resolvedTrophies ?? member.trophies ?? member.rankedTrophies ?? 0) ?? 0;
+        acc.donations += toOptionalNumber(member.donations ?? member?.donations?.given ?? 0) ?? 0;
+        acc.warStars += toOptionalNumber(member.warStars ?? member?.war?.stars ?? 0) ?? 0;
+        acc.capitalContributions += toOptionalNumber(member.clanCapitalContributions ?? member.capitalContributions ?? 0) ?? 0;
+        acc.townHallLevel += toOptionalNumber(member.townHallLevel ?? member.th ?? 0) ?? 0;
+        acc.vipScore += toOptionalNumber(member.vipScore ?? member.vip_score ?? member?.vip?.score ?? 0) ?? 0;
+        return acc;
+      },
+      { trophies: 0, donations: 0, warStars: 0, capitalContributions: 0, townHallLevel: 0, vipScore: 0 },
+    );
+    const count = rosterMembers.length || 1;
+    return {
+      trophies: totals.trophies / count,
+      donations: totals.donations / count,
+      warStars: totals.warStars / count,
+      capitalContributions: totals.capitalContributions / count,
+      townHallLevel: totals.townHallLevel / count,
+      vipScore: totals.vipScore / count,
+    };
+  }, [rosterMembers]);
+
+  const analysisData = useMemo(() => {
+    let playerDNA = null;
+    let playerArchetype: string | null = null;
+    let clanAverageDNA = null;
+    let dnaBreakdown = null;
+
+    const rosterMember = rosterFallback ?? null;
+    const fallbackMember = summary ? {
+      name: displayName,
+      tag: normalizedTag,
+      townHallLevel: townHall ?? null,
+      donations: donated ?? 0,
+      donationsReceived: received ?? 0,
+      warStars: warStarsValue ?? 0,
+      clanCapitalContributions: (summary as any)?.capitalContributions ?? 0,
+      trophies: trophies ?? 0,
+      role: (summary as any)?.role ?? rosterFallback?.role ?? null,
+      tenure: (summary as any)?.tenureDays ?? (summary as any)?.tenure ?? null,
+      rushPercent: (summary as any)?.rushPercent ?? (summary as any)?.rush_percent ?? null,
+      vipScore: vipCurrentScore ?? 0,
+    } : null;
+    const memberForDNA = rosterMember ?? fallbackMember;
+
+    if (memberForDNA && rosterMembers.length > 0) {
+      const clanAverages = {
+        averageDonations: rosterMembers.reduce((sum, m: any) => sum + (toOptionalNumber(m.donations ?? m?.donations?.given ?? 0) ?? 0), 0) / rosterMembers.length,
+        averageWarStars: rosterMembers.reduce((sum, m: any) => sum + (toOptionalNumber(m.warStars ?? m?.war?.stars ?? 0) ?? 0), 0) / rosterMembers.length,
+        averageCapitalContributions: rosterMembers.reduce((sum, m: any) => sum + (toOptionalNumber(m.clanCapitalContributions ?? m.capitalContributions ?? 0) ?? 0), 0) / rosterMembers.length,
+        totalMembers: rosterMembers.length,
+      };
+      playerDNA = calculatePlayerDNA(memberForDNA as any, clanAverages);
+      playerArchetype = classifyPlayerArchetype(playerDNA, memberForDNA as any);
+
+      const clanDNA = calculateClanDNA(rosterMembers as any[]);
+      clanAverageDNA = clanDNA.averageDNA;
+
+      const clanAverageTenure = rosterMembers.length > 0
+        ? rosterMembers.reduce((sum, m: any) => sum + (toOptionalNumber(m.tenure ?? m.tenureDays ?? 0) ?? 0), 0) / rosterMembers.length
+        : undefined;
+      dnaBreakdown = generateDNABreakdown(playerDNA, memberForDNA as any, clanAverageTenure);
+    }
+
+    const clanStatsAverages = (profile as any)?.clanStatsAverages ?? clanStatsFallback ?? {
+      trophies: 0,
+      donations: 0,
+      warStars: 0,
+      capitalContributions: 0,
+      townHallLevel: 0,
+      vipScore: 0,
+    };
+    const playerStats = summary ? {
+      trophies: trophies ?? 0,
+      donations: donated ?? 0,
+      warStars: warStarsValue ?? 0,
+      capitalContributions: (summary as any)?.capitalContributions ?? 0,
+      townHallLevel: townHall ?? 0,
+      vipScore: vipCurrentScore ?? 0,
+    } : null;
+
+    return {
+      playerDNA,
+      playerArchetype,
+      clanAverageDNA,
+      dnaBreakdown,
+      playerStats,
+      clanStatsAverages,
+    };
+  }, [
+    rosterMembers,
+    rosterFallback,
+    summary,
+    displayName,
+    normalizedTag,
+    townHall,
+    donated,
+    received,
+    warStarsValue,
+    trophies,
+    vipCurrentScore,
+    profile,
+    clanStatsFallback,
+  ]);
+
+  const sortedEvaluations = useMemo(() => {
+    if (!Array.isArray(evaluations)) return [];
+    return [...evaluations].sort((a: any, b: any) => {
+      const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+      const bDate = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+      return bDate - aDate;
+    });
+  }, [evaluations]);
+
+  const availableAliasOptions = useMemo(() => {
+    const existing = new Set(
+      (linkedAccounts || []).map((account: any) => normalizeTag(account.tag) || account.tag),
+    );
+    const currentTag = normalizeTag(tag) || tag;
+    return rosterMembers
+      .filter((member: any) => {
+        const memberTag = normalizeTag(member.tag) || member.tag;
+        if (!memberTag || memberTag === currentTag) return false;
+        return !existing.has(memberTag);
+      })
+      .map((member: any) => ({
+        tag: normalizeTag(member.tag) || member.tag,
+        name: member.name || member.tag,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [linkedAccounts, rosterMembers, tag]);
+  const aliasSelectValue = useMemo(() => {
+    const normalizedInput = normalizeTag(aliasTagInput) || aliasTagInput;
+    return availableAliasOptions.some((option) => option.tag === normalizedInput) ? normalizedInput : '';
+  }, [aliasTagInput, availableAliasOptions]);
+
   if (isLoading && !profile && !rosterFallback) {
     return (
       <div className="space-y-4">
@@ -1710,15 +2219,40 @@ const groupedEquipment = useMemo(() => {
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="flex items-start gap-3 min-w-0">
                 <RoleIcon role={role as any} size={32} className="shrink-0" />
-                <h1 
-                  className="min-w-0 break-words text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight"
-                  style={{ 
-                    fontFamily: 'var(--font-display)', 
-                    textShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.1)'
-                  }}
-                >
-                  {displayName}
-                </h1>
+                <div className="space-y-2 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <h1 
+                      className="min-w-0 break-words text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight leading-tight"
+                      style={{ 
+                        fontFamily: 'var(--font-display)', 
+                        textShadow: '0 4px 20px rgba(0,0,0,0.5), 0 0 40px rgba(255,255,255,0.1)'
+                      }}
+                    >
+                      {displayName}
+                    </h1>
+                    
+                    {/* DNA Archetype Badge */}
+                    {analysisData.playerArchetype && (
+                      <div 
+                        className="px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2"
+                        style={{ 
+                          background: `${getArchetypeInfo(analysisData.playerArchetype as any)?.color}20`,
+                          color: getArchetypeInfo(analysisData.playerArchetype as any)?.color,
+                          border: `1px solid ${getArchetypeInfo(analysisData.playerArchetype as any)?.color}40`,
+                        }}
+                        title={getArchetypeInfo(analysisData.playerArchetype as any)?.description}
+                      >
+                        <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: getArchetypeInfo(analysisData.playerArchetype as any)?.color }} />
+                        {analysisData.playerArchetype}
+                      </div>
+                    )}
+                  </div>
+                  <DataFreshness
+                    at={lastLiveRefreshAt ?? snapshotAsOf}
+                    modeLabel={lastLiveRefreshAt ? 'Live refreshed' : 'Snapshot updated'}
+                    className=""
+                  />
+                </div>
               </div>
 
               {sortedRoster.length > 1 ? (
@@ -1902,8 +2436,9 @@ const groupedEquipment = useMemo(() => {
               delta={deltas?.trophies}
               icon="/assets/clash/trophy.png"
               color="#f59e0b"
-              info={STAT_DEFINITIONS.trophies}
+              info={STAT_DEFINITIONS.trophies + (liveStats ? " (Currently showing live in-game value)" : "")}
               onClick={() => openRanking('trophies')}
+              subtitle={liveStats ? "Live In-Game" : undefined}
             />
             <GlowStatCard 
               label="Donated" 
@@ -1911,8 +2446,9 @@ const groupedEquipment = useMemo(() => {
               delta={deltas?.donations}
               icon="📤"
               color="#10b981"
-              info={STAT_DEFINITIONS.donated}
+              info={STAT_DEFINITIONS.donated + (liveStats ? " (Currently showing live in-game value)" : "")}
               onClick={() => openRanking('donated')}
+              subtitle={liveStats ? "Live In-Game" : undefined}
             />
             <GlowStatCard 
               label="Received" 
@@ -1920,8 +2456,9 @@ const groupedEquipment = useMemo(() => {
               delta={deltas?.donationsReceived}
               icon="📥"
               color="#6366f1"
-              info={STAT_DEFINITIONS.received}
+              info={STAT_DEFINITIONS.received + (liveStats ? " (Currently showing live in-game value)" : "")}
               onClick={() => openRanking('received')}
+              subtitle={liveStats ? "Live In-Game" : undefined}
             />
             <GlowStatCard 
               label="War Stars" 
@@ -1969,9 +2506,9 @@ const groupedEquipment = useMemo(() => {
           </button>
         ))}
         <div className="flex-1" />
-        <span className="text-xs text-slate-500 pr-2">
-          {snapshotText || 'No snapshot'}
-        </span>
+        {snapshotText ? (
+          <span className="text-xs text-slate-500 pr-2">{snapshotText}</span>
+        ) : null}
       </div>
 
       {/* ═══════════════════════════════════════════════════════════════════════
@@ -1983,7 +2520,7 @@ const groupedEquipment = useMemo(() => {
         <div className="space-y-6">
           {/* Large Trend Charts Row */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Trophy Trend */}
+            {/* Trophy Trend (Weekly Max Bar Chart) */}
             <div 
               className="rounded-2xl p-6 relative overflow-hidden"
               style={{ 
@@ -1993,37 +2530,71 @@ const groupedEquipment = useMemo(() => {
             >
               <div className="flex items-center justify-between mb-4 relative z-10">
                 <div>
-                  <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Trophy Progression</div>
+                  <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1">Weekly Best Trophies</div>
                   <div className="flex items-baseline gap-3">
                     <span className="text-4xl font-black text-white">
                       {trophies != null ? <AnimatedCounter value={trophies} /> : '—'}
                     </span>
-                    {deltas?.trophies != null && deltas.trophies !== 0 && (
-                      <span className={`text-lg font-bold ${deltas.trophies > 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {deltas.trophies > 0 ? '↑' : '↓'} {Math.abs(deltas.trophies)}
-                      </span>
-                    )}
+                    <span className="text-slate-500 text-xs font-medium uppercase tracking-tight">In-Game Now</span>
                   </div>
                 </div>
               </div>
-              <TrendChart 
-                data={recentTimeline
-                  .map((e: any) => {
-                    const value = resolveTimelineTrophies(e);
-                    if (value == null) return null;
-                    return {
+              
+              {/* Using BarTrendChart for weekly peak story */}
+              <BarTrendChart
+                data={(() => {
+                  if (!recentTimeline.length) return [];
+                  const buckets = new Map<string, number>();
+                  
+                  // Process recent timeline into weekly max buckets
+                  recentTimeline.forEach((entry: any) => {
+                    const val = resolveTimelineTrophies(entry);
+                    const dateRaw = entry.snapshotDate || entry.snapshot_date || entry.timestamp || entry.date;
+                    if (val == null || !dateRaw) return;
+                    
+                    const date = new Date(dateRaw);
+                    // Standard Monday-start week key
+                    const utcDay = date.getUTCDay();
+                    const diff = utcDay === 0 ? -6 : 1 - utcDay;
+                    const weekStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + diff));
+                    const key = weekStart.toISOString().slice(0, 10);
+                    
+                    const prev = buckets.get(key);
+                    if (prev == null || val > prev) {
+                      buckets.set(key, val);
+                    }
+                  });
+
+                  // Ensure "Live" trophies (39) are reflected in the current week bucket
+                  if (trophies != null) {
+                    const now = new Date();
+                    const utcDay = now.getUTCDay();
+                    const diff = utcDay === 0 ? -6 : 1 - utcDay;
+                    const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff));
+                    const key = weekStart.toISOString().slice(0, 10);
+                    const prev = buckets.get(key);
+                    if (prev == null || trophies > prev) {
+                      buckets.set(key, trophies);
+                    }
+                  }
+
+                  return Array.from(buckets.entries())
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([weekStart, value]) => ({
                       value,
-                      label: new Date(e.snapshotDate).toLocaleDateString('en', { weekday: 'short' }),
-                    };
-                  })
-                  .filter((entry: any): entry is { value: number; label: string } => Boolean(entry))}
-                label="trophies"
+                      label: new Date(`${weekStart}T00:00:00Z`).toLocaleDateString('en', {
+                        month: 'short',
+                        day: 'numeric',
+                      }),
+                    }));
+                })()}
+                label="trophies-overview-weekly"
                 color="#f59e0b"
-                height={100}
+                height={120}
               />
             </div>
 
-            {/* Donation Trend */}
+            {/* Donation Activity (Weekly Bar Chart) */}
             <div 
               className="rounded-2xl p-6 relative overflow-hidden"
               style={{ 
@@ -2039,33 +2610,128 @@ const groupedEquipment = useMemo(() => {
                       <span className="text-3xl font-black text-emerald-400">
                         {donated != null ? <AnimatedCounter value={donated} /> : '—'}
                       </span>
-                      <span className="text-slate-500 text-sm ml-1">given</span>
-                    </div>
-                    <div className="text-slate-600">|</div>
-                    <div>
-                      <span className="text-2xl font-bold text-indigo-400">
-                        {received != null ? <AnimatedCounter value={received} /> : '—'}
-                      </span>
-                      <span className="text-slate-500 text-sm ml-1">received</span>
+                      <span className="text-slate-500 text-sm ml-1 uppercase tracking-tighter">Given This Season</span>
                     </div>
                   </div>
                 </div>
               </div>
-              <TrendChart 
-                data={recentTimeline
-                  .map((e: any) => {
-                    const value = toOptionalNumber(e.donations);
-                    if (value == null) return null;
-                    return {
+              
+              {/* Using BarTrendChart for weekly total donations */}
+              <BarTrendChart
+                data={(() => {
+                  if (!recentTimeline.length) return [];
+                  const buckets = new Map<string, number>();
+                  
+                  // Sort timeline ascending to process deltas correctly
+                  const sorted = [...recentTimeline].sort((a, b) => toSnapshotTime(a) - toSnapshotTime(b));
+                  
+                  // For donations, we want to show the "Total per week"
+                  // Since donation counts are seasonal (accumulating), we find the max per week
+                  sorted.forEach((entry: any) => {
+                    const val = toOptionalNumber(entry.donations);
+                    const dateRaw = entry.snapshotDate || entry.snapshot_date || entry.timestamp || entry.date;
+                    if (val == null || !dateRaw) return;
+                    
+                    const date = new Date(dateRaw);
+                    const utcDay = date.getUTCDay();
+                    const diff = utcDay === 0 ? -6 : 1 - utcDay;
+                    const weekStart = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate() + diff));
+                    const key = weekStart.toISOString().slice(0, 10);
+                    
+                    const prev = buckets.get(key);
+                    // For season totals, max in the week is the total for that week so far
+                    if (prev == null || val > prev) {
+                      buckets.set(key, val);
+                    }
+                  });
+
+                  // Ensure "Live" donations are reflected
+                  if (donated != null) {
+                    const now = new Date();
+                    const utcDay = now.getUTCDay();
+                    const diff = utcDay === 0 ? -6 : 1 - utcDay;
+                    const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff));
+                    const key = weekStart.toISOString().slice(0, 10);
+                    const prev = buckets.get(key);
+                    if (prev == null || donated > prev) {
+                      buckets.set(key, donated);
+                    }
+                  }
+
+                  return Array.from(buckets.entries())
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([weekStart, value]) => ({
                       value,
-                      label: new Date(e.snapshotDate).toLocaleDateString('en', { weekday: 'short' }),
-                    };
-                  })
-                  .filter((entry: any): entry is { value: number; label: string } => Boolean(entry))}
-                label="donations"
+                      label: new Date(`${weekStart}T00:00:00Z`).toLocaleDateString('en', {
+                        month: 'short',
+                        day: 'numeric',
+                      }),
+                    }));
+                })()}
+                label="donations-overview-weekly"
                 color="#10b981"
-                height={100}
+                height={120}
               />
+            </div>
+          </div>
+
+          {/* Task A: Hero Equipment Strip */}
+          <div 
+            className="rounded-2xl p-4 overflow-x-auto"
+            style={{ 
+              background: 'linear-gradient(135deg, rgba(15,23,42,0.6) 0%, rgba(30,41,59,0.4) 100%)',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}
+          >
+            <div className="flex items-center gap-6 min-w-max">
+              {heroOrder.map((heroKey) => {
+                const bucket = bucketFromHeroName(heroLabels[heroKey]);
+                const heroItems = groupedEquipment[bucket] || [];
+                // Get top 2 owned items by level
+                const activeItems = heroItems
+                  .filter(item => item.owned)
+                  .sort((a, b) => (b.level ?? 0) - (a.level ?? 0))
+                  .slice(0, 2);
+
+                if (activeItems.length === 0) return null;
+
+                return (
+                  <div key={`overview-equip-${heroKey}`} className="flex items-center gap-3 pr-6 border-r border-white/5 last:border-0">
+                    <HeroIcon hero={heroKey} size="xs" />
+                    <div className="flex gap-1.5">
+                      {activeItems.map((item) => {
+                        const icon = getEquipmentIcon(item.name);
+                        const rarity = item.canonical?.rarity;
+                        const isEpic = rarity === 'Epic';
+                        // Task C: Subtle Rarity Border
+                        const borderColor = isEpic ? '#a74ce5' : 'rgba(255,255,255,0.1)';
+                        
+                        return (
+                          <div 
+                            key={`hero-strip-${item.name}`}
+                            className="relative group cursor-help"
+                            title={`${item.displayName} (Lvl ${item.level})`}
+                          >
+                            <div 
+                              className="w-10 h-10 rounded-lg overflow-hidden flex items-center justify-center p-1 bg-black/40 border transition-all hover:scale-110"
+                              style={{ borderColor }}
+                            >
+                              {icon ? (
+                                <Image src={icon} alt="" width={32} height={32} unoptimized className="object-contain" />
+                              ) : (
+                                <span className="text-[8px] text-white font-bold">{item.displayName.slice(0, 3)}</span>
+                              )}
+                            </div>
+                            <div className="absolute -bottom-1 -right-1 bg-black/80 text-[8px] px-1 rounded border border-white/10 text-white font-black">
+                              {item.level}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -2346,12 +3012,13 @@ const groupedEquipment = useMemo(() => {
                                       }}
                                     >
                                       {icon ? (
-                                        <img
+                                        <Image
                                           src={icon}
                                           alt={displayName}
                                           className="h-full w-full object-contain transition duration-150 hover:grayscale-0 hover:brightness-100"
                                           width={64}
                                           height={64}
+                                          unoptimized
                                           style={{ width: '64px', height: '64px', filter: item.owned ? undefined : 'grayscale(100%) brightness(0.7)', ...iconStyle }}
                                         />
                                       ) : (
@@ -2411,12 +3078,13 @@ const groupedEquipment = useMemo(() => {
                                   style={{ background: iconBg }}
                                 >
                                   {getPetIcon(pet.name) ? (
-                                    <img
+                                    <Image
                                       src={getPetIcon(pet.name)!}
                                       alt={pet.name}
                                       className="h-full w-full object-contain"
                                       width={64}
                                       height={64}
+                                      unoptimized
                                       style={{ width: '64px', height: '64px', filter: owned ? undefined : 'grayscale(100%) brightness(0.7)' }}
                                     />
                                   ) : (
@@ -2454,6 +3122,12 @@ const groupedEquipment = useMemo(() => {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="text-xs uppercase tracking-widest text-slate-500">History Range</div>
             <div className="flex flex-wrap items-center gap-2">
+              <Link
+                href={historyPageHref}
+                className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs font-semibold text-slate-200 hover:border-white/30"
+              >
+                Open history page
+              </Link>
               {HISTORY_RANGE_OPTIONS.map((option) => (
                 <button
                   key={option.value}
@@ -2827,6 +3501,124 @@ const groupedEquipment = useMemo(() => {
         </div>
       )}
 
+      {activeTab === 'evaluations' && (
+        <div className="space-y-6">
+          {!canViewLeadershipFeatures ? (
+            <Card title="Evaluations">
+              <p className="text-sm text-slate-300">Evaluations are available to leadership members only.</p>
+            </Card>
+          ) : (
+            <Card title="Applicant Evaluations">
+              <div className="flex items-center justify-between">
+                <div className="text-xs uppercase tracking-widest text-slate-500">On file</div>
+                <div className="text-sm text-slate-300">{sortedEvaluations.length}</div>
+              </div>
+              {sortedEvaluations.length ? (
+                <div className="mt-4 overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-slate-400 text-xs uppercase tracking-wider border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                        <th className="text-left py-2 pr-3">Date</th>
+                        <th className="text-right py-2 pr-3">Score</th>
+                        <th className="text-left py-2 pr-3">Status</th>
+                        <th className="text-left py-2">Recommendation</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedEvaluations.map((evaluation: any) => {
+                        const dateLabel = evaluation.updatedAt || evaluation.createdAt
+                          ? new Date(evaluation.updatedAt ?? evaluation.createdAt).toLocaleDateString()
+                          : '—';
+                        const score = evaluation.score != null ? Number(evaluation.score).toFixed(1) : '—';
+                        return (
+                          <tr key={evaluation.id ?? `${evaluation.playerTag}-${dateLabel}`} className="border-b" style={{ borderColor: 'var(--border-subtle)' }}>
+                            <td className="py-2 pr-3 text-slate-300">{dateLabel}</td>
+                            <td className="py-2 pr-3 text-right text-white font-semibold">{score}</td>
+                            <td className="py-2 pr-3 text-slate-300">{evaluation.status ?? '—'}</td>
+                            <td className="py-2 text-slate-300">{evaluation.recommendation ?? '—'}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="mt-4 text-sm text-slate-300">No evaluations recorded yet.</p>
+              )}
+            </Card>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'analysis' && (
+        <div className="space-y-6">
+          {!canRunWarAnalysis ? (
+            <Card title="Analysis">
+              <p className="text-sm text-slate-300">Analysis tools are available to leadership members only.</p>
+            </Card>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <Card title="Player DNA">
+                {analysisData.playerDNA && analysisData.playerArchetype ? (
+                  <div className="flex flex-col items-center gap-4">
+                    <PlayerDNARadar
+                      dna={analysisData.playerDNA}
+                      archetype={analysisData.playerArchetype as any}
+                      playerName={displayName}
+                      clanAverageDNA={analysisData.clanAverageDNA}
+                      size={220}
+                    />
+                    {analysisData.dnaBreakdown ? (
+                      <div className="grid w-full gap-2 text-xs text-slate-300">
+                        {Object.entries(analysisData.dnaBreakdown).map(([key, value]) => (
+                          <div key={key} className="flex items-center justify-between rounded-lg border border-white/5 bg-white/5 px-3 py-2">
+                            <span className="uppercase tracking-widest text-slate-400">{key}</span>
+                            <span className="text-slate-200">{value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-300">DNA analysis needs roster data to calculate.</p>
+                )}
+              </Card>
+
+              <Card title="Performance vs Clan Average">
+                {analysisData.playerStats && analysisData.clanStatsAverages ? (
+                  <StatsRadarChart
+                    playerStats={analysisData.playerStats}
+                    clanAverages={analysisData.clanStatsAverages}
+                    playerName={displayName}
+                  />
+                ) : (
+                  <p className="text-sm text-slate-300">Stats radar unavailable without roster averages.</p>
+                )}
+              </Card>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'comparison' && (
+        <div className="space-y-6">
+          {!canViewLeadershipFeatures ? (
+            <Card title="Comparison">
+              <p className="text-sm text-slate-300">Comparison tools are available to leadership members only.</p>
+            </Card>
+          ) : (
+            <PlayerComparisonView
+              playerTag={normalizedTag}
+              playerName={displayName}
+              playerTrophies={trophies ?? undefined}
+              playerTownHall={townHall ?? undefined}
+              playerLeagueName={summary?.league?.name ?? summary?.rankedLeague?.name ?? undefined}
+              clanTag={clanTagForActions || undefined}
+            />
+          )}
+        </div>
+      )}
+
       {actionsOpen ? (
         <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={() => setActionsOpen(false)}>
           <div
@@ -2836,23 +3628,131 @@ const groupedEquipment = useMemo(() => {
           >
             <div className="flex items-center justify-between border-b px-4 py-3" style={{ borderColor: 'var(--border-subtle)' }}>
               <div className="text-white font-semibold">Leadership Actions</div>
-              <Button tone="ghost" onClick={() => setActionsOpen(false)} className="text-sm">
-                Close
-              </Button>
+              <div className="flex items-center gap-2">
+                {canViewLeadershipFeatures ? (
+                  <Button tone="ghost" onClick={handleLiveRefreshProfile} className="text-sm">
+                    Live refresh
+                  </Button>
+                ) : null}
+                <Button tone="ghost" onClick={() => setActionsOpen(false)} className="text-sm">
+                  Close
+                </Button>
+              </div>
             </div>
-            <div className="p-4 space-y-3 text-sm">
-              <Button tone="primary" className="w-full justify-between text-sm" disabled title="Add note (coming soon)">
-                Add Note
-              </Button>
-              <Button tone="ghost" className="w-full justify-between text-sm" disabled title="Flag account (coming soon)">
-                Flag Account
-              </Button>
-              <Button tone="ghost" className="w-full justify-between text-sm" disabled title="Report concern (coming soon)">
-                Report concern
-              </Button>
-              <p className="text-xs text-slate-400">Leadership tools will wire to the new services soon.</p>
+            <div className="p-4 space-y-4 text-sm">
+              <div className="space-y-2">
+                <Button
+                  tone="primary"
+                  className="w-full justify-between text-sm"
+                  onClick={() => setNotesModalOpen(true)}
+                  disabled={!canModifyClanData || !clanTagForActions}
+                >
+                  Add Note
+                </Button>
+                <Button
+                  tone="ghost"
+                  className="w-full justify-between text-sm"
+                  onClick={() => setWarningModalOpen(true)}
+                  disabled={!canModifyClanData || !clanTagForActions}
+                >
+                  Add Warning
+                </Button>
+                <Button
+                  tone="ghost"
+                  className="w-full justify-between text-sm"
+                  onClick={() => setAliasModalOpen(true)}
+                  disabled={!canModifyClanData || !clanTagForActions}
+                >
+                  Link Account
+                </Button>
+                {!canModifyClanData && (
+                  <p className="text-xs text-amber-300/80">You do not have permission to modify leadership data.</p>
+                )}
+              </div>
 
-              <div className="h-px bg-white/10 my-2" />
+              <div className="space-y-2">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-400">Assessment</div>
+                <textarea
+                  value={assessmentText}
+                  onChange={(e) => setAssessmentText(e.target.value)}
+                  rows={3}
+                  className="w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+                  placeholder="Freeform notes (saved to Supabase)…"
+                  disabled={!canModifyClanData || !clanTagForActions || assessmentSaving}
+                />
+                <div className="flex items-center justify-end">
+                  <Button
+                    tone="primary"
+                    onClick={handleSaveAssessment}
+                    disabled={!canModifyClanData || !clanTagForActions || assessmentSaving || !assessmentText.trim()}
+                  >
+                    {assessmentSaving ? 'Saving…' : 'Save assessment'}
+                  </Button>
+                </div>
+
+                {canViewSensitiveData && assessmentHistory?.length ? (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-white/5 p-3">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-[10px] uppercase tracking-[0.2em] text-slate-400">Latest assessment</div>
+                      <button
+                        type="button"
+                        className="text-xs text-cyan-200 hover:text-cyan-100"
+                        onClick={() => setAssessmentHistoryOpen((v) => !v)}
+                      >
+                        {assessmentHistoryOpen ? 'Hide history' : 'View history'}
+                      </button>
+                    </div>
+                    <div className="mt-2 text-xs text-slate-200 whitespace-pre-wrap">
+                      {(assessmentHistory?.[0]?.notes ?? '').slice(0, 220)}
+                      {((assessmentHistory?.[0]?.notes ?? '').length > 220) ? '…' : ''}
+                    </div>
+                    <div className="mt-2 text-[11px] text-slate-400">
+                      {assessmentHistory?.[0]?.created_by ? `By ${assessmentHistory[0].created_by} · ` : ''}
+                      {assessmentHistory?.[0]?.assessed_at ? new Date(assessmentHistory[0].assessed_at).toLocaleString() : ''}
+                    </div>
+                  </div>
+                ) : null}
+
+                {canViewSensitiveData && !assessmentHistory?.length ? (
+                  <div className="mt-3 rounded-lg border border-white/10 bg-slate-950/30 p-3 text-sm text-slate-300">
+                    No assessments yet.
+                  </div>
+                ) : null}
+
+                {canViewSensitiveData && assessmentHistoryOpen && assessmentHistory?.length ? (
+                  <div className="mt-3 space-y-2">
+                    {assessmentHistory.slice(0, 10).map((row: any) => (
+                      <div key={row.id} className="rounded-lg border border-white/10 bg-slate-950/30 p-3">
+                        <div className="flex items-center justify-between gap-2 text-[11px] text-slate-400">
+                          <span>
+                            {row.created_by ? `By ${row.created_by}` : 'Leader'}
+                          </span>
+                          <span className="flex items-center gap-3">
+                            {row.assessed_at ? new Date(row.assessed_at).toLocaleString() : ''}
+                            <button
+                              type="button"
+                              className="text-cyan-200 hover:text-cyan-100"
+                              onClick={async () => {
+                                try {
+                                  await navigator.clipboard.writeText(row.notes ?? '');
+                                  showToast('Assessment copied.', 'success');
+                                } catch (err) {
+                                  showToast('Failed to copy assessment.', 'error');
+                                }
+                              }}
+                            >
+                              Copy
+                            </button>
+                          </span>
+                        </div>
+                        <div className="mt-2 text-sm text-slate-100 whitespace-pre-wrap">{row.notes}</div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="h-px bg-white/10" />
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -2861,10 +3761,22 @@ const groupedEquipment = useMemo(() => {
                 </div>
                 {linkedAccounts?.length ? (
                   <div className="space-y-1">
-                    {linkedAccounts.slice(0, 5).map((account: any) => (
-                      <div key={account.tag} className="flex items-center justify-between">
-                        <span className="text-white">{account.name || 'Unknown'}</span>
-                        <span className="text-slate-400 text-xs font-mono">{account.tag}</span>
+                    {linkedAccounts.slice(0, 8).map((account: any) => (
+                      <div key={account.tag} className="flex items-center justify-between gap-2">
+                        <div>
+                          <div className="text-white">{account.name || 'Unknown'}</div>
+                          <div className="text-slate-400 text-xs font-mono">{account.tag}</div>
+                        </div>
+                        {canModifyClanData ? (
+                          <button
+                            type="button"
+                            className="rounded-md border border-white/10 px-2 py-1 text-xs text-slate-300 hover:bg-white/10"
+                            onClick={() => handleUnlinkAlias(account.tag)}
+                            disabled={aliasSaving}
+                          >
+                            {aliasSaving ? 'Removing...' : 'Remove'}
+                          </button>
+                        ) : null}
                       </div>
                     ))}
                   </div>
@@ -2874,16 +3786,20 @@ const groupedEquipment = useMemo(() => {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
                     <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Notes</div>
-                    <div className="text-white font-semibold">{leadership?.notes?.length ?? 0}</div>
+                    <div className="text-white font-semibold">
+                      {canViewSensitiveData ? (leadership?.notes?.length ?? 0) : 'Locked'}
+                    </div>
                   </div>
                   <div className="rounded-lg border px-3 py-2" style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}>
-                    <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Flags</div>
-                    <div className="text-white font-semibold">{leadership?.warnings?.length ?? 0}</div>
+                    <div className="text-[11px] uppercase tracking-[0.24em] text-slate-400">Warnings</div>
+                    <div className="text-white font-semibold">
+                      {canViewSensitiveData ? (leadership?.warnings?.length ?? 0) : 'Locked'}
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="h-px bg-white/10 my-2" />
+              <div className="h-px bg-white/10" />
 
               <div className="space-y-2 text-sm">
                 <div className="flex items-center justify-between">
@@ -2901,6 +3817,104 @@ const groupedEquipment = useMemo(() => {
           </div>
         </div>
       ) : null}
+
+      {notesModalOpen && clanTagForActions ? (
+        <RosterPlayerNotesModal
+          playerTag={normalizedTag}
+          playerName={displayName}
+          clanTag={clanTagForActions}
+          onClose={() => setNotesModalOpen(false)}
+        />
+      ) : null}
+
+      <Modal
+        isOpen={warningModalOpen}
+        onClose={() => {
+          if (!warningSaving) {
+            setWarningModalOpen(false);
+          }
+        }}
+        title="Add warning"
+        size="lg"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">
+            Warnings are leadership-only and propagate to linked accounts.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Warning note</label>
+            <textarea
+              value={warningText}
+              onChange={(e) => setWarningText(e.target.value)}
+              rows={4}
+              className="mt-2 w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+              placeholder="Capture the warning context..."
+              disabled={warningSaving}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button tone="ghost" onClick={() => setWarningModalOpen(false)} disabled={warningSaving}>
+              Cancel
+            </Button>
+            <Button tone="primary" onClick={handleSaveWarning} disabled={warningSaving || !warningText.trim()}>
+              {warningSaving ? 'Saving...' : 'Save warning'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={aliasModalOpen}
+        onClose={() => {
+          if (!aliasSaving) {
+            setAliasModalOpen(false);
+          }
+        }}
+        title="Link account"
+        size="md"
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-slate-300">
+            Link a second player tag to this account to share warnings and history.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Select from roster</label>
+            <select
+              className="mt-2 w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+              value={aliasSelectValue}
+              onChange={(e) => setAliasTagInput(e.target.value)}
+              disabled={aliasSaving || availableAliasOptions.length === 0}
+            >
+              <option value="" disabled>
+                {availableAliasOptions.length ? 'Choose a player' : 'No remaining roster players'}
+              </option>
+              {availableAliasOptions.map((option) => (
+                <option key={option.tag} value={option.tag}>
+                  {option.name} ({option.tag})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-200">Or enter a player tag</label>
+            <input
+              value={aliasTagInput}
+              onChange={(e) => setAliasTagInput(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
+              placeholder="#ABC123"
+              disabled={aliasSaving}
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2">
+            <Button tone="ghost" onClick={() => setAliasModalOpen(false)} disabled={aliasSaving}>
+              Cancel
+            </Button>
+            <Button tone="primary" onClick={handleLinkAlias} disabled={aliasSaving || !aliasTagInput.trim()}>
+              {aliasSaving ? 'Linking...' : 'Link account'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
 
       {rankingOpen ? (
         <div className="fixed inset-0 z-50 flex">

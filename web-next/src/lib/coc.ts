@@ -289,6 +289,10 @@ type ApiOptions = {
   bypassCache?: boolean;
 };
 
+type VerifyTokenResponse = {
+  status?: 'ok' | 'invalid';
+};
+
 async function api<T>(path: string, options?: ApiOptions): Promise<T> {
   // Validate Fixie config when API is actually called (not at module load)
   validateFixieConfig();
@@ -353,12 +357,20 @@ async function api<T>(path: string, options?: ApiOptions): Promise<T> {
     throw new Error("COC_API_TOKEN not set");
   }
   
-  const attemptModes: Array<'proxy' | 'direct'> = [];
   const canUseProxy = Boolean(FIXIE_URL) && !DISABLE_PROXY;
-  
+
+  const isInvalidIpError = (err: any): boolean => {
+    const status = (err as any)?.status ?? deriveStatusFromMessage(err?.message);
+    if (status !== 403) return false;
+    const msg = String(err?.message || '');
+    return msg.includes('accessDenied.invalidIp') || msg.includes('invalidIp');
+  };
+
   // Log proxy configuration for debugging (only in debug mode)
-  debugLog(`[CoC API] Proxy config - Environment: ${isProduction ? 'PRODUCTION' : isDevelopment ? 'DEVELOPMENT' : 'UNKNOWN'}, FIXIE_URL: ${FIXIE_URL ? 'SET' : 'NOT SET'}, DISABLE_PROXY: ${DISABLE_PROXY}, canUseProxy: ${canUseProxy}`);
-  
+  debugLog(
+    `[CoC API] Proxy config - Environment: ${isProduction ? 'PRODUCTION' : isDevelopment ? 'DEVELOPMENT' : 'UNKNOWN'}, FIXIE_URL: ${FIXIE_URL ? 'SET' : 'NOT SET'}, DISABLE_PROXY: ${DISABLE_PROXY}, canUseProxy: ${canUseProxy}`,
+  );
+
   // PRODUCTION: Must use Fixie, no direct connections allowed
   if (isProduction) {
     if (!canUseProxy) {
@@ -366,58 +378,18 @@ async function api<T>(path: string, options?: ApiOptions): Promise<T> {
       console.error('[CoC API] PRODUCTION ERROR:', error.message);
       throw error;
     }
-    // Production: Only use proxy, no fallback
-    while (attemptModes.length < MAX_RETRIES) {
-      attemptModes.push('proxy');
-    }
-  } 
-  // DEVELOPMENT: Allow direct connections if Fixie not available
-  else if (isDevelopment) {
-    if (canUseProxy) {
-      attemptModes.push('proxy');
-      if (ALLOW_PROXY_FALLBACK) {
-        while (attemptModes.length < MAX_RETRIES) {
-          attemptModes.push('direct');
-        }
-      } else {
-        while (attemptModes.length < MAX_RETRIES) {
-          attemptModes.push('proxy');
-        }
-      }
-    } else {
-      debugWarn(`[CoC API] Development mode: Proxy not available, using direct connection`);
-      while (attemptModes.length < MAX_RETRIES) {
-        attemptModes.push('direct');
-      }
-    }
-  }
-  // UNKNOWN ENVIRONMENT: Try to use proxy if available, otherwise direct
-  else {
-    if (canUseProxy) {
-      attemptModes.push('proxy');
-      if (ALLOW_PROXY_FALLBACK) {
-        while (attemptModes.length < MAX_RETRIES) {
-          attemptModes.push('direct');
-        }
-      } else {
-        while (attemptModes.length < MAX_RETRIES) {
-          attemptModes.push('proxy');
-        }
-      }
-    } else {
-      debugWarn(`[CoC API] WARNING: Proxy not available - using direct connection`);
-      while (attemptModes.length < MAX_RETRIES) {
-        attemptModes.push('direct');
-      }
-    }
   }
 
   let lastError: any = null;
+  let forceProxy = false; // in non-prod, only flips on direct 403 invalidIp
 
-  for (let i = 0; i < attemptModes.length; i += 1) {
-    const mode = attemptModes[i];
+  for (let i = 0; i < MAX_RETRIES; i += 1) {
     const attemptNumber = i + 1;
-    const totalAttempts = attemptModes.length;
+    const totalAttempts = MAX_RETRIES;
+
+    const mode: 'proxy' | 'direct' = isProduction
+      ? 'proxy'
+      : (forceProxy && canUseProxy ? 'proxy' : 'direct');
 
     try {
       const data = await withRateLimiter(async () => {
@@ -467,6 +439,15 @@ async function api<T>(path: string, options?: ApiOptions): Promise<T> {
         console.error(`[CoC API] CRITICAL: 403 on direct connection but Fixie is configured. This suggests proxy configuration issue.`);
       }
 
+      // If we got blocked by IP on a direct attempt and Fixie is available, switch to proxy and retry.
+      if (!isProduction && mode === 'direct' && canUseProxy && !forceProxy && isInvalidIpError(error)) {
+        console.error(
+          `[CoC API] Direct connection blocked by CoC IP allowlist (403 invalidIp). Switching to Fixie proxy for this request: ${path}`,
+        );
+        forceProxy = true;
+        continue;
+      }
+
       if (isLastAttempt) {
         throw new Error(`CoC API request failed after ${attemptNumber} attempts: ${error?.message || error}`);
       }
@@ -488,6 +469,10 @@ async function withRateLimiter<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 async function requestViaProxy<T>(path: string, token: string): Promise<T> {
+  return requestViaProxyJson<T>('GET', path, token);
+}
+
+async function requestViaProxyJson<T>(method: 'GET' | 'POST', path: string, token: string, body?: any): Promise<T> {
   if (!FIXIE_URL) {
     const error = new Error('requestViaProxy called but FIXIE_URL not set');
     console.error(`[CoC API] CRITICAL: ${error.message}`);
@@ -495,20 +480,21 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
   }
 
   const axiosConfig: any = {
-    headers: { 
-      Authorization: `Bearer ${token}`, 
-      Accept: "application/json",
-      'User-Agent': 'ClashIntelligence/1.0'
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      'User-Agent': 'ClashIntelligence/1.0',
+      ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
     },
     timeout: DEFAULT_TIMEOUT_MS,
     maxRedirects: 5,
   };
-  
+
   // Log proxy URL (masked for security) - only in debug mode
   const fixieHost = FIXIE_URL.match(/@([^:]+)/)?.[1] || 'unknown';
-  debugLog(`[API Call] (proxy via Fixie ${fixieHost}) ${path}`);
+  debugLog(`[API Call] (proxy via Fixie ${fixieHost}) (${method.toLowerCase()}) ${path}`);
   debugLog(`[API Call] Proxy config - FIXIE_URL format: ${FIXIE_URL.startsWith('http') ? 'valid' : 'invalid'}, length: ${FIXIE_URL.length}`);
-  
+
   try {
     const proxyAgent = new HttpsProxyAgent(FIXIE_URL);
     axiosConfig.httpsAgent = proxyAgent;
@@ -520,7 +506,10 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
     debugLog(`[API Call] (proxy) Authorization header: Bearer ${maskedToken}`);
     debugLog(`[API Call] (proxy) Proxy agent configured: ${proxyAgent ? 'YES' : 'NO'}`);
 
-    const response = await axios.get(`${BASE}${path}`, axiosConfig);
+    const response = method === 'POST'
+      ? await axios.post(`${BASE}${path}`, body ?? {}, axiosConfig)
+      : await axios.get(`${BASE}${path}`, axiosConfig);
+
     debugLog(`[API Call] (proxy) SUCCESS for ${path} - Status: ${response.status}`);
     debugLog(`[API Call] (proxy) Response headers:`, JSON.stringify(response.headers));
     return response.data as T;
@@ -574,13 +563,23 @@ async function requestViaProxy<T>(path: string, token: string): Promise<T> {
 }
 
 async function requestDirect<T>(path: string, token: string): Promise<T> {
-  debugLog(`[API Call] ${path}`);
+  return requestDirectJson<T>('GET', path, token);
+}
+
+async function requestDirectJson<T>(method: 'GET' | 'POST', path: string, token: string, body?: any): Promise<T> {
+  debugLog(`[API Call] (${method.toLowerCase()}) ${path}`);
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
 
   try {
     const res = await fetch(`${BASE}${path}`, {
-      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+        ...(method === 'POST' ? { 'Content-Type': 'application/json' } : {}),
+      },
+      body: method === 'POST' ? JSON.stringify(body ?? {}) : undefined,
       cache: 'no-store',
       signal: controller.signal,
     });
@@ -638,6 +637,60 @@ export async function getClanInfo(clanTag: string, options?: ApiOptions) {
 
 export async function getPlayer(tag: string, options?: ApiOptions) {
   return api<CoCPlayer>(`/players/${encTag(tag)}`, options);
+}
+
+export async function verifyPlayerToken(playerTag: string, tokenToVerify: string, forceProxy = false): Promise<boolean> {
+  // DEV mode: don't block local UI flows
+  if (DEV_MODE) return true;
+
+  const token = process.env.COC_API_TOKEN || process.env.COC_API_KEY;
+  if (!token) {
+    throw new Error('COC_API_TOKEN not set');
+  }
+
+  const path = `/players/${encTag(playerTag)}/verifytoken`;
+  const body = { token: tokenToVerify };
+
+  // Mirror the retry/fallback behavior used by api() but for POST.
+  const canUseProxy = Boolean(FIXIE_URL) && !DISABLE_PROXY;
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  const isInvalidIpError = (err: any): boolean => {
+    const status = (err as any)?.status ?? deriveStatusFromMessage(err?.message);
+    if (status !== 403) return false;
+    const msg = String(err?.message || '');
+    return msg.includes('accessDenied.invalidIp') || msg.includes('invalidIp');
+  };
+
+  let useProxy = forceProxy || isProduction;
+  let lastError: any = null;
+
+  for (let i = 0; i < MAX_RETRIES; i += 1) {
+    const mode: 'proxy' | 'direct' = (useProxy && canUseProxy) ? 'proxy' : 'direct';
+
+    try {
+      const resp = await withRateLimiter(async () => {
+        if (mode === 'proxy') {
+          return requestViaProxyJson<VerifyTokenResponse>('POST', path, token, body);
+        }
+        return requestDirectJson<VerifyTokenResponse>('POST', path, token, body);
+      });
+
+      // CoC returns { status: "ok" } for success.
+      return resp?.status === 'ok';
+    } catch (err: any) {
+      lastError = err;
+      if (!isProduction && mode === 'direct' && canUseProxy && !useProxy && isInvalidIpError(err)) {
+        console.error(`[CoC API] verifytoken blocked by IP allowlist (invalidIp). Switching to Fixie proxy.`);
+        useProxy = true;
+        continue;
+      }
+      // retry
+      await delay(RETRY_BACKOFF_BASE_MS * (i + 1) + Math.floor(Math.random() * 250));
+    }
+  }
+
+  throw new Error(`CoC verifytoken failed: ${lastError?.message || 'Unknown error'}`);
 }
 
 export async function getClanWarLog(clanTag: string, limit = 10, options?: ApiOptions) {
