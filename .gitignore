@@ -206,15 +206,10 @@ _backups/
 # Environment files
 *.env
 *.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
--e 
-# Environment files
-*.env
-*.env.*
+
+# Local / generated (do not commit)
+.playwright-mcp/
+web-next/local.db
+web-next/tsconfig.tsbuildinfo
+.node-version
+supabase/.temp/

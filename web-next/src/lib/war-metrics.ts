@@ -3,6 +3,25 @@
 
 import type { Member } from './clan-metrics';
 
+export interface WarAttack {
+  order: number;
+  attackerTag: string;
+  defenderTag: string;
+  stars: number;
+  destructionPercentage: number;
+  duration: number;
+}
+
+export interface WarMember {
+  tag: string;
+  name: string;
+  townhallLevel: number;
+  mapPosition: number;
+  attacks?: WarAttack[];
+  opponentAttacks: number;
+  bestOpponentAttack?: WarAttack;
+}
+
 export interface WarData {
   currentWar?: {
     state: string;
@@ -10,6 +29,14 @@ export interface WarData {
     opponent?: {
       name: string;
       tag: string;
+    };
+    clan?: {
+      tag: string;
+      name: string;
+      members: WarMember[];
+      attacks: number;
+      stars: number;
+      destructionPercentage: number;
     };
     attacksPerMember?: number;
     startTime?: string;
@@ -24,6 +51,10 @@ export interface WarData {
     endTime: string;
     teamSize: number;
     attacksPerMember: number;
+    clan: {
+      stars: number;
+      destructionPercentage: number;
+    };
   }>;
 }
 
@@ -34,6 +65,7 @@ export interface WarMetrics {
     opponent: string | null;
     teamSize: number;
     timeRemaining: string | null;
+    participationRate: number;
   };
   recentPerformance: {
     last10Wars: {
@@ -50,15 +82,17 @@ export interface WarMetrics {
 export interface MemberWarPerformance {
   tag: string;
   name: string;
-  warStars: number;
-  estimatedAttacks: number;
-  estimatedStarsPerAttack: number;
+  warStars: number; // Total stars in recent window
+  attacksUsed: number;
+  starsPerAttack: number;
+  avgDestruction: number;
   performance: 'excellent' | 'good' | 'average' | 'poor';
   needsCoaching: boolean;
+  isReliable: boolean; // Based on using both attacks
 }
 
 export interface WarAlert {
-  type: 'current_war' | 'performance_decline' | 'low_performers' | 'win_rate';
+  type: 'current_war' | 'performance_decline' | 'low_performers' | 'win_rate' | 'missed_attacks';
   severity: 'high' | 'medium' | 'low';
   title: string;
   description: string;
@@ -109,20 +143,17 @@ export function calculateWarPerformance(warLog?: Array<any>): {
   const draws = last10.filter(w => w.result === 'draw' || w.result === 'tie').length;
   const winRate = last10.length > 0 ? Math.round((wins / last10.length) * 100) : 0;
 
-  // Calculate trend (compare first 5 vs last 5)
   let trend: 'improving' | 'declining' | 'stable' = 'stable';
-  if (last10.length >= 10) {
-    const recent5 = last10.slice(0, 5);
-    const older5 = last10.slice(5, 10);
+  if (last10.length >= 6) {
+    const midpoint = Math.floor(last10.length / 2);
+    const recent = last10.slice(0, midpoint);
+    const older = last10.slice(midpoint);
     
-    const recentWins = recent5.filter(w => w.result === 'win').length;
-    const olderWins = older5.filter(w => w.result === 'win').length;
+    const recentWinRate = recent.filter(w => w.result === 'win').length / recent.length;
+    const olderWinRate = older.filter(w => w.result === 'win').length / older.length;
     
-    const recentWinRate = recentWins / 5;
-    const olderWinRate = olderWins / 5;
-    
-    if (recentWinRate > olderWinRate + 0.2) trend = 'improving';
-    else if (recentWinRate < olderWinRate - 0.2) trend = 'declining';
+    if (recentWinRate > olderWinRate + 0.1) trend = 'improving';
+    else if (recentWinRate < olderWinRate - 0.1) trend = 'declining';
   }
 
   return {
@@ -131,50 +162,65 @@ export function calculateWarPerformance(warLog?: Array<any>): {
   };
 }
 
-// Analyze member war performance
+// Analyze member war performance using real attack data
 export function analyzeMemberWarPerformance(
   members: Member[],
-  teamSize: number = 50
+  warData?: WarData
 ): MemberWarPerformance[] {
-  // Estimate typical attacks per member (usually 2 in regular wars)
-  const estimatedAttacksPerMember = 2;
-  
-  const performance: MemberWarPerformance[] = members.map(member => {
-    const warStars = member.warStars || 0;
-    const estimatedAttacks = estimatedAttacksPerMember;
-    const starsPerAttack = estimatedAttacks > 0 ? warStars / estimatedAttacks : 0;
+  const performanceMap = new Map<string, {
+    stars: number;
+    attacks: number;
+    destruction: number;
+  }>();
+
+  // 1. Process current war data if in war
+  if (warData?.currentWar?.clan?.members) {
+    warData.currentWar.clan.members.forEach(m => {
+      const stats = { stars: 0, attacks: 0, destruction: 0 };
+      if (m.attacks) {
+        m.attacks.forEach(a => {
+          stats.stars += a.stars;
+          stats.attacks += 1;
+          stats.destruction += a.destructionPercentage;
+        });
+      }
+      performanceMap.set(m.tag, stats);
+    });
+  }
+
+  // 2. Fallback to estimated performance from member profile if no real war data is present
+  // This ensures the list isn't empty even if currentWar is missing.
+  const finalPerformance: MemberWarPerformance[] = members.map(member => {
+    const realStats = performanceMap.get(member.tag);
     
-    // Classify performance
+    const stars = realStats ? realStats.stars : (member.warStars || 0) % 6; // Rough seasonal modulo
+    const attacks = realStats ? realStats.attacks : (warData?.currentWar ? 0 : 2); // 0 if in war but no attacks, 2 for estimates
+    const destruction = realStats && realStats.attacks > 0 ? realStats.destruction / realStats.attacks : 75;
+    
+    const starsPerAttack = attacks > 0 ? stars / attacks : 0;
+    
     let performanceLevel: 'excellent' | 'good' | 'average' | 'poor';
-    let needsCoaching = false;
-    
-    if (starsPerAttack >= 2.5) {
-      performanceLevel = 'excellent';
-    } else if (starsPerAttack >= 2.0) {
-      performanceLevel = 'good';
-    } else if (starsPerAttack >= 1.5) {
-      performanceLevel = 'average';
-    } else {
-      performanceLevel = 'poor';
-      needsCoaching = true;
-    }
+    if (starsPerAttack >= 2.5) performanceLevel = 'excellent';
+    else if (starsPerAttack >= 2.0) performanceLevel = 'good';
+    else if (starsPerAttack >= 1.2) performanceLevel = 'average';
+    else performanceLevel = 'poor';
     
     return {
       tag: member.tag,
       name: member.name,
-      warStars,
-      estimatedAttacks,
-      estimatedStarsPerAttack: Math.round(starsPerAttack * 100) / 100,
+      warStars: stars,
+      attacksUsed: attacks,
+      starsPerAttack: Math.round(starsPerAttack * 100) / 100,
+      avgDestruction: Math.round(destruction),
       performance: performanceLevel,
-      needsCoaching
+      needsCoaching: performanceLevel === 'poor' && attacks > 0,
+      isReliable: attacks === (warData?.currentWar?.attacksPerMember || 2)
     };
   });
   
-  // Sort by stars per attack (best first)
-  return performance.sort((a, b) => b.estimatedStarsPerAttack - a.estimatedStarsPerAttack);
+  return finalPerformance.sort((a, b) => b.starsPerAttack - a.starsPerAttack || b.avgDestruction - a.avgDestruction);
 }
 
-// Generate comprehensive war metrics
 export function calculateWarMetrics(
   members: Member[],
   warData?: WarData
@@ -182,88 +228,88 @@ export function calculateWarMetrics(
   const currentWar = warData?.currentWar;
   const warLog = warData?.warLog;
   
+  const clanAttacks = currentWar?.clan?.attacks || 0;
+  const maxAttacks = (currentWar?.teamSize || 0) * (currentWar?.attacksPerMember || 2);
+  const participationRate = maxAttacks > 0 ? Math.round((clanAttacks / maxAttacks) * 100) : 0;
+
   return {
     currentWar: {
       active: currentWar?.state === 'inWar' || currentWar?.state === 'preparation',
       state: currentWar?.state || 'notInWar',
       opponent: currentWar?.opponent?.name || null,
       teamSize: currentWar?.teamSize || 0,
-      timeRemaining: calculateTimeRemaining(currentWar?.endTime)
+      timeRemaining: calculateTimeRemaining(currentWar?.endTime),
+      participationRate
     },
     recentPerformance: calculateWarPerformance(warLog),
-    memberPerformance: analyzeMemberWarPerformance(members, currentWar?.teamSize)
+    memberPerformance: analyzeMemberWarPerformance(members, warData)
   };
 }
 
-// Generate war-specific alerts
+export function getTopWarPerformers(
+  memberPerformance: MemberWarPerformance[],
+  limit = 5
+): MemberWarPerformance[] {
+  return [...memberPerformance]
+    .sort((a, b) => b.starsPerAttack - a.starsPerAttack || b.avgDestruction - a.avgDestruction)
+    .slice(0, limit);
+}
+
+export function getMembersNeedingCoaching(
+  memberPerformance: MemberWarPerformance[]
+): MemberWarPerformance[] {
+  return memberPerformance.filter(m => m.needsCoaching);
+}
+
 export function generateWarAlerts(
   warMetrics: WarMetrics,
   members: Member[]
 ): WarAlert[] {
   const alerts: WarAlert[] = [];
 
-  // Alert: Current war active
-  if (warMetrics.currentWar.active) {
-    alerts.push({
-      type: 'current_war',
-      severity: 'high',
-      title: `War Active: vs ${warMetrics.currentWar.opponent}`,
-      description: `${warMetrics.currentWar.teamSize}v${warMetrics.currentWar.teamSize} war ${warMetrics.currentWar.state}. ${warMetrics.currentWar.timeRemaining || 'Time unknown'}`,
-      metric: warMetrics.currentWar.timeRemaining || undefined
-    });
+  // Alert: Missed Attacks (High Priority)
+  if (warMetrics.currentWar.state === 'inWar') {
+    const poorParticipation = warMetrics.memberPerformance.filter(m => 
+      !m.isReliable && m.attacksUsed < (warMetrics.currentWar.active ? 1 : 2)
+    );
+    
+    if (poorParticipation.length > 0 && warMetrics.currentWar.timeRemaining?.includes('remaining')) {
+      const hoursLeft = parseInt(warMetrics.currentWar.timeRemaining.split('h')[0]);
+      if (hoursLeft < 4) {
+        alerts.push({
+          type: 'missed_attacks',
+          severity: 'high',
+          title: 'Urgent: Missed War Attacks',
+          description: `${poorParticipation.length} members have not used all attacks with less than 4 hours remaining.`,
+          metric: `${warMetrics.currentWar.participationRate}% participation`
+        });
+      }
+    }
   }
 
   // Alert: Win rate declining
   const { last10Wars, trend } = warMetrics.recentPerformance;
-  if (trend === 'declining' && last10Wars.winRate < 50) {
+  if (trend === 'declining') {
     alerts.push({
       type: 'performance_decline',
-      severity: 'high',
-      title: 'War Win Rate Declining',
-      description: `Win rate has dropped to ${last10Wars.winRate}% in last 10 wars. Recent performance is worse than earlier wars.`,
-      metric: `${last10Wars.wins}W-${last10Wars.losses}L-${last10Wars.draws}D`
+      severity: last10Wars.winRate < 40 ? 'high' : 'medium',
+      title: 'War Efficiency Dropping',
+      description: `Clan war win rate has trended downward to ${last10Wars.winRate}% over the last 10 wars.`,
+      metric: `Trend: ${trend}`
     });
   }
 
-  // Alert: Low win rate (even if stable)
-  if (last10Wars.winRate < 40 && last10Wars.wins + last10Wars.losses > 0) {
-    alerts.push({
-      type: 'win_rate',
-      severity: 'medium',
-      title: 'Low War Win Rate',
-      description: `Only ${last10Wars.winRate}% win rate in last 10 wars (${last10Wars.wins}W-${last10Wars.losses}L-${last10Wars.draws}D).`,
-      metric: `${last10Wars.winRate}% win rate`
-    });
-  }
-
-  // Alert: Multiple poor performers
+  // Alert: Poor Performers
   const poorPerformers = warMetrics.memberPerformance.filter(m => m.needsCoaching);
   if (poorPerformers.length >= 3) {
     alerts.push({
       type: 'low_performers',
-      severity: poorPerformers.length >= 5 ? 'high' : 'medium',
-      title: `${poorPerformers.length} Members Need War Coaching`,
-      description: `${poorPerformers.slice(0, 3).map(p => p.name).join(', ')}${poorPerformers.length > 3 ? ` and ${poorPerformers.length - 3} more` : ''} have low attack efficiency (<1.5 stars/attack).`,
-      metric: `Avg: ${Math.round(poorPerformers.reduce((sum, p) => sum + p.estimatedStarsPerAttack, 0) / poorPerformers.length * 10) / 10} stars/attack`
+      severity: 'medium',
+      title: 'War Strategy Review Needed',
+      description: `${poorPerformers.length} members are averaging less than 1.2 stars per attack.`,
+      metric: `${poorPerformers[0].name} avg: ${poorPerformers[0].starsPerAttack}`
     });
   }
 
   return alerts;
-}
-
-// Get top war performers
-export function getTopWarPerformers(
-  memberPerformance: MemberWarPerformance[],
-  limit: number = 5
-): MemberWarPerformance[] {
-  return memberPerformance
-    .filter(m => m.warStars > 0)
-    .slice(0, limit);
-}
-
-// Get members needing coaching
-export function getMembersNeedingCoaching(
-  memberPerformance: MemberWarPerformance[]
-): MemberWarPerformance[] {
-  return memberPerformance.filter(m => m.needsCoaching);
 }
