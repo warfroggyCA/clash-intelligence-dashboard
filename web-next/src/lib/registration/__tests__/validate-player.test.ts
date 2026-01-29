@@ -1,62 +1,74 @@
 import { validatePlayerInClan } from '../validate-player';
+import { getLatestRosterSnapshot, resolveRosterMembers } from '@/lib/roster-resolver';
 
-type MaybeSingleResult = { data: any; error: any };
+jest.mock('@/lib/roster-resolver', () => ({
+  getLatestRosterSnapshot: jest.fn(),
+  resolveRosterMembers: jest.fn(),
+}));
 
-type QueryBuilder = {
-  select: () => QueryBuilder;
-  eq: () => QueryBuilder;
-  order: () => QueryBuilder;
-  limit: () => QueryBuilder;
-  maybeSingle: () => Promise<MaybeSingleResult>;
-};
-
-function buildSupabaseStub(row: any, error: any = null) {
-  const builder: QueryBuilder = {
-    select: () => builder,
-    eq: () => builder,
-    order: () => builder,
-    limit: () => builder,
-    maybeSingle: () => Promise.resolve({ data: row, error }),
-  };
-
-  return {
-    from: () => builder,
-  } as any;
-}
+const mockedGetLatestRosterSnapshot = getLatestRosterSnapshot as jest.Mock;
+const mockedResolveRosterMembers = resolveRosterMembers as jest.Mock;
 
 describe('validatePlayerInClan', () => {
-  const baseRow = {
-    player_tag: '#PLAYER',
-    clan_tag: '#CLAN',
-    snapshot_date: new Date().toISOString(),
-    payload: { member: { name: 'Tester' } },
+  const baseSnapshot = {
+    clanId: 'clan_1',
+    clanTag: '#CLAN',
+    snapshotId: 'snap_1',
+    fetchedAt: new Date().toISOString(),
+    snapshotDate: new Date().toISOString().slice(0, 10),
   };
 
+  beforeEach(() => {
+    mockedGetLatestRosterSnapshot.mockReset();
+    mockedResolveRosterMembers.mockReset();
+  });
+
   it('returns ok when snapshot matches clan', async () => {
-    const supabase = buildSupabaseStub(baseRow);
-    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase });
+    mockedGetLatestRosterSnapshot.mockResolvedValue(baseSnapshot);
+    mockedResolveRosterMembers.mockResolvedValue({
+      members: [{ tag: '#PLAYER', name: 'Tester' }],
+      memberTagToId: new Map(),
+      memberIdToTag: new Map(),
+    });
+
+    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase: {} as any });
     expect(result.ok).toBe(true);
     expect(result.playerName).toBe('Tester');
   });
 
-  it('fails when player belongs to different clan', async () => {
-    const supabase = buildSupabaseStub({ ...baseRow, clan_tag: '#OTHER' });
-    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase });
+  it('fails when player belongs to different clan (not found in roster)', async () => {
+    mockedGetLatestRosterSnapshot.mockResolvedValue(baseSnapshot);
+    mockedResolveRosterMembers.mockResolvedValue({
+      members: [{ tag: '#OTHER', name: 'Other' }],
+      memberTagToId: new Map(),
+      memberIdToTag: new Map(),
+    });
+
+    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase: {} as any });
     expect(result.ok).toBe(false);
-    expect(result.reason).toMatch(/not currently in this clan/i);
+    expect(result.reason).toMatch(/not found in clan roster|not currently in this clan|player not found/i);
   });
 
   it('fails when snapshot is older than lookback window', async () => {
-    const oldDate = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
-    const supabase = buildSupabaseStub({ ...baseRow, snapshot_date: oldDate });
-    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase, lookbackDays: 3 });
+    const oldFetchedAt = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString();
+    mockedGetLatestRosterSnapshot.mockResolvedValue({ ...baseSnapshot, fetchedAt: oldFetchedAt });
+    mockedResolveRosterMembers.mockResolvedValue({
+      members: [{ tag: '#PLAYER', name: 'Tester' }],
+      memberTagToId: new Map(),
+      memberIdToTag: new Map(),
+    });
+
+    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase: {} as any, lookbackDays: 3 });
     expect(result.ok).toBe(false);
     expect(result.reason).toMatch(/not appeared in roster snapshots recently/i);
   });
 
-  it('returns failure when Supabase errors', async () => {
-    const supabase = buildSupabaseStub(null, { message: 'boom' });
-    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase });
+  it('returns failure when roster lookup throws', async () => {
+    mockedGetLatestRosterSnapshot.mockImplementation(() => {
+      throw new Error('boom');
+    });
+
+    const result = await validatePlayerInClan('#PLAYER', '#CLAN', { supabase: {} as any });
     expect(result.ok).toBe(false);
     expect(result.reason).toBe('Roster lookup failed');
   });
