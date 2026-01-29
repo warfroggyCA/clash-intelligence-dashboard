@@ -518,6 +518,28 @@ async function runFetchPhase(jobId: string, clanTag: string): Promise<PhaseResul
       includePlayerDetails: true,
     });
 
+    // Hard guardrail: if we somehow fetched a snapshot with obviously-bad member data,
+    // fail the job rather than writing poisoned "0" values into Supabase.
+    const memberCount = snapshot.memberSummaries?.length ?? 0;
+    const trophySum = (snapshot.memberSummaries ?? []).reduce((sum, m) => sum + (typeof m.trophies === 'number' ? m.trophies : 0), 0);
+    const donationSum = (snapshot.memberSummaries ?? []).reduce((sum, m) => sum + (typeof m.donations === 'number' ? m.donations : 0), 0);
+
+    if (memberCount === 0) {
+      throw new Error('CoC snapshot contained 0 members (unexpected). Aborting ingestion to avoid writing invalid data.');
+    }
+
+    // If *all* trophies are 0, this is virtually always an upstream fetch failure (invalid IP / blocked token / mock/empty payload).
+    if (trophySum === 0) {
+      throw new Error(
+        'CoC snapshot looks invalid: total trophies across members is 0. This usually means the server cannot reach the CoC API (IP allowlist mismatch) and would otherwise write bad 0-values. Aborting ingestion.',
+      );
+    }
+
+    // Optional extra signal: if donations sum is 0 as well, we can include that context in logs.
+    if (donationSum === 0) {
+      await logPhase(jobId, 'fetch', 'warn', 'CoC snapshot warning: total donations across members is 0 (may be early season/reset, but keep an eye on IP/key issues).');
+    }
+
     const duration_ms = Date.now() - startTime;
     
     await logPhase(jobId, 'fetch', 'info', 'Fetch phase completed', {
@@ -1247,7 +1269,16 @@ async function recordDepartures(params: {
             Math.floor((Date.parse(detectedAt) - Date.parse(startDate)) / (1000 * 60 * 60 * 24))
           )
         : 0;
-    const totalTenure = (existing?.total_tenure ?? 0) + tenureAtDeparture;
+
+    // Avoid double-counting tenure.
+    // `ensureRosterHistory()` backfills/maintains `total_tenure` for active members to include the current stint.
+    // If we add `tenureAtDeparture` again here, we can inflate totals (~2x) on departure.
+    const existingTotal = typeof existing?.total_tenure === 'number' ? existing.total_tenure : 0;
+    const shouldAddDepartureTenure = Boolean(currentStint?.isActive) && existingTotal < tenureAtDeparture;
+    const totalTenure = shouldAddDepartureTenure
+      ? existingTotal + tenureAtDeparture
+      : Math.max(existingTotal, tenureAtDeparture);
+
     const primaryName = existing?.primary_name || member?.name || tag;
     const aliases = Array.isArray(existing?.aliases) ? existing.aliases : [];
     const notes = Array.isArray(existing?.notes) ? existing.notes : [];
