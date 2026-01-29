@@ -45,6 +45,16 @@ type WeeklyHighlightsPayload = {
 
 const sections = [
   {
+    title: "Leadership Dashboard",
+    icon: Sparkles,
+    items: [
+      "Daily briefing & news feed",
+      "Pending registrations",
+      "Ingestion health + alerts",
+    ],
+    href: "/new/leadership/dashboard",
+  },
+  {
     title: "Leadership Assessment",
     icon: Crown,
     items: [
@@ -73,7 +83,7 @@ const sections = [
       "Role assignment & access matrix",
       "Tracked clans management",
     ],
-    href: "#",
+    href: "/new/leadership/access",
   },
   {
     title: "Player Database Tools",
@@ -93,7 +103,7 @@ const sections = [
       "Opponent fetch + matchup",
       "Plan editor + assignments",
     ],
-    href: "#",
+    href: "/new/war",
   },
   {
     title: "Discord Publisher",
@@ -103,7 +113,7 @@ const sections = [
       "Donation + activity summaries",
       "Shareable clan updates",
     ],
-    href: "#",
+    href: "/discord",
   },
   {
     title: "Settings & Thresholds",
@@ -111,9 +121,9 @@ const sections = [
     items: [
       "Inactivity definitions",
       "Donation expectations",
-      "Ingestion health / cron status",
+      "Clan privacy & permissions",
     ],
-    href: "#",
+    href: "/new/leadership/settings",
   },
   {
     title: "Command Center & Alerts",
@@ -123,17 +133,17 @@ const sections = [
       "Action items for leaders",
       "Automated alert surfacing",
     ],
-    href: "#",
+    href: "/new/leadership/dashboard",
   },
   {
-    title: "Recruiting (Future)",
+    title: "Recruiting",
     icon: UserPlus,
     items: [
       "One-off candidate assessments",
       "Applicant scoring signals",
       "Recruitment decision support",
     ],
-    href: "#",
+    href: "/new/assess",
   },
 ];
 
