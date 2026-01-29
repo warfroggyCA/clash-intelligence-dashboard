@@ -124,7 +124,7 @@ export default function LeadershipAssessmentPage() {
   const [hasCustomWeights, setHasCustomWeights] = useState(false);
   const skipNextWeightSync = useRef(false);
 
-  const results = data?.results ?? [];
+  const results = useMemo(() => data?.results ?? [], [data?.results]);
   const assessment = data?.assessment;
   const activeWeights = assessment?.weights ?? DEFAULT_WEIGHTS;
 
