@@ -33,7 +33,7 @@ export const navConfig: NavItem[] = [
     title: 'Dashboard',
     href: '/new',
     icon: LayoutDashboard,
-    description: 'At-a-glance roster status and key actions.',
+    description: 'At-a-glance roster status, Command Center, and key actions.',
     category: 'primary',
   },
   {
@@ -67,9 +67,17 @@ export const navConfig: NavItem[] = [
           { title: 'Day Planner', href: '/new/war/cwl/day/1', icon: Swords, description: 'Plan daily lineups and matchups.' },
         ],
       },
-      { title: 'Planning', href: '#', icon: ListChecks, description: 'Create and manage war plans.' },
-      { title: 'Active War', href: '#', icon: Shield, description: 'Live war status and calls.' },
-      { title: 'Results', href: '#', icon: Shield, description: 'Post-war review and publishing.' },
+      {
+        title: 'Clan War',
+        href: '#',
+        icon: Swords,
+        description: 'Classic war planning and results.',
+        children: [
+          { title: 'Planning', href: '#', icon: ListChecks, description: 'Create and manage war plans.' },
+          { title: 'Active War', href: '#', icon: Shield, description: 'Live war status and calls.' },
+          { title: 'Results', href: '#', icon: Shield, description: 'Post-war review and publishing.' },
+        ],
+      },
     ],
   },
   {
@@ -79,9 +87,9 @@ export const navConfig: NavItem[] = [
     description: 'Unified dashboards for war, capital, and members.',
     category: 'primary',
     children: [
-      { title: 'War Performance', href: '#', icon: BarChart2, description: 'Clan-wide war trends.' },
-      { title: 'Capital Raids', href: '/new/capital-raids', icon: BarChart2, description: 'Capital contributions and raids.' },
-      { title: 'Member Performance', href: '/new/member-performance', icon: ActivitySquare, description: 'Individual performance comparisons.' },
+      { title: 'War Performance', href: '/new/analytics/war', icon: BarChart2, description: 'Clan-wide war trends.' },
+      { title: 'Capital Raids', href: '/new/capital-raids', icon: BarChart2, description: 'Capital contributions, raids, and gold analytics.' },
+      { title: 'Member Performance', href: '/new/member-performance', icon: ActivitySquare, description: 'Individual performance comparisons and donation balance.' },
     ],
   },
   {
@@ -93,14 +101,28 @@ export const navConfig: NavItem[] = [
     permission: 'leader',
     children: [
       { title: 'Overview', href: '/new/leadership', icon: Shield, description: 'Leadership tool map.' },
+      { title: 'Dashboard', href: '/new/leadership/dashboard', icon: Shield, description: 'Briefing, approvals, and ops.' },
       { title: 'Assessment', href: '/new/leadership/assessment', icon: ActivitySquare, description: 'Promotion and risk scoring.' },
+      { title: 'Access & Permissions', href: '/new/leadership/access', icon: Shield, description: 'Manage access levels and permissions.' },
+    ],
+  },
+  {
+    title: 'War',
+    href: '/new/war',
+    icon: Swords,
+    description: 'Active war planning and matchup analysis.',
+    category: 'primary',
+    children: [
+      { title: 'Active War', href: '/new/war/active', icon: Swords, description: 'Live war planning board.' },
+      { title: 'Planning', href: '/new/war/planning', icon: Swords, description: 'Opponent scouting + plan drafting.' },
+      { title: 'Results', href: '/new/war/results', icon: BarChart2, description: 'War outcomes and performance.' },
     ],
   },
   {
     title: 'Settings',
-    href: '#',
+    href: '/new/settings',
     icon: Settings,
-    description: 'Clan configuration, preferences, and access control.',
+    description: 'Clan configuration, alert thresholds, and personal preferences.',
     category: 'admin',
   },
 ];

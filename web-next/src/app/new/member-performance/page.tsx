@@ -199,25 +199,26 @@ type SparklinePoint = { value: number; label?: string };
 
 // Sparkline component for inline performance visualization
 function Sparkline({ data, color = "#10b981", height = 32 }: { data: SparklinePoint[]; color?: string; height?: number }) {
-  if (!data || data.length < 2) return <div className="w-16 h-8 flex items-center justify-center text-[10px] text-slate-600">—</div>;
-
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
-
-  const values = data.map((point) => point.value);
+  const width = 64;
+  const hasData = Boolean(data && data.length >= 2);
+  const values = hasData ? data.map((point) => point.value) : [0, 1];
   const min = Math.min(...values);
   const max = Math.max(...values);
   const range = max - min || 1;
-  const width = 64;
   
-  const points = data.map((point, i) => {
+  const points = hasData
+    ? data.map((point, i) => {
     const x = (i / (data.length - 1)) * width;
     const y = height - ((point.value - min) / range) * height;
     return { x, y, value: point.value, label: point.label };
-  });
+      })
+    : [];
   
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  const path = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
 
   const handleMove = (event: React.MouseEvent<SVGSVGElement>) => {
+    if (!hasData) return;
     const rect = event.currentTarget.getBoundingClientRect();
     const x = event.clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, x / width));
@@ -230,6 +231,10 @@ function Sparkline({ data, color = "#10b981", height = 32 }: { data: SparklinePo
   };
 
   const hoveredPoint = hoverIndex != null ? points[hoverIndex] : null;
+
+  if (!hasData) {
+    return <div className="w-16 h-8 flex items-center justify-center text-[10px] text-slate-600">—</div>;
+  }
 
   return (
     <div className="relative inline-block" style={{ width, height }}>
@@ -712,11 +717,25 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
 
   const hideLiveData = previewBypass || hasAuthError || hasCapAuthError;
 
-  const metrics = hideLiveData ? [] : warData?.data?.metrics ?? [];
-  const clanAvg = hideLiveData ? undefined : warData?.data?.clanAverages;
+  const metrics = useMemo(() => {
+    if (hideLiveData) return [];
+    return warData?.data?.metrics ?? [];
+  }, [hideLiveData, warData?.data?.metrics]);
 
-  const capitalMetrics = hideLiveData ? [] : capData?.data?.metrics ?? [];
-  const capitalAvg = hideLiveData ? undefined : capData?.data?.clanAverages;
+  const clanAvg = useMemo(() => {
+    if (hideLiveData) return undefined;
+    return warData?.data?.clanAverages;
+  }, [hideLiveData, warData?.data?.clanAverages]);
+
+  const capitalMetrics = useMemo(() => {
+    if (hideLiveData) return [];
+    return capData?.data?.metrics ?? [];
+  }, [hideLiveData, capData?.data?.metrics]);
+
+  const capitalAvg = useMemo(() => {
+    if (hideLiveData) return undefined;
+    return capData?.data?.clanAverages;
+  }, [hideLiveData, capData?.data?.clanAverages]);
   const isLoading = !hideLiveData && (warLoading || capLoading);
 
   const warMetricsByTag = useMemo(() => {
@@ -738,7 +757,7 @@ function MemberPerformanceInner({ previewBypass }: { previewBypass?: boolean }) 
   }, [capitalMetrics]);
 
   const { data: rosterData } = useSWR(
-    clanTag ? `/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}` : null,
+    clanTag ? `/api/v2/roster?clanTag=${encodeURIComponent(clanTag)}&mode=snapshot` : null,
     async (url) => {
       const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) return null;
