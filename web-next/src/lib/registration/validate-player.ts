@@ -30,21 +30,33 @@ export async function validatePlayerInClan(
   const supabase = options.supabase ?? getSupabaseServerClient();
   const lookbackDays = options.lookbackDays ?? 7;
 
-  const latestSnapshot = await getLatestRosterSnapshot({
-    clanTag: normalizedClan,
-    supabase,
-  });
+  let latestSnapshot;
+  try {
+    latestSnapshot = await getLatestRosterSnapshot({
+      clanTag: normalizedClan,
+      supabase,
+    });
+  } catch {
+    return { ok: false, reason: 'Roster lookup failed' };
+  }
 
   if (!latestSnapshot) {
     return { ok: false, reason: 'No roster snapshot found' };
   }
 
-  const { members } = await resolveRosterMembers({
-    supabase,
-    clanTag: latestSnapshot.clanTag,
-    snapshotId: latestSnapshot.snapshotId,
-    snapshotDate: latestSnapshot.snapshotDate,
-  });
+  let membersResult;
+  try {
+    membersResult = await resolveRosterMembers({
+      supabase,
+      clanTag: latestSnapshot.clanTag,
+      snapshotId: latestSnapshot.snapshotId,
+      snapshotDate: latestSnapshot.snapshotDate,
+    });
+  } catch {
+    return { ok: false, reason: 'Roster lookup failed' };
+  }
+
+  const { members } = membersResult;
 
   const rosterMember = members.find((member) => member.tag === normalizedPlayer);
   if (!rosterMember) {
