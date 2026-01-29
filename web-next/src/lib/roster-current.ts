@@ -2,7 +2,7 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { cfg } from '@/lib/config';
 import { normalizeTag } from '@/lib/tags';
 import { resolveRosterMembers } from '@/lib/roster-resolver';
-import type { RosterData, RosterMember } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterData, RosterMember } from '@/types/roster';
 import type { Member } from '@/types';
 import { resolveMemberActivity } from '@/lib/activity/resolve-member-activity';
 import { mapActivityToBand, resolveHeroPower, resolveLeagueDisplay, resolveTrophies } from '@/lib/roster-derivations';

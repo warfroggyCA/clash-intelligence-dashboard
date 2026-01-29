@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import Image from 'next/image';
 import { Button } from '@/components/new-ui/Button';
 import { Input } from '@/components/new-ui/Input';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
@@ -10,6 +11,7 @@ import CopyableName from '@/components/new-ui/CopyableName';
 import { HERO_MAX_LEVELS } from '@/types';
 import { heroIconMap } from '@/components/new-ui/icons/maps';
 import { useRosterData } from '../useRosterData';
+import { apiFetcher } from '@/lib/api/swr-fetcher';
 import {
   formatRush,
   normalizeRole,
@@ -22,12 +24,19 @@ import {
   rushTone,
 } from '../roster-utils';
 import RosterClient from '../RosterClient';
-import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterData } from '../types';
 import { RosterSkeleton } from '@/components/ui/RosterSkeleton';
 import { normalizeTag } from '@/lib/tags';
 import { normalizeSearch } from '@/lib/search';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { useLeadership } from '@/hooks/useLeadership';
+import { showToast } from '@/lib/toast';
+import {
+  handleCopySummary,
+  handleExportCSV,
+  handleExportDiscord,
+} from '@/lib/export/roster-export';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // WORLD-CLASS COMPONENTS
@@ -36,18 +45,21 @@ import { formatDistanceToNow } from 'date-fns';
 // Animated counter
 const AnimatedCounter = ({ value, duration = 800 }: { value: number; duration?: number }) => {
   const [displayValue, setDisplayValue] = useState(0);
+  const displayValueRef = useRef(0);
   
   useEffect(() => {
     if (typeof value !== 'number' || isNaN(value)) return;
     const startTime = Date.now();
-    const startValue = displayValue;
+    const startValue = displayValueRef.current;
     const diff = value - startValue;
     
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      setDisplayValue(Math.round(startValue + diff * easeOut));
+      const nextValue = Math.round(startValue + diff * easeOut);
+      displayValueRef.current = nextValue;
+      setDisplayValue(nextValue);
       if (progress < 1) requestAnimationFrame(animate);
     };
     requestAnimationFrame(animate);
@@ -94,8 +106,11 @@ const THDistributionBar = ({ distribution }: { distribution: Record<number, numb
 
 export default function TableClient({ initialRoster }: { initialRoster?: RosterData | null }) {
   const { data, members, isLoading, error, isValidating, mutate } = useRosterData(initialRoster || undefined);
+  const { permissions } = useLeadership();
   const [search, setSearch] = useState('');
   const [isNarrow, setIsNarrow] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const update = () => setIsNarrow(typeof window !== 'undefined' ? window.innerWidth < 1280 : false);
@@ -103,6 +118,49 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
   }, []);
+
+  const exportRoster = useMemo<RosterData | null>(() => {
+    if (data) return data;
+    if (!members.length) return null;
+    return {
+      members,
+      clanName: 'Roster',
+      clanTag: 'UNKNOWN',
+      date: null,
+    };
+  }, [data, members]);
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    const handleClick = (event: MouseEvent) => {
+      if (!exportRef.current) return;
+      if (event.target instanceof Node && !exportRef.current.contains(event.target)) {
+        setExportOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [exportOpen]);
+
+  const handleExportAction = useCallback(
+    async (action: 'csv' | 'discord' | 'summary') => {
+      if (!permissions.canGenerateCoachingInsights) {
+        showToast('You do not have permission to export roster data.', 'error');
+        return;
+      }
+      if (!exportRoster) {
+        showToast('Roster data is not available yet.', 'error');
+        return;
+      }
+      let ok = false;
+      if (action === 'csv') ok = await handleExportCSV(exportRoster);
+      if (action === 'discord') ok = await handleExportDiscord(exportRoster);
+      if (action === 'summary') ok = await handleCopySummary(exportRoster);
+      setExportOpen(false);
+      showToast(ok ? 'Export complete.' : 'Export failed.', ok ? 'success' : 'error');
+    },
+    [permissions.canGenerateCoachingInsights, exportRoster]
+  );
 
   const filteredMembers = useMemo(() => {
     const query = normalizeSearch(search.trim());
@@ -114,7 +172,39 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
     });
   }, [members, search]);
 
-  const sortedMembers = useMemo(() => rosterLeagueSort(filteredMembers), [filteredMembers]);
+  const [sortKey, setSortKey] = useState<'league' | 'th' | 'trophies' | 'donations' | 'received' | 'rush' | 'srs' | 'vip'>('league');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const sortedMembers = useMemo(() => {
+    if (sortKey === 'league') {
+      return rosterLeagueSort(filteredMembers);
+    }
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    const valueFor = (member: typeof filteredMembers[number]) => {
+      if (sortKey === 'th') return resolveTownHall(member) ?? 0;
+      if (sortKey === 'trophies') return resolveTrophies(member) ?? 0;
+      if (sortKey === 'donations') return member.donations ?? 0;
+      if (sortKey === 'received') return member.donationsReceived ?? 0;
+      if (sortKey === 'rush') return resolveRushPercent(member) ?? 0;
+      if (sortKey === 'srs') return resolveActivity(member).score ?? 0;
+      if (sortKey === 'vip') return member.vip?.score ?? 0;
+      return 0;
+    };
+    return [...filteredMembers].sort((a, b) => {
+      const aValue = valueFor(a);
+      const bValue = valueFor(b);
+      return (aValue - bValue) * direction;
+    });
+  }, [filteredMembers, sortDirection, sortKey]);
+
+  const handleSort = (key: typeof sortKey) => {
+    if (sortKey === key) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortKey(key);
+      setSortDirection('desc');
+    }
+  };
 
   // Calculate clan-wide stats for the header
   const clanStats = useMemo(() => {
@@ -137,6 +227,14 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
     const heroPowers: Array<number | null> = [];
     const donations: Array<number | null> = [];
     const trophies: Array<number | null> = [];
+    const vipScores: number[] = [];
+    const activityCounts = {
+      veryActive: 0,
+      active: 0,
+      moderate: 0,
+      low: 0,
+      inactive: 0,
+    };
     
       members.forEach((m) => {
         const th = resolveTownHall(m);
@@ -144,10 +242,23 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
       heroPowers.push(m.heroPower ?? null);
       donations.push(m.donations ?? null);
       trophies.push(resolveTrophies(m));
+      if (typeof m.vip?.score === 'number' && Number.isFinite(m.vip.score)) {
+        vipScores.push(m.vip.score);
+      }
+      const activity = resolveActivity(m);
+      if (activity.level === 'Very Active') activityCounts.veryActive++;
+      else if (activity.level === 'Active') activityCounts.active++;
+      else if (activity.level === 'Moderate') activityCounts.moderate++;
+      else if (activity.level === 'Low') activityCounts.low++;
+      else activityCounts.inactive++;
     });
     const totalHeroPower = sumIfComplete(heroPowers);
     const totalDonations = sumIfComplete(donations);
     const totalTrophies = sumIfComplete(trophies);
+    const avgVipScore =
+      vipScores.length > 0
+        ? Math.round((vipScores.reduce((sum, value) => sum + value, 0) / vipScores.length) * 10) / 10
+        : null;
     
     return {
       memberCount: members.length,
@@ -155,6 +266,8 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
       avgHeroPower: totalHeroPower != null ? Math.round(totalHeroPower / members.length) : null,
       totalDonations,
       avgTrophies: totalTrophies != null ? Math.round(totalTrophies / members.length) : null,
+      avgVipScore,
+      activityCounts,
     };
   }, [members]);
 
@@ -232,6 +345,10 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
               {clanStats && (
                 <div className="hidden md:flex items-center gap-3 text-xs">
                   <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
+                    <div className="text-slate-500 uppercase tracking-widest text-[9px]">Avg VIP</div>
+                    <div className="text-sky-400 font-bold text-lg">{clanStats.avgVipScore ?? '—'}</div>
+                  </div>
+                  <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
                     <div className="text-slate-500 uppercase tracking-widest text-[9px]">Avg Power</div>
                     <div className="text-purple-400 font-bold text-lg">{clanStats.avgHeroPower ?? '—'}</div>
                   </div>
@@ -245,9 +362,53 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
               )}
               
               <div className="flex gap-2">
-                <Button tone="primary" onClick={() => mutate()} disabled={isValidating}>
-                  {isValidating ? 'Refreshing…' : 'Refresh'}
+                <Button
+                  tone="primary"
+                  onClick={() => {
+                    if (permissions.canModifyClanData && data?.clanTag) {
+                      const liveKey = `/api/v2/roster?clanTag=${encodeURIComponent(data.clanTag)}&mode=live`;
+                      void mutate(apiFetcher(liveKey) as any, { revalidate: false });
+                      return;
+                    }
+                    void mutate();
+                  }}
+                  disabled={isValidating}
+                  title={permissions.canModifyClanData ? 'Leadership: triggers live refresh (CoC fetch)' : 'Refresh snapshot'}
+                >
+                  {isValidating ? 'Refreshing…' : permissions.canModifyClanData ? 'Live Refresh' : 'Refresh'}
                 </Button>
+                <div className="relative" ref={exportRef}>
+                  <Button
+                    tone="ghost"
+                    onClick={() => setExportOpen((prev) => !prev)}
+                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
+                    title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Export roster'}
+                  >
+                    Export
+                  </Button>
+                  {exportOpen && (
+                    <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs shadow-lg">
+                      <button
+                        className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                        onClick={() => handleExportAction('csv')}
+                      >
+                        Export CSV
+                      </button>
+                      <button
+                        className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                        onClick={() => handleExportAction('summary')}
+                      >
+                        Copy Summary
+                      </button>
+                      <button
+                        className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
+                        onClick={() => handleExportAction('discord')}
+                      >
+                        Copy Discord
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <Link
                   href="/new/roster"
                   className="inline-flex items-center justify-center rounded-xl border px-4 py-2 font-semibold text-sm"
@@ -260,6 +421,28 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
           </div>
         </div>
       </div>
+
+      {clanStats && (
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {[
+            { label: 'Very Active', value: clanStats.activityCounts.veryActive, color: '#22c55e' },
+            { label: 'Active', value: clanStats.activityCounts.active, color: '#38bdf8' },
+            { label: 'Moderate', value: clanStats.activityCounts.moderate, color: '#eab308' },
+            { label: 'Low', value: clanStats.activityCounts.low, color: '#f97316' },
+            { label: 'Inactive', value: clanStats.activityCounts.inactive, color: '#f87171' },
+          ].map((item) => (
+            <div
+              key={item.label}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs"
+            >
+              <div className="uppercase tracking-widest text-[10px] text-slate-400">{item.label}</div>
+              <div className="mt-2 text-2xl font-black" style={{ color: item.color }}>
+                {item.value}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="rounded-2xl border" style={{ background: 'var(--card)', borderColor: 'var(--border-subtle)' }}>
         <div className="border-b border-white/5 px-4 py-2 flex flex-wrap items-center gap-3">
@@ -291,6 +474,7 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                     <col style={{ width: '6%' }} />
                     <col style={{ width: '6%' }} />
                     <col style={{ width: '8%' }} />
+                    <col style={{ width: '6%' }} />
                     <col style={{ width: '8%' }} />
                     <col style={{ width: '9%' }} />
                     <col style={{ width: '6%' }} />
@@ -303,19 +487,55 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                   <thead className="text-xs uppercase tracking-[0.15em] text-slate-400">
                     <tr className="border-b border-white/5">
                       <th className="px-2 py-3 text-left">Player</th>
-                      <th className="px-2 py-3 text-center">TH</th>
-                      <th className="px-2 py-3 text-center">League</th>
-                      <th className="px-2 py-3 text-right">Trophies</th>
-                      <th className="px-2 py-3 text-right">Donated</th>
-                      <th className="px-2 py-3 text-right">Received</th>
-                      <th className="px-2 py-3 text-right">Rush</th>
-                      <th className="px-2 py-3 text-right">SRS</th>
+                      <th className="px-2 py-3 text-center">
+                        <button type="button" onClick={() => handleSort('th')} className="uppercase tracking-[0.15em]">
+                          TH {sortKey === 'th' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
+                      <th className="px-2 py-3 text-center">
+                        <button type="button" onClick={() => handleSort('league')} className="uppercase tracking-[0.15em]">
+                          League {sortKey === 'league' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
+                      <th className="px-2 py-3 text-right">
+                        <button type="button" onClick={() => handleSort('trophies')} className="uppercase tracking-[0.15em]">
+                          Trophies {sortKey === 'trophies' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
+                      <th className="px-2 py-3 text-right">
+                        <button type="button" onClick={() => handleSort('vip')} className="uppercase tracking-[0.15em]">
+                          VIP {sortKey === 'vip' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
+                      <th className="px-2 py-3 text-right">
+                        <button type="button" onClick={() => handleSort('donations')} className="uppercase tracking-[0.15em]">
+                          Donated {sortKey === 'donations' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
+                      <th className="px-2 py-3 text-right">
+                        <button type="button" onClick={() => handleSort('received')} className="uppercase tracking-[0.15em]">
+                          Received {sortKey === 'received' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
+                      <th className="px-2 py-3 text-right">
+                        <button type="button" onClick={() => handleSort('rush')} className="uppercase tracking-[0.15em]">
+                          Rush {sortKey === 'rush' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
+                      <th className="px-2 py-3 text-right">
+                        <button type="button" onClick={() => handleSort('srs')} className="uppercase tracking-[0.15em]">
+                          SRS {sortKey === 'srs' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                        </button>
+                      </th>
                       {(['bk', 'aq', 'gw', 'rc', 'mp'] as const).map((heroKey) => (
                         <th key={`hero-head-${heroKey}`} className="px-2 py-3 text-center" title="Hero levels (current; dash if unavailable)">
-                          <img
+                          <Image
                             src={heroIconMap[heroKey]}
                             alt={heroKey.toUpperCase()}
                             className="mx-auto h-6 w-6"
+                            width={24}
+                            height={24}
+                            unoptimized
                           />
                         </th>
                       ))}
@@ -330,6 +550,9 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                       const rushValue = resolveRushPercent(member);
                       const activity = resolveActivity(member);
                       const heroCaps = HERO_MAX_LEVELS[townHall ?? 0] || {};
+                      const vipScore = typeof member.vip?.score === 'number' && Number.isFinite(member.vip.score)
+                        ? member.vip.score
+                        : null;
 
                       return (
                         <tr 
@@ -370,6 +593,13 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                           title="Ranked trophies: current season ladder points."
                         >
                           {trophies != null ? trophies.toLocaleString() : '—'}
+                        </td>
+                        <td
+                          className="px-2 py-3 text-right tabular-nums font-bold align-middle"
+                          style={{ color: '#38bdf8' }}
+                          title="VIP score: overall contribution rating."
+                        >
+                          {vipScore != null ? vipScore.toFixed(1) : '—'}
                         </td>
                         <td
                           className="px-2 py-3 text-right tabular-nums font-bold align-middle"

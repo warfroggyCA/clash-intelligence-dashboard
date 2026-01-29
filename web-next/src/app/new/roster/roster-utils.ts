@@ -1,4 +1,4 @@
-import type { RosterMember } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterMember } from './types';
 import type { Member } from '@/types';
 import { mapActivityToBand, resolveLeagueDisplay, resolveTrophies as resolveTrophiesSSOT } from '@/lib/roster-derivations';
 
@@ -109,5 +109,16 @@ export const resolveActivity = (member: RosterMember) => {
   const evidence = member.activity ?? null;
   const resolved = mapActivityToBand(evidence);
   const score = evidence?.score ?? null;
-  return { band: resolved.band, tone: resolved.tone, score, evidence };
+
+  // Some UIs still expect a human-readable "level" string.
+  const bandToLevel = (band: string) => {
+    if (band === 'High') return 'Very Active';
+    if (band === 'Medium') return 'Moderate';
+    if (band === 'Low') return 'Low';
+    return 'Unknown';
+  };
+
+  const level = evidence?.level ?? bandToLevel(resolved.band);
+
+  return { band: resolved.band, tone: resolved.tone, score, evidence, level };
 };
