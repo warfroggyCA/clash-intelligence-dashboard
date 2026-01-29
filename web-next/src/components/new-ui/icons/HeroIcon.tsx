@@ -5,12 +5,12 @@ import { heroIconMap, fallbackIcons } from './maps';
 
 interface HeroIconProps {
   hero: 'bk' | 'aq' | 'gw' | 'rc' | 'mp';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   className?: string;
   label?: string;
 }
 
-const sizeMap = { sm: 56, md: 72, lg: 84 };
+const sizeMap = { xs: 40, sm: 56, md: 72, lg: 84 };
 
 export const HeroIcon: React.FC<HeroIconProps> = ({ hero, size = 'md', className = '', label }) => {
   const src = heroIconMap[hero] || fallbackIcons.hero;
