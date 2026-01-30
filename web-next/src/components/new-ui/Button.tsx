@@ -3,9 +3,13 @@
 import React from 'react';
 
 export type ButtonTone = 'primary' | 'accentAlt' | 'success' | 'warning' | 'danger' | 'ghost';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   tone?: ButtonTone;
+  size?: ButtonSize;
+  /** When true, renders in a busy/disabled state (caller controls label/spinner if desired). */
+  loading?: boolean;
 }
 
 const toneStyles: Record<ButtonTone, React.CSSProperties> = {
@@ -38,22 +42,44 @@ const toneStyles: Record<ButtonTone, React.CSSProperties> = {
   },
 };
 
-export const Button: React.FC<ButtonProps> = ({ tone = 'ghost', className = '', style, children, ...rest }) => {
+const sizeStyles: Record<ButtonSize, React.CSSProperties> = {
+  sm: { padding: '8px 12px', fontSize: '13px' },
+  md: { padding: '10px 14px', fontSize: '14px' },
+  lg: { padding: '14px 18px', fontSize: '16px' },
+};
+
+export const Button: React.FC<ButtonProps> = ({
+  tone = 'ghost',
+  size = 'md',
+  loading = false,
+  className = '',
+  style,
+  children,
+  disabled,
+  ...rest
+}) => {
   const base: React.CSSProperties = {
     border: 'none',
     borderRadius: '12px',
-    padding: '10px 14px',
     fontWeight: 700,
-    fontSize: '14px',
     letterSpacing: '0.01em',
     transition: 'transform 120ms ease, filter 120ms ease, box-shadow 150ms ease',
+    ...sizeStyles[size],
     ...toneStyles[tone],
   };
+
+  const isDisabled = Boolean(disabled || loading);
 
   return (
     <button
       className={`inline-flex items-center justify-center gap-2 ${className}`}
-      style={{ ...base, ...style }}
+      style={{
+        ...base,
+        ...(isDisabled ? { opacity: 0.8, cursor: 'not-allowed', filter: 'grayscale(0.1)' } : null),
+        ...style,
+      }}
+      disabled={isDisabled}
+      aria-busy={loading || undefined}
       {...rest}
     >
       {children}
