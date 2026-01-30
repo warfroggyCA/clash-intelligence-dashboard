@@ -25,6 +25,8 @@ export function OnboardingClient({ clanConfig }: OnboardingClientProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [apiToken, setApiToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [submissionDetails, setSubmissionDetails] = useState<{ primaryTag: string; linkedCount: number } | null>(null);
   const sessionStatus = useDashboardStore((state) => state.sessionStatus);
@@ -107,13 +109,20 @@ export function OnboardingClient({ clanConfig }: OnboardingClientProps) {
       setError('Select at least one account.');
       return;
     }
+    if (!apiToken.trim() || apiToken.length < 8) {
+      setError('Please enter your 8-character in-game API token.');
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
       const res = await fetch('/api/onboarding/submit-tags', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ selectedTags: Array.from(selected) }),
+        body: JSON.stringify({ 
+          selectedTags: Array.from(selected),
+          apiToken: apiToken.trim()
+        }),
       });
       const body = await res.json();
       if (!res.ok || !body?.success) {
@@ -200,19 +209,26 @@ export function OnboardingClient({ clanConfig }: OnboardingClientProps) {
       </div>
 
       <GlassCard className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-xs uppercase tracking-[0.35em] text-slate-500">Current roster</p>
             {roster.length > 0 && (
               <p className="text-sm text-slate-400">
-                Last updated {roster[0]?.lastUpdated ? new Date(roster[0].lastUpdated).toLocaleString() : 'recently'}
+                Found {roster.length} members
               </p>
             )}
           </div>
-          <Button variant="secondary" size="sm" onClick={() => void loadRoster()} disabled={loading} loading={loading}>
-            Refresh roster
-          </Button>
+          <div className="flex-1 max-w-sm">
+            <input
+              type="text"
+              placeholder="Search by name or tag..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-lg bg-slate-950/60 border border-white/10 px-3 py-2 text-sm text-white focus:border-clash-gold/50 outline-none"
+            />
+          </div>
         </div>
+        
         {loading ? (
           <p className="text-sm text-slate-400">Loading roster…</p>
         ) : error ? (
@@ -220,28 +236,28 @@ export function OnboardingClient({ clanConfig }: OnboardingClientProps) {
             {error}
           </div>
         ) : roster.length === 0 ? (
-          <p className="text-sm text-slate-400">No roster data found for this clan.</p>
+          <p className="text-sm text-slate-400">No roster data found.</p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {roster.map((member) => {
+          <div className="grid gap-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar sm:grid-cols-2">
+            {(search ? roster.filter(m => 
+              m.name?.toLowerCase().includes(search.toLowerCase()) || 
+              m.tag.toLowerCase().includes(search.toLowerCase())
+            ) : roster).map((member) => {
               const isSelected = selected.has(member.tag);
               return (
                 <button
                   key={member.tag}
                   onClick={() => toggleSelection(member.tag)}
-                  className={`rounded-2xl border px-4 py-3 text-left transition ${
+                  className={`rounded-xl border px-3 py-2 text-left transition ${
                     isSelected ? 'border-clash-gold bg-clash-gold/10' : 'border-white/10 hover:border-clash-gold/50'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-base font-semibold text-white">{member.name ?? member.tag}</p>
-                      <p className="text-xs text-slate-400">{member.tag}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-white truncate">{member.name ?? member.tag}</p>
+                      <p className="text-[10px] text-slate-500">{member.tag}</p>
                     </div>
-                    {isSelected && <span className="text-sm text-clash-gold">Selected</span>}
-                  </div>
-                  <div className="mt-2 text-xs text-slate-400">
-                    TH {member.thLevel ?? '—'} · {member.role ?? 'Member'} · {member.warPreference || 'war pref unknown'}
+                    {isSelected && <span className="text-[10px] font-bold text-clash-gold uppercase">Selected</span>}
                   </div>
                 </button>
               );
@@ -298,13 +314,34 @@ export function OnboardingClient({ clanConfig }: OnboardingClientProps) {
         )}
       </GlassCard>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/5 bg-white/5 px-4 py-3">
-        <p className="text-xs text-slate-400">
-          Select every account you control. We’ll keep the links private unless you choose to surface them.
-        </p>
-        <Button onClick={handleSubmit} disabled={submitting || !hasSelection} loading={submitting}>
-          {submitting ? 'Saving…' : 'Complete onboarding'}
-        </Button>
+      <div className="flex flex-col gap-4 rounded-2xl border border-white/5 bg-white/5 px-6 py-5">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2">
+              Prove ownership
+            </label>
+            <input
+              type="password"
+              placeholder="Enter your 8-character API Token"
+              value={apiToken}
+              onChange={(e) => setApiToken(e.target.value)}
+              className="w-full rounded-lg bg-slate-950/60 border border-white/10 px-4 py-2.5 text-sm text-white focus:border-clash-gold/50 outline-none transition-colors"
+            />
+            <p className="mt-2 text-[10px] text-slate-500 leading-tight">
+              Found in game: Settings → More Settings → API Token. We use this once to verify you and then discard it.
+            </p>
+          </div>
+          <div className="flex flex-col justify-end">
+            <Button 
+              onClick={handleSubmit} 
+              disabled={submitting || !hasSelection || apiToken.length < 8} 
+              loading={submitting}
+              className="w-full h-11 shadow-lg shadow-clash-gold/10"
+            >
+              {submitting ? 'Verifying…' : 'Complete onboarding'}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -9,7 +9,7 @@
  * - Activity Score
  */
 
-import type { RosterMember } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterMember } from '@/types/roster';
 import type { Member } from '@/types';
 import { getMemberActivity } from '@/lib/business/calculations';
 

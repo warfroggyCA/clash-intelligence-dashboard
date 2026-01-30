@@ -5,10 +5,12 @@ import { getSupabaseServerClient } from '@/lib/supabase-server';
 import { getLatestRosterSnapshot, resolveRosterMembers } from '@/lib/roster-resolver';
 import { cfg } from '@/lib/config';
 import { linkPlayerTags } from '@/lib/player-aliases';
+import { verifyPlayerToken } from '@/lib/coc';
 
 type SubmitPayload = {
   clanTag?: string;
   selectedTags?: string[];
+  apiToken?: string;
 };
 
 function resolveClanTag(req: NextRequest, bodyTag?: string | null): string | null {
@@ -91,6 +93,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // VERIFICATION STEP:
+    // Verify the primary tag using the provided in-game API token.
+    const primaryTag = normalizedTags[0];
+    const apiToken = body.apiToken?.trim();
+
+    if (!apiToken) {
+      return NextResponse.json(
+        { success: false, error: 'API token is required for verification.' },
+        { status: 400 },
+      );
+    }
+
+    try {
+      // Force Fixie proxy for verification to ensure we use whitelisted IPs
+      const isValid = await verifyPlayerToken(primaryTag, apiToken, true);
+      if (!isValid) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid API token for the selected player tag.' },
+          { status: 400 },
+        );
+      }
+    } catch (verifyError: any) {
+      console.error('[onboarding/submit-tags] Token verification failed:', verifyError);
+      return NextResponse.json(
+        { success: false, error: 'Failed to verify token with Clash of Clans API. Please try again.' },
+        { status: 502 },
+      );
+    }
+
     const { data: userRole, error: userRoleError } = await supabase
       .from('user_roles')
       .select('id, player_tag')
@@ -106,8 +137,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const primaryTag = normalizedTags[0];
-
+    // primaryTag already computed above (used for verification)
     const { error: updateError } = await supabase
       .from('user_roles')
       .update({ player_tag: primaryTag })

@@ -13,6 +13,14 @@ import { compareCapitalToClanAverage } from '@/lib/capital-analytics/metrics';
 import { Loader2, TrendingUp, TrendingDown, Coins, Award, Target, Users, TrendingUp as TrendingUpIcon, Info } from 'lucide-react';
 import Tooltip from '@/components/ui/Tooltip';
 
+const DEFAULT_AVERAGES = {
+  averageLootPerAttack: 0,
+  averageCarryScore: 0,
+  averageParticipation: 0,
+  averageROI: 0,
+  averageOverallScore: 0,
+};
+
 interface CapitalAnalyticsDashboardProps {
   clanTag?: string;
   className?: string;
@@ -97,15 +105,8 @@ export default function CapitalAnalyticsDashboard({
       .sort((a, b) => (a.name || '').localeCompare(b.name || ''));
   }, [data, rosterMembers, participantTagSet]);
   
-  const defaultAverages = {
-    averageLootPerAttack: 0,
-    averageCarryScore: 0,
-    averageParticipation: 0,
-    averageROI: 0,
-    averageOverallScore: 0,
-  };
   const displayAverages = useMemo(() => {
-    if (!data || !clanAverages) return clanAverages || defaultAverages;
+    if (!data || !clanAverages) return clanAverages || DEFAULT_AVERAGES;
     if (!shouldFilterRoster || displayMetrics.length === 0) return clanAverages;
     const avg = (value: (m: typeof displayMetrics[number]) => number) =>
       displayMetrics.reduce((sum, metric) => sum + value(metric), 0) / displayMetrics.length;

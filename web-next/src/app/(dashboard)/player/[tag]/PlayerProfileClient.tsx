@@ -48,6 +48,7 @@ import { Button } from "@/components/ui/Button";
 import GlassCard from "@/components/ui/GlassCard";
 import { Modal } from "@/components/ui/Modal";
 import { LeagueBadge, TownHallBadge } from "@/components/ui";
+import DataFreshness from "@/components/new-ui/DataFreshness";
 import TrophyChart from "@/components/player/TrophyChart";
 import DonationChart from "@/components/player/DonationChart";
 import PlayerActivityAnalytics from "@/components/player/PlayerActivityAnalytics";
@@ -2567,6 +2568,16 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
                           <span>{getRoleBadgeVariant(summary.role).label}</span>
                         )}
                         {history?.status && <span>• {history.status.toUpperCase()}</span>}
+                        {roster ? (
+                          <span className="inline-flex items-center gap-2">
+                            <span className="text-slate-400/60">•</span>
+                            <DataFreshness
+                              at={roster.snapshotMetadata?.fetchedAt ?? roster.meta?.computedAt ?? roster.date ?? null}
+                              modeLabel="Roster updated"
+                              className="!text-slate-300/80"
+                            />
+                          </span>
+                        ) : null}
                       </div>
                     </div>
                     {activityScore != null && (

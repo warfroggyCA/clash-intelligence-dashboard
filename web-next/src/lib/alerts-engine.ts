@@ -4,9 +4,10 @@
 import type { Member } from './clan-metrics';
 import { getTownHallLevel, calculateHeroDeficit, calculateThCaps } from './clan-metrics';
 import { calculateWarMetrics, generateWarAlerts, type WarData } from './war-metrics';
+import { calculateCapitalMetrics, generateCapitalAlerts } from './capital-metrics';
 
 export type AlertPriority = 'high' | 'medium' | 'low';
-export type AlertCategory = 'inactivity' | 'performance' | 'war' | 'donations' | 'promotion' | 'retention';
+export type AlertCategory = 'inactivity' | 'performance' | 'war' | 'donations' | 'promotion' | 'retention' | 'capital';
 
 export interface Alert {
   id: string;
@@ -20,22 +21,40 @@ export interface Alert {
   timestamp: string;
 }
 
+interface AlertThresholds {
+  inactivityDays: number;
+  lowDonations: number;
+  capitalContributionMin: number;
+}
+
+const DEFAULT_THRESHOLDS: AlertThresholds = {
+  inactivityDays: 3,
+  lowDonations: 50,
+  capitalContributionMin: 500,
+};
+
 interface AlertContext {
   members: Member[];
   avgDonations: number;
   thCaps: Map<number, any>;
   warData?: WarData;
+  capitalData?: any;
+  thresholds: AlertThresholds;
 }
 
 // Generate all alerts for the clan
-export function generateAlerts(members: Member[], warData?: WarData): Alert[] {
+export function generateAlerts(members: Member[], warData?: WarData, capitalData?: any, customThresholds?: Partial<AlertThresholds>): Alert[] {
   if (!members || members.length === 0) return [];
+
+  const thresholds = { ...DEFAULT_THRESHOLDS, ...customThresholds };
 
   const context: AlertContext = {
     members,
     avgDonations: members.reduce((sum, m) => sum + (m.donations || 0), 0) / members.length,
     thCaps: calculateThCaps(members),
-    warData
+    warData,
+    capitalData,
+    thresholds
   };
 
   const alerts: Alert[] = [];
@@ -43,6 +62,23 @@ export function generateAlerts(members: Member[], warData?: WarData): Alert[] {
   // War alerts (if war data available)
   if (warData) {
     alerts.push(...detectWarAlerts(context));
+  }
+
+  // Capital alerts (if capital data available)
+  if (capitalData) {
+    const capMetrics = calculateCapitalMetrics(members, capitalData);
+    const capAlerts = generateCapitalAlerts(capMetrics, thresholds);
+    alerts.push(...capAlerts.map(a => ({
+      id: `capital-${a.type}-${Date.now()}`,
+      priority: a.severity as AlertPriority,
+      category: 'capital' as AlertCategory,
+      title: a.title,
+      description: a.description,
+      affectedMembers: [],
+      actionable: 'Review Capital Raid contributions in the dashboard.',
+      metric: a.metric,
+      timestamp: new Date().toISOString()
+    })));
   }
 
   // High priority alerts
@@ -67,10 +103,11 @@ export function generateAlerts(members: Member[], warData?: WarData): Alert[] {
 // Detect members inactive for 7+ days
 function detectInactiveMembers(context: AlertContext): Alert[] {
   const alerts: Alert[] = [];
-  const inactiveMembers = context.members.filter(m => {
-    const lastSeen = typeof m.lastSeen === 'number' ? m.lastSeen : 0;
-    return lastSeen >= 7;
-  });
+    const inactivityThreshold = context.thresholds.inactivityDays || 3;
+    const inactiveMembers = context.members.filter(m => {
+      const lastSeen = typeof m.lastSeen === 'number' ? m.lastSeen : 0;
+      return lastSeen >= inactivityThreshold;
+    });
 
   if (inactiveMembers.length > 0) {
     const highRisk = inactiveMembers.filter(m => {
@@ -83,8 +120,8 @@ function detectInactiveMembers(context: AlertContext): Alert[] {
         id: `inactive-high-${Date.now()}`,
         priority: 'high',
         category: 'inactivity',
-        title: `${highRisk.length} Member${highRisk.length > 1 ? 's' : ''} Inactive 14+ Days`,
-        description: `${highRisk.map(m => m.name).join(', ')} ${highRisk.length > 1 ? 'have' : 'has'} been inactive for 2+ weeks. High risk of departure.`,
+        title: `${highRisk.length} Member${highRisk.length > 1 ? 's' : ''} Inactive 7+ Days`,
+        description: `${highRisk.map(m => m.name).join(', ')} ${highRisk.length > 1 ? 'have' : 'has'} been inactive for a week+. High risk of departure.`,
         affectedMembers: highRisk.map(m => m.tag),
         actionable: 'Consider reaching out via in-game chat or removing from clan if unresponsive.',
         metric: `Inactive: ${Math.max(...highRisk.map(m => typeof m.lastSeen === 'number' ? m.lastSeen : 0))} days`,
@@ -92,9 +129,10 @@ function detectInactiveMembers(context: AlertContext): Alert[] {
       });
     }
 
+    const moderateThreshold = Math.max(1, inactivityThreshold);
     const moderateRisk = inactiveMembers.filter(m => {
       const lastSeen = typeof m.lastSeen === 'number' ? m.lastSeen : 0;
-      return lastSeen >= 7 && lastSeen < 14;
+      return lastSeen >= moderateThreshold && lastSeen < 7;
     });
 
     if (moderateRisk.length > 0) {
@@ -102,8 +140,8 @@ function detectInactiveMembers(context: AlertContext): Alert[] {
         id: `inactive-medium-${Date.now()}`,
         priority: 'medium',
         category: 'inactivity',
-        title: `${moderateRisk.length} Member${moderateRisk.length > 1 ? 's' : ''} Inactive 7-13 Days`,
-        description: `${moderateRisk.map(m => m.name).join(', ')} ${moderateRisk.length > 1 ? 'have' : 'has'} been inactive for over a week.`,
+        title: `${moderateRisk.length} Member${moderateRisk.length > 1 ? 's' : ''} Inactive ${moderateThreshold}+ Days`,
+        description: `${moderateRisk.map(m => m.name).join(', ')} ${moderateRisk.length > 1 ? 'have' : 'has'} been inactive for over ${moderateThreshold} days.`,
         affectedMembers: moderateRisk.map(m => m.tag),
         actionable: 'Send a friendly check-in message to re-engage them.',
         timestamp: new Date().toISOString()
@@ -117,9 +155,10 @@ function detectInactiveMembers(context: AlertContext): Alert[] {
 // Detect donation imbalance
 function detectDonationImbalance(context: AlertContext): Alert[] {
   const alerts: Alert[] = [];
+  const imbalanceThreshold = (context.thresholds.lowDonations || 50) * 10;
   const heavyReceivers = context.members.filter(m => {
     const balance = (m.donationsReceived || 0) - (m.donations || 0);
-    return balance > 1000 && (m.donations || 0) < context.avgDonations * 0.3;
+    return balance > imbalanceThreshold && (m.donations || 0) < context.avgDonations * 0.3;
   });
 
   if (heavyReceivers.length >= 3) {
@@ -128,7 +167,7 @@ function detectDonationImbalance(context: AlertContext): Alert[] {
       priority: 'high',
       category: 'donations',
       title: `${heavyReceivers.length} Members with Severe Donation Imbalance`,
-      description: `${heavyReceivers.map(m => m.name).join(', ')} ${heavyReceivers.length > 1 ? 'are' : 'is'} receiving 1000+ more than donating.`,
+      description: `${heavyReceivers.map(m => m.name).join(', ')} ${heavyReceivers.length > 1 ? 'are' : 'is'} receiving ${imbalanceThreshold}+ more than donating.`,
       affectedMembers: heavyReceivers.map(m => m.tag),
       actionable: 'Address donation expectations via clan announcement or individual messages.',
       metric: `Avg balance: +${Math.round(heavyReceivers.reduce((sum, m) => sum + ((m.donationsReceived || 0) - (m.donations || 0)), 0) / heavyReceivers.length)}`,
@@ -226,15 +265,16 @@ function detectAtRiskMembers(context: AlertContext): Alert[] {
 // Detect zero donation members
 function detectZeroDonators(context: AlertContext): Alert[] {
   const alerts: Alert[] = [];
-  const zeroDonators = context.members.filter(m => (m.donations || 0) === 0);
+  const lowThreshold = context.thresholds.lowDonations || 50;
+  const zeroDonators = context.members.filter(m => (m.donations || 0) < lowThreshold);
 
   if (zeroDonators.length >= 5) {
     alerts.push({
       id: `zero-donations-${Date.now()}`,
       priority: 'medium',
       category: 'donations',
-      title: `${zeroDonators.length} Members with Zero Donations`,
-      description: `${zeroDonators.length} members haven't donated this season.`,
+      title: `${zeroDonators.length} Members with Low/Zero Donations`,
+      description: `${zeroDonators.length} members have donated less than ${lowThreshold} this season.`,
       affectedMembers: zeroDonators.map(m => m.tag),
       actionable: 'Send clan-wide reminder about donation expectations and benefits.',
       timestamp: new Date().toISOString()

@@ -32,6 +32,7 @@ export const rankedLeagueIconMap: Record<string, string> = {
   'Valkyrie League': '/assets/Oct2025_Leagues/Valkyrie_League_New.png',
   'Golem League': '/assets/Oct2025_Leagues/Golem_League_New.png',
   'PEKKA League': '/assets/Oct2025_Leagues/PEKKA_League_New.png',
+  'P.E.K.K.A League': '/assets/Oct2025_Leagues/PEKKA_League_New.png',
   'Dragon League': '/assets/Oct2025_Leagues/Dragon_League_New.png',
   'Electro League': '/assets/Oct2025_Leagues/Electro_League_New.png',
   'Skeleton League': '/assets/Oct2025_Leagues/Skeleton_League_New.png',

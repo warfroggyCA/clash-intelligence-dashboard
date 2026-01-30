@@ -7,6 +7,7 @@ import TooltipManager from '@/components/TooltipManager';
 import HydrationGate from '@/components/HydrationGate';
 import { SWRProvider } from '@/components/providers/SWRProvider';
 import SupabaseSessionSync from '@/components/SupabaseSessionSync';
+import { RoleSwitcher } from '@/components/dev/RoleSwitcher';
 
 const INITIAL_THEME_SCRIPT = `
 (() => {
@@ -68,6 +69,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   const contentWithSession = (
     <>
       <SupabaseSessionSync />
+      <RoleSwitcher />
       {children}
     </>
   );

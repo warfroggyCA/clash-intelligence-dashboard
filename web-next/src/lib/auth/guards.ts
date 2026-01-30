@@ -22,6 +22,21 @@ export async function requireRole(
   allowedRoles: ClanRoleName[],
   options?: RequireRoleOptions
 ) {
+  const impersonatedRole = req.headers.get('x-impersonate-role') as ClanRoleName | null;
+
+  // Development-friendly bypass: local/dev environments can trigger protected routes
+  // without requiring a Supabase session.
+  if (process.env.DISABLE_PERMISSIONS === 'true') {
+    // If we are actively impersonating a lower role, respect that so the dev can test restrictions
+    if (impersonatedRole && !allowedRoles.includes(impersonatedRole)) {
+       throw NextResponse.json({ 
+         success: false, 
+         error: `Impersonation: Role '${impersonatedRole}' is restricted from this resource.` 
+       }, { status: 403 });
+    }
+    return { user: null, roles: [], clanTag: resolveClanTag(options?.clanTag) };
+  }
+
   const apiKey = req.headers.get('x-api-key');
   const expectedKey = process.env.ADMIN_API_KEY || process.env.INGESTION_TRIGGER_KEY;
   if (expectedKey && apiKey === expectedKey) {

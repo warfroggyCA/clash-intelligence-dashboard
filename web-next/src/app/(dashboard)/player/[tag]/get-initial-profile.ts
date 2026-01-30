@@ -1,24 +1,9 @@
 import { normalizeTag } from '@/lib/tags';
 import type { SupabasePlayerProfilePayload } from '@/types/player-profile-supabase';
 import { mapV2Summary } from '@/lib/player-profile-supabase';
+import { getRequestOrigin } from '@/lib/app-origin';
 
 export const PLAYER_PROFILE_REVALIDATE_SECONDS = 60;
-
-function resolveBaseUrl(): string {
-  const candidates = [
-    process.env.NEXT_PUBLIC_SITE_URL,
-    process.env.NEXT_PUBLIC_BASE_URL,
-    process.env.NEXT_PUBLIC_VERCEL_URL,
-    process.env.VERCEL_URL,
-  ].filter((value): value is string => Boolean(value));
-
-  if (candidates.length > 0) {
-    const raw = candidates[0]!;
-    return raw.startsWith('http') ? raw : `https://${raw}`;
-  }
-
-  return 'http://localhost:5050';
-}
 
 function buildPlayerProfileUrl(baseUrl: string, playerTag: string, clanTag?: string | null): string {
   const normalizedBase = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
@@ -52,7 +37,7 @@ export async function getInitialPlayerProfile(playerTag: string, clanTag?: strin
     throw new Error('Player tag is required');
   }
 
-  const baseUrl = resolveBaseUrl();
+  const baseUrl = await getRequestOrigin();
   const normalizedClanTag = clanTag ? normalizeTag(clanTag) : null;
   const url = buildPlayerProfileUrl(baseUrl, normalizedTag, normalizedClanTag);
   const v2Url = buildPlayerProfileV2Url(baseUrl, normalizedTag, normalizedClanTag);

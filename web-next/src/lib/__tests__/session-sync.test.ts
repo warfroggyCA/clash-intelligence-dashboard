@@ -6,7 +6,7 @@ describe('syncServerSession', () => {
   const originalFetch = global.fetch;
 
   beforeEach(() => {
-    global.fetch = jest.fn().mockResolvedValue({ ok: true }) as any;
+    global.fetch = jest.fn(async () => new Response(null, { status: 200 })) as any;
   });
 
   afterEach(() => {
@@ -33,7 +33,9 @@ describe('syncServerSession', () => {
   });
 
   it('swallows errors so UI never crashes during sync', async () => {
-    global.fetch = jest.fn().mockRejectedValue(new Error('network down')) as any;
+    global.fetch = jest.fn(async () => {
+      throw new Error('network down');
+    }) as any;
 
     await expect(syncServerSession('SIGNED_IN', null)).resolves.toBeUndefined();
   });
