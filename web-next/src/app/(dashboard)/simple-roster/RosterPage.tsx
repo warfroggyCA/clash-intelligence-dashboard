@@ -15,6 +15,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { TownHallBadge, LeagueBadge } from '@/components/ui';
+import DataFreshness from '@/components/new-ui/DataFreshness';
 import { getRoleBadgeVariant } from '@/lib/leadership';
 import { calculateRushPercentage, getMemberActivity, getTownHallLevel, getHeroCaps } from '@/lib/business/calculations';
 import { cfg } from '@/lib/config';
@@ -23,12 +24,8 @@ import RosterPlayerNotesModal from '@/components/leadership/RosterPlayerNotesMod
 import RosterPlayerTenureModal from '@/components/leadership/RosterPlayerTenureModal';
 import RosterPlayerDepartureModal from '@/components/leadership/RosterPlayerDepartureModal';
 import { normalizeTag } from '@/lib/tags';
-import {
-  transformRosterApiResponse,
-  type RosterData,
-  type RosterMember,
-  type RosterApiResponse,
-} from './roster-transform';
+import { transformRosterApiResponse } from './roster-transform';
+import type { RosterApiResponse, RosterData, RosterMember } from '@/types/roster';
 import type { Member } from '@/types';
 import {
   handleExportCSV,
@@ -654,28 +651,17 @@ export default function SimpleRosterPage({ initialRoster }: SimpleRosterPageProp
           <div className="flex flex-col gap-3 sm:gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
               <h1 className="text-2xl sm:text-3xl font-bold text-clash-gold mb-1 sm:mb-2">Clan Roster</h1>
-              <p
-                className="text-xs sm:text-sm text-brand-text-secondary cursor-help break-words leading-relaxed"
-                title="Member count and snapshot update information. The snapshot date represents when the data was captured (typically daily at 4:30 AM UTC). The 'Updated' timestamp shows when this data was last fetched from the database."
-              >
-                {roster.members.length} members · Updated {(() => {
-                  const fetchedAtDate =
-                    parseUtcDate(roster.snapshotMetadata?.fetchedAt ?? null) ??
-                    parseUtcDate(roster.meta?.computedAt ?? null) ??
-                    parseUtcDate(roster.date ?? null);
-                  if (!fetchedAtDate) return 'Unknown';
-                  const formattedUtc = formatUtcDateTime(fetchedAtDate);
-                  const relative = formatDistanceToNow(fetchedAtDate, { addSuffix: true });
-                  const snapshotDisplay = (() => {
-                    const parsedSnapshot =
-                      parseUtcDate(roster.snapshotMetadata?.snapshotDate ?? null) ??
-                      parseUtcDate(roster.date ?? null);
-                    return parsedSnapshot ? formatUtcDate(parsedSnapshot) : roster.snapshotMetadata?.snapshotDate ?? null;
-                  })();
-                  return `${formattedUtc} UTC${relative ? ` • ${relative}` : ''}${snapshotDisplay ? ` • Clash Day ${snapshotDisplay}` : ''
-                    }`;
-                })()}
-              </p>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="text-xs sm:text-sm text-brand-text-secondary">
+                  {roster.members.length} members
+                </span>
+                <span className="text-brand-text-tertiary/40">•</span>
+                <DataFreshness
+                  at={roster.snapshotMetadata?.fetchedAt ?? roster.meta?.computedAt ?? roster.date}
+                  modeLabel="Updated"
+                  className="!text-brand-text-secondary"
+                />
+              </div>
             </div>
             {/* Compact Action Toolbar */}
             <div className="flex items-center gap-1.5 sm:gap-2">
