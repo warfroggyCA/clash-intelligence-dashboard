@@ -83,8 +83,15 @@ export interface MemberWarPerformance {
   tag: string;
   name: string;
   warStars: number; // Total stars in recent window
+
+  /** Canonical fields */
   attacksUsed: number;
   starsPerAttack: number;
+
+  /** Back-compat aliases used by older UI code */
+  estimatedAttacks?: number;
+  estimatedStarsPerAttack?: number;
+
   avgDestruction: number;
   performance: 'excellent' | 'good' | 'average' | 'poor';
   needsCoaching: boolean;
