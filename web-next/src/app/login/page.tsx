@@ -21,11 +21,25 @@ export default async function LoginPage() {
             <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Available clan portals</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               {clanHosts.map((config) => {
-                const targetHost =
-                  process.env.NEXT_PUBLIC_USE_HTTP_LINKS === 'true'
-                    ? (config.hostnames[0]?.replace(/^https?:\/\//, '') || `${config.slug}.localhost:5050`)
-                    : (config.hostnames[0] || `${config.slug}.clashintelligence.com`);
-                const protocol = process.env.NEXT_PUBLIC_USE_HTTP_LINKS === 'true' ? 'http://' : 'https://';
+                // In dev, we want to route to the local wildcard host (e.g. heckyeah.localhost:5050)
+                // instead of the production hostname.
+                const useHttp = process.env.NEXT_PUBLIC_USE_HTTP_LINKS === 'true';
+                const protocol = useHttp ? 'http://' : 'https://';
+
+                const preferredLocalHost = config.hostnames.find((host) => host.includes('localhost'));
+                const preferredProdHost = config.hostnames.find((host) => host.includes('clashintelligence.com'));
+
+                let targetHost = useHttp
+                  ? (preferredLocalHost ?? `${config.slug}.localhost`)
+                  : (preferredProdHost ?? config.hostnames[0] ?? `${config.slug}.clashintelligence.com`);
+
+                targetHost = targetHost.replace(/^https?:\/\//, '');
+
+                // If we’re using localhost wildcard domains, ensure we include the dev port.
+                if (useHttp && !targetHost.includes(':')) {
+                  targetHost = `${targetHost}:5050`;
+                }
+
                 return (
                   <Link
                     key={config.slug}
