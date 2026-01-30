@@ -80,13 +80,16 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
   };
 
   return (
-    <div className={cn('border border-brand-border/60 rounded-xl overflow-hidden', className)}>
+    <div
+      className={cn('rounded-2xl border overflow-hidden', className)}
+      style={{ borderColor: 'var(--border-subtle)', background: 'var(--panel)' }}
+    >
       <button
         type="button"
         onClick={handleToggle}
         className={cn(
           'w-full flex items-center justify-between gap-3 px-4 py-3',
-          'bg-brand-surface/40 hover:bg-brand-surface/60',
+          'bg-[var(--panel)] hover:bg-white/5',
           'transition-colors text-left',
           headerClassName,
         )}
@@ -113,11 +116,10 @@ export const CollapsibleSection: React.FC<CollapsibleSectionProps> = ({
           isExpanded ? 'max-h-[10000px] opacity-100' : 'max-h-0 opacity-0',
         )}
       >
-        <div className={cn('p-4', contentClassName)}>{children}</div>
+        <div className={cn('p-4 text-slate-200 bg-[var(--card)]', contentClassName)}>{children}</div>
       </div>
     </div>
   );
 };
 
 export default CollapsibleSection;
-

@@ -21,6 +21,11 @@ export function middleware(request: NextRequest) {
   });
 }
 
+// Avoid running middleware on Next.js internals/static assets.
+// This prevents odd 404s / cache issues on /_next/static/* and improves perf.
 export const config = {
-  matcher: '/:path*',
+  matcher: [
+    // match all paths except _next (static/image), favicon, and other common assets
+    '/((?!_next/static|_next/image|favicon.ico|favicon-16x16.png|favicon-32x32.png|apple-touch-icon.png|site.webmanifest).*)',
+  ],
 };

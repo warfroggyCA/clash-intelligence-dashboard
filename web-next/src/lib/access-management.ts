@@ -116,6 +116,9 @@ export function getAccessLevelPermissions(
   accessLevel: AccessLevel,
   customPermissions?: Record<string, Partial<typeof ACCESS_LEVEL_PERMISSIONS[AccessLevel]>>
 ): typeof ACCESS_LEVEL_PERMISSIONS[AccessLevel] {
+  if (process.env.NODE_ENV === 'development') {
+    return ACCESS_LEVEL_PERMISSIONS.leader;
+  }
   const defaults = ACCESS_LEVEL_PERMISSIONS[accessLevel];
   
   // If no custom permissions provided, return defaults

@@ -4,6 +4,7 @@
  */
 
 import { fetchWithRetry } from './retry';
+import { smartFetch } from './smart-fetch';
 
 /**
  * Generic API fetcher for SWR
@@ -66,7 +67,7 @@ export async function rosterFetcher(url: string) {
   }
 
   // Import transform function
-  const { transformRosterApiResponse } = await import('@/app/(dashboard)/simple-roster/roster-transform');
+  const { transformRosterApiResponse } = await import('@/lib/roster/transform');
 
   // Transform the API response (apiData is the full response, transform expects RosterApiResponse)
   return transformRosterApiResponse(apiData as any);
@@ -90,10 +91,17 @@ export async function playerProfileFetcher(url: string) {
   // Extract clanTag from URL query params if present
   const urlObj = new URL(url, window.location.origin);
   const clanTag = urlObj.searchParams.get('clanTag');
+  const live = urlObj.searchParams.get('live') === '1';
 
-  // Use existing fetch function (it already has retry logic)
+  // Default: Supabase-only snapshot payload (no CoC calls)
+  if (!live) {
+    const qs = clanTag ? `?clanTag=${encodeURIComponent(clanTag)}` : '';
+    const snapshotUrl = `/api/player/${encodeURIComponent(tag)}/profile-snapshot${qs}`;
+    return apiFetcher(snapshotUrl);
+  }
+
+  // Explicit live refresh: may hit CoC API via legacy profile endpoint
   const { fetchPlayerProfileSupabase } = await import('@/lib/player-profile-supabase');
-
   return fetchPlayerProfileSupabase(tag, clanTag);
 }
 

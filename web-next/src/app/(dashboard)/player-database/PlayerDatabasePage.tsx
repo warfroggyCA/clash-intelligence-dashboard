@@ -185,7 +185,7 @@ export default function PlayerDatabasePage() {
     
     // Fallback to API if store doesn't have roster
     try {
-      const response = await fetch('/api/v2/roster');
+      const response = await fetch('/api/v2/roster?mode=snapshot');
       if (response.ok) {
         const data = await response.json();
         const members = Array.isArray(data.data?.members) ? data.data.members : [];

@@ -6,7 +6,7 @@
 import { cookies } from 'next/headers';
 import RosterPage from '../simple-roster/RosterPage';
 import { getInitialRosterData } from '../simple-roster/get-initial-roster';
-import type { RosterData } from '../simple-roster/roster-transform';
+import type { RosterData } from '@/types/roster';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

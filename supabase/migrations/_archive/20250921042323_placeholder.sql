@@ -1,0 +1,4 @@
+-- Placeholder migration
+-- Version: 20250921042323
+-- This file exists to match the remote Supabase migration history.
+-- No-op.

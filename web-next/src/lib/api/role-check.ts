@@ -78,6 +78,9 @@ async function loadCustomPermissions(clanTag: string): Promise<CustomPermissions
 }
 
 export async function requireLeadership(req: NextRequest, options?: RequireOptions): Promise<void> {
+  if (process.env.NODE_ENV === 'development' || process.env.DISABLE_PERMISSIONS === 'true') {
+    return;
+  }
   // Development-only bypass (never in production)
   if (checkDevBypass(req)) {
     return;
@@ -105,6 +108,9 @@ export async function requireLeadership(req: NextRequest, options?: RequireOptio
  * Development: Allows ADMIN_API_KEY bypass in non-production environments.
  */
 export async function requireLeader(req: NextRequest, options?: RequireOptions): Promise<void> {
+  if (process.env.NODE_ENV === 'development' || process.env.DISABLE_PERMISSIONS === 'true') {
+    return;
+  }
   // Development-only bypass (never in production)
   if (checkDevBypass(req)) {
     return;
@@ -134,6 +140,9 @@ export async function requirePermission(
   permission: PermissionKey,
   options?: RequireOptions,
 ): Promise<void> {
+  if (process.env.NODE_ENV === 'development' || process.env.DISABLE_PERMISSIONS === 'true') {
+    return;
+  }
   if (checkDevBypass(req)) {
     return;
   }

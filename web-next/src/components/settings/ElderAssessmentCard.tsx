@@ -15,7 +15,7 @@ import { evaluateRoster, buildReportLine } from '@/lib/elder/evaluator';
 import type { ElderMetricInputs, ElderRecommendation } from '@/lib/elder/types';
 import { rosterFetcher } from '@/lib/api/swr-fetcher';
 import useSWR from 'swr';
-import type { RosterData } from '@/app/(dashboard)/simple-roster/roster-transform';
+import type { RosterData } from '@/types/roster';
 import { showToast } from '@/lib/toast';
 
 const BAND_LABELS: Record<ElderRecommendation['band'], string> = {

@@ -101,6 +101,8 @@ export async function withRetry<T>(
   throw lastError;
 }
 
+import { smartFetch } from './smart-fetch';
+
 /**
  * Fetch with retry logic
  */
@@ -111,7 +113,7 @@ export async function fetchWithRetry(
 ): Promise<Response> {
   return withRetry(
     async () => {
-      const response = await fetch(url, options);
+      const response = await smartFetch(url, options);
 
       // Throw error for non-ok responses so retry logic can handle them
       // Don't retry 4xx errors (client errors) - they're permanent
