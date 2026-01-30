@@ -308,7 +308,7 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-emerald-400">{performer.estimatedStarsPerAttack.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-emerald-400">{(performer.estimatedStarsPerAttack ?? performer.starsPerAttack).toFixed(2)}</p>
                     <p className="text-xs text-slate-400">stars/attack</p>
                   </div>
                 </div>
@@ -334,7 +334,7 @@ export default function CommandCenter({ clanData, clanTag }: CommandCenterProps)
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-lg font-bold text-red-400">{performer.estimatedStarsPerAttack.toFixed(2)}</p>
+                    <p className="text-lg font-bold text-red-400">{(performer.estimatedStarsPerAttack ?? performer.starsPerAttack).toFixed(2)}</p>
                     <p className="text-xs text-slate-400">stars/attack</p>
                   </div>
                 </div>
