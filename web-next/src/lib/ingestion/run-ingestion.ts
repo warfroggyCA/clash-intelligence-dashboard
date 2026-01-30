@@ -69,6 +69,36 @@ async function log(jobId: string | undefined, level: 'info' | 'warn' | 'error', 
   }
 }
 
+export async function runFastIngestion(options: RunIngestionOptions = {}): Promise<IngestionResult[]> {
+  const { clanTag: providedTag, jobId } = options;
+  const results: IngestionResult[] = [];
+  const clanTag = providedTag || cfg.homeClanTag;
+  
+  if (!clanTag) {
+    results.push({ clanTag: providedTag ?? 'unknown', success: false, error: 'No clan tag provided' });
+    return results;
+  }
+
+  try {
+    await log(jobId, 'info', `Starting FAST ingestion for ${clanTag}`);
+    const fullSnapshot = await fetchFullClanSnapshot(clanTag, {
+      warLogLimit: 5,
+      capitalSeasonLimit: 1,
+    });
+    await persistFullClanSnapshot(fullSnapshot);
+
+    if (cfg.useSupabase) {
+      await persistRosterSnapshotToDataSpine(fullSnapshot);
+      await persistWarData(fullSnapshot);
+    }
+
+    return [{ clanTag, success: true, memberCount: fullSnapshot.memberSummaries.length }];
+  } catch (error: any) {
+    await log(jobId, 'error', `Fast ingestion failed: ${error.message}`);
+    return [{ clanTag, success: false, error: error.message }];
+  }
+}
+
 export async function runIngestionJob(options: RunIngestionOptions = {}): Promise<IngestionResult[]> {
   const { clanTag: providedTag, jobId: providedJobId } = options;
   const results: IngestionResult[] = [];
