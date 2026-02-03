@@ -38,11 +38,15 @@ export function AppShell({
   };
 
   const SidebarContent = ({ isMobile = false }) => (
-    <>
-      <div className={cn(
-        "flex items-center py-4 transition-all",
-        isMobile ? "justify-between px-4" : (collapsed ? "justify-center px-0" : "justify-between px-4")
-      )}>
+    <div className={cn("flex h-full flex-col", isMobile && "overflow-hidden")}> 
+      <div
+        className={cn(
+          "flex items-center py-4 transition-all",
+          isMobile
+            ? "justify-between px-4 shrink-0 bg-slate-950/95 backdrop-blur border-b border-white/5"
+            : (collapsed ? "justify-center px-0" : "justify-between px-4")
+        )}
+      >
         <Link
           href="/app"
           className={cn(
@@ -55,16 +59,7 @@ export function AppShell({
           CI
         </Link>
 
-        {isMobile && (
-          <button
-            type="button"
-            onClick={() => setMobileOpen(false)}
-            className="rounded-full border border-white/10 bg-white/5 p-1 text-xs text-white/70 transition hover:bg-white/10"
-            aria-label="Close navigation"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        )}
+        {/* Mobile close button is absolutely positioned in the drawer so it never scrolls away */}
       </div>
 
       {sidebarHeader && (
@@ -73,8 +68,19 @@ export function AppShell({
         </div>
       )}
 
-      <div className="mt-4 flex-1 px-2">
-        <SidebarNavigation items={navItems} onNavigate={isMobile ? handleMobileLinkClick : undefined} collapsed={!isMobile && collapsed} />
+      <div
+        className={cn(
+          "mt-4 flex-1 min-h-0 px-2 overflow-y-auto overscroll-contain touch-pan-y sidebar-scrollbar",
+          // On mobile we also prevent the outer drawer from scrolling; the nav itself should scroll.
+          isMobile && "overflow-y-auto"
+        )}
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        <SidebarNavigation
+          items={navItems}
+          onNavigate={isMobile ? handleMobileLinkClick : undefined}
+          collapsed={!isMobile && collapsed}
+        />
       </div>
 
       {sidebarFooter && (
@@ -82,11 +88,14 @@ export function AppShell({
           {sidebarFooter}
         </div>
       )}
-    </>
+    </div>
   );
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex relative">
+    <div className={cn(
+      "h-dvh w-full bg-slate-950 text-slate-100 flex relative overflow-hidden",
+      mobileOpen && "overflow-hidden"
+    )}>
       <a
         href={`#${mainId}`}
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[9999] focus:rounded-lg focus:bg-blue-600 focus:px-6 focus:py-3 focus:font-semibold focus:text-white"
@@ -96,17 +105,22 @@ export function AppShell({
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden md:flex h-screen flex-col border-r border-slate-800 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900/90 shadow-[8px_0_32px_rgba(2,6,23,0.8)] transition-all duration-300 sticky top-0 relative',
+          'hidden md:flex h-dvh flex-col border-r border-slate-800 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900/90 shadow-[8px_0_32px_rgba(2,6,23,0.8)] transition-all duration-300 sticky top-0 relative overflow-hidden',
           collapsed ? 'w-16' : 'w-64'
         )}
       >
         <SidebarContent />
 
-        {/* Desktop Toggle Button - Absolute Positioned */}
+        {/* Desktop Toggle Button (fixed so it never scrolls away; centered vertically) */}
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
-          className="absolute -right-3 top-6 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-400 shadow-md transition-colors hover:bg-slate-800 hover:text-white"
+          className="fixed z-50 flex h-7 w-7 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 shadow-md transition-colors hover:bg-slate-800 hover:text-white"
+          style={{
+            top: '50%',
+            transform: 'translateY(-50%)',
+            left: collapsed ? 52 : 244, // align to the sidebar's right edge (w-16 / w-64) minus half the button
+          }}
           aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
         >
           {collapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
@@ -121,13 +135,21 @@ export function AppShell({
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <aside className="relative flex h-full w-64 flex-col border-r border-slate-800 bg-slate-950 shadow-2xl transition-transform">
+          <aside className="relative h-full w-64 border-r border-slate-800 bg-slate-950 shadow-2xl transition-transform overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(false)}
+              className="absolute right-3 top-3 z-20 rounded-full border border-white/10 bg-white/5 p-1 text-xs text-white/70 transition hover:bg-white/10"
+              aria-label="Close navigation"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
             <SidebarContent isMobile={true} />
           </aside>
         </div>
       )}
 
-      <div className="flex min-h-screen flex-1 flex-col w-full">
+      <div className="flex h-dvh min-h-0 flex-1 flex-col w-full overflow-hidden">
         {headerContent && (
           <header className="sticky top-0 z-30 border-b border-white/5 bg-slate-950/85 backdrop-blur">
             <div className="flex items-center w-full">
@@ -154,7 +176,7 @@ export function AppShell({
 
         <main
           id={mainId}
-          className="flex-1 bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-3 py-6 sm:px-6"
+          className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-3 py-6 sm:px-6"
           tabIndex={-1}
           role="main"
         >
