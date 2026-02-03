@@ -1,211 +1,207 @@
-/**
- * Tooltip Component (Portal Version)
- * 
- * A standardized tooltip component that renders via a React Portal to avoid
- * being clipped by parent containers with overflow: hidden.
- */
+"use client";
 
-'use client';
-
-import React, { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { cn } from '@/lib/utils';
 
-// =============================================================================
-// TYPES
-// =============================================================================
-
-export type TooltipPosition = 'top' | 'bottom' | 'left' | 'right';
-
-export interface TooltipProps {
-  content: string | React.ReactNode;
-  children: React.ReactNode;
-  position?: TooltipPosition;
-  delay?: number;
-  disabled?: boolean;
-  className?: string;
-  contentClassName?: string;
-  trigger?: 'hover' | 'click' | 'focus';
-  maxWidth?: string;
-}
-
-interface Coords {
-  top: number;
-  left: number;
-}
-
-// =============================================================================
-// COMPONENT
-// =============================================================================
-
-export const Tooltip: React.FC<TooltipProps> = ({
-  content,
-  children,
-  position = 'top',
-  delay = 200,
-  disabled = false,
-  className = '',
-  contentClassName = '',
-  trigger = 'hover',
-  maxWidth = 'max-w-md',
-}) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-  const [coords, setCoords] = useState<Coords>({ top: 0, left: 0 });
-  
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const tooltipRef = useRef<HTMLDivElement>(null);
-  const triggerRef = useRef<HTMLDivElement>(null);
-
-  const updateCoords = useCallback(() => {
-    if (!triggerRef.current || !tooltipRef.current) return;
-
-    const triggerRect = triggerRef.current.getBoundingClientRect();
-    const tooltipRect = tooltipRef.current.getBoundingClientRect();
-
-    let top = 0;
-    let left = 0;
-    const scrollX = window.scrollX;
-    const scrollY = window.scrollY;
-    const offset = 8; // distance from trigger
-
-    switch (position) {
-      case 'top':
-        top = triggerRect.top + scrollY - tooltipRect.height - offset;
-        left = triggerRect.left + scrollX + (triggerRect.width / 2) - (tooltipRect.width / 2);
-        break;
-      case 'bottom':
-        top = triggerRect.bottom + scrollY + offset;
-        left = triggerRect.left + scrollX + (triggerRect.width / 2) - (tooltipRect.width / 2);
-        break;
-      case 'left':
-        top = triggerRect.top + scrollY + (triggerRect.height / 2) - (tooltipRect.height / 2);
-        left = triggerRect.left + scrollX - tooltipRect.width - offset;
-        break;
-      case 'right':
-        top = triggerRect.top + scrollY + (triggerRect.height / 2) - (tooltipRect.height / 2);
-        left = triggerRect.right + scrollX + offset;
-        break;
-    }
-
-    setCoords({ top, left });
-  }, [position]);
-
-  // Re-calculate position whenever visible or scrolled/resized
-  useLayoutEffect(() => {
-    if (isVisible) {
-      updateCoords();
-      window.addEventListener('resize', updateCoords);
-      window.addEventListener('scroll', updateCoords, true);
-      return () => {
-        window.removeEventListener('resize', updateCoords);
-        window.removeEventListener('scroll', updateCoords, true);
-      };
-    }
-  }, [isVisible, position, updateCoords]);
-
-  const showTooltip = () => {
-    if (disabled) return;
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    
-    timeoutRef.current = setTimeout(() => {
-      setIsMounted(true);
-      // Wait one frame for the element to mount so we can measure it
-      requestAnimationFrame(() => {
-        setIsVisible(true);
-      });
-    }, delay);
-  };
-
-  const hideTooltip = () => {
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    setIsVisible(false);
-    setTimeout(() => setIsMounted(false), 150);
-  };
-
-  const handleClick = () => {
-    if (trigger === 'click') {
-      if (isVisible) hideTooltip();
-      else showTooltip();
-    }
-  };
-
-  useEffect(() => {
-    if (trigger === 'click' && isVisible) {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (
-          tooltipRef.current && triggerRef.current &&
-          !tooltipRef.current.contains(event.target as Node) &&
-          !triggerRef.current.contains(event.target as Node)
-        ) {
-          hideTooltip();
-        }
-      };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
-    }
-  }, [trigger, isVisible]);
-
-  useEffect(() => {
-    if (isVisible) {
-      const handleEscape = (event: KeyboardEvent) => {
-        if (event.key === 'Escape') hideTooltip();
-      };
-      document.addEventListener('keydown', handleEscape);
-      return () => document.removeEventListener('keydown', handleEscape);
-    }
-  }, [isVisible]);
-
-  const triggerProps = trigger === 'hover' 
-    ? { onMouseEnter: showTooltip, onMouseLeave: hideTooltip }
-    : trigger === 'click'
-      ? { onClick: handleClick }
-      : { onFocus: showTooltip, onBlur: hideTooltip };
-
-  // Helper for arrow positioning - since we are in a portal, 
-  // arrows are harder to do with pure CSS classes that rely on parent context.
-  // We keep it simple: the arrow is part of the tooltip container.
-  
-  return (
-    <div className={cn('relative inline-block', className)} ref={triggerRef} {...triggerProps}>
-      {children}
-      {isMounted && typeof document !== 'undefined' && createPortal(
-        <div
-          ref={tooltipRef}
-          className={cn(
-            'fixed z-[9999] pointer-events-none transition-opacity duration-150',
-            isVisible ? 'opacity-100' : 'opacity-0'
-          )}
-          style={{
-            top: coords.top,
-            left: coords.left,
-          }}
-          role="tooltip"
-          aria-hidden={!isVisible}
-        >
-          <div
-            className={cn(
-              'rounded-lg px-3 py-2 text-sm text-slate-200 shadow-xl min-w-[220px]',
-              maxWidth,
-              contentClassName,
-            )}
-            style={{
-              background: 'rgba(15, 23, 42, 0.95)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
-              backdropFilter: 'blur(8px)',
-            }}
-          >
-            {typeof content === 'string' ? (
-              <p className="whitespace-normal break-words">{content}</p>
-            ) : (
-              content
-            )}
-          </div>
-        </div>,
-        document.body
-      )}
-    </div>
-  );
+export type TooltipTheme = {
+  background?: string;
+  borderColor?: string;
+  color?: string;
+  boxShadow?: string;
 };
 
-export default Tooltip;
+/**
+ * Tooltip that works on desktop hover and touch (tap-to-toggle) without iOS "sticky" native tooltips.
+ * - Avoid using HTML `title` attributes in the app; use this instead.
+ */
+export function Tooltip({
+  content,
+  children,
+  maxWidthPx = 280,
+  minWidthPx = 0,
+  dismissMsTouch = 2200,
+  offsetPx = 10,
+  theme,
+}: {
+  content: React.ReactNode;
+  children: React.ReactNode;
+  maxWidthPx?: number;
+  minWidthPx?: number;
+  /** Auto-dismiss on coarse pointers (touch) so it doesn't hang around. */
+  dismissMsTouch?: number;
+  /** Gap between the anchor and tooltip (in px). */
+  offsetPx?: number;
+  theme?: TooltipTheme;
+}) {
+  const wrapperRef = useRef<HTMLSpanElement | null>(null);
+  const tipRef = useRef<HTMLSpanElement | null>(null);
+  const [open, setOpen] = useState(false);
+  const [align, setAlign] = useState<'center' | 'left' | 'right'>('center');
+  const [placement, setPlacement] = useState<'top' | 'bottom'>('top');
+  const [anchorRect, setAnchorRect] = useState<{ left: number; right: number; top: number; bottom: number; width: number; height: number } | null>(null);
+
+  const { isCoarsePointer, canHover } = useMemo(() => {
+    if (typeof window === 'undefined') return { isCoarsePointer: false, canHover: true };
+
+    const mm = typeof window.matchMedia === 'function' ? window.matchMedia.bind(window) : null;
+
+    // Prefer any-* queries; they're more reliable when a device has multiple input types.
+    const anyHover = mm ? mm('(any-hover: hover)').matches : true;
+    const hover = mm ? mm('(hover: hover)').matches : true;
+    const anyCoarse = mm ? mm('(any-pointer: coarse)').matches : false;
+    const coarse = mm ? mm('(pointer: coarse)').matches : false;
+
+    const hoverCapable = anyHover || hover;
+
+    // Some Mac Safari setups report maxTouchPoints > 0 even when you have a mouse.
+    const touchPoints = typeof navigator !== 'undefined' ? (navigator.maxTouchPoints ?? 0) : 0;
+    const touchCapable = touchPoints > 0;
+
+    return {
+      canHover: hoverCapable,
+      isCoarsePointer: coarse || (anyCoarse && !hoverCapable) || (touchCapable && !hoverCapable),
+    };
+  }, []);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  const themeStyles = useMemo(
+    () => ({
+      background: theme?.background ?? 'rgba(15, 23, 42, 0.96)',
+      borderColor: theme?.borderColor ?? 'rgba(255,255,255,0.10)',
+      color: theme?.color ?? 'rgba(255,255,255,0.92)',
+      boxShadow: theme?.boxShadow ?? '0 18px 32px -24px rgba(8,15,31,0.65)',
+    }),
+    [theme?.background, theme?.borderColor, theme?.color, theme?.boxShadow]
+  );
+
+  // Close on outside click / escape
+  useEffect(() => {
+    if (!open) return;
+
+    const onDocClick = (e: Event) => {
+      const root = wrapperRef.current;
+      if (!root) return;
+      if (e.target instanceof Node && root.contains(e.target)) return;
+      close();
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') close();
+    };
+
+    document.addEventListener('pointerdown', onDocClick);
+    document.addEventListener('touchstart', onDocClick);
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onKey);
+
+    return () => {
+      document.removeEventListener('pointerdown', onDocClick);
+      document.removeEventListener('touchstart', onDocClick);
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [close, open]);
+
+  // Auto-dismiss on touch
+  useEffect(() => {
+    if (!open) return;
+    if (!isCoarsePointer) return;
+    const t = window.setTimeout(() => close(), dismissMsTouch);
+    return () => window.clearTimeout(t);
+  }, [close, dismissMsTouch, isCoarsePointer, open]);
+
+  // Capture anchor rect when opening (needed for portal positioning).
+  useLayoutEffect(() => {
+    if (!open) {
+      setAnchorRect(null);
+      setAlign('center');
+      setPlacement('top');
+      return;
+    }
+
+    const anchor = wrapperRef.current;
+    if (!anchor) return;
+
+    const r = anchor.getBoundingClientRect();
+    setAnchorRect({ left: r.left, right: r.right, top: r.top, bottom: r.bottom, width: r.width, height: r.height });
+  }, [open]);
+
+  // Smart-ish placement: if tooltip overflows viewport, pin left/right and flip top/bottom.
+  useLayoutEffect(() => {
+    if (!open) return;
+    const tip = tipRef.current;
+    if (!tip) return;
+
+    requestAnimationFrame(() => {
+      const rect = tip.getBoundingClientRect();
+      const pad = 12;
+
+      // horizontal align
+      if (rect.left < pad) setAlign('left');
+      else if (rect.right > window.innerWidth - pad) setAlign('right');
+      else setAlign('center');
+
+      // vertical flip if needed
+      if (rect.top < pad) setPlacement('bottom');
+      else setPlacement('top');
+    });
+  }, [open, anchorRect]);
+
+  const tooltipEl = open && anchorRect
+    ? createPortal(
+        <span
+          ref={tipRef}
+          className={'pointer-events-none fixed z-[9999] rounded-xl border px-3 py-2 text-xs leading-relaxed'}
+          style={{
+            maxWidth: `min(${maxWidthPx}px, calc(100vw - 24px))`,
+            minWidth: minWidthPx > 0 ? `min(${minWidthPx}px, calc(100vw - 24px))` : undefined,
+            background: themeStyles.background,
+            borderColor: themeStyles.borderColor,
+            color: themeStyles.color,
+            boxShadow: themeStyles.boxShadow,
+            top: placement === 'top' ? (anchorRect.top - offsetPx) : (anchorRect.bottom + offsetPx),
+            left: align === 'left'
+              ? Math.max(12, anchorRect.left)
+              : align === 'right'
+                ? Math.min(window.innerWidth - 12, anchorRect.right)
+                : (anchorRect.left + anchorRect.width / 2),
+            transform: placement === 'top'
+              ? (align === 'center' ? 'translate(-50%, -100%)' : 'translate(0, -100%)')
+              : (align === 'center' ? 'translate(-50%, 0)' : 'translate(0, 0)'),
+            whiteSpace: 'normal',
+            wordBreak: 'break-word',
+          }}
+        >
+          {content}
+        </span>,
+        document.body
+      )
+    : null;
+
+  return (
+    <span
+      ref={wrapperRef}
+      className="inline-flex"
+      onMouseEnter={() => {
+        if (canHover) setOpen(true);
+      }}
+      onMouseLeave={() => {
+        if (canHover) setOpen(false);
+      }}
+      onFocus={() => setOpen(true)}
+      onBlur={() => setOpen(false)}
+    >
+      <span
+        className="inline-flex"
+        onClick={() => {
+          // Click-to-toggle on non-hover/coarse devices.
+          if (!canHover || isCoarsePointer) setOpen((v) => !v);
+        }}
+      >
+        {children}
+      </span>
+      {tooltipEl}
+    </span>
+  );
+}

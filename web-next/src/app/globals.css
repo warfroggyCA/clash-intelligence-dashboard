@@ -140,6 +140,54 @@
   scrollbar-width: thin;
 }
 
+/* Subtle sidebar scrollbar (thin + low contrast) */
+.sidebar-scrollbar {
+  scrollbar-width: none;
+  scrollbar-color: transparent transparent;
+}
+.sidebar-scrollbar::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+}
+.sidebar-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-scrollbar::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 999px;
+  transition: background-color 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .sidebar-scrollbar:hover,
+  .sidebar-scrollbar:focus-within {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+  }
+  .sidebar-scrollbar:hover::-webkit-scrollbar,
+  .sidebar-scrollbar:focus-within::-webkit-scrollbar {
+    width: 5px;
+  }
+  .sidebar-scrollbar:hover::-webkit-scrollbar-thumb,
+  .sidebar-scrollbar:focus-within::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+  }
+  .sidebar-scrollbar:hover::-webkit-scrollbar-thumb:hover,
+  .sidebar-scrollbar:focus-within::-webkit-scrollbar-thumb:hover,
+  .sidebar-scrollbar::-webkit-scrollbar-thumb:active {
+    background: rgba(148, 163, 184, 0.55);
+  }
+}
+
+/* Hide scrollbars while keeping scrollability (useful for horizontal strips on Safari). */
+.no-scrollbar {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge legacy */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none; /* Safari/Chrome */
+}
+
 .header-hero::after {
   content: "";
   position: absolute;
