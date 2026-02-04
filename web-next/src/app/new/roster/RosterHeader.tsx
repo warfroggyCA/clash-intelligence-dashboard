@@ -4,6 +4,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { Spec2IconButton } from '@/components/ui/Spec2Controls';
+import { Moon, Sun } from 'lucide-react';
 
 type ClanStats = {
   memberCount: number;
@@ -52,8 +55,6 @@ function Chip({ label }: { label: string }) {
 }
 
 function THDistributionBar({ distribution }: { distribution: Record<number, number> }) {
-  const thColors = TH_COLORS;
-
   const entries = Object.entries(distribution)
     .map(([th, count]) => ({ th: parseInt(th, 10), count }))
     .filter((e) => e.count > 0)
@@ -64,15 +65,16 @@ function THDistributionBar({ distribution }: { distribution: Record<number, numb
   return (
     <div className="flex h-3 w-full overflow-hidden rounded-full" style={{ background: surface.panel }}>
       {entries.map((e) => (
-        <div
-          key={e.th}
-          title={`TH${e.th}: ${e.count} members`}
-          className="h-full"
-          style={{
-            width: `${(e.count / total) * 100}%`,
-            background: thColors[e.th] || 'rgba(255,255,255,0.25)',
-          }}
-        />
+        <Tooltip key={e.th} content={<span>{`TH${e.th}: ${e.count} members`}</span>}>
+          <span
+            className="h-full"
+            style={{
+              width: `${(e.count / total) * 100}%`,
+              background: TH_COLORS[e.th] || 'rgba(255,255,255,0.25)',
+            }}
+            aria-label={`TH${e.th}: ${e.count} members`}
+          />
+        </Tooltip>
       ))}
     </div>
   );
@@ -223,6 +225,8 @@ export function RosterHeader({
   rightActions,
   view,
   onViewChange,
+  mode,
+  onToggleMode,
 }: {
   clanName: string;
   clanTag?: string | null;
@@ -232,6 +236,8 @@ export function RosterHeader({
   rightActions: React.ReactNode;
   view: 'cards' | 'table';
   onViewChange?: (view: 'cards' | 'table') => void;
+  mode: 'dark' | 'light';
+  onToggleMode: () => void;
 }) {
   const updatedLabel = lastUpdated ? `Snapshot updated ${formatDistanceToNow(lastUpdated, { addSuffix: true })}` : 'Snapshot update time unknown';
   const subtitleNode = subtitle ?? updatedLabel;
@@ -269,6 +275,13 @@ export function RosterHeader({
 
         <div className="flex items-center gap-2 flex-wrap">
           {rightActions}
+
+          <Tooltip content={<span>{mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>}>
+            <Spec2IconButton ariaLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={onToggleMode}>
+              {mode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </Spec2IconButton>
+          </Tooltip>
+
           <ViewToggle view={view} onViewChange={onViewChange} />
         </div>
       </div>
