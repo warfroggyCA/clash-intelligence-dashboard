@@ -33,9 +33,11 @@ export const TownHallIcon: React.FC<TownHallIconProps> = ({ level, size = 'md', 
       />
       {showBadge && typeof level === 'number' ? (
         <span
-          className="absolute -bottom-1 -right-1 px-1.5 text-[11px] font-bold text-white"
+          className="absolute -bottom-1 -right-1 h-4 min-w-4 px-1 inline-flex items-center justify-center rounded-full text-[10px] font-bold leading-none"
           style={{
-            textShadow: '0 0 6px rgba(0,0,0,0.8)',
+            background: 'var(--badge-bg, rgba(0,0,0,0.70))',
+            color: 'var(--badge-fg, rgba(255,255,255,0.92))',
+            border: '1px solid var(--border-subtle, rgba(255,255,255,0.16))',
           }}
         >
           {level}

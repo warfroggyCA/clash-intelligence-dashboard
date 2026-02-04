@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { tokens } from '@/lib/tokens';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
@@ -370,8 +370,7 @@ function Progress({
   return (
     <div className="space-y-1">
       <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: text.secondary }}>
-        <span className="inline-flex items-center gap-2">
-          <span className="uppercase tracking-[0.16em]">{label}</span>
+        <span className="inline-flex items-center gap-1">
           {tooltip ? (
             <Tooltip
               content={tooltip}
@@ -380,20 +379,11 @@ function Progress({
               offsetPx={tooltipOffset}
               theme={tooltipTheme}
             >
-              <button
-                type="button"
-                className="h-4 w-4 inline-flex items-center justify-center"
-                style={{
-                  background: 'transparent',
-                  color: text.muted,
-                  opacity: 0.7,
-                }}
-                aria-label={`${label} info`}
-              >
-                <Info size={14} />
-              </button>
+              <span className="uppercase tracking-[0.16em] cursor-help">{label}</span>
             </Tooltip>
-          ) : null}
+          ) : (
+            <span className="uppercase tracking-[0.16em]">{label}</span>
+          )}
         </span>
 
         <span className="tabular-nums" style={{ color: text.primary }}>
@@ -454,15 +444,30 @@ export default function RosterSpecPage() {
 
   // Spec-only: pretend we are signed in as this tag, so we can validate the "highlight me" treatment.
   const currentUserTag = '#WARFROGGY';
-  const [view, setView] = useState<View>('cards');
+  const viewStorageKey = 'ui.rosterSpec.view';
+  const [view, setView] = useState<View>(() => {
+    try {
+      const saved = typeof window !== 'undefined' ? window.sessionStorage.getItem(viewStorageKey) : null;
+      return saved === 'table' || saved === 'cards' ? saved : 'cards';
+    } catch {
+      return 'cards';
+    }
+  });
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState<'all' | 'current' | 'former' | 'new'>('all');
+  const [tablePreset, setTablePreset] = useState<'default' | 'war' | 'leadership' | 'economy'>('default');
+  const [tableDensity, setTableDensity] = useState<'comfortable' | 'compact'>('comfortable');
   const [sortMode, setSortMode] = useState<'default' | 'custom'>('default');
   const [sort, setSort] = useState<{ key: SortKey; direction: 'asc' | 'desc' }>({ key: 'vip', direction: 'desc' });
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCount, setGeneratedCount] = useState(0);
   const [lastGeneratedAt, setLastGeneratedAt] = useState<number | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showRefreshDot, setShowRefreshDot] = useState(false);
+  const [morePulse, setMorePulse] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     try {
@@ -471,6 +476,14 @@ export default function RosterSpecPage() {
       // ignore
     }
   }, [mode]);
+
+  useEffect(() => {
+    try {
+      window.sessionStorage.setItem(viewStorageKey, view);
+    } catch {
+      // ignore
+    }
+  }, [view, viewStorageKey]);
 
   const themeVars = useMemo<React.CSSProperties>(() => {
     if (mode === 'light') {
@@ -708,6 +721,36 @@ export default function RosterSpecPage() {
     setSort({ key: 'vip', direction: 'desc' });
   };
 
+  const tablePresets = [
+    { key: 'default', label: 'Default' },
+    { key: 'war', label: 'War' },
+    { key: 'leadership', label: 'Leadership' },
+    { key: 'economy', label: 'Economy' },
+  ] as const;
+
+  const tablePadY = tableDensity === 'compact' ? 'py-1' : 'py-3';
+  const tableHeaderColor = mode === 'light' ? 'rgba(30,58,138,0.78)' : text.muted;
+  const tableToolbarMuted = mode === 'light' ? 'rgba(30,58,138,0.72)' : text.secondary;
+  const tableDefaultMuted = mode === 'light' ? 'rgba(30,58,138,0.78)' : text.muted;
+
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const onClick = (event: MouseEvent) => {
+      if (!moreMenuRef.current?.contains(event.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setShowMoreMenu(false);
+    };
+    window.addEventListener('mousedown', onClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [showMoreMenu]);
+
   return (
     <div
       className="space-y-6 rounded-3xl p-6 font-sans"
@@ -764,24 +807,101 @@ export default function RosterSpecPage() {
           <Tooltip content={<span>Refresh (placeholder)</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
             <button
               type="button"
-              className="h-11 w-11 inline-flex items-center justify-center rounded-xl border"
-              style={{ background: surface.card, borderColor: surface.border, color: text.secondary }}
+              onClick={() => {
+                if (isRefreshing) return;
+                setIsRefreshing(true);
+                window.setTimeout(() => {
+                  setIsRefreshing(false);
+                  setShowRefreshDot(true);
+                  window.setTimeout(() => setShowRefreshDot(false), 2400);
+                }, 700);
+              }}
+              className="relative h-11 w-11 inline-flex items-center justify-center rounded-xl border transition-colors"
+              style={{
+                background: isRefreshing
+                  ? (mode === 'dark' ? 'rgba(34,211,238,0.16)' : 'rgba(14,116,144,0.16)')
+                  : surface.card,
+                borderColor: surface.border,
+                color: text.secondary,
+              }}
               aria-label="Refresh"
+              aria-busy={isRefreshing}
             >
-              <RefreshCw size={18} />
+              <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
+              {showRefreshDot ? (
+                <span
+                  className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full"
+                  style={{ background: mode === 'dark' ? tokens.colors.accentAlt : '#0E7490' }}
+                />
+              ) : null}
             </button>
           </Tooltip>
 
-          <Tooltip content={<span>More actions (placeholder)</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
-            <button
-              type="button"
-              className="h-11 w-11 inline-flex items-center justify-center rounded-xl border"
-              style={{ background: surface.card, borderColor: surface.border, color: text.secondary }}
-              aria-label="More"
-            >
-              <MoreHorizontal size={18} />
-            </button>
-          </Tooltip>
+          <div ref={moreMenuRef} className="relative">
+            <Tooltip content={<span>More actions (placeholder)</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
+              <button
+                type="button"
+                onClick={() => {
+                  setMorePulse(true);
+                  window.setTimeout(() => setMorePulse(false), 350);
+                  setShowMoreMenu((v) => !v);
+                }}
+                className="h-11 w-11 inline-flex items-center justify-center rounded-xl border transition-colors"
+                style={{
+                  background: morePulse || showMoreMenu
+                    ? (mode === 'dark' ? 'rgba(34,211,238,0.14)' : 'rgba(14,116,144,0.12)')
+                    : surface.card,
+                  borderColor: surface.border,
+                  color: text.secondary,
+                  boxShadow: morePulse || showMoreMenu ? '0 0 0 2px rgba(14,116,144,0.15)' : undefined,
+                }}
+                aria-label="More"
+                aria-haspopup="menu"
+                aria-expanded={showMoreMenu}
+              >
+                <MoreHorizontal size={18} />
+              </button>
+            </Tooltip>
+            {showMoreMenu ? (
+              <div
+                className="absolute right-0 top-12 z-20 min-w-[200px] rounded-xl border p-2 shadow-lg"
+                style={{
+                  background: surface.panel,
+                  borderColor: surface.border,
+                  boxShadow: '0 16px 32px -18px rgba(15,23,42,0.4)',
+                }}
+                role="menu"
+              >
+                {([
+                  { label: 'Export roster…', sub: 'CSV / Sheets', muted: false },
+                  { label: 'Copy tags', sub: 'Clipboard', muted: false },
+                  { label: 'Save view', sub: 'Coming soon', muted: true },
+                ] as const).map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => setShowMoreMenu(false)}
+                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm transition-colors"
+                    style={{
+                      color: item.muted ? text.muted : text.primary,
+                    }}
+                    onMouseEnter={(e) => {
+                      if (item.muted) return;
+                      (e.currentTarget as HTMLButtonElement).style.background = mode === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(15,23,42,0.06)';
+                    }}
+                    onMouseLeave={(e) => {
+                      (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
+                    }}
+                  >
+                    <span className="font-semibold">{item.label}</span>
+                    <span className="text-[11px]" style={{ color: item.muted ? text.muted : text.secondary }}>
+                      {item.sub}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </div>
 
           {/* View toggles */}
           <Tooltip content={<span>{mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
@@ -1056,6 +1176,76 @@ export default function RosterSpecPage() {
         </div>
       ) : (
         <div className="rounded-2xl border overflow-hidden" style={{ background: surface.card, borderColor: surface.border }}>
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3"
+            style={{ borderColor: surface.border, background: mode === 'light' ? 'rgba(30,58,138,0.04)' : 'rgba(255,255,255,0.02)' }}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              {tablePresets.map((preset) => (
+                <button
+                  key={preset.key}
+                  type="button"
+                  onClick={() => setTablePreset(preset.key)}
+                  className="h-9 rounded-lg border px-3 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
+                  style={{
+                    borderColor: tablePreset === preset.key ? 'var(--ring-user)' : surface.border,
+                    background: tablePreset === preset.key
+                      ? (mode === 'light' ? 'rgba(14,116,144,0.12)' : 'rgba(34,211,238,0.18)')
+                      : 'transparent',
+                    color: tablePreset === preset.key ? text.primary : tableToolbarMuted,
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <Tooltip content={<span>Column picker (placeholder)</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
+                <button
+                  type="button"
+                  className="h-9 rounded-lg border px-3 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                  style={{ borderColor: surface.border, color: tableToolbarMuted }}
+                >
+                  Columns
+                  <ChevronDown size={12} className="ml-1 inline-block opacity-60" />
+                </button>
+              </Tooltip>
+
+              <Tooltip content={<span>Saved table views (placeholder)</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
+                <button
+                  type="button"
+                  className="h-9 rounded-lg border px-3 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                  style={{ borderColor: surface.border, color: tableToolbarMuted }}
+                >
+                  Views
+                  <ChevronDown size={12} className="ml-1 inline-block opacity-60" />
+                </button>
+              </Tooltip>
+
+              <div
+                className="inline-flex overflow-hidden rounded-lg border"
+                style={{ borderColor: surface.border, background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(0,0,0,0.2)' }}
+              >
+                {(['comfortable', 'compact'] as const).map((density) => (
+                  <button
+                    key={density}
+                    type="button"
+                    onClick={() => setTableDensity(density)}
+                    className="h-9 px-3 text-[11px] font-semibold uppercase tracking-[0.16em]"
+                    style={{
+                      background: tableDensity === density
+                        ? (mode === 'light' ? 'rgba(14,116,144,0.14)' : 'rgba(255,255,255,0.10)')
+                        : 'transparent',
+                      color: tableDensity === density ? text.primary : tableToolbarMuted,
+                    }}
+                  >
+                    {density === 'comfortable' ? 'Cozy' : 'Compact'}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="overflow-x-hidden">
             <table className="w-full table-fixed text-sm">
               <colgroup>
@@ -1075,10 +1265,10 @@ export default function RosterSpecPage() {
                   backdropFilter: 'blur(10px)',
                 }}
               >
-                <tr className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>
-                  <th className="px-4 py-3 text-left">Player</th>
+                <tr className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: tableHeaderColor }}>
+                  <th className={`px-4 ${tablePadY} text-left`}>Player</th>
                   <th
-                    className="px-4 py-3 text-right"
+                    className={`px-4 ${tablePadY} text-right`}
                     aria-sort={sortMode === 'custom' && sort.key === 'vip' ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
                     <Tooltip content={<span>VIP score (0–100). Higher = stronger overall contribution.</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
@@ -1089,7 +1279,7 @@ export default function RosterSpecPage() {
                     </Tooltip>
                   </th>
                   <th
-                    className="px-4 py-3 text-right"
+                    className={`px-4 ${tablePadY} text-right`}
                     aria-sort={sortMode === 'custom' && sort.key === 'trophies' ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
                     <Tooltip content={<span>Current ranked trophies (snapshot).</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
@@ -1100,7 +1290,7 @@ export default function RosterSpecPage() {
                     </Tooltip>
                   </th>
                   <th
-                    className="px-4 py-3 text-right"
+                    className={`px-4 ${tablePadY} text-right`}
                     aria-sort={sortMode === 'custom' && sort.key === 'base' ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
                     <Tooltip content={<span>Base readiness (rush/upgrade completeness).</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
@@ -1111,7 +1301,7 @@ export default function RosterSpecPage() {
                     </Tooltip>
                   </th>
                   <th
-                    className="px-4 py-3 text-right"
+                    className={`px-4 ${tablePadY} text-right`}
                     aria-sort={sortMode === 'custom' && sort.key === 'heroes' ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                   >
                     <Tooltip content={<span>Hero readiness (levels vs max).</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
@@ -1121,15 +1311,15 @@ export default function RosterSpecPage() {
                       </button>
                     </Tooltip>
                   </th>
-                  <th className="px-4 py-3 text-right">
+                  <th className={`px-4 ${tablePadY} text-right`}>
                     <Tooltip content={<span>Recent activity band (last 7 days).</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
                       <span className="inline-flex items-center gap-1">
                         Activity
-                        <Info size={12} style={{ opacity: 0.5 }} />
+                          <Info size={12} style={{ opacity: mode === 'light' ? 0.7 : 0.5 }} />
                       </span>
                     </Tooltip>
                   </th>
-                  <th className="px-4 py-3 text-right">
+                  <th className={`px-4 ${tablePadY} text-right`}>
                     <Tooltip
                       content={<span>Default sort: VIP ↓, Trophies ↓, Heroes ↓, Name A→Z</span>}
                       maxWidthPx={tooltipMaxWidth}
@@ -1143,9 +1333,9 @@ export default function RosterSpecPage() {
                         className="inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors disabled:opacity-40"
                         style={{
                           borderColor: surface.border,
-                          color: sortMode === 'default' ? text.muted : text.secondary,
+                          color: sortMode === 'default' ? tableDefaultMuted : tableToolbarMuted,
                           background: sortMode === 'default'
-                            ? (mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(255,255,255,0.06)')
+                            ? (mode === 'light' ? 'rgba(30,58,138,0.10)' : 'rgba(255,255,255,0.06)')
                             : 'transparent',
                         }}
                         aria-label="Reset to default sort"
@@ -1170,18 +1360,28 @@ export default function RosterSpecPage() {
                   return (
                     <tr
                       key={p.tag}
-                      className="group border-t bg-[var(--row-bg)] transition-colors hover:bg-[var(--row-hover)]"
+                      className="group cursor-pointer border-t bg-[var(--row-bg)] transition-colors hover:bg-[var(--row-hover)]"
                       style={{
                         borderColor: surface.border,
                         ['--row-bg' as any]: baseRow,
                         boxShadow: isMe ? 'inset 0 0 0 2px var(--ring-user)' : undefined,
                         ['--row-hover' as any]: rowHover,
                       }}
+                      onClick={() => {
+                        window.location.href = `/new/player/${p.tag.replace('#', '')}`;
+                      }}
+                      role="link"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          window.location.href = `/new/player/${p.tag.replace('#', '')}`;
+                        }
+                      }}
                     >
-                      <td className="px-4 py-3">
+                      <td className={`px-4 ${tablePadY}`}>
                         <div className="flex items-center gap-3">
                           {assetsOn ? (
-                            <div className="flex items-center gap-3">
+                            <div className={`flex items-center gap-3 ${tableDensity === 'compact' ? 'scale-90 origin-left' : ''}`}>
                               <TownHallIcon level={p.th} size="sm" className="-ml-1" />
                               <LeagueIcon
                                 league={p.league}
@@ -1199,65 +1399,81 @@ export default function RosterSpecPage() {
                             </div>
                           )}
                           <div>
-                            <div className="font-bold" style={{ color: text.primary, fontFamily: 'var(--font-display)' }}>
+                            <div
+                              className="font-bold transition-colors group-hover:underline"
+                              style={{
+                                color: text.primary,
+                                fontFamily: 'var(--font-display)',
+                                textDecorationColor: mode === 'dark' ? tokens.colors.accentAlt : '#0E7490',
+                              }}
+                            >
                               {p.name}
                             </div>
-                            <div className="text-[11px]" style={{ color: text.muted }}>
-                              {p.tag} · {p.role}
-                            </div>
+                            {tableDensity !== 'compact' ? (
+                              <div className="text-[11px]" style={{ color: text.muted }}>
+                                {p.tag} · {p.role}
+                              </div>
+                            ) : null}
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`px-4 ${tablePadY} text-right`}>
                         <div className="font-bold tabular-nums" style={{ color: 'var(--accent-vip)' }}>{p.vip.toFixed(1)}</div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`px-4 ${tablePadY} text-right`}>
                         <div className="font-bold tabular-nums" style={{ color: text.primary }}>{p.trophies}</div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`px-4 ${tablePadY} text-right`}>
                         <div className="flex flex-col items-end gap-1">
                           <span className="font-bold tabular-nums" style={{ color: text.primary }}>
                             {p.basePct == null ? '—' : `${p.basePct}%`}
                           </span>
-                          <div className="h-1.5 w-20 rounded-full" style={{ background: 'var(--progress-track)' }}>
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: p.basePct == null ? '0%' : `${p.basePct}%`,
-                                background: tokens.colors.accentAlt,
-                                opacity: p.basePct == null ? 0 : 1,
-                              }}
-                            />
-                          </div>
+                          {tableDensity !== 'compact' ? (
+                            <div className="h-1.5 w-20 rounded-full" style={{ background: 'var(--progress-track)' }}>
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: p.basePct == null ? '0%' : `${p.basePct}%`,
+                                  background: tokens.colors.accentAlt,
+                                  opacity: p.basePct == null ? 0 : 1,
+                                }}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`px-4 ${tablePadY} text-right`}>
                         <div className="flex flex-col items-end gap-1">
                           <span className="font-bold tabular-nums" style={{ color: text.primary }}>
                             {p.heroesPct == null ? '—' : `${p.heroesPct}%`}
                           </span>
-                          <div className="h-1.5 w-20 rounded-full" style={{ background: 'var(--progress-track)' }}>
-                            <div
-                              className="h-full rounded-full"
-                              style={{
-                                width: p.heroesPct == null ? '0%' : `${p.heroesPct}%`,
-                                background: 'var(--progress-secondary)',
-                                opacity: p.heroesPct == null ? 0 : 1,
-                              }}
-                            />
-                          </div>
+                          {tableDensity !== 'compact' ? (
+                            <div className="h-1.5 w-20 rounded-full" style={{ background: 'var(--progress-track)' }}>
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: p.heroesPct == null ? '0%' : `${p.heroesPct}%`,
+                                  background: 'var(--progress-secondary)',
+                                  opacity: p.heroesPct == null ? 0 : 1,
+                                }}
+                              />
+                            </div>
+                          ) : null}
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`px-4 ${tablePadY} text-right`}>
                         <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: text.muted }}>
                           <span className="h-2 w-2 rounded-full" style={{ background: activityAccent(p.activity) }} />
                           {activityLabel}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-right">
+                      <td className={`px-4 ${tablePadY} text-right`}>
                         <Tooltip content={<span>Row actions (placeholder)</span>} maxWidthPx={tooltipMaxWidth} offsetPx={tooltipOffset} theme={tooltipTheme}>
                           <button
                             type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                            }}
                             className="h-8 w-8 inline-flex items-center justify-center rounded-lg border opacity-0 transition-opacity group-hover:opacity-100"
                             style={{
                               background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(255,255,255,0.04)',
