@@ -274,7 +274,13 @@ export function RosterHeader({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          {rightActions}
+          <div
+            className="inline-flex items-center gap-2 rounded-xl border p-1"
+            style={{ borderColor: surface.border, background: surface.panel }}
+            aria-label="Roster actions"
+          >
+            {rightActions}
+          </div>
 
           <Tooltip content={<span>{mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>}>
             <Spec2IconButton ariaLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={onToggleMode}>
