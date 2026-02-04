@@ -810,6 +810,13 @@ export const useDashboardStore = create<DashboardState>()(
         })),
       setUserRoles: (userRoles) => set({ userRoles }),
       setImpersonatedRole: (impersonatedRole) => {
+        // In development, allow role impersonation without requiring auth/userRoles.
+        // This is purely a UI/dev convenience; server-side routes should still enforce auth.
+        if (process.env.NODE_ENV === 'development') {
+          set({ impersonatedRole });
+          return;
+        }
+
         const state = get();
         const normalizedClanTag = normalizeTag(state.clanTag || state.homeClan || cfg.homeClanTag || '');
         const hasLeadershipAccess = normalizedClanTag

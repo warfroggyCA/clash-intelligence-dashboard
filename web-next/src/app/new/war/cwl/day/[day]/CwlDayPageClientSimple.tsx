@@ -991,7 +991,9 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
       // Combine preamble + JSON data
       const fullExport = preamble + '## Raw Data (JSON)\n```json\n' + JSON.stringify(payload, null, 2) + '\n```';
       
-      await navigator.clipboard.writeText(fullExport);
+      const { copyToClipboard } = await import('@/lib/export-utils');
+      const ok = await copyToClipboard(fullExport);
+      if (!ok) throw new Error('copy failed');
       setCopyState('copied');
       setTimeout(() => setCopyState('idle'), 1500);
     } catch {
@@ -1160,7 +1162,9 @@ export default function CwlDayPageClientSimple({ day, initialData }: CwlDayPageP
       lines.push(JSON.stringify(preplanPayload, null, 2));
       lines.push('```');
 
-      await navigator.clipboard.writeText(lines.join('\n'));
+      const { copyToClipboard } = await import('@/lib/export-utils');
+      const ok = await copyToClipboard(lines.join('\n'));
+      if (!ok) throw new Error('copy failed');
       setPreplanCopyState('copied');
       setTimeout(() => setPreplanCopyState('idle'), 1500);
     } catch {
