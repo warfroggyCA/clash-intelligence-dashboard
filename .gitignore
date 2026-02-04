@@ -11,6 +11,7 @@ web-next/.env.*
 out/
 _backup*/
 _backups/
+web-next/output/
 .DS_Store
 
 .vercel
