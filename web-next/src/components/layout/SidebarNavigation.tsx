@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { navConfig, type NavItem } from '@/lib/nav-config';
 import { cn } from '@/lib/utils';
+import { Tooltip } from '@/components/ui/Tooltip';
 import useSWR from 'swr';
 import { apiFetcher } from '@/lib/api/swr-fetcher';
 import { cfg } from '@/lib/config';
@@ -38,19 +39,57 @@ const NavNode: React.FC<{
 
   return (
     <div className="space-y-1">
-      <Link
-        href={item.href}
-        onClick={onNavigate}
-        className={cn(
-          'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-          isActive
-            ? 'bg-clash-gold/20 text-white shadow-[0_0_25px_rgba(255,204,112,0.2)]'
-            : 'text-slate-300 hover:text-white hover:bg-white/5',
-          depth > 0 && !collapsed && 'ml-3',
-          collapsed && depth === 0 && 'justify-center px-2'
-        )}
-        title={item.description || item.title}
-      >
+      {collapsed && depth === 0 ? (
+        <Tooltip
+          content={
+            <span>
+              <span className="font-semibold">{item.title}</span>
+              {item.description ? <span className="block opacity-80">{item.description}</span> : null}
+            </span>
+          }
+        >
+          <Link
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              isActive
+                ? 'bg-clash-gold/20 text-white shadow-[0_0_25px_rgba(255,204,112,0.2)]'
+                : 'text-slate-300 hover:text-white hover:bg-white/5',
+              depth > 0 && !collapsed && 'ml-3',
+              collapsed && depth === 0 && 'justify-center px-2'
+            )}
+            aria-label={item.title}
+          >
+            {Icon && (
+              <span className="relative flex h-4 w-4 flex-shrink-0 items-center justify-center">
+                <Icon className="h-4 w-4" aria-hidden />
+                {showBadge && collapsed && (
+                  <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.8)]" />
+                )}
+              </span>
+            )}
+            <span className={cn('truncate', collapsed && 'hidden')}>{item.title}</span>
+            {showBadge && !collapsed && (
+              <span className="ml-auto inline-flex items-center justify-center rounded-full border border-rose-400/40 bg-rose-500/20 px-2 py-0.5 text-[10px] font-semibold text-rose-100">
+                {badgeValue}
+              </span>
+            )}
+          </Link>
+        </Tooltip>
+      ) : (
+        <Link
+          href={item.href}
+          onClick={onNavigate}
+          className={cn(
+            'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+            isActive
+              ? 'bg-clash-gold/20 text-white shadow-[0_0_25px_rgba(255,204,112,0.2)]'
+              : 'text-slate-300 hover:text-white hover:bg-white/5',
+            depth > 0 && !collapsed && 'ml-3',
+            collapsed && depth === 0 && 'justify-center px-2'
+          )}
+        >
         {Icon && (
           <span className="relative flex h-4 w-4 flex-shrink-0 items-center justify-center">
             <Icon className="h-4 w-4" aria-hidden />
@@ -66,6 +105,7 @@ const NavNode: React.FC<{
           </span>
         )}
       </Link>
+      )}
 
       {hasChildren && !collapsed && (
         <div className="space-y-1 border-l border-white/5 pl-3">
