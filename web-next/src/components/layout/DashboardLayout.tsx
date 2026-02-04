@@ -353,7 +353,11 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
           </div>
           <div className="flex flex-col items-start sm:items-center gap-2 text-left sm:text-center flex-1 sm:flex-none">
             <div className="flex items-center justify-start sm:justify-center gap-3">
-              <Link href="/app" className="relative flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center hover:opacity-80 transition-opacity cursor-pointer" title="Go to Roster">
+              <Link
+                href="/app"
+                aria-label="Go to roster"
+                className="relative flex h-10 w-10 sm:h-14 sm:w-14 items-center justify-center hover:opacity-80 transition-opacity cursor-pointer"
+              >
                 <Image
                   src={logoSrc}
                   alt="Clan Logo"
@@ -365,9 +369,9 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
               </Link>
               <Link
                 href="/app"
+                aria-label="Go to roster"
                 className={`font-semibold leading-tight text-slate-100 transition-all duration-200 hover:text-white hover:scale-105 cursor-pointer ${isScrolled ? 'text-xl sm:text-3xl' : 'text-2xl sm:text-4xl'}`}
                 style={{ fontFamily: '"Clash Display", "Plus Jakarta Sans", sans-serif' }}
-                title="Go to Roster"
               >
                 {headerTitle}
               </Link>
@@ -475,7 +479,7 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({ fallbackClanName, exp
             <div className="relative group">
               <button
                 className="h-8 w-8 flex items-center justify-center rounded-md border border-brand-border/70 bg-brand-surfaceRaised/80 text-slate-200 transition-colors hover:bg-brand-surfaceRaised"
-                title="More options"
+                aria-label="More options"
               >
                 ⋯
               </button>
