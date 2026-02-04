@@ -105,20 +105,17 @@ const MiniStatCard = ({
   color?: string;
   subtext?: string;
 }) => (
-  <div 
-    className="flex flex-col items-center justify-center px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105"
-    style={{ 
+  <div
+    className="flex flex-col items-center justify-center px-3 py-2 rounded-lg"
+    style={{
       background: surface.panel,
       border: `1px solid ${surface.border}`,
     }}
   >
-    <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: text.muted }}>{label}</div>
+    <div className="text-[10px] uppercase tracking-[0.18em] mb-1" style={{ color: text.muted }}>{label}</div>
     <div className="flex items-center gap-1">
-      {icon && <span className="text-lg">{icon}</span>}
-      <span 
-        className="text-2xl font-black"
-        style={{ color, textShadow: `0 0 20px ${color}30` }}
-      >
+      {icon && <span className="text-base">{icon}</span>}
+      <span className="text-xl font-extrabold tabular-nums" style={{ color }}>
         {typeof value === 'number' ? <AnimatedCounter value={value} /> : value}
       </span>
     </div>
@@ -997,7 +994,7 @@ export default function RosterClient({
       <div className={"transition-opacity duration-200 " + (mounted ? "opacity-100" : "opacity-0")}>
         {/* Stats Row */}
         {clanStats && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-2">
               <MiniStatCard 
                 label="Members" 
                 value={clanStats.memberCount} 
@@ -1067,7 +1064,7 @@ export default function RosterClient({
 
           <div
             className="inline-flex rounded-xl border overflow-hidden"
-            style={{ borderColor: surface.border, background: 'rgba(0,0,0,0.12)' }}
+            style={{ borderColor: surface.border, background: surface.panel }}
             role="group"
             aria-label="Roster filter"
           >
