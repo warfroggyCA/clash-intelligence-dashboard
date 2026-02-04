@@ -53,9 +53,9 @@ function checkNextDev() {
       {
         hostname: '127.0.0.1',
         port: NEXT_PORT,
-        path: '/',
+        path: '/api/health',
         method: 'GET',
-        timeout: 600,
+        timeout: 2000,
       },
       (res) => {
         // Any HTTP response means the port is up.
