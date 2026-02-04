@@ -296,8 +296,43 @@ export function formatWarResultForDiscord(payload: WarResultPayload): string {
  */
 export async function copyToClipboard(text: string): Promise<boolean> {
   try {
-    await navigator.clipboard.writeText(text);
-    return true;
+    // Prefer the modern async clipboard API when available + allowed.
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch (error) {
+    // Fall through to legacy approach.
+    console.warn('Async clipboard API failed; falling back to execCommand.', error);
+  }
+
+  try {
+    // Legacy fallback: works on more browsers/contexts (including some non-secure HTTP LAN dev setups).
+    if (typeof document === 'undefined') return false;
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+
+    // iOS Safari can be picky about copying from readonly elements.
+    textarea.readOnly = false;
+
+    // Keep it off-screen but in the DOM.
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-1000px';
+    textarea.style.left = '-1000px';
+    textarea.style.opacity = '0';
+    textarea.style.pointerEvents = 'none';
+
+    document.body.appendChild(textarea);
+
+    textarea.focus();
+    textarea.select();
+    // iOS sometimes requires an explicit selection range.
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    const ok = document.execCommand('copy');
+    document.body.removeChild(textarea);
+    return ok;
   } catch (error) {
     console.error('Failed to copy to clipboard:', error);
     return false;

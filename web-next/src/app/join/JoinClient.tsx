@@ -1,10 +1,10 @@
 "use client";
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useDeferredValue, useCallback, KeyboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/new-ui/Button';
 import { Card } from '@/components/new-ui/Card';
-import { Sparkles, Search, ShieldCheck, ChevronRight } from 'lucide-react';
+import { Search, ShieldCheck, ChevronRight } from 'lucide-react';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser';
 import { syncServerSession } from '@/lib/auth/session-sync';
@@ -20,13 +20,15 @@ export default function JoinClient({ roster }: { roster: PublicMember[] }) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2>(1);
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
+  const [activeIndex, setActiveIndex] = useState(0);
   const [selectedMember, setSelectedMember] = useState<PublicMember | null>(null);
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const filteredRoster = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
 
     // Keep results manageable: require at least 2 characters.
     if (q.length < 2) return [];
@@ -43,7 +45,40 @@ export default function JoinClient({ roster }: { roster: PublicMember[] }) {
     });
 
     return matches.slice(0, 8);
-  }, [roster, search]);
+  }, [roster, deferredSearch]);
+
+  useEffect(() => {
+    // Reset selection whenever the result set changes.
+    setActiveIndex(0);
+  }, [deferredSearch, filteredRoster.length]);
+
+  const selectMember = useCallback((member: PublicMember) => {
+    setSelectedMember(member);
+    setStep(2);
+    setError(null);
+  }, []);
+
+  const onSearchKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLInputElement>) => {
+      if (filteredRoster.length === 0) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, filteredRoster.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        const member = filteredRoster[activeIndex];
+        if (member) selectMember(member);
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        setSearch('');
+      }
+    },
+    [activeIndex, filteredRoster, selectMember]
+  );
 
   const handleVerify = async () => {
     if (!selectedMember || !token.trim()) return;
@@ -82,6 +117,7 @@ export default function JoinClient({ roster }: { roster: PublicMember[] }) {
       router.push('/new');
     } catch (err: any) {
       setError(err.message);
+    } finally {
       setLoading(false);
     }
   };
@@ -111,35 +147,57 @@ export default function JoinClient({ roster }: { roster: PublicMember[] }) {
                   <input
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={onSearchKeyDown}
                     placeholder="Type your player name..."
                     className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder:text-slate-600 focus:border-cyan-500/50 outline-none transition-all"
                     autoFocus
+                    role="combobox"
+                    aria-expanded={filteredRoster.length > 0}
+                    aria-controls="roster-results"
+                    aria-autocomplete="list"
+                    aria-activedescendant={
+                      filteredRoster[activeIndex] ? `roster-option-${filteredRoster[activeIndex].tag}` : undefined
+                    }
                   />
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                {filteredRoster.map(member => (
-                  <button
-                    key={member.tag}
-                    onClick={() => {
-                      setSelectedMember(member);
-                      setStep(2);
-                    }}
-                    className="w-full flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20 transition-all text-left group"
-                  >
-                    <div className="flex items-center gap-3">
-                      <TownHallIcon level={member.th} size="sm" />
-                      <div>
-                        <div className="font-semibold text-white group-hover:text-cyan-300 transition-colors">
-                          {member.name}
+              <div
+                id="roster-results"
+                role="listbox"
+                className="space-y-2 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar"
+              >
+                {filteredRoster.map((member, idx) => {
+                  const active = idx === activeIndex;
+
+                  return (
+                    <button
+                      key={member.tag}
+                      id={`roster-option-${member.tag}`}
+                      role="option"
+                      aria-selected={active}
+                      onMouseEnter={() => setActiveIndex(idx)}
+                      onClick={() => selectMember(member)}
+                      className={
+                        "w-full flex items-center justify-between p-3 rounded-xl border transition-all text-left group " +
+                        (active
+                          ? "border-cyan-500/40 bg-cyan-500/10"
+                          : "border-white/5 bg-white/5 hover:bg-white/10 hover:border-white/20")
+                      }
+                    >
+                      <div className="flex items-center gap-3">
+                        <TownHallIcon level={member.th} size="sm" />
+                        <div>
+                          <div className="font-semibold text-white group-hover:text-cyan-300 transition-colors">
+                            {member.name}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-mono">{member.tag}</div>
                         </div>
-                        <div className="text-[10px] text-slate-500 font-mono">{member.tag}</div>
                       </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300" />
-                  </button>
-                ))}
+                      <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-300" />
+                    </button>
+                  );
+                })}
                 
                 {search.trim().length >= 2 && filteredRoster.length === 0 && (
                   <div className="py-8 text-center text-slate-500 text-sm italic">
@@ -186,6 +244,12 @@ export default function JoinClient({ roster }: { roster: PublicMember[] }) {
                     type="password"
                     value={token}
                     onChange={(e) => setToken(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !loading && token.trim().length >= 8) {
+                        e.preventDefault();
+                        handleVerify();
+                      }
+                    }}
                     placeholder="Paste token here..."
                     className="w-full bg-slate-950/50 border border-white/10 rounded-xl py-3 px-4 text-white placeholder:text-slate-600 focus:border-cyan-500/50 outline-none transition-all font-mono"
                     autoFocus

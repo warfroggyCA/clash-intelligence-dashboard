@@ -341,7 +341,8 @@ export default function CwlSetupPage() {
 
       const payload = payloadLines.join("\n");
 
-      await navigator.clipboard.writeText(payload);
+      const { copyToClipboard } = await import('@/lib/export-utils');
+      await copyToClipboard(payload);
     } catch {
       // swallow
     } finally {

@@ -792,12 +792,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     data?: { clanTag: string; status: 'ok' | 'invalid_ip' | 'error'; httpStatus?: number | null };
   }>(null);
 
-  const [linkTag, setLinkTag] = useState('');
-  const [linkToken, setLinkToken] = useState('');
-  const [showLinkToken, setShowLinkToken] = useState(false);
-  const [isLinking, setIsLinking] = useState(false);
-  const [linkError, setLinkError] = useState<string | null>(null);
-  const [linkSuccess, setLinkSuccess] = useState<string | null>(null);
+  // Profile linking is handled via /join (search by name → token verify).
 
   useEffect(() => {
     const controller = new AbortController();
@@ -813,12 +808,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
     return () => controller.abort();
   }, [currentClanTag]);
 
-  // If the user isn't linked yet, prefill the tag input with the currently-detected roster match if we have one.
-  useEffect(() => {
-    if (!linkTag && currentMember?.tag) {
-      setLinkTag(currentMember.tag);
-    }
-  }, [currentMember?.tag, linkTag]);
+  // (Linking UI moved to /join)
 
   // Empty state
   if (!roster) {
@@ -936,20 +926,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
               )}
             </div>
 
-            {/* Success UI */}
-            {linkSuccess && (
-              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-8 flex flex-col items-center justify-center text-center animate-in fade-in zoom-in-95 duration-500">
-                <div className="w-16 h-16 rounded-full bg-emerald-500/20 flex items-center justify-center mb-4">
-                  <CheckCircle className="w-10 h-10 text-emerald-400" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Account Linked!</h3>
-                <p className="text-emerald-200/70 text-sm max-w-xs">
-                  Your profile is now connected. We&apos;re updating your dashboard with your stats...
-                </p>
-              </div>
-            )}
-
-            {!currentPlayerTag && !linkSuccess && (
+            {!currentPlayerTag ? (
               <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-5 relative overflow-hidden group">
                 <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                   <Users className="w-24 h-24 text-cyan-400 rotate-12" />
@@ -960,128 +937,26 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
                     <span className="font-bold text-cyan-400">1</span>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-bold text-white text-lg">Verify your account</div>
+                    <div className="font-bold text-white text-lg">Link your profile</div>
                     <div className="text-sm text-slate-300 mt-1 leading-relaxed">
-                      Enter your <span className="text-white font-medium">Player Tag</span> and the 
-                      <span className="text-white font-medium"> API Token</span> found in your game settings 
-                      (Settings → More Settings → API Token).
+                      Use the login flow to find your account by <span className="text-white font-medium">in-game name</span>,
+                      then verify ownership with your <span className="text-white font-medium">API Token</span>.
                     </div>
-                    
-                    <div className="mt-2 text-xs text-slate-400 italic">
-                      This token is only used once to prove you own the account. We don&apos;t store it.
+                    <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                      <Link href="/join">
+                        <Button tone="primary">Go to login</Button>
+                      </Link>
+                      <Link href="/new/roster">
+                        <Button tone="ghost">Browse roster</Button>
+                      </Link>
                     </div>
-
-                    <div className="mt-5 grid grid-cols-1 md:grid-cols-5 gap-4">
-                      <div className="md:col-span-2">
-                        <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">Player tag</label>
-                        <input
-                          value={linkTag}
-                          onChange={(e) => setLinkTag(e.target.value.toUpperCase())}
-                          placeholder="#G9QVRYC2Y"
-                          className="w-full rounded-lg bg-slate-950/60 border border-white/10 px-3 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none transition-colors"
-                        />
-                      </div>
-                      <div className="md:col-span-3">
-                        <label className="block text-xs font-medium uppercase tracking-wider text-slate-500 mb-1.5">In-game API token</label>
-                        <div className="relative group/input">
-                          <input
-                            value={linkToken}
-                            onChange={(e) => setLinkToken(e.target.value)}
-                            type={showLinkToken ? 'text' : 'password'}
-                            placeholder="Paste 8-character token"
-                            className="w-full rounded-lg bg-slate-950/60 border border-white/10 pl-3 pr-10 py-2.5 text-sm text-white focus:border-cyan-500/50 outline-none transition-colors"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowLinkToken((v) => !v)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-cyan-400 transition-colors"
-                            title={showLinkToken ? 'Hide token' : 'Show token'}
-                          >
-                            {showLinkToken ? (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.956 9.956 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                              </svg>
-                            ) : (
-                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                              </svg>
-                            )}
-                          </button>
-                        </div>
-                      </div>
-                      <div className="md:col-span-5 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mt-2">
-                        <div className="text-sm min-h-[1.25rem]">
-                          {linkError ? (
-                            <div className="flex items-center gap-1.5 text-red-400 font-medium animate-in fade-in slide-in-from-left-1 duration-200">
-                              <XCircle className="w-4 h-4" />
-                              <span>{linkError}</span>
-                            </div>
-                          ) : null}
-                        </div>
-                        <div className="flex gap-3 items-center">
-                          <Link href="/new/roster" className="sm:hidden">
-                            <Button tone="ghost" type="button" size="sm">Find name</Button>
-                          </Link>
-                          <Button
-                            tone="primary"
-                            disabled={isLinking || !linkTag.trim() || !linkToken.trim()}
-                            onClick={async () => {
-                              if (isLinking) return;
-                              setIsLinking(true);
-                              setLinkError(null);
-                              setLinkSuccess(null);
-                              try {
-                                const res = await fetch('/api/account/link-player', {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json' },
-                                  body: JSON.stringify({
-                                    clanTag: roster.clanTag,
-                                    playerTag: linkTag,
-                                    playerApiToken: linkToken,
-                                  }),
-                                });
-                                const json = await res.json().catch(() => null);
-                                if (!res.ok || !json?.success) {
-                                  throw new Error(json?.error || 'Failed to link player tag');
-                                }
-                                setLinkSuccess(`Linked ${linkTag.trim().toUpperCase()} ✓`);
-                                setLinkToken('');
-                                setShowLinkToken(false);
-                                
-                                await new Promise(resolve => setTimeout(resolve, 2000));
-                                await hydrateSession();
-                                if (typeof window !== 'undefined') {
-                                  window.location.reload();
-                                }
-                                setLinkSuccess(null);
-                              } catch (err: any) {
-                                setLinkError(err?.message || 'Failed to link');
-                              } finally {
-                                setIsLinking(false);
-                              }
-                            }}
-                            className="px-8 shadow-lg shadow-cyan-500/10"
-                          >
-                            {isLinking ? (
-                              <div className="flex items-center gap-2">
-                                <svg className="animate-spin h-4 w-4 text-white" viewBox="0 0 24 24">
-                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                </svg>
-                                <span>Verifying…</span>
-                              </div>
-                            ) : (
-                              'Verify & Link'
-                            )}
-                          </Button>
-                        </div>
-                      </div>
+                    <div className="mt-3 text-xs text-slate-400 italic">
+                      Token is only used once to prove you own the account.
                     </div>
                   </div>
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
         </Card>
 

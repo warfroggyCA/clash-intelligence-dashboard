@@ -409,7 +409,9 @@ const [eligiblePool, setEligiblePool] = useState<Set<string> | null>(null);
           ? `Selected lineups:\nOurs: ${JSON.stringify(lineupOrder, null, 2)}\nOpp: ${JSON.stringify(opponentOrder, null, 2)}`
           : 'Suggest best lineup and matchups. Balance strength and fairness; assume opponent can pick any 15/30 from their roster.',
       ].join('\n');
-      await navigator.clipboard.writeText(payload);
+      const { copyToClipboard } = await import('@/lib/export-utils');
+      const ok = await copyToClipboard(payload);
+      if (!ok) throw new Error('copy failed');
       setCopyState('copied');
       setTimeout(() => setCopyState('idle'), 1500);
     } catch (err) {
