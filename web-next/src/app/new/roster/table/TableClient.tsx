@@ -14,8 +14,7 @@ type PlayerWarMetrics = {
   lowHitRate: number | null;
 };
 import Image from 'next/image';
-import { Button } from '@/components/new-ui/Button';
-import { Input } from '@/components/new-ui/Input';
+import { Spec2Button as Button, Spec2Input as Input, Spec2IconButton } from '@/components/ui/Spec2Controls';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
 import LeagueIcon from '@/components/new-ui/icons/LeagueIcon';
 import RoleIcon from '@/components/new-ui/icons/RoleIcon';
@@ -138,9 +137,13 @@ const MiniStatCard = ({
 export default function TableClient({
   initialRoster,
   onViewChange,
+  mode,
+  onToggleMode,
 }: {
   initialRoster?: RosterData | null;
   onViewChange?: (view: 'cards' | 'table') => void;
+  mode: 'dark' | 'light';
+  onToggleMode: () => void;
 }) {
   const mounted = useMountFade();
   const tablePadY = 'py-2';
@@ -528,7 +531,7 @@ export default function TableClient({
 
   if (isNarrow) {
     // On narrow viewports, just reuse the card layout to avoid cramped columns.
-    return <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} />;
+    return <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} onToggleMode={onToggleMode} />;
   }
 
   return (
@@ -540,6 +543,8 @@ export default function TableClient({
         clanStats={clanStats || null}
         view="table"
         onViewChange={onViewChange}
+        mode={mode}
+        onToggleMode={onToggleMode}
         rightActions={
           <>
             <Tooltip content={<span>Refresh snapshot.</span>}>

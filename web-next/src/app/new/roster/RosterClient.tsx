@@ -3,8 +3,7 @@
 import { useMemo, useState, useEffect, useCallback, useRef, useDeferredValue } from 'react';
 import useSWR from 'swr';
 import type { IngestionJobRecord } from '@/lib/ingestion/job-store';
-import { Button } from '@/components/new-ui/Button';
-import { Input } from '@/components/new-ui/Input';
+import { Spec2Button as Button, Spec2Input as Input, Spec2IconButton } from '@/components/ui/Spec2Controls';
 import TownHallIcon from '@/components/new-ui/icons/TownHallIcon';
 import LeagueIcon from '@/components/new-ui/icons/LeagueIcon';
 import RoleIcon from '@/components/new-ui/icons/RoleIcon';
@@ -231,9 +230,13 @@ const isNewJoiner = (member: RosterMember): boolean => {
 export default function RosterClient({
   initialRoster,
   onViewChange,
+  mode,
+  onToggleMode,
 }: {
   initialRoster?: RosterData | null;
   onViewChange?: (view: 'cards' | 'table') => void;
+  mode: 'dark' | 'light';
+  onToggleMode: () => void;
 }) {
   const mounted = useMountFade();
   const { data, members, isLoading, error, isValidating, mutate, clanTag, refreshLive } = useRosterData(initialRoster || undefined);
@@ -868,47 +871,71 @@ export default function RosterClient({
         clanStats={clanStats || null}
         view="cards"
         onViewChange={onViewChange}
+        mode={mode}
+        onToggleMode={onToggleMode}
         rightActions={
           <>
-            <Button
-              tone="primary"
-              onClick={() => {
-                void mutate();
-              }}
-              disabled={isValidating}
-              title="Refresh snapshot"
-            >
-              {isValidating ? 'Refreshing…' : 'Refresh'}
-            </Button>
+            <Tooltip content={<span>Refresh snapshot.</span>}>
+              <Button
+                tone="primary"
+                onClick={() => {
+                  void mutate();
+                }}
+                disabled={isValidating}
+                ariaLabel="Refresh snapshot"
+              >
+                {isValidating ? 'Refreshing…' : 'Refresh'}
+              </Button>
+            </Tooltip>
 
             {permissions.canModifyClanData ? (
-              <Button
-                tone="accentAlt"
-                onClick={handleRequestRefresh}
-                disabled={Boolean(ingestionJobId)}
-                title={ingestionJobId ? 'Refresh already running' : 'Queue a full ingestion run (updates snapshots)'}
+              <Tooltip
+                content={
+                  <span>
+                    {ingestionJobId ? 'Refresh already running.' : 'Queue a full ingestion run (updates snapshots).'}
+                  </span>
+                }
               >
-                {ingestionJobId ? (ingestionJobData?.status === 'running' ? 'Refreshing…' : 'Refresh queued') : 'Request refresh'}
-              </Button>
+                <Button
+                  tone="accentAlt"
+                  onClick={handleRequestRefresh}
+                  disabled={Boolean(ingestionJobId)}
+                  ariaLabel={ingestionJobId ? 'Refresh already running' : 'Request refresh'}
+                >
+                  {ingestionJobId ? (ingestionJobData?.status === 'running' ? 'Refreshing…' : 'Refresh queued') : 'Request refresh'}
+                </Button>
+              </Tooltip>
             ) : null}
 
-            <Button
-              tone="accentAlt"
-              onClick={handleGenerateInsights}
-              disabled={!permissions.canGenerateCoachingInsights}
-              title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Generate insights'}
-            >
-              Generate Insights
-            </Button>
-            <div className="relative" ref={exportRef}>
+            <Tooltip content={<span>{!permissions.canGenerateCoachingInsights ? 'Permission required.' : 'Generate insights.'}</span>}>
               <Button
-                tone="ghost"
-                onClick={() => setExportOpen((prev) => !prev)}
-                disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
-                title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Export roster'}
+                tone="accentAlt"
+                onClick={handleGenerateInsights}
+                disabled={!permissions.canGenerateCoachingInsights}
+                ariaLabel="Generate insights"
               >
-                Export
+                Generate Insights
               </Button>
+            </Tooltip>
+
+            <div className="relative" ref={exportRef}>
+              <Tooltip
+                content={
+                  !permissions.canGenerateCoachingInsights
+                    ? <span>Permission required.</span>
+                    : <span>Export roster.</span>
+                }
+              >
+                <Button
+                  tone="ghost"
+                  onClick={() => setExportOpen((prev) => !prev)}
+                  disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
+                  ariaLabel="Export roster"
+                >
+                  Export
+                </Button>
+              </Tooltip>
+
               {exportOpen && (
                 <div
                   className="absolute right-0 mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg"
