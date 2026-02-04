@@ -27,6 +27,7 @@ import {
 } from './roster-utils';
 import Link from 'next/link';
 import { Tooltip } from '@/components/ui/Tooltip';
+import { Spec2IconButton } from '@/components/ui/Spec2Controls';
 import { MoreHorizontal } from 'lucide-react';
 
 const useMountFade = () => {
@@ -308,6 +309,33 @@ export default function RosterClient({
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, [exportOpen]);
+
+  // Close per-card action menu on outside click / Escape
+  useEffect(() => {
+    if (!actionMenuTag) return;
+
+    const onClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) {
+        setActionMenuTag(null);
+        return;
+      }
+      const root = target.closest?.(`[data-action-menu-root="${actionMenuTag}"]`);
+      if (root) return;
+      setActionMenuTag(null);
+    };
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActionMenuTag(null);
+    };
+
+    window.addEventListener('mousedown', onClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [actionMenuTag]);
 
   const handleGenerateInsights = useCallback(() => {
     if (!permissions.canGenerateCoachingInsights) {
@@ -619,27 +647,25 @@ export default function RosterClient({
         }}
       >
         {permissions.canModifyClanData ? (
-          <div className="absolute right-3 top-3">
-            <button
-              type="button"
-              onClick={(event) => {
-                event.stopPropagation();
-                setActionMenuTag(isActionOpen ? null : member.tag);
-              }}
-              className="h-10 w-10 inline-flex items-center justify-center rounded-xl border transition-colors"
-              style={{
-                background: 'rgba(255,255,255,0.04)',
-                borderColor: surface.border,
-                color: text.secondary,
-              }}
-              aria-label="Roster actions"
-            >
-              <MoreHorizontal size={18} />
-            </button>
+          <div className="absolute right-3 top-3" data-action-menu-root={member.tag}>
+            <Tooltip content={<span>More actions</span>}>
+              <Spec2IconButton
+                ariaLabel="Roster actions"
+                active={isActionOpen}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setActionMenuTag(isActionOpen ? null : member.tag);
+                }}
+              >
+                <MoreHorizontal size={18} />
+              </Spec2IconButton>
+            </Tooltip>
+
             {isActionOpen ? (
               <div
                 className="absolute right-0 mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg"
                 style={{ background: surface.panel, borderColor: surface.border }}
+                role="menu"
               >
                 <button
                   className="w-full rounded-lg px-3 py-2 text-left transition-colors"
@@ -1027,45 +1053,67 @@ export default function RosterClient({
           )}
 
 
-        <div className="rounded-2xl border" style={{ background: 'var(--card)', borderColor: 'var(--border-subtle)' }}>
-        <div className="sticky top-2 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur px-4 py-2 flex flex-wrap items-center gap-3">
+        <div className="rounded-2xl border" style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}>
+        <div
+          className="sticky top-2 z-20 border-b backdrop-blur px-4 py-3 flex flex-wrap items-center gap-3"
+          style={{ borderColor: surface.border, background: surface.panel }}
+        >
           <Input
-            placeholder="Search players"
-            className="max-w-xs"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={setSearch}
+            placeholder="Search players"
+            ariaLabel="Search players"
+            className="max-w-xs"
           />
-          <div className="flex gap-2 text-xs">
-            {(['all', 'current', 'former'] as const).map((key) => (
-              <Button
-                key={key}
-                tone={status === key ? 'accentAlt' : 'ghost'}
-                className="h-10 px-4"
+
+          <div
+            className="inline-flex rounded-xl border overflow-hidden"
+            style={{ borderColor: surface.border, background: 'rgba(0,0,0,0.12)' }}
+            role="group"
+            aria-label="Roster filter"
+          >
+            {([
+              { key: 'all', label: 'All', active: status === 'all' && !joinerFilter, disabled: false },
+              { key: 'current', label: 'Current', active: status === 'current' && !joinerFilter, disabled: false },
+              { key: 'former', label: 'Former', active: status === 'former' && !joinerFilter, disabled: false },
+              { key: 'new', label: 'New Joiners', active: joinerFilter, disabled: newJoinerCount === 0 },
+            ] as const).map((opt) => (
+              <button
+                key={opt.key}
+                type="button"
                 onClick={() => {
-                setStatus(key);
-                // Also update URL immediately for shareable links.
-                const params = new URLSearchParams(searchParams?.toString() ?? '');
-                params.set('status', key);
-                const query = params.toString();
-                router.replace(query ? `/new/roster?${query}` : '/new/roster');
-              }}
+                  if (opt.key === 'new') {
+                    toggleJoinerFilter();
+                    return;
+                  }
+
+                  setStatus(opt.key);
+                  const params = new URLSearchParams(searchParams?.toString() ?? '');
+                  params.set('status', opt.key);
+                  params.delete('filter');
+                  const query = params.toString();
+                  router.replace(query ? `/new/roster?${query}` : '/new/roster');
+                }}
+                disabled={opt.disabled}
+                className="h-11 px-4 inline-flex items-center gap-2 text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                style={{
+                  background: opt.active ? 'rgba(34,211,238,0.18)' : 'transparent',
+                  color: opt.active ? 'var(--accent-alt)' : text.secondary,
+                  boxShadow: opt.active ? 'inset 0 0 0 1px rgba(34,211,238,0.35)' : undefined,
+                }}
+                aria-pressed={opt.active}
               >
-                {key.charAt(0).toUpperCase() + key.slice(1)}
-              </Button>
+                <span>{opt.label}</span>
+                {opt.key === 'new' && newJoinerCount > 0 ? (
+                  <span
+                    className="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
+                    style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.26)', color: text.primary }}
+                  >
+                    {newJoinerCount}
+                  </span>
+                ) : null}
+              </button>
             ))}
-            <Button
-              tone={joinerFilter ? 'accentAlt' : 'ghost'}
-              className="h-10 px-4"
-              onClick={toggleJoinerFilter}
-              disabled={newJoinerCount === 0}
-            >
-              New Joiners
-              {newJoinerCount > 0 && (
-                <span className="ml-2 inline-flex items-center justify-center rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-semibold text-purple-200">
-                  {newJoinerCount}
-                </span>
-              )}
-            </Button>
           </div>
         </div>
 
