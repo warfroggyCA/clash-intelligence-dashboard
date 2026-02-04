@@ -27,7 +27,6 @@ import {
 } from './roster-utils';
 import Link from 'next/link';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { Spec2IconButton } from '@/components/ui/Spec2Controls';
 import { MoreHorizontal } from 'lucide-react';
 
 const useMountFade = () => {
