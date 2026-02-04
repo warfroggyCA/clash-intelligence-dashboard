@@ -11,6 +11,20 @@
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { exec as execCb, spawn } from 'node:child_process';
+import { promisify } from 'node:util';
+
+const exec = promisify(execCb);
+
+function spawnDetached(cmd, args, cwd) {
+  const child = spawn(cmd, args, {
+    cwd,
+    detached: true,
+    stdio: 'ignore',
+    env: process.env,
+  });
+  child.unref();
+}
 
 const PORT = Number(process.env.DEV_STATUS_PORT || 5051);
 const NEXT_PORT = Number(process.env.NEXT_DEV_PORT || 5050);
@@ -153,22 +167,40 @@ function renderPage(payload) {
       </div>
 
       <div style="height: 12px;"></div>
-      <div class="muted" style="font-size: 12px;">
-        This page polls <code>/status.json</code> every 1s.
-        If it shows <b>OFFLINE</b>, Next dev is down. If it shows <b>STALE</b>, the agent heartbeat stopped.
+
+      <div class="row" style="justify-content: space-between; align-items: center;">
+        <div class="muted" style="font-size: 12px;">
+          This page polls <code>/status.json</code> every 1s.
+          If it shows <b>OFFLINE</b>, Next dev is down. If it shows <b>STALE</b>, the agent heartbeat stopped.
+        </div>
+        <button id="restartBtn" class="pill" style="cursor: pointer; user-select: none;">
+          <span class="dot pulse" style="background: rgba(251,191,36,0.95); box-shadow: 0 0 18px rgba(251,191,36,0.35);"></span>
+          <span style="font-weight: 900;">Restart dev + wake agent</span>
+        </button>
       </div>
     </div>
   </div>
 
 <script>
+  async function restart() {
+    const btn = document.getElementById('restartBtn');
+    if (!btn) return;
+    btn.style.opacity = '0.7';
+    btn.style.pointerEvents = 'none';
+    try {
+      await fetch('/restart', { method: 'POST' });
+    } catch {}
+    // Give it a moment, then reload.
+    setTimeout(() => location.reload(), 900);
+  }
+
+  document.getElementById('restartBtn')?.addEventListener('click', restart);
+
   async function tick() {
     try {
       const res = await fetch('/status.json', { cache: 'no-store' });
       const data = await res.json();
-      // If the derived label changed, just reload for simplicity.
       const label = data?.derived?.label;
-      if (label && document.title !== 'Dev Status' && false) {}
-      // Soft reload if status changed.
       const cur = document.querySelector('.big')?.textContent;
       if (cur && label && cur !== label) location.reload();
     } catch {
@@ -179,6 +211,26 @@ function renderPage(payload) {
 </script>
 </body>
 </html>`;
+}
+
+async function restartAll() {
+  // Best-effort: kill known processes, then restart Next + heartbeat.
+  // This endpoint is local-only (127.0.0.1) and meant for dev convenience.
+  try { await exec(`pkill -f "next dev -p ${NEXT_PORT}" || true`); } catch {}
+  try { await exec(`pkill -f "scripts/agent-heartbeat.mjs" || true`); } catch {}
+
+  // Touch a wake request file (future hook for OpenClaw wake).
+  try {
+    const wakePath = path.resolve(process.cwd(), 'output', 'wake.request.json');
+    await fs.mkdir(path.dirname(wakePath), { recursive: true });
+    await fs.writeFile(wakePath, JSON.stringify({ atMs: Date.now(), kind: 'wake' }, null, 2));
+  } catch {}
+
+  // Restart heartbeat writer.
+  spawnDetached(process.execPath, ['scripts/agent-heartbeat.mjs'], process.cwd());
+
+  // Restart Next dev (single-run; if it dies again, press button again or run your watchdog).
+  spawnDetached('npm', ['run', 'dev'], process.cwd());
 }
 
 async function buildPayload() {
@@ -232,6 +284,21 @@ async function buildPayload() {
 const server = http.createServer(async (req, res) => {
   try {
     const url = new URL(req.url || '/', `http://${req.headers.host || '127.0.0.1'}`);
+
+    if (url.pathname === '/restart') {
+      if ((req.method || 'GET').toUpperCase() !== 'POST') {
+        res.writeHead(405, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+        res.end(JSON.stringify({ ok: false, error: 'POST required' }));
+        return;
+      }
+
+      // Fire-and-forget restart.
+      restartAll().catch(() => {});
+
+      res.writeHead(200, { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store' });
+      res.end(JSON.stringify({ ok: true }));
+      return;
+    }
 
     if (url.pathname === '/status.json') {
       const payload = await buildPayload();
