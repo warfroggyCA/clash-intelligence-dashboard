@@ -133,7 +133,7 @@ function renderPage(payload) {
         <div>
           <div class="muted" style="text-transform: uppercase; letter-spacing: 0.18em; font-size: 11px;">Dev Status (sidecar)</div>
           <div class="big">${htmlEscape(derived.label)}</div>
-          <div class="muted">Last heartbeat: ${htmlEscape(derived.heartbeatAge)} ago</div>
+          <div class="muted">Last heartbeat: <span id="hbAge">${htmlEscape(derived.heartbeatAge)}</span> ago <span id="hbAt" class="muted">(at ${heartbeat.atMs ? new Date(heartbeat.atMs).toLocaleTimeString() : '—'})</span></div>
         </div>
         <div class="pill">
           <div class="dot ${derived.animClass}" style="background: ${derived.color}; box-shadow: 0 0 18px ${derived.color};"></div>
@@ -196,17 +196,56 @@ function renderPage(payload) {
 
   document.getElementById('restartBtn')?.addEventListener('click', restart);
 
+  function fmtAge(ms) {
+    if (ms == null) return 'unknown';
+    if (ms < 1000) return ms + ' ms';
+    if (ms < 60000) return Math.round(ms/1000) + 's';
+    return Math.round(ms/60000) + 'm';
+  }
+
   async function tick() {
     try {
       const res = await fetch('/status.json', { cache: 'no-store' });
       const data = await res.json();
-      const label = data?.derived?.label;
-      const cur = document.querySelector('.big')?.textContent;
-      if (cur && label && cur !== label) location.reload();
+
+      const nowMs = data?.nowMs;
+      const atMs = data?.heartbeat?.atMs;
+      const derived = data?.derived;
+
+      // Update label + dot
+      if (derived?.label) {
+        const big = document.querySelector('.big');
+        if (big) big.textContent = derived.label;
+      }
+      if (derived?.short) {
+        const short = document.querySelector('.pill div > div');
+        if (short) short.textContent = derived.short;
+      }
+      const dot = document.querySelector('.pill .dot');
+      if (dot && derived?.color) {
+        dot.style.background = derived.color;
+        dot.style.boxShadow = '0 0 18px ' + derived.color;
+        dot.className = 'dot ' + (derived.animClass || '');
+      }
+
+      // Update heartbeat age text (counts up)
+      const ageEl = document.getElementById('hbAge');
+      if (ageEl && typeof nowMs === 'number' && typeof atMs === 'number') {
+        ageEl.textContent = fmtAge(nowMs - atMs);
+      } else if (ageEl && derived?.heartbeatAge) {
+        ageEl.textContent = derived.heartbeatAge;
+      }
+
+      const atEl = document.getElementById('hbAt');
+      if (atEl && typeof atMs === 'number') {
+        const t = new Date(atMs).toLocaleTimeString();
+        atEl.textContent = '(at ' + t + ')';
+      }
     } catch {
-      // If sidecar is up, this shouldn't happen.
+      // ignore
     }
   }
+  tick();
   setInterval(tick, 1000);
 </script>
 </body>
