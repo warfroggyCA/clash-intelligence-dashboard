@@ -29,6 +29,23 @@ export const resolveLeague = (member?: RosterMember | null): { league: string; t
   return { league: resolved.league, tier: resolved.tier ?? undefined };
 };
 
+export const resolveLeagueBadgeText = (league?: string | null, tier?: string | number) => {
+  if (tier != null) return String(tier);
+  if (!league) return undefined;
+  const match = /\b([IV]{1,3})\b/.exec(league);
+  if (match?.[1]) return match[1];
+  const lower = league.toLowerCase();
+  if (lower.includes('legend')) return 'L';
+  if (lower.includes('titan')) return 'T';
+  if (lower.includes('champion')) return 'C';
+  if (lower.includes('master')) return 'M';
+  if (lower.includes('crystal')) return 'CR';
+  if (lower.includes('gold')) return 'G';
+  if (lower.includes('silver')) return 'S';
+  if (lower.includes('bronze')) return 'B';
+  return undefined;
+};
+
 export const rosterLeagueSort = (members: RosterMember[]) => {
   const leagueOrder = [
     'Legend League',

@@ -1,6 +1,18 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef, useDeferredValue } from 'react';
+import type { MouseEvent } from 'react';
+import useSWR from 'swr';
+import { useRouter, useSearchParams } from 'next/navigation';
+
+type PlayerWarMetrics = { 
+  warsConsidered: number;
+  attacksUsed: number;
+  avgStars: number | null;
+  avgDestructionPct: number | null;
+  tripleRate: number | null;
+  lowHitRate: number | null;
+};
 import Image from 'next/image';
 import { Button } from '@/components/new-ui/Button';
 import { Input } from '@/components/new-ui/Input';
@@ -17,6 +29,7 @@ import {
   normalizeRole,
   resolveActivity,
   resolveLeague,
+  resolveLeagueBadgeText,
   resolveRushPercent,
   resolveTownHall,
   resolveTrophies,
@@ -26,10 +39,19 @@ import {
 import RosterClient from '../RosterClient';
 import type { RosterData } from '../types';
 import { RosterSkeleton } from '@/components/ui/RosterSkeleton';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { normalizeTag } from '@/lib/tags';
 import { normalizeSearch } from '@/lib/search';
 import Link from 'next/link';
+import ColumnPickerModal, { type ColumnKey as ModalColumnKey } from './ColumnPickerModal';
+
+const useMountFade = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+};
 import { formatDistanceToNow } from 'date-fns';
+import { RosterHeader } from '../RosterHeader';
 import { useLeadership } from '@/hooks/useLeadership';
 import { showToast } from '@/lib/toast';
 import {
@@ -46,13 +68,13 @@ import {
 const AnimatedCounter = ({ value, duration = 800 }: { value: number; duration?: number }) => {
   const [displayValue, setDisplayValue] = useState(0);
   const displayValueRef = useRef(0);
-  
+
   useEffect(() => {
     if (typeof value !== 'number' || isNaN(value)) return;
     const startTime = Date.now();
     const startValue = displayValueRef.current;
     const diff = value - startValue;
-    
+
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
@@ -64,50 +86,194 @@ const AnimatedCounter = ({ value, duration = 800 }: { value: number; duration?: 
     };
     requestAnimationFrame(animate);
   }, [value, duration]);
-  
+
   return <>{displayValue.toLocaleString()}</>;
 };
 
-// TH distribution bar
-const THDistributionBar = ({ distribution }: { distribution: Record<number, number> }) => {
-  const thColors: Record<number, string> = {
-    17: '#f43f5e', 16: '#f97316', 15: '#eab308', 14: '#22c55e', 
-    13: '#3b82f6', 12: '#8b5cf6', 11: '#ec4899', 10: '#6366f1',
-    9: '#06b6d4', 8: '#84cc16', 7: '#f59e0b', 6: '#78716c'
-  };
-  
-  const entries = Object.entries(distribution)
-    .map(([th, count]) => ({ th: parseInt(th), count }))
-    .filter(e => e.count > 0)
-    .sort((a, b) => b.th - a.th);
-  
-  const total = entries.reduce((sum, e) => sum + e.count, 0);
-  if (total === 0) return null;
-  
-  return (
-    <div className="flex items-center gap-1 w-full max-w-md">
-      {entries.map(({ th, count }) => (
-        <div
-          key={th}
-          className="h-5 rounded-sm flex items-center justify-center text-[9px] font-bold text-white/90"
-          style={{ 
-            width: `${(count / total) * 100}%`,
-            minWidth: count > 0 ? '20px' : 0,
-            background: thColors[th] || '#64748b',
-          }}
-          title={`TH${th}: ${count}`}
-        >
-          {th}
-        </div>
-      ))}
-    </div>
-  );
+const surface = {
+  card: 'var(--card)',
+  panel: 'var(--panel)',
+  border: 'var(--border-subtle)',
 };
 
-export default function TableClient({ initialRoster }: { initialRoster?: RosterData | null }) {
-  const { data, members, isLoading, error, isValidating, mutate } = useRosterData(initialRoster || undefined);
+const text = {
+  primary: 'var(--text-primary)',
+  secondary: 'var(--text-secondary)',
+  muted: 'var(--text-muted)',
+};
+
+const MiniStatCard = ({
+  label,
+  value,
+  icon,
+  color = '#fff',
+  subtext,
+}: {
+  label: string;
+  value: string | number;
+  icon?: string;
+  color?: string;
+  subtext?: string;
+}) => (
+  <div
+    className="flex flex-col items-center justify-center px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105"
+    style={{
+      background: surface.panel,
+      border: `1px solid ${surface.border}`,
+    }}
+  >
+    <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: text.muted }}>{label}</div>
+    <div className="flex items-center gap-1">
+      {icon ? <span className="text-lg">{icon}</span> : null}
+      <span className="text-2xl font-black" style={{ color, textShadow: `0 0 20px ${color}30` }}>
+        {typeof value === 'number' ? <AnimatedCounter value={value} /> : value}
+      </span>
+    </div>
+    {subtext ? <div className="text-[10px] mt-0.5" style={{ color: text.muted }}>{subtext}</div> : null}
+  </div>
+);
+
+// TH distribution bar is shared via RosterHeader
+
+export default function TableClient({
+  initialRoster,
+  onViewChange,
+}: {
+  initialRoster?: RosterData | null;
+  onViewChange?: (view: 'cards' | 'table') => void;
+}) {
+  const mounted = useMountFade();
+  const tablePadY = 'py-2';
+  const tablePadX = 'px-3';
+  const headerTextClass = 'text-[11px] font-semibold uppercase tracking-[0.16em]';
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const { data, members, isLoading, error, isValidating, mutate, clanTag } = useRosterData(initialRoster || undefined);
   const { permissions } = useLeadership();
-  const [search, setSearch] = useState('');
+
+  const initialQ = searchParams?.get('q') ?? '';
+  const [search, setSearch] = useState(() => initialQ);
+  const deferredSearch = useDeferredValue(search);
+  const normalizedQuery = useMemo(() => normalizeSearch(deferredSearch.trim()), [deferredSearch]);
+
+  type TablePreset = 'compact' | 'leadership' | 'war' | 'custom';
+  type ColumnKey = ModalColumnKey;
+
+  const presetColumns: Record<Exclude<TablePreset, 'custom'>, ColumnKey[]> = useMemo(
+    () => ({
+      compact: ['th', 'league', 'trophies', 'vip', 'donations', 'rush', 'srs', 'heroes'],
+      leadership: ['role', 'th', 'vip', 'donations', 'rush', 'tenure'],
+      war: ['th', 'league', 'trophies', 'vip', 'rush', 'heroes', 'war_avg_stars', 'war_triple_rate'],
+    }),
+    [],
+  );
+
+  const allColumns: Array<{ key: ColumnKey; label: string; description?: string }> = useMemo(
+    () => [
+      { key: 'th', label: 'TH' },
+      { key: 'league', label: 'League' },
+      { key: 'trophies', label: 'Trophies' },
+      { key: 'vip', label: 'VIP' },
+      { key: 'donations', label: 'Donated' },
+      { key: 'rush', label: 'Rush %' },
+      { key: 'srs', label: 'SRS' },
+      { key: 'heroes', label: 'Heroes %' },
+      { key: 'role', label: 'Role' },
+      { key: 'tenure', label: 'Tenure' },
+      { key: 'war_attacks', label: 'War Attacks', description: 'Attacks used across last 3 regular wars.' },
+      { key: 'war_avg_stars', label: 'War Avg Stars', description: 'Average stars across last 3 regular wars.' },
+      { key: 'war_triple_rate', label: 'War Triple %', description: '3★ rate across last 3 regular wars.' },
+      { key: 'war_low_hit_rate', label: 'War Low-hit %', description: '0–1★ rate across last 3 regular wars.' },
+      { key: 'war_avg_destruction', label: 'War Avg Destr %', description: 'Average destruction across last 3 regular wars.' },
+    ],
+    [],
+  );
+
+  // Available columns list is memoized above
+
+  const didHydrateRef = useRef(false);
+
+  const [preset, setPreset] = useState<TablePreset>(() => {
+    const urlPreset = searchParams?.get('preset');
+    if (urlPreset === 'compact' || urlPreset === 'leadership' || urlPreset === 'war' || urlPreset === 'custom') {
+      return urlPreset;
+    }
+    try {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('roster.table.preset') : null;
+      if (saved === 'compact' || saved === 'leadership' || saved === 'war' || saved === 'custom') {
+        return saved;
+      }
+    } catch {
+      // ignore
+    }
+    return 'compact';
+  });
+
+  const [sortKey, setSortKey] = useState<
+    'league' | 'th' | 'trophies' | 'donations' | 'received' | 'rush' | 'srs' | 'vip' | 'war_attacks' | 'war_avg_stars' | 'war_triple_rate' | 'war_low_hit_rate' | 'war_avg_destruction'
+  >(() => {
+    const urlSort = searchParams?.get('sort');
+    return (urlSort as any) || 'league';
+  });
+
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>(() => {
+    const urlDir = searchParams?.get('dir');
+    return urlDir === 'asc' || urlDir === 'desc' ? urlDir : 'desc';
+  });
+
+  const [customOpen, setCustomOpen] = useState(false);
+  const [customColumns, setCustomColumns] = useState<ColumnKey[]>(presetColumns.compact);
+
+  const activeColumns = useMemo<ColumnKey[]>(() => {
+    return preset === 'custom' ? customColumns : presetColumns[preset];
+  }, [customColumns, preset, presetColumns]);
+
+  // Load custom columns from localStorage once we know which keys are allowed.
+  useEffect(() => {
+    try {
+      const savedCols = window.localStorage.getItem('roster.table.customColumns');
+      if (savedCols) {
+        const parsed = JSON.parse(savedCols);
+        if (Array.isArray(parsed)) {
+          const allowed = new Set(allColumns.map((c) => c.key));
+          const next = parsed.filter((k) => allowed.has(k));
+          if (next.length) setCustomColumns(next);
+        }
+      }
+    } catch {
+      // ignore
+    } finally {
+      didHydrateRef.current = true;
+    }
+  }, [allColumns]);
+
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+    try {
+      window.localStorage.setItem('roster.table.preset', preset);
+    } catch {
+      // ignore
+    }
+
+    // Persist preset in URL for shareable links.
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.set('preset', preset);
+    const next = params.toString();
+    const current = (searchParams?.toString() ?? '').replace(/^\?/, '');
+    if (next !== current) {
+      router.replace(next ? `/new/roster?${next}` : '/new/roster');
+    }
+  }, [preset, router, searchParams]);
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('roster.table.customColumns', JSON.stringify(customColumns));
+    } catch {
+      // ignore
+    }
+  }, [customColumns]);
   const [isNarrow, setIsNarrow] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -162,18 +328,52 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
     [permissions.canGenerateCoachingInsights, exportRoster]
   );
 
+  // Persist search in URL (shareable + survives refresh)
+  useEffect(() => {
+    if (!didHydrateRef.current) return;
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    const q = deferredSearch.trim();
+    if (q) params.set('q', q);
+    else params.delete('q');
+
+    const next = params.toString();
+    const current = (searchParams?.toString() ?? '').replace(/^\?/, '');
+    if (next !== current) {
+      router.replace(next ? `/new/roster?${next}` : '/new/roster');
+    }
+  }, [deferredSearch, router, searchParams]);
+
   const filteredMembers = useMemo(() => {
-    const query = normalizeSearch(search.trim());
+    const query = normalizedQuery;
     if (!query) return members;
     return members.filter((member) => {
       const name = normalizeSearch(member.name || '');
       const tag = normalizeSearch(member.tag || '');
       return name.includes(query) || tag.includes(query);
     });
-  }, [members, search]);
+  }, [members, normalizedQuery]);
 
-  const [sortKey, setSortKey] = useState<'league' | 'th' | 'trophies' | 'donations' | 'received' | 'rush' | 'srs' | 'vip'>('league');
-  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const warKey = useMemo(() => {
+    if (!clanTag) return null;
+    return `/api/war/player-metrics?clanTag=${encodeURIComponent(clanTag)}&limit=3&warType=regular`;
+  }, [clanTag]);
+
+  const { data: warMetricsData, mutate: mutateWarMetrics } = useSWR<
+    {
+      clanTag: string;
+      warType: string;
+      limit: number;
+      warIds: string[];
+      metrics: Record<string, PlayerWarMetrics>;
+    }
+  >(warKey, apiFetcher, {
+    revalidateOnFocus: false,
+    revalidateOnMount: true,
+    revalidateIfStale: true,
+    dedupingInterval: 5_000,
+  });
+
+  const warMetrics = useMemo(() => warMetricsData?.metrics ?? {}, [warMetricsData]);
 
   const sortedMembers = useMemo(() => {
     if (sortKey === 'league') {
@@ -188,6 +388,15 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
       if (sortKey === 'rush') return resolveRushPercent(member) ?? 0;
       if (sortKey === 'srs') return resolveActivity(member).score ?? 0;
       if (sortKey === 'vip') return member.vip?.score ?? 0;
+
+      const wm = warMetrics[normalizeTag(member.tag) || member.tag || ''];
+      if (!wm) return 0;
+      if (sortKey === 'war_attacks') return wm.attacksUsed ?? 0;
+      if (sortKey === 'war_avg_stars') return wm.avgStars ?? 0;
+      if (sortKey === 'war_triple_rate') return wm.tripleRate ?? 0;
+      if (sortKey === 'war_low_hit_rate') return wm.lowHitRate ?? 0;
+      if (sortKey === 'war_avg_destruction') return wm.avgDestructionPct ?? 0;
+
       return 0;
     };
     return [...filteredMembers].sort((a, b) => {
@@ -195,16 +404,40 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
       const bValue = valueFor(b);
       return (aValue - bValue) * direction;
     });
-  }, [filteredMembers, sortDirection, sortKey]);
+  }, [filteredMembers, sortDirection, sortKey, warMetrics]);
 
   const handleSort = (key: typeof sortKey) => {
+    let nextKey = sortKey;
+    let nextDir: 'asc' | 'desc' = sortDirection;
+
     if (sortKey === key) {
-      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
+      nextDir = sortDirection === 'asc' ? 'desc' : 'asc';
     } else {
-      setSortKey(key);
-      setSortDirection('desc');
+      nextKey = key;
+      nextDir = 'desc';
     }
+
+    setSortKey(nextKey);
+    setSortDirection(nextDir);
+
+    // Persist sort in URL for shareable links.
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    params.set('sort', String(nextKey));
+    params.set('dir', nextDir);
+    const query = params.toString();
+    router.replace(query ? `/new/roster?${query}` : '/new/roster');
   };
+
+  const handleRowClick = useCallback(
+    (event: MouseEvent<HTMLTableRowElement>, tag: string) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest('a, button, input, textarea, select, [role="button"], [data-no-row-nav]')) return;
+      const normalized = normalizeTag(tag) || tag || '';
+      if (!normalized) return;
+      router.push(`/new/player/${encodeURIComponent(normalized)}`);
+    },
+    [router]
+  );
 
   // Calculate clan-wide stats for the header
   const clanStats = useMemo(() => {
@@ -228,6 +461,9 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
     const donations: Array<number | null> = [];
     const trophies: Array<number | null> = [];
     const vipScores: number[] = [];
+    let topDonation = { name: '', value: -1 };
+    let topVip = { name: '', value: -1 };
+
     const activityCounts = {
       veryActive: 0,
       active: 0,
@@ -242,9 +478,18 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
       heroPowers.push(m.heroPower ?? null);
       donations.push(m.donations ?? null);
       trophies.push(resolveTrophies(m));
+
+      if (typeof m.donations === 'number' && Number.isFinite(m.donations) && m.donations > topDonation.value) {
+        topDonation = { name: m.name || m.tag || '—', value: m.donations };
+      }
+
       if (typeof m.vip?.score === 'number' && Number.isFinite(m.vip.score)) {
         vipScores.push(m.vip.score);
+        if (m.vip.score > topVip.value) {
+          topVip = { name: m.name || m.tag || '—', value: m.vip.score };
+        }
       }
+
       const activity = resolveActivity(m);
       if (activity.level === 'Very Active') activityCounts.veryActive++;
       else if (activity.level === 'Active') activityCounts.active++;
@@ -260,6 +505,9 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
         ? Math.round((vipScores.reduce((sum, value) => sum + value, 0) / vipScores.length) * 10) / 10
         : null;
     
+    const activeCount = activityCounts.veryActive + activityCounts.active;
+    const activePercent = Math.round((activeCount / members.length) * 100);
+
     return {
       memberCount: members.length,
       thDistribution,
@@ -267,6 +515,9 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
       totalDonations,
       avgTrophies: totalTrophies != null ? Math.round(totalTrophies / members.length) : null,
       avgVipScore,
+      activePercent,
+      topDonator: topDonation.value >= 0 ? topDonation : { name: '—', value: null },
+      topVip: topVip.value >= 0 ? topVip : { name: '—', value: null },
       activityCounts,
     };
   }, [members]);
@@ -276,183 +527,183 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
   const safeLastUpdated = parsedLastUpdated && !Number.isNaN(parsedLastUpdated.getTime()) ? parsedLastUpdated : null;
 
   if (isNarrow) {
-    // On narrow viewports, just reuse the card layout to avoid cramped columns and duplicate headers.
-    return <RosterClient initialRoster={initialRoster} />;
+    // On narrow viewports, just reuse the card layout to avoid cramped columns.
+    return <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} />;
   }
 
   return (
-    <div className="space-y-6">
-      {/* ═══════════════════════════════════════════════════════════════════════
-          WORLD-CLASS HEADER BANNER
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div 
-        className="relative rounded-2xl overflow-hidden"
-        style={{ 
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-          boxShadow: '0 20px 40px -12px rgba(0,0,0,0.4)'
-        }}
-      >
-        {/* Gradient overlay */}
-        <div 
-          className="absolute inset-0 opacity-50"
-          style={{
-            background: `
-              radial-gradient(ellipse 60% 40% at 30% 50%, rgba(59,130,246,0.1) 0%, transparent 50%),
-              radial-gradient(ellipse 50% 30% at 70% 50%, rgba(234,179,8,0.08) 0%, transparent 50%)
-            `,
-          }}
-        />
-        
-        <div className="relative p-5">
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            {/* Left: Clan name + stats */}
-            <div className="flex items-center gap-6">
-              <div>
-                <div className="flex items-center gap-3 mb-1">
-                  <h1 
-                    className="text-3xl font-black text-white tracking-tight"
-                    style={{ fontFamily: 'var(--font-display)' }}
-                  >
-                    {data?.clanName || 'Roster Table'}
-                  </h1>
-                  {clanStats && (
-                    <span 
-                      className="px-2.5 py-0.5 rounded-full text-xs font-bold"
-                      style={{ background: 'rgba(234,179,8,0.2)', color: '#fbbf24' }}
-                    >
-                      {clanStats.memberCount} Members
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-3 text-xs text-slate-400">
-                  {data?.clanTag && <code className="bg-black/30 px-1.5 py-0.5 rounded font-mono">{data.clanTag}</code>}
-                  {safeLastUpdated && (
-                    <span>Updated {formatDistanceToNow(safeLastUpdated, { addSuffix: true })}</span>
-                  )}
-                </div>
-              </div>
-              
-              {/* TH Distribution */}
-              {clanStats && (
-                <div className="hidden lg:block">
-                  <THDistributionBar distribution={clanStats.thDistribution} />
-                </div>
-              )}
-            </div>
-            
-            {/* Right: Quick stats + Actions */}
-            <div className="flex items-center gap-4">
-              {clanStats && (
-                <div className="hidden md:flex items-center gap-3 text-xs">
-                  <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
-                    <div className="text-slate-500 uppercase tracking-widest text-[9px]">Avg VIP</div>
-                    <div className="text-sky-400 font-bold text-lg">{clanStats.avgVipScore ?? '—'}</div>
-                  </div>
-                  <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
-                    <div className="text-slate-500 uppercase tracking-widest text-[9px]">Avg Power</div>
-                    <div className="text-purple-400 font-bold text-lg">{clanStats.avgHeroPower ?? '—'}</div>
-                  </div>
-                  <div className="text-center px-3 py-1.5 rounded-lg" style={{ background: 'rgba(0,0,0,0.3)' }}>
-                    <div className="text-slate-500 uppercase tracking-widest text-[9px]">Total Donated</div>
-                    <div className="text-emerald-400 font-bold text-lg">
-                      {clanStats.totalDonations != null ? clanStats.totalDonations.toLocaleString() : '—'}
-                    </div>
-                  </div>
-                </div>
-              )}
-              
-              <div className="flex gap-2">
+    <div className="space-y-6 overflow-x-hidden">
+      <RosterHeader
+        clanName={data?.clanName || 'Roster'}
+        clanTag={data?.clanTag || null}
+        lastUpdated={safeLastUpdated}
+        clanStats={clanStats || null}
+        view="table"
+        onViewChange={onViewChange}
+        rightActions={
+          <>
+            <Tooltip content={<span>Refresh snapshot.</span>}>
+              <Button
+                tone="primary"
+                onClick={() => {
+                  void mutate();
+                  void mutateWarMetrics();
+                  showToast('Refreshing snapshot…', 'success');
+                }}
+                disabled={isValidating}
+                aria-label="Refresh snapshot"
+              >
+                {isValidating ? 'Refreshing…' : 'Refresh'}
+              </Button>
+            </Tooltip>
+
+            {permissions.canModifyClanData && data?.clanTag ? (
+              <Tooltip content={<span>Leadership: triggers a live refresh (CoC fetch).</span>}>
                 <Button
-                  tone="primary"
-                  onClick={() => {
-                    if (permissions.canModifyClanData && data?.clanTag) {
+                  tone="accentAlt"
+                  onClick={async () => {
+                    try {
+                      showToast('Live refresh started…', 'success');
                       const liveKey = `/api/v2/roster?clanTag=${encodeURIComponent(data.clanTag)}&mode=live`;
-                      void mutate(apiFetcher(liveKey) as any, { revalidate: false });
-                      return;
+                      await mutate(apiFetcher(liveKey) as any, { revalidate: false });
+                      await mutateWarMetrics();
+                      showToast('Live refresh complete.', 'success');
+                    } catch (err: any) {
+                      showToast(err?.message || 'Live refresh failed.', 'error');
                     }
-                    void mutate();
                   }}
                   disabled={isValidating}
-                  title={permissions.canModifyClanData ? 'Leadership: triggers live refresh (CoC fetch)' : 'Refresh snapshot'}
+                  aria-label="Live refresh (leadership)"
                 >
-                  {isValidating ? 'Refreshing…' : permissions.canModifyClanData ? 'Live Refresh' : 'Refresh'}
+                  Live Refresh
                 </Button>
-                <div className="relative" ref={exportRef}>
-                  <Button
-                    tone="ghost"
-                    onClick={() => setExportOpen((prev) => !prev)}
-                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
-                    title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Export roster'}
-                  >
-                    Export
-                  </Button>
-                  {exportOpen && (
-                    <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs shadow-lg">
-                      <button
-                        className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                        onClick={() => handleExportAction('csv')}
-                      >
-                        Export CSV
-                      </button>
-                      <button
-                        className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                        onClick={() => handleExportAction('summary')}
-                      >
-                        Copy Summary
-                      </button>
-                      <button
-                        className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                        onClick={() => handleExportAction('discord')}
-                      >
-                        Copy Discord
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <Link
-                  href="/new/roster"
-                  className="inline-flex items-center justify-center rounded-xl border px-4 py-2 font-semibold text-sm"
-                  style={{ borderColor: 'var(--border-subtle)', background: 'rgba(30,41,59,0.5)', color: 'var(--text)' }}
+              </Tooltip>
+            ) : null}
+            <div className="relative" ref={exportRef}>
+              <Tooltip
+                content={
+                  !permissions.canGenerateCoachingInsights
+                    ? <span>Permission required.</span>
+                    : <span>Export roster.</span>
+                }
+              >
+                <Button
+                  tone="ghost"
+                  onClick={() => setExportOpen((prev) => !prev)}
+                  disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
+                  aria-label="Export roster"
                 >
-                  Card view
-                </Link>
+                  Export
+                </Button>
+              </Tooltip>
+              {exportOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg"
+                  style={{ background: surface.panel, borderColor: surface.border }}
+                >
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                    style={{ color: text.primary }}
+                    onClick={() => handleExportAction('csv')}
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                    style={{ color: text.primary }}
+                    onClick={() => handleExportAction('summary')}
+                  >
+                    Copy Summary
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                    style={{ color: text.primary }}
+                    onClick={() => handleExportAction('discord')}
+                  >
+                    Copy Discord
+                  </button>
+                </div>
+              )}
+            </div>
+          </>
+        }
+      />
+
+      <div className={"transition-opacity duration-200 " + (mounted ? "opacity-100" : "opacity-0")}>
+        {/* Keep surrounding chrome identical to card view. */}
+        {clanStats ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
+            <MiniStatCard label="Members" value={clanStats.memberCount} icon="👥" color="#f59e0b" />
+            <MiniStatCard label="Avg VIP" value={clanStats.avgVipScore ?? '—'} icon="⭐" color="#38bdf8" />
+            <MiniStatCard label="Avg Hero Power" value={clanStats.avgHeroPower ?? '—'} icon="⚔️" color="#8b5cf6" />
+            <MiniStatCard label="Total Donated" value={clanStats.totalDonations ?? '—'} icon="📤" color="#10b981" />
+            <MiniStatCard label="Avg Trophies" value={clanStats.avgTrophies ?? '—'} icon="🏆" color="#eab308" />
+            <MiniStatCard label="Active" value={`${clanStats.activePercent}%`} icon="📈" color="#22c55e" />
+            <MiniStatCard
+              label="Top Donator"
+              value={clanStats.topDonator.value ?? '—'}
+              icon="🥇"
+              color="#f472b6"
+              subtext={clanStats.topDonator.value != null ? clanStats.topDonator.name.slice(0, 12) : '—'}
+            />
+            <MiniStatCard
+              label="Top VIP"
+              value={clanStats.topVip.value ?? '—'}
+              icon="👑"
+              color="#fbbf24"
+              subtext={clanStats.topVip.value != null ? clanStats.topVip.name.slice(0, 12) : '—'}
+            />
+          </div>
+        ) : null}
+
+        <div className="rounded-2xl border overflow-hidden" style={{ background: surface.card, borderColor: surface.border }}>
+          <div
+            className="border-b px-4 py-3 flex flex-wrap items-center gap-3"
+            style={{ borderColor: surface.border, background: surface.panel }}
+          >
+            <Input
+              placeholder="Search players, tags"
+              className="max-w-xs"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+
+            <div className="ml-auto flex items-center gap-2 text-xs">
+              <span className="hidden sm:inline text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>Views</span>
+              <div
+                className="inline-flex overflow-hidden rounded-lg border"
+                style={{ borderColor: surface.border, background: 'rgba(0,0,0,0.2)' }}
+              >
+                {([
+                  { key: 'compact', label: 'Compact' },
+                  { key: 'leadership', label: 'Leadership' },
+                  { key: 'war', label: 'War prep' },
+                  { key: 'custom', label: 'Custom' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => {
+                      setPreset(opt.key);
+                      if (opt.key === 'custom') setCustomOpen(true);
+                    }}
+                    className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
+                    style={{
+                      background: preset === opt.key ? 'rgba(34,211,238,0.18)' : 'transparent',
+                      color: preset === opt.key ? 'var(--accent-alt)' : text.secondary,
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
               </div>
+              {preset === 'custom' ? (
+                <Button tone="ghost" className="h-10 px-3" onClick={() => setCustomOpen(true)}>
+                  Edit…
+                </Button>
+              ) : null}
             </div>
           </div>
-        </div>
-      </div>
-
-      {clanStats && (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-          {[
-            { label: 'Very Active', value: clanStats.activityCounts.veryActive, color: '#22c55e' },
-            { label: 'Active', value: clanStats.activityCounts.active, color: '#38bdf8' },
-            { label: 'Moderate', value: clanStats.activityCounts.moderate, color: '#eab308' },
-            { label: 'Low', value: clanStats.activityCounts.low, color: '#f97316' },
-            { label: 'Inactive', value: clanStats.activityCounts.inactive, color: '#f87171' },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs"
-            >
-              <div className="uppercase tracking-widest text-[10px] text-slate-400">{item.label}</div>
-              <div className="mt-2 text-2xl font-black" style={{ color: item.color }}>
-                {item.value}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      <div className="rounded-2xl border" style={{ background: 'var(--card)', borderColor: 'var(--border-subtle)' }}>
-        <div className="border-b border-white/5 px-4 py-2 flex flex-wrap items-center gap-3">
-          <Input
-            placeholder="Search players, tags"
-            className="max-w-xs"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
 
         {error ? (
           <div className="p-6 text-sm text-red-300">
@@ -464,85 +715,211 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
           <RosterSkeleton />
         ) : null}
 
-        <div className="hidden md:block">
+        <div className="hidden md:block overflow-x-hidden">
           {!isLoading && !error ? (
             filteredMembers.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full table-fixed text-sm text-slate-200">
-                  <colgroup>
-                    <col style={{ width: '22%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '8%' }} />
-                    <col style={{ width: '9%' }} />
-                    <col style={{ width: '6%' }} />
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '5%' }} />
-                    <col style={{ width: '5%' }} />
-                  </colgroup>
-                  <thead className="text-xs uppercase tracking-[0.15em] text-slate-400">
-                    <tr className="border-b border-white/5">
-                      <th className="px-2 py-3 text-left">Player</th>
-                      <th className="px-2 py-3 text-center">
-                        <button type="button" onClick={() => handleSort('th')} className="uppercase tracking-[0.15em]">
-                          TH {sortKey === 'th' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
+              <div className={"overflow-x-hidden " + (isValidating ? 'opacity-60 animate-pulse' : '')}>
+                <table className="w-full table-fixed text-sm" style={{ color: text.primary }}>
+                  {(() => {
+                    const weight: Record<string, number> = {
+                      th: 6,
+                      league: 7,
+                      trophies: 10,
+                      vip: 8,
+                      donations: 9,
+                      rush: 10,
+                      srs: 10,
+                      heroes: 10,
+                      role: 10,
+                      tenure: 12,
+                      war_attacks: 9,
+                      war_avg_stars: 10,
+                      war_triple_rate: 10,
+                      war_low_hit_rate: 10,
+                      war_avg_destruction: 11,
+                    };
+
+                    const player = preset === 'leadership' ? 34 : preset === 'war' ? 36 : 30;
+                    const remaining = 100 - player;
+                    const sum = activeColumns.reduce((acc, k) => acc + (weight[k] ?? 8), 0) || 1;
+                    const cols = activeColumns.map((k) => {
+                      const w = Math.max(6, Math.round((remaining * (weight[k] ?? 8)) / sum));
+                      return <col key={`col-${k}`} style={{ width: `${w}%` }} />;
+                    });
+
+                    return (
+                      <colgroup>
+                        <col style={{ width: `${player}%` }} />
+                        {cols}
+                      </colgroup>
+                    );
+                  })()}
+                  <thead
+                    className="sticky top-0 z-10"
+                    style={{
+                      background: surface.card,
+                      borderBottom: `1px solid ${surface.border}`,
+                      backdropFilter: 'blur(10px)',
+                    }}
+                  >
+                    <tr className={headerTextClass} style={{ color: text.muted }}>
+                      <th
+                        className={`${tablePadX} ${tablePadY} text-left sticky z-20`}
+                        style={{ left: 0, background: surface.card }}
+                      >
+                        Player
                       </th>
-                      <th className="px-2 py-3 text-center">
-                        <button type="button" onClick={() => handleSort('league')} className="uppercase tracking-[0.15em]">
-                          League {sortKey === 'league' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
-                      </th>
-                      <th className="px-2 py-3 text-right">
-                        <button type="button" onClick={() => handleSort('trophies')} className="uppercase tracking-[0.15em]">
-                          Trophies {sortKey === 'trophies' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
-                      </th>
-                      <th className="px-2 py-3 text-right">
-                        <button type="button" onClick={() => handleSort('vip')} className="uppercase tracking-[0.15em]">
-                          VIP {sortKey === 'vip' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
-                      </th>
-                      <th className="px-2 py-3 text-right">
-                        <button type="button" onClick={() => handleSort('donations')} className="uppercase tracking-[0.15em]">
-                          Donated {sortKey === 'donations' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
-                      </th>
-                      <th className="px-2 py-3 text-right">
-                        <button type="button" onClick={() => handleSort('received')} className="uppercase tracking-[0.15em]">
-                          Received {sortKey === 'received' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
-                      </th>
-                      <th className="px-2 py-3 text-right">
-                        <button type="button" onClick={() => handleSort('rush')} className="uppercase tracking-[0.15em]">
-                          Rush {sortKey === 'rush' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
-                      </th>
-                      <th className="px-2 py-3 text-right">
-                        <button type="button" onClick={() => handleSort('srs')} className="uppercase tracking-[0.15em]">
-                          SRS {sortKey === 'srs' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
-                        </button>
-                      </th>
-                      {(['bk', 'aq', 'gw', 'rc', 'mp'] as const).map((heroKey) => (
-                        <th key={`hero-head-${heroKey}`} className="px-2 py-3 text-center" title="Hero levels (current; dash if unavailable)">
-                          <Image
-                            src={heroIconMap[heroKey]}
-                            alt={heroKey.toUpperCase()}
-                            className="mx-auto h-6 w-6"
-                            width={24}
-                            height={24}
-                            unoptimized
-                          />
-                        </th>
-                      ))}
+                      {activeColumns.map((col) => {
+                        if (col === 'role') return <th key={col} className={`${tablePadX} ${tablePadY} text-left`}>Role</th>;
+                        if (col === 'tenure')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Days in clan.</span>}>
+                                <span className="inline-flex items-center justify-end gap-1 cursor-help">Tenure</span>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'heroes')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Combined hero progress for this Town Hall.</span>}>
+                                <span className="inline-flex items-center justify-end gap-1 cursor-help">Heroes</span>
+                              </Tooltip>
+                            </th>
+                          );
+
+                        if (col === 'war_attacks')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Attacks used across last 3 regular wars.</span>}>
+                                <button type="button" onClick={() => handleSort('war_attacks')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>War Att</span>
+                                  {sortKey === 'war_attacks' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'war_avg_stars')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Average stars across last 3 regular wars.</span>}>
+                                <button type="button" onClick={() => handleSort('war_avg_stars')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>War ★</span>
+                                  {sortKey === 'war_avg_stars' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'war_triple_rate')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>3★ rate across last 3 regular wars.</span>}>
+                                <button type="button" onClick={() => handleSort('war_triple_rate')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>War 3★%</span>
+                                  {sortKey === 'war_triple_rate' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'war_low_hit_rate')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>0–1★ rate across last 3 regular wars.</span>}>
+                                <button type="button" onClick={() => handleSort('war_low_hit_rate')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>War 0–1★%</span>
+                                  {sortKey === 'war_low_hit_rate' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'war_avg_destruction')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Average destruction across last 3 regular wars.</span>}>
+                                <button type="button" onClick={() => handleSort('war_avg_destruction')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>War %</span>
+                                  {sortKey === 'war_avg_destruction' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+
+                        if (col === 'th')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-center`}>
+                              <button type="button" onClick={() => handleSort('th')} className="inline-flex items-center gap-1">
+                                TH {sortKey === 'th' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                              </button>
+                            </th>
+                          );
+                        if (col === 'league')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-center`}>
+                              <button type="button" onClick={() => handleSort('league')} className="inline-flex items-center gap-1">
+                                League {sortKey === 'league' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                              </button>
+                            </th>
+                          );
+                        if (col === 'trophies')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Ranked trophies: current season ladder points.</span>}>
+                                <button type="button" onClick={() => handleSort('trophies')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>Trophies</span>
+                                  {sortKey === 'trophies' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'vip')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>VIP score: overall contribution rating.</span>}>
+                                <button type="button" onClick={() => handleSort('vip')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>VIP</span>
+                                  {sortKey === 'vip' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'donations')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Season donations given: higher is better.</span>}>
+                                <button type="button" onClick={() => handleSort('donations')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>Donated</span>
+                                  {sortKey === 'donations' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        if (col === 'rush')
+                          return (
+                            <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                              <Tooltip content={<span>Rush %: lower is better (green &lt;10%, yellow 10–20%, red &gt;20%).</span>}>
+                                <button type="button" onClick={() => handleSort('rush')} className="inline-flex items-center gap-1 cursor-help">
+                                  <span>Rush</span>
+                                  {sortKey === 'rush' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                </button>
+                              </Tooltip>
+                            </th>
+                          );
+                        // srs
+                        return (
+                          <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
+                            <Tooltip content={<span>SRS: temporary roster score (activity/skill placeholder; real calc forthcoming).</span>}>
+                              <button type="button" onClick={() => handleSort('srs')} className="inline-flex items-center gap-1 cursor-help">
+                                <span>SRS</span>
+                                {sortKey === 'srs' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                              </button>
+                            </Tooltip>
+                          </th>
+                        );
+                      })}
                     </tr>
                   </thead>
                   <tbody>
-                    {sortedMembers.map((member) => {
+                    {sortedMembers.map((member, idx) => {
                       const role = normalizeRole(member.role);
                       const townHall = resolveTownHall(member);
                       const { league, tier } = resolveLeague(member);
@@ -554,114 +931,256 @@ export default function TableClient({ initialRoster }: { initialRoster?: RosterD
                         ? member.vip.score
                         : null;
 
+                      const rowBg = idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent';
+                      const rowHover = 'rgba(255,255,255,0.06)';
+
                       return (
-                        <tr 
-                          key={member.tag} 
-                          className="h-16 border-b border-white/5 transition-all duration-200 hover:bg-gradient-to-r hover:from-white/[0.04] hover:to-transparent group"
+                        <tr
+                          key={member.tag}
+                          className="group cursor-pointer border-t bg-[var(--row-bg)] transition-colors hover:bg-[var(--row-hover)]"
+                          style={{
+                            borderColor: surface.border,
+                            ['--row-bg' as any]: rowBg,
+                            ['--row-hover' as any]: rowHover,
+                          }}
+                          onClick={(event) => handleRowClick(event, member.tag)}
+                          role="link"
+                          tabIndex={0}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              const normalized = normalizeTag(member.tag) || member.tag || '';
+                              if (normalized) router.push(`/new/player/${encodeURIComponent(normalized)}`);
+                            }
+                          }}
                         >
-                          <td className="px-3 py-3 align-middle">
-                            <div className="flex h-full items-center gap-3">
+                          <td
+                            className={`${tablePadX} ${tablePadY} align-middle sticky z-10`}
+                            style={{ left: 0, background: 'var(--row-bg)' }}
+                          >
+                            <div className="flex items-center gap-3">
                               <RoleIcon role={role} size={22} className="shrink-0" />
-                              <div className="flex flex-col justify-center">
-                                <div className="flex items-center gap-2 leading-tight">
-                                  <Link
-                                    href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
-                                    className="text-white font-semibold tracking-[0.02em] hover:text-[var(--accent-alt)] transition-colors group-hover:text-amber-300"
-                                    style={{ fontFamily: 'var(--font-body)', display: 'inline-block', position: 'relative', top: '2px', lineHeight: '1', transform: 'translateY(12px)' }}
-                                    title="View full player profile"
-                                  >
-                                    {member.name || member.tag}
-                                  </Link>
+                              <div className="flex h-6 items-center gap-2">
+                                <Link
+                                  href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
+                                  className="flex h-6 max-w-[180px] items-center truncate font-semibold tracking-[0.02em] transition-colors group-hover:underline"
+                                  style={{
+                                    fontFamily: 'var(--font-display)',
+                                    color: text.primary,
+                                    textDecorationColor: 'var(--accent-alt)',
+                                  }}
+                                  aria-label="Open player profile"
+                                >
+                                  <span className="block leading-[24px] truncate">{member.name || member.tag}</span>
+                                </Link>
+                                <Tooltip content={<span>{activity.evidence?.level || activity.band}</span>}>
                                   <span
-                                    className="h-2 w-2 rounded-full"
+                                    className="h-2 w-2 shrink-0 rounded-full"
                                     style={{ background: activity.tone, boxShadow: `0 0 6px ${activity.tone}` }}
-                                    title={activity.evidence?.level || activity.band}
+                                    aria-label="Activity indicator"
                                   />
-                                </div>
+                                </Tooltip>
                               </div>
                             </div>
                           </td>
-                          <td className="px-2 py-3 text-center align-middle">
-                            <TownHallIcon level={townHall ?? undefined} size="sm" showBadge />
-                          </td>
-                          <td className="px-2 py-3 text-center align-middle" title={league ? `League: ${league}${tier ? ` ${tier}` : ''}` : 'League unknown'}>
-                            <LeagueIcon league={league} ranked size="sm" badgeText={tier} showBadge />
-                          </td>
-                        <td
-                          className="px-2 py-3 font-bold text-right tabular-nums align-middle"
-                          style={{ color: '#fbbf24' }}
-                          title="Ranked trophies: current season ladder points."
-                        >
-                          {trophies != null ? trophies.toLocaleString() : '—'}
-                        </td>
-                        <td
-                          className="px-2 py-3 text-right tabular-nums font-bold align-middle"
-                          style={{ color: '#38bdf8' }}
-                          title="VIP score: overall contribution rating."
-                        >
-                          {vipScore != null ? vipScore.toFixed(1) : '—'}
-                        </td>
-                        <td
-                          className="px-2 py-3 text-right tabular-nums font-bold align-middle"
-                          style={{ color: '#34d399' }}
-                          title="Season donations given: higher is better."
-                        >
-                          {member.donations != null ? member.donations.toLocaleString() : '—'}
-                        </td>
-                        <td
-                          className="px-2 py-3 text-right tabular-nums text-slate-400 align-middle"
-                          title="Season donations received."
-                        >
-                          {member.donationsReceived != null ? member.donationsReceived.toLocaleString() : '—'}
-                        </td>
-                        <td
-                          className="px-2 py-3 font-bold text-right tabular-nums align-middle"
-                          style={{ color: rushTone(rushValue) }}
-                          title="Rush %: lower is better (green <10%, yellow 10-20%, red >20%)."
-                        >
-                          {formatRush(rushValue)}
-                        </td>
-                        <td
-                          className="px-2 py-3 font-bold text-right tabular-nums align-middle"
-                          style={{ color: '#a78bfa' }}
-                          title="SRS: temporary roster score (activity/skill placeholder; real calc forthcoming)."
-                        >
-                          {typeof activity.score === 'number' ? Math.round(activity.score) : '—'}
-                        </td>
-                          {(['bk', 'aq', 'gw', 'rc', 'mp'] as const).map((heroKey) => {
-                            const level = (member as any)[heroKey] || 0;
-                            const max = (heroCaps as any)[heroKey] || 0;
-                            if (!level && !max) {
-                              return (
-                                <td key={`${member.tag}-${heroKey}`} className="px-2 py-3 text-center text-slate-600 tabular-nums text-[12px] align-middle">
-                                  —
-                                </td>
-                              );
-                            }
-                            const pct = max ? Math.round((level / max) * 100) : 0;
+                          {(() => {
+                            const tenureDays =
+                              typeof (member as any).tenureDays === 'number'
+                                ? (member as any).tenureDays
+                                : typeof (member as any).tenure_days === 'number'
+                                  ? (member as any).tenure_days
+                                  : typeof (member as any).tenure === 'number'
+                                    ? (member as any).tenure
+                                    : null;
+
+                            const heroPct = (() => {
+                              const caps = HERO_MAX_LEVELS[townHall ?? 0] || {};
+                              const availableHeroes = ['bk', 'aq', 'gw', 'rc', 'mp'].filter((heroKey) => ((caps as any)[heroKey] || 0) > 0);
+                              let totalLevels = 0;
+                              let totalMax = 0;
+                              for (const heroKey of availableHeroes) {
+                                totalLevels += (member as any)[heroKey] || 0;
+                                totalMax += (caps as any)[heroKey] || 0;
+                              }
+                              if (!totalMax) return null;
+                              return Math.round((totalLevels / totalMax) * 100);
+                            })();
+
                             return (
-                              <td
-                                key={`${member.tag}-${heroKey}`}
-                                className="px-2 py-3 text-center font-semibold text-white tabular-nums text-[12px] align-middle"
-                                title={`${heroKey.toUpperCase()} ${level}${max ? ` / ${max} (${pct}%)` : ''}`}
-                                style={{ width: '48px' }}
-                              >
-                                {level}
-                              </td>
+                              <>
+                                {activeColumns.map((col) => {
+                                  if (col === 'role') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-left align-middle`} style={{ color: text.secondary }}>
+                                        {role}
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'th') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-center align-middle`}>
+                                        <TownHallIcon level={townHall ?? undefined} size="sm" showBadge />
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'league') {
+                                    const label = league ? `League: ${league}${tier ? ` ${tier}` : ''}` : 'League unknown';
+                                    const badgeText = resolveLeagueBadgeText(league, tier);
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-center align-middle`}>
+                                        <Tooltip content={<span>{label}</span>}>
+                                          <span className="inline-flex">
+                                            <LeagueIcon league={league} ranked size="xs" badgeText={badgeText} showBadge />
+                                          </span>
+                                        </Tooltip>
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'trophies') {
+                                    return (
+                                      <td
+                                        key={col}
+                                        className={`${tablePadX} ${tablePadY} font-bold text-right tabular-nums align-middle`}
+                                        style={{ color: text.primary }}
+                                      >
+                                        {trophies != null ? trophies.toLocaleString() : '—'}
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'vip') {
+                                    return (
+                                      <td
+                                        key={col}
+                                        className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`}
+                                        style={{ color: '#38bdf8' }}
+                                      >
+                                        {vipScore != null ? vipScore.toFixed(1) : '—'}
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'donations') {
+                                    return (
+                                      <td
+                                        key={col}
+                                        className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`}
+                                        style={{ color: text.primary }}
+                                      >
+                                        {member.donations != null ? member.donations.toLocaleString() : '—'}
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'rush') {
+                                    return (
+                                      <td
+                                        key={col}
+                                        className={`${tablePadX} ${tablePadY} font-bold text-right tabular-nums align-middle`}
+                                        style={{ color: rushTone(rushValue) }}
+                                      >
+                                        {formatRush(rushValue)}
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'srs') {
+                                    return (
+                                      <td
+                                        key={col}
+                                        className={`${tablePadX} ${tablePadY} font-bold text-right tabular-nums align-middle`}
+                                        style={{ color: '#a78bfa' }}
+                                      >
+                                        {typeof activity.score === 'number' ? Math.round(activity.score) : '—'}
+                                      </td>
+                                    );
+                                  }
+
+                                  if (col === 'tenure') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`} style={{ color: text.primary }}>
+                                        {typeof tenureDays === 'number' ? `${tenureDays}d` : '—'}
+                                      </td>
+                                    );
+                                  }
+
+                                  const wm = warMetrics[normalizeTag(member.tag) || member.tag || ''];
+                                  if (col === 'war_attacks') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`}>
+                                        {wm?.attacksUsed != null ? wm.attacksUsed : '—'}
+                                      </td>
+                                    );
+                                  }
+                                  if (col === 'war_avg_stars') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`} style={{ color: '#fbbf24' }}>
+                                        {wm?.avgStars != null ? wm.avgStars.toFixed(2) : '—'}
+                                      </td>
+                                    );
+                                  }
+                                  if (col === 'war_triple_rate') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`}>
+                                        {wm?.tripleRate != null ? `${Math.round(wm.tripleRate * 100)}%` : '—'}
+                                      </td>
+                                    );
+                                  }
+                                  if (col === 'war_low_hit_rate') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`}>
+                                        {wm?.lowHitRate != null ? `${Math.round(wm.lowHitRate * 100)}%` : '—'}
+                                      </td>
+                                    );
+                                  }
+                                  if (col === 'war_avg_destruction') {
+                                    return (
+                                      <td key={col} className={`${tablePadX} ${tablePadY} text-right tabular-nums font-bold align-middle`}>
+                                        {wm?.avgDestructionPct != null ? `${wm.avgDestructionPct.toFixed(1)}%` : '—'}
+                                      </td>
+                                    );
+                                  }
+
+                                  // heroes
+                                  return (
+                                    <td
+                                      key={col}
+                                      className={`${tablePadX} ${tablePadY} font-bold text-right tabular-nums align-middle`}
+                                    >
+                                      {heroPct != null ? `${heroPct}%` : '—'}
+                                    </td>
+                                  );
+                                })}
+                              </>
                             );
-                          })}
-                        </tr>
+                          })()}
+                      </tr>
                       );
                     })}
                   </tbody>
                 </table>
               </div>
             ) : (
-              <div className="p-6 text-sm text-slate-300">No roster members match that filter.</div>
+              <div className="p-6 text-sm" style={{ color: text.secondary }}>No roster members match that filter.</div>
             )
           ) : null}
         </div>
       </div>
+      </div>
+
+      <ColumnPickerModal
+        open={customOpen}
+        onClose={() => setCustomOpen(false)}
+        allColumns={allColumns}
+        value={customColumns}
+        onChange={(next) => {
+          setCustomColumns(next);
+          setPreset('custom');
+        }}
+      />
     </div>
   );
 }

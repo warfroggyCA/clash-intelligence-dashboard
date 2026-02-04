@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, useDeferredValue } from 'react';
 import useSWR from 'swr';
 import type { IngestionJobRecord } from '@/lib/ingestion/job-store';
 import { Button } from '@/components/new-ui/Button';
@@ -15,18 +15,26 @@ import Image from 'next/image';
 import { HERO_MAX_LEVELS } from '@/types';
 import type { RosterMember, RosterData } from './types';
 import { formatDistanceToNow } from 'date-fns';
+import { RosterHeader } from './RosterHeader';
 import {
-  formatRush,
   normalizeRole,
   resolveActivity,
   resolveLeague,
+  resolveLeagueBadgeText,
   resolveRushPercent,
   resolveTownHall,
   resolveTrophies,
   rosterLeagueSort,
-  rushTone,
 } from './roster-utils';
 import Link from 'next/link';
+import { Tooltip } from '@/components/ui/Tooltip';
+import { MoreHorizontal } from 'lucide-react';
+
+const useMountFade = () => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  return mounted;
+};
 import { RosterCardsSkeleton } from './RosterCardsSkeleton';
 import { normalizeTag } from '@/lib/tags';
 import { normalizeSearch } from '@/lib/search';
@@ -72,6 +80,18 @@ const AnimatedCounter = ({ value, duration = 800 }: { value: number; duration?: 
   return <>{displayValue.toLocaleString()}</>;
 };
 
+const surface = {
+  card: 'var(--card)',
+  panel: 'var(--panel)',
+  border: 'var(--border-subtle)',
+};
+
+const text = {
+  primary: 'var(--text-primary)',
+  secondary: 'var(--text-secondary)',
+  muted: 'var(--text-muted)',
+};
+
 // Mini stat card for header
 const MiniStatCard = ({ 
   label, 
@@ -89,11 +109,11 @@ const MiniStatCard = ({
   <div 
     className="flex flex-col items-center justify-center px-4 py-3 rounded-xl transition-all duration-300 hover:scale-105"
     style={{ 
-      background: 'rgba(0,0,0,0.3)',
-      border: '1px solid rgba(255,255,255,0.08)'
+      background: surface.panel,
+      border: `1px solid ${surface.border}`,
     }}
   >
-    <div className="text-[9px] text-slate-500 uppercase tracking-widest mb-1">{label}</div>
+    <div className="text-[9px] uppercase tracking-widest mb-1" style={{ color: text.muted }}>{label}</div>
     <div className="flex items-center gap-1">
       {icon && <span className="text-lg">{icon}</span>}
       <span 
@@ -103,46 +123,9 @@ const MiniStatCard = ({
         {typeof value === 'number' ? <AnimatedCounter value={value} /> : value}
       </span>
     </div>
-    {subtext && <div className="text-[10px] text-slate-500 mt-0.5">{subtext}</div>}
+    {subtext && <div className="text-[10px] mt-0.5" style={{ color: text.muted }}>{subtext}</div>}
   </div>
 );
-
-// TH distribution bar
-const THDistributionBar = ({ distribution }: { distribution: Record<number, number> }) => {
-  const thColors: Record<number, string> = {
-    17: '#f43f5e', 16: '#f97316', 15: '#eab308', 14: '#22c55e', 
-    13: '#3b82f6', 12: '#8b5cf6', 11: '#ec4899', 10: '#6366f1',
-    9: '#06b6d4', 8: '#84cc16', 7: '#f59e0b', 6: '#78716c'
-  };
-  
-  const entries = Object.entries(distribution)
-    .map(([th, count]) => ({ th: parseInt(th), count }))
-    .filter(e => e.count > 0)
-    .sort((a, b) => b.th - a.th);
-  
-  const total = entries.reduce((sum, e) => sum + e.count, 0);
-  if (total === 0) return null;
-  
-  return (
-    <div className="flex items-center gap-1 w-full max-w-md">
-      {entries.map(({ th, count }) => (
-        <div
-          key={th}
-          className="h-6 rounded-sm flex items-center justify-center text-[10px] font-bold text-white/90 transition-all hover:scale-y-125"
-          style={{ 
-            width: `${(count / total) * 100}%`,
-            minWidth: count > 0 ? '24px' : 0,
-            background: thColors[th] || '#64748b',
-            boxShadow: `0 0 10px ${thColors[th] || '#64748b'}40`
-          }}
-          title={`TH${th}: ${count} members`}
-        >
-          {th}
-        </div>
-      ))}
-    </div>
-  );
-};
 
 const heroMeta: Record<string, { name: string; gradient: string }> = {
   bk: { name: 'Barbarian King', gradient: 'linear-gradient(90deg, #3b82f6 0%, #2563eb 100%)' },
@@ -150,6 +133,80 @@ const heroMeta: Record<string, { name: string; gradient: string }> = {
   gw: { name: 'Grand Warden', gradient: 'linear-gradient(90deg, #a855f7 0%, #9333ea 100%)' },
   rc: { name: 'Royal Champion', gradient: 'linear-gradient(90deg, #ef4444 0%, #dc2626 100%)' },
   mp: { name: 'Minion Prince', gradient: 'linear-gradient(90deg, #f59e0b 0%, #f97316 100%)' },
+};
+
+const Chip = ({
+  label,
+  tone = 'muted',
+}: {
+  label: string;
+  tone?: 'muted' | 'info' | 'vip' | 'success' | 'warning' | 'danger';
+}) => {
+  const styleMap: Record<string, { bg: string; fg: string; border: string }> = {
+    muted: { bg: 'transparent', fg: text.secondary, border: surface.border },
+    info: { bg: 'rgba(96,165,250,0.18)', fg: text.primary, border: 'rgba(96,165,250,0.26)' },
+    vip: { bg: 'rgba(167,139,250,0.18)', fg: text.primary, border: 'rgba(167,139,250,0.26)' },
+    success: { bg: 'rgba(52,211,153,0.18)', fg: text.primary, border: 'rgba(52,211,153,0.26)' },
+    warning: { bg: 'rgba(251,191,36,0.18)', fg: text.primary, border: 'rgba(251,191,36,0.26)' },
+    danger: { bg: 'rgba(248,113,113,0.18)', fg: text.primary, border: 'rgba(248,113,113,0.26)' },
+  };
+
+  const style = styleMap[tone] ?? styleMap.muted;
+
+  return (
+    <span
+      className="inline-flex items-center rounded-full px-3 py-1 text-[11px] font-semibold tabular-nums"
+      style={{ background: style.bg, color: style.fg, border: `1px solid ${style.border}` }}
+    >
+      {label}
+    </span>
+  );
+};
+
+const Progress = ({
+  label,
+  value,
+  detail,
+  tone = 'primary',
+}: {
+  label: string;
+  value: number | null;
+  detail?: string;
+  tone?: 'primary' | 'secondary';
+}) => {
+  const pct = value == null ? null : Math.max(0, Math.min(100, value));
+  const barColor = tone === 'secondary' ? 'var(--accent)' : 'var(--accent-alt)';
+  const barHeight = tone === 'secondary' ? 'h-1.5' : 'h-2';
+
+  const tooltip = detail ? (
+    <div>
+      <div className="font-semibold" style={{ color: text.primary }}>{label}</div>
+      <div style={{ color: text.secondary }}>{detail}{pct != null ? ` · ${pct}%` : ''}</div>
+    </div>
+  ) : null;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center gap-2 text-[11px] font-semibold" style={{ color: text.secondary }}>
+        {tooltip ? (
+          <Tooltip content={tooltip}>
+            <span className="uppercase tracking-[0.16em] cursor-help">{label}</span>
+          </Tooltip>
+        ) : (
+          <span className="uppercase tracking-[0.16em]">{label}</span>
+        )}
+        <span className="tabular-nums" style={{ color: text.primary }}>
+          {pct == null ? '—' : `${pct}%`}
+        </span>
+      </div>
+      <div className={`${barHeight} rounded-full`} style={{ background: surface.border }}>
+        <div
+          className="h-full rounded-full"
+          style={{ width: pct == null ? '0%' : `${pct}%`, background: barColor, opacity: pct == null ? 0 : 1 }}
+        />
+      </div>
+    </div>
+  );
 };
 
 type FormerMember = {
@@ -171,14 +228,31 @@ const isNewJoiner = (member: RosterMember): boolean => {
   return typeof tenure === 'number' && tenure <= 7;
 };
 
-export default function RosterClient({ initialRoster }: { initialRoster?: RosterData | null }) {
+export default function RosterClient({
+  initialRoster,
+  onViewChange,
+}: {
+  initialRoster?: RosterData | null;
+  onViewChange?: (view: 'cards' | 'table') => void;
+}) {
+  const mounted = useMountFade();
   const { data, members, isLoading, error, isValidating, mutate, clanTag, refreshLive } = useRosterData(initialRoster || undefined);
   const { permissions } = useLeadership();
-  const [search, setSearch] = useState('');
-  const [status, setStatus] = useState<'all' | 'current' | 'former'>('all');
   const searchParams = useSearchParams();
   const router = useRouter();
+
   const joinerFilter = searchParams?.get('filter') === 'new-joiners';
+  const initialQ = searchParams?.get('q') ?? '';
+  const initialStatusParam = searchParams?.get('status');
+
+  const [search, setSearch] = useState(() => initialQ);
+  const deferredSearch = useDeferredValue(search);
+  const normalizedQuery = useMemo(() => normalizeSearch(deferredSearch.trim()), [deferredSearch]);
+  const [status, setStatus] = useState<'all' | 'current' | 'former'>(() =>
+    initialStatusParam === 'current' || initialStatusParam === 'former' || initialStatusParam === 'all'
+      ? (initialStatusParam as any)
+      : 'all'
+  );
   const shouldLoadFormer = status === 'former';
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -274,10 +348,28 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     router.replace(query ? `/new/roster?${query}` : '/new/roster');
   };
 
+  // Persist search + status in URL (shareable + survives refresh)
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+
+    const q = deferredSearch.trim();
+    if (q) params.set('q', q);
+    else params.delete('q');
+
+    if (status) params.set('status', status);
+    else params.delete('status');
+
+    const next = params.toString();
+    const current = (searchParams?.toString() ?? '').replace(/^\?/, '');
+    if (next !== current) {
+      router.replace(next ? `/new/roster?${next}` : '/new/roster');
+    }
+  }, [deferredSearch, router, searchParams, status]);
+
   const applyJoinerFilter = joinerFilter && status !== 'former';
 
   const filteredCurrentMembers = useMemo(() => {
-    const query = normalizeSearch(search.trim());
+    const query = normalizedQuery;
     let list = members;
     if (applyJoinerFilter) {
       list = list.filter(isNewJoiner);
@@ -288,17 +380,17 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
       const tag = normalizeSearch(member.tag || '');
       return name.includes(query) || tag.includes(query);
     });
-  }, [members, search, applyJoinerFilter]);
+  }, [members, normalizedQuery, applyJoinerFilter]);
 
   const filteredFormerMembers = useMemo(() => {
-    const query = normalizeSearch(search.trim());
+    const query = normalizedQuery;
     if (!query) return formerMembers;
     return formerMembers.filter((member) => {
       const name = normalizeSearch(member.name || '');
       const tag = normalizeSearch(member.tag || '');
       return name.includes(query) || tag.includes(query);
     });
-  }, [formerMembers, search]);
+  }, [formerMembers, normalizedQuery]);
 
   const sortedMembers = useMemo(() => rosterLeagueSort(filteredCurrentMembers), [filteredCurrentMembers]);
 
@@ -478,25 +570,17 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
     const { league, tier } = resolveLeague(member);
     const trophies = resolveTrophies(member);
     const rushValue = resolveRushPercent(member);
-    const rushColor = rushTone(rushValue);
     const activity = resolveActivity(member);
     const activityScoreDisplay =
       typeof activity.score === 'number' && Number.isFinite(activity.score)
         ? Math.round(activity.score).toString()
         : '—';
-    const heroPower = member.heroPower ?? null;
     const vipScore = typeof member.vip?.score === 'number' && Number.isFinite(member.vip.score)
       ? member.vip.score
       : null;
-    const tenureDays =
-      typeof member.tenureDays === 'number'
-        ? member.tenureDays
-        : typeof member.tenure_days === 'number'
-          ? member.tenure_days
-          : typeof (member as any).tenure === 'number'
-            ? (member as any).tenure
-            : null;
-    const tenureText = typeof tenureDays === 'number' ? `${tenureDays.toLocaleString()}d` : '—';
+    const activityLabel = activity.evidence?.level || activity.band;
+    const roleLabel = role === 'coleader' ? 'Co-leader' : role.charAt(0).toUpperCase() + role.slice(1);
+    const leagueBadge = resolveLeagueBadgeText(league, tier);
 
     // Filter heroes to only show those that are unlocked for this TH level
     const caps = HERO_MAX_LEVELS[townHall ?? 0] || {};
@@ -514,233 +598,188 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
       totalLevels += level;
       totalMaxLevels += max;
     });
-    const overallHeroPercent = totalMaxLevels > 0 ? Math.round((totalLevels / totalMaxLevels) * 100) : 0;
+    const overallHeroPercent = totalMaxLevels > 0 ? Math.round((totalLevels / totalMaxLevels) * 100) : null;
+    const heroDetail = totalMaxLevels > 0 ? `${totalLevels}/${totalMaxLevels}` : undefined;
+    const baseReadiness = typeof rushValue === 'number' ? Math.max(0, 100 - rushValue) : null;
+    const baseDetail = typeof rushValue === 'number' ? `Rush ${rushValue.toFixed(1)}%` : undefined;
 
     const isActionOpen = actionMenuTag === member.tag;
 
     return (
       <div
         key={member.tag}
-        className="group relative rounded-2xl p-5 transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1"
-        style={{ 
-          background: 'linear-gradient(135deg, rgba(30,41,59,0.95) 0%, rgba(15,23,42,1) 100%)',
-          border: '1px solid rgba(255,255,255,0.15)',
-          boxShadow: '0 8px 24px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)'
+        className="group relative rounded-2xl border p-4 transition-transform"
+        style={{
+          background: surface.card,
+          borderColor: surface.border,
+          boxShadow: '0 14px 32px -18px rgba(0,0,0,0.7)',
         }}
       >
-        {/* Hover glow effect */}
-        <div 
-          className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-          style={{ 
-            background: 'radial-gradient(circle at 50% 0%, rgba(234,179,8,0.15) 0%, transparent 70%)',
-            boxShadow: '0 0 40px rgba(234,179,8,0.2), inset 0 0 0 1px rgba(234,179,8,0.2)'
-          }}
-        />
-        
-        <div className="relative z-10 space-y-4">
-          {permissions.canModifyClanData && (
-            <div className="absolute right-2 top-2">
-              <button
-                type="button"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  setActionMenuTag(isActionOpen ? null : member.tag);
-                }}
-                className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
-                title="Roster actions"
-              >
-                •••
-              </button>
-              {isActionOpen && (
-                <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs shadow-lg">
-                  <button
-                    className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                    onClick={() => {
-                      setNotesTarget(member);
-                      setActionMenuTag(null);
-                    }}
-                  >
-                    Leadership notes
-                  </button>
-                  <button
-                    className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                    onClick={() => {
-                      setTenureTarget(member);
-                      setActionMenuTag(null);
-                    }}
-                  >
-                    Update tenure
-                  </button>
-                  <button
-                    className="w-full rounded-lg px-3 py-2 text-left text-rose-300 hover:bg-rose-500/10"
-                    onClick={() => {
-                      setDepartureTarget(member);
-                      setActionMenuTag(null);
-                    }}
-                  >
-                    Record departure
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-          {/* ═══ HEADER: Name on top, metadata below ═══ */}
-          <div className="space-y-2.5">
-            {/* Row 1: Player name (full width) */}
-            <Link
-              href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
-              className="text-white text-2xl font-bold tracking-tight hover:text-amber-400 transition-colors block leading-tight"
-              style={{ fontFamily: 'var(--font-display)' }}
-              title="View full player profile"
+        {permissions.canModifyClanData ? (
+          <div className="absolute right-3 top-3">
+            <button
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                setActionMenuTag(isActionOpen ? null : member.tag);
+              }}
+              className="h-10 w-10 inline-flex items-center justify-center rounded-xl border transition-colors"
+              style={{
+                background: 'rgba(255,255,255,0.04)',
+                borderColor: surface.border,
+                color: text.secondary,
+              }}
+              aria-label="Roster actions"
             >
-              {member.name || member.tag}
-            </Link>
-            
-            {/* Row 2: Role + Activity/SRS on left, TH + League on right */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5">
-                <RoleIcon role={role} size={30} className="shrink-0" />
-                <span
-                  className="inline-flex h-2.5 w-2.5 rounded-full shrink-0 shadow-md"
-                  style={{ background: activity.tone, boxShadow: `0 0 8px ${activity.tone}` }}
-                  aria-label={`Activity ${activity.band}`}
-                  title={activity.evidence?.level || activity.band}
+              <MoreHorizontal size={18} />
+            </button>
+            {isActionOpen ? (
+              <div
+                className="absolute right-0 mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg"
+                style={{ background: surface.panel, borderColor: surface.border }}
+              >
+                <button
+                  className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                  style={{ color: text.primary }}
+                  onClick={() => {
+                    setNotesTarget(member);
+                    setActionMenuTag(null);
+                  }}
+                >
+                  Leadership notes
+                </button>
+                <button
+                  className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                  style={{ color: text.primary }}
+                  onClick={() => {
+                    setTenureTarget(member);
+                    setActionMenuTag(null);
+                  }}
+                >
+                  Update tenure
+                </button>
+                <button
+                  className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                  style={{ color: 'var(--danger)' }}
+                  onClick={() => {
+                    setDepartureTarget(member);
+                    setActionMenuTag(null);
+                  }}
+                >
+                  Record departure
+                </button>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <div className="flex items-center gap-3">
+              <TownHallIcon level={townHall ?? undefined} size="sm" className="-ml-1" />
+              {league ? (
+                <LeagueIcon
+                  league={league}
+                  ranked
+                  size="xs"
+                  className="-ml-0.5"
+                  showBadge
+                  badgeText={leagueBadge}
                 />
-                <span className="text-xs font-semibold text-slate-400">
-                  SRS {activityScoreDisplay}
+              ) : null}
+            </div>
+
+            <div>
+              <Link
+                href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
+                className="text-[22px] font-black leading-tight transition-colors"
+                style={{ color: text.primary, fontFamily: 'var(--font-display)' }}
+                title="View full player profile"
+              >
+                {member.name || member.tag}
+              </Link>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <Tooltip content={<span><b>SRS</b>: placeholder roster score (activity/skill). Higher is better.</span>}>
+                  <span className="inline-flex"><Chip label={`SRS ${activityScoreDisplay}`} tone="info" /></span>
+                </Tooltip>
+                {vipScore != null ? (
+                  <Tooltip content={<span><b>VIP</b> score: overall contribution (war + support + progression).</span>}>
+                    <span className="inline-flex"><Chip label={`VIP ${vipScore.toFixed(1)}`} tone="vip" /></span>
+                  </Tooltip>
+                ) : null}
+                <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>
+                  <span className="h-2 w-2 rounded-full" style={{ background: activity.tone || surface.border }} />
+                  {activityLabel}
                 </span>
-                {vipScore != null && (
-                  <span className="text-xs font-semibold text-amber-300">
-                    VIP {vipScore.toFixed(1)}
-                  </span>
-                )}
-              </div>
-              
-              {/* Right: TH + League (visually grouped, same size) */}
-              <div className="flex items-center gap-2.5 shrink-0">
-                {league && (
-                  <div className="flex items-center" title={`${league}${tier ? ` ${tier}` : ''}`}>
-                    <LeagueIcon league={league} ranked size="md" badgeText={tier} showBadge />
-                  </div>
-                )}
-                <TownHallIcon level={townHall ?? undefined} size="md" />
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 text-xs text-slate-400">
-              <span className="text-[10px] uppercase tracking-widest text-slate-500">Tenure</span>
-              <span className="text-slate-200 font-semibold">{tenureText}</span>
-            </div>
-          </div>
-
-          {/* ═══ KEY STATS: Simplified 2-column layout ═══ */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-4">
-            {/* Trophies */}
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Trophies</div>
-              <div className="text-3xl font-black text-amber-400 leading-none">
-                {trophies != null ? trophies.toLocaleString() : '—'}
-              </div>
-            </div>
-
-            {/* Donations */}
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Donated</div>
-              <div className="text-3xl font-black text-emerald-400 leading-none">
-                {member.donations != null ? member.donations.toLocaleString() : '—'}
-              </div>
-            </div>
-
-            {/* Rush Score - More prominent */}
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Base</div>
-              <div className="text-3xl font-black leading-none" style={{ color: rushColor }}>
-                {formatRush(rushValue)}
-              </div>
-            </div>
-
-            {/* Hero Progress - Compact summary */}
-            <div>
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-1.5 font-semibold">Heroes</div>
-              <div className="flex items-baseline gap-2">
-                <div className="text-3xl font-black text-purple-400 leading-none">
-                  {overallHeroPercent}%
-                </div>
-                <div className="text-xs text-slate-500 font-medium">
-                  {totalLevels}/{totalMaxLevels}
-                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>
+                  {roleLabel}
+                </span>
               </div>
             </div>
           </div>
+        </div>
 
-          {/* ═══ HERO ICONS: Compact row, only unlocked heroes ═══ */}
-          <div className="flex items-center gap-2.5 pt-3 border-t border-white/5">
-            {availableHeroes.map((heroKey) => {
-              const level = (member as any)[heroKey] || 0;
-              const max = (caps as any)[heroKey] || 0;
-              const percent = max > 0 ? Math.min((level / max) * 100, 100) : 0;
-              const meta = heroMeta[heroKey] || { name: heroKey.toUpperCase(), gradient: 'linear-gradient(90deg,#38bdf8,#0ea5e9)' };
-              const iconSrc = (heroIconMap as any)[heroKey] || '';
-              
-              // Determine if hero needs attention (rushed or maxed)
-              const isRushed = percent < 70;
-              const isMaxed = percent === 100;
-              
-              return (
+        <div className="mt-3 grid grid-cols-2 gap-x-10 gap-y-2">
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>Trophies</span>
+            <span className="text-xl font-black tabular-nums" style={{ color: text.primary }}>
+              {trophies != null ? trophies.toLocaleString() : '—'}
+            </span>
+          </div>
+
+          <div className="flex items-baseline gap-2">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>Donated</span>
+            <span className="text-xl font-black tabular-nums" style={{ color: text.primary }}>
+              {member.donations != null ? member.donations.toLocaleString() : '—'}
+            </span>
+          </div>
+        </div>
+
+        <div className="mt-3 space-y-3">
+          <Progress label="Base" value={baseReadiness} detail={baseDetail} tone="primary" />
+          <Progress label="Heroes" value={overallHeroPercent} detail={heroDetail} tone="secondary" />
+        </div>
+
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {availableHeroes.map((heroKey) => {
+            const level = (member as any)[heroKey] || 0;
+            const iconSrc = (heroIconMap as any)[heroKey] || '';
+            const meta = heroMeta[heroKey] || { name: heroKey.toUpperCase(), gradient: 'linear-gradient(90deg,#38bdf8,#0ea5e9)' };
+
+            return (
+              <Tooltip
+                key={`${member.tag}-${heroKey}`}
+                content={<span><b>{meta.name}</b> {level}</span>}
+              >
                 <div
-                  key={`${member.tag}-${heroKey}`}
-                  className="relative group/hero transition-transform hover:scale-110"
-                  title={`${meta.name}: ${level}/${max} (${Math.round(percent)}%)`}
+                  className="relative h-12 w-12 shrink-0 rounded-xl border"
+                  style={{ borderColor: surface.border, background: surface.panel }}
                 >
                   {iconSrc ? (
-                    <div className="relative w-10 h-10 flex items-center justify-center">
-                      <Image 
-                        src={iconSrc} 
-                        alt={meta.name} 
-                        width={48} 
-                        height={48} 
-                        className={`object-contain transition-all ${
-                          isRushed ? 'opacity-60 saturate-50' : 
-                          isMaxed ? 'brightness-110 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]' : 
-                          'opacity-90'
-                        }`}
-                        style={{ maxWidth: '48px', maxHeight: '48px' }}
+                    <>
+                      <Image
+                        src={iconSrc}
+                        alt={meta.name}
+                        fill
+                        className="object-contain p-[7px]"
+                        sizes="48px"
                       />
-                      {/* Level badge */}
-                      <span
-                        className={`absolute -bottom-1 -right-1 rounded-full px-1.5 py-0.5 text-[10px] font-black ${
-                          isMaxed ? 'bg-amber-500 text-black' : 
-                          isRushed ? 'bg-red-500/90 text-white' : 
-                          'bg-black/90 text-white'
-                        }`}
-                        style={{ lineHeight: '12px', boxShadow: '0 2px 4px rgba(0,0,0,0.5)' }}
+                      <div
+                        className="absolute bottom-0.5 right-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums"
+                        style={{
+                          background: 'var(--badge-bg, rgba(0,0,0,0.70))',
+                          color: 'var(--badge-fg, rgba(255,255,255,0.92))',
+                          border: `1px solid ${surface.border}`,
+                        }}
                       >
                         {level}
-                      </span>
-                      {/* Thin progress indicator on hover */}
-                      <div className="absolute -bottom-0.5 left-0 right-0 h-1 bg-black/50 rounded-full overflow-hidden opacity-0 group-hover/hero:opacity-100 transition-opacity">
-                        <div
-                          className="h-full rounded-full"
-                          style={{ 
-                            width: `${percent}%`, 
-                            background: meta.gradient
-                          }}
-                        />
                       </div>
-                    </div>
+                    </>
                   ) : null}
                 </div>
-              );
-            })}
-            
-            {/* Received donations - always visible but subtle */}
-            {typeof member.donationsReceived === 'number' && member.donationsReceived > 0 && (
-              <div className="ml-auto flex items-center gap-1.5 text-xs text-slate-500" title="Received donations this season">
-                <span className="opacity-60">↓</span>
-                <span>{member.donationsReceived.toLocaleString()}</span>
-              </div>
-            )}
-          </div>
+              </Tooltip>
+            );
+          })}
         </div>
       </div>
     );
@@ -760,60 +799,56 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
       <div
         key={member.tag}
         className="group relative rounded-2xl p-5 transition-all duration-300 hover:scale-[1.015] hover:-translate-y-0.5"
-        style={{ 
-          background: 'linear-gradient(135deg, rgba(30,41,59,0.9) 0%, rgba(15,23,42,0.95) 100%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+        style={{
+          background: surface.card,
+          border: `1px solid ${surface.border}`,
+          boxShadow: 'var(--shadow-md)',
         }}
       >
-        <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-          style={{ 
-            background: 'radial-gradient(circle at 50% 0%, rgba(148,163,184,0.12) 0%, transparent 60%)',
-            boxShadow: '0 0 40px rgba(148,163,184,0.08)'
-          }}
-        />
-
         <div className="relative z-10 space-y-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-lg font-bold text-white">{member.name || member.tag}</div>
-              <div className="text-xs text-slate-500">{member.tag}</div>
+              <div className="text-lg font-bold" style={{ color: text.primary }}>{member.name || member.tag}</div>
+              <div className="text-xs" style={{ color: text.muted }}>{member.tag}</div>
             </div>
-            <span className="rounded-full bg-slate-700/50 px-3 py-1 text-[10px] font-semibold uppercase tracking-widest text-slate-300">
+            <span
+              className="rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-widest"
+              style={{ border: `1px solid ${surface.border}`, color: text.secondary }}
+            >
               Former
             </span>
           </div>
 
-          <div className="flex items-center gap-3 text-xs text-slate-400">
+          <div className="flex items-center gap-3 text-xs" style={{ color: text.secondary }}>
             {roleKey ? <RoleIcon role={roleKey} size={26} className="shrink-0" /> : null}
             {member.lastRole ? (
-              <span className="text-slate-300">{member.lastRole}</span>
+              <span style={{ color: text.primary }}>{member.lastRole}</span>
             ) : (
-              <span className="text-slate-500">Role unknown</span>
+              <span style={{ color: text.muted }}>Role unknown</span>
             )}
             {townHall ? <TownHallIcon level={townHall} size="sm" /> : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500">Last Seen</div>
-              <div className="text-slate-200">
+              <div className="text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>Last Seen</div>
+              <div style={{ color: text.primary }}>
                 {safeLastSeen ? formatDistanceToNow(safeLastSeen, { addSuffix: true }) : 'Unknown'}
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500">Total Tenure</div>
-              <div className="text-slate-200">
+              <div className="text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>Total Tenure</div>
+              <div style={{ color: text.primary }}>
                 {typeof tenureDays === 'number' ? `${tenureDays.toLocaleString()} days` : '—'}
               </div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500">Last League</div>
-              <div className="text-slate-200">{lastLeague ?? '—'}</div>
+              <div className="text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>Last League</div>
+              <div style={{ color: text.primary }}>{lastLeague ?? '—'}</div>
             </div>
             <div>
-              <div className="text-[10px] uppercase tracking-widest text-slate-500">Last Trophies</div>
-              <div className="text-slate-200">
+              <div className="text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>Last Trophies</div>
+              <div style={{ color: text.primary }}>
                 {typeof lastTrophies === 'number' ? lastTrophies.toLocaleString() : '—'}
               </div>
             </div>
@@ -825,164 +860,92 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
 
   return (
     <div className="space-y-6">
-      {/* ═══════════════════════════════════════════════════════════════════════
-          WORLD-CLASS CLAN HEADER BANNER
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div 
-        className="relative rounded-3xl overflow-hidden"
-        style={{ 
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05)'
-        }}
-      >
-        {/* Animated gradient overlay */}
-        <div 
-          className="absolute inset-0 opacity-60"
-          style={{
-            background: `
-              radial-gradient(ellipse 80% 50% at 20% 40%, rgba(234,179,8,0.12) 0%, transparent 50%),
-              radial-gradient(ellipse 60% 40% at 80% 60%, rgba(59,130,246,0.1) 0%, transparent 50%),
-              radial-gradient(ellipse 40% 30% at 50% 80%, rgba(16,185,129,0.08) 0%, transparent 50%)
-            `,
-          }}
-        />
-        
-        {/* Subtle grid pattern */}
-        <div 
-          className="absolute inset-0 opacity-[0.02]"
-          style={{
-            backgroundImage: `
-              linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-              linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
-            `,
-            backgroundSize: '40px 40px'
-          }}
-        />
-        
-        <div className="relative p-6 lg:p-8">
-          {/* Top row: Clan name + Actions */}
-          <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <h1 
-                  className="text-4xl lg:text-5xl font-black text-white tracking-tight"
-                  style={{ 
-                    fontFamily: 'var(--font-display)', 
-                    textShadow: '0 4px 20px rgba(0,0,0,0.5)'
-                  }}
-                >
-                  {data?.clanName || 'Roster'}
-                </h1>
-                {clanStats && (
-                  <div 
-                    className="px-3 py-1 rounded-full text-sm font-bold"
-                    style={{ 
-                      background: 'linear-gradient(135deg, rgba(234,179,8,0.2) 0%, rgba(245,158,11,0.3) 100%)',
-                      border: '1px solid rgba(234,179,8,0.3)',
-                      color: '#fbbf24'
-                    }}
-                  >
-                    {clanStats.memberCount} Members
-                  </div>
-                )}
-              </div>
-              <div className="flex items-center gap-3 text-sm">
-                {data?.clanTag && (
-                  <code className="text-slate-400 bg-black/30 px-2 py-0.5 rounded font-mono text-xs">
-                    {data.clanTag}
-                  </code>
-                )}
-                <>
-                  <span className="text-slate-500">•</span>
-                  <span className="text-slate-400">{updatedLabel}</span>
-                </>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-2 text-sm">
-              <Button
-                tone="primary"
-                onClick={() => {
-                  void mutate();
-                }}
-                disabled={isValidating}
-                title="Refresh snapshot"
-              >
-                {isValidating ? 'Refreshing…' : 'Refresh'}
-              </Button>
+      <RosterHeader
+        clanName={data?.clanName || 'Roster'}
+        clanTag={data?.clanTag || null}
+        lastUpdated={safeLastUpdated}
+        subtitle={updatedLabel}
+        clanStats={clanStats || null}
+        view="cards"
+        onViewChange={onViewChange}
+        rightActions={
+          <>
+            <Button
+              tone="primary"
+              onClick={() => {
+                void mutate();
+              }}
+              disabled={isValidating}
+              title="Refresh snapshot"
+            >
+              {isValidating ? 'Refreshing…' : 'Refresh'}
+            </Button>
 
-              {permissions.canModifyClanData ? (
-                <Button
-                  tone="accentAlt"
-                  onClick={handleRequestRefresh}
-                  disabled={Boolean(ingestionJobId)}
-                  title={ingestionJobId ? 'Refresh already running' : 'Queue a full ingestion run (updates snapshots)'}
-                >
-                  {ingestionJobId ? (ingestionJobData?.status === 'running' ? 'Refreshing…' : 'Refresh queued') : 'Request refresh'}
-                </Button>
-              ) : null}
-
+            {permissions.canModifyClanData ? (
               <Button
                 tone="accentAlt"
-                onClick={handleGenerateInsights}
-                disabled={!permissions.canGenerateCoachingInsights}
-                title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Generate insights'}
+                onClick={handleRequestRefresh}
+                disabled={Boolean(ingestionJobId)}
+                title={ingestionJobId ? 'Refresh already running' : 'Queue a full ingestion run (updates snapshots)'}
               >
-                Generate Insights
+                {ingestionJobId ? (ingestionJobData?.status === 'running' ? 'Refreshing…' : 'Refresh queued') : 'Request refresh'}
               </Button>
-              <div className="relative" ref={exportRef}>
-                <Button
-                  tone="ghost"
-                  onClick={() => setExportOpen((prev) => !prev)}
-                  disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
-                  title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Export roster'}
-                >
-                  Export
-                </Button>
-                {exportOpen && (
-                  <div className="absolute right-0 mt-2 w-44 rounded-xl border border-white/10 bg-slate-900/95 p-1 text-xs shadow-lg">
-                    <button
-                      className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                      onClick={() => handleExportAction('csv')}
-                    >
-                      Export CSV
-                    </button>
-                    <button
-                      className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                      onClick={() => handleExportAction('summary')}
-                    >
-                      Copy Summary
-                    </button>
-                    <button
-                      className="w-full rounded-lg px-3 py-2 text-left text-slate-200 hover:bg-white/5"
-                      onClick={() => handleExportAction('discord')}
-                    >
-                      Copy Discord
-                    </button>
-                  </div>
-                )}
-              </div>
-              <Link
-                href="/new/roster/table"
-                className="inline-flex items-center justify-center rounded-xl border px-4 py-2 font-semibold text-sm backdrop-blur-sm"
-                style={{ borderColor: 'var(--border-subtle)', background: 'rgba(30,41,59,0.5)', color: 'var(--text)' }}
+            ) : null}
+
+            <Button
+              tone="accentAlt"
+              onClick={handleGenerateInsights}
+              disabled={!permissions.canGenerateCoachingInsights}
+              title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Generate insights'}
+            >
+              Generate Insights
+            </Button>
+            <div className="relative" ref={exportRef}>
+              <Button
+                tone="ghost"
+                onClick={() => setExportOpen((prev) => !prev)}
+                disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
+                title={!permissions.canGenerateCoachingInsights ? 'Permission required' : 'Export roster'}
               >
-                Table view
-              </Link>
+                Export
+              </Button>
+              {exportOpen && (
+                <div
+                  className="absolute right-0 mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg"
+                  style={{ background: surface.panel, borderColor: surface.border }}
+                >
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                    style={{ color: text.primary }}
+                    onClick={() => handleExportAction('csv')}
+                  >
+                    Export CSV
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                    style={{ color: text.primary }}
+                    onClick={() => handleExportAction('summary')}
+                  >
+                    Copy Summary
+                  </button>
+                  <button
+                    className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                    style={{ color: text.primary }}
+                    onClick={() => handleExportAction('discord')}
+                  >
+                    Copy Discord
+                  </button>
+                </div>
+              )}
             </div>
-          </div>
+          </>
+        }
+      />
 
-          {/* TH Distribution Bar */}
-          {clanStats && (
-            <div className="mb-6">
-              <div className="text-[10px] text-slate-500 uppercase tracking-widest mb-2">Town Hall Distribution</div>
-              <THDistributionBar distribution={clanStats.thDistribution} />
-            </div>
-          )}
-
-          {/* Stats Row */}
-          {clanStats && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
+      <div className={"transition-opacity duration-200 " + (mounted ? "opacity-100" : "opacity-0")}>
+        {/* Stats Row */}
+        {clanStats && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
               <MiniStatCard 
                 label="Members" 
                 value={clanStats.memberCount} 
@@ -1035,11 +998,10 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
               />
             </div>
           )}
-        </div>
-      </div>
 
-      <div className="rounded-2xl border" style={{ background: 'var(--card)', borderColor: 'var(--border-subtle)' }}>
-        <div className="border-b border-white/5 px-4 py-2 flex flex-wrap items-center gap-3">
+
+        <div className="rounded-2xl border" style={{ background: 'var(--card)', borderColor: 'var(--border-subtle)' }}>
+        <div className="sticky top-2 z-20 border-b border-white/10 bg-slate-950/70 backdrop-blur px-4 py-2 flex flex-wrap items-center gap-3">
           <Input
             placeholder="Search players"
             className="max-w-xs"
@@ -1052,7 +1014,14 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
                 key={key}
                 tone={status === key ? 'accentAlt' : 'ghost'}
                 className="h-10 px-4"
-                onClick={() => setStatus(key)}
+                onClick={() => {
+                setStatus(key);
+                // Also update URL immediately for shareable links.
+                const params = new URLSearchParams(searchParams?.toString() ?? '');
+                params.set('status', key);
+                const query = params.toString();
+                router.replace(query ? `/new/roster?${query}` : '/new/roster');
+              }}
               >
                 {key.charAt(0).toUpperCase() + key.slice(1)}
               </Button>
@@ -1095,9 +1064,10 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
           ].map((item) => (
             <div
               key={item.label}
-              className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-xs"
+              className="rounded-xl border px-4 py-3 text-xs"
+              style={{ borderColor: surface.border, background: surface.panel }}
             >
-              <div className="uppercase tracking-widest text-[10px] text-slate-400">{item.label}</div>
+              <div className="uppercase tracking-widest text-[10px]" style={{ color: text.muted }}>{item.label}</div>
               <div className="mt-2 text-2xl font-black" style={{ color: item.color }}>
                 {item.value}
               </div>
@@ -1108,13 +1078,13 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
 
         {!activeLoading && !activeError ? (
           activeMembers.length ? (
-            <div className="grid gap-5 p-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className={"grid gap-5 p-4 md:grid-cols-2 xl:grid-cols-3 " + (isValidating ? 'opacity-60 animate-pulse' : '')}>
               {status === 'former'
                 ? sortedFormerMembers.map(renderFormerCard)
                 : sortedMembers.map(renderMemberCard)}
             </div>
           ) : (
-            <div className="p-6 text-sm text-slate-300">
+            <div className="p-6 text-sm" style={{ color: text.secondary }}>
               {status === 'former'
                 ? 'No former members recorded yet.'
                 : 'No roster members match that filter.'}
@@ -1147,6 +1117,7 @@ export default function RosterClient({ initialRoster }: { initialRoster?: Roster
           onClose={() => setDepartureTarget(null)}
         />
       )}
+      </div>
     </div>
   );
 }
