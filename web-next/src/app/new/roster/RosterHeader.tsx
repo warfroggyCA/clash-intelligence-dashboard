@@ -92,7 +92,7 @@ export function MiniStat({ label, value, color, suffix }: { label: string; value
   );
 }
 
-function THDistributionSummary({ distribution }: { distribution: Record<number, number> }) {
+function THDistributionSummary({ distribution, extra }: { distribution: Record<number, number>; extra?: React.ReactNode }) {
   const entries = Object.entries(distribution)
     .map(([th, count]) => ({ th: parseInt(th, 10), count }))
     .filter((e) => e.count > 0)
@@ -148,6 +148,12 @@ function THDistributionSummary({ distribution }: { distribution: Record<number, 
             </div>
           ))}
         </div>
+
+        {extra ? (
+          <div className="mt-3 border-t pt-3" style={{ borderColor: surface.border }}>
+            {extra}
+          </div>
+        ) : null}
       </div>
     </details>
   );
@@ -227,6 +233,7 @@ export function RosterHeader({
   onViewChange,
   mode,
   onToggleMode,
+  detailsExtra,
 }: {
   clanName: string;
   clanTag?: string | null;
@@ -238,6 +245,7 @@ export function RosterHeader({
   onViewChange?: (view: 'cards' | 'table') => void;
   mode: 'dark' | 'light';
   onToggleMode: () => void;
+  detailsExtra?: React.ReactNode;
 }) {
   const updatedLabel = lastUpdated ? `Snapshot updated ${formatDistanceToNow(lastUpdated, { addSuffix: true })}` : 'Snapshot update time unknown';
   const subtitleNode = subtitle ?? updatedLabel;
@@ -294,7 +302,7 @@ export function RosterHeader({
 
       {clanStats ? (
         <div className="mt-4">
-          <THDistributionSummary distribution={clanStats.thDistribution} />
+          <THDistributionSummary distribution={clanStats.thDistribution} extra={detailsExtra} />
         </div>
       ) : null}
     </div>
