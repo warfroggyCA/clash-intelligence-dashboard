@@ -51,6 +51,7 @@ const useMountFade = () => {
 };
 import { formatDistanceToNow } from 'date-fns';
 import { RosterHeader } from '../RosterHeader';
+import { MoreHorizontal, ChevronUp, ChevronDown } from 'lucide-react';
 import { useLeadership } from '@/hooks/useLeadership';
 import { showToast } from '@/lib/toast';
 import {
@@ -148,6 +149,13 @@ export default function TableClient({
   const mounted = useMountFade();
   const tablePadY = 'py-2';
   const tablePadX = 'px-3';
+
+  const tableHeaderBg = mode === 'light' ? 'rgba(255,255,255,0.92)' : 'rgba(9,16,31,0.9)';
+
+  const sortGlyph = (key: string) => {
+    if (sortKey !== key) return null;
+    return sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
+  };
   const headerTextClass = 'text-[11px] font-semibold uppercase tracking-[0.16em]';
 
   const router = useRouter();
@@ -762,7 +770,7 @@ export default function TableClient({
                   <thead
                     className="sticky top-0 z-10"
                     style={{
-                      background: surface.card,
+                      background: tableHeaderBg,
                       borderBottom: `1px solid ${surface.border}`,
                       backdropFilter: 'blur(10px)',
                     }}
@@ -770,7 +778,7 @@ export default function TableClient({
                     <tr className={headerTextClass} style={{ color: text.muted }}>
                       <th
                         className={`${tablePadX} ${tablePadY} text-left sticky z-20`}
-                        style={{ left: 0, background: surface.card }}
+                        style={{ left: 0, background: tableHeaderBg }}
                       >
                         Player
                       </th>
@@ -780,7 +788,7 @@ export default function TableClient({
                           return (
                             <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
                               <Tooltip content={<span>Days in clan.</span>}>
-                                <span className="inline-flex items-center justify-end gap-1 cursor-help">Tenure</span>
+                                <span className="inline-flex items-center justify-end gap-1 cursor-help"><span>Tenure</span>{sortGlyph('tenure')}</span>
                               </Tooltip>
                             </th>
                           );
@@ -788,7 +796,7 @@ export default function TableClient({
                           return (
                             <th key={col} className={`${tablePadX} ${tablePadY} text-right`}>
                               <Tooltip content={<span>Combined hero progress for this Town Hall.</span>}>
-                                <span className="inline-flex items-center justify-end gap-1 cursor-help">Heroes</span>
+                                <span className="inline-flex items-center justify-end gap-1 cursor-help"><span>Heroes</span>{sortGlyph('heroes')}</span>
                               </Tooltip>
                             </th>
                           );
@@ -799,7 +807,7 @@ export default function TableClient({
                               <Tooltip content={<span>Attacks used across last 3 regular wars.</span>}>
                                 <button type="button" onClick={() => handleSort('war_attacks')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>War Att</span>
-                                  {sortKey === 'war_attacks' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('war_attacks')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -810,7 +818,7 @@ export default function TableClient({
                               <Tooltip content={<span>Average stars across last 3 regular wars.</span>}>
                                 <button type="button" onClick={() => handleSort('war_avg_stars')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>War ★</span>
-                                  {sortKey === 'war_avg_stars' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('war_avg_stars')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -821,7 +829,7 @@ export default function TableClient({
                               <Tooltip content={<span>3★ rate across last 3 regular wars.</span>}>
                                 <button type="button" onClick={() => handleSort('war_triple_rate')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>War 3★%</span>
-                                  {sortKey === 'war_triple_rate' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('war_triple_rate')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -832,7 +840,7 @@ export default function TableClient({
                               <Tooltip content={<span>0–1★ rate across last 3 regular wars.</span>}>
                                 <button type="button" onClick={() => handleSort('war_low_hit_rate')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>War 0–1★%</span>
-                                  {sortKey === 'war_low_hit_rate' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('war_low_hit_rate')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -843,7 +851,7 @@ export default function TableClient({
                               <Tooltip content={<span>Average destruction across last 3 regular wars.</span>}>
                                 <button type="button" onClick={() => handleSort('war_avg_destruction')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>War %</span>
-                                  {sortKey === 'war_avg_destruction' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('war_avg_destruction')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -853,7 +861,7 @@ export default function TableClient({
                           return (
                             <th key={col} className={`${tablePadX} ${tablePadY} text-center`}>
                               <button type="button" onClick={() => handleSort('th')} className="inline-flex items-center gap-1">
-                                TH {sortKey === 'th' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                <span>TH</span> {sortGlyph('th')}
                               </button>
                             </th>
                           );
@@ -861,7 +869,7 @@ export default function TableClient({
                           return (
                             <th key={col} className={`${tablePadX} ${tablePadY} text-center`}>
                               <button type="button" onClick={() => handleSort('league')} className="inline-flex items-center gap-1">
-                                League {sortKey === 'league' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                <span>League</span> {sortGlyph('league')}
                               </button>
                             </th>
                           );
@@ -871,7 +879,7 @@ export default function TableClient({
                               <Tooltip content={<span>Ranked trophies: current season ladder points.</span>}>
                                 <button type="button" onClick={() => handleSort('trophies')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>Trophies</span>
-                                  {sortKey === 'trophies' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('trophies')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -882,7 +890,7 @@ export default function TableClient({
                               <Tooltip content={<span>VIP score: overall contribution rating.</span>}>
                                 <button type="button" onClick={() => handleSort('vip')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>VIP</span>
-                                  {sortKey === 'vip' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('vip')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -893,7 +901,7 @@ export default function TableClient({
                               <Tooltip content={<span>Season donations given: higher is better.</span>}>
                                 <button type="button" onClick={() => handleSort('donations')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>Donated</span>
-                                  {sortKey === 'donations' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('donations')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -904,7 +912,7 @@ export default function TableClient({
                               <Tooltip content={<span>Rush %: lower is better (green &lt;10%, yellow 10–20%, red &gt;20%).</span>}>
                                 <button type="button" onClick={() => handleSort('rush')} className="inline-flex items-center gap-1 cursor-help">
                                   <span>Rush</span>
-                                  {sortKey === 'rush' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                  {sortGlyph('rush')}
                                 </button>
                               </Tooltip>
                             </th>
@@ -915,7 +923,7 @@ export default function TableClient({
                             <Tooltip content={<span>SRS: temporary roster score (activity/skill placeholder; real calc forthcoming).</span>}>
                               <button type="button" onClick={() => handleSort('srs')} className="inline-flex items-center gap-1 cursor-help">
                                 <span>SRS</span>
-                                {sortKey === 'srs' ? (sortDirection === 'asc' ? '↑' : '↓') : ''}
+                                {sortGlyph('srs')}
                               </button>
                             </Tooltip>
                           </th>
@@ -936,8 +944,10 @@ export default function TableClient({
                         ? member.vip.score
                         : null;
 
-                      const rowBg = idx % 2 === 0 ? 'rgba(255,255,255,0.02)' : 'transparent';
-                      const rowHover = 'rgba(255,255,255,0.06)';
+                      const rowBg = idx % 2 === 0
+                        ? (mode === 'light' ? 'rgba(15,23,42,0.02)' : 'rgba(255,255,255,0.02)')
+                        : 'transparent';
+                      const rowHover = mode === 'light' ? 'rgba(15,23,42,0.06)' : 'rgba(255,255,255,0.06)';
 
                       return (
                         <tr
@@ -963,9 +973,9 @@ export default function TableClient({
                             className={`${tablePadX} ${tablePadY} align-middle sticky z-10`}
                             style={{ left: 0, background: 'var(--row-bg)' }}
                           >
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center justify-between gap-3">
                               <RoleIcon role={role} size={22} className="shrink-0" />
-                              <div className="flex h-6 items-center gap-2">
+                              <div className="flex h-6 flex-1 items-center gap-2 min-w-0">
                                 <Link
                                   href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
                                   className="flex h-6 max-w-[180px] items-center truncate font-semibold tracking-[0.02em] transition-colors group-hover:underline"
@@ -987,6 +997,24 @@ export default function TableClient({
                                 </Tooltip>
                               </div>
                             </div>
+
+                            <Tooltip content={<span>Row actions</span>}>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                }}
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border opacity-0 transition-opacity group-hover:opacity-100"
+                                style={{
+                                  background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(255,255,255,0.04)',
+                                  borderColor: surface.border,
+                                  color: text.secondary,
+                                }}
+                                aria-label="Row actions"
+                              >
+                                <MoreHorizontal size={16} />
+                              </button>
+                            </Tooltip>
                           </td>
                           {(() => {
                             const tenureDays =
