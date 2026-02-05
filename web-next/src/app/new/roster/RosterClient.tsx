@@ -701,12 +701,12 @@ export default function RosterClient({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="flex items-center gap-3">
-              <TownHallIcon level={townHall ?? undefined} size="sm" className="-ml-1" />
+              <TownHallIcon level={townHall ?? undefined} size="md" className="-ml-1" />
               {league ? (
                 <LeagueIcon
                   league={league}
                   ranked
-                  size="xs"
+                  size="sm"
                   className="-ml-0.5"
                   showBadge
                   badgeText={leagueBadge}
@@ -852,7 +852,7 @@ export default function RosterClient({
             ) : (
               <span style={{ color: text.muted }}>Role unknown</span>
             )}
-            {townHall ? <TownHallIcon level={townHall} size="sm" /> : null}
+            {townHall ? <TownHallIcon level={townHall} size="md" /> : null}
           </div>
 
           <div className="grid grid-cols-2 gap-3 text-xs">
