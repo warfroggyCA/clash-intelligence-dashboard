@@ -895,31 +895,7 @@ export default function RosterClient({
         onViewChange={onViewChange}
         mode={mode}
         onToggleMode={onToggleMode}
-        detailsExtra={
-          clanStats ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-              <MiniStatCard label="Avg VIP" value={clanStats.avgVipScore ?? '—'} icon="⭐" color="#38bdf8" />
-              <MiniStatCard label="Avg Hero Power" value={clanStats.avgHeroPower ?? '—'} icon="⚔️" color="#8b5cf6" />
-              <MiniStatCard label="Total Donated" value={clanStats.totalDonations ?? '—'} icon="📤" color="#10b981" />
-              <MiniStatCard label="Avg Trophies" value={clanStats.avgTrophies ?? '—'} icon="🏆" color="#eab308" />
-              <MiniStatCard label="Active" value={`${clanStats.activePercent}%`} icon="📈" color="#22c55e" />
-              <MiniStatCard
-                label="Top Donator"
-                value={clanStats.topDonator.value ?? '—'}
-                icon="🥇"
-                color="#f472b6"
-                subtext={clanStats.topDonator.value != null ? clanStats.topDonator.name.slice(0, 12) : '—'}
-              />
-              <MiniStatCard
-                label="Top VIP"
-                value={clanStats.topVip.value ?? '—'}
-                icon="👑"
-                color="#fbbf24"
-                subtext={clanStats.topVip.value != null ? clanStats.topVip.name.slice(0, 12) : '—'}
-              />
-            </div>
-          ) : null
-        }
+        detailsExtra={null}
         rightActions={
           <>
             <Tooltip content={<span>Refresh snapshot.</span>}>
@@ -1131,6 +1107,51 @@ export default function RosterClient({
           )
         ) : null}
       </div>
+
+      {clanStats ? (
+        <details className="rounded-2xl border overflow-hidden" style={{ borderColor: surface.border, background: surface.card }}>
+          <summary className="list-none cursor-pointer select-none">
+            <div
+              className="px-4 py-3 flex items-center justify-between"
+              style={{ background: surface.panel, borderBottom: `1px solid ${surface.border}` }}
+            >
+              <div>
+                <div className="text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>
+                  Clan snapshot
+                </div>
+                <div className="text-sm font-semibold" style={{ color: text.primary }}>
+                  Stats
+                </div>
+              </div>
+              <div className="text-xs" style={{ color: text.muted }}>Expand</div>
+            </div>
+          </summary>
+          <div className="p-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-8 gap-3">
+              <MiniStatCard label="Members" value={clanStats.memberCount} icon="👥" color="#f59e0b" />
+              <MiniStatCard label="Avg VIP" value={clanStats.avgVipScore ?? '—'} icon="⭐" color="#38bdf8" />
+              <MiniStatCard label="Avg Hero Power" value={clanStats.avgHeroPower ?? '—'} icon="⚔️" color="#8b5cf6" />
+              <MiniStatCard label="Total Donated" value={clanStats.totalDonations ?? '—'} icon="📤" color="#10b981" />
+              <MiniStatCard label="Avg Trophies" value={clanStats.avgTrophies ?? '—'} icon="🏆" color="#eab308" />
+              <MiniStatCard label="Active" value={`${clanStats.activePercent}%`} icon="📈" color="#22c55e" />
+              <MiniStatCard
+                label="Top Donator"
+                value={clanStats.topDonator.value ?? '—'}
+                icon="🥇"
+                color="#f472b6"
+                subtext={clanStats.topDonator.value != null ? clanStats.topDonator.name.slice(0, 12) : '—'}
+              />
+              <MiniStatCard
+                label="Top VIP"
+                value={clanStats.topVip.value ?? '—'}
+                icon="👑"
+                color="#fbbf24"
+                subtext={clanStats.topVip.value != null ? clanStats.topVip.name.slice(0, 12) : '—'}
+              />
+            </div>
+          </div>
+        </details>
+      ) : null}
 
       {notesTarget && resolvedClanTag && (
         <RosterPlayerNotesModal
