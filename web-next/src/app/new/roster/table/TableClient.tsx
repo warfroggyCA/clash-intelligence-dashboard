@@ -685,7 +685,10 @@ export default function TableClient({
               <span className="hidden sm:inline text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>Views</span>
               <div
                 className="inline-flex overflow-hidden rounded-lg border"
-                style={{ borderColor: surface.border, background: 'rgba(0,0,0,0.2)' }}
+                style={{
+                  borderColor: surface.border,
+                  background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(0,0,0,0.2)',
+                }}
               >
                 {([
                   { key: 'compact', label: 'Compact' },
@@ -700,10 +703,12 @@ export default function TableClient({
                       setPreset(opt.key);
                       if (opt.key === 'custom') setCustomOpen(true);
                     }}
-                    className="px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
+                    className="h-9 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
                     style={{
-                      background: preset === opt.key ? 'rgba(34,211,238,0.18)' : 'transparent',
-                      color: preset === opt.key ? 'var(--accent-alt)' : text.secondary,
+                      background: preset === opt.key
+                        ? (mode === 'light' ? 'rgba(14,116,144,0.14)' : 'rgba(255,255,255,0.10)')
+                        : 'transparent',
+                      color: preset === opt.key ? text.primary : text.secondary,
                     }}
                   >
                     {opt.label}
