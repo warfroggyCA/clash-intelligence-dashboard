@@ -267,10 +267,7 @@ export function RosterHeader({
   const maxThCount = thEntries[0]?.count ?? null;
 
   return (
-    <div
-      className="-mx-6 -mt-6 px-6 py-6 border-b"
-      style={{ background: surface.panel, borderColor: surface.border }}
-    >
+    <div className="space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-2">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: text.muted }}>
@@ -290,13 +287,7 @@ export function RosterHeader({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <div
-            className="inline-flex items-center gap-2 rounded-xl border p-1"
-            style={{ borderColor: surface.border, background: surface.panel }}
-            aria-label="Roster actions"
-          >
-            {rightActions}
-          </div>
+          {rightActions}
 
           <Tooltip content={<span>{mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>}>
             <Spec2IconButton ariaLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={onToggleMode}>

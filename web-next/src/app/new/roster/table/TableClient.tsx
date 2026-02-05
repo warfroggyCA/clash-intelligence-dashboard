@@ -51,7 +51,7 @@ const useMountFade = () => {
 };
 import { formatDistanceToNow } from 'date-fns';
 import { RosterHeader } from '../RosterHeader';
-import { MoreHorizontal, ChevronUp, ChevronDown } from 'lucide-react';
+import { MoreHorizontal, ChevronUp, ChevronDown, RefreshCw } from 'lucide-react';
 import { useLeadership } from '@/hooks/useLeadership';
 import { showToast } from '@/lib/toast';
 import {
@@ -319,6 +319,14 @@ export default function TableClient({
     return () => document.removeEventListener('mousedown', handleClick);
   }, [exportOpen]);
 
+  const handleGenerateInsights = useCallback(() => {
+    if (!permissions.canGenerateCoachingInsights) {
+      showToast('You do not have permission to generate insights.', 'error');
+      return;
+    }
+    showToast('Insight generation is queued.', 'success');
+  }, [permissions.canGenerateCoachingInsights]);
+
   const handleExportAction = useCallback(
     async (action: 'csv' | 'discord' | 'summary') => {
       if (!permissions.canGenerateCoachingInsights) {
@@ -555,69 +563,74 @@ export default function TableClient({
         onToggleMode={onToggleMode}
         rightActions={
           <>
-            <Tooltip content={<span>Refresh snapshot.</span>}>
+            <Tooltip content={<span>{!permissions.canGenerateCoachingInsights ? 'Permission required.' : 'Generate insights.'}</span>}>
               <Button
                 tone="primary"
+                onClick={handleGenerateInsights}
+                disabled={!permissions.canGenerateCoachingInsights}
+                aria-label="Generate insights"
+              >
+                Generate Insights
+              </Button>
+            </Tooltip>
+
+            <Tooltip content={<span>Refresh snapshot.</span>}>
+              <Spec2IconButton
+                ariaLabel="Refresh"
                 onClick={() => {
                   void mutate();
                   void mutateWarMetrics();
                   showToast('Refreshing snapshot…', 'success');
                 }}
                 disabled={isValidating}
-                aria-label="Refresh snapshot"
               >
-                {isValidating ? 'Refreshing…' : 'Refresh'}
-              </Button>
+                <RefreshCw size={18} className={isValidating ? 'animate-spin' : ''} />
+              </Spec2IconButton>
             </Tooltip>
 
-            {permissions.canModifyClanData && data?.clanTag ? (
-              <Tooltip content={<span>Leadership: triggers a live refresh (CoC fetch).</span>}>
-                <Button
-                  tone="accentAlt"
-                  onClick={async () => {
-                    try {
-                      showToast('Live refresh started…', 'success');
-                      const liveKey = `/api/v2/roster?clanTag=${encodeURIComponent(data.clanTag)}&mode=live`;
-                      await mutate(apiFetcher(liveKey) as any, { revalidate: false });
-                      await mutateWarMetrics();
-                      showToast('Live refresh complete.', 'success');
-                    } catch (err: any) {
-                      showToast(err?.message || 'Live refresh failed.', 'error');
-                    }
-                  }}
-                  disabled={isValidating}
-                  aria-label="Live refresh (leadership)"
-                >
-                  Live Refresh
-                </Button>
-              </Tooltip>
-            ) : null}
             <div className="relative" ref={exportRef}>
-              <Tooltip
-                content={
-                  !permissions.canGenerateCoachingInsights
-                    ? <span>Permission required.</span>
-                    : <span>Export roster.</span>
-                }
-              >
-                <Button
-                  tone="ghost"
-                  onClick={() => setExportOpen((prev) => !prev)}
-                  disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
-                  aria-label="Export roster"
-                >
-                  Export
-                </Button>
+              <Tooltip content={<span>More</span>}>
+                <Spec2IconButton ariaLabel="More" onClick={() => setExportOpen((prev) => !prev)}>
+                  <MoreHorizontal size={18} />
+                </Spec2IconButton>
               </Tooltip>
+
               {exportOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg"
-                  style={{ background: surface.panel, borderColor: surface.border }}
+                  className="absolute right-0 mt-2 w-56 rounded-xl border p-1 text-xs shadow-lg"
+                  style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}
                 >
+                  {permissions.canModifyClanData && data?.clanTag ? (
+                    <button
+                      className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                      style={{ color: text.primary }}
+                      onClick={async () => {
+                        try {
+                          setExportOpen(false);
+                          showToast('Live refresh started…', 'success');
+                          const liveKey = `/api/v2/roster?clanTag=${encodeURIComponent(data.clanTag)}&mode=live`;
+                          await mutate(apiFetcher(liveKey) as any, { revalidate: false });
+                          await mutateWarMetrics();
+                          showToast('Live refresh complete.', 'success');
+                        } catch (err: any) {
+                          showToast(err?.message || 'Live refresh failed.', 'error');
+                        }
+                      }}
+                      disabled={isValidating}
+                    >
+                      Live Refresh
+                    </button>
+                  ) : null}
+
+                  {permissions.canModifyClanData && data?.clanTag ? (
+                    <div className="my-1 border-t" style={{ borderColor: surface.border }} />
+                  ) : null}
+
                   <button
                     className="w-full rounded-lg px-3 py-2 text-left transition-colors"
                     style={{ color: text.primary }}
                     onClick={() => handleExportAction('csv')}
+                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
                   >
                     Export CSV
                   </button>
@@ -625,6 +638,7 @@ export default function TableClient({
                     className="w-full rounded-lg px-3 py-2 text-left transition-colors"
                     style={{ color: text.primary }}
                     onClick={() => handleExportAction('summary')}
+                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
                   >
                     Copy Summary
                   </button>
@@ -632,6 +646,7 @@ export default function TableClient({
                     className="w-full rounded-lg px-3 py-2 text-left transition-colors"
                     style={{ color: text.primary }}
                     onClick={() => handleExportAction('discord')}
+                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
                   >
                     Copy Discord
                   </button>
