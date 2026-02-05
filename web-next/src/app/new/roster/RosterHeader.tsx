@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { Spec2IconButton } from '@/components/ui/Spec2Controls';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, LayoutGrid, Table2 } from 'lucide-react';
 
 type ClanStats = {
   memberCount: number;
@@ -162,9 +162,11 @@ function THDistributionSummary({ distribution, extra }: { distribution: Record<n
 function ViewToggle({
   view,
   onViewChange,
+  mode,
 }: {
   view: 'cards' | 'table';
   onViewChange?: (view: 'cards' | 'table') => void;
+  mode: 'dark' | 'light';
 }) {
   const router = useRouter();
 
@@ -181,11 +183,12 @@ function ViewToggle({
     label: string;
   }) => {
     const active = view === target;
-    const className = "px-3 py-2 text-sm font-semibold transition-colors";
+    const className = "h-10 px-3 inline-flex items-center gap-2 text-sm font-semibold transition-colors";
     const style = {
-      background: active ? 'rgba(34,211,238,0.18)' : 'transparent',
-      color: active ? 'var(--accent-alt)' : text.secondary,
-      boxShadow: active ? 'inset 0 0 0 1px rgba(34,211,238,0.35)' : undefined,
+      background: active
+        ? (mode === 'light' ? 'rgba(14,116,144,0.14)' : 'rgba(255,255,255,0.10)')
+        : 'transparent',
+      color: active ? text.primary : text.secondary,
     };
 
     if (onViewChange) {
@@ -197,6 +200,7 @@ function ViewToggle({
           style={style}
           aria-current={active ? 'page' : undefined}
         >
+          {target === 'cards' ? <LayoutGrid size={16} /> : <Table2 size={16} />}
           {label}
         </button>
       );
@@ -205,6 +209,7 @@ function ViewToggle({
     const href = target === 'cards' ? '/new/roster' : '/new/roster/table';
     return (
       <Link href={href} prefetch scroll={false} className={className} style={style} aria-current={active ? 'page' : undefined}>
+        {target === 'cards' ? <LayoutGrid size={16} /> : <Table2 size={16} />}
         {label}
       </Link>
     );
@@ -213,7 +218,10 @@ function ViewToggle({
   return (
     <div
       className="inline-flex overflow-hidden rounded-xl border"
-      style={{ borderColor: surface.border, background: surface.panel }}
+      style={{
+        borderColor: surface.border,
+        background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(0,0,0,0.2)',
+      }}
       aria-label="Roster view"
     >
       <ButtonOrLink target="cards" label="Cards" />
@@ -296,7 +304,7 @@ export function RosterHeader({
             </Spec2IconButton>
           </Tooltip>
 
-          <ViewToggle view={view} onViewChange={onViewChange} />
+          <ViewToggle view={view} onViewChange={onViewChange} mode={mode} />
         </div>
       </div>
 
