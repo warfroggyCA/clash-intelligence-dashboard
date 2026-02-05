@@ -743,31 +743,6 @@ export default function RosterClient({
             </div>
           </div>
 
-          <div className="mt-4">
-            <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color: text.muted }}>
-              Activity buckets
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              {[
-                { label: 'Very Active', value: clanStats.activityCounts?.veryActive ?? 0, color: '#22c55e' },
-                { label: 'Active', value: clanStats.activityCounts?.active ?? 0, color: '#38bdf8' },
-                { label: 'Moderate', value: clanStats.activityCounts?.moderate ?? 0, color: '#eab308' },
-                { label: 'Low', value: clanStats.activityCounts?.low ?? 0, color: '#f97316' },
-                { label: 'Inactive', value: clanStats.activityCounts?.inactive ?? 0, color: '#f87171' },
-              ].map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border px-4 py-3 text-xs"
-                  style={{ borderColor: surface.border, background: surface.panel }}
-                >
-                  <div className="uppercase tracking-widest text-[10px]" style={{ color: text.muted }}>{item.label}</div>
-                  <div className="mt-2 text-2xl font-black" style={{ color: item.color }}>
-                    {item.value}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-x-10 gap-y-2">
@@ -1142,6 +1117,32 @@ export default function RosterClient({
                 color="#fbbf24"
                 subtext={clanStats.topVip.value != null ? clanStats.topVip.name.slice(0, 12) : '—'}
               />
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="text-[10px] uppercase tracking-widest mb-2" style={{ color: text.muted }}>
+              Activity buckets
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              {[
+                { label: 'Very Active', value: clanStats.activityCounts?.veryActive ?? 0, color: '#22c55e' },
+                { label: 'Active', value: clanStats.activityCounts?.active ?? 0, color: '#38bdf8' },
+                { label: 'Moderate', value: clanStats.activityCounts?.moderate ?? 0, color: '#eab308' },
+                { label: 'Low', value: clanStats.activityCounts?.low ?? 0, color: '#f97316' },
+                { label: 'Inactive', value: clanStats.activityCounts?.inactive ?? 0, color: '#f87171' },
+              ].map((item) => (
+                <div
+                  key={item.label}
+                  className="rounded-xl border px-4 py-3 text-xs"
+                  style={{ borderColor: surface.border, background: surface.panel }}
+                >
+                  <div className="uppercase tracking-widest text-[10px]" style={{ color: text.muted }}>{item.label}</div>
+                  <div className="mt-2 text-2xl font-black" style={{ color: item.color }}>
+                    {item.value}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </details>
