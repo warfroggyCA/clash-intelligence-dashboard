@@ -183,12 +183,26 @@ function ViewToggle({
     label: string;
   }) => {
     const active = view === target;
-    const className = "h-10 px-3 inline-flex items-center gap-2 text-sm font-semibold transition-colors";
+    const className = "h-11 w-11 inline-flex items-center justify-center transition-colors";
     const style = {
-      background: active
-        ? (mode === 'light' ? 'rgba(14,116,144,0.14)' : 'rgba(255,255,255,0.10)')
-        : 'transparent',
-      color: active ? text.primary : text.secondary,
+      background:
+        active
+          ? mode === 'dark'
+            ? 'rgba(34,211,238,0.18)'
+            : '#0E7490'
+          : 'transparent',
+      color:
+        active
+          ? mode === 'dark'
+            ? 'var(--accent-alt)'
+            : '#ffffff'
+          : text.secondary,
+      boxShadow:
+        active
+          ? mode === 'dark'
+            ? 'inset 0 0 0 1px rgba(34,211,238,0.35)'
+            : 'inset 0 0 0 1px rgba(14,116,144,0.65)'
+          : undefined,
     };
 
     if (onViewChange) {
@@ -200,8 +214,7 @@ function ViewToggle({
           style={style}
           aria-current={active ? 'page' : undefined}
         >
-          {target === 'cards' ? <LayoutGrid size={16} /> : <Table2 size={16} />}
-          {label}
+          {target === 'cards' ? <LayoutGrid size={18} /> : <Table2 size={18} />}
         </button>
       );
     }
@@ -209,23 +222,32 @@ function ViewToggle({
     const href = target === 'cards' ? '/new/roster' : '/new/roster/table';
     return (
       <Link href={href} prefetch scroll={false} className={className} style={style} aria-current={active ? 'page' : undefined}>
-        {target === 'cards' ? <LayoutGrid size={16} /> : <Table2 size={16} />}
-        {label}
+        {target === 'cards' ? <LayoutGrid size={18} /> : <Table2 size={18} />}
+        <span className="sr-only">{label}</span>
       </Link>
     );
   };
 
   return (
     <div
-      className="inline-flex overflow-hidden rounded-xl border"
+      className="inline-flex rounded-xl border overflow-hidden"
       style={{
         borderColor: surface.border,
-        background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(0,0,0,0.2)',
+        background: 'rgba(0,0,0,0.2)',
       }}
-      aria-label="Roster view"
+      role="group"
+      aria-label="View"
     >
-      <ButtonOrLink target="cards" label="Cards" />
-      <ButtonOrLink target="table" label="Table" />
+      <Tooltip content={<span>Cards view</span>}>
+        <div>
+          <ButtonOrLink target="cards" label="Cards" />
+        </div>
+      </Tooltip>
+      <Tooltip content={<span>Table view</span>}>
+        <div>
+          <ButtonOrLink target="table" label="Table" />
+        </div>
+      </Tooltip>
     </div>
   );
 }
