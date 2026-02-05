@@ -147,10 +147,14 @@ export default function TableClient({
   onToggleMode: () => void;
 }) {
   const mounted = useMountFade();
-  const tablePadY = 'py-2';
+  const [density, setDensity] = useState<'cozy' | 'compact'>('cozy');
+
+  const tablePadY = density === 'compact' ? 'py-1' : 'py-3';
   const tablePadX = 'px-3';
 
   const tableHeaderBg = mode === 'light' ? 'rgba(255,255,255,0.92)' : 'rgba(9,16,31,0.9)';
+  const tableHeaderColor = mode === 'light' ? 'rgba(30,58,138,0.78)' : text.muted;
+  const tableToolbarMuted = mode === 'light' ? 'rgba(30,58,138,0.72)' : text.secondary;
 
   const sortGlyph = (key: string) => {
     if (sortKey !== key) return null;
@@ -161,6 +165,13 @@ export default function TableClient({
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const urlDensity = searchParams?.get('density');
+
+  // Keep density in sync with URL changes.
+  useEffect(() => {
+    setDensity(urlDensity === 'compact' ? 'compact' : 'cozy');
+  }, [urlDensity]);
+
   const { data, members, isLoading, error, isValidating, mutate, clanTag } = useRosterData(initialRoster || undefined);
   const { permissions } = useLeadership();
 
@@ -169,14 +180,15 @@ export default function TableClient({
   const deferredSearch = useDeferredValue(search);
   const normalizedQuery = useMemo(() => normalizeSearch(deferredSearch.trim()), [deferredSearch]);
 
-  type TablePreset = 'compact' | 'leadership' | 'war' | 'custom';
+  type TablePreset = 'default' | 'war' | 'leadership' | 'economy' | 'custom';
   type ColumnKey = ModalColumnKey;
 
   const presetColumns: Record<Exclude<TablePreset, 'custom'>, ColumnKey[]> = useMemo(
     () => ({
-      compact: ['th', 'league', 'trophies', 'vip', 'donations', 'rush', 'srs', 'heroes'],
+      default: ['th', 'league', 'trophies', 'vip', 'donations', 'rush', 'srs', 'heroes'],
       leadership: ['role', 'th', 'vip', 'donations', 'rush', 'tenure'],
       war: ['th', 'league', 'trophies', 'vip', 'rush', 'heroes', 'war_avg_stars', 'war_triple_rate'],
+      economy: ['th', 'league', 'trophies', 'donations', 'vip', 'rush', 'heroes'],
     }),
     [],
   );
@@ -208,18 +220,22 @@ export default function TableClient({
 
   const [preset, setPreset] = useState<TablePreset>(() => {
     const urlPreset = searchParams?.get('preset');
-    if (urlPreset === 'compact' || urlPreset === 'leadership' || urlPreset === 'war' || urlPreset === 'custom') {
+    if (urlPreset === 'default' || urlPreset === 'leadership' || urlPreset === 'war' || urlPreset === 'economy' || urlPreset === 'custom') {
       return urlPreset;
     }
+    // Back-compat: old links/storage used "compact".
+    if (urlPreset === 'compact') return 'default';
+
     try {
       const saved = typeof window !== 'undefined' ? window.localStorage.getItem('roster.table.preset') : null;
-      if (saved === 'compact' || saved === 'leadership' || saved === 'war' || saved === 'custom') {
+      if (saved === 'default' || saved === 'leadership' || saved === 'war' || saved === 'economy' || saved === 'custom') {
         return saved;
       }
+      if (saved === 'compact') return 'default';
     } catch {
       // ignore
     }
-    return 'compact';
+    return 'default';
   });
 
   const [sortKey, setSortKey] = useState<
@@ -235,7 +251,7 @@ export default function TableClient({
   });
 
   const [customOpen, setCustomOpen] = useState(false);
-  const [customColumns, setCustomColumns] = useState<ColumnKey[]>(presetColumns.compact);
+  const [customColumns, setCustomColumns] = useState<ColumnKey[]>(presetColumns.default);
 
   const activeColumns = useMemo<ColumnKey[]>(() => {
     return preset === 'custom' ? customColumns : presetColumns[preset];
@@ -673,39 +689,76 @@ export default function TableClient({
             />
 
             <div className="ml-auto flex items-center gap-2 text-xs">
-              <span className="hidden sm:inline text-[10px] uppercase tracking-widest" style={{ color: text.muted }}>Views</span>
-              <div
-                className="inline-flex overflow-hidden rounded-lg border"
-                style={{
-                  borderColor: surface.border,
-                  background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(0,0,0,0.2)',
-                }}
-              >
+              {/* Left: preset tabs (Spec2) */}
+              <div className="hidden md:flex items-center gap-2">
                 {([
-                  { key: 'compact', label: 'Compact' },
+                  { key: 'default', label: 'Default' },
+                  { key: 'war', label: 'War' },
                   { key: 'leadership', label: 'Leadership' },
-                  { key: 'war', label: 'War prep' },
-                  { key: 'custom', label: 'Custom' },
+                  { key: 'economy', label: 'Economy' },
                 ] as const).map((opt) => (
                   <button
                     key={opt.key}
                     type="button"
-                    onClick={() => {
-                      setPreset(opt.key);
-                      if (opt.key === 'custom') setCustomOpen(true);
-                    }}
-                    className="h-9 px-3 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
+                    onClick={() => setPreset(opt.key)}
+                    className="h-10 px-4 rounded-xl border text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
                     style={{
-                      background: preset === opt.key
-                        ? (mode === 'light' ? 'rgba(14,116,144,0.14)' : 'rgba(255,255,255,0.10)')
-                        : 'transparent',
-                      color: preset === opt.key ? text.primary : text.secondary,
+                      borderColor: surface.border,
+                      background: preset === opt.key ? (mode === 'light' ? 'rgba(14,116,144,0.10)' : 'rgba(255,255,255,0.06)') : surface.card,
+                      color: preset === opt.key ? text.primary : tableToolbarMuted,
                     }}
+                    aria-pressed={preset === opt.key}
                   >
                     {opt.label}
                   </button>
                 ))}
               </div>
+
+              <div className="flex-1" />
+
+              {/* Right: Columns / Views / Density */}
+              <button
+                type="button"
+                className="h-10 px-4 rounded-xl border text-[11px] font-semibold uppercase tracking-[0.16em] inline-flex items-center gap-2"
+                style={{ borderColor: surface.border, background: surface.card, color: tableToolbarMuted }}
+                onClick={() => setCustomOpen(true)}
+              >
+                Columns
+              </button>
+
+              <button
+                type="button"
+                className="h-10 px-4 rounded-xl border text-[11px] font-semibold uppercase tracking-[0.16em] inline-flex items-center gap-2"
+                style={{ borderColor: surface.border, background: surface.card, color: tableToolbarMuted }}
+                onClick={() => {
+                  // placeholder: keep stable slot; real view configs later
+                  showToast('Views menu coming next.', 'success');
+                }}
+              >
+                Views
+              </button>
+
+              <div className="inline-flex overflow-hidden rounded-xl border" style={{ borderColor: surface.border, background: surface.card }}>
+                {([
+                  { key: 'cozy', label: 'Cozy' },
+                  { key: 'compact', label: 'Compact' },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => setDensity(opt.key)}
+                    className="h-10 px-4 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
+                    style={{
+                      background: density === opt.key ? (mode === 'light' ? 'rgba(14,116,144,0.10)' : 'rgba(255,255,255,0.06)') : 'transparent',
+                      color: density === opt.key ? text.primary : tableToolbarMuted,
+                    }}
+                    aria-pressed={density === opt.key}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
               {preset === 'custom' ? (
                 <Button tone="ghost" className="h-10 px-3" onClick={() => setCustomOpen(true)}>
                   Edit…
@@ -771,7 +824,7 @@ export default function TableClient({
                       backdropFilter: 'blur(10px)',
                     }}
                   >
-                    <tr className={headerTextClass} style={{ color: text.muted }}>
+                    <tr className={headerTextClass} style={{ color: tableHeaderColor }}>
                       <th
                         className={`${tablePadX} ${tablePadY} text-left sticky z-20`}
                         style={{ left: 0, background: tableHeaderBg }}
