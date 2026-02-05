@@ -147,7 +147,22 @@ export default function TableClient({
   onToggleMode: () => void;
 }) {
   const mounted = useMountFade();
-  const [density, setDensity] = useState<'cozy' | 'compact'>('cozy');
+
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const urlDensity = searchParams?.get('density');
+
+  const [density, setDensity] = useState<'cozy' | 'compact'>(() => {
+    if (urlDensity === 'compact') return 'compact';
+    try {
+      const saved = typeof window !== 'undefined' ? window.localStorage.getItem('roster.table.density') : null;
+      if (saved === 'compact' || saved === 'cozy') return saved;
+    } catch {
+      // ignore
+    }
+    return 'cozy';
+  });
 
   const tablePadY = density === 'compact' ? 'py-1' : 'py-3';
   const tablePadX = 'px-3';
@@ -161,11 +176,6 @@ export default function TableClient({
     return sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />;
   };
   const headerTextClass = 'text-[11px] font-semibold uppercase tracking-[0.16em]';
-
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
-  const urlDensity = searchParams?.get('density');
 
   // Keep density in sync with URL changes.
   useEffect(() => {
@@ -295,6 +305,25 @@ export default function TableClient({
   }, [preset, router, searchParams]);
 
   useEffect(() => {
+    if (!didHydrateRef.current) return;
+    try {
+      window.localStorage.setItem('roster.table.density', density);
+    } catch {
+      // ignore
+    }
+
+    const params = new URLSearchParams(searchParams?.toString() ?? '');
+    if (density === 'compact') params.set('density', 'compact');
+    else params.delete('density');
+
+    const next = params.toString();
+    const current = (searchParams?.toString() ?? '').replace(/^\?/, '');
+    if (next !== current) {
+      router.replace(next ? `/new/roster?${next}` : '/new/roster');
+    }
+  }, [density, router, searchParams]);
+
+  useEffect(() => {
     try {
       window.localStorage.setItem('roster.table.customColumns', JSON.stringify(customColumns));
     } catch {
@@ -304,6 +333,9 @@ export default function TableClient({
   const [isNarrow, setIsNarrow] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const exportRef = useRef<HTMLDivElement | null>(null);
+
+  const [viewsOpen, setViewsOpen] = useState(false);
+  const viewsRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const update = () => setIsNarrow(typeof window !== 'undefined' ? window.innerWidth < 1280 : false);
@@ -324,16 +356,31 @@ export default function TableClient({
   }, [data, members]);
 
   useEffect(() => {
-    if (!exportOpen) return;
+    if (!exportOpen && !viewsOpen) return;
+
     const handleClick = (event: MouseEvent) => {
-      if (!exportRef.current) return;
-      if (event.target instanceof Node && !exportRef.current.contains(event.target)) {
+      if (exportOpen && exportRef.current && event.target instanceof Node && !exportRef.current.contains(event.target)) {
         setExportOpen(false);
       }
+      if (viewsOpen && viewsRef.current && event.target instanceof Node && !viewsRef.current.contains(event.target)) {
+        setViewsOpen(false);
+      }
     };
+
+    const handleKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setExportOpen(false);
+        setViewsOpen(false);
+      }
+    };
+
     document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [exportOpen]);
+    window.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('keydown', handleKey);
+    };
+  }, [exportOpen, viewsOpen]);
 
   const handleGenerateInsights = useCallback(() => {
     if (!permissions.canGenerateCoachingInsights) {
@@ -726,17 +773,75 @@ export default function TableClient({
                 Columns
               </button>
 
-              <button
-                type="button"
-                className="h-10 px-4 rounded-xl border text-[11px] font-semibold uppercase tracking-[0.16em] inline-flex items-center gap-2"
-                style={{ borderColor: surface.border, background: surface.card, color: tableToolbarMuted }}
-                onClick={() => {
-                  // placeholder: keep stable slot; real view configs later
-                  showToast('Views menu coming next.', 'success');
-                }}
-              >
-                Views
-              </button>
+              <div className="relative" ref={viewsRef}>
+                <button
+                  type="button"
+                  className="h-10 px-4 rounded-xl border text-[11px] font-semibold uppercase tracking-[0.16em] inline-flex items-center gap-2"
+                  style={{ borderColor: surface.border, background: viewsOpen ? (mode === 'light' ? 'rgba(14,116,144,0.10)' : 'rgba(255,255,255,0.06)') : surface.card, color: tableToolbarMuted }}
+                  onClick={() => setViewsOpen((v) => !v)}
+                  aria-haspopup="menu"
+                  aria-expanded={viewsOpen}
+                >
+                  Views
+                </button>
+
+                {viewsOpen ? (
+                  <div
+                    className="absolute right-0 mt-2 w-64 rounded-xl border p-1 text-xs shadow-lg z-30"
+                    style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}
+                    role="menu"
+                  >
+                    <div className="px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>
+                      Quick views
+                    </div>
+
+                    {([
+                      { key: 'default', label: 'Default (Cozy)', preset: 'default', density: 'cozy' },
+                      { key: 'default-compact', label: 'Default (Compact)', preset: 'default', density: 'compact' },
+                      { key: 'war', label: 'War (Cozy)', preset: 'war', density: 'cozy' },
+                      { key: 'war-compact', label: 'War (Compact)', preset: 'war', density: 'compact' },
+                      { key: 'leadership', label: 'Leadership (Cozy)', preset: 'leadership', density: 'cozy' },
+                      { key: 'leadership-compact', label: 'Leadership (Compact)', preset: 'leadership', density: 'compact' },
+                      { key: 'economy', label: 'Economy (Cozy)', preset: 'economy', density: 'cozy' },
+                      { key: 'economy-compact', label: 'Economy (Compact)', preset: 'economy', density: 'compact' },
+                    ] as const).map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                        style={{
+                          color: text.primary,
+                          background: preset === item.preset && density === item.density ? (mode === 'light' ? 'rgba(14,116,144,0.10)' : 'rgba(255,255,255,0.06)') : 'transparent',
+                        }}
+                        onClick={() => {
+                          setPreset(item.preset);
+                          setDensity(item.density);
+                          setViewsOpen(false);
+                        }}
+                        role="menuitem"
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+
+                    <div className="my-1 border-t" style={{ borderColor: surface.border }} />
+
+                    <button
+                      type="button"
+                      className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                      style={{ color: text.primary }}
+                      onClick={() => {
+                        setViewsOpen(false);
+                        setPreset('custom');
+                        setCustomOpen(true);
+                      }}
+                      role="menuitem"
+                    >
+                      Custom columns…
+                    </button>
+                  </div>
+                ) : null}
+              </div>
 
               <div className="inline-flex overflow-hidden rounded-xl border" style={{ borderColor: surface.border, background: surface.card }}>
                 {([
