@@ -138,10 +138,20 @@ export default function RosterUnifiedClient({
 
   const toggleMode = useCallback(() => setMode((m) => (m === 'dark' ? 'light' : 'dark')), []);
 
+  const shellBg =
+    mode === 'dark'
+      ? 'radial-gradient(900px 420px at 20% 0%, rgba(34,211,238,0.10) 0%, rgba(167,139,250,0.08) 42%, rgba(0,0,0,0) 75%)'
+      : 'radial-gradient(900px 420px at 20% 0%, rgba(34,211,238,0.10) 0%, rgba(96,165,250,0.08) 52%, rgba(255,255,255,0) 78%)';
+
   return (
     <div
-      className="rounded-3xl border overflow-hidden"
-      style={{ ...themeVars, background: 'var(--card)', borderColor: 'var(--border-subtle)' }}
+      className="space-y-6 rounded-3xl border p-6 font-sans"
+      style={{
+        ...themeVars,
+        background: 'var(--bg)',
+        backgroundImage: shellBg,
+        borderColor: 'var(--border-subtle)',
+      }}
     >
       <div className={view === 'cards' ? 'block' : 'hidden'}>
         <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} onToggleMode={toggleMode} />

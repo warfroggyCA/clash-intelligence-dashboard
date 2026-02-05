@@ -27,7 +27,7 @@ import {
 } from './roster-utils';
 import Link from 'next/link';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, RefreshCw } from 'lucide-react';
 
 const useMountFade = () => {
   const [mounted, setMounted] = useState(false);
@@ -884,7 +884,7 @@ export default function RosterClient({
   };
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <RosterHeader
         clanName={data?.clanName || 'Roster'}
         clanTag={data?.clanTag || null}
@@ -898,41 +898,9 @@ export default function RosterClient({
         detailsExtra={null}
         rightActions={
           <>
-            <Tooltip content={<span>Refresh snapshot.</span>}>
-              <Button
-                tone="primary"
-                onClick={() => {
-                  void mutate();
-                }}
-                disabled={isValidating}
-                ariaLabel="Refresh snapshot"
-              >
-                {isValidating ? 'Refreshing…' : 'Refresh'}
-              </Button>
-            </Tooltip>
-
-            {permissions.canModifyClanData ? (
-              <Tooltip
-                content={
-                  <span>
-                    {ingestionJobId ? 'Refresh already running.' : 'Queue a full ingestion run (updates snapshots).'}
-                  </span>
-                }
-              >
-                <Button
-                  tone="accentAlt"
-                  onClick={handleRequestRefresh}
-                  disabled={Boolean(ingestionJobId)}
-                  ariaLabel={ingestionJobId ? 'Refresh already running' : 'Request refresh'}
-                >
-                  {ingestionJobId ? (ingestionJobData?.status === 'running' ? 'Refreshing…' : 'Refresh queued') : 'Request refresh'}
-                </Button>
-              </Tooltip>
-            ) : null}
-
             <Tooltip content={<span>{!permissions.canGenerateCoachingInsights ? 'Permission required.' : 'Generate insights.'}</span>}>
               <Button
-                tone="accentAlt"
+                tone="primary"
                 onClick={handleGenerateInsights}
                 disabled={!permissions.canGenerateCoachingInsights}
                 ariaLabel="Generate insights"
@@ -941,33 +909,53 @@ export default function RosterClient({
               </Button>
             </Tooltip>
 
-            <div className="relative" ref={exportRef}>
-              <Tooltip
-                content={
-                  !permissions.canGenerateCoachingInsights
-                    ? <span>Permission required.</span>
-                    : <span>Export roster.</span>
-                }
+            <Tooltip content={<span>Refresh snapshot.</span>}>
+              <Spec2IconButton
+                ariaLabel="Refresh"
+                onClick={() => {
+                  void mutate();
+                }}
+                disabled={isValidating}
               >
-                <Button
-                  tone="ghost"
-                  onClick={() => setExportOpen((prev) => !prev)}
-                  disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
-                  ariaLabel="Export roster"
-                >
-                  Export
-                </Button>
+                <RefreshCw size={18} className={isValidating ? 'animate-spin' : ''} />
+              </Spec2IconButton>
+            </Tooltip>
+
+            <div className="relative" ref={exportRef}>
+              <Tooltip content={<span>More</span>}>
+                <Spec2IconButton ariaLabel="More" onClick={() => setExportOpen((prev) => !prev)}>
+                  <MoreHorizontal size={18} />
+                </Spec2IconButton>
               </Tooltip>
 
               {exportOpen && (
                 <div
-                  className="absolute right-0 mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg"
-                  style={{ background: surface.panel, borderColor: surface.border }}
+                  className="absolute right-0 mt-2 w-56 rounded-xl border p-1 text-xs shadow-lg"
+                  style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}
                 >
+                  {permissions.canModifyClanData ? (
+                    <button
+                      className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                      style={{ color: text.primary }}
+                      onClick={() => {
+                        setExportOpen(false);
+                        handleRequestRefresh();
+                      }}
+                      disabled={Boolean(ingestionJobId)}
+                    >
+                      {ingestionJobId ? 'Request refresh (running)' : 'Request refresh'}
+                    </button>
+                  ) : null}
+
+                  {permissions.canModifyClanData ? (
+                    <div className="my-1 border-t" style={{ borderColor: surface.border }} />
+                  ) : null}
+
                   <button
                     className="w-full rounded-lg px-3 py-2 text-left transition-colors"
                     style={{ color: text.primary }}
                     onClick={() => handleExportAction('csv')}
+                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
                   >
                     Export CSV
                   </button>
@@ -975,6 +963,7 @@ export default function RosterClient({
                     className="w-full rounded-lg px-3 py-2 text-left transition-colors"
                     style={{ color: text.primary }}
                     onClick={() => handleExportAction('summary')}
+                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
                   >
                     Copy Summary
                   </button>
@@ -982,6 +971,7 @@ export default function RosterClient({
                     className="w-full rounded-lg px-3 py-2 text-left transition-colors"
                     style={{ color: text.primary }}
                     onClick={() => handleExportAction('discord')}
+                    disabled={!permissions.canGenerateCoachingInsights || !exportRoster}
                   >
                     Copy Discord
                   </button>
