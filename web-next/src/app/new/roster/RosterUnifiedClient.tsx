@@ -139,7 +139,10 @@ export default function RosterUnifiedClient({
   const toggleMode = useCallback(() => setMode((m) => (m === 'dark' ? 'light' : 'dark')), []);
 
   return (
-    <div className="space-y-6 rounded-3xl p-6" style={themeVars}>
+    <div
+      className="rounded-3xl border overflow-hidden"
+      style={{ ...themeVars, background: 'var(--card)', borderColor: 'var(--border-subtle)' }}
+    >
       <div className={view === 'cards' ? 'block' : 'hidden'}>
         <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} onToggleMode={toggleMode} />
       </div>
