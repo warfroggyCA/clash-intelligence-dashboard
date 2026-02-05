@@ -261,7 +261,7 @@ export function RosterHeader({
   return (
     <div
       className="rounded-2xl border p-5"
-      style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}
+      style={{ background: surface.panel, borderColor: surface.border }}
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="space-y-2">
