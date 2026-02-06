@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react';
 import { Button } from '@/components/new-ui/Button';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 export type ColumnKey =
   | 'th'
@@ -88,22 +89,26 @@ export default function ColumnPickerModal({
               </label>
               {selected.has(c.key) ? (
                 <div className="flex gap-1">
-                  <button
-                    type="button"
-                    className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
-                    onClick={() => move(c.key, -1)}
-                    title="Move up"
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
-                    onClick={() => move(c.key, 1)}
-                    title="Move down"
-                  >
-                    ↓
-                  </button>
+                  <Tooltip content={<span>Move up</span>}>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
+                      onClick={() => move(c.key, -1)}
+                      aria-label="Move up"
+                    >
+                      ↑
+                    </button>
+                  </Tooltip>
+                  <Tooltip content={<span>Move down</span>}>
+                    <button
+                      type="button"
+                      className="rounded-lg border border-white/10 bg-black/20 px-2 py-1 text-xs text-slate-200 hover:bg-white/10"
+                      onClick={() => move(c.key, 1)}
+                      aria-label="Move down"
+                    >
+                      ↓
+                    </button>
+                  </Tooltip>
                 </div>
               ) : null}
             </div>

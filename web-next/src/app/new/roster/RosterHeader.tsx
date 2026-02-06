@@ -106,33 +106,35 @@ function THDistributionSummary({ distribution, extra }: { distribution: Record<n
   return (
     <details className="hidden lg:block">
       <summary className="list-none cursor-pointer select-none">
-        <div className="flex items-center gap-2" title="Town Hall distribution">
-          <div className="text-[9px] uppercase tracking-widest" style={{ color: text.muted }}>TH mix</div>
-          <div className="flex items-center gap-1.5">
-            {top.map((e) => (
-              <span
-                key={e.th}
-                className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
-                style={{
-                  borderColor: surface.border,
-                  background: surface.panel,
-                  color: text.primary,
-                }}
-              >
+        <Tooltip content={<span>Town Hall distribution</span>}>
+          <div className="flex items-center gap-2">
+            <div className="text-[9px] uppercase tracking-widest" style={{ color: text.muted }}>TH mix</div>
+            <div className="flex items-center gap-1.5">
+              {top.map((e) => (
                 <span
-                  className="inline-block h-2.5 w-2.5 rounded-full"
-                  style={{ background: TH_COLORS[e.th] || 'rgba(255,255,255,0.25)' }}
-                />
-                <span className="font-mono">TH{e.th}</span>
-                <span className="text-slate-400">×</span>
-                <span className="tabular-nums">{e.count}</span>
-              </span>
-            ))}
-            {remaining.length ? (
-              <span className="text-[11px]" style={{ color: text.muted }}>+{remaining.length} more</span>
-            ) : null}
+                  key={e.th}
+                  className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                  style={{
+                    borderColor: surface.border,
+                    background: surface.panel,
+                    color: text.primary,
+                  }}
+                >
+                  <span
+                    className="inline-block h-2.5 w-2.5 rounded-full"
+                    style={{ background: TH_COLORS[e.th] || 'rgba(255,255,255,0.25)' }}
+                  />
+                  <span className="font-mono">TH{e.th}</span>
+                  <span className="text-slate-400">×</span>
+                  <span className="tabular-nums">{e.count}</span>
+                </span>
+              ))}
+              {remaining.length ? (
+                <span className="text-[11px]" style={{ color: text.muted }}>+{remaining.length} more</span>
+              ) : null}
+            </div>
           </div>
-        </div>
+        </Tooltip>
       </summary>
 
       <div className="mt-2 rounded-xl border p-3" style={{ borderColor: surface.border, background: surface.panel }}>
@@ -172,7 +174,7 @@ function ViewToggle({
 
   useEffect(() => {
     // Warm the other route's JS as a fallback.
-    router.prefetch(view === 'cards' ? '/new/roster/table' : '/new/roster');
+    router.prefetch(view === 'cards' ? '/new/roster?view=table' : '/new/roster?view=cards');
   }, [router, view]);
 
   const ButtonOrLink = ({
@@ -213,13 +215,14 @@ function ViewToggle({
           className={className}
           style={style}
           aria-current={active ? 'page' : undefined}
+          aria-label={label}
         >
           {target === 'cards' ? <LayoutGrid size={18} /> : <Table2 size={18} />}
         </button>
       );
     }
 
-    const href = target === 'cards' ? '/new/roster' : '/new/roster/table';
+    const href = target === 'cards' ? '/new/roster?view=cards' : '/new/roster?view=table';
     return (
       <Link href={href} prefetch scroll={false} className={className} style={style} aria-current={active ? 'page' : undefined}>
         {target === 'cards' ? <LayoutGrid size={18} /> : <Table2 size={18} />}
