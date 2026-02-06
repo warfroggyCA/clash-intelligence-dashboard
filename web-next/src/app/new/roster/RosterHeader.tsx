@@ -264,6 +264,8 @@ export function RosterHeader({
   mode,
   onToggleMode,
   detailsExtra,
+  eyebrow,
+  viewingChipLabel,
 }: {
   clanName: string;
   clanTag?: string | null;
@@ -276,6 +278,8 @@ export function RosterHeader({
   mode: 'dark' | 'light';
   onToggleMode: () => void;
   detailsExtra?: React.ReactNode;
+  eyebrow?: React.ReactNode;
+  viewingChipLabel?: string;
 }) {
   const updatedLabel = lastUpdated ? `Snapshot updated ${formatDistanceToNow(lastUpdated, { addSuffix: true })}` : 'Snapshot update time unknown';
   const subtitleNode = subtitle ?? updatedLabel;
@@ -290,25 +294,26 @@ export function RosterHeader({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="space-y-2">
+      <div className="flex items-start justify-between gap-5 flex-wrap">
+        <div className="space-y-2.5">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em]" style={{ color: text.muted }}>
-            Roster
+            {eyebrow ?? 'Roster'}
           </div>
-          <h1 className="text-3xl font-black" style={{ color: text.primary, fontFamily: 'var(--font-display)' }}>
+          <h1 className="text-[36px] leading-tight font-extrabold tracking-[0.01em] sm:text-[42px]" style={{ color: text.primary, fontFamily: 'var(--font-display)' }}>
             {clanName}
           </h1>
-          <div className="flex flex-wrap gap-2 items-center">
+          <div className="mt-1 flex flex-wrap gap-2 items-center">
             {clanTag ? <Chip label={clanTag} /> : null}
             {clanStats ? <Chip label={`${clanStats.memberCount} Members`} /> : null}
             {maxTh ? <Chip label={`TH${maxTh}×${maxThCount ?? 0}`} /> : null}
+            {viewingChipLabel ? <Chip label={viewingChipLabel} /> : null}
           </div>
           <div className="text-xs" style={{ color: text.muted }}>
             {subtitleNode}
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {rightActions}
 
           <Tooltip content={<span>{mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>}>

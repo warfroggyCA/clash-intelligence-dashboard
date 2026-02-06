@@ -171,8 +171,8 @@ const Progress = ({
   tone?: 'primary' | 'secondary';
 }) => {
   const pct = value == null ? null : Math.max(0, Math.min(100, value));
-  const barColor = tone === 'secondary' ? 'var(--accent)' : 'var(--accent-alt)';
-  const barHeight = tone === 'secondary' ? 'h-1.5' : 'h-2';
+  const barColor = 'var(--accent-alt)';
+  const barHeight = 'h-1.5';
 
   const tooltip = detail ? (
     <div>
@@ -635,11 +635,11 @@ export default function RosterClient({
     return (
       <div
         key={member.tag}
-        className="group relative rounded-2xl border p-4 transition-transform"
+        className="group relative rounded-3xl border p-5 transition-transform"
         style={{
           background: surface.card,
           borderColor: surface.border,
-          boxShadow: '0 14px 32px -18px rgba(0,0,0,0.7)',
+          boxShadow: '0 18px 40px -22px rgba(0,0,0,0.75)',
         }}
       >
         {permissions.canModifyClanData ? (
@@ -648,6 +648,7 @@ export default function RosterClient({
               <Spec2IconButton
                 ariaLabel="Roster actions"
                 active={isActionOpen}
+                className="h-10 w-10"
                 onClick={(event) => {
                   event.stopPropagation();
                   setActionMenuTag(isActionOpen ? null : member.tag);
@@ -701,12 +702,12 @@ export default function RosterClient({
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
             <div className="flex items-center gap-3">
-              <TownHallIcon level={townHall ?? undefined} size="md" className="-ml-1" />
+              <TownHallIcon level={townHall ?? undefined} size="lg" className="-ml-1" />
               {league ? (
                 <LeagueIcon
                   league={league}
                   ranked
-                  size="sm"
+                  size="md"
                   className="-ml-0.5"
                   showBadge
                   badgeText={leagueBadge}
@@ -717,13 +718,13 @@ export default function RosterClient({
             <div>
               <Link
                 href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
-                className="text-[22px] font-black leading-tight transition-colors"
+                className="text-[24px] sm:text-[26px] font-black leading-tight transition-colors"
                 style={{ color: text.primary, fontFamily: 'var(--font-display)' }}
                 title="View full player profile"
               >
                 {member.name || member.tag}
               </Link>
-              <div className="mt-1 flex flex-wrap items-center gap-2">
+              <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <Tooltip content={<span><b>SRS</b>: placeholder roster score (activity/skill). Higher is better.</span>}>
                   <span className="inline-flex"><Chip label={`SRS ${activityScoreDisplay}`} tone="info" /></span>
                 </Tooltip>
@@ -732,11 +733,11 @@ export default function RosterClient({
                     <span className="inline-flex"><Chip label={`VIP ${vipScore.toFixed(1)}`} tone="vip" /></span>
                   </Tooltip>
                 ) : null}
-                <span className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>
+                <span className="inline-flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: text.muted }}>
                   <span className="h-2 w-2 rounded-full" style={{ background: activity.tone || surface.border }} />
                   {activityLabel}
                 </span>
-                <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em]" style={{ color: text.muted }}>
                   {roleLabel}
                 </span>
               </div>
@@ -746,16 +747,16 @@ export default function RosterClient({
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-x-10 gap-y-2">
-          <div className="flex items-baseline gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>Trophies</span>
-            <span className="text-xl font-black tabular-nums" style={{ color: text.primary }}>
+          <div className="flex items-baseline gap-3 pl-1">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: text.muted }}>Trophies</span>
+            <span className="text-[22px] font-black tabular-nums" style={{ color: text.primary }}>
               {trophies != null ? trophies.toLocaleString() : '—'}
             </span>
           </div>
 
-          <div className="flex items-baseline gap-2">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: text.muted }}>Donated</span>
-            <span className="text-xl font-black tabular-nums" style={{ color: text.primary }}>
+          <div className="flex items-baseline gap-3 pl-1">
+            <span className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: text.muted }}>Donated</span>
+            <span className="text-[22px] font-black tabular-nums" style={{ color: text.primary }}>
               {member.donations != null ? member.donations.toLocaleString() : '—'}
             </span>
           </div>
@@ -766,7 +767,7 @@ export default function RosterClient({
           <Progress label="Heroes" value={overallHeroPercent} detail={heroDetail} tone="secondary" />
         </div>
 
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        <div className="mt-3 flex flex-wrap items-center gap-2">
           {availableHeroes.map((heroKey) => {
             const level = (member as any)[heroKey] || 0;
             const iconSrc = (heroIconMap as any)[heroKey] || '';
@@ -778,7 +779,7 @@ export default function RosterClient({
                 content={<span><b>{meta.name}</b> {level}</span>}
               >
                 <div
-                  className="relative h-12 w-12 shrink-0 rounded-xl border"
+                  className="relative h-11 w-11 shrink-0 rounded-xl border"
                   style={{ borderColor: surface.border, background: surface.panel }}
                 >
                   {iconSrc ? (
@@ -787,11 +788,11 @@ export default function RosterClient({
                         src={iconSrc}
                         alt={meta.name}
                         fill
-                        className="object-contain p-[7px]"
-                        sizes="48px"
+                        className="object-contain p-[6px]"
+                        sizes="44px"
                       />
                       <div
-                        className="absolute bottom-0.5 right-0.5 flex h-5 min-w-[20px] items-center justify-center rounded-full px-1 text-[10px] font-black tabular-nums"
+                        className="absolute bottom-0.5 right-0.5 flex h-4.5 min-w-[18px] items-center justify-center rounded-full px-1 text-[9px] font-black tabular-nums"
                         style={{
                           background: 'var(--badge-bg, rgba(0,0,0,0.70))',
                           color: 'var(--badge-fg, rgba(255,255,255,0.92))',
@@ -824,11 +825,11 @@ export default function RosterClient({
     return (
       <div
         key={member.tag}
-        className="group relative rounded-2xl p-5 transition-all duration-300 hover:scale-[1.015] hover:-translate-y-0.5"
+        className="group relative rounded-3xl p-5 transition-all duration-300 hover:scale-[1.015] hover:-translate-y-0.5"
         style={{
           background: surface.card,
           border: `1px solid ${surface.border}`,
-          boxShadow: 'var(--shadow-md)',
+          boxShadow: '0 18px 40px -22px rgba(0,0,0,0.75)',
         }}
       >
         <div className="relative z-10 space-y-4">
@@ -897,6 +898,8 @@ export default function RosterClient({
         mode={mode}
         onToggleMode={onToggleMode}
         detailsExtra={null}
+        eyebrow="UI Kit → Roster"
+        viewingChipLabel="Viewing as: Guest"
         rightActions={
           <>
             <Tooltip content={<span>{!permissions.canGenerateCoachingInsights ? 'Permission required.' : 'Generate insights.'}</span>}>
@@ -905,6 +908,7 @@ export default function RosterClient({
                 onClick={handleGenerateInsights}
                 disabled={!permissions.canGenerateCoachingInsights}
                 ariaLabel="Generate insights"
+                className="px-5 shadow-[0_0_18px_rgba(34,211,238,0.22)]"
               >
                 Generate Insights
               </Button>
@@ -917,6 +921,7 @@ export default function RosterClient({
                   void mutate();
                 }}
                 disabled={isValidating}
+                className="shadow-[0_8px_20px_rgba(2,6,23,0.35)]"
               >
                 <RefreshCw size={18} className={isValidating ? 'animate-spin' : ''} />
               </Spec2IconButton>
@@ -924,7 +929,11 @@ export default function RosterClient({
 
             <div className="relative" ref={exportRef}>
               <Tooltip content={<span>More</span>}>
-                <Spec2IconButton ariaLabel="More" onClick={() => setExportOpen((prev) => !prev)}>
+                <Spec2IconButton
+                  ariaLabel="More"
+                  onClick={() => setExportOpen((prev) => !prev)}
+                  className="shadow-[0_8px_20px_rgba(2,6,23,0.35)]"
+                >
                   <MoreHorizontal size={18} />
                 </Spec2IconButton>
               </Tooltip>
@@ -984,25 +993,26 @@ export default function RosterClient({
       />
 
       <div className={"transition-opacity duration-200 " + (mounted ? "opacity-100" : "opacity-0")}>
-        <div className="rounded-2xl border" style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}>
-        <div
-          className="sticky top-2 z-20 border-b backdrop-blur px-4 py-3 flex flex-wrap items-center gap-3"
-          style={{ borderColor: surface.border, background: surface.panel }}
-        >
-          <Input
-            value={search}
-            onChange={setSearch}
-            placeholder="Search players"
-            ariaLabel="Search players"
-            className="max-w-xs"
-          />
-
+        <div className="rounded-2xl border mt-1.5" style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}>
+        <div className="sticky top-2 z-20">
           <div
-            className="inline-flex rounded-xl border overflow-hidden"
-            style={{ borderColor: surface.border, background: surface.panel }}
-            role="group"
-            aria-label="Roster filter"
+            className="flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 backdrop-blur"
+            style={{ borderColor: surface.border, background: surface.panel, boxShadow: 'var(--shadow-md)' }}
           >
+            <Input
+              value={search}
+              onChange={setSearch}
+              placeholder="Search players"
+              ariaLabel="Search players"
+              className="max-w-none flex-[1_1_70%] min-w-[320px] md:min-w-[460px]"
+            />
+
+            <div
+              className="inline-flex rounded-xl border overflow-hidden shrink-0"
+              style={{ borderColor: surface.border, background: 'rgba(0,0,0,0.18)' }}
+              role="group"
+              aria-label="Roster filter"
+            >
             {([
               { key: 'all', label: 'All', active: status === 'all' && !joinerFilter, disabled: false },
               { key: 'current', label: 'Current', active: status === 'current' && !joinerFilter, disabled: false },
@@ -1026,11 +1036,11 @@ export default function RosterClient({
                   router.replace(query ? `/new/roster?${query}` : '/new/roster');
                 }}
                 disabled={opt.disabled}
-                className="h-11 px-4 inline-flex items-center gap-2 text-sm font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                className="h-9 px-3 inline-flex items-center gap-2 text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
                 style={{
                   background: opt.active ? 'rgba(34,211,238,0.18)' : 'transparent',
                   color: opt.active ? 'var(--accent-alt)' : text.secondary,
-                  boxShadow: opt.active ? 'inset 0 0 0 1px rgba(34,211,238,0.35)' : undefined,
+                  boxShadow: opt.active ? 'inset 0 0 0 1px rgba(34,211,238,0.28), 0 0 14px rgba(34,211,238,0.18)' : undefined,
                 }}
                 aria-pressed={opt.active}
               >
@@ -1047,6 +1057,7 @@ export default function RosterClient({
             ))}
           </div>
         </div>
+      </div>
 
         {activeError ? (
           <div className="p-6 text-sm text-red-300">
@@ -1062,7 +1073,7 @@ export default function RosterClient({
 
         {!activeLoading && !activeError ? (
           activeMembers.length ? (
-            <div className={"grid gap-5 p-4 md:grid-cols-2 xl:grid-cols-3 " + (isValidating ? 'opacity-60 animate-pulse' : '')}>
+            <div className={"grid gap-6 p-5 md:grid-cols-2 xl:grid-cols-3 " + (isValidating ? 'opacity-60 animate-pulse' : '')}>
               {status === 'former'
                 ? sortedFormerMembers.map(renderFormerCard)
                 : sortedMembers.map(renderMemberCard)}

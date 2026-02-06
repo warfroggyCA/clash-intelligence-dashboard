@@ -32,12 +32,12 @@ export function RoleSwitcher() {
       {/* Small Toggle Pill */}
       <button 
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-1.5 rounded-full border bg-slate-900/90 backdrop-blur-md shadow-2xl transition-all duration-300 ${
+        className={`flex items-center gap-2 px-2.5 py-1 rounded-full border bg-slate-900/90 backdrop-blur-md shadow-2xl transition-all duration-300 ${
           isOpen ? 'border-clash-gold ring-2 ring-clash-gold/20' : 'border-white/10 hover:border-white/20'
         }`}
       >
         <currentRole.icon className={`w-3.5 h-3.5 ${currentRole.color}`} />
-        <span className="text-[10px] font-bold uppercase tracking-wider text-white">
+        <span className="text-[9px] font-semibold uppercase tracking-wider text-white">
           Viewing as: <span className={currentRole.color}>{currentRole.label}</span>
         </span>
         {isOpen ? <X className="w-3 h-3 text-slate-500" /> : <ChevronRight className="w-3 h-3 text-slate-500" />}
