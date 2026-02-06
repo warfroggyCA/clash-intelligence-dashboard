@@ -738,12 +738,12 @@ export default function TableClient({
           >
             <Input
               placeholder="Search players, tags"
-              className="max-w-xs"
+              className="max-w-none flex-[1_1_60%] min-w-[320px] md:min-w-[420px]"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
 
-            <div className="ml-auto flex items-center gap-2 text-xs">
+            <div className="flex flex-1 items-center gap-2 text-xs">
               {/* Left: preset tabs (Spec2) */}
               <div className="hidden md:flex items-center gap-2">
                 {([
@@ -756,11 +756,12 @@ export default function TableClient({
                     key={opt.key}
                     type="button"
                     onClick={() => setPreset(opt.key)}
-                    className="h-10 px-4 rounded-xl border text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
+                    className="h-11 px-5 rounded-xl border text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors"
                     style={{
                       borderColor: surface.border,
-                      background: preset === opt.key ? (mode === 'light' ? 'rgba(14,116,144,0.10)' : 'rgba(255,255,255,0.06)') : surface.card,
+                      background: preset === opt.key ? (mode === 'light' ? 'rgba(14,116,144,0.12)' : 'rgba(255,255,255,0.06)') : surface.card,
                       color: preset === opt.key ? text.primary : tableToolbarMuted,
+                      boxShadow: preset === opt.key ? 'inset 0 0 0 1px rgba(34,211,238,0.24), 0 0 14px rgba(34,211,238,0.12)' : undefined,
                     }}
                     aria-pressed={preset === opt.key}
                   >
