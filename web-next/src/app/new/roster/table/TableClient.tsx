@@ -740,7 +740,7 @@ export default function TableClient({
               placeholder="Search players, tags"
               className="max-w-none flex-[1_1_60%] min-w-[320px] md:min-w-[420px]"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
             />
 
             <div className="flex flex-1 items-center gap-2 text-xs">

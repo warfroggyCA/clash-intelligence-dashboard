@@ -716,14 +716,16 @@ export default function RosterClient({
             </div>
 
             <div>
-              <Link
-                href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
-                className="text-[24px] sm:text-[26px] font-black leading-tight transition-colors"
-                style={{ color: text.primary, fontFamily: 'var(--font-display)' }}
-                title="View full player profile"
-              >
-                {member.name || member.tag}
-              </Link>
+              <Tooltip content={<span>View full player profile</span>}>
+                <Link
+                  href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
+                  className="text-[24px] sm:text-[26px] font-black leading-tight transition-colors"
+                  style={{ color: text.primary, fontFamily: 'var(--font-display)' }}
+                  aria-label={`Open ${member.name || member.tag} profile`}
+                >
+                  {member.name || member.tag}
+                </Link>
+              </Tooltip>
               <div className="mt-1.5 flex flex-wrap items-center gap-2">
                 <Tooltip content={<span><b>SRS</b>: placeholder roster score (activity/skill). Higher is better.</span>}>
                   <span className="inline-flex"><Chip label={`SRS ${activityScoreDisplay}`} tone="info" /></span>
@@ -993,71 +995,70 @@ export default function RosterClient({
       />
 
       <div className={"transition-opacity duration-200 " + (mounted ? "opacity-100" : "opacity-0")}>
-        <div className="rounded-2xl border mt-1.5" style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}>
-        <div className="sticky top-2 z-20">
+        <div className="rounded-2xl border mt-1.5 overflow-hidden" style={{ background: surface.card, borderColor: surface.border, boxShadow: 'var(--shadow-md)' }}>
           <div
-            className="flex flex-wrap items-center gap-2 rounded-2xl border px-4 py-3 backdrop-blur"
-            style={{ borderColor: surface.border, background: surface.panel, boxShadow: 'var(--shadow-md)' }}
+            className="border-b px-4 py-3 flex flex-wrap items-center gap-3"
+            style={{ borderColor: surface.border, background: surface.panel }}
           >
             <Input
               value={search}
               onChange={setSearch}
-              placeholder="Search players"
+              placeholder="Search players, tags"
               ariaLabel="Search players"
-              className="max-w-none flex-[1_1_70%] min-w-[320px] md:min-w-[460px]"
+              className="max-w-none flex-[1_1_60%] min-w-[320px] md:min-w-[420px]"
             />
 
             <div
               className="inline-flex rounded-xl border overflow-hidden shrink-0"
-              style={{ borderColor: surface.border, background: 'rgba(0,0,0,0.18)' }}
+              style={{ borderColor: surface.border, background: surface.card }}
               role="group"
               aria-label="Roster filter"
             >
-            {([
-              { key: 'all', label: 'All', active: status === 'all' && !joinerFilter, disabled: false },
-              { key: 'current', label: 'Current', active: status === 'current' && !joinerFilter, disabled: false },
-              { key: 'former', label: 'Former', active: status === 'former' && !joinerFilter, disabled: false },
-              { key: 'new', label: 'New Joiners', active: joinerFilter, disabled: newJoinerCount === 0 },
-            ] as const).map((opt) => (
-              <button
-                key={opt.key}
-                type="button"
-                onClick={() => {
-                  if (opt.key === 'new') {
-                    toggleJoinerFilter();
-                    return;
-                  }
+              {([
+                { key: 'all', label: 'All', active: status === 'all' && !joinerFilter, disabled: false },
+                { key: 'current', label: 'Current', active: status === 'current' && !joinerFilter, disabled: false },
+                { key: 'former', label: 'Former', active: status === 'former' && !joinerFilter, disabled: false },
+                { key: 'new', label: 'New Joiners', active: joinerFilter, disabled: newJoinerCount === 0 },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => {
+                    if (opt.key === 'new') {
+                      toggleJoinerFilter();
+                      return;
+                    }
 
-                  setStatus(opt.key);
-                  const params = new URLSearchParams(searchParams?.toString() ?? '');
-                  params.set('status', opt.key);
-                  params.delete('filter');
-                  const query = params.toString();
-                  router.replace(query ? `/new/roster?${query}` : '/new/roster');
-                }}
-                disabled={opt.disabled}
-                className="h-9 px-3 inline-flex items-center gap-2 text-[13px] font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{
-                  background: opt.active ? 'rgba(34,211,238,0.18)' : 'transparent',
-                  color: opt.active ? 'var(--accent-alt)' : text.secondary,
-                  boxShadow: opt.active ? 'inset 0 0 0 1px rgba(34,211,238,0.28), 0 0 14px rgba(34,211,238,0.18)' : undefined,
-                }}
-                aria-pressed={opt.active}
-              >
-                <span>{opt.label}</span>
-                {opt.key === 'new' && newJoinerCount > 0 ? (
-                  <span
-                    className="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                    style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.26)', color: text.primary }}
-                  >
-                    {newJoinerCount}
-                  </span>
-                ) : null}
-              </button>
-            ))}
+                    setStatus(opt.key);
+                    const params = new URLSearchParams(searchParams?.toString() ?? '');
+                    params.set('status', opt.key);
+                    params.delete('filter');
+                    const query = params.toString();
+                    router.replace(query ? `/new/roster?${query}` : '/new/roster');
+                  }}
+                  disabled={opt.disabled}
+                  className="h-10 px-4 inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={{
+                    background: opt.active ? (mode === 'light' ? 'rgba(14,116,144,0.12)' : 'rgba(255,255,255,0.06)') : 'transparent',
+                    color: opt.active ? text.primary : text.secondary,
+                    boxShadow: opt.active ? 'inset 0 0 0 1px rgba(34,211,238,0.24), 0 0 14px rgba(34,211,238,0.12)' : undefined,
+                  }}
+                  aria-pressed={opt.active}
+                >
+                  <span>{opt.label}</span>
+                  {opt.key === 'new' && newJoinerCount > 0 ? (
+                    <span
+                      className="inline-flex items-center justify-center rounded-full px-2 py-0.5 text-[9px] font-semibold tracking-normal"
+                      style={{ background: 'rgba(167,139,250,0.18)', border: '1px solid rgba(167,139,250,0.26)', color: text.primary }}
+                    >
+                      {newJoinerCount}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
         {activeError ? (
           <div className="p-6 text-sm text-red-300">
@@ -1183,7 +1184,6 @@ export default function RosterClient({
           onClose={() => setDepartureTarget(null)}
         />
       )}
-      </div>
     </div>
   );
 }
