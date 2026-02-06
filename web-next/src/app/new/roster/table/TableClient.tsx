@@ -624,6 +624,8 @@ export default function TableClient({
         onViewChange={onViewChange}
         mode={mode}
         onToggleMode={onToggleMode}
+        eyebrow="UI Kit → Roster"
+        viewingChipLabel="Viewing as: Guest"
         rightActions={
           <>
             <Tooltip content={<span>{!permissions.canGenerateCoachingInsights ? 'Permission required.' : 'Generate insights.'}</span>}>
@@ -632,6 +634,7 @@ export default function TableClient({
                 onClick={handleGenerateInsights}
                 disabled={!permissions.canGenerateCoachingInsights}
                 aria-label="Generate insights"
+                className="px-5 shadow-[0_0_18px_rgba(34,211,238,0.22)]"
               >
                 Generate Insights
               </Button>
@@ -646,6 +649,7 @@ export default function TableClient({
                   showToast('Refreshing snapshot…', 'success');
                 }}
                 disabled={isValidating}
+                className="shadow-[0_8px_20px_rgba(2,6,23,0.35)]"
               >
                 <RefreshCw size={18} className={isValidating ? 'animate-spin' : ''} />
               </Spec2IconButton>
@@ -653,7 +657,11 @@ export default function TableClient({
 
             <div className="relative" ref={exportRef}>
               <Tooltip content={<span>More</span>}>
-                <Spec2IconButton ariaLabel="More" onClick={() => setExportOpen((prev) => !prev)}>
+                <Spec2IconButton
+                  ariaLabel="More"
+                  onClick={() => setExportOpen((prev) => !prev)}
+                  className="shadow-[0_8px_20px_rgba(2,6,23,0.35)]"
+                >
                   <MoreHorizontal size={18} />
                 </Spec2IconButton>
               </Tooltip>
