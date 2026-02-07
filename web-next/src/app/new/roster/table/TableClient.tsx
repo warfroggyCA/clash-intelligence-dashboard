@@ -624,7 +624,7 @@ export default function TableClient({
         onViewChange={onViewChange}
         mode={mode}
         onToggleMode={onToggleMode}
-        eyebrow="UI Kit → Roster"
+        eyebrow="Players → Roster"
         viewingChipLabel="Viewing as: Guest"
         rightActions={
           <>
