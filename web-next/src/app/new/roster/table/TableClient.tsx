@@ -142,12 +142,10 @@ export default function TableClient({
   initialRoster,
   onViewChange,
   mode,
-  onToggleMode,
 }: {
   initialRoster?: RosterData | null;
   onViewChange?: (view: 'cards' | 'table') => void;
   mode: 'dark' | 'light';
-  onToggleMode: () => void;
 }) {
   const mounted = useMountFade();
 
@@ -655,7 +653,7 @@ export default function TableClient({
 
   if (isNarrow) {
     // On narrow viewports, just reuse the card layout to avoid cramped columns.
-    return <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} onToggleMode={onToggleMode} />;
+    return <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} />;
   }
 
   return (
@@ -668,7 +666,6 @@ export default function TableClient({
         view="table"
         onViewChange={onViewChange}
         mode={mode}
-        onToggleMode={onToggleMode}
         eyebrow="Players → Roster"
         viewingChipLabel="Viewing as: Guest"
         rightActions={

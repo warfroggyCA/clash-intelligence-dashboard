@@ -52,10 +52,10 @@ const NavNode: React.FC<{
             href={item.href}
             onClick={onNavigate}
             className={cn(
-              'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              'sidebar-nav-link group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
               isActive
-                ? 'bg-clash-gold/20 text-white shadow-[0_0_25px_rgba(255,204,112,0.2)]'
-                : 'text-slate-300 hover:text-white hover:bg-white/5',
+                ? 'sidebar-nav-link--active shadow-[0_0_25px_rgba(255,204,112,0.2)]'
+                : 'sidebar-nav-link--inactive',
               depth > 0 && !collapsed && 'ml-3',
               collapsed && depth === 0 && 'justify-center px-2'
             )}
@@ -82,10 +82,10 @@ const NavNode: React.FC<{
           href={item.href}
           onClick={onNavigate}
           className={cn(
-            'group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+            'sidebar-nav-link group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
             isActive
-              ? 'bg-clash-gold/20 text-white shadow-[0_0_25px_rgba(255,204,112,0.2)]'
-              : 'text-slate-300 hover:text-white hover:bg-white/5',
+              ? 'sidebar-nav-link--active shadow-[0_0_25px_rgba(255,204,112,0.2)]'
+              : 'sidebar-nav-link--inactive',
             depth > 0 && !collapsed && 'ml-3',
             collapsed && depth === 0 && 'justify-center px-2'
           )}
@@ -108,7 +108,7 @@ const NavNode: React.FC<{
       )}
 
       {hasChildren && !collapsed && (
-        <div className="space-y-1 border-l border-white/5 pl-3">
+        <div className="sidebar-nav-children space-y-1 border-l pl-3">
           {item.children?.map((child, index) => (
             <NavNode
               key={`${child.href}-${child.title}-${index}`}

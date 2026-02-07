@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { Tooltip } from '@/components/ui/Tooltip';
-import { Spec2IconButton } from '@/components/ui/Spec2Controls';
-import { Moon, Sun, LayoutGrid, Table2 } from 'lucide-react';
+import { LayoutGrid, Table2 } from 'lucide-react';
 
 type ClanStats = {
   memberCount: number;
@@ -265,7 +264,6 @@ export function RosterHeader({
   view,
   onViewChange,
   mode,
-  onToggleMode,
   detailsExtra,
   eyebrow,
   viewingChipLabel,
@@ -279,7 +277,6 @@ export function RosterHeader({
   view: 'cards' | 'table';
   onViewChange?: (view: 'cards' | 'table') => void;
   mode: 'dark' | 'light';
-  onToggleMode: () => void;
   detailsExtra?: React.ReactNode;
   eyebrow?: React.ReactNode;
   viewingChipLabel?: string;
@@ -318,12 +315,6 @@ export function RosterHeader({
 
         <div className="flex items-center gap-2.5 flex-wrap">
           {rightActions}
-
-          <Tooltip content={<span>{mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}</span>}>
-            <Spec2IconButton ariaLabel={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={onToggleMode}>
-              {mode === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </Spec2IconButton>
-          </Tooltip>
 
           <ViewToggle view={view} onViewChange={onViewChange} mode={mode} />
         </div>

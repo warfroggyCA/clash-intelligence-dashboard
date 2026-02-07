@@ -43,7 +43,7 @@ export function AppShell({
         className={cn(
           "flex items-center py-4 transition-all",
           isMobile
-            ? "justify-between px-4 shrink-0 bg-slate-950/95 backdrop-blur border-b border-white/5"
+            ? "app-shell-mobile-drawer-header justify-between px-4 shrink-0"
             : (collapsed ? "justify-center px-0" : "justify-between px-4")
         )}
       >
@@ -93,9 +93,9 @@ export function AppShell({
 
   return (
     <div className={cn(
-      "h-dvh w-full bg-slate-950 text-slate-100 flex relative overflow-hidden",
+      "app-shell h-dvh w-full flex relative overflow-hidden",
       mobileOpen && "overflow-hidden"
-    )}>
+    )} data-testid="app-shell-root">
       <a
         href={`#${mainId}`}
         className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[9999] focus:rounded-lg focus:bg-blue-600 focus:px-6 focus:py-3 focus:font-semibold focus:text-white"
@@ -105,9 +105,10 @@ export function AppShell({
       {/* Desktop Sidebar */}
       <aside
         className={cn(
-          'hidden md:flex h-dvh flex-col border-r border-slate-800 bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900/90 shadow-[8px_0_32px_rgba(2,6,23,0.8)] transition-all duration-300 sticky top-0 relative overflow-hidden',
+          'app-shell-sidebar hidden md:flex h-dvh flex-col transition-all duration-300 sticky top-0 relative overflow-hidden',
           collapsed ? 'w-16' : 'w-64'
         )}
+        data-testid="app-shell-sidebar"
       >
         <SidebarContent />
 
@@ -115,7 +116,7 @@ export function AppShell({
         <button
           type="button"
           onClick={() => setCollapsed((prev) => !prev)}
-          className="fixed z-50 flex h-7 w-7 items-center justify-center rounded-full border border-slate-700 bg-slate-900 text-slate-300 shadow-md transition-colors hover:bg-slate-800 hover:text-white"
+          className="app-shell-control fixed z-50 flex h-7 w-7 items-center justify-center rounded-full shadow-md"
           style={{
             top: '50%',
             transform: 'translateY(-50%)',
@@ -131,15 +132,15 @@ export function AppShell({
       {mobileOpen && (
         <div className="fixed inset-0 z-50 flex md:hidden">
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+            className="app-shell-mobile-backdrop fixed inset-0 transition-opacity"
             onClick={() => setMobileOpen(false)}
             aria-hidden="true"
           />
-          <aside className="relative h-full w-64 border-r border-slate-800 bg-slate-950 shadow-2xl transition-transform overflow-hidden">
+          <aside className="app-shell-sidebar relative h-full w-64 shadow-2xl transition-transform overflow-hidden">
             <button
               type="button"
               onClick={() => setMobileOpen(false)}
-              className="absolute right-3 top-3 z-20 rounded-full border border-white/10 bg-white/5 p-1 text-xs text-white/70 transition hover:bg-white/10"
+              className="app-shell-control absolute right-3 top-3 z-20 rounded-full p-1 text-xs transition"
               aria-label="Close navigation"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -151,13 +152,13 @@ export function AppShell({
 
       <div className="flex h-dvh min-h-0 flex-1 flex-col w-full overflow-hidden">
         {headerContent && (
-          <header className="sticky top-0 z-30 border-b border-white/5 bg-slate-950/85 backdrop-blur">
+          <header className="app-shell-header sticky top-0 z-30" data-testid="app-shell-header">
             <div className="flex items-center w-full">
               {/* Mobile Menu Trigger */}
               <div className="md:hidden pl-4 py-3">
                 <button
                   onClick={() => setMobileOpen(true)}
-                  className="p-2 rounded-md text-slate-400 hover:text-white hover:bg-white/5"
+                  className="app-shell-control p-2 rounded-md"
                   aria-label="Open menu"
                 >
                   <LayoutDashboard className="h-6 w-6" />
@@ -171,14 +172,15 @@ export function AppShell({
         )}
 
         {toolbarContent && (
-          <div className="border-b border-white/5 bg-slate-950/90 px-4 py-3 sm:px-6">{toolbarContent}</div>
+          <div className="app-shell-toolbar border-b px-4 py-3 sm:px-6">{toolbarContent}</div>
         )}
 
         <main
           id={mainId}
-          className="flex-1 min-h-0 overflow-y-auto overscroll-contain bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 px-3 py-6 sm:px-6"
+          className="app-shell-main flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 py-6 sm:px-6"
           tabIndex={-1}
           role="main"
+          data-testid="app-shell-main"
         >
           {children}
         </main>

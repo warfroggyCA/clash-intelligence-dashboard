@@ -5,11 +5,10 @@ import type { RosterData } from './types';
 import RosterClient from './RosterClient';
 import TableClient from './table/TableClient';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useTheme } from '@/lib/contexts/theme-context';
 
 type ViewMode = 'cards' | 'table';
 type UiMode = 'dark' | 'light';
-
-const MODE_KEY = 'ui.mode';
 
 function computeSpec2ThemeVars(mode: UiMode): React.CSSProperties {
   if (mode === 'light') {
@@ -84,16 +83,10 @@ export default function RosterUnifiedClient({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { resolvedTheme } = useTheme();
 
   const [view, setView] = useState<ViewMode>(() => (initialView === 'table' ? 'table' : 'cards'));
-  const [mode, setMode] = useState<UiMode>(() => {
-    try {
-      const saved = typeof window !== 'undefined' ? window.localStorage.getItem(MODE_KEY) : null;
-      return saved === 'light' ? 'light' : 'dark';
-    } catch {
-      return 'dark';
-    }
-  });
+  const mode: UiMode = resolvedTheme;
 
   // Load saved view on mount (unless URL explicitly set cards/table).
   useEffect(() => {
@@ -107,14 +100,6 @@ export default function RosterUnifiedClient({
       // ignore
     }
   }, [initialView]);
-
-  useEffect(() => {
-    try {
-      window.localStorage.setItem(MODE_KEY, mode);
-    } catch {
-      // ignore
-    }
-  }, [mode]);
 
   const onViewChange = useCallback(
     (next: ViewMode) => {
@@ -136,8 +121,6 @@ export default function RosterUnifiedClient({
 
   const themeVars = useMemo(() => computeSpec2ThemeVars(mode), [mode]);
 
-  const toggleMode = useCallback(() => setMode((m) => (m === 'dark' ? 'light' : 'dark')), []);
-
   const shellBg =
     mode === 'dark'
       ? 'radial-gradient(900px 420px at 20% 0%, rgba(34,211,238,0.10) 0%, rgba(167,139,250,0.08) 42%, rgba(0,0,0,0) 75%)'
@@ -154,10 +137,10 @@ export default function RosterUnifiedClient({
       }}
     >
       <div className={view === 'cards' ? 'block' : 'hidden'}>
-        <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} onToggleMode={toggleMode} />
+        <RosterClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} />
       </div>
       <div className={view === 'table' ? 'block' : 'hidden'}>
-        <TableClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} onToggleMode={toggleMode} />
+        <TableClient initialRoster={initialRoster} onViewChange={onViewChange} mode={mode} />
       </div>
     </div>
   );

@@ -22,6 +22,8 @@ web-next/output/
 
 # Jest / Playwright outputs
 /test-results/
+web-next/test-results/
+web-next/playwright-report/
 .playwright-mcp/
 
 # Supabase local dev artifacts

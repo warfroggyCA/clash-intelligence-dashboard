@@ -86,6 +86,30 @@
   --clash-bg-primary: linear-gradient(155deg, #0B1220 0%, #10192A 50%, #131E31 100%);
   --clash-bg-card: linear-gradient(140deg, rgba(18, 25, 40, 0.92), rgba(15, 22, 36, 0.9));
   --clash-bg-glass: linear-gradient(145deg, rgba(18, 25, 40, 0.85), rgba(15, 22, 36, 0.88));
+
+  /* App shell tokens */
+  --shell-bg: var(--clash-bg-primary);
+  --shell-text: var(--text-primary);
+  --shell-sidebar-bg: linear-gradient(170deg, rgba(6, 11, 24, 0.98), rgba(12, 18, 34, 0.97));
+  --shell-sidebar-border: rgba(148, 163, 184, 0.2);
+  --shell-sidebar-shadow: 8px 0 32px rgba(2, 6, 23, 0.78);
+  --shell-header-bg: rgba(10, 16, 31, 0.84);
+  --shell-header-border: rgba(148, 163, 184, 0.18);
+  --shell-toolbar-bg: rgba(10, 16, 31, 0.9);
+  --shell-main-bg: linear-gradient(165deg, rgba(8, 13, 28, 0.95), rgba(13, 20, 38, 0.96));
+  --shell-control-bg: rgba(255, 255, 255, 0.05);
+  --shell-control-border: rgba(148, 163, 184, 0.24);
+  --shell-control-text: rgba(226, 232, 240, 0.88);
+  --shell-control-hover-bg: rgba(255, 255, 255, 0.12);
+  --shell-control-hover-text: #ffffff;
+  --shell-overlay-bg: rgba(2, 6, 23, 0.74);
+
+  --shell-nav-text: rgba(203, 213, 225, 0.9);
+  --shell-nav-hover-text: #ffffff;
+  --shell-nav-hover-bg: rgba(255, 255, 255, 0.08);
+  --shell-nav-active-bg: rgba(255, 215, 0, 0.2);
+  --shell-nav-active-text: #ffffff;
+  --shell-nav-divider: rgba(148, 163, 184, 0.16);
 }
 
 /* Light Theme Variables */
@@ -105,11 +129,99 @@
   --clash-bg-primary: linear-gradient(135deg, #FFFFFF 0%, #F8FAFC 50%, #F1F5F9 100%);
   --clash-bg-card: linear-gradient(145deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
   --clash-bg-glass: linear-gradient(150deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.95));
+
+  /* App shell tokens */
+  --shell-sidebar-bg: linear-gradient(170deg, rgba(250, 252, 255, 0.97), rgba(241, 245, 249, 0.97));
+  --shell-sidebar-border: rgba(148, 163, 184, 0.28);
+  --shell-sidebar-shadow: 8px 0 26px rgba(15, 23, 42, 0.1);
+  --shell-header-bg: rgba(255, 255, 255, 0.86);
+  --shell-header-border: rgba(148, 163, 184, 0.26);
+  --shell-toolbar-bg: rgba(248, 250, 252, 0.9);
+  --shell-main-bg: linear-gradient(165deg, rgba(255, 255, 255, 0.9), rgba(241, 245, 249, 0.88));
+  --shell-control-bg: rgba(255, 255, 255, 0.72);
+  --shell-control-border: rgba(148, 163, 184, 0.34);
+  --shell-control-text: rgba(51, 65, 85, 0.95);
+  --shell-control-hover-bg: rgba(226, 232, 240, 0.96);
+  --shell-control-hover-text: #0f172a;
+  --shell-overlay-bg: rgba(15, 23, 42, 0.32);
+
+  --shell-nav-text: rgba(51, 65, 85, 0.94);
+  --shell-nav-hover-text: #0f172a;
+  --shell-nav-hover-bg: rgba(148, 163, 184, 0.18);
+  --shell-nav-active-bg: rgba(255, 215, 0, 0.24);
+  --shell-nav-active-text: #0f172a;
+  --shell-nav-divider: rgba(148, 163, 184, 0.24);
 }
 
 /* Utility to apply shared header gradient */
 .bg-header-gradient {
   background-image: var(--header-gradient);
+}
+
+.app-shell {
+  background: var(--shell-bg);
+  color: var(--shell-text);
+}
+
+.app-shell-sidebar {
+  border-right: 1px solid var(--shell-sidebar-border);
+  background: var(--shell-sidebar-bg);
+  box-shadow: var(--shell-sidebar-shadow);
+}
+
+.app-shell-header {
+  border-bottom: 1px solid var(--shell-header-border);
+  background: var(--shell-header-bg);
+  backdrop-filter: blur(10px);
+}
+
+.app-shell-toolbar {
+  border-color: var(--shell-header-border);
+  background: var(--shell-toolbar-bg);
+}
+
+.app-shell-main {
+  background: var(--shell-main-bg);
+}
+
+.app-shell-mobile-drawer-header {
+  border-bottom: 1px solid var(--shell-header-border);
+  background: var(--shell-header-bg);
+  backdrop-filter: blur(10px);
+}
+
+.app-shell-control {
+  border: 1px solid var(--shell-control-border);
+  background: var(--shell-control-bg);
+  color: var(--shell-control-text);
+}
+
+.app-shell-control:hover {
+  background: var(--shell-control-hover-bg);
+  color: var(--shell-control-hover-text);
+}
+
+.app-shell-mobile-backdrop {
+  background: var(--shell-overlay-bg);
+  backdrop-filter: blur(3px);
+}
+
+.sidebar-nav-link--inactive {
+  color: var(--shell-nav-text);
+}
+
+.sidebar-nav-link--inactive:hover {
+  color: var(--shell-nav-hover-text);
+  background: var(--shell-nav-hover-bg);
+}
+
+.sidebar-nav-link--active {
+  color: var(--shell-nav-active-text);
+  background: var(--shell-nav-active-bg);
+}
+
+.sidebar-nav-children {
+  border-left-color: var(--shell-nav-divider);
 }
 
 .header-hero {

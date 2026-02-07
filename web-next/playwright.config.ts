@@ -3,6 +3,7 @@ import { defineConfig, devices } from '@playwright/test';
 const baseURL = process.env.PLAYWRIGHT_BASE_URL || 'http://localhost:5050';
 const webServerCommand = process.env.PLAYWRIGHT_WEB_SERVER_COMMAND || 'npm run dev';
 const shouldStartWebServer = process.env.PLAYWRIGHT_SKIP_WEBSERVER !== 'true';
+const webServerTimeoutMs = Number(process.env.PLAYWRIGHT_WEB_SERVER_TIMEOUT_MS || 180_000);
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -51,7 +52,7 @@ export default defineConfig({
         command: webServerCommand,
         url: baseURL,
         reuseExistingServer: !process.env.CI, // Use existing server if already running (except in CI)
-        timeout: 120 * 1000,
+        timeout: webServerTimeoutMs,
         stdout: 'ignore',
         stderr: 'pipe',
       }

@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production';
+const disableMinify = process.env.NEXT_DISABLE_MINIFY === '1' || process.env.NEXT_DISABLE_MINIFY === 'true';
 
 const securityHeaders = [
   // Prevent MIME type sniffing
@@ -63,10 +64,10 @@ const nextConfig = {
   // Disable production source maps for faster builds
   productionBrowserSourceMaps: false,
 
-  // Webpack config override to disable CSS minification
+  // Optional override for production minification.
+  // Default is minified builds; set NEXT_DISABLE_MINIFY=1 only for temporary debugging.
   webpack: (config, { isServer, dev }) => {
-    if (!isServer && !dev) {
-      // Completely disable CSS minification
+    if (!isServer && !dev && disableMinify) {
       config.optimization.minimize = false;
     }
     return config;

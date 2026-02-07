@@ -228,12 +228,10 @@ export default function RosterClient({
   initialRoster,
   onViewChange,
   mode,
-  onToggleMode,
 }: {
   initialRoster?: RosterData | null;
   onViewChange?: (view: 'cards' | 'table') => void;
   mode: 'dark' | 'light';
-  onToggleMode: () => void;
 }) {
   const mounted = useMountFade();
   const { data, members, isLoading, error, isValidating, mutate, clanTag, refreshLive } = useRosterData(initialRoster || undefined);
@@ -899,7 +897,6 @@ export default function RosterClient({
         view="cards"
         onViewChange={onViewChange}
         mode={mode}
-        onToggleMode={onToggleMode}
         detailsExtra={null}
         eyebrow="Players → Roster"
         viewingChipLabel="Viewing as: Guest"

@@ -16,6 +16,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:e2e": "playwright test",
+    "test:e2e:roster-parity": "playwright test tests/e2e/roster-parity.spec.ts --project=chromium",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:screenshots": "playwright test tests/e2e/screenshots.spec.ts --project=chromium",
