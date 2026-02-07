@@ -36,7 +36,7 @@ import {
   rushTone,
 } from '../roster-utils';
 import RosterClient from '../RosterClient';
-import type { RosterData } from '../types';
+import type { RosterData, RosterMember } from '../types';
 import { RosterSkeleton } from '@/components/ui/RosterSkeleton';
 import { Tooltip } from '@/components/ui/Tooltip';
 import { normalizeTag } from '@/lib/tags';
@@ -59,6 +59,9 @@ import {
   handleExportCSV,
   handleExportDiscord,
 } from '@/lib/export/roster-export';
+import { RosterPlayerNotesModal } from '@/components/leadership/RosterPlayerNotesModal';
+import { RosterPlayerTenureModal } from '@/components/leadership/RosterPlayerTenureModal';
+import { RosterPlayerDepartureModal } from '@/components/leadership/RosterPlayerDepartureModal';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // WORLD-CLASS COMPONENTS
@@ -336,6 +339,10 @@ export default function TableClient({
 
   const [viewsOpen, setViewsOpen] = useState(false);
   const viewsRef = useRef<HTMLDivElement | null>(null);
+  const [actionMenuTag, setActionMenuTag] = useState<string | null>(null);
+  const [notesTarget, setNotesTarget] = useState<RosterMember | null>(null);
+  const [tenureTarget, setTenureTarget] = useState<RosterMember | null>(null);
+  const [departureTarget, setDepartureTarget] = useState<RosterMember | null>(null);
 
   useEffect(() => {
     const update = () => setIsNarrow(typeof window !== 'undefined' ? window.innerWidth < 1280 : false);
@@ -358,7 +365,7 @@ export default function TableClient({
   useEffect(() => {
     if (!exportOpen && !viewsOpen) return;
 
-    const handleClick = (event: MouseEvent) => {
+    const handleClick = (event: globalThis.MouseEvent) => {
       if (exportOpen && exportRef.current && event.target instanceof Node && !exportRef.current.contains(event.target)) {
         setExportOpen(false);
       }
@@ -381,6 +388,33 @@ export default function TableClient({
       window.removeEventListener('keydown', handleKey);
     };
   }, [exportOpen, viewsOpen]);
+
+  useEffect(() => {
+    if (!actionMenuTag) return;
+
+    const onClick = (event: globalThis.MouseEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (!target) {
+        setActionMenuTag(null);
+        return;
+      }
+
+      const root = target.closest?.(`[data-action-menu-root="${actionMenuTag}"]`);
+      if (root) return;
+      setActionMenuTag(null);
+    };
+
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setActionMenuTag(null);
+    };
+
+    window.addEventListener('mousedown', onClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [actionMenuTag]);
 
   const handleGenerateInsights = useCallback(() => {
     if (!permissions.canGenerateCoachingInsights) {
@@ -409,6 +443,15 @@ export default function TableClient({
     },
     [permissions.canGenerateCoachingInsights, exportRoster]
   );
+
+  const handleCopyTag = useCallback(async (tag: string) => {
+    try {
+      await navigator.clipboard.writeText(tag);
+      showToast(`Copied ${tag}`, 'success');
+    } catch {
+      showToast('Failed to copy player tag.', 'error');
+    }
+  }, []);
 
   // Persist search in URL (shareable + survives refresh)
   useEffect(() => {
@@ -520,6 +563,8 @@ export default function TableClient({
     },
     [router]
   );
+
+  const resolvedClanTag = data?.clanTag || clanTag || '';
 
   // Calculate clan-wide stats for the header
   const clanStats = useMemo(() => {
@@ -1119,6 +1164,8 @@ export default function TableClient({
                       const vipScore = typeof member.vip?.score === 'number' && Number.isFinite(member.vip.score)
                         ? member.vip.score
                         : null;
+                      const normalizedTag = normalizeTag(member.tag) || member.tag || '';
+                      const isActionOpen = actionMenuTag === member.tag;
 
                       const rowBg = idx % 2 === 0
                         ? (mode === 'light' ? 'rgba(15,23,42,0.02)' : 'rgba(255,255,255,0.02)')
@@ -1153,7 +1200,7 @@ export default function TableClient({
                               <RoleIcon role={role} size={22} className="shrink-0" />
                               <div className="flex h-6 flex-1 items-center gap-2 min-w-0">
                                 <Link
-                                  href={`/new/player/${encodeURIComponent(normalizeTag(member.tag) || member.tag || '')}`}
+                                  href={`/new/player/${encodeURIComponent(normalizedTag)}`}
                                   className="flex h-6 max-w-[180px] items-center truncate font-semibold tracking-[0.02em] transition-colors group-hover:underline"
                                   style={{
                                     fontFamily: 'var(--font-display)',
@@ -1346,26 +1393,105 @@ export default function TableClient({
                                   );
                                 })}
                                 <td
-                                  className={`${tablePadX} ${tablePadY} text-right align-middle sticky z-10`}
+                                  className={`${tablePadX} ${tablePadY} text-right align-middle sticky z-10 relative`}
                                   style={{ right: 0, background: 'var(--row-bg)' }}
+                                  data-action-menu-root={member.tag}
                                 >
                                   <Tooltip content={<span>Row actions</span>}>
                                     <button
                                       type="button"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
+                                      onClick={(event) => {
+                                        event.stopPropagation();
+                                        setActionMenuTag(isActionOpen ? null : member.tag);
                                       }}
-                                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                                      className={`h-8 w-8 inline-flex items-center justify-center rounded-lg border transition-opacity ${isActionOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'}`}
                                       style={{
                                         background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(255,255,255,0.04)',
                                         borderColor: surface.border,
                                         color: text.secondary,
                                       }}
                                       aria-label="Row actions"
+                                      aria-haspopup="menu"
+                                      aria-expanded={isActionOpen}
+                                      data-no-row-nav
                                     >
                                       <MoreHorizontal size={16} />
                                     </button>
                                   </Tooltip>
+                                  {isActionOpen ? (
+                                    <div
+                                      className="absolute right-0 top-full mt-2 w-44 rounded-xl border p-1 text-xs shadow-lg z-30"
+                                      style={{ background: surface.panel, borderColor: surface.border }}
+                                      role="menu"
+                                    >
+                                      <button
+                                        className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                                        style={{ color: text.primary }}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setActionMenuTag(null);
+                                          if (normalizedTag) router.push(`/new/player/${encodeURIComponent(normalizedTag)}`);
+                                        }}
+                                        role="menuitem"
+                                      >
+                                        Open profile
+                                      </button>
+                                      <button
+                                        className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                                        style={{ color: text.primary }}
+                                        onClick={(event) => {
+                                          event.stopPropagation();
+                                          setActionMenuTag(null);
+                                          void handleCopyTag(member.tag);
+                                        }}
+                                        role="menuitem"
+                                      >
+                                        Copy player tag
+                                      </button>
+
+                                      {permissions.canModifyClanData ? (
+                                        <>
+                                          <div className="my-1 border-t" style={{ borderColor: surface.border }} />
+                                          <button
+                                            className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                                            style={{ color: text.primary }}
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              setNotesTarget(member);
+                                              setActionMenuTag(null);
+                                            }}
+                                            role="menuitem"
+                                          >
+                                            Leadership notes
+                                          </button>
+                                          <button
+                                            className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                                            style={{ color: text.primary }}
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              setTenureTarget(member);
+                                              setActionMenuTag(null);
+                                            }}
+                                            role="menuitem"
+                                          >
+                                            Update tenure
+                                          </button>
+                                          <button
+                                            className="w-full rounded-lg px-3 py-2 text-left transition-colors"
+                                            style={{ color: 'var(--danger)' }}
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              setDepartureTarget(member);
+                                              setActionMenuTag(null);
+                                            }}
+                                            role="menuitem"
+                                          >
+                                            Record departure
+                                          </button>
+                                        </>
+                                      ) : null}
+                                    </div>
+                                  ) : null}
                                 </td>
                               </>
                             );
@@ -1427,6 +1553,31 @@ export default function TableClient({
             </div>
           </div>
         </details>
+      ) : null}
+
+      {notesTarget && resolvedClanTag ? (
+        <RosterPlayerNotesModal
+          playerTag={notesTarget.tag}
+          playerName={notesTarget.name || notesTarget.tag}
+          clanTag={resolvedClanTag}
+          onClose={() => setNotesTarget(null)}
+        />
+      ) : null}
+      {tenureTarget && resolvedClanTag ? (
+        <RosterPlayerTenureModal
+          playerTag={tenureTarget.tag}
+          playerName={tenureTarget.name || tenureTarget.tag}
+          clanTag={resolvedClanTag}
+          onClose={() => setTenureTarget(null)}
+        />
+      ) : null}
+      {departureTarget && resolvedClanTag ? (
+        <RosterPlayerDepartureModal
+          playerTag={departureTarget.tag}
+          playerName={departureTarget.name || departureTarget.tag}
+          clanTag={resolvedClanTag}
+          onClose={() => setDepartureTarget(null)}
+        />
       ) : null}
 
       <ColumnPickerModal
