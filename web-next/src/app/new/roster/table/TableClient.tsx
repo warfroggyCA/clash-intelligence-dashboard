@@ -916,7 +916,8 @@ export default function TableClient({
                     };
 
                     const player = preset === 'leadership' ? 34 : preset === 'war' ? 36 : 30;
-                    const remaining = 100 - player;
+                    const actions = 5;
+                    const remaining = 100 - player - actions;
                     const sum = activeColumns.reduce((acc, k) => acc + (weight[k] ?? 8), 0) || 1;
                     const cols = activeColumns.map((k) => {
                       const w = Math.max(6, Math.round((remaining * (weight[k] ?? 8)) / sum));
@@ -927,6 +928,7 @@ export default function TableClient({
                       <colgroup>
                         <col style={{ width: `${player}%` }} />
                         {cols}
+                        <col style={{ width: `${actions}%` }} />
                       </colgroup>
                     );
                   })()}
@@ -1092,6 +1094,17 @@ export default function TableClient({
                           </th>
                         );
                       })}
+                      <th
+                        className={`${tablePadX} ${tablePadY} text-center sticky z-20`}
+                        style={{ right: 0, background: tableHeaderBg }}
+                      >
+                        <Tooltip content={<span>Row actions</span>}>
+                          <span className="inline-flex items-center justify-center">
+                            <MoreHorizontal size={14} />
+                            <span className="sr-only">Actions</span>
+                          </span>
+                        </Tooltip>
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1136,7 +1149,7 @@ export default function TableClient({
                             className={`${tablePadX} ${tablePadY} align-middle sticky z-10`}
                             style={{ left: 0, background: 'var(--row-bg)' }}
                           >
-                            <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
                               <RoleIcon role={role} size={22} className="shrink-0" />
                               <div className="flex h-6 flex-1 items-center gap-2 min-w-0">
                                 <Link
@@ -1160,24 +1173,6 @@ export default function TableClient({
                                 </Tooltip>
                               </div>
                             </div>
-
-                            <Tooltip content={<span>Row actions</span>}>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                }}
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border opacity-0 transition-opacity group-hover:opacity-100"
-                                style={{
-                                  background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(255,255,255,0.04)',
-                                  borderColor: surface.border,
-                                  color: text.secondary,
-                                }}
-                                aria-label="Row actions"
-                              >
-                                <MoreHorizontal size={16} />
-                              </button>
-                            </Tooltip>
                           </td>
                           {(() => {
                             const tenureDays =
@@ -1350,6 +1345,28 @@ export default function TableClient({
                                     </td>
                                   );
                                 })}
+                                <td
+                                  className={`${tablePadX} ${tablePadY} text-right align-middle sticky z-10`}
+                                  style={{ right: 0, background: 'var(--row-bg)' }}
+                                >
+                                  <Tooltip content={<span>Row actions</span>}>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                      }}
+                                      className="h-8 w-8 inline-flex items-center justify-center rounded-lg border opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+                                      style={{
+                                        background: mode === 'light' ? 'rgba(30,58,138,0.06)' : 'rgba(255,255,255,0.04)',
+                                        borderColor: surface.border,
+                                        color: text.secondary,
+                                      }}
+                                      aria-label="Row actions"
+                                    >
+                                      <MoreHorizontal size={16} />
+                                    </button>
+                                  </Tooltip>
+                                </td>
                               </>
                             );
                           })()}
