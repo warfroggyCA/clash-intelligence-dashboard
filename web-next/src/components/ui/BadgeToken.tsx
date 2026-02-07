@@ -47,7 +47,7 @@ export const BadgeToken: React.FC<BadgeTokenProps> = ({
 
   if (description) {
     return (
-      <Tooltip content={description} position="top">
+      <Tooltip content={description}>
         {content}
       </Tooltip>
     );

@@ -11,7 +11,7 @@ import { useRosterData } from '@/app/new/roster/useRosterData';
 import type { CapitalAnalyticsResult, CapitalWeekendSummary } from '@/lib/capital-analytics/engine';
 import { compareCapitalToClanAverage } from '@/lib/capital-analytics/metrics';
 import { Loader2, TrendingUp, TrendingDown, Coins, Award, Target, Users, TrendingUp as TrendingUpIcon, Info } from 'lucide-react';
-import Tooltip from '@/components/ui/Tooltip';
+import { Tooltip } from '@/components/ui/Tooltip';
 
 const DEFAULT_AVERAGES = {
   averageLootPerAttack: 0,
@@ -549,7 +549,7 @@ function MetricCard({ title, value, max, icon, color, format = 'percentage', too
             {title}
           </span>
           {tooltip ? (
-            <Tooltip content={tooltip} position="top">
+            <Tooltip content={tooltip}>
               <span className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-white/10 text-[10px] text-slate-300">
                 <Info className="h-3 w-3" />
               </span>

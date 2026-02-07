@@ -143,7 +143,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
   if (resolvedTooltip) {
     return (
-      <Tooltip content={resolvedTooltip} position="top" maxWidth="max-w-sm">
+      <Tooltip content={resolvedTooltip} maxWidthPx={384}>
         {content}
       </Tooltip>
     );

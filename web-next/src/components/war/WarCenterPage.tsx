@@ -104,7 +104,7 @@ const MetricCard: React.FC<MetricCardProps> = ({ label, value, tooltipKey }) => 
   const tooltipContent = TOOLTIP_CONTENT[tooltipKey]?.content ?? '';
   return (
     <GlassCard className="p-4">
-      <Tooltip content={tooltipContent} position="top">
+      <Tooltip content={tooltipContent}>
         {content}
       </Tooltip>
     </GlassCard>
@@ -2603,7 +2603,7 @@ const InsightCard: React.FC<{ title: string; items: InsightItem[] }> = ({ title,
         return (
           <li key={idx}>
             {tooltipContent ? (
-              <Tooltip content={tooltipContent} position="top">
+              <Tooltip content={tooltipContent}>
                 {content}
               </Tooltip>
             ) : (
