@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const isProd = process.env.NODE_ENV === 'production';
 const disableMinify = process.env.NEXT_DISABLE_MINIFY === '1' || process.env.NEXT_DISABLE_MINIFY === 'true';
+const devDistDir = process.env.NEXT_DEV_DIST_DIR;
 
 const securityHeaders = [
   // Prevent MIME type sniffing
@@ -30,6 +31,9 @@ const securityHeaders = [
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Keep dev artifacts separate from production build artifacts.
+  // This avoids local chunk-manifest drift when switching between `next dev` and `next build`.
+  distDir: devDistDir || '.next',
   
   // ============================================
   // 🚀 SIMPLIFIED VERCEL BUILD OPTIMIZATIONS

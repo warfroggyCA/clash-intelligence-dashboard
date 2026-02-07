@@ -1,7 +1,9 @@
 #!/bin/zsh
 set -euo pipefail
 
-cd "/Volumes/My Shared Files/New Clash Intelligence/web-next"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_WEB_NEXT="$(cd "$SCRIPT_DIR/.." && pwd)"
+cd "$REPO_WEB_NEXT"
 
 # Ensure only one Next dev (port 5050).
 if nc -z 127.0.0.1 5050 2>/dev/null; then
@@ -10,4 +12,4 @@ if nc -z 127.0.0.1 5050 2>/dev/null; then
 fi
 
 echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting Next dev on :5050"
-exec /opt/homebrew/bin/npm run dev
+exec npm run dev

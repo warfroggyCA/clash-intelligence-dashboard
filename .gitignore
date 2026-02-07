@@ -1,5 +1,7 @@
 # Node/Next caches
 web-next/.next/
+web-next/.next-dev/
+web-next/.next-dev-*/
 web-next/node_modules/
 
 # Env & local config (never commit secrets)
