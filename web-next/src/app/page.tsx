@@ -35,7 +35,7 @@ export default async function LandingPage() {
   const secondaryHref = isClanHost ? '/login' : '/faq';
   const secondaryLabel = isClanHost ? 'Sign in' : 'View playbook →';
   return (
-    <main className="min-h-screen bg-slate-950 text-slate-100">
+    <main data-theme="dark" className="min-h-screen bg-slate-950 text-slate-100">
       {!clanConfig.marketingOnly && (
         <div className="bg-amber-500/10 border-b border-amber-400/30 px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-100">
           {`Serving the ${clanConfig.displayName} deployment`}
