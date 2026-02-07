@@ -79,12 +79,11 @@ const TOOLTIP_CONTENT = {
 interface TooltipLabelProps {
   children: React.ReactNode;
   tooltipKey: keyof typeof TOOLTIP_CONTENT;
-  position?: 'top' | 'bottom' | 'left' | 'right';
 }
 
-function TooltipLabel({ children, tooltipKey, position = 'top' }: TooltipLabelProps) {
+function TooltipLabel({ children, tooltipKey }: TooltipLabelProps) {
   return (
-    <Tooltip content={TOOLTIP_CONTENT[tooltipKey]} position={position} maxWidth="max-w-md">
+    <Tooltip content={TOOLTIP_CONTENT[tooltipKey]} maxWidthPx={420}>
       <div className="inline-flex items-center gap-1 cursor-help">
         {children}
         <Info className="w-3 h-3 text-slate-500" />
@@ -200,7 +199,7 @@ function SpotlightCard({ title, icon, iconBg, member, stat, statLabel, tooltipKe
   if (!member) return null;
   
   const titleContent = tooltipKey ? (
-    <TooltipLabel tooltipKey={tooltipKey} position="top">
+    <TooltipLabel tooltipKey={tooltipKey}>
       <span>{title}</span>
     </TooltipLabel>
   ) : title;
@@ -1146,7 +1145,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
         <div className="lg:col-span-2 space-y-6">
           {/* Momentum Meter */}
           <Card title={
-            <TooltipLabel tooltipKey="momentum" position="top">
+            <TooltipLabel tooltipKey="momentum">
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-cyan-400" />
                 <span>Clan Momentum</span>
@@ -1162,7 +1161,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
           {/* War Readiness */}
           <Card title={
-            <TooltipLabel tooltipKey="warReadiness" position="top">
+            <TooltipLabel tooltipKey="warReadiness">
               <div className="flex items-center gap-2">
                 <Swords className="w-4 h-4 text-red-400" />
                 <span>War Readiness</span>
@@ -1203,7 +1202,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
           {/* Activity Breakdown */}
           <Card title={
-            <TooltipLabel tooltipKey="activityBreakdown" position="top">
+            <TooltipLabel tooltipKey="activityBreakdown">
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
                 <span>Clan Activity Breakdown</span>
@@ -1261,7 +1260,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
           {/* Top Performers */}
           <Card title={
-            <TooltipLabel tooltipKey="topPerformers" position="top">
+            <TooltipLabel tooltipKey="topPerformers">
               <div className="flex items-center gap-2">
                 <Crown className="w-4 h-4 text-amber-400" />
                 <span>Top Performers</span>
@@ -1330,7 +1329,7 @@ export default function DashboardClient({ initialData }: DashboardClientProps) {
 
           {/* Activity Summary */}
           <Card title={
-            <TooltipLabel tooltipKey="activityBreakdown" position="top">
+            <TooltipLabel tooltipKey="activityBreakdown">
               <span>Activity Breakdown</span>
             </TooltipLabel>
           }>

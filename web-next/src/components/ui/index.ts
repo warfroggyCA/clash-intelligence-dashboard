@@ -84,8 +84,7 @@ export { ErrorBoundary } from './ErrorBoundary';
 // UI/UX Foundation Components
 export {
   Tooltip,
-  type TooltipProps,
-  type TooltipPosition,
+  type TooltipTheme,
 } from './Tooltip';
 
 export {
