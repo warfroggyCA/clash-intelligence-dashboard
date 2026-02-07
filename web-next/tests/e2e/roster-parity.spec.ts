@@ -75,5 +75,14 @@ test.describe('Roster Spec2 parity guardrails', () => {
 
     expect(actionsInLastCell).toBe(true);
     expect(actionsInFirstCell).toBe(false);
+
+    const firstRow = page.locator('table tbody tr').first();
+    await firstRow.hover();
+    const rowActionsButton = firstRow.locator('td:last-child button[aria-label="Row actions"]');
+    await expect(rowActionsButton).toBeVisible();
+    await rowActionsButton.click();
+
+    await expect(page.getByRole('menuitem', { name: 'Open profile' })).toBeVisible();
+    await expect(page.getByRole('menuitem', { name: 'Copy player tag' })).toBeVisible();
   });
 });
