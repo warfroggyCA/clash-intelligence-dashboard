@@ -772,13 +772,14 @@ export default function RosterClient({
         <div className="mt-3 flex flex-wrap items-center gap-2">
           {availableHeroes.map((heroKey) => {
             const level = (member as any)[heroKey] || 0;
+            const maxLevel = (caps as any)[heroKey] || 0;
             const iconSrc = (heroIconMap as any)[heroKey] || '';
             const meta = heroMeta[heroKey] || { name: heroKey.toUpperCase(), gradient: 'linear-gradient(90deg,#38bdf8,#0ea5e9)' };
 
             return (
               <Tooltip
                 key={`${member.tag}-${heroKey}`}
-                content={<span><b>{meta.name}</b> {level}</span>}
+                content={<span><b>{meta.name}</b> {maxLevel > 0 ? `${level}/${maxLevel}` : level}</span>}
               >
                 <div
                   className="relative h-11 w-11 shrink-0 rounded-xl border"
@@ -900,7 +901,7 @@ export default function RosterClient({
         mode={mode}
         onToggleMode={onToggleMode}
         detailsExtra={null}
-        eyebrow="UI Kit → Roster"
+        eyebrow="Players → Roster"
         viewingChipLabel="Viewing as: Guest"
         rightActions={
           <>
