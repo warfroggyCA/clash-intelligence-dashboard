@@ -461,7 +461,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
             id="permissions"
             icon={<Shield className="h-5 w-5" aria-hidden />}
             title="Clan Permissions"
-            subtitle="Manage leadership access and invite new Supabase users."
+            subtitle="Manage leadership access and invite new users."
             className="space-y-4"
           >
             {rolesMessage && (
@@ -485,7 +485,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
                 </div>
               ) : roleEntries.length === 0 ? (
                 <div className="rounded-2xl border border-brand-border/40 bg-brand-surfaceSubtle/60 px-4 py-3 text-sm text-slate-300">
-                  No linked users yet. Invite a Supabase-authenticated email below to grant access.
+                  No linked users yet. Invite an approved email below to grant access.
                 </div>
               ) : (
                 roleEntries.map((entry) => (
@@ -607,7 +607,7 @@ export default function SettingsContent({ layout = 'page', onClose }: SettingsCo
                   </button>
                 </div>
                 <span className="mt-1 text-[11px] font-normal text-slate-400">
-                  Required for new accounts. Leave blank to link an existing Supabase user.
+                  Required for new accounts. Leave blank to link an existing user.
                 </span>
               </label>
               <div className="flex justify-end">

@@ -70,7 +70,7 @@ const FAQSections: React.FC<FAQSectionsProps> = ({ className }) => {
               <li>Open Settings → Leadership Access.</li>
               <li>Enter the member&rsquo;s email, optional player tag, role, and initial password.</li>
               <li>Share the credentials privately. The user signs in at <code>/login</code> using that password.</li>
-              <li>If the user leaves leadership, revoke the role or disable the Supabase account instantly.</li>
+              <li>If the user leaves leadership, revoke the role or disable the account instantly.</li>
             </ol>
           </Card>
           <Card title="Invite tokens (optional)">
@@ -163,7 +163,7 @@ const FAQSections: React.FC<FAQSectionsProps> = ({ className }) => {
         </div>
         <p>
           If you need custom cadence (e.g., raid weekend every 3 hours), ping engineering. The cron scheduler and
-          Supabase storage can handle per-clan overrides.
+          data platform can handle per-clan overrides.
         </p>
       </Section>
 

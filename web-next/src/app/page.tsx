@@ -35,7 +35,7 @@ export default async function LandingPage() {
   const secondaryHref = isClanHost ? '/login' : '/faq';
   const secondaryLabel = isClanHost ? 'Sign in' : 'View playbook →';
   return (
-    <main data-theme="dark" className="min-h-screen bg-slate-950 text-slate-100">
+    <main data-theme="dark" className="min-h-screen bg-slate-950 !text-slate-100">
       {!clanConfig.marketingOnly && (
         <div className="bg-amber-500/10 border-b border-amber-400/30 px-4 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.3em] text-amber-100">
           {`Serving the ${clanConfig.displayName} deployment`}
@@ -44,16 +44,16 @@ export default async function LandingPage() {
       <div className="relative isolate overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.08),transparent_55%)]" />
         <header className="mx-auto flex max-w-6xl items-center justify-between px-5 py-6 sm:px-8">
-          <div className="flex items-center gap-3 text-sm font-semibold tracking-wide text-slate-200">
+          <div className="flex items-center gap-3 text-sm font-semibold tracking-wide !text-slate-200">
             <span className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-lg">
               ⚔️
             </span>
             <span>Clash Intelligence Dashboard</span>
           </div>
-          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
+          <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] !text-slate-400">
             <Link
               href="/login"
-              className="rounded-full border border-slate-700/70 px-4 py-2 text-slate-200 transition hover:border-clash-gold hover:text-white"
+              className="rounded-full border border-slate-700/70 px-4 py-2 !text-slate-200 transition hover:border-clash-gold hover:!text-white"
             >
               Sign In
             </Link>
@@ -70,7 +70,7 @@ export default async function LandingPage() {
           <div className="flex-1 space-y-8">
             <p className="text-xs uppercase tracking-[0.4em] text-clash-gold/70">Clash Intelligence Dashboard</p>
             <div className="space-y-6">
-              <h1 className="text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+              <h1 className="text-4xl font-semibold leading-tight !text-white sm:text-5xl lg:text-6xl">
                 {clanConfig.marketingOnly ? (
                   marketingHero
                 ) : heroHeading ? (
@@ -84,7 +84,7 @@ export default async function LandingPage() {
                   </>
                 )}
               </h1>
-              <p className="text-base text-slate-300 sm:text-lg">
+              <p className="text-base !text-slate-300 sm:text-lg">
                 The Clash Intelligence Dashboard is your command center for roster health, war intelligence, capital ROI, and player development. Every insight is clan-aware,
                 authenticated, and ready from first scout to final hit.
               </p>
@@ -98,7 +98,7 @@ export default async function LandingPage() {
               </Link>
               <Link
                 href={secondaryHref}
-                className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3 text-base font-semibold text-slate-100 transition hover:border-clash-gold/80"
+                className="inline-flex items-center justify-center rounded-full border border-white/20 px-6 py-3 text-base font-semibold !text-slate-100 transition hover:border-clash-gold/80"
               >
                 {secondaryLabel}
               </Link>
@@ -106,8 +106,8 @@ export default async function LandingPage() {
             <dl className="grid gap-6 sm:grid-cols-3">
               {heroStats.map((stat) => (
                 <div key={stat.label}>
-                  <dt className="text-xs uppercase tracking-[0.28em] text-slate-500">{stat.label}</dt>
-                  <dd className="text-2xl font-semibold text-white">{stat.value}</dd>
+                  <dt className="text-xs uppercase tracking-[0.28em] !text-slate-500">{stat.label}</dt>
+                  <dd className="text-2xl font-semibold !text-white">{stat.value}</dd>
                 </div>
               ))}
             </dl>
@@ -115,32 +115,32 @@ export default async function LandingPage() {
 
           <div className="flex-1">
             <div className="rounded-[36px] border border-white/10 bg-white/5 p-6 shadow-[0_55px_120px_-60px_rgba(15,23,42,0.9)] backdrop-blur">
-              <div className="mb-4 flex items-center justify-between text-xs uppercase tracking-[0.28em] text-slate-400">
+              <div className="mb-4 flex items-center justify-between text-xs uppercase tracking-[0.28em] !text-slate-400">
                 <span>Live command preview</span>
                 <span>Secure · Clan-aware</span>
               </div>
               <div className="space-y-4 rounded-3xl border border-white/10 bg-slate-900/70 p-5">
-                <div className="flex items-center justify-between text-sm text-slate-300">
+                <div className="flex items-center justify-between text-sm !text-slate-300">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.28em] text-slate-500">War briefing</p>
-                    <p className="text-lg font-semibold text-white">Clan intelligence digest</p>
+                    <p className="text-xs uppercase tracking-[0.28em] !text-slate-500">War briefing</p>
+                    <p className="text-lg font-semibold !text-white">Clan intelligence digest</p>
                   </div>
                   <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">Ready</span>
                 </div>
-                <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-4 text-sm text-slate-300">
+                <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-4 text-sm !text-slate-300">
                   Today’s snapshot highlights top performers, carry deficits, and raid ROI in one glance. Promotions, warnings, and AI
                   coaching prompts route directly to your Discord workflows.
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-slate-500">War intelligence</p>
-                    <p className="text-2xl font-semibold text-white">92.4</p>
-                    <p className="text-xs text-slate-400">Attack efficiency index this week.</p>
+                    <p className="text-xs uppercase tracking-[0.28em] !text-slate-500">War intelligence</p>
+                    <p className="text-2xl font-semibold !text-white">92.4</p>
+                    <p className="text-xs !text-slate-400">Attack efficiency index this week.</p>
                   </div>
                   <div className="rounded-2xl border border-white/5 bg-slate-900/60 p-4">
-                    <p className="text-xs uppercase tracking-[0.28em] text-slate-500">Capital ROI</p>
-                    <p className="text-2xl font-semibold text-white">118%</p>
-                    <p className="text-xs text-slate-400">Loot to upgrade velocity, last 3 raids.</p>
+                    <p className="text-xs uppercase tracking-[0.28em] !text-slate-500">Capital ROI</p>
+                    <p className="text-2xl font-semibold !text-white">118%</p>
+                    <p className="text-xs !text-slate-400">Loot to upgrade velocity, last 3 raids.</p>
                   </div>
                 </div>
               </div>
@@ -151,13 +151,13 @@ export default async function LandingPage() {
 
       <section className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
         <p className="text-xs uppercase tracking-[0.35em] text-clash-gold/70">Why clans switch</p>
-        <h2 className="mt-3 text-3xl font-semibold text-white sm:text-4xl">Everything your clan touches in one pane.</h2>
+        <h2 className="mt-3 text-3xl font-semibold !text-white sm:text-4xl">Everything your clan touches in one pane.</h2>
         <div className="mt-8 grid gap-6 md:grid-cols-3">
           {features.map((feature) => (
             <div key={feature.title} className="rounded-3xl border border-white/5 bg-slate-900/70 p-6 shadow-[0_30px_60px_-50px_rgba(15,23,42,1)]">
               <span className="text-xs font-semibold uppercase tracking-[0.32em] text-clash-gold/70">{feature.badge}</span>
-              <h3 className="mt-3 text-2xl font-semibold text-white">{feature.title}</h3>
-              <p className="mt-2 text-sm text-slate-300">{feature.body}</p>
+              <h3 className="mt-3 text-2xl font-semibold !text-white">{feature.title}</h3>
+              <p className="mt-2 text-sm !text-slate-300">{feature.body}</p>
             </div>
           ))}
         </div>
@@ -166,8 +166,8 @@ export default async function LandingPage() {
       <section className="mx-auto max-w-5xl px-5 pb-20 sm:px-8">
         <div className="rounded-[32px] border border-white/10 bg-gradient-to-r from-slate-900/80 via-slate-900 to-slate-900/80 p-10 text-center shadow-[0_60px_120px_-80px_rgba(15,23,42,1)]">
           <p className="text-xs uppercase tracking-[0.35em] text-clash-gold/70">Ready when you are</p>
-          <h3 className="mt-4 text-3xl font-semibold text-white">Lock down your clan intelligence.</h3>
-          <p className="mt-3 text-sm text-slate-300 sm:text-base">
+          <h3 className="mt-4 text-3xl font-semibold !text-white">Lock down your clan intelligence.</h3>
+          <p className="mt-3 text-sm !text-slate-300 sm:text-base">
             Sign in if you already have access. Need credentials? Reach out and we’ll onboard your clan.
           </p>
           <div className="mt-6 flex flex-wrap justify-center">

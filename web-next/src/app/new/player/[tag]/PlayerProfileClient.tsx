@@ -3677,7 +3677,7 @@ const groupedEquipment = useMemo(() => {
                   onChange={(e) => setAssessmentText(e.target.value)}
                   rows={3}
                   className="w-full rounded-lg border border-slate-700/60 bg-slate-900/70 px-3 py-2 text-sm text-slate-100 shadow-inner focus:border-cyan-500/60 focus:outline-none"
-                  placeholder="Freeform notes (saved to Supabase)…"
+                  placeholder="Freeform notes (saved automatically)…"
                   disabled={!canModifyClanData || !clanTagForActions || assessmentSaving}
                 />
                 <div className="flex items-center justify-end">

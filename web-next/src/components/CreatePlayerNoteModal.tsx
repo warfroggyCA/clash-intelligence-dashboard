@@ -141,7 +141,7 @@ export default function CreatePlayerNoteModal({ onClose, defaultTag, defaultName
           </div>
 
           <p className="text-xs text-gray-500">
-            Notes are saved to Supabase for clan <span className="font-mono">{resolvedClanTag}</span>.
+            Notes are saved automatically for clan <span className="font-mono">{resolvedClanTag}</span>.
           </p>
 
           <div>

@@ -438,7 +438,7 @@ export default function AssessPage() {
                       <textarea
                         className="w-full rounded-xl border border-white/10 bg-slate-950/50 px-3 py-2 text-xs text-slate-100"
                         rows={3}
-                        placeholder="Freeform notes (saved to Supabase)…"
+                        placeholder="Freeform notes (saved automatically)…"
                         value={assessmentDrafts[joiner.id] ?? ''}
                         onChange={(e) => setAssessmentDrafts((prev) => ({ ...prev, [joiner.id]: e.target.value }))}
                       />

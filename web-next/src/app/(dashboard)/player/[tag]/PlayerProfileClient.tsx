@@ -2661,7 +2661,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
                   <div className="space-y-6">
                     <GlassCard
                       title="Profile Overview"
-                      subtitle="Live data pulled from Supabase player backbone"
+                      subtitle="Live data pulled from the player data backbone"
                       icon={<BarChart3 className="h-5 w-5" />}
                       className="bg-slate-900/70 border border-slate-800/80 shadow-[0_30px_60px_-40px_rgba(15,23,42,0.9)]"
                     >
@@ -3432,7 +3432,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
                     {canViewLeadership && (
                       <GlassCard
                         title="Leadership Quick Actions"
-                        subtitle="Every action routes through Supabase APIs"
+                        subtitle="Every action routes through secure clan APIs"
                         icon={<Sparkles className="h-5 w-5" />}
                         className="bg-slate-900/70 border border-slate-800/80"
                       >
@@ -3457,7 +3457,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
                             variant="secondary"
                             className="justify-start gap-2 rounded-2xl px-4"
                             onClick={() =>
-                              showToast("Tenure actions land once the Supabase mutation is ready.", "info")
+                              showToast("Tenure actions land once the tenure update is ready.", "info")
                             }
                           >
                             <UserCheck className="h-4 w-4" />
@@ -4189,7 +4189,7 @@ export default function PlayerProfileClient({ tag, initialProfile }: PlayerProfi
         >
           <div className="space-y-4">
             <p className="text-sm text-slate-600">
-              Notes sync straight to Supabase so every leadership touchpoint stays in lockstep.
+              Notes sync instantly so every leadership touchpoint stays in lockstep.
             </p>
             <textarea
               className="min-h-[140px] w-full rounded-2xl border border-slate-200 bg-white/60 px-4 py-3 text-sm text-slate-800 shadow-inner focus:border-indigo-400 focus:outline-none focus:ring-2 focus:ring-indigo-200"
