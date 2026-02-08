@@ -1,0 +1,50 @@
+# Components Index
+
+This index lists exported components detected under `web-next/src/components`.
+
+- PlayerDatabase (default)
+- SnapshotInfoBanner (default)
+- PlayerDNADashboard (default)
+- SnapshotDetailsPanel (default)
+- HydrationGate (default)
+- TooltipManager
+- WatchlistManager
+- ElderPromotionPanel
+- CommandCenterSettings
+- LeadershipGuard (default), LeadershipOnly, ConditionalLeadership
+- DepartureSyncTool (default)
+- FontSizeControl (default)
+- TodaysBriefing (default)
+- DiscordPublisher (default)
+- PlayerDNARadar (default)
+- UserRoleSelector (default)
+- FullSnapshotDashboard (default)
+- ShadowRootPortal (default)
+- ChangeDashboard (default)
+- DepartureManager (default)
+- CreatePlayerNoteModal (default)
+- DataRecoveryTool (default)
+- ClientAppShell (default)
+- CoachingInsights (default)
+- AccessManager (default)
+- ClanAnalytics (default)
+- AccessSetup (default)
+- ApplicantsPanel (default)
+- AccessLogin (default)
+- CommandCenter (default)
+- ReturningPlayerReview (default)
+- RosterSummary
+- PlayerDetailDrawer
+- SettingsContent (default)
+- TournamentCard (default)
+- ElderAssessmentCard
+- RetiredProfileClient (default)
+- SettingsModal (default)
+- ToastHub (default)
+- RetiredPlayersTable (default)
+- PerformanceTimelineChart (default)
+- PlayerComparisonDashboard (default)
+- PlayerActivityAnalytics (default)
+- DevStatusBadge (default)
+- IngestionMonitor (default)
+- NewSnapshotIndicator (default)
