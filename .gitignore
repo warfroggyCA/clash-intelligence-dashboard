@@ -39,3 +39,8 @@ web-next/local.db
 
 # Local runtime hints
 .node-version
+
+# Local MCP configs (may contain personal access tokens)
+.cursor/mcp.json
+.cursor/mcp.json.disabled
+.cursor/mcp.json.backup
